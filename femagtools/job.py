@@ -15,8 +15,10 @@ import glob
 import femagtools.bch
 import logging
 import uuid
-import boto3
-
+try:
+    import boto3
+except:
+    pass
 
 logger = logging.getLogger(__name__)
 

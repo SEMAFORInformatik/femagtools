@@ -1,29 +1,25 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
- PM _load calc with Femag
+ Ld-Lq-Identification with Femag
  """
-import sys
 import os
-import json
 import femagtools
 import logging
-
+import numpy as np
 
 feapars = {
-    "num_move_steps": 49,
-    "angl_i_up": 0.0,
-    "calculationMode": "pm_sym_fast",
-    "wind_temp": 60.0,
+    "num_move_steps": 25,
+    "calculationMode": "ld_lq_fast",
     "magn_temp": 60.0,
-    "current": 50.0,
-    "eval_force": 0,
-    "windings": {
-        "skew_angle": 0.0,
-        "num_par_wdgs": 1,
-        "num_skew_steps": 0},
-    "calc_fe_loss": 1,
-    "speed": 50.0,
-    "optim_i_up": 0
+    "i1_max": 150.0,
+    "beta_max": 0.0,
+    "beta_min": -60.0,
+    "num_cur_steps": 3,
+    "num_beta_steps": 4,
+    "skew_angle": 0.0,
+    "num_par_wdgs": 1,
+    "speed": 50.0
 }
 
 magnetMat = [{
@@ -41,7 +37,7 @@ magnetMat = [{
     "hc_min": 760000.0}
 ]
 
-magnetizingCurve = "./magnetcurves"
+magnetizingCurve = ".//magnetcurves"
 
 pmMotor = {
     "name": "PM 270 L8",
@@ -102,7 +98,6 @@ pmMotor = {
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
-logger = logging.getLogger("pmrsim")
 
 workdir = os.path.join(os.path.expanduser('~'), 'femag')
 
@@ -110,11 +105,37 @@ femag = femagtools.Femag(workdir,
                          magnetizingCurves=magnetizingCurve,
                          magnets=magnetMat)
 
-#feapars['calculationMode'] = "mult_cal_fast"
-feapars['calculationMode'] = "pm_sym_fast"
-logger.info("start calculation")
 r = femag(pmMotor, feapars)
-logger.info("finished calculation")
 print(r.type)
-print(r.machine)
 
+# find speed at u1max
+u1max = 340
+tq = 170
+
+ld = r.ldq['ld']
+lq = r.ldq['lq']
+i1 = r.ldq['i1']
+beta = r.ldq['beta']
+psim = r.ldq['psim']
+
+p = r.machine['p']
+r1 = 0.0
+
+pm = femagtools.PmRelMachineLdq(3, p,
+                                psim,
+                                ld,
+                                lq,
+                                r1,
+                                beta,
+                                i1)
+
+tq = 170.0
+u1 = 340.0
+
+iqx, idx = pm.iqd_torque(tq)
+w1 = pm.w1_u(u1, idx, iqx)
+i1 = np.linalg.norm(np.array((iqx, idx)))
+betaopt = np.arctan2(idx, iqx)/np.pi*180
+
+print("f1 {0:8.1f} Hz,  I1 {1:8.1f} A, Beta {2:4.1f} °".format(
+    w1/2/np.pi, i1, betaopt))

@@ -1,4 +1,4 @@
 *.pyc
-docs_build
+docs/_build
 dist
 __pycache__

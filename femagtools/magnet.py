@@ -1,0 +1,40 @@
+# -*- coding: utf-8 -*-
+"""
+    femagtools.magnet
+    ~~~~~~~~~~~~~~~~~
+
+    Creating and managing magnet material
+
+    :copyright: 2016 Semafor Informatik & Energie AG, Basel
+    :license: BSD, see LICENSE for more details.
+"""
+
+
+class Magnet:
+    def __init__(self, mlist=[]):
+        """initialize this object from a list of magnet objects"""
+        self.magnets = {}
+        for m in mlist:
+            if 'id' in m:
+                self.magnets[str(m['id'])] = m
+            elif 'name' in m:
+                self.magnets[m['name']] = m
+                
+    def find(self, id):
+        """find magnet by id or name"""
+        try:
+            return self.magnets[id]
+        except ValueError:
+            pass  # not found
+        except KeyError:
+            pass
+        return self.find_by_name(id)
+    
+    def find_by_name(self, name):
+        """find magnet by name"""
+        for k in self.magnets.keys():
+            if self.magnets[k]['name'] == name:
+                    return self.magnets[k]
+            # not found
+        return None
+    

@@ -1,0 +1,4 @@
+*.pyc
+docs_build
+dist
+__pycache__

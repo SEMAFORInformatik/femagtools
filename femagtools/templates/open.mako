@@ -9,5 +9,5 @@ load_model(model)
   pickdist(0.001)
   cosys(polar)
 
-<%include file="fe-contr.fsl" />
+<%include file="fe-contr.mako" />
 

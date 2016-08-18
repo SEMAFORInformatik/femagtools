@@ -10,7 +10,7 @@ new_model_force(model, '')
   pickdist(0.001)
   cosys(polar)
 
-<%include file="fe-contr.fsl" />
+<%include file="fe-contr.mako" />
 
 ag  = ${model.get(['airgap'])*1e3}
 % if model.external_rotor:

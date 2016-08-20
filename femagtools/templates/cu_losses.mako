@@ -1,6 +1,6 @@
 --  CU-Losses-                           
 m.cufilfact       =      ${model.get('cufilfact', 0.45)}
-m.culength        =      100*${model.get('culength', 1.0)}
+m.culength        =      100*${model.get('culength', 1.4)}
 m.cuconduct       =      56e6
 m.numlayers       =      ${model['num_layers']}
 m.conheight       =      0.0

@@ -10,3 +10,5 @@ Femagtools is a Python-API for FEMAG (https://www.profemag.ch/) offering followi
 * create FSL files from model and calculation templates
 * calculate machine characteristics by using analytic machine models
 * execute parameter studies and multi-objective optimizations
+
+Further Information: http://docs.semafor.ch/femagtools

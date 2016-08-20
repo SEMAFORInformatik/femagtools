@@ -18,7 +18,7 @@ m.fc_radius2       =    0.0
 m.num_par_wdgs    =    ${model.get('num_par_wdgs',1)}
 m.nu_force_pat     =  0.0
 
-m.eval_force1     =    ${model.get('eval_force')}
+m.eval_force1     =    ${model.get('eval_force', 0)}
 
 m.pocfilename    = model..'_'..m.num_poles..'p.poc'
 

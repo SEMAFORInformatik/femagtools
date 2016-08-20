@@ -15,6 +15,7 @@ fieldweakening.py: calculate the frequency and current using an analytical model
 ld_lq_fast.py: execute a ld-lq identification and calculate the frequency and current
                at given voltage and torque
 
+cogg_calc.py: execute a cogging calculation and print the fft of the torque
 pm_sym_fast.py: execute a PM/Rel machine simulation and print the torque
 
 parvar.py: execute a parameter variation

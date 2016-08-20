@@ -40,3 +40,16 @@ def read_bchfile(filename):
     with io.open(filename) as f:
         bchresults.read(f.readlines())
     return bchresults
+
+
+def create_fsl(machine, operatingconditions=None, magnetmat=None):
+    """create FSL command list from model parameters"""
+    model = Model(machine)
+    builder = FslBuilder()
+    if operatingconditions:
+        if magnetmat:
+            magnets = Magnet(magnetmat)
+            return builder.create(model, operatingconditions, magnets)
+        return builder.create(model, operatingconditions, None)
+    return builder.create_model(model)
+    

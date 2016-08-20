@@ -23,11 +23,20 @@ machine = dict(
     ),
     
     magnet=dict(
+        mcvkey_mshaft="dummy",
         mcvkey_yoke="dummy",
-        magnetFsl=dict(
-            magn_height=0.014,
-            content_template="ring-magnet.fsl"
-        )
+        magnetSector=dict(
+            magn_num=1,
+            magn_width_pct=0.8,
+            magn_height=0.004,
+            magn_shape=0.0,
+            bridge_height=0.0,
+            magn_type=1,
+            condshaft_r=0.02,
+            magn_ori=2,
+            magn_rfe=0.0,
+            bridge_width=0.0,
+            magn_len=1.0)
     ),
     
     windings=dict(
@@ -39,9 +48,9 @@ machine = dict(
 
 operatingConditions = dict(
     calculationMode="pm_sym_fast",
-    current=50.0,
+    current=12.0,
     angl_i_up=0.0,
-    speed=50.0,
+    speed=15.0,
     wind_temp=60.0,
     magn_temp=60.0)
 

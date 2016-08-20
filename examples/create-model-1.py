@@ -37,7 +37,5 @@ machine = dict(
         num_layers=1)
 )
 
-builder = femagtools.FslBuilder()
-model = femagtools.Model(machine)
-fsl = builder.create_model(model)
+fsl = femagtools.create_fsl(machine)
 print('\n'.join(fsl))

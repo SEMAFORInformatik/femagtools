@@ -2,8 +2,10 @@ Examples:
 
 create-model-0.py: create the file femag.fsl of a PM machine with stator3
                    and magnet sector
-create-model-1.py: create FSL command of a PM machine with a stator3
+create-model-1.py: create FSL commands of a PM machine with a stator3
                    and a user defined magnet (ring-magnet.fsl)
+create-model-3.py: create FSL commands of a PM machine with a stator3,
+                   magnet sector and pm_sym_fast invocation
 
 read_bch-0.py: read BCH file from a Ld-Lq-identification and plot the torque
 read_bch-1.py: read BCH file from a PM/Rel Simulation and plot the torque

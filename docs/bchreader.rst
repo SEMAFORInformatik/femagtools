@@ -31,3 +31,43 @@ losses             Losses in iron, magnets and conductors from Move-calc
 demag              Demagnetisation
 weight             Total weight and weight of iron, conductor and magnets
 ================  =======================================================
+
+* Flux: list of dictionaries for each winding
+
+  ================  =======================================================
+  Attribute          Description     
+  ================  =======================================================
+  displ             position
+  flux_k            flux 
+  voltage_dpsi      voltage dpsi/dt
+  voltage_four      voltage (fourier transformation)
+  current_k         current
+  voltage_ir        voltage
+  ================  =======================================================
+
+* flux_fft: list of dictionaries for each winding
+
+  ================  =======================================================
+  Attribute          Description     
+  ================  =======================================================
+  order             order of harmonic
+  flux              flux amplitude
+  flux_perc         flux amplitude percentage of base harmonic
+  voltage           voltage amplitude
+  voltage_perc      voltage amplitude percentage of base harmonic
+  a                 amplitude of sin 
+  b                 amplitide of cos 
+  ================  =======================================================
+
+* torque: list of dictionaries for each current and/or beta angle
+
+  ================  =======================================================
+  Attribute          Description     
+  ================  =======================================================
+  angle             Position
+  current_1         Current
+  force_x           Force in tangetial direction 
+  force_y           Force in radial direction 
+  t_idpsi           Torque
+  torque            Torque
+  ================  =======================================================

@@ -14,8 +14,7 @@ opt = {
         {"desc": "Torque Ripple / Nm", "name": "torque.ripple", "sign": 1},
         {"desc": "Iron Loss / W", "name": "machine.plfe", "sign": 1}
     ],
-    "num_generations": 3,
-    "population_size": 8,
+    "population_size": 24,
     "decision_vars": [
         {"desc": "Magn width", "steps": 3, "bounds": [0.75, 0.85],
          "name": "magnet.magnetSector.magn_width_pct"},
@@ -131,8 +130,8 @@ except OSError:
 
 o = femagtools.Optimizer(workdir,
                          magnetizingCurve, magnetMat)
-
-results = o.optimize(opt['num_generations'],
+num_generations = 3
+results = o.optimize(num_generations,
                      opt, pmMotor, operatingConditions, engine)
 
 json.dump(results, sys.stdout)

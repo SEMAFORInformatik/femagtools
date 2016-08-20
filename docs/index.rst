@@ -11,6 +11,16 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 * calculate machine characteristics by using analytic machine models
 * execute parameter studies and multi-objective optimization
 
+Installation
+------------
+
+Install Femagtools with Pip::
+
+  $ pip install femagtools
+
+Prerequisite: a fairly recent FEMAG version (see http://www.profemag.ch) must be found in one of the
+directories listed in your PATH variable.
+
 Contents
 ========
 

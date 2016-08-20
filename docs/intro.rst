@@ -5,7 +5,7 @@ Run FEMAG with FSL
 ++++++++++++++++++
 Example (single process)::
   
-  workdir = os.path.join(os.environ['HOME'], 'femag')
+  workdir = os.path.join(os.path.expanduser('~'), 'femag')
   femag = femagtools.Femag(workdir)
   femag.run('femag.fsl')
 
@@ -28,8 +28,8 @@ Example::
   print(bch.machine['torque'])
 
 
-Create FSL from Templates
-+++++++++++++++++++++++++
+Create FSL and/or invoke FEMAG with Model Parameters
+++++++++++++++++++++++++++++++++++++++++++++++++++++
 Example::
 
   machine = dict(
@@ -77,9 +77,8 @@ Example::
            coil_span = 3.0,
            num_layers = 1)
   )
-  builder = femagtools.FslBuilder()
-  model = femagtools.Model(machine)
-  fsl = builder.create_model(model)
+  
+  fsl = femagtools.create_fsl(model)
   with open('femag.fsl', 'w') as f:
       f.write('\n'.join(fsl))
 
@@ -88,10 +87,29 @@ After opening this file in FEMAG the shown geometry is created:
 .. image:: geom.png
    :height: 240pt
 
-PM machine characteristics
-++++++++++++++++++++++++++
+The same machine and operating parameters can be used to run FEMAG directly::
 
-Definition of PM machine with Ld,Lq parameters::
+  femag = femagtools.Femag(workdir)
+
+  operatingConditions = dict(
+    calculationMode="pm_sym_fast",
+    current=50.0,
+    angl_i_up=0.0,
+    speed=50.0,
+    wind_temp=60.0,
+    magn_temp=60.0)
+
+  r = femag(machine,
+            operatingConditions)
+
+  print('Torque [Nm] = {}'.format(r.machine['torque']))
+
+
+
+Evaluate PM/Reluctance machine characteristics
+++++++++++++++++++++++++++++++++++++++++++++++
+
+Definition of the PM or Reluctance machine with Ld,Lq parameters::
 
   p = 4
   r1 = 0.0806
@@ -140,12 +158,75 @@ Speed-Torque characteristics with max power::
 .. plot:: pyplots/pmchar.py
   
 
-Multi-Objective Optimization
+Execute Parameter Variations
 ++++++++++++++++++++++++++++
 
-Example::
+Example: calculate torque, torque ripple and iron losses at beta=-50°,-25°,0°::
 
+  parvar = {
+    "objective_vars": [
+      {"name": "dqPar.torque"},
+      {"name": "torque.ripple"},
+      {"name": "machine.plfe"}],
+    "population_size": 3,
+    "decision_vars": [
+      {"steps": 3,
+       "bounds": [-50, 0],
+       "name": "angl_i_up"}
+  }
+  
+  operatingConditions = dict(
+    angl_i_up=0.0,
+    calculationMode="pm_sym_fast",
+    wind_temp=60.0,
+    magn_temp=60.0,
+    current=50.0,
+    speed=50.0)
+    
+  numcores = 3
+  engine = femagtools.MultiProc(numcores)
+
+  mcvDir = os.path.join(
+            os.path.expanduser('~'), 'mcv')
+
+  grid = femagtools.Grid(workdir,
+                         magnetizingCurves=mcvDir)
+
+  results = grid(parvar, pmMachine,
+                 operatingConditions, engine)
+
+The variable results is a dict with the keys x and f holding the (n x m) arrays of the decision and the objective variables.
+  
+Make a Multi-Objective Optimization
++++++++++++++++++++++++++++++++++++
+
+Example: minimize ripple and losses and maximize torque (note the sign parameter) by varying magnet width and height ::
+  
+  opt = {
+    "objective_vars": [
+        {"name": "dqPar.torque", "desc": "Torque / Nm", "sign": -1},
+        {"name": "torque.ripple", "desc": "Torque Ripple / Nm"},
+        {"name": "machine.plfe", "desc": "Iron Loss / W" }
+    ],
+    "population_size": 24,
+    "decision_vars": [
+        {"name": "magnet.magnetSector.magn_width_pct",
+	 "desc": "Magn width", "steps": 3,
+	 "bounds": [0.75, 0.85]},
+         
+        {"name": "magnet.magnetSector.magn_height",
+	 "desc": "Magn height", "steps": 3,
+	 "bounds": [3e-3, 5e-3]}
+         
+    ]
+  }
+  
+  num_generations = 3
+  
   engine = femagtools.Condor()
-  opt = femagtools.Optimizer(parameters, engine, workdir)
-  num_generations = 10
-  results = opt.optimize(num_generations)
+  o = femagtools.Optimizer(workdir,
+                           magnetizingCurve, magnetMat)
+
+  results = o.optimize(num_generations,
+                       opt, machine, operatingConditions, engine)
+

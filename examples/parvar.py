@@ -2,21 +2,19 @@
 """
  Parameter Variation with Femag
  """
-import sys
 import os
-import json
 import femagtools
 import logging
 
-opt = {
+parvar = {
     "objective_vars": [
-        {"desc": "Torque / Nm", "name": "dqPar.torque", "sign": -1},
-        {"desc": "Torque Ripple / Nm", "name": "torque.ripple", "sign": 1},
-        {"desc": "Iron Loss / W", "name": "machine.plfe", "sign": 1}
+        {"name": "dqPar.torque"},
+        {"name": "torque.ripple"},
+        {"name": "machine.plfe"}
     ],
     "population_size": 3,
     "decision_vars": [
-        {"desc": "beta", "steps": 3, "bounds": [-50, 0],
+        {"steps": 3, "bounds": [-50, 0],
          "name": "angl_i_up"}
     ]
 }
@@ -54,7 +52,7 @@ magnetMat = [{
 
 magnetizingCurve = "./magnetcurves"
 
-pmMotor = {
+machine = {
     "name": "PM 270 L8",
     "desc": "PM Motor 270mm 8 poles VMAGN",
     "poles": 8,
@@ -115,32 +113,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
 numprocs = 3
-#engine = femagtools.MultiProc(numprocs)
-engine = femagtools.Condor()
-
-# Cloud computing
-# engine = femagtools.DockerEngine(numprocs)
-
-# precalculated AMAZONE S3
-a_buckets = [{'id': '0422f2d4-0072-4eef-9ed9-01cb0a026c47.semafor.ch', 'folder': '/home/mau/parvar/0'},
-             {'id': '1d859bf5-7a98-4218-9bda-ed72684e6b58.semafor.ch', 'folder': '/home/mau/parvar/1'},
-             {'id': '820b5e48-91f0-458e-9e1a-d74447fc697a.semafor.ch', 'folder': '/home/mau/parvar/2'}]
-
-# precalculated Google cloud storage
-g_buckets = [{'id': '91d56074-c4c1-422a-99a2-1a0e5925b8e1-2', 'folder': '/home/mau/parvar/2'},
-             {'id': 'fd29120d-686d-4213-9759-241c1c95dc5e-1', 'folder': '/home/mau/parvar/1'},
-             {'id': '77e021b2-2f06-4b68-a9e8-5a862a6ff6ae-0', 'folder': '/home/mau/parvar/0'}]
-
-# engine = femagtools.AmazonEngine(company='semafor',
-#                                 number_of_instances=numprocs,
-#                                 server_location='eu-central-1',
-#                                 cluster_name='femag_semafor3',  # Cluster name
-#                                 buckets=a_buckets,                # buckets with data
-#                                 image_id='ami-b0cc23df',        # default amazon image for docker container
-#                                 instance_type='t2.small',       # t2.small or t2.micro
-#                                 task_definition='femag:10')     # femag:10 or femag:7
-
-#engine = femagtools.GoogleEngine('semafor', buckets=g_buckets)
+engine = femagtools.MultiProc(numprocs)
 
 userdir = os.path.expanduser('~')
 workdir = os.path.join(userdir, 'parvar')
@@ -153,6 +126,8 @@ grid = femagtools.Grid(workdir,
                        magnetizingCurves=magnetizingCurve,
                        magnets=magnetMat)
 
-results = grid(opt, pmMotor, operatingConditions, engine)
+results = grid(parvar, machine, operatingConditions, engine)
 
-json.dump(results, sys.stdout)
+print("Beta    T/Nm  Tr/Nm   Pfe/W")
+for l in zip(*(results['x']+results['f'])):
+    print('{0:6.1f} {1:6.1f}{2:6.1f} {3:8.1f}'.format(*l))

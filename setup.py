@@ -15,7 +15,7 @@ setup(
     author='Ronald Tanner',
     url='https://github.com/SEMAFORInformatik/femagtools',
     author_email='tar@semafor.ch',
-    version='0.0.4',
+    version='0.0.5',
     install_requires=['numpy', 'scipy', 'mako'],
     packages=['femagtools', 'femagtools/moo'],
     package_data={'femagtools': ['templates/*.mako']},

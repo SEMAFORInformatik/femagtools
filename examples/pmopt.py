@@ -11,14 +11,14 @@ import logging
 opt = {
     "objective_vars": [
         {"desc": "Torque / Nm", "name": "dqPar.torque", "sign": -1},
-        {"desc": "Torque Ripple / Nm", "name": "torque.ripple", "sign": 1},
-        {"desc": "Iron Loss / W", "name": "machine.plfe", "sign": 1}
+        {"desc": "Torque Ripple / Nm", "name": "torque.ripple"},
+        {"desc": "Iron Loss / W", "name": "machine.plfe"}
     ],
     "population_size": 24,
     "decision_vars": [
-        {"desc": "Magn width", "steps": 3, "bounds": [0.75, 0.85],
+        {"desc": "Magn width", "bounds": [0.75, 0.85],
          "name": "magnet.magnetSector.magn_width_pct"},
-        {"desc": "Magn height", "steps": 3, "bounds": [3e-3, 5e-3],
+        {"desc": "Magn height", "bounds": [3e-3, 5e-3],
          "name": "magnet.magnetSector.magn_height"}
     ]
 }
@@ -57,7 +57,7 @@ magnetMat = [{
 
 magnetizingCurve = "./magnetcurves"
 
-pmMotor = dict(
+machine = dict(
     name="PM 130 L4",
     lfe=0.1,
     poles=4,
@@ -132,7 +132,7 @@ o = femagtools.Optimizer(workdir,
                          magnetizingCurve, magnetMat)
 num_generations = 3
 results = o.optimize(num_generations,
-                     opt, pmMotor, operatingConditions, engine)
+                     opt, machine, operatingConditions, engine)
 
 json.dump(results, sys.stdout)
 

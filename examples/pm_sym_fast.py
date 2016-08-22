@@ -54,8 +54,12 @@ logging.basicConfig(level=logging.INFO,
 
 workdir = os.path.join(
     os.path.expanduser('~'), 'femag')
-femag = femagtools.Femag(workdir)
+try:
+    os.makedirs(workdir)
+except OSError:
+    pass
 
+femag = femagtools.Femag(workdir)
 
 operatingConditions = dict(
     angl_i_up=0.0,

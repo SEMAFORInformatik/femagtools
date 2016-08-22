@@ -100,6 +100,10 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
 workdir = os.path.join(os.path.expanduser('~'), 'femag')
+try:
+    os.makedirs(workdir)
+except OSError:
+    pass
 
 femag = femagtools.Femag(workdir,
                          magnetizingCurves=magnetizingCurve,

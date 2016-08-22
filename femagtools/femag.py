@@ -117,6 +117,10 @@ class Femag(BaseFemag):
         :param options: list of FEMAG options
         :raises: FemagError
         """
+        if self.cmd.startswith('wfemag') and \
+           '-b' in options and \
+           '-m' not in options:
+            options.insert(0, '-m')
         args = [self.cmd] + options + [filename]
 
         basename, ext = os.path.splitext(os.path.basename(filename))

@@ -97,7 +97,7 @@ class Grid(object):
 
         prob = femagtools.FemagMoProblem(decision_vars, objective_vars)
 
-        job = engine.createJob(self.femag.workdir)
+        job = engine.create_job(self.femag.workdir)
         builder = femagtools.FslBuilder()
 
         # build x value array

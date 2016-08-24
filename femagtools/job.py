@@ -15,10 +15,6 @@ import glob
 import femagtools.bch
 import logging
 import uuid
-try:
-    import boto3
-except:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +40,6 @@ def which(program):
                 return exe_file
 
     return None
-
 
 class Task(object):
     """represents a single execution unit that may include data files"""
@@ -100,38 +95,34 @@ class Task(object):
             self.directory == other.directory
 
 
-class AmazonTask(Task):
+class CloudTask(Task):
     def __init__(self, id, directory):
         super(self.__class__, self).__init__(id, directory)
-        # These attributes are set during runtime
-        self.exit_code = None
+        import tarfile
+        self.file = "{}.tar.gz".format(self.directory)
+        self.tar_file = tarfile.open(self.file, "w:gz")
+        # Used for amazon
         self.ec2_instance = None
-        self.container_id = None
-        self.amazon_task_id = None
-        self.sync_command_id = None
-        self.finished = False
 
-        def __str__(self):
-            return ", ".join(('id: {}',
-                              'directory: {}',
-                              'ec2_instance: {}',
-                              'exit_code: {}',
-                              'container_id {}',
-                              'task_id: {}',
-                              'sync_command_id: {}',
-                              'finished: {}')).format(
-                self.id,
-                self.directory,
-                self.ec2_instance,
-                self.exit_code,
-                self.container_id,
-                self.task_id,
-                self.sync_command_id,
-                self.finished)
+    def add_file(self, fname, content=None):
+        base = os.path.basename(fname)
+        self.transfer_files.append(fname)
+        if os.path.splitext(base)[-1] == '.fsl':
+            self.fsl_file = base
 
-        def __repr__(self):
-            return self.__str__()
+        info = self.tar_file.tarinfo()
+        info.name = base
+        if content is None:
+            info.size = os.path.getsize(fname)
+            self.tar_file.addfile(info, open(fname, 'rb'))
+            return
 
+        import io
+        if type(content) is list:
+            content = '\n'.join(content)
+        info.size = len(content)
+        data = io.BytesIO(str.encode(content))
+        self.tar_file.addfile(info, data)
 
 class Job(object):
     """represents a FEMAG job consisting of one or more tasks
@@ -141,7 +132,7 @@ class Job(object):
         self.runDirPrefix = ''
         self.basedir = basedir
         self.tasks = []
-        
+
     def cleanup(self):
         """removes all files and directories of previous run"""
         try:
@@ -155,7 +146,7 @@ class Job(object):
             if os.path.isdir(d):
                 shutil.rmtree(d, ignore_errors=True)
         self.tasks = []
-        
+
     def add_task(self):
         "adds a new task to this job"
         taskid = "{}-{}".format(str(uuid.uuid4()), len(self.tasks))
@@ -236,26 +227,20 @@ class CondorJob(Job):
         return filename
 
 
-class AmazonJob(Job):
-    """represents a femag job that is to be run in HT Condor"""
+class CloudJob(Job):
+    """Inheritance of :py:class:`Job`
+
+    Represents a femag amazon job"""
     def __init__(self, basedir):
         super(self.__class__, self).__init__(basedir)
 
-    def cleanup(self):
-        super(self.__class__, self).cleanup()
-        # Amazon cleanup
-        s3 = boto3.resource('s3')
-        for task in self.tasks:
-            s3.buckets(task.id).objects.delete()
-            s3.meta.client.delete_bucket(Bucket=task.id)
-
     def add_task(self):
-        "adds a new task to this job"
+        "adds a new :py:class:`AmazonTask` to this job"
         taskid = "{}-{}".format(str(uuid.uuid4()), len(self.tasks))
         dir = os.path.join(self.basedir,
                            '{}{:d}'.format(self.runDirPrefix,
                                            len(self.tasks)))
-        self.tasks.append(AmazonTask(taskid, dir))
+        self.tasks.append(CloudTask(taskid, dir))
         return self.tasks[-1]
 
 

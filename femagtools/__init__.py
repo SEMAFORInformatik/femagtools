@@ -28,10 +28,10 @@ from .mcvreader import McvReader
 from .poc import Poc
 from .opt import Optimizer
 from .condor import Condor
-from .job import Job, CondorJob, AmazonJob
+from .job import Job, CondorJob, CloudJob, Task, CloudTask
 from .moproblem import FemagMoProblem
 from .multiproc import MultiProc
-
+from .amazon import Engine
 
 def read_bchfile(filename):
     """Read BCH/BATCH results from file *filename*."""

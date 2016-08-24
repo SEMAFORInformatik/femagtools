@@ -12,7 +12,10 @@ import subprocess
 import os
 import glob
 import logging
-import zmq
+try:
+    import zmq
+except ImportError:
+    pass
 import sys
 import json
 import io

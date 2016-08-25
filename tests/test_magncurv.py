@@ -58,6 +58,7 @@ class MagnetizingCurveTest(unittest.TestCase):
             out=f.readlines()
             
         self.assertEqual(len(out), 27)
+        os.remove('dummy.mc')
 
 if __name__ == '__main__':
   unittest.main()

@@ -457,15 +457,15 @@ class BchReader:
         self.psidq = {
             'iq': iq[:ncols].tolist(),
             'id': id[:nrows].tolist(),
-            'psid': self.armatureLength*np.reshape(
+            'psid': (self.armatureLength*np.reshape(
                 m[3][:mlen],
-                (nrows, ncols)).T.tolist(),
-            'psiq': self.armatureLength*np.reshape(
+                (nrows, ncols))).T.tolist(),
+            'psiq': (self.armatureLength*np.reshape(
                 m[4][:mlen],
-                (nrows, ncols)).T.tolist(),
-            'torque': self.armatureLength*np.reshape(
+                (nrows, ncols))).T.tolist(),
+            'torque': (self.armatureLength*np.reshape(
                 m[6][:mlen],
-                (nrows, ncols)).T.tolist()}
+                (nrows, ncols))).T.tolist()}
         
     def __read_psidq_ldq(self, content):
         "read ldq from psid-psiq section"

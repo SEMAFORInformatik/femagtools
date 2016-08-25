@@ -30,6 +30,7 @@ Contents
    intro
    models
    bchreader
+   amazon_engine
    apidocs
 
 

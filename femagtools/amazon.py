@@ -277,6 +277,22 @@ class Engine(object):
             status_code.append(file.read())
         return status_code
 
+    def _cleanup(self):
+        threads = []
+        for t in self.job.tasks:
+            thread = threading.Thread(target=self._delete_bucket, args=(t.id, ))
+            threads.append(thread)
+            thread.start()
+
+        logger.info("Deleting buckets: ")
+        self._wait_for_threads_finished(threads, "Deleting buckets")
+
+    def _delete_bucket(self, bucket_name):
+        bucket = self.s3_resource.Bucket(bucket_name)
+        for key in bucket.objects.all():
+            key.delete()
+        bucket.delete()
+
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # FEMAG STUFF
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -313,6 +329,11 @@ class Engine(object):
 
         # get all files
         self._get_result_data_from_S3()
+
+        # Remove buckets if cleanup is set
+        if int(self.config.get('DELETE_BUCKETS', 0)):
+            self._cleanup()
+
         status = self._get_status_code(filename=self.config['FINISH_TASK_FILENAME'])
         for t, r in zip(self.job.tasks, status):
             t.status = 'C' if int(r)==0 else 'X'

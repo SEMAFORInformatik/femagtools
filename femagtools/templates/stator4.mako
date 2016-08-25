@@ -15,7 +15,7 @@ m.wedge_width3    =     ${model.get(['stator', 'stator4', 'wedge_width3'])*1e3}
 m.num_layer       =     ${model.get(['windings', 'num_layers'])}
 m.zeroangl        =     ${model.stator.get('zeroangle', 0.0)}
 
- m.mcvkey_yoke    =    '${model.get(['stator','mcvkey_yoke'],'dummy')}'  
+ m.mcvkey_yoke    =    '${model.stator.get('mcvkey_yoke','dummy')}'  
  m.wdg_location   =  -1.0 -- stator (internal values)
 
 pre_models( "STATOR_4")

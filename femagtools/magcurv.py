@@ -224,7 +224,7 @@ class MagnetizingCurve(object):
                     proc.stdin.write( "filename='{}'\n".format(filename).encode('latin1'))
                 elif k=='desc':
                     proc.stdin.write( "mc1_title='{}'\n".format(
-                        mcv['desc'].encode('latin1')) )
+                        mcv['desc']).encode('latin1') )
                 elif k=='curve':
                     proc.stdin.write('mc1_curves={}\n'.format(len(mcv[k])).encode('latin1'))
                     for c in mcv['curve']:

@@ -45,6 +45,8 @@ class VbfReader:
             self.vbf['name'] = f.readline().strip()
             self.vbf['fo'],self.vbf['Bo'] = [float(s)
                                              for s in f.readline().strip().split()]
+            # Ignore the next line
+            f.readline()
             self.vbf['f'] = [float(s) for s in f.readline().strip().split()]
             self.vbf['B'] = []
             self.vbf['pfe'] = []
@@ -69,7 +71,7 @@ class VbfReader:
                     y = [np.log10(p) for p in pfe[j:k+1]]
                     x = [np.log10(b/self.vbf['Bo'])
                          for b in self.vbf['B'][j:k+1]]
-                    A = p.vstack([x, np.ones(len(x))]).T
+                    A = np.vstack([x, np.ones(len(x))]).T
                     beta, w = np.linalg.lstsq(A, y)[0]
                     betacoeffs.append(beta)
 

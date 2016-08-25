@@ -1,0 +1,6 @@
+#!/bin/sh
+#
+# dummy mcvwriter
+#
+cat > dummy.mc
+

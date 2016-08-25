@@ -102,6 +102,7 @@ class McvReader:
     def readMcv( self, filename):
         # intens bug : windows needs this strip to remove '\r'
         filename = filename.strip()
+
         if filename.upper().endswith('.MCV') or filename.upper().endswith('.MC') :
             binary = True
             self.fp = open(filename,"rb")
@@ -334,7 +335,7 @@ if __name__ == "__main__":
         filename=sys.argv[1]
     else:
         filename=sys.stdin.readline().strip()
-            
+
     mcv = McvReader()
     mcv.readMcv(filename)
     json.dump( mcv.get_results(), sys.stdout )

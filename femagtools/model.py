@@ -90,7 +90,7 @@ class Model(object):
 
         :param name: key of parameter value
         :returns: value of parameter identified by key
-        """
+        """        
         try:
             if isinstance(name, str):
                 return getattr(self, name)

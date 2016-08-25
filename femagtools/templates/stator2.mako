@@ -8,9 +8,9 @@ m.slot_depth      =     ${model.get(['stator', 'stator2', 'slot_depth'])*1e3}
 m.slot_width      =     ${model.get(['stator', 'stator2', 'slot_width'])*1e3}
 m.corner_width    =     ${model.get(['stator', 'stator2', 'corner_width'])*1e3}
 m.num_layer       =     ${model.get(['windings', 'num_layers'])}
-m.zeroangl        =     ${model.get.stator.get('zeroangle',0.0)}
+m.zeroangl        =     ${model.stator.get('zeroangle',0.0)}
 
- m.mcvkey_yoke    =    '${model.get(['stator','mcvkey_yoke'],'dummy')}'  
+ m.mcvkey_yoke    =    '${model.stator.get('mcvkey_yoke','dummy')}'  
  m.wdg_location   =  -1.0 -- stator (internal values)
 
 pre_models( "STATOR_2")

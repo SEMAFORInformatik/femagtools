@@ -37,14 +37,13 @@ feapars = dict(
     calc_fe_loss=1,
     cog_move_steps=90,
      
-    windings=dict(
-        num_layers=1,
-        slot_indul=0,
-        skew_angle=0.0,
-        culength=1.4,
-        num_par_wdgs=1,
-        cufilfact=0.45,
-        num_skew_steps=0))
+    num_layers=1,
+    slot_indul=0,
+    skew_angle=0.0,
+    culength=1.4,
+    num_par_wdgs=1,
+    cufilfact=0.45,
+    num_skew_steps=0)
 
 
 class FslBuilderTest(unittest.TestCase):

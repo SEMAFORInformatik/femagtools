@@ -1,0 +1,2 @@
+Test Cloud init
+{{ENV}}

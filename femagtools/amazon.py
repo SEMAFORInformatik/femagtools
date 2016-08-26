@@ -34,31 +34,32 @@ class Engine(object):
         'INSTANCE_TYPE': 't2.micro',
         'ACL': 'authenticated-read',
         'IMAGE_ID': 'ami-b0cc23df',
-        'FINISH_TASK_FILENAME': 'exit_code'
+        'FINISH_TASK_FILENAME': 'exit_code',
+        'COMPANY_NAME': 'femag'
     }
 
     """The Amazon Engine
 
     This enginge uses the boto3 Python module to interact with the amazon ec2 and s3 services
 
-
-    :param str company: The name of the company for identifiaction of the instance
     :param list buckets: Existing buckets with femag calculation files
 
     .. :note: If possible you should use the same location for all services
 
     """
-    def __init__(self, company, buckets=None):
-        self.company = company
+    def __init__(self, buckets=None):
         self.buckets = buckets
         self.job = None
 
-        import boto3
-        self.s3_resource = boto3.resource('s3')    # Amazon file storage
-        self.ec2_resource = boto3.resource('ec2')  # Amazon Server administration
+        self.s3_resource = self._create_amazon_resource('s3')    # Amazon file storage
+        self.ec2_resource = self._create_amazon_resource('ec2')  # Amazon Server administration
 
         # Create instance of config
         self.config = Config(self.default_config)
+
+    def _create_amazon_resource(self, resource):
+        import boto3
+        return boto3.resource(resource)
 
     def _create_data_buckets(self):
         """Create unique S3 Buckets for calculation
@@ -76,7 +77,9 @@ class Engine(object):
 
         # Create a bucket for every calculation
         for t in self.job.tasks:
-            self.s3_resource.create_bucket(ACL=self.config['ACL'], Bucket=t.id, CreateBucketConfiguration=bucketConfiguration)
+            self.s3_resource.create_bucket(ACL=self.config['ACL'],
+                                           Bucket=t.id,
+                                           CreateBucketConfiguration=bucketConfiguration)
 
         logger.debug("Created buckets")
 
@@ -197,7 +200,7 @@ class Engine(object):
         :param int task_id: The task id (Same as the S3 Bucket name)
         :param int instance_id: The instance_id to set the tag to the right instance
         """
-        tag = '{}-{}'.format(task_id, self.company)
+        tag = '{}-{}'.format(task_id, self.config.get('COMPANY_NAME', 'femag'))
         self.ec2_resource.create_tags(Resources=[instance_id], Tags=[{'Key': 'Name', 'Value': tag}])
 
     def _read_cloud_init(self, bucket_name):
@@ -212,7 +215,7 @@ class Engine(object):
                 for line in f:
                     if line.startswith('{{ENV}}'):
                         # Add config
-                        for key, value in self.config.items():
+                        for key, value in sorted(self.config.items()):
                             user_data += "export {}={}\n".format(key, value)
                         # add other important stuff
                         user_data += "export BUCKET_NAME={}\n".format(bucket_name)
@@ -272,6 +275,9 @@ class Engine(object):
         """
         status_code = []
         for t in self.job.tasks:
+            import pdb
+            pdb.set_trace()
+            print(t.directory)
             dir = "{}/{}".format(t.directory, filename)
             file = open(dir, 'r')
             status_code.append(file.read())

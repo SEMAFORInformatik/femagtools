@@ -77,7 +77,7 @@ class AlgorithmTest(unittest.TestCase):
 
         #print( pop.compute_nadir() )
         #print( pop.compute_ideal() )
-        self.assertEqual( pop.compute_norm_dist(), 1.0 )
+        np.testing.assert_almost_equal(pop.compute_norm_dist(), 1.0 )
         self.assertEqual(pop.dom_count, [0]*pop.size())
         self.assertEqual(pop.pareto_rank, [0]*pop.size() )
         #self.assertEqual(pop.best_idx(), [0, 1, 3, 4, 2, 6, 5, 7] )

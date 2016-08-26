@@ -32,6 +32,7 @@ from .job import Job, CondorJob, CloudJob, Task, CloudTask
 from .moproblem import FemagMoProblem
 from .multiproc import MultiProc
 from .amazon import Engine
+from .google import Engine
 
 def read_bchfile(filename):
     """Read BCH/BATCH results from file *filename*."""

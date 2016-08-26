@@ -39,6 +39,9 @@ Calculation Engines
 .. autoclass:: femagtools.amazon.Engine
    :members:
 
+.. autoclass:: femagtools.google.Engine
+   :members:
+
 Parameter Variation
 -------------------
 .. autoclass:: Grid

@@ -71,4 +71,7 @@ operatingConditions = dict(
 r = femag(machine,
           operatingConditions)
 
-print('Torque [Nm] = {}'.format(r.machine['torque']))
+print("Order    T/Nm      %")
+tq = r.torque_fft[-1]
+for l in zip(tq['order'], tq['torque'], tq['torque_perc']):
+    print('{0:<5} {1:9.2f} {2:6.1f}'.format(*l))

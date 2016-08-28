@@ -13,7 +13,6 @@ m.magn_ori        =    ${model.get(['magnet','magnetIron', 'magn_ori'])}
 m.bridge_height   =    ${model.get(['magnet','magnetIron', 'bridge_height'])*1e3}
 m.bridge_width    =    ${model.get(['magnet','magnetIron', 'bridge_width'])*1e3}
 m.iron_shape      =    ${model.get(['magnet','magnetIron', 'iron_shape'])*1e3}
-m.magn_ori        =    ${model.get(['magnet','magnetIron', 'magn_ori'])}
 
 m.zeroangl        =     0.0
 

@@ -2,20 +2,6 @@
 m.magn_rad       = da2/2
 m.yoke_rad       = dy2/2
 
-
-	 CALL L_GETFLOAT("m.magn_di_ra",magn_di_ra,IRET)
-	 CALL L_GETFLOAT("m.gap_ma_iron",gap_ma_iron,IRET)
-	 CALL L_GETFLOAT("m.iron_bfe",iron_bfe,IRET)
-	 CALL L_GETFLOAT("m.air_space_h",air_space_h,IRET)
-	 CALL L_GETFLOAT("m.corner_r",corner_r,IRET)
-	 CALL L_GETFLOAT("m.air_sp_ori",air_sp_ori,IRET)
-	 CALL L_GETFLOAT("m.magn_num",magn_num,IRET)
-	 CALL L_GETFLOAT("m.iron_shape",iron_shape,IRET)
-	 CALL L_GETFLOAT("m.air_space_b",air_space_b,IRET)
-	 CALL L_GETFLOAT("m.magn_width",magn_width,IRET)
-	 CALL L_GETFLOAT("m.nodedist",nodedist,IRET)
-	 CALL L_GETFLOAT("m.airgap",airgap,IRET)
-
 m.magn_height     =    ${model.get(['magnet','magnetIron5', 'magn_height'])*1e3}
 m.magn_width      =    ${model.get(['magnet','magnetIron5', 'magn_width'])*1e3}
 m.gap_ma_iron     =    ${model.get(['magnet','magnetIron5', 'gap_ma_iron'])*1e3}

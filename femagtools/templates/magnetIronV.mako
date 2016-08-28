@@ -21,8 +21,3 @@ m.mcvkey_yoke     =     '${model.magnet.get('mcvkey_yoke','dummy')}'
 m.nodedist        =   ${model.magnet.get('nodedist',1)}
 
  pre_models("Magnet Iron V")
-
-
-
-
-

@@ -81,7 +81,6 @@ machine = {
     },
     "magnet": {
         "nodedist": 1.0,
-        "zeroangle": 0.0,
         "material": "M395",
         "mcvkey_yoke": "M330-50A",
         "magnetIronV": {

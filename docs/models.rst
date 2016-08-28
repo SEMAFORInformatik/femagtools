@@ -26,14 +26,15 @@ Stator
 
 Stators have basic parameters and slots:
 
-==============  ============================  ====
-Parameter        Description                  Unit
-==============  ============================  ====
+==============  ============================  =======  ====
+Parameter        Description                  Default  Unit
+==============  ============================  =======  ====
 num_slots        Number of Slots
 num_slots_gen    Number of Slots in Model
-rlength          Relative iron length
+rlength          Relative iron length          1.0
 mcvkey_yoke      Name of lamination material
-==============  ============================  ====
+nodedist         Factor for node distance      1.0
+==============  ============================  =======  ====
 
 
 Slots
@@ -42,58 +43,66 @@ Slots
 Name             Parameter      
 ============    ==============  
 stator1  
-                 slot_rf1
-                 tip_rh1 
-                 tip_rh2 
-                 tooth_width
+                 slot_rf1,
+                 tip_rh1,
+                 tip_rh2, 
+                 tooth_width,
                  slot_width
 stator2
-                 slot_t1
-                 slot_t2         
-                 slot_t3         
-                 slot_depth      
-                 slot_width      
+                 slot_t1,
+                 slot_t2,        
+                 slot_t3,         
+                 slot_depth,      
+                 slot_width,      
                  corner_width    
 statorRotor3
-                 slot_height
-                 slot_h1    
-                 slot_h2    
-                 slot_width 
-                 slot_r1    
-                 slot_r2
-                 wedge_width1
-                 wedge_width2
-                 middle_line 
-                 tooth_width 
+                 slot_height,
+                 slot_h1,    
+                 slot_h2,    
+                 slot_width, 
+                 slot_r1,    
+                 slot_r2,
+                 wedge_width1,
+                 wedge_width2,
+                 middle_line, 
+                 tooth_width, 
                  slot_top_sh 
 ============    ==============  
+
+Note: all units are metric units
 
 Windings
 --------
 
-============    ==========================================
-Name             Parameter      
-============    ==========================================
+============    ============================  =======
+Name             Parameter                    Default
+============    ============================  =======
 num_phases      number of phases
 num_wires       number of wires per slot
 coil_span       coil span
 num_layers      number of layers
-cufilfact       Fill factor of copper (default=0.45)
-culength        rel length of conductor (default=1.4)
-slot_indul      insulation thickness in slot (default=0.0) 
-============    ==========================================
+cufilfact       Fill factor of copper          0.45
+culength        rel length of conductor        1.4
+slot_indul      insulation thickness in slot   0.0 
+============    ============================  =======
 
 Magnet
 ------
 
 Magnets have basic parameters and slots:
 
-==============  ============================  ====
-Parameter        Description                  Unit
-==============  ============================  ====
+==============  ============================  =======  
+Parameter        Description                  Default  
+==============  ============================  =======  
 mcvkey_yoke      Name of lamination material
 mcvkey_mshaft    Name of shaft material
-==============  ============================  ====
+material         Name of magnet material
+nodedist         Factor for node distance       1.0
+==============  ============================  =======
+
+Note:
+* the mcvkey parameter references a filename without extension (Example 'M330-50A')
+* the material parameter references a name of the magnet material list 
 
 Slots
 ^^^^^
@@ -101,17 +110,94 @@ Slots
 ============    ==============
 Name             Parameter      
 ============    ==============
-magnetSector    magn_num
-                magn_width_pct
-                magn_height
-                magn_shape
-                bridge_height
-                magn_type
-                condshaft_r
-                magn_ori
-                magn_rfe
-                bridge_width
+magnetSector    magn_num,
+                magn_width_pct,
+                magn_height,
+                magn_shape,
+                bridge_height,
+                magn_type,
+                condshaft_r,
+                magn_ori,
+                magn_rfe,
+                bridge_width,
                 magn_len
+magnetIron      magn_height,
+                magn_width,
+		gap_ma_iron,
+		air_triangle,
+		iron_height,
+		magn_rem,
+		condshaft_r,
+		magn_ori,
+		bridge_height,
+		bridge_width,
+		iron_shape
+magnetIron2     magn_height,
+                magn_width,
+		gap_ma_iron,
+		air_triangle,
+		iron_height,
+		magn_rem,
+		condshaft_r,
+		gap_ma_right,
+		gap_ma_left,
+		magn_ori,
+		iron_shape
+magnetIron3     magn_height,
+                iron_bfe,
+		gap_ma_iron,
+		air_triangle,
+		iron_height,
+		gap_ma_right,
+		gap_ma_left,
+		condshaft_r,
+		magn_num,
+		magn_ori,
+		iron_shape
+magnetIron4     magn_height,
+                magn_width,
+		gap_ma_iron,
+		iron_shape,
+		air_space_h,
+		iron_bfe,
+		magn_di_ra,
+		corner_r,
+		air_sp_ori,
+		magn_ori,
+		magn_num
+magnetIron5     magn_height,
+                magn_width,
+		gap_ma_iron,
+		iron_bfe,
+		air_space_h,
+		corner_r,
+		air_sp_ori,
+		magn_num,
+		iron_shape,
+		air_space_b,
+		magn_di_ra
+magnetIronV     magn_height,
+                magn_width,
+		magn_angle,
+		magn_num,
+		iron_hs,
+		iron_height,
+		iron_shape,
+		air_triangle,
+		gap_ma_iron,
+		magn_rem,
+		condshaft_r
+magnetFC2       yoke_height,
+                iron_h1,
+		iron_h2,
+		iron_b,
+		magn_width,
+		magn_height,
+		iron_bfe,
+		iron_bfo,
+		iron_shape,
+		iron_hp,
+		magn_num
 ============    ==============
 
 Example::
@@ -169,17 +255,17 @@ Calculation
 
 Cogging (cogg_calc)
 
-==============  =======================================  ============
-Parameter        Description                             Unit
-==============  =======================================  ============
-speed           Speed                                    1/s
-skew_angle      Skewing (default 0)                      deg
-num_skew_steps  Number of skew steps (default 0)
-magn_temp       Magnet Temperature                       deg Celsius
+==============  ============================= ==========  ============
+Parameter        Description                   Default      Unit
+==============  ============================= ==========  ============
+speed           Speed                                     1/s
+skew_angle      Skewing angle                   0         deg
+num_skew_steps  Number of skew steps            0
+magn_temp       Magnet Temperature                        deg Celsius
 num_move_steps  Number of move steps
-num_par_wdgs    Number of parallel windings (default 1)
-eval_force      Evaluate force  (default False)          True, False
-==============  =======================================  ============
+num_par_wdgs    Number of parallel windings     1      
+eval_force      Evaluate force                  0          
+==============  ============================= ==========  ============
 
 Example::
 
@@ -192,6 +278,62 @@ Example::
 
 PM/Rel Machine Simulation (pm_sym_fast)
 
+==============  ============================= ==========  ============
+Parameter        Description                   Default      Unit
+==============  ============================= ==========  ============
+speed           Speed                                     1/s
+skew_angle      Skewing angle                   0         deg
+num_skew_steps  Number of skew steps            0
+magn_temp       Magnet Temperature                        deg Celsius
+wind_temp       Winding Temperature             20        deg Celsius
+num_move_steps  Number of move steps
+num_par_wdgs    Number of parallel windings     1      
+eval_force      Evaluate force                  0         
+current         Phase current                             A (RMS)
+angl_i_up       Angle I vs. Up                  0         deg
+optim_i_up      Optimize Current                0
+==============  ============================= ==========  ============
+
+Example::
+
+  operatingConditions = dict(
+    calculationMode="pm_sym_fast",
+    wind_temp=60.0,
+    magn_temp=60.0,
+    current=50.0,
+    speed=50.0)
+  
 Ld-Lq Identification (ld_lq_fast)
+
+==============  ============================= ==========  ============
+Parameter        Description                   Default      Unit
+==============  ============================= ==========  ============
+speed           Speed                                     1/s
+skew_angle      Skewing angle                   0         deg
+num_skew_steps  Number of skew steps            0
+magn_temp       Magnet Temperature                        deg Celsius
+num_move_steps  Number of move steps
+num_par_wdgs    Number of parallel windings     1      
+eval_force      Evaluate force                  0         
+i1_max          Max. phase current                        A (RMS)
+beta_min        Min. Beta angle                           deg
+beta_max        Max. beta angle                           deg
+num_cur_steps   Number of current steps
+num_beta_steps  Number of beta steps
+==============  ============================= ==========  ============
+
+Example::
+
+  feapars = dict(
+    num_move_steps=25,
+    calculationMode="ld_lq_fast",
+    magn_temp=60.0,
+    i1_max=150.0,
+    beta_max=0.0,
+    beta_min=-60.0,
+    num_cur_steps=3,
+    num_beta_steps"=4,
+    speed=50.0)
+  
 
 Psid-Psiq Identification (psd_psq_fast)

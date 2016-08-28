@@ -32,6 +32,9 @@ demag              Demagnetisation
 weight             Total weight and weight of iron, conductor and magnets
 ================  =======================================================
 
+Flux
+====
+
 * Flux: list of dictionaries for each winding
 
   ================  =======================================================
@@ -45,6 +48,7 @@ weight             Total weight and weight of iron, conductor and magnets
   voltage_ir        voltage
   ================  =======================================================
 
+  
 * flux_fft: list of dictionaries for each winding
 
   ================  =======================================================
@@ -55,9 +59,12 @@ weight             Total weight and weight of iron, conductor and magnets
   flux_perc         flux amplitude percentage of base harmonic
   voltage           voltage amplitude
   voltage_perc      voltage amplitude percentage of base harmonic
-  a                 amplitude of sin 
-  b                 amplitide of cos 
+  a                 amplitude of sin term
+  b                 amplitide of cos term
   ================  =======================================================
+
+Torque
+======
 
 * torque: list of dictionaries for each current and/or beta angle
 
@@ -70,4 +77,17 @@ weight             Total weight and weight of iron, conductor and magnets
   force_y           Force in radial direction 
   t_idpsi           Torque
   torque            Torque
+  ================  =======================================================
+
+
+* torque_fft: list of dictionaries for each current and/or beta angle
+
+  ================  =======================================================
+  Attribute          Description     
+  ================  =======================================================
+  order             order of harmonic
+  torque            Torque amplitude
+  torque_perc       Torque in percentage of first amplitude
+  a                 amplitude of sin term
+  b                 amplitude of cos term
   ================  =======================================================

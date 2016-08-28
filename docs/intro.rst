@@ -211,11 +211,11 @@ Example: minimize ripple and losses and maximize torque (note the sign parameter
     "population_size": 24,
     "decision_vars": [
         {"name": "magnet.magnetSector.magn_width_pct",
-	 "desc": "Magn width", "steps": 3,
+	 "desc": "Magn width", 
 	 "bounds": [0.75, 0.85]},
          
         {"name": "magnet.magnetSector.magn_height",
-	 "desc": "Magn height", "steps": 3,
+	 "desc": "Magn height",
 	 "bounds": [3e-3, 5e-3]}
          
     ]

@@ -67,7 +67,6 @@ machine = dict(
     airgap=0.001,
     
     stator=dict(
-        zeroangle=0.0,
         num_slots=12,
         mcvkey_yoke="M270-35A",
         num_slots_gen=3,

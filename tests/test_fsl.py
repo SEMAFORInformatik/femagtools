@@ -36,7 +36,6 @@ feapars = dict(
     eval_force=0,
     calc_fe_loss=1,
     cog_move_steps=90,
-     
     num_layers=1,
     slot_indul=0,
     skew_angle=0.0,
@@ -47,51 +46,51 @@ feapars = dict(
 
 
 class FslBuilderTest(unittest.TestCase):
-    
+
     def setUp(self):
         self.m = copy.deepcopy(modelpars)
         self.builder = femagtools.FslBuilder()
-        
+
     def tearDown(self):
         self.m = None
         self.builder = None
-        
+
     def test_stator1(self):
         self.m['stator']['stator1'] = dict(
-             tooth_width=0.009,
-             slot_rf1=0.002,
-             tip_rh1=0.002,
-             tip_rh2=0.002,
-             slot_width=0.003)
+            tooth_width=0.009,
+            slot_rf1=0.002,
+            tip_rh1=0.002,
+            tip_rh2=0.002,
+            slot_width=0.003)
         model = femagtools.Model(self.m)
         fsl = self.builder.create_stator_model(model)
         self.assertEqual(len(fsl), 17)
-        
+
     def test_stator2(self):
         self.m['stator']['stator2'] = dict(
-             slot_width=0.009,
-             slot_t1=0.002,
-             slot_t2=0.002,
-             slot_t3=0.002,
-             corner_width=0.002,
-             slot_depth=0.003)
+            slot_width=0.009,
+            slot_t1=0.002,
+            slot_t2=0.002,
+            slot_t3=0.002,
+            corner_width=0.002,
+            slot_depth=0.003)
         model = femagtools.Model(self.m)
         fsl = self.builder.create_stator_model(model)
         self.assertEqual(len(fsl), 17)
-        
+
     def test_stator3(self):
         self.m['stator']['statorRotor3'] = dict(
             slot_h1=0.002,
-             slot_h2=0.004,
-             middle_line=0,
-             tooth_width=0.009,
-             wedge_width2=0.0,
-             wedge_width1=0.0,
-             slot_top_sh=0,
-             slot_r2=0.002,
-             slot_height=0.02,
-             slot_r1=0.003,
-             slot_width=0.003)
+            slot_h2=0.004,
+            middle_line=0,
+            tooth_width=0.009,
+            wedge_width2=0.0,
+            wedge_width1=0.0,
+            slot_top_sh=0,
+            slot_r2=0.002,
+            slot_height=0.02,
+            slot_r1=0.003,
+            slot_width=0.003)
         model = femagtools.Model(self.m)
         fsl = self.builder.create_stator_model(model)
         self.assertEqual(len(fsl), 23)
@@ -107,38 +106,168 @@ class FslBuilderTest(unittest.TestCase):
             slot_width=22e-3,
             wedge_width1=111e-5,
             wedge_width2=222e-5,
-            wedge_width3=333e-5 )
+            wedge_width3=333e-5)
         model = femagtools.Model(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual( len( fsl ), 22 )
+        self.assertEqual(len(fsl), 22)
 
     def test_magnetSector(self):
-        self.m['magnet']=dict(
+        self.m['magnet'] = dict(
             magnetSector=dict(
-                magn_height=0.005
-                ,magn_width_pct=0.8
-                ,condshaft_r=0.0591
-                ,magn_rfe=0.0
-                ,magn_len=1.0
-                ,magn_shape=0.0
-                ,bridge_height=0.0
-                ,bridge_width=0.0
-                ,magn_ori=2
-                ,magn_type=1
-                ,magn_num=1 ) )
+                magn_height=0.005,
+                magn_width_pct=0.8,
+                condshaft_r=0.0591,
+                magn_rfe=0.0,
+                magn_len=1.0,
+                magn_shape=0.0,
+                bridge_height=0.0,
+                bridge_width=0.0,
+                magn_ori=2,
+                magn_type=1,
+                magn_num=1))
         model = femagtools.Model(self.m)
         fsl = self.builder.create_magnet_model(model)
-        self.assertEqual( len( fsl ), 27 )
+        self.assertEqual(len(fsl), 27)
+
+    def test_magnetIron(self):
+        self.m['magnet'] = dict(
+            magnetIron=dict(
+                magn_height=0.005,
+                magn_width=0.008,
+                gap_ma_iron=0,
+                air_triangle=5,
+                iron_height=0.001,
+                magn_rem=1.2,
+                condshaft_r=0.0591,
+                magn_ori=1,
+                bridge_height=0,
+                bridge_width=0,
+                iron_shape=0))
+        model = femagtools.Model(self.m)
+        fsl = self.builder.create_magnet_model(model)
+#        print('\n'.join(fsl))
+        self.assertEqual(len(fsl), 23)
+
+    def test_magnetIron2(self):
+        self.m['magnet'] = dict(
+            magnetIron2=dict(
+                magn_height=0.005,
+                magn_width=0.008,
+                gap_ma_iron=0,
+                air_triangle=1,
+                iron_height=0.001,
+                magn_rem=1.2,
+                condshaft_r=0.006,
+                magn_ori=1,
+                gap_ma_right=1e-3,
+                gap_ma_left=2e-3,
+                iron_shape=0))
+        model = femagtools.Model(self.m)
+        fsl = self.builder.create_magnet_model(model)
+        self.assertEqual(len(fsl), 25)
         
+    def test_magnetIron3(self):
+        self.m['magnet'] = dict(
+            magnetIron3=dict(
+                magn_height=0.005,
+                magn_width=0.008,
+                gap_ma_iron=0,
+                iron_bfe=3e-3,
+                magn_num=1,
+                air_triangle=1,
+                iron_height=0.001,
+                condshaft_r=0.006,
+                magn_ori=1,
+                gap_ma_right=1e-3,
+                gap_ma_left=2e-3,
+                iron_shape=0))
+        model = femagtools.Model(self.m)
+        fsl = self.builder.create_magnet_model(model)
+        self.assertEqual(len(fsl), 24)
+
+    def test_magnetIron4(self):
+        self.m['magnet'] = dict(
+            magnetIron4=dict(
+                magn_height=0.005,
+                magn_width=0.008,
+                gap_ma_iron=0,
+                iron_bfe=3e-3,
+                magn_num=1,
+                air_space_h=1e-3,
+                iron_height=0.001,
+                corner_r=0.006,
+                magn_ori=1,
+                magn_di_ra=1e-3,
+                air_sp_ori=1,
+                iron_shape=0))
+        model = femagtools.Model(self.m)
+        fsl = self.builder.create_magnet_model(model)
+        self.assertEqual(len(fsl), 24)
+
+    def test_magnetIron5(self):
+        self.m['magnet'] = dict(
+            magnetIron5=dict(
+                magn_height=0.005,
+                magn_width=0.008,
+                gap_ma_iron=0,
+                iron_bfe=3e-3,
+                magn_num=1,
+                air_space_h=1e-3,
+                iron_height=0.001,
+                corner_r=0.006,
+                air_space_b=1e-3,
+                magn_di_ra=1e-3,
+                air_sp_ori=1,
+                iron_shape=0))
+        model = femagtools.Model(self.m)
+        fsl = self.builder.create_magnet_model(model)
+        self.assertEqual(len(fsl), 24)
+
+    def test_magnetIronV(self):
+        self.m['magnet'] = dict(
+            magnetIronV=dict(
+                magn_height=0.005,
+                magn_width=0.008,
+                gap_ma_iron=0,
+                iron_hs=3e-3,
+                magn_num=1,
+                magn_rem=1.2,
+                air_triangle=1,
+                iron_height=0.001,
+                condshaft_r=0.006,
+                magn_angle=130,
+                iron_shape=0))
+        model = femagtools.Model(self.m)
+        fsl = self.builder.create_magnet_model(model)
+        self.assertEqual(len(fsl), 24)
+
+    def test_magnetFC2(self):
+        self.m['magnet'] = dict(
+            magnetFC2=dict(
+                magn_height=0.005,
+                magn_width=0.008,
+                yoke_height=5e-3,
+                iron_h1=3e-3,
+                iron_h2=2e-3,
+                iron_hp=2e-3,
+                iron_b=2e-3,
+                magn_num=1,
+                iron_bfe=0.001,
+                iron_bfo=0.001,
+                iron_shape=0))
+        model = femagtools.Model(self.m)
+        fsl = self.builder.create_magnet_model(model)
+        self.assertEqual(len(fsl), 23)
+
     def test_run_models(self):
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual( len( fsl ), 26 )
-        
+        self.assertEqual(len(fsl), 26)
+
         feapars['calculationMode'] = "pm_sym_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual( len( fsl ), 48 )
-        
+        self.assertEqual(len(fsl), 48)
+
         feapars['calculationMode'] = "mult_cal_fast"
         fsl = self.builder.create_analysis(feapars)
         self.assertEqual(len(fsl), 49)
@@ -167,7 +296,5 @@ class FslBuilderTest(unittest.TestCase):
         for p in result['parameter']:
             self.assertTrue(p['key'] in ['dshaft', 'hm', 'bm', 'ws'])
 
-        
 if __name__ == '__main__':
     unittest.main()
-

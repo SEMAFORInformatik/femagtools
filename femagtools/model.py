@@ -37,7 +37,6 @@ class Model(object):
             ..
         }
         }
-     
     """
     def __init__(self, parameters):
         for k in parameters.keys():

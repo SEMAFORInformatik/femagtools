@@ -1,3 +1,8 @@
+#
+# Upload to pypi:
+#   python setup.py sdist bdist_wheel
+#   twine upload dist/*
+#
 try:
     from setuptools import setup
 except ImportError:
@@ -15,7 +20,7 @@ setup(
     author='Ronald Tanner',
     url='https://github.com/SEMAFORInformatik/femagtools',
     author_email='tar@semafor.ch',
-    version='0.0.5',
+    version='0.0.6',
     install_requires=['numpy', 'scipy', 'mako'],
     packages=['femagtools', 'femagtools/moo'],
     package_data={'femagtools': ['templates/*.mako']},

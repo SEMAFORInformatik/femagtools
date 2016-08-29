@@ -30,13 +30,14 @@ from .config import Config
 
 logger = logging.getLogger(__name__)
 
+GOOGLE_MODULE_FOUND = True
 try:
     from oauth2client.client import GoogleCredentials
     from googleapiclient import discovery
     from gcloud import storage
     from gcloud import resource_manager
 except:
-    logger.warning("Google Cloud Engine not supported")
+    GOOGLE_MODULE_FOUND = False
 
 
 class IllegalNumberOfBuckets(Exception):
@@ -62,6 +63,9 @@ class Engine():
 
         :param buckets:     to prevent uploads and use these buckets with data
         """
+        if not GOOGLE_MODULE_FOUND:
+            logger.error("Could not find one of [google-api-python-client, gcloud, googleapis-common-protos] modules")
+            return
 
         if buckets and len(buckets) > 10:
             raise IllegalNumberOfBuckets()

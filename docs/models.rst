@@ -101,6 +101,7 @@ nodedist         Factor for node distance       1.0
 ==============  ============================  =======
 
 Note:
+
 * the mcvkey parameter references a filename without extension (Example 'M330-50A')
 * the material parameter references a name of the magnet material list 
 
@@ -337,3 +338,35 @@ Example::
   
 
 Psid-Psiq Identification (psd_psq_fast)
+
+==============  ============================= ==========  ============
+Parameter        Description                   Default      Unit
+==============  ============================= ==========  ============
+speed           Speed                                     1/s
+skew_angle      Skewing angle                   0         deg
+num_skew_steps  Number of skew steps            0
+magn_temp       Magnet Temperature                        deg Celsius
+num_move_steps  Number of move steps
+num_par_wdgs    Number of parallel windings     1      
+eval_force      Evaluate force                  0         
+max_id          Max. Amplitude Id current                 A 
+min_id          Min. Amplitude Id current                 A 
+max_iq          Max. Amplitude Iq current                 A 
+min_iq          Min. Amplitude Iq current                 A 
+delta_id        Delta of Id current steps                 A
+delta_iq        Delta of Iq current steps                 A
+==============  ============================= ==========  ============
+
+Example::
+
+  feapars = dict(
+    num_move_steps=25,
+    calculationMode="psd_psq_fast",
+    magn_temp=60.0,
+    max_id=0.0,
+    min_id=-150.0,
+    max_iq=150.0
+    min_iq=0.0,
+    delta_id=50.0,
+    delta_iq=50.0,
+    speed=50.0)

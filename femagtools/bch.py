@@ -547,10 +547,10 @@ class BchReader:
                 continue
             if contentline.startswith("Mechanical Power"):
                 rec = l.split()
-                self.machine['p2'] = [floatnan(rec[-1])]
+                self.machine['p2'] = floatnan(rec[-1])
                 unit = rec[2]
                 if unit == '[kW]':
-                    self.machine['p2'][0] *= 1e3
+                    self.machine['p2'] *= 1e3
                 continue
 
             for v in [["Phase Current", 'i1'],
@@ -634,6 +634,7 @@ class BchReader:
                     self.dqPar[k] = self.dqPar[k][0]
             lfe = self.dqPar['lfe']
             self.dqPar['lfe'] = 1e-3*self.dqPar['lfe']
+            self.dqPar['dag'] = 1e-3*self.dqPar['dag']
             for k in ('ld', 'lq', 'psim', 'torque'):
                 self.dqPar[k][0] = lfe*self.dqPar[k][0]
             self.dqPar['speed'] = self.dqPar['speed']/60

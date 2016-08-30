@@ -29,7 +29,7 @@ dqPar              DQ-Parameter for open Winding Modell
 ldq                Ld-Lq-Identification
 losses             Losses in iron, magnets and conductors from Move-calc
 demag              Demagnetisation
-weight             Total weight and weight of iron, conductor and magnets
+weights            Total weight and weight of iron, conductor and magnets
 ================  =======================================================
 
 Flux
@@ -180,7 +180,7 @@ Machine
     'psim': 0.1152,
 
     'torque': 405.7295,
-    'p2': [127463.7],
+    'p2': 127463.7,
 
     'plfe1_0': 172.9209,
     'plmag_0': 0.0239,
@@ -248,3 +248,32 @@ DqPar
       'phi': [50.44, 65.91],
       'torque': [257.69904, 404.51396],
       'cosphi': [0.63688591473536493, 0.40817113454379084]}
+
+Weight
+======
+
+  ================  ========================================== =============
+  Attribute          Description                               Unit
+  ================  ========================================== =============
+  total              Total weight                              kg
+  conductor          Weight of conductors                      kg
+  magnet             Weight of magnets                         kg
+  iron               Weight of active iron                     kg
+  ================  ========================================== =============
+
+  Example::
+    
+    {'total': 28.188,
+    'iron': 24.165,
+    'conductor': 2.853,
+    'magnet': 1.17}
+
+Weights
+=======
+
+    List of weights (iron, conductors, magnets): in stator and rotor in kg
+
+    Example::
+      
+    [[18.802, 2.853, 0.0],
+    [5.363, 0.0, 1.17],

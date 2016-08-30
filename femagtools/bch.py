@@ -688,6 +688,8 @@ class BchReader:
     #                105.408	     22.542	      0.000
     #              Rotor-Iron       - Conductors       - Magnets  
     #                 45.041	      0.000	     17.556
+        if self.weights:
+            return
         for line in content[2:]:
             rec=line.split()
             if rec[0] != 'Stator-Iron' and rec[0] != 'Rotor-Iron':

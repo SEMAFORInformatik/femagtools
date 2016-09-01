@@ -70,13 +70,13 @@ class Optimizer(object):
             if t.status == 'C':
                 r = t.get_results()
                 if isinstance(r, dict) and 'error' in r:
-                    logger.warn("Task %d failed: %s", t.id, r['error'])
+                    logger.warn("Task %s failed: %s", t.id, r['error'])
                 else:
                     pop.problem.setResult(r)
 
                     i.cur_f = pop.problem.objfun([])
             else:
-                logger.warn("Task %d failed with status %s", t.id, t.status)
+                logger.warn("Task %s failed with status %s", t.id, t.status)
 
         pop.update()
 
@@ -97,7 +97,7 @@ class Optimizer(object):
         
         algo = Nsga2()
 
-        self.job = engine.createJob(self.femag.workdir)
+        self.job = engine.create_job(self.femag.workdir)
         
         logger.info("Optimize x:%d f:%d generations:%d population size:%d",
                     len(self.pop.problem.decision_vars),
@@ -125,16 +125,16 @@ class Optimizer(object):
             xt.append(i.cur_x)
         objective_vars = self.pop.problem.objective_vars
         decision_vars = self.pop.problem.decision_vars
-        results['f'] = [[s['sign']*y for y in f]
+        results['f'] = [[s.get('sign', 1)*y for y in f]
                         for s, f in zip(objective_vars, zip(*ft))]
         results['x'] = list(zip(*xt))
-        results['znad'] = [s['sign']*v
+        results['znad'] = [s.get('sign', 1)*v
                            for s, v in zip(objective_vars,
                                            self.pop.compute_nadir())]
-        results['zi'] = [s['sign']*v
+        results['zi'] = [s.get('sign', 1)*v
                          for s, v in zip(objective_vars,
                                          self.pop.compute_ideal())]
-        results['zw'] = [s['sign']*v
+        results['zw'] = [s.get('sign', 1)*v
                          for s, v in zip(objective_vars,
                                          self.pop.compute_worst())]
         results['dist'] = self.pop.compute_norm_dist()

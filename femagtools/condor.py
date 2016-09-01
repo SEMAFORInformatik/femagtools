@@ -64,7 +64,7 @@ class CondorCluster(object):
 
     def getClusterData(self, directory):
         for d in self.getClusterDirectories():
-            logger.info("Query %s != %s" , os.path.basename(d), directory)
+            logger.info("Query %s != %s", os.path.basename(d), directory)
             if os.path.basename(os.path.dirname(d)) == directory:
                 logger.info("Found %s", d)
                 with open(d, 'r') as f:
@@ -116,7 +116,7 @@ class CondorCluster(object):
 
     def status(self, clusterId=None):
         if clusterId:
-            return self.getClusterData(directory)
+            return self.getClusterData(clusterId)
         else:
             return self.getClusterList()
 
@@ -127,7 +127,7 @@ class Condor(object):
     def __init__(self):
         self.job = None
 
-    def createJob(self, workdir):
+    def create_job(self, workdir):
         self.job = femagtools.job.CondorJob(workdir)
         return self.job
 

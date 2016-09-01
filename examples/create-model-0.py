@@ -36,7 +36,7 @@ machine = dict(
             magn_ori=2,
             magn_rfe=0.0,
             bridge_width=0.0,
-            magn_len=1.0 )
+            magn_len=1.0)
     ),
     
     windings=dict(

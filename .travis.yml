@@ -1,0 +1,9 @@
+language: python
+python:
+  - "2.7"
+  - "3.4"
+install:
+  - pip install .
+  - pip install boto3 zmq numpy matplotlib scipy Mako pytest
+
+script: pytest tests/

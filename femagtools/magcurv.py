@@ -319,7 +319,7 @@ class MagnetizingCurve(object):
                         inparams.append("{}".format(mcv[k]))
 
             inparams.append("/\n")
-            proc.stdin.write(bytes('\n'.join(inparams), 'latin-1'))
+            proc.stdin.write(bytes('\n'.join(inparams).encode('latin-1')))
             proc.stdin.close()
         except OSError as e:
             logger.error("PATH {}\n CWD {}\n Prog {}\n{}\n".format(

@@ -2,7 +2,7 @@
 
 FEMAG Tools 
 ===========
-.. image:: https://travis-ci.org/SEMAFORInformatik/femagtools.svg?branch=master
+.. image:: https://travis-ci.org/SEMAFORInformatik/femagtools.svg?branch=development
     :target: https://travis-ci.org/SEMAFORInformatik/femagtools
 
 Femagtools is a Python-API for FEMAG (https://www.profemag.ch/) offering following features:

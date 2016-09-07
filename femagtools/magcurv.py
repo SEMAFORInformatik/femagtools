@@ -193,97 +193,98 @@ class MagnetizingCurve(object):
             curve['a'].append(1.0)
             curve['b'].append(MUE0*curve['hi'][-1]-curve['bi'][-1])
             
-    def writefile( self, name, directory='.', writeproc='mcvwriter' ):
+    def writefile(self, name, directory='.', writeproc='mcvwriter'):
         """find magnetic curve by name or id and write binary file
         returns filename if found else None"""
         if not id:
             return None
-        ext='.MC' if sys.platform=='win32' else '.MCV'
-        mcv=self.find_by_name( name )
+        ext = '.MC' if sys.platform == 'win32' else '.MCV'
+        mcv = self.find_by_name(name)
         if not mcv:
-            filename=''.join((name,ext))
+            filename = ''.join((name, ext))
             try:
                 import shutil
-                logger.info( "Copy file %s", filename )
-                shutil.copy( os.path.join(self.mcdirectory, filename), directory )
+                logger.info("Copy file %s", filename)
+                shutil.copy(os.path.join(self.mcdirectory,
+                                         filename), directory)
                 return filename
             except:
-                logger.error("MCV %s not found", str(filename) );
+                logger.error("MCV %s not found", str(filename))
             return None
 
-        filename=''.join((mcv['name'],ext))
+        filename = ''.join((mcv['name'], ext))
         try:
-            logger.info("create %s", str(filename) );
-            proc=subprocess.Popen([writeproc], cwd=directory,
-                                stdin=subprocess.PIPE,
-                                stderr=subprocess.PIPE )
+            logger.info("create %s", str(filename))
+            proc = subprocess.Popen([writeproc],
+                                    cwd=directory,
+                                    stdin=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    bufsize=1)
 
-            proc.stdin.write( "&INPARAM\n".encode('latin1'))
+            inparams = ["&INPARAM"]
             for k in mcv.keys():
-                if k=='name':
-                    proc.stdin.write( "filename='{}'\n".format(filename).encode('latin1'))
-                elif k=='desc':
-                    proc.stdin.write( "mc1_title='{}'\n".format(
-                        mcv['desc']).encode('latin1') )
-                elif k=='curve':
-                    proc.stdin.write('mc1_curves={}\n'.format(len(mcv[k])).encode('latin1'))
+                if k == 'name':
+                    inparams.append("filename='{}'".format(filename))
+                elif k == 'desc':
+                    inparams.append("mc1_title='{}'".format(mcv['desc']))
+                elif k == 'curve':
+                    inparams.append('mc1_curves={}'.format(len(mcv[k])))
                     for c in mcv['curve']:
                         for n in c.keys():
-                            if not n in transl: continue
-                            proc.stdin.write( "{}=".format(transl[n]).encode('latin1'))
-                            if type(c[n]) is list: proc.stdin.write(
-                                    ','.join(map(str,c[n])).encode('latin1') )
-                            else: proc.stdin.write( str(c[n]).encode('latin1') )
-                            proc.stdin.write( "\n".encode('latin1') )
+                            if n not in transl:
+                                continue
+                            inparams.append("{}=".format(transl[n]))
+                            if type(c[n]) is list:
+                                inparams.append(
+                                    ','.join(map(str, c[n])))
+                            else:
+                                inparams.append(str(c[n]))
 
-                    if 'energy' in mcv['curve'][0] and len(mcv['curve'][0]['energy'])>0:
-                        proc.stdin.write( "mc1_energy=" )
-                        proc.stdin.write( ','.join(map(str,mcv['curve'][0]['energy'])))
-                        proc.stdin.write( "\n" )
+                    if 'energy' in mcv['curve'][0] and len(mcv['curve'][0]['energy']) > 0:
+                        inparams.append("mc1_energy=")
+                        inparams.append(','.join(map(str, mcv['curve'][0]['energy'])))
 
-                elif k=='losses':
+                elif k == 'losses':
                     # find start index
-                    bstart=0
+                    bstart = 0
                     for a in mcv[k]['pfe']:
                         for i in range(len(a)):
                             if a[i]:
-                                if i>bstart:
-                                    bstart=i
+                                if i > bstart:
+                                    bstart = i
                                 break
-                    proc.stdin.write('N_freq={}\n'.format(len(mcv[k]['f'])).encode('latin1'))
-                    proc.stdin.write('N_J_ind={}\n'.format(len(mcv[k]['B'])-bstart).encode('latin1'))
-                    proc.stdin.write( "frequency=".encode('latin1'))
-                    proc.stdin.write( ",".join(map(str,mcv[k]['f'])).encode('latin1') )
-                    proc.stdin.write( "\n" )
-                    proc.stdin.write( "induction=" )
-                    proc.stdin.write( ",".join(map(str, mcv[k]['B'][bstart:]) ).encode('latin1') )
-                    proc.stdin.write( "\n".encode('latin1') )
-                    proc.stdin.write( "losses=".encode('latin1') )
-                    pfeT=[]
+                    inparams.append('N_freq={}'.format(len(mcv[k]['f'])))
+                    inparams.append('N_J_ind={}'.format(len(mcv[k]['B'])-bstart))
+                    inparams.append("frequency=")
+                    inparams.append(",".join(map(str, mcv[k]['f'])))
+                    inparams.append("induction=")
+                    inparams.append(",".join(map(str, mcv[k]['B'][bstart:])))
+                    inparams.append("losses=")
+                    pfeT= []
 #                    flen=10
 #                    blen=20
-                    cw=mcv[k]['cw']
-                    alfa=mcv[k]['alfa']
-                    beta=mcv[k]['beta']
-                    fo=mcv[k]['fo']
-                    Bo=mcv[k]['Bo']
+                    cw = mcv[k]['cw']
+                    alfa = mcv[k]['alfa']
+                    beta = mcv[k]['beta']
+                    fo  =mcv[k]['fo']
+                    Bo = mcv[k]['Bo']
 
-                    pfe=[]
-                    lower=0
+                    pfe = []
+                    lower = 0
                     # must replace all None by approx losses
-                    for i in range( len(mcv['losses']['f']) ):
-                        f=mcv['losses']['f'][i]
-                        if f>0:
-                            pfei=[p[i] if i<len(p) else None for p in mcv['losses']['pfe']]
-                            m,n= findNotNone(pfei)
-                            if m>lower: lower=m
-                            if m<=n:
-                                y=[ np.log10(p) for p in pfei[m:n+1] ]
-                                x=[ np.log10(b/Bo) for b in mcv['losses']['B'][m:n+1]]
-                                A=np.vstack([x, np.ones(len(x))]).T
-                                beta,cw=np.linalg.lstsq(A, y)[0]
+                    for i in range(len(mcv['losses']['f'])):
+                        f = mcv['losses']['f'][i]
+                        if f > 0:
+                            pfei = [p[i] if i<len(p) else None for p in mcv['losses']['pfe']]
+                            m, n = findNotNone(pfei)
+                            if m > lower: lower=m
+                            if m <= n:
+                                y = [ np.log10(p) for p in pfei[m:n+1] ]
+                                x = [ np.log10(b/Bo) for b in mcv['losses']['B'][m:n+1]]
+                                A = np.vstack([x, np.ones(len(x))]).T
+                                beta, cw = np.linalg.lstsq(A, y)[0]
                                 for j in range(n+1,len(pfei)):
-                                    pfei[j]=10**cw*(mcv['losses']['B'][j]/Bo)**beta
+                                    pfei[j] = 10**cw*(mcv['losses']['B'][j]/Bo)**beta
 
                                 pfe.append(pfei)
                     pfe+=[[0]*M_LOSS_INDUCT]*(M_LOSS_FREQ-len(mcv['losses']['f']))
@@ -298,27 +299,27 @@ class MagnetizingCurve(object):
                                 break
                         pfeT+=a
                         
-                    proc.stdin.write(','.join(map(str,pfeT)).encode('latin1'))
-                    proc.stdin.write( "\n".encode('latin1') )
-                    proc.stdin.write( "cw_m={}\n".format(mcv[k]['cw']).encode('latin1'))
-                    proc.stdin.write( "alfa_m={}\n".format(mcv[k]['alfa']).encode('latin1'))
-                    proc.stdin.write( "beta_m={}\n".format(mcv[k]['beta']).encode('latin1'))
-                    proc.stdin.write( "base_freq={}\n".format(mcv[k]['fo']).encode('latin1'))
-                    proc.stdin.write( "base_induct={}\n".format(mcv[k]['Bo']).encode('latin1'))
-                    logger.info("has losses N_freq %d, N_J_ind %d", len(mcv[k]['f']), len(mcv[k]['B']))
+                    inparams.append(','.join(map(str, pfeT)))
+                    inparams.append("cw_m={}".format(mcv[k]['cw']))
+                    inparams.append("alfa_m={}".format(mcv[k]['alfa']))
+                    inparams.append("beta_m={}".format(mcv[k]['beta']))
+                    inparams.append("base_freq={}".format(mcv[k]['fo']))
+                    inparams.append("base_induct={}".format(mcv[k]['Bo']))
+                    logger.info("has losses N_freq %d, N_J_ind %d",
+                                len(mcv[k]['f']), len(mcv[k]['B']))
 
-                    proc.stdin.write( "loss_values_data=T\n".encode('latin1'))
+                    inparams.append("loss_values_data=T")
                 elif k not in transl:
                     continue
                 else:
-                    proc.stdin.write( "{}=".format(transl[k]).encode('latin1'))
+                    inparams.append("{}=".format(transl[k]))
                     if type(mcv[k]) is list:
-                        proc.stdin.write( ','.join(map(str,mcv[k])).encode('latin1'))
+                        inparams.append(','.join(map(str, mcv[k])))
                     else:
-                        proc.stdin.write( "{}".format(mcv[k]).encode('latin1'))
-                    proc.stdin.write( "\n".encode('latin1') )
+                        inparams.append("{}".format(mcv[k]))
 
-            proc.stdin.write("/\n".encode('latin1'))
+            inparams.append("/\n")
+            proc.stdin.write(bytes('\n'.join(inparams), 'latin-1'))
             proc.stdin.close()
         except OSError as e:
             logger.error("PATH {}\n CWD {}\n Prog {}\n{}\n".format(
@@ -331,11 +332,9 @@ class MagnetizingCurve(object):
         except KeyError as e:
             logger.error("{} key {} not found\n".format(mcv['name'], str(e)))
             return None
-        #for l in proc.stdout:
-        #    print l.strip()
 
         for l in proc.stderr:
-            logger.error( l )
+            logger.error(l)
         
         return filename
     

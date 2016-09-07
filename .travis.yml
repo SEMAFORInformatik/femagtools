@@ -19,7 +19,6 @@ before_install:
   - sudo ln -s /run/shm /dev/shm
 
 
-
 script: pytest tests/
 
 notifications:
@@ -29,3 +28,8 @@ notifications:
       - mauchle@semafor.ch
     on_success: change
     on_failure: always
+
+branches:
+  only:
+    - master
+    - development

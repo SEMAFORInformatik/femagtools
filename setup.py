@@ -8,6 +8,7 @@ try:
 except ImportError:
     from distutils.core import setup
 from os import path
+from io import open
 
 here = path.abspath(path.dirname(__file__))
 # Get the long description from the README file

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 #
+import matplotlib as mp
+mp.use('Agg')
 import unittest
 import os
 from femagtools import moo

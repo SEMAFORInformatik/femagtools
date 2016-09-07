@@ -2,7 +2,10 @@
 #
 import unittest
 import femagtools
-from unittest.mock import MagicMock, patch, Mock
+try:
+    import mock
+except ImportError:
+    import unittest.mock as mock
 import tempfile
 import os
 import boto3
@@ -10,9 +13,9 @@ import boto3
 
 class PropulationTest(unittest.TestCase):
 
-    @unittest.mock.patch('femagtools.amazon.Engine._create_amazon_resource')
+    @mock.patch('femagtools.amazon.Engine._create_amazon_resource')
     def setUp(self, create_amazone_resource):
-        create_amazone_resource = Mock()
+        create_amazone_resource = mock.Mock()
         self.engine = femagtools.amazon.Engine()
         
     def tearDown(self):
@@ -43,8 +46,8 @@ export BUCKET_NAME=1
 
     # This test does not work, cause mock can not mock attributes in a class which are
     # not defined in the init method
-    @unittest.mock.patch('femagtools.job.CloudJob')
-    @unittest.mock.patch('femagtools.job.Task')
+    @mock.patch('femagtools.job.CloudJob')
+    @mock.patch('femagtools.job.Task')
     def test_get_status_code(self, MockCloudJob, MockCloudTask):
         filename = "../data/exit_code"
         from femagtools.job import CloudTask
@@ -53,11 +56,11 @@ export BUCKET_NAME=1
         # MockCloudTask.directory.__get__ = Mock(return_value='/tmp')
         # MockCloudJob.tasks.return_value = [MockCloudTask, MockCloudTask, MockCloudTask]
 
-        mock = MagicMock()
-        mock.directory = Mock(return_value='/tmp')
+        m = mock.MagicMock()
+        mock.directory = mock.Mock(return_value='/tmp')
         self.engine.create_job('')
 
-        self.engine.job.tasks.append(mock(2, "/tmp/"))
+        self.engine.job.tasks.append(m(2, "/tmp/"))
 
         # This is the test
         # self.engine._get_status_code('exit_code')    

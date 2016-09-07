@@ -10,7 +10,7 @@
 """
 try:
     # Load python 2 config parser
-    import Configparser as configparser
+    import ConfigParser as configparser
 except ImportError:
     import configparser
 

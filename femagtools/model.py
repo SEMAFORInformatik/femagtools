@@ -167,7 +167,30 @@ class Model(object):
     def __str__(self):
         "return string format of this object"
         return repr(self.__dict__)
+
+    def statortype(self):
+        """return type of stator slot"""
+        for k in self.stator:
+            if isinstance(self.stator[k], dict):
+                return k
+        raise MCerror("Missing stator slot model in {}".format(self.stator))
     
+    def magnettype(self):
+        """return type of magnet slot"""
+        for k in self.magnet:
+            if isinstance(self.magnet[k], dict):
+                return k
+        raise MCerror("Missing magnet model in {}".format(self.magnet))
+
+    def is_complete(self):
+        """check completeness of models"""
+        try:
+            self.statortype()
+            self.magnettype()
+            return True
+        except:
+            return False
+        
     def __repr__(self):
         "representation of this object"
         return self.__str__()

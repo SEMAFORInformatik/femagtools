@@ -21,20 +21,6 @@ class FslBuilderError(Exception):
     pass
 
 
-def statormodel(m):
-    for k in m:
-        if isinstance(m[k], dict):
-            return k
-    raise FslBuilderError("Missing stator slot model in {}".format(m))
-    
-
-def magnetmodel(m):
-    for k in m:
-        if isinstance(m[k], dict):
-            return k
-    raise FslBuilderError("Missing magnet model in {}".format(m))
-
-
 class FslBuilder:
     def __init__(self):
         self.lookup = mako.lookup.TemplateLookup(
@@ -44,7 +30,7 @@ class FslBuilder:
             default_filters=['decode.utf8'])
     
     def create_stator_model(self, model):
-        templ = statormodel(model.stator)
+        templ = model.statortype()
         return self.__render(model, templ)
     
     def create_magnet_model(self, model):
@@ -63,7 +49,7 @@ class FslBuilder:
                 '\n'.join(templ),
                 model.magnet['magnetFsl'])
             
-        templ = magnetmodel(model.magnet)
+        templ = model.magnettype()
         return self.__render(model, templ)
 
     def create_open(self, model):
@@ -84,6 +70,11 @@ class FslBuilder:
              "mcvkey_shaft='" + model.magnet['mcvkey_mshaft'] + "'"] + \
             self.create_magnet_model(model) + \
             ['pre_models("connect_models")\n']
+    
+    def open_model(self, model, magnets=None):
+        return self.create_open(model) + \
+            self.create_magnet(model, magnets) + \
+            self.__render(model.windings, 'cu_losses')
     
     def create_magnet(self, model, magnets):
         if magnets and 'material' in model.magnet:
@@ -117,9 +108,12 @@ class FslBuilder:
         "create model and analysis function"
         fea['lfe'] = model.get('lfe')
         fea.update(model.windings)
-        return self.create_model(model, magnets) + \
+        if model.is_complete():
+            return self.create_model(model, magnets) + \
+                self.create_analysis(fea)
+        return self.open_model(model, magnets) + \
             self.create_analysis(fea)
-    
+        
     def __render(self, model, templ):
         template = self.lookup.get_template(templ+".mako")
         return template.render_unicode(model=model).split('\n')

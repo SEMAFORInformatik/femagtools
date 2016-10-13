@@ -121,8 +121,12 @@ class BchReader:
             'Date': BchReader.__read_date,
             'Inertia': BchReader.__read_dummy,
             'Losses': BchReader.__read_dummy,
-            'Fe-Hysteresis- and Eddy current Losses[W] > 0.1 % Max':  BchReader.__read_hysteresis_eddy_current_losses,
+            'Fe-Hysteresis- and Eddy current Losses[W] > 0.1 % Max':
+            BchReader.__read_hysteresis_eddy_current_losses,
             'Losses [W]':  BchReader.__read_losses,
+            'Losses for speed [1/min]': BchReader.__read_losses_tab,
+            'Losses from PSID-Psiq-Identification for speed [1/min]':
+            BchReader.__read_losses_tab,
             'Magnet loss data': BchReader.__read_dummy,
             'Project File name': BchReader.__read_project_filename,
             'File name': BchReader.__read_filename,
@@ -533,7 +537,31 @@ class BchReader:
                 m[6], (nrows, ncols)).T[::-1]).tolist(),
             'torque': (self.armatureLength*np.reshape(
                 m[7], (nrows, ncols)).T[::-1]).tolist()}
-            
+
+    def __read_losses_tab(self, content):
+        "read losses of psidq or ldq"
+        m = []
+        for l in content[4:]:
+            rec = l.split('\t')
+            if len(rec) == 6:
+                m.append([floatnan(x) for x in rec])
+        m = np.array(m).T
+        ncols = len(set(m[1]))
+        nrows = len(m[2])//ncols
+        l = dict(
+            styoke=np.reshape(m[2],
+                              (nrows, ncols)).T[::-1].tolist(),
+            stteeth=np.reshape(m[3],
+                               (nrows, ncols)).T[::-1].tolist(),
+            rotor=np.reshape(m[4],
+                             (nrows, ncols)).T[::-1].tolist(),
+            magnet=np.reshape(m[5],
+                              (nrows, ncols)).T[::-1].tolist())
+        if self.ldq:
+            self.ldq['losses'] = l
+        else:
+            self.psidq['losses'] = l
+ 
     def __read_machine_data(self, content):
         "read machine data section"
         for k in ('beta', 'plfe1', 'plfe2', 'plmag'):

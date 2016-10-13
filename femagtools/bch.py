@@ -314,21 +314,20 @@ class BchReader:
         self.scData['iks'] = floatnan(rec[3])
         self.scData['tks'] = floatnan(rec[4])
             
-        
     def __read_general_machine_data(self, content):
         for l in content:
             if l.find('Armature Length [mm]:') > -1:
-                self.armatureLength=floatnan(l.split()[-1])
-            elif l.find('Magn. Fluss Psim RMS')>0:
-                self.machine['psim']=floatnan(l.split()[-1])
-            elif l.find('Number of Pole pairs')>-1:
-                self.machine['p']=int(l.split()[-1])
-            elif l.find('Number of Poles simulated')>-1:
-                self.machine['p_sim']=int(l.split()[-1])
-            elif l.find('Total Number of Slots')>-1:
-                self.machine['Q']=int(l.split()[-1])
-            elif l.find('Number of Slot-Sides sim.')>-1:
-                self.machine['qs_sim']=int(l.split()[-1])
+                self.armatureLength = floatnan(l.split()[-1])
+            elif l.find('Magn. Fluss Psim RMS') > 0:
+                self.machine['psim'] = floatnan(l.split()[-1])
+            elif l.find('Number of Pole pairs') > -1:
+                self.machine['p'] = int(l.split()[-1])
+            elif l.find('Number of Poles simulated') > -1:
+                self.machine['p_sim'] = int(l.split()[-1])
+            elif l.find('Total Number of Slots') > -1:
+                self.machine['Q'] = int(l.split()[-1])
+            elif l.find('Number of Slot-Sides sim.') > -1:
+                self.machine['qs_sim'] = int(l.split()[-1])
                 
     def __read_flux(self, content):
         "read and append flux section"
@@ -438,7 +437,7 @@ class BchReader:
                 break
         m = []
         for l in content[i+2:]:
-            rec = l.split()
+            rec = l.split('\t')
             if len(rec) == 7:
                 m.append([floatnan(x) for x in rec])
 
@@ -474,7 +473,7 @@ class BchReader:
                 break
         m = []
         for l in content[i+2:]:
-            rec = l.split()
+            rec = l.split('\t')
             if len(rec) == 7:
                 m.append([floatnan(x) for x in rec])
 
@@ -509,7 +508,7 @@ class BchReader:
                 break
         m = []
         for l in content[i+2:]:
-            rec = l.split()
+            rec = l.split('\t')
             if len(rec) == 8:
                 m.append([floatnan(x) for x in rec])
                 

@@ -61,7 +61,8 @@ class MultiProc:
         return self.job
 
     def submit(self):
-        """Starts the FEMAG calculation(s) with the internal :py:meth:`multiproc.run_femag` function
+        """Starts the FEMAG calculation(s) with the internal
+        :py:meth:`multiproc.run_femag` function
 
         :return: length of started tasks
         """

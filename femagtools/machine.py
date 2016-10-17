@@ -42,9 +42,10 @@ class PmRelMachine(object):
 
     def iqd_torque(self, torque):
         """minimum d-q-current for torque"""
-        res=so.minimize(lambda idq: la.norm(idq), (0, 0), method='SLSQP',
-                        constraints=({'type': 'eq',
-                                      'fun': lambda iqd: self.torque_iqd(*iqd) - torque}))
+        res = so.minimize(lambda idq: la.norm(idq), (0, 0), method='SLSQP',
+                          constraints=({'type': 'eq',
+                                        'fun': lambda iqd:
+                                        self.torque_iqd(*iqd) - torque}))
         return res.x
 
     def iqd_torque_umax(self, torque, w1, u1max):

@@ -86,7 +86,7 @@ class Grid(object):
         steps = [d.get('steps', 10) for d in decision_vars]
         logger.info('STEPS %s', str(steps))
 
-        model = femagtools.Model(pmMachine)
+        model = femagtools.MachineModel(pmMachine)
         # check if this model needs to be modified
         immutable_model = len([d for d in decision_vars
                                if hasattr(model,

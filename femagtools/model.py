@@ -18,46 +18,9 @@ class MCerror(Exception):
 
 
 class Model(object):
-    """represents a model for a FE analysis
-    
-    :param parameters: dict containing the model parameters. For example:
-    ::
-
-        {'lfe': 0.1,
-        'poles': 4,
-        'outer_diam': 0.13,
-        'bore_diam': 0.07,
-        'stator':{
-        'num_slots': 12,
-        'num_slots_gen': 3,
-        ...
-        },
-        'magnet':{
-            'material': 'M395',
-            ..
-        }
-        }
-    """
     def __init__(self, parameters):
         for k in parameters.keys():
             setattr(self, k, parameters[k])
-        if 'name' in parameters:
-            # must replace white space
-            name = parameters['name'].strip().replace(' ', '_')
-            for c in ('"', '(', ')'):
-                name = name.replace(c, '')
-            setattr(self, 'name', name)
-        else:
-            setattr(self, 'name', 'DRAFT')
-        try:
-            self.external_rotor = (self.external_rotor == 1)
-        except:
-            self.external_rotor = False
-        self.move_inside = 1.0 if self.external_rotor else 0.0
-        if 'magnet' in parameters:
-            for mcv in ('mcvkey_yoke', 'mcvkey_mshaft'):
-                if mcv not in self.magnet:
-                    self.magnet[mcv] = 'dummy'
             
     def set_value(self, name, value, p=None):
         """set value of parameter identified by name
@@ -106,6 +69,60 @@ class Model(object):
             logger.error(e)
             raise MCerror(e)
 
+#    def __getitem__(self, k):
+#        return getattr(self, k)
+     
+    def __str__(self):
+        "return string format of this object"
+        return repr(self.__dict__)
+
+    def __repr__(self):
+        "representation of this object"
+        return self.__str__()
+
+
+class MachineModel(Model):
+    """represents a machine model for a FE analysis
+    
+    :param parameters: dict containing the model parameters. For example:
+    ::
+
+        {'lfe': 0.1,
+        'poles': 4,
+        'outer_diam': 0.13,
+        'bore_diam': 0.07,
+        'stator':{
+        'num_slots': 12,
+        'num_slots_gen': 3,
+        ...
+        },
+        'magnet':{
+            'material': 'M395',
+            ..
+        }
+        }
+    """
+    def __init__(self, parameters):
+        super(self.__class__, self).__init__(parameters)
+
+        if 'name' in parameters:
+            # must replace white space
+            name = parameters['name'].strip().replace(' ', '_')
+            for c in ('"', '(', ')'):
+                name = name.replace(c, '')
+            setattr(self, 'name', name)
+        else:
+            setattr(self, 'name', 'DRAFT')
+        try:
+            self.external_rotor = (self.external_rotor == 1)
+        except:
+            self.external_rotor = False
+        self.move_inside = 1.0 if self.external_rotor else 0.0
+        if 'magnet' in parameters:
+            for mcv in ('mcvkey_yoke', 'mcvkey_mshaft'):
+                if mcv not in self.magnet:
+                    self.magnet[mcv] = 'dummy'
+            
     def set_magcurves(self, magcurves):
         """set and return real names of magnetizing curve material
 
@@ -164,10 +181,6 @@ class Model(object):
                 ', '.join(set(missing))))
         return set(names)
     
-    def __str__(self):
-        "return string format of this object"
-        return repr(self.__dict__)
-
     def statortype(self):
         """return type of stator slot"""
         for k in self.stator:
@@ -191,19 +204,12 @@ class Model(object):
         except:
             return False
         
-    def __repr__(self):
-        "representation of this object"
-        return self.__str__()
-
 
 class FeaModel(Model):
     def __init__(self, parameters):
-        for k in parameters.keys():
-            setattr(self, k, parameters[k])
-            
-    def __getitem__(self, k):
-        return getattr(self, k)
-     
+        super(self.__class__, self).__init__(parameters)
+
+
 if __name__ == '__main__':
 
     pars = dict(

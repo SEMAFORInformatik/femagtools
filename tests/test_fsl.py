@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #
 import unittest
-import os
 import femagtools
 import copy
 
@@ -62,7 +61,7 @@ class FslBuilderTest(unittest.TestCase):
             tip_rh1=0.002,
             tip_rh2=0.002,
             slot_width=0.003)
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
         self.assertEqual(len(fsl), 17)
 
@@ -74,7 +73,7 @@ class FslBuilderTest(unittest.TestCase):
             slot_t3=0.002,
             corner_width=0.002,
             slot_depth=0.003)
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
         self.assertEqual(len(fsl), 17)
 
@@ -91,7 +90,7 @@ class FslBuilderTest(unittest.TestCase):
             slot_height=0.02,
             slot_r1=0.003,
             slot_width=0.003)
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
         self.assertEqual(len(fsl), 23)
 
@@ -107,7 +106,7 @@ class FslBuilderTest(unittest.TestCase):
             wedge_width1=111e-5,
             wedge_width2=222e-5,
             wedge_width3=333e-5)
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
         self.assertEqual(len(fsl), 22)
 
@@ -125,7 +124,7 @@ class FslBuilderTest(unittest.TestCase):
                 magn_ori=2,
                 magn_type=1,
                 magn_num=1))
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 27)
 
@@ -143,7 +142,7 @@ class FslBuilderTest(unittest.TestCase):
                 bridge_height=0,
                 bridge_width=0,
                 iron_shape=0))
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
 #        print('\n'.join(fsl))
         self.assertEqual(len(fsl), 23)
@@ -162,7 +161,7 @@ class FslBuilderTest(unittest.TestCase):
                 gap_ma_right=1e-3,
                 gap_ma_left=2e-3,
                 iron_shape=0))
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 25)
         
@@ -181,7 +180,7 @@ class FslBuilderTest(unittest.TestCase):
                 gap_ma_right=1e-3,
                 gap_ma_left=2e-3,
                 iron_shape=0))
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 24)
 
@@ -200,7 +199,7 @@ class FslBuilderTest(unittest.TestCase):
                 magn_di_ra=1e-3,
                 air_sp_ori=1,
                 iron_shape=0))
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 24)
 
@@ -219,7 +218,7 @@ class FslBuilderTest(unittest.TestCase):
                 magn_di_ra=1e-3,
                 air_sp_ori=1,
                 iron_shape=0))
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 24)
 
@@ -237,7 +236,7 @@ class FslBuilderTest(unittest.TestCase):
                 condshaft_r=0.006,
                 magn_angle=130,
                 iron_shape=0))
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 24)
 
@@ -255,7 +254,7 @@ class FslBuilderTest(unittest.TestCase):
                 iron_bfe=0.001,
                 iron_bfo=0.001,
                 iron_shape=0))
-        model = femagtools.Model(self.m)
+        model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 23)
 

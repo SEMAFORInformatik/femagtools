@@ -76,7 +76,7 @@ class BaseFemag(object):
 
     def create_fsl(self, pmMachine, operatingConditions):
         """create list of fsl commands"""
-        model = femagtools.Model(pmMachine)
+        model = femagtools.MachineModel(pmMachine)
         self.modelname = model.name
         self.copy_magnetizing_curves(model)
         

@@ -17,7 +17,7 @@ __copyright__ = 'Copyright 2016 SEMAFOR Informatik & Energie AG'
 from .bch import BchReader
 from .machine import PmRelMachineLdq, PmRelMachinePsidq
 from .femag import BaseFemag, Femag, ZmqFemag
-from .model import Model, FeaModel
+from .model import MachineModel, FeaModel
 from .fsl import FslBuilder
 from .magcurv import MagnetizingCurve
 from .magnet import Magnet
@@ -34,6 +34,7 @@ from .multiproc import MultiProc
 from .amazon import Engine
 from .google import Engine
 
+
 def read_bchfile(filename):
     """Read BCH/BATCH results from file *filename*."""
     import io
@@ -45,7 +46,7 @@ def read_bchfile(filename):
 
 def create_fsl(machine, operatingconditions=None, magnetmat=None):
     """create FSL command list from model parameters"""
-    model = Model(machine)
+    model = MachineModel(machine)
     builder = FslBuilder()
     if operatingconditions:
         if magnetmat:

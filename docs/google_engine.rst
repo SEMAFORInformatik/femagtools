@@ -20,7 +20,7 @@ To use Google Cloud as engine, setup a configuartion and a startup bash file and
   # Load config file
   engine.config.from_ini_file('config.ini')
 
-If you already uploaded some FEMAG files you can add the bucket as list::
+If you already uploaded some FEMAG files you can add the buckets as list::
 
   buckets = [{'id': '926c39a7-db69-42f8-bf86-2fd1f8559188-0', 'folder': '~/parvar/0'},
              {'id': '99ec9af5-ecb5-4029-88d6-70da9841ef91-1', 'folder': '~/parvar/1'},

@@ -209,6 +209,38 @@ class ZmqFemag(BaseFemag):
         self.subscriber_socket.setsockopt(zmq.SUBSCRIBE, b'')
         return self.subscriber_socket
     
+    def __is_process_running(self, procId):
+        try:
+            import psutil
+            return psutil.pid_exists(procId)
+        except:
+            pass
+        # long version, self made
+        try:
+            if procId > 0:
+               if platform.system() == "Windows":
+                   #                   if procId in psutil.get_pid_list():
+                   proc=subprocess.Popen(["tasklist"],stdout=subprocess.PIPE)
+                   for l in proc.stdout:
+                       ls = l.split()
+                       try:
+                           if str(procId) == ls[1]:
+                               return True
+                       except:
+                           continue
+               else:
+                   if not os.kill(procId, 0) :
+                       return True
+        except OSError as e:
+            # No such process
+            logger.info("OSError: '{}'\n".format(str(e)))
+            return False
+        except Exception:
+            # we cannot check processId
+            logger.info("Error: unknown\n")
+            return True
+        return False
+    
     def __is_running(self, timeout=1500):
         """check if FEMAG is running in ZMQ mode
         
@@ -265,14 +297,14 @@ class ZmqFemag(BaseFemag):
         self.subscriber_socket = None
         return None
     
-    def run(self, options=['-b'], restart=False):
+    def run(self, options=['-b'], restart=False, procId=None):
         """invokes FEMAG in current workdir and returns pid
 
         :param options: list of FEMAG options
         :raises: FemagError
         """
         args = [self.cmd] + options
-        procId = None
+        
         if self.__is_running():
             if restart:
                 logging.info("must restart")
@@ -281,6 +313,14 @@ class ZmqFemag(BaseFemag):
                     logger.debug("send_fsl response Ok")
                 else:
                     logger.warn("send_fsl response error")
+                # check if process really finished
+                logger.info("procId: %s", procId)
+                if procId:
+                    for t in range(200):
+                        time.sleep(0.1)
+                        if not self.__is_process_running(procId):
+                            break
+                        logger.info("femag (pid: '{}') not stopped yet".format(procId))
             else:
                 try:
                     with open(os.path.join(self.workdir,

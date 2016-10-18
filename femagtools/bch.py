@@ -513,8 +513,8 @@ class BchReader:
         m = []
         for l in content[i+2:]:
             rec = l.split('\t')
-            if len(rec) == 8:
-                m.append([floatnan(x) for x in rec])
+            if len(rec) > 7:
+                m.append([floatnan(x) for x in rec[:8]])
                 
         m = np.array(m).T
         ncols = len(set(m[1]))
@@ -649,7 +649,7 @@ class BchReader:
                           ["Magn.Flux load", 'psim'],
                           ["Voltage Up  load", 'up'],
                           ["Speed", 'speed'],
-                          ["Number of Poles", 'npoles'],                       
+                          ["Number of Poles", 'npoles'],
                           ["Armature length", 'lfe'],
                           ["Airgap diameter", 'dag']]:
                     if l.find(v[0]) > -1:

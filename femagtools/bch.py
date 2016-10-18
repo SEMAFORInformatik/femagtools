@@ -845,6 +845,28 @@ class BchReader:
     def __getattr__(self, k):
         return self.__dict__[k]
 
+    def items(self):
+        return [
+            ('version', self.version),
+            ('type', self.type),
+            ('filename', self.filename),
+            ('date', self.date),
+            ('torque', self.torque),
+            ('torque_fft', self.torque_fft),
+            ('psidq', self.psidq),
+            ('psidq_ldq', self.psidq_ldq),
+            ('machine', self.machine),
+            ('lossPar', self.lossPar),
+            ('flux', self.flux),
+            ('flux_fft', self.flux_fft),
+            ('airgapInduction', self.airgapInduction),
+            ('magnet', self.magnet),
+            ('scData', self.scData),
+            ('dqPar', self.dqPar),
+            ('ldq', self.ldq),
+            ('losses', self.losses),
+            ('demag', self.demag)]
+
     def __str__(self):
         "return string format of this object"
         if self.type:

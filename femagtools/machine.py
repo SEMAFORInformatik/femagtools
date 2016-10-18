@@ -184,18 +184,18 @@ class PmRelMachineLdq(PmRelMachine):
                 logger.debug("interp2d beta %s i1 %s", beta, i1)
                 return
             elif len(i1) == 1:
-                self._ld = ip.InterpolatedUnivariateSpline(beta, ld[0], k=1)
-                self._lq = ip.InterpolatedUnivariateSpline(beta, lq[0], k=1)
-                self._psim = ip.InterpolatedUnivariateSpline(beta, psim[0], k=1)
+                self._ld = ip.InterpolatedUnivariateSpline(beta, ld, k=1)
+                self._lq = ip.InterpolatedUnivariateSpline(beta, lq, k=1)
+                self._psim = ip.InterpolatedUnivariateSpline(beta, psim, k=1)
                 self.ld = lambda x, y: self._ld(x)
                 self.lq = lambda x, y: self._lq(x)
                 self.psim = lambda x, y: self._psim(x)
                 logger.debug("interpolatedunivariatespline beta %s", beta)
                 return
             if len(beta) == 1:
-                self._ld = ip.InterpolatedUnivariateSpline(i1, ld[:,0], k=1)
-                self._lq = ip.InterpolatedUnivariateSpline(i1, lq[:,0], k=1)
-                self._psim = ip.InterpolatedUnivariateSpline(i1, psim[:,0], k=1)
+                self._ld = ip.InterpolatedUnivariateSpline(i1, ld, k=1)
+                self._lq = ip.InterpolatedUnivariateSpline(i1, lq, k=1)
+                self._psim = ip.InterpolatedUnivariateSpline(i1, psim, k=1)
                 self.ld = lambda x, y: self._ld(y)
                 self.lq = lambda x, y: self._lq(y)
                 self.psim = lambda x, y: self._psim(y)

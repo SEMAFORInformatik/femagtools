@@ -8,7 +8,6 @@
   post_models("induct(x)","b")    -- Calculate field distribution
 
   data=io.open("bag.dat","w")              -- Output in data file
---  data:write("phi [°]  Br [T]  Bph [T]\n");
   N = table.getn(b)                             -- Number of elements in array
   i = 1
   repeat

@@ -2,7 +2,7 @@
 #
 import unittest
 import os
-import femagtools
+import femagtools.vbf
 
 class VbfReaderTest(unittest.TestCase):
     def test_read_vbf( self ):
@@ -10,7 +10,7 @@ class VbfReaderTest(unittest.TestCase):
         if not testPath: testPath='.'
             
         filename="data/m270_35.vbf"
-        vbf = femagtools.VbfReader('{0}/{1}'.format(testPath, filename))
+        vbf = femagtools.vbf.Reader('{0}/{1}'.format(testPath, filename))
         r = vbf.getLossValues()
         self.assertEqual( r['name'], 'M235_35' ) 
         self.assertEqual( len(r['f']), 7 ) 

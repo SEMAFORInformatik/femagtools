@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 import unittest
-import femagtools
+import femagtools.fsl
 import copy
 
 modelpars = dict(
@@ -48,7 +48,7 @@ class FslBuilderTest(unittest.TestCase):
 
     def setUp(self):
         self.m = copy.deepcopy(modelpars)
-        self.builder = femagtools.FslBuilder()
+        self.builder = femagtools.fsl.Builder()
 
     def tearDown(self):
         self.m = None

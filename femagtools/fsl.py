@@ -21,7 +21,7 @@ class FslBuilderError(Exception):
     pass
 
 
-class FslBuilder:
+class Builder:
     def __init__(self):
         self.lookup = mako.lookup.TemplateLookup(
             directories=[os.path.join(os.path.dirname(__file__), 'templates')],

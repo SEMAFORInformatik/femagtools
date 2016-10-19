@@ -5,7 +5,8 @@
 import sys
 import os
 import json
-import femagtools
+import femagtools.opt
+import femagtools.condor
 import logging
 
 opt = {
@@ -14,7 +15,7 @@ opt = {
         {"desc": "Torque Ripple / Nm", "name": "torque.ripple"},
         {"desc": "Iron Loss / W", "name": "machine.plfe"}
     ],
-    "population_size": 24,
+    "population_size": 16,
     "decision_vars": [
         {"desc": "Magn width", "bounds": [0.75, 0.85],
          "name": "magnet.magnetSector.magn_width_pct"},
@@ -118,7 +119,7 @@ machine = dict(
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-engine = femagtools.Condor()
+engine = femagtools.condor.Engine()
 
 userdir = os.path.expanduser('~')
 workdir = os.path.join(userdir, 'opti')
@@ -127,8 +128,8 @@ try:
 except OSError:
     pass
 
-o = femagtools.Optimizer(workdir,
-                         magnetizingCurve, magnetMat)
+o = femagtools.opt.Optimizer(workdir,
+                             magnetizingCurve, magnetMat)
 num_generations = 3
 results = o.optimize(num_generations,
                      opt, machine, operatingConditions, engine)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 import unittest
-import femagtools
+import femagtools.machine
 
 machines = [
   dict(
@@ -89,7 +89,7 @@ class PmMachineTest(unittest.TestCase):
   def test( self ):
     for m, o, e in zip(machines, ops, expected):
       if 'beta' in m:
-        pm=femagtools.PmRelMachineLdq(3, m['p'],
+        pm=femagtools.machine.PmRelMachineLdq(3, m['p'],
                                       m['psim'],
                                       m['ld'],
                                       m['lq'],
@@ -97,7 +97,7 @@ class PmMachineTest(unittest.TestCase):
                                       m['beta'],
                                       m['i1'] )
       else:
-        pm=femagtools.PmRelMachinePsidq(3, m['p'],
+        pm=femagtools.machine.PmRelMachinePsidq(3, m['p'],
                           m['psid'],
                           m['psiq'],
                           m['r1'],

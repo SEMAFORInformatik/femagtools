@@ -19,7 +19,8 @@ except ImportError:
 import sys
 import json
 import io
-import femagtools
+import femagtools.mcv
+import femagtools.fsl
 import time
 import platform
 
@@ -51,10 +52,10 @@ class BaseFemag(object):
                 
         if magnetizingCurves:
             if isinstance(magnetizingCurves,
-                          femagtools.MagnetizingCurve):
+                          femagtools.mcv.MagnetizingCurve):
                 self.magnetizingCurves = magnetizingCurves
             else:
-                self.magnetizingCurves = femagtools.MagnetizingCurve(
+                self.magnetizingCurves = femagtools.mcv.MagnetizingCurve(
                     magnetizingCurves)
         else:
             self.magnetizingCurves = []
@@ -80,13 +81,13 @@ class BaseFemag(object):
         self.modelname = model.name
         self.copy_magnetizing_curves(model)
         
-        builder = femagtools.FslBuilder()
+        builder = femagtools.fsl.Builder()
         return builder.create(model, operatingConditions, self.magnets)
     
     def read_bch(self, modelname):
         "read most recent BCH/BATCH file and return result"
         # read latest bch file if any
-        result = femagtools.BchReader()
+        result = femagtools.bch.Reader()
         bchfile_list = sorted(glob.glob(os.path.join(
             self.workdir, modelname+'_[0-9][0-9][0-9]'+BCHEXT)))
         if len(bchfile_list) > 0:

@@ -410,17 +410,17 @@ class Engine():
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # FEMAG STUFF
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    def create_job( self, workdir ):
+    def create_job(self, workdir):
         """Create a FEMAG :py:class:`CloudJob`
 
         :param str workdir: The workdir where the calculation files are stored
         :return: Cloud job
         :rtype: :py:class:`CloudJob`
         """
-        self.job = femagtools.CloudJob(workdir)
+        self.job = femagtools.job.CloudJob(workdir)
         return self.job
 
-    def submit( self ):
+    def submit(self):
         """Starts the FEMAG calculation(s) on Google Cloud
 
         :returns: length of started tasks

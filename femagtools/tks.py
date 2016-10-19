@@ -1,6 +1,6 @@
 """
-    femagtools.vbfreader
-    ~~~~~~~~~~~~~~~~~~~~
+    femagtools.tks
+    ~~~~~~~~~~~~~~
 
     Manage TKS magnetizing curve data files
 
@@ -56,11 +56,11 @@ def pfe2(f, B, cw, fw, fb):
     return cw*(f/fo)**fw * (B/Bo)**fb
 
 
-class TksReader:
+class Reader:
 
     def __init__(self, filename):
-        bhc=False
-        losses=False
+        bhc = False
+        losses = False
         self.version_mc_curve = 0
         self.mc1_type = 1
         self.mc1_remz = 0.0
@@ -74,8 +74,9 @@ class TksReader:
         self.MCURVES_MAX = 20
         self.MC1_NIMAX = 50
         self.MC1_MIMAX = 50
-        self.mc1_db2   = [ 0. for I in range(self.MCURVES_MAX)  ]
-        self.mc1_energy=[ [ 0 for I in range(self.MCURVES_MAX)  ] for K in range(self.MC1_MIMAX) ]
+        self.mc1_db2 = [0. for I in range(self.MCURVES_MAX)]
+        self.mc1_energy = [[0 for I in range(self.MCURVES_MAX)]
+                           for K in range(self.MC1_MIMAX)]
 
         self.curve=[]
         self.name=os.path.splitext(os.path.basename(filename))[0]
@@ -194,38 +195,39 @@ class TksReader:
                                      
 if __name__ == "__main__":
     import matplotlib.pylab as pl
-    if len(sys.argv)==2 :
-        filename=sys.argv[1]
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
     else:
-        filename=sys.stdin.readline().strip()
+        filename = sys.stdin.readline().strip()
             
-    tks = TksReader(filename)
+    tks = Reader(filename)
 
-    mcv=tks.getValues()
+    mcv = tks.getValues()
 
     for p in mcv['losses']['pfe']:
-        print( p )
+        print(p)
         
     cw, alfa, beta = femagtools.losscoeffs.fit(mcv['losses']['f'],
                                                mcv['losses']['B'],
                                                mcv['losses']['pfe'], 1.5, 50.)
     
-    n=100
-    B=pl.np.linspace(0.1,2,n)
+    n = 100
+    B = pl.np.linspace(0.1, 2, n)
     
     for i in range(len(mcv['losses']['f'])):
-        f=mcv['losses']['f'][i]
-        pfe=np.array(mcv['losses']['pfe']).T[i]
-        j,k= findNotNone(pfe)
-        pl.plot( B, pfe2(f,B,cw,alfa,beta) )
-        pl.plot( mcv['losses']['B'][j:k], pfe[j:k], marker='o', label="f1={} Hz".format(f) ) 
+        f = mcv['losses']['f'][i]
+        pfe = np.array(mcv['losses']['pfe']).T[i]
+        j, k = findNotNone(pfe)
+        pl.plot(B, pfe2(f, B, cw, alfa, beta))
+        pl.plot(mcv['losses']['B'][j:k], pfe[j:k],
+                marker='o', label="f1={} Hz".format(f))
 
     pl.title("Iron Losses " + filename)
     pl.yscale('log')
     pl.xscale('log')
     pl.xlabel("Induction [T]")
     pl.ylabel("Pfe [W/kg]")
-    pl.grid( True )
+    pl.grid(True)
     pl.show()
 
     #print tks.curve[0]['a']

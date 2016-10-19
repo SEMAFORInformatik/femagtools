@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 import unittest
-import tempfile
-import femagtools
+import femagtools.mcv
 import os
 
 
@@ -36,29 +35,27 @@ mcvPars =[dict(
 
 
 class MagnetizingCurveTest(unittest.TestCase):
-    maxDiff=None
 
-    def test_findById( self ):
-        mcv=femagtools.MagnetizingCurve(mcvPars)
-        result=mcv.find( 'TKS_NO_20' )
-        expected=mcvPars[0]['name']
+    def test_findById(self):
+        mcv = femagtools.mcv.MagnetizingCurve(mcvPars)
+        result = mcv.find('TKS_NO_20')
+        expected = mcvPars[0]['name']
         self.assertEqual(result, expected)
 
-    def test_writeFile( self ):
+    def test_writeFile(self):
         testPath = os.path.split(__file__)[0]
         if not testPath:
-            testPath='.'
-        mcvwriter = os.path.abspath(os.path.join( testPath, 'mcvwriter' ))
-        mcv=femagtools.MagnetizingCurve(mcvPars)
-        result=mcv.writefile( 'TKS_NO_20', '.', mcvwriter )
+            testPath = '.'
+        mcvwriter = os.path.abspath(os.path.join(testPath, 'mcvwriter'))
+        mcv = femagtools.mcv.MagnetizingCurve(mcvPars)
+        result = mcv.writefile('TKS_NO_20', '.', mcvwriter)
         self.assertEqual(result.split('.')[0], mcvPars[0]['name'])
-        out=[]
-        filename=result
+        out = []
         with open('dummy.mc') as f:
-            out=f.readlines()
+            out = f.readlines()
             
         self.assertEqual(len(out), 49)
         os.remove('dummy.mc')
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

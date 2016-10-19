@@ -40,8 +40,8 @@ def run_femag(workdir, fslfile):
     return proc.returncode
 
 
-class MultiProc:
-    """The MultiProc object uses a pool of local calculation processes.
+class Engine:
+    """The MultiProc engine uses a pool of local calculation processes.
 
     This is more or less a decorator for the `Python multiprocessing Module
     <https://docs.python.org/3.6/library/multiprocessing.html>`_

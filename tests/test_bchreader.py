@@ -2,7 +2,7 @@
 #
 import unittest
 import os
-import femagtools
+import femagtools.bch
 from io import open
 
 
@@ -12,7 +12,7 @@ class BchReaderTest(unittest.TestCase):
         testPath = os.path.join(os.path.split(__file__)[0], 'data')
         if len(testPath) == 0:
             testPath = os.path.join(os.path.abspath('.'), 'data')
-        r = femagtools.BchReader()
+        r = femagtools.bch.Reader()
         with open('{0}/{1}'.format(testPath, filename),
                   encoding='latin1') as f:
             r.read(f)

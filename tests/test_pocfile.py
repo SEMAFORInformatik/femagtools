@@ -2,7 +2,7 @@
 #
 import unittest
 import tempfile
-import femagtools
+import femagtools.poc
 import os
 
 sinPars =dict(
@@ -101,11 +101,11 @@ funcPars = dict(
 class PocFileTest(unittest.TestCase):
     maxDiff=None
 
-    def test_write_poc( self ):
+    def test_write_poc(self):
 
-        poc = femagtools.Poc(sinPars)
-        filename= tempfile.mkstemp()[1]
-        with open(filename,'w') as f:
+        poc = femagtools.poc.Poc(sinPars)
+        filename = tempfile.mkstemp()[1]
+        with open(filename, 'w') as f:
             poc.writefile(f)
 
         expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n360.0\nsin\n30.0\n3\n\n'
@@ -113,8 +113,8 @@ class PocFileTest(unittest.TestCase):
             result = f.read()
         self.assertEqual(result, expected)
 
-    def _createPoc( self, filename ):
-        poc = femagtools.Poc()
+    def _createPoc(self, filename):
+        poc = femagtools.poc.Poc()
         testPath = os.path.split(__file__)[0]
         if not testPath: testPath='.'
         with open('{0}/{1}'.format(testPath, filename)) as f:

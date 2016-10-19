@@ -9,36 +9,22 @@
     :license: BSD, see LICENSE for more details.
 """
 __title__ = 'femagtools'
-__version__ = '0.0.1'
+__version__ = '0.0.9'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2016 SEMAFOR Informatik & Energie AG'
 
-from .bch import BchReader
-from .machine import PmRelMachineLdq, PmRelMachinePsidq
-from .femag import BaseFemag, Femag, ZmqFemag
-from .model import MachineModel, FeaModel
-from .fsl import FslBuilder
-from .magcurv import MagnetizingCurve
+from .bch import Reader
+from .model import MachineModel
+from .fsl import Builder
 from .magnet import Magnet
-from .grid import Grid
-from .vbfreader import VbfReader
-from .tksreader import TksReader
-from .mcvreader import McvReader
-from .poc import Poc
-from .opt import Optimizer
-from .condor import Condor
-from .job import Job, CondorJob, CloudJob, Task, CloudTask
-from .moproblem import FemagMoProblem
-from .multiproc import MultiProc
-from .amazon import Engine
-from .google import Engine
+from .femag import Femag, ZmqFemag
 
 
 def read_bchfile(filename):
     """Read BCH/BATCH results from file *filename*."""
     import io
-    bchresults = BchReader()
+    bchresults = Reader()
     with io.open(filename) as f:
         bchresults.read(f.readlines())
     return bchresults
@@ -47,7 +33,7 @@ def read_bchfile(filename):
 def create_fsl(machine, operatingconditions=None, magnetmat=None):
     """create FSL command list from model parameters"""
     model = MachineModel(machine)
-    builder = FslBuilder()
+    builder = Builder()
     if operatingconditions:
         if magnetmat:
             magnets = Magnet(magnetmat)

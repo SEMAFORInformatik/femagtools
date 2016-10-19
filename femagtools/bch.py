@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     femagtools.bch
-    ~~~~~~~~------
+    ~~~~~~~~~~~~~~
 
     Reading BCH/BATCH files
 
@@ -43,10 +43,6 @@ def get_si_factor(contentline):
     return 1.0
 
 
-class BchReaderError(Exception):
-    pass
-                        
-
 def _readSections(f):
     """return list of bch sections
 
@@ -69,7 +65,7 @@ def _readSections(f):
             section.append(line.strip())
         
 
-class BchReader:
+class Reader:
     """Reads a BCH/BATCH-File"""
     _numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)')
 
@@ -107,46 +103,46 @@ class BchReader:
         self.areas = []
         self.current_angles = []
         self.dispatch = {
-            'General Machine Data': BchReader.__read_general_machine_data,
-            'Weigths': BchReader.__read_weights,
-            'Number of Nodes': BchReader.__read_nodes_and_mesh,
-            'Windings Data': BchReader.__read_dummy,
-            'Machine Data': BchReader.__read_machine_data,
-            'CAD-Parameter Data': BchReader.__read_dummy,
-            'Torque-Force': BchReader.__read_torque_force,
-            'Fourier Analysis': BchReader.__read_fft,
-            'Machine excitation': BchReader.__read_dummy,
-            'DQ-Parameter for open Winding Modell': BchReader.__read_dq_parameter,
-            'Magnet Data': BchReader.__read_magnet_data,
-            'Date': BchReader.__read_date,
-            'Inertia': BchReader.__read_dummy,
-            'Losses': BchReader.__read_dummy,
+            'General Machine Data': Reader.__read_general_machine_data,
+            'Weigths': Reader.__read_weights,
+            'Number of Nodes': Reader.__read_nodes_and_mesh,
+            'Windings Data': Reader.__read_dummy,
+            'Machine Data': Reader.__read_machine_data,
+            'CAD-Parameter Data': Reader.__read_dummy,
+            'Torque-Force': Reader.__read_torque_force,
+            'Fourier Analysis': Reader.__read_fft,
+            'Machine excitation': Reader.__read_dummy,
+            'DQ-Parameter for open Winding Modell': Reader.__read_dq_parameter,
+            'Magnet Data': Reader.__read_magnet_data,
+            'Date': Reader.__read_date,
+            'Inertia': Reader.__read_dummy,
+            'Losses': Reader.__read_dummy,
             'Fe-Hysteresis- and Eddy current Losses[W] > 0.1 % Max':
-            BchReader.__read_hysteresis_eddy_current_losses,
-            'Losses [W]':  BchReader.__read_losses,
-            'Losses for speed [1/min]': BchReader.__read_losses_tab,
+            Reader.__read_hysteresis_eddy_current_losses,
+            'Losses [W]':  Reader.__read_losses,
+            'Losses for speed [1/min]': Reader.__read_losses_tab,
             'Losses from PSID-Psiq-Identification for speed [1/min]':
-            BchReader.__read_losses_tab,
-            'Magnet loss data': BchReader.__read_dummy,
-            'Project File name': BchReader.__read_project_filename,
-            'File name': BchReader.__read_filename,
-            'Windings input data': BchReader.__read_windings,
-            'Control parameters for Loss calculation': BchReader.__read_lossPar,
-            'PSID-Psiq-Identification': BchReader.__read_psidq,
-            'Ld-Lq-Identifikation aus PSID-Psiq-Identification': BchReader.__read_psidq_ldq,
-            'Ld-Lq-Identification RMS-values': BchReader.__read_ldq,
-            'Machine Data Rotor': BchReader.__read_dummy,
-            'Current Angles defined from no-load test': BchReader.__read_current_angles,
-            'FEMAG Version': BchReader.__read_version,
-            'Simulation Data': BchReader.__read_dummy,
-            'Area [mm**2]': BchReader.__read_areas,
-            'Basic Machine parameters': BchReader.__read_dummy,
-            'Winding': BchReader.__read_dummy,
-            'Calculation time [sec]': BchReader.__read_dummy,
-            'Results for Angle I-Up [Degree]': BchReader.__read_dummy,
-            'Demagnetisation': BchReader.__read_demagnetization,
-            'Transient short circuit': BchReader.__read_short_circuit,
-            'Flux observed': BchReader.__read_flux}
+            Reader.__read_losses_tab,
+            'Magnet loss data': Reader.__read_dummy,
+            'Project File name': Reader.__read_project_filename,
+            'File name': Reader.__read_filename,
+            'Windings input data': Reader.__read_windings,
+            'Control parameters for Loss calculation': Reader.__read_lossPar,
+            'PSID-Psiq-Identification': Reader.__read_psidq,
+            'Ld-Lq-Identifikation aus PSID-Psiq-Identification': Reader.__read_psidq_ldq,
+            'Ld-Lq-Identification RMS-values': Reader.__read_ldq,
+            'Machine Data Rotor': Reader.__read_dummy,
+            'Current Angles defined from no-load test': Reader.__read_current_angles,
+            'FEMAG Version': Reader.__read_version,
+            'Simulation Data': Reader.__read_dummy,
+            'Area [mm**2]': Reader.__read_areas,
+            'Basic Machine parameters': Reader.__read_dummy,
+            'Winding': Reader.__read_dummy,
+            'Calculation time [sec]': Reader.__read_dummy,
+            'Results for Angle I-Up [Degree]': Reader.__read_dummy,
+            'Demagnetisation': Reader.__read_demagnetization,
+            'Transient short circuit': Reader.__read_short_circuit,
+            'Flux observed': Reader.__read_flux}
 
     def getStep(self):
         """@returns displacement step of flux values"""
@@ -187,7 +183,7 @@ class BchReader:
         d = content[0].split(':')[1].strip().split()
         dd, MM, yy = d[0].split('.')
         hh, mm = ''.join(d[1:-1]).split('.')
-        self.date = '{}-{}-{} {:02}:{:02}'.format(yy, MM, dd, int(hh), int(mm))
+        self.date = '{}-{}-{}T{:02}:{:02}'.format(yy, MM, dd, int(hh), int(mm))
 
     def __read_nodes_and_mesh(self, content):
         self.nodes, self.elements, self.quality = \
@@ -355,7 +351,7 @@ class BchReader:
                 if self.wdg not in self.flux:
                     self.flux[self.wdg] = []
         self.flux[self.wdg].append(f)
-        self._fft = BchReader.__read_flux_fft
+        self._fft = Reader.__read_flux_fft
         
     def __read_fft(self, content):
         if self._fft:
@@ -408,7 +404,7 @@ class BchReader:
             ripple = max(torque['torque']) - min(torque['torque'])
             torque['ripple'] = ripple
             self.torque.append(torque)
-        self._fft = BchReader.__read_torque_force_fft
+        self._fft = Reader.__read_torque_force_fft
         
     def __read_torque_force_fft(self, content):
         "read and append force/torque fft section"
@@ -826,21 +822,18 @@ class BchReader:
     
     def get(self, name, r=None):
         "return value of key name"
-        try:
-            if isinstance(name, str):
-                return self.__getattr__(name)
-            if r and type(r) == dict:
-                for k in name:
-                    r = r.get(k)
-                return r
-            if len(name) > 1:
-                if r:
-                    self.get(name[1:], getattr(r, name[0]))
-                return self.get(name[1:], getattr(self, name[0]))
-            return self.__getattr__(name[0])
-        except KeyError as e:
-            logger.error(e)
-            raise BchReaderError(e)
+
+        if isinstance(name, str):
+            return self.__getattr__(name)
+        if r and type(r) == dict:
+            for k in name:
+                r = r.get(k)
+            return r
+        if len(name) > 1:
+            if r:
+                self.get(name[1:], getattr(r, name[0]))
+            return self.get(name[1:], getattr(self, name[0]))
+        return self.__getattr__(name[0])
         
     def __getattr__(self, k):
         return self.__dict__[k]
@@ -899,7 +892,7 @@ def main():
     from io import open
 #    with open('logging.json', 'rt') as f:
 #        logging.config.dictConfig( json.load(f) )
-    bch=BchReader()
+    bch = Reader()
     for name in sys.argv[1:]:
         with codecs.open(name, encoding='ascii') as f:
             bch.read( f )

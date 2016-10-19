@@ -13,6 +13,10 @@ import glob
 import os
 import numpy as np
 import femagtools
+import femagtools.model
+import femagtools.fsl
+import femagtools.condor
+import femagtools.moproblem
 
 logger = logging.getLogger(__name__)
 
@@ -86,19 +90,20 @@ class Grid(object):
         steps = [d.get('steps', 10) for d in decision_vars]
         logger.info('STEPS %s', str(steps))
 
-        model = femagtools.MachineModel(pmMachine)
+        model = femagtools.model.MachineModel(pmMachine)
         # check if this model needs to be modified
         immutable_model = len([d for d in decision_vars
                                if hasattr(model,
                                           d['name'].split('.')[0])]) == 0
         operatingConditions['lfe'] = model.lfe
         operatingConditions.update(model.windings)
-        fea = femagtools.FeaModel(operatingConditions)
+        fea = femagtools.model.FeaModel(operatingConditions)
 
-        prob = femagtools.FemagMoProblem(decision_vars, objective_vars)
+        prob = femagtools.moproblem.FemagMoProblem(decision_vars,
+                                                   objective_vars)
 
         job = engine.create_job(self.femag.workdir)
-        builder = femagtools.FslBuilder()
+        builder = femagtools.fsl.Builder()
 
         # build x value array
         domain = [np.linspace(l, u, s)
@@ -117,7 +122,7 @@ class Grid(object):
         # split x value (par_range) array in handy chunks:
         for population in baskets(par_range, opt['population_size']):
             logger.info('........ %d / %d', p, len(par_range)//len(population))
-            if not isinstance(engine, femagtools.Condor):
+            if not isinstance(engine, femagtools.condor.Engine):
                 job.cleanup()
             for k, x in enumerate(population):
                 task = job.add_task()
@@ -146,7 +151,7 @@ class Grid(object):
 
             status = engine.submit()
             logger.info('Started %s', status)
-            if bchMapper and isinstance(engine, femagtools.Condor):
+            if bchMapper and isinstance(engine, femagtools.condor.Engine):
                  return {}  # BatchCalc Mode
             status = engine.join()
 

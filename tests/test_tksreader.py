@@ -2,14 +2,14 @@
 #
 import unittest
 import os
-import femagtools
+import femagtools.tks
 
 class TksReaderTest(unittest.TestCase):
     def test_read_tks( self ):
         testPath = os.path.split(__file__)[0]
         if not testPath: testPath='.'
         filename="data/TKS-M400-65A.txt"
-        tks = femagtools.TksReader('{0}/{1}'.format(testPath, filename))
+        tks = femagtools.tks.Reader('{0}/{1}'.format(testPath, filename))
         r = tks.getValues()
         self.assertEqual( r['name'], 'TKS-M400-65A' ) 
         self.assertEqual( len(r['losses']['f']), 4 ) 

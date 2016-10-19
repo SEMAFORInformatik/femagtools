@@ -4,17 +4,19 @@
  """
 import os
 import femagtools
+import femagtools.multiproc
+import femagtools.grid
 import logging
 
-parvar = {
+parvardef = {
     "objective_vars": [
         {"name": "dqPar.torque"},
         {"name": "torque.ripple"},
         {"name": "machine.plfe"}
     ],
-    "population_size": 3,
+    "population_size": 25,
     "decision_vars": [
-        {"steps": 3, "bounds": [-50, 0],
+        {"steps": 5, "bounds": [-50, 0],
          "name": "angl_i_up"}
     ]
 }
@@ -112,7 +114,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
 numprocs = 3
-engine = femagtools.MultiProc(numprocs)
+engine = femagtools.multiproc.Engine(numprocs)
 
 userdir = os.path.expanduser('~')
 workdir = os.path.join(userdir, 'parvar')
@@ -121,11 +123,11 @@ try:
 except OSError:
     pass
 
-grid = femagtools.Grid(workdir,
-                       magnetizingCurves=magnetizingCurve,
-                       magnets=magnetMat)
+parvar = femagtools.grid.Grid(workdir,
+                              magnetizingCurves=magnetizingCurve,
+                              magnets=magnetMat)
 
-results = grid(parvar, machine, operatingConditions, engine)
+results = parvar(parvardef, machine, operatingConditions, engine)
 
 print("Beta    T/Nm  Tr/Nm   Pfe/W")
 for l in zip(*(results['x']+results['f'])):

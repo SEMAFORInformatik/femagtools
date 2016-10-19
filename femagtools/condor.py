@@ -121,7 +121,7 @@ class CondorCluster(object):
             return self.getClusterList()
 
 
-class Condor(object):
+class Engine(object):
     """manages calculation tasks in a HTCondor environment"""
 
     def __init__(self):

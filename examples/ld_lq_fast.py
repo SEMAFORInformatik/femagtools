@@ -5,6 +5,7 @@
  """
 import os
 import femagtools
+import femagtools.machine
 import logging
 import numpy as np
 
@@ -124,13 +125,13 @@ psim = r.ldq['psim']
 p = r.machine['p']
 r1 = 0.0
 
-pm = femagtools.PmRelMachineLdq(3, p,
-                                psim,
-                                ld,
-                                lq,
-                                r1,
-                                beta,
-                                i1)
+pm = femagtools.machine.PmRelMachineLdq(3, p,
+                                        psim,
+                                        ld,
+                                        lq,
+                                        r1,
+                                        beta,
+                                        i1)
 
 tq = 170.0
 u1 = 340.0

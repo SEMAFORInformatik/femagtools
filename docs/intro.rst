@@ -11,7 +11,7 @@ Example (single process)::
 
 multi processes::
 
-  engine = femagtools.MultiProc()
+  engine = femagtools.multiproc.Engine()
   job = engine.create_job(workdir)
   for fsl in ('femag-1.fsl', 'femag-2.fsl', 'femag-3.fsl'):
       task = job.add_task()
@@ -122,13 +122,13 @@ Definition of the PM or Reluctance machine with Ld,Lq parameters::
   i1 = [80.0]
   beta = [0.0, -41.1]
 
-  pm = femagtools.PmRelMachineLdq(3, p,
-                                  psim,
-                                  ld,
-                                  lq,
-                                  r1,
-                                  beta,
-                                  i1)
+  pm = femagtools.machine.PmRelMachineLdq(3, p,
+                                          psim,
+                                          ld,
+                                          lq,
+                                          r1,
+                                          beta,
+                                          i1)
 
 Calculation of minimal current and frequency at given torque and max voltage::
 
@@ -184,16 +184,16 @@ Example: calculate torque, torque ripple and iron losses at beta=-50°,-25°,0°
     speed=50.0)
     
   numcores = 3
-  engine = femagtools.MultiProc(numcores)
+  engine = femagtools.multiproc.Engine(numcores)
 
   mcvDir = os.path.join(
             os.path.expanduser('~'), 'mcv')
 
-  grid = femagtools.Grid(workdir,
-                         magnetizingCurves=mcvDir)
+  g = femagtools.grid.Grid(workdir,
+                           magnetizingCurves=mcvDir)
 
-  results = grid(parvar, pmMachine,
-                 operatingConditions, engine)
+  results = g(parvar, pmMachine,
+              operatingConditions, engine)
 
 The variable results is a dict with the keys x and f holding the (n x m) arrays of the decision and the objective variables.
   
@@ -220,13 +220,12 @@ Example: minimize ripple and losses and maximize torque (note the sign parameter
          
     ]
   }
-  
-  num_generations = 3
-  
-  engine = femagtools.Condor()
-  o = femagtools.Optimizer(workdir,
-                           magnetizingCurve, magnetMat)
 
+  engine = femagtools.condor.Engine()
+  o = femagtools.opt.Optimizer(workdir,
+                               magnetizingCurve, magnetMat)
+
+  num_generations = 3
   results = o.optimize(num_generations,
                        opt, machine, operatingConditions, engine)
 

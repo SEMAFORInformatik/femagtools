@@ -9,6 +9,8 @@
     :license: BSD, see LICENSE for more details.
 """
 import femagtools
+import femagtools.fsl
+import femagtools.moproblem
 from .moo.algorithm import Nsga2
 from .moo.population import Population
 
@@ -87,9 +89,10 @@ class Optimizer(object):
         objective_vars = opt['objective_vars']
         population_size = opt['population_size']
                     
-        problem = femagtools.FemagMoProblem(decision_vars, objective_vars)
-        self.builder = femagtools.FslBuilder()
-        self.model = femagtools.Model(pmMachine)
+        problem = femagtools.moproblem.FemagMoProblem(decision_vars,
+                                                      objective_vars)
+        self.builder = femagtools.fsl.Builder()
+        self.model = femagtools.model.MachineModel(pmMachine)
         self.fea = operatingConditions
         self.fea.update(self.model.windings)
         self.fea['lfe'] = self.model.lfe

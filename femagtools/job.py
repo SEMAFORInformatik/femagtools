@@ -76,7 +76,7 @@ class Task(object):
 
     def get_results(self):
         """returns result of most recent BCH file"""
-        result = femagtools.bch.BchReader()
+        result = femagtools.bch.Reader()
         # read latest bch file if any
         bchfile_list = sorted(glob.glob(os.path.join(
             self.directory, '*_[0-9][0-9][0-9].B*CH')))

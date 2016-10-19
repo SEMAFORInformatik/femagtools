@@ -68,9 +68,6 @@ class Model(object):
         except KeyError as e:
             logger.error(e)
             raise MCerror(e)
-
-#    def __getitem__(self, k):
-#        return getattr(self, k)
      
     def __str__(self):
         "return string format of this object"
@@ -209,6 +206,8 @@ class FeaModel(Model):
     def __init__(self, parameters):
         super(self.__class__, self).__init__(parameters)
 
+    def __getitem__(self, k):
+        return getattr(self, k)
 
 if __name__ == '__main__':
 

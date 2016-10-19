@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import femagtools
+import femagtools.machine
 import numpy as np
 import matplotlib.pylab as pl
 
@@ -15,10 +16,10 @@ p = 4
 psim = bch.ldq['psim']
 ld = bch.ldq['ld']
 lq = bch.ldq['lq']
-pm = femagtools.PmRelMachineLdq(3, p,
-                                psim, ld, lq,
-                                r10,
-                                beta, i1)
+pm = femagtools.machine.PmRelMachineLdq(3, p,
+                                        psim, ld, lq,
+                                        r10,
+                                        beta, i1)
 
 
 u1 = 340

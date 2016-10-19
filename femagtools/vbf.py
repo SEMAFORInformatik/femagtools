@@ -1,6 +1,6 @@
 """
-    femagtools.vbfreader
-    ~~~~~~~~~~~~~~~~~~~~
+    femagtools.vbf
+    ~~~~~~~~~~~~~~
 
     Manage VBF magnetizing curve data files
 
@@ -37,13 +37,13 @@ def logpfe2(f, B, cw, fw, fb):
     return np.log10(cw) + fw*np.log10(f/fo) * fb*np.log10(B/Bo)
 
 
-class VbfReader:
+class Reader:
 
     def __init__(self, filename):
         self.vbf = {}
         with open(filename) as f:
             self.vbf['name'] = f.readline().strip()
-            self.vbf['fo'],self.vbf['Bo'] = [float(s)
+            self.vbf['fo'], self.vbf['Bo'] = [float(s)
                                              for s in f.readline().strip().split()]
             # Ignore the next line
             f.readline()
@@ -76,61 +76,59 @@ class VbfReader:
                     betacoeffs.append(beta)
 
         # fit alfa: pfe = cw_f*(f/fo)**alfa
-        alfacoeffs=[]
-        for i in range( len(self.vbf['B']) ):
-            bref=self.vbf['B'][i]
-            pfe=np.array(self.vbf['pfe'])[i]
-            j,k= findNotNone(pfe)
-            if j<=k:
-                y=[ np.log10(p) for p in pfe[j:k+1] ]
-                x=[ np.log10(f/self.vbf['fo']) for f in self.vbf['f'][j:k+1]]
-                A=np.vstack([x, np.ones(len(x))]).T
-                alfa,cw=np.linalg.lstsq(A, y)[0]
-                if alfa>1.2 and alfa<1.8:
+        alfacoeffs = []
+        for i in range(len(self.vbf['B'])):
+            pfe = np.array(self.vbf['pfe'])[i]
+            j, k = findNotNone(pfe)
+            if j <= k:
+                y = [np.log10(p) for p in pfe[j:k+1]]
+                x = [np.log10(f/self.vbf['fo']) for f in self.vbf['f'][j:k+1]]
+                A = np.vstack([x, np.ones(len(x))]).T
+                alfa, cw = np.linalg.lstsq(A, y)[0]
+                if alfa > 1.2 and alfa < 1.8:
                     alfacoeffs.append(alfa)
 
-        if len(self.vbf['f'])>1:
-            alfa=np.average(alfacoeffs)
+        if self.vbf['f']:
+            alfa = np.average(alfacoeffs)
         else:
-            alfa=1.3
-        beta=np.average(betacoeffs)
+            alfa = 1.3
+        beta = np.average(betacoeffs)
         # fit cw: pfe = cw * (f/fo)**alfa * (B/Bo)**beta
-        cw=[]
-        for i in range( len(self.vbf['f']) ):
-            f=self.vbf['f'][i]
-            for k in range( len(self.vbf['B']) ):
-                B=self.vbf['B'][k]
-                if i<len(self.vbf['pfe'][k]):
-                    pfe=self.vbf['pfe'][k][i]
+        cw = []
+        for i, f in enumerate(self.vbf['f']):
+            for k, B in enumerate(self.vbf['B']):
+                if i < len(self.vbf['pfe'][k]):
+                    pfe = self.vbf['pfe'][k][i]
                     if pfe:
-                        a=(f/self.vbf['fo'])**alfa*(B/self.vbf['Bo'])**beta
+                        a = (f/self.vbf['fo'])**alfa*(B/self.vbf['Bo'])**beta
                         cw.append(pfe/a)
-        return( np.average(cw), alfa, beta)
+        return(np.average(cw), alfa, beta)
 
 if __name__ == "__main__":
     import matplotlib.pylab as pl
-    if len(sys.argv)==2 :
-        filename=sys.argv[1]
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
     else:
-        filename=sys.stdin.readline().strip()
+        filename = sys.stdin.readline().strip()
             
-    vbf = VbfReader(filename)
+    vbf = Reader(filename)
 
     cw, alfa, beta = vbf.fitAllCoeffs()
 
-    n=100
-    B=pl.np.linspace(0.1,2,n)
+    n = 100
+    B = pl.np.linspace(0.1, 2, n)
     
     for i in range(len(vbf.vbf['f'])):
-        f=vbf.vbf['f'][i]
-        pfe=[p for p in np.array(vbf.vbf['pfe']).T[i] if p>0]
-        pl.plot( B, pfe2(f,B,cw,alfa,beta) )
-        pl.plot( vbf.vbf['B'][:len(pfe)], pfe, marker='o', label="f1={} Hz".format(f) ) 
+        f = vbf.vbf['f'][i]
+        pfe = [p for p in np.array(vbf.vbf['pfe']).T[i] if p > 0]
+        pl.plot(B, pfe2(f, B, cw, alfa, beta))
+        pl.plot(vbf. vbf['B'][:len(pfe)], pfe,
+                marker='o', label="f1={} Hz".format(f))
 
     pl.title("Iron Losses " + filename)
     pl.yscale('log')
     pl.xscale('log')
     pl.xlabel("Induction [T]")
     pl.ylabel("Pfe [W/kg]")
-    pl.grid( True )
+    pl.grid(True)
     pl.show()

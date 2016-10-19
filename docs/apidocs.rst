@@ -8,30 +8,30 @@ Basic Classes
 .. autoclass:: Femag
    :members:
       
-.. autoclass:: Model
+.. autoclass:: femagtools.model.MachineModel
    :members:
 
-.. autoclass:: MagnetizingCurve
+.. autoclass:: femagtools.mcv.MagnetizingCurve
    :members:
       
-.. autoclass:: FslBuilder
+.. autoclass:: femagtools.fsl.Builder
    :members:
 
 Calculation Engines
 -------------------
-.. autoclass:: Job
+.. autoclass:: femagtools.job.Job
    :members:
 
-.. autoclass:: CloudJob
+.. autoclass:: femagtools.job.CloudJob
    :members:
    
-.. autoclass:: Task
+.. autoclass:: femagtools.job.Task
    :members:
 
-.. autoclass:: CloudTask
+.. autoclass:: femagtools.job.CloudTask
    :members:
 
-.. autoclass:: MultiProc
+.. autoclass:: femagtools.multiproc.Engine
    :members:
 
 .. automethod:: femagtools.multiproc.run_femag(workdir, fslfile)
@@ -44,5 +44,5 @@ Calculation Engines
 
 Parameter Variation
 -------------------
-.. autoclass:: Grid
+.. autoclass:: femagtools.grid.Grid
       

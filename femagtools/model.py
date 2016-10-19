@@ -98,6 +98,7 @@ class MachineModel(Model):
             ..
         }
         }
+
     """
     def __init__(self, parameters):
         super(self.__class__, self).__init__(parameters)
@@ -125,7 +126,9 @@ class MachineModel(Model):
 
         :param magcurves: :class: 'MagnetizingCurve' including
                               magnetizing curve materials
+
         :returns: set of magnetizing curve names attached to this model
+
         """
         names = []
         missing = []

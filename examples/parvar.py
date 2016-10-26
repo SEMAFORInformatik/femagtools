@@ -3,8 +3,9 @@
  Parameter Variation with Femag
  """
 import os
-import femagtools
 import femagtools.multiproc
+import femagtools.google
+import femagtools.amazon
 import femagtools.grid
 import logging
 
@@ -115,6 +116,11 @@ logging.basicConfig(level=logging.INFO,
 
 numprocs = 3
 engine = femagtools.multiproc.Engine(numprocs)
+
+# engine = femagtools.google.Engine()
+# engine = femagtools.amazon.Engine()
+# Important to use config from file when using google or amazon
+# engine.config.from_ini_file('config.ini')
 
 userdir = os.path.expanduser('~')
 workdir = os.path.join(userdir, 'parvar')

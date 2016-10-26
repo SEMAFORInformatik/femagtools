@@ -55,7 +55,7 @@ class Engine():
         'INSTANCE_TYPE': 'n1-standard-1',
         'IMAGE_ID': 'femag-v1',
         'FINISH_TASK_FILENAME': 'exit_code',
-        'COMPANY_NAME': 'femag'
+        'COMPANY_NAME': 'femag',
     }
 
     def __init__(self, buckets=None):

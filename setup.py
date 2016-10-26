@@ -3,6 +3,9 @@
 #   python setup.py sdist bdist_wheel
 #   twine upload dist/*
 #
+#   To use these commands install wheel and twine
+#   pip install wheel twine
+#
 try:
     from setuptools import setup
 except ImportError:

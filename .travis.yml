@@ -4,7 +4,7 @@ python:
   - "3.4"
 
 install:
-  - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib anaconda-client conda-build
   - conda install --yes -c dan_blanchard python-coveralls
   - pip install .
   - pip install boto3 zmq pytest mock
@@ -36,6 +36,7 @@ branches:
     - master
     - development
 
+
 deploy:
   provider: pypi
   user: "$PYPI_USERNAME"
@@ -43,3 +44,7 @@ deploy:
   distributions: "sdist bdist_wheel"
   on:
     tags: true
+
+after_deploy:
+  - ./conda_deploy.sh
+  

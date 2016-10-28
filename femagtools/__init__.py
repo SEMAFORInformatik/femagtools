@@ -25,7 +25,7 @@ def read_bchfile(filename):
     """Read BCH/BATCH results from file *filename*."""
     import io
     bchresults = Reader()
-    with io.open(filename) as f:
+    with io.open(filename, encoding='latin1', errors='ignore') as f:
         bchresults.read(f.readlines())
     return bchresults
 

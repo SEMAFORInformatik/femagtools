@@ -61,7 +61,7 @@ if __name__ == "__main__":
         
     filename = sys.argv[1]
     bchresults = Reader()
-    with io.open(filename) as f:
+    with io.open(filename, encoding='latin1', errors='ignore') as f:
         bchresults.read(f.readlines())
 
     reparsed = xml.dom.minidom.parseString(el.tostring(

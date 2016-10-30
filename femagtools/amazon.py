@@ -275,9 +275,6 @@ class Engine(object):
         """
         status_code = []
         for t in self.job.tasks:
-            import pdb
-            pdb.set_trace()
-            print(t.directory)
             dir = "{}/{}".format(t.directory, filename)
             file = open(dir, 'r')
             status_code.append(file.read())

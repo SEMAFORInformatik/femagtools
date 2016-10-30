@@ -16,11 +16,9 @@ Fast start
 To use Amazon as engine, setup a configuartion and a cloud init file and use amazon as engine::
 
   import femagtools
-  engine = femagtools.amazon.Engine(company='semafor_ag', buckets=None)
+  engine = femagtools.amazon.Engine(buckets=None)
   # Load config file
   engine.config.from_ini_file('config.ini')
-
-The company is used to tag the instance with the company name.
 
 If you already uploaded some FEMAG files you can add the bucket as list::
 
@@ -62,11 +60,11 @@ Example of a configuration file::
 
 Cloud Init
 ----------
-With the cloud init file you can define, what happens, after the instance startet up. This is a good place to start the calculation.
+With the cloud init file you can define, what happens, after the instance started up. This is a good place to start the calculation.
 
 The special entry *{{ENV}}* indicates the femagtools module to put all the configuration options as environment variables. Additionally it adds the bucket name as *BUCKET_NAME* environment to download the files from the correct Bucket.
 
-..note:: The files are for one calculation transferd as in a tar.gz file
+.. note:: The files are for one calculation transferd as in a tar.gz file
 Example::
  
  #!/bin/bash

@@ -69,7 +69,8 @@ class Builder:
             ["mcvkey_yoke='" + model.magnet['mcvkey_yoke'] + "'",
              "mcvkey_shaft='" + model.magnet['mcvkey_mshaft'] + "'"] + \
             self.create_magnet_model(model) + \
-            ['pre_models("connect_models")\n']
+            ['pre_models("connect_models")\n',
+             'save_model(cont)']
     
     def open_model(self, model, magnets=None):
         return self.create_open(model) + \

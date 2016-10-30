@@ -3,13 +3,13 @@ Introduction and Overview
 
 Run FEMAG with FSL
 ++++++++++++++++++
-Example (single process)::
+Run a single calculation (single process)::
   
   workdir = os.path.join(os.path.expanduser('~'), 'femag')
   femag = femagtools.Femag(workdir)
   femag.run('femag.fsl')
 
-multi processes::
+Run several calculations in parallel (multi processes)::
 
   engine = femagtools.multiproc.Engine()
   job = engine.create_job(workdir)
@@ -22,15 +22,20 @@ multi processes::
   
 Read BCH/BATCH File
 +++++++++++++++++++
-Example::
+Read a BCH file and print the machine torque::
 
   bch = femagtools.read_bchfile('TEST_002.BCH')
   print(bch.machine['torque'])
 
+Convert a BCH file to XML by command line::
+
+  python -m femagtools.bchxml TEST_002.BCH
+
+This command creates the file TEST_002.xml
 
 Create FSL and/or invoke FEMAG with Model Parameters
 ++++++++++++++++++++++++++++++++++++++++++++++++++++
-Example::
+Create a FE model from the templates stator1 and magnetSector::
 
   machine = dict(
      name = "PM 130 L4",

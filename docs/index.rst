@@ -14,7 +14,7 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 Installation
 ------------
 
-Install Femagtools with Pip::
+Femagtools can be installed on any 2.7 or 3.x Python distribution with Numpy, Scipy and Pip::
 
   $ pip install femagtools
 

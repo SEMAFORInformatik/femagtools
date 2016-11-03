@@ -207,9 +207,20 @@ class MachineModel(Model):
 
 class FeaModel(Model):
     def __init__(self, parameters):
+        self.cufilfact = 0.45
+        self.culength = 1.4
+        self.wind_temp = 20
+        self.slot_indul = 0.0
+        self.skew_angle = 0.0
+        self.num_skew_steps = 0
+        self.num_par_wdgs = 1
+        self.eval_force = 0
+        self.optim_i_up = 0
         super(self.__class__, self).__init__(parameters)
-
-    def __getitem__(self, k):
+        
+    def __getitem__(self, k, default=None):
+        if default:
+            return getattr(self, k, default)
         return getattr(self, k)
 
 if __name__ == '__main__':

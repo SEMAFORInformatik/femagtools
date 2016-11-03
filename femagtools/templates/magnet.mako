@@ -6,7 +6,7 @@
  m.temcoefhc      =    ${model.get('temcoefhc', -0.001)*100}
  m.magntemp       =    ${model.get('magntemp', 20)}
  m.magncond       =    ${model.get('magncond', 625000.0)}
- m.magnwidth      =    ${model.get('magnwidth')*1e3}
- m.magnlength     =    ${model.get('magnlength')*1e3}
+ m.magnwidth      =    ${model.get('magnwidth', 0.0)*1e3}
+ m.magnlength     =    ${model.get('magnlength', 0.0)*1e3}
  
  pre_models("Magnet-data")

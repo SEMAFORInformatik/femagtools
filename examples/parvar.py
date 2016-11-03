@@ -8,6 +8,7 @@ import femagtools.google
 import femagtools.amazon
 import femagtools.grid
 import logging
+import numpy as np
 
 parvardef = {
     "objective_vars": [
@@ -17,8 +18,10 @@ parvardef = {
     ],
     "population_size": 25,
     "decision_vars": [
-        {"steps": 5, "bounds": [-50, 0],
-         "name": "angl_i_up"}
+        {"steps": 4, "bounds": [-50, 0],
+         "name": "angl_i_up"},
+        {"steps": 3, "bounds": [100, 200],
+         "name": "current"}
     ]
 }
 
@@ -115,7 +118,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
 numprocs = 3
-engine = femagtools.multiproc.Engine(numprocs)
+engine = femagtools.condor.Engine()
 
 # engine = femagtools.google.Engine()
 # engine = femagtools.amazon.Engine()
@@ -135,6 +138,32 @@ parvar = femagtools.grid.Grid(workdir,
 
 results = parvar(parvardef, machine, operatingConditions, engine)
 
-print("Beta    T/Nm  Tr/Nm   Pfe/W")
-for l in zip(*(results['x']+results['f'])):
-    print('{0:6.1f} {1:6.1f}{2:6.1f} {3:8.1f}'.format(*l))
+x = femagtools.grid.create_parameter_range(results['x'])
+f = np.array([np.array(o).ravel() for o in results['f']])
+
+#print("x: {}".format(results['x']))
+#print("f: {}".format(results['f']))
+#print("Beta    T/Nm  Tr/Nm   Pfe/W")
+
+# print header
+print(' '.join(['{:12}'.format(s)
+                for s in [d['name']
+                          for d in parvardef['decision_vars']] +
+                [o['name']
+                 for o in parvardef['objective_vars']]]))
+print()
+# print values in table format
+for l in np.hstack((x, f)):
+    print(' '.join(['{:12.2f}'.format(x) for x in l]))
+
+# create scatter plot
+#
+import matplotlib.pyplot as pl
+import mpl_toolkits.mplot3d as mpl
+fig = pl.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(x[:, 0], x[:, 1], np.array(f[0]).ravel())
+ax.set_xlabel(parvardef['decision_vars'][0]['name'])
+ax.set_ylabel(parvardef['decision_vars'][1]['name'])
+ax.set_zlabel(parvardef['objective_vars'][0]['name'])
+pl.savefig('parvar.png')

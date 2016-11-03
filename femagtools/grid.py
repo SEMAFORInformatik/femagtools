@@ -38,6 +38,20 @@ def chunks(l, n):
         yield l[i:i+n]
 
 
+def create_parameter_range(domain):
+    """returns the transposed array of the combined domain values"""
+    L = [len(d) for d in domain]
+    LS = np.prod(L)
+    s = []
+    e = 1
+    for d in domain:
+        LS = LS//len(d)
+        s.append(np.repeat(d*LS, e))
+        e = e*L[0]
+        L = L[1:]
+    return np.array(s).T
+
+
 class Grid(object):
     """Parameter variation calculation"""
     def __init__(self, workdir,
@@ -59,28 +73,16 @@ class Grid(object):
                               ['save_model(close)']))
 
         self.femag.run(filename, options=['-b'])
-        model_files = [os.path.join(self.femag.workdir, m) for m in mc_files] + \
-                      glob.glob(os.path.join(self.femag.workdir,
-                                             model.name+'_*.poc')) + \
-                        glob.glob(os.path.join(self.femag.workdir,
-                                               model.name+'*7'))
+        model_files = [os.path.join(self.femag.workdir, m)
+                       for m in mc_files] + \
+                           glob.glob(os.path.join(self.femag.workdir,
+                                                  model.name+'_*.poc')) + \
+                            glob.glob(os.path.join(self.femag.workdir,
+                                                   model.name+'*7'))
         
         logger.info("model %s created", model.name)
         return model_files
     
-    def create_parameter_range(self, domain):
-        """returns the transposed array of the combined domain values"""
-        L = [len(d) for d in domain]
-        LS = np.prod(L)
-        s = []
-        e = 1
-        for d in domain:
-            LS = LS//len(d)
-            s.append(np.repeat(d.tolist()*LS, e))
-            e = e*L[0]
-            L = L[1:]
-        return np.array(s).T
-
     def __call__(self, opt, pmMachine, operatingConditions,
                  engine, bchMapper=None):
         """calculate objective vars for all decision vars"""
@@ -106,10 +108,11 @@ class Grid(object):
         builder = femagtools.fsl.Builder()
 
         # build x value array
-        domain = [np.linspace(l, u, s)
+        
+        domain = [list(np.linspace(l, u, s))
                   for s, l, u in zip(steps, prob.lower, prob.upper)]
 
-        par_range = self.create_parameter_range(domain)
+        par_range = create_parameter_range(domain)
         f = []
         p = 1
         logger.debug(par_range)
@@ -144,6 +147,7 @@ class Grid(object):
                             model,
                             task.directory):
                         task.add_file(mc)
+
                     task.add_file('femag.fsl',
                                   builder.create_model(model,
                                                        self.femag.magnets) +
@@ -175,7 +179,7 @@ class Grid(object):
         shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
         objectives = np.reshape(np.array(f).T, shape)
         return dict(f=objectives.tolist(),
-                    x=[d.tolist() for d in domain])
+                    x=domain)
 
     def addBchMapperData(self, bchData):
         delObjVecAttr = {'flux_fft': ['a', 'b', 'voltage_perc', 'flux_perc'],

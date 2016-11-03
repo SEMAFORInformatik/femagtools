@@ -53,7 +53,8 @@ class Builder:
         return self.__render(model, templ)
 
     def create_open(self, model):
-        return self.__render(model, 'open')
+        return self.__render(model, 'open') + \
+            self.__render(model, 'basic_modpar')
     
     def create_new_model(self, model):
         return self.__render(model, 'new_model')
@@ -76,6 +77,9 @@ class Builder:
         return self.create_open(model) + \
             self.create_magnet(model, magnets) + \
             self.__render(model.windings, 'cu_losses')
+    
+    def load_model(self, model, magnets=None):
+        return self.__render(model, 'open')
     
     def create_magnet(self, model, magnets):
         if magnets and 'material' in model.magnet:

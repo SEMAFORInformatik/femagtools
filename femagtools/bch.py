@@ -19,6 +19,15 @@ logger = logging.getLogger('femagtools.bch')
 
 alpha20 = 3.93e-3  # temperature coeff of copper
 
+_indxOpPattern = re.compile(r'[a-zA-Z0-9_]+(\[[-0-9]+\])')
+
+def splitindex(name):
+    "returns listname and index if name contains index"
+    m = _indxOpPattern.search(name)
+    if m:
+        return (name.split('[')[0],
+                indx = int(''.join(list(m.group(1))[1:-1])))
+    return (name,None)
 
 def floatnan(s):
     """converts string to float
@@ -821,18 +830,42 @@ class Reader:
         self.losses[-1]['fft'] = losses
     
     def get(self, name, r=None):
-        "return value of key name"
-
+        """return value of key name
+        name can be a list such as ['torque[1]', 'ripple']
+        or a string: 'dqPar'
+        """
+        logger.info("Name %s", name)
         if isinstance(name, str):
+            lname, indx = splitindex(name)
+            if indx:
+                return self.__getattr__(lname).__getitem__(indx)
             return self.__getattr__(name)
+        
         if r and type(r) == dict:
             for k in name:
-                r = r.get(k)
+                lname, indx = splitname(k)
+                if indx:
+                    r = r.get(lname).__getitem__(indx)
+                else:
+                    r = r.get(k)
             return r
+        
         if len(name) > 1:
+            lname, indx = splitname(name[0])
             if r:
-                self.get(name[1:], getattr(r, name[0]))
+                if indx:
+                    return self.get(name[1:],
+                                    getattr(r, lname).__getitem__(indx))
+                    
+            if indx:
+                return self.get(name[1:],
+                                getattr(self, lname).__getitem__(indx))
+
             return self.get(name[1:], getattr(self, name[0]))
+        
+        lname, indx = splitname(name[0])
+        if indx:
+            return self.__getattr__(lname).__getitem__(indx)
         return self.__getattr__(name[0])
         
     def __getattr__(self, k):

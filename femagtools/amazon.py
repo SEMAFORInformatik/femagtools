@@ -290,6 +290,12 @@ class Engine(object):
         logger.info("Deleting buckets: ")
         self._wait_for_threads_finished(threads, "Deleting buckets")
 
+        # Clean up volumes
+        client = self.ec2_resource.meta.client
+        volumes = client.describe_volumes(Filters=[{'Name': 'status', 'Values': ['available']}])['Volumes']
+        for v in volumes:
+            client.delete_volume(VolumeId=v['VolumeId'])
+
     def _delete_bucket(self, bucket_name):
         bucket = self.s3_resource.Bucket(bucket_name)
         for key in bucket.objects.all():

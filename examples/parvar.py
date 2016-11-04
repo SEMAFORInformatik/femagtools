@@ -135,7 +135,7 @@ parvar = femagtools.grid.Grid(workdir,
 results = parvar(parvardef, machine, operatingConditions, engine)
 
 x = femagtools.grid.create_parameter_range(results['x'])
-f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0]))
+f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0])).T
 
 #print("x: {}".format(results['x']))
 #print("f: {}".format(results['f']))

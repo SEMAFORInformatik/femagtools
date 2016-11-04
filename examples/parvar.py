@@ -12,9 +12,9 @@ import numpy as np
 
 parvardef = {
     "objective_vars": [
-        {"name": "dqPar.torque"},
-        {"name": "torque.ripple"},
-        {"name": "machine.plfe"}
+        {"name": "dqPar.torque[-1]"},
+        {"name": "torque[-1].ripple"},
+        {"name": "machine.plfe[-1]"}
     ],
     "population_size": 25,
     "decision_vars": [
@@ -117,8 +117,7 @@ machine = {
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-numprocs = 3
-engine = femagtools.condor.Engine()
+engine = femagtools.multiproc.Engine()
 
 # engine = femagtools.google.Engine()
 # engine = femagtools.amazon.Engine()
@@ -139,7 +138,7 @@ parvar = femagtools.grid.Grid(workdir,
 results = parvar(parvardef, machine, operatingConditions, engine)
 
 x = femagtools.grid.create_parameter_range(results['x'])
-f = np.array([np.array(o).ravel() for o in results['f']])
+f = np.array([np.array(o).ravel() for o in results['f']]).T
 
 #print("x: {}".format(results['x']))
 #print("f: {}".format(results['f']))

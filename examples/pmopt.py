@@ -11,9 +11,9 @@ import logging
 
 opt = {
     "objective_vars": [
-        {"desc": "Torque / Nm", "name": "dqPar.torque", "sign": -1},
-        {"desc": "Torque Ripple / Nm", "name": "torque.ripple"},
-        {"desc": "Iron Loss / W", "name": "machine.plfe"}
+        {"desc": "Torque / Nm", "name": "dqPar.torque[-1]", "sign": -1},
+        {"desc": "Torque Ripple / Nm", "name": "torque[-1].ripple"},
+        {"desc": "Iron Loss / W", "name": "machine.plfe[-1]"}
     ],
     "population_size": 16,
     "decision_vars": [

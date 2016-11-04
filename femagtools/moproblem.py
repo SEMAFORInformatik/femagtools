@@ -46,16 +46,6 @@ class FemagMoProblem(Problem):
 
     def setResult(self, result):
         self.result = result
-        if 'torque' in result.dqPar:
-            self.result.dqPar['torque'] = result.dqPar['torque'][-1]
-        self.result.torque = result.torque[-1]
-        try:
-            self.result.machine['plmag'] = result.machine['plmag'][-1]
-            self.result.machine['plfe1'] = result.machine['plfe1'][-1]
-            self.result.machine['plfe2'] = result.machine['plfe2'][-1]
-            self.result.machine['plfe'] = result.machine['plfe'][-1]
-        except:
-            pass  # ignore any key or index errors
             
     def objfun(self, x):
         for o in self.objective_vars:

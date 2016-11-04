@@ -21,13 +21,15 @@ alpha20 = 3.93e-3  # temperature coeff of copper
 
 _indxOpPattern = re.compile(r'[a-zA-Z0-9_]+(\[[-0-9]+\])')
 
+
 def splitindex(name):
     "returns listname and index if name contains index"
     m = _indxOpPattern.search(name)
     if m:
         return (name.split('[')[0],
-                indx = int(''.join(list(m.group(1))[1:-1])))
-    return (name,None)
+                int(''.join(list(m.group(1))[1:-1])))
+    return (name, None)
+
 
 def floatnan(s):
     """converts string to float
@@ -834,39 +836,36 @@ class Reader:
         name can be a list such as ['torque[1]', 'ripple']
         or a string: 'dqPar'
         """
-        logger.info("Name %s", name)
-        if isinstance(name, str):
+        if isinstance(name, str):  # ignore r
             lname, indx = splitindex(name)
-            if indx:
-                return self.__getattr__(lname).__getitem__(indx)
-            return self.__getattr__(name)
-        
-        if r and type(r) == dict:
-            for k in name:
-                lname, indx = splitname(k)
-                if indx:
-                    r = r.get(lname).__getitem__(indx)
-                else:
-                    r = r.get(k)
-            return r
+            if indx is None:
+                return self.__getattr__(name)
+            return self.__getattr__(lname).__getitem__(indx)
         
         if len(name) > 1:
-            lname, indx = splitname(name[0])
+            lname, indx = splitindex(name[0])
             if r:
-                if indx:
+                if indx is None:
                     return self.get(name[1:],
-                                    getattr(r, lname).__getitem__(indx))
-                    
-            if indx:
+                                    getattr(r, lname))
                 return self.get(name[1:],
-                                getattr(self, lname).__getitem__(indx))
+                                getattr(r, lname).__getitem__(indx))
+                    
+            if indx is None:
+                return self.get(name[1:],
+                                getattr(self, lname))
+            return self.get(name[1:],
+                            getattr(self, lname).__getitem__(indx))
 
-            return self.get(name[1:], getattr(self, name[0]))
+        lname, indx = splitindex(name[0])
+        if r:
+            if indx is None:
+                return r.get(name[0])
+            return r.get(lname).__getitem__(indx)
         
-        lname, indx = splitname(name[0])
-        if indx:
-            return self.__getattr__(lname).__getitem__(indx)
-        return self.__getattr__(name[0])
+        if indx is None:
+            return self.__getattr__(name[0])
+        return self.__getattr__(lname).__getitem__(indx)
         
     def __getattr__(self, k):
         return self.__dict__[k]

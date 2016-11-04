@@ -125,8 +125,7 @@ class Grid(object):
         # split x value (par_range) array in handy chunks:
         for population in baskets(par_range, opt['population_size']):
             logger.info('........ %d / %d', p, len(par_range)//len(population))
-            if not isinstance(engine, femagtools.condor.Engine):
-                job.cleanup()
+            job.cleanup()
             for k, x in enumerate(population):
                 task = job.add_task()
                 if immutable_model:
@@ -174,9 +173,10 @@ class Grid(object):
             p += 1
 
         logger.info('...... DONE')
-        logger.debug("Result %s", str(f))
+        logger.debug("Result %s", np.shape(f))
 
         shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
+        logger.info("f shape %s --> %s", np.shape(np.array(f).T), shape)
         objectives = np.reshape(np.array(f).T, shape)
         return dict(f=objectives.tolist(),
                     x=domain)

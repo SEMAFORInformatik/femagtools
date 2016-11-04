@@ -3,9 +3,9 @@
  Parameter Variation with Femag
  """
 import os
-import femagtools.multiproc
-import femagtools.google
-import femagtools.amazon
+from femagtools.multiproc import Engine
+#import femagtools.google
+#import femagtools.amazon
 import femagtools.grid
 import logging
 import numpy as np
@@ -117,11 +117,8 @@ machine = {
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-engine = femagtools.multiproc.Engine()
+engine = Engine()
 
-# engine = femagtools.google.Engine()
-# engine = femagtools.amazon.Engine()
-# Important to use config from file when using google or amazon
 # engine.config.from_ini_file('config.ini')
 
 userdir = os.path.expanduser('~')
@@ -138,14 +135,13 @@ parvar = femagtools.grid.Grid(workdir,
 results = parvar(parvardef, machine, operatingConditions, engine)
 
 x = femagtools.grid.create_parameter_range(results['x'])
-f = np.array([np.array(o).ravel() for o in results['f']]).T
+f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0]))
 
 #print("x: {}".format(results['x']))
 #print("f: {}".format(results['f']))
-#print("Beta    T/Nm  Tr/Nm   Pfe/W")
 
 # print header
-print(' '.join(['{:12}'.format(s)
+print(' '.join(['{:15}'.format(s)
                 for s in [d['name']
                           for d in parvardef['decision_vars']] +
                 [o['name']
@@ -153,7 +149,7 @@ print(' '.join(['{:12}'.format(s)
 print()
 # print values in table format
 for l in np.hstack((x, f)):
-    print(' '.join(['{:12.2f}'.format(x) for x in l]))
+    print(' '.join(['{:15.2f}'.format(x) for x in l]))
 
 # create scatter plot
 #

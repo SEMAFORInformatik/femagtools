@@ -59,7 +59,7 @@ class Engine(object):
         self.ec2_resource = self._create_amazon_resource('ec2')
 
         # Create instance of config
-        self.config = Config(self.default_config, configfile)
+        self.config = Config(self.default_config)
         self.config.from_ini_file(configfile)
         
     def _create_amazon_resource(self, resource):

@@ -8,6 +8,8 @@
     :license: BSD, see LICENSE for more details.
     :authors: R. Tanner, N. Mauchle
 """
+import sys
+import platform
 import multiprocessing
 import subprocess
 import os
@@ -17,7 +19,7 @@ from .job import Job
 logger = logging.getLogger(__name__)
 
 
-def run_femag(workdir, fslfile):
+def run_femag(cmd, workdir, fslfile):
     """Start the femag command as subprocess.
 
     :internal:
@@ -28,7 +30,7 @@ def run_femag(workdir, fslfile):
     logger.info('FEMAG %s: %s', workdir, fslfile)
     with open(os.path.join(workdir, "femag.out"), "wb") as out, \
          open(os.path.join(workdir, "femag.err"), "wb") as err:
-        proc = subprocess.Popen(['xfemag', '-b', fslfile],
+        proc = subprocess.Popen(cmd + ['-b', fslfile],
                                 shell=False,
                                 stdout=out,
                                 stderr=err,
@@ -48,8 +50,21 @@ class Engine:
 
     :param process_count: number of processes (cpu_count() if None)
     """
-    def __init__(self, process_count=None):
+    def __init__(self, cmd=None, process_count=None):
         self.process_count = process_count
+        if cmd:
+            self.cmd = cmd
+        else:
+            if sys.platform.startswith('linux'):
+                if platform.machine() == 'x86_64':
+                    self.cmd = ['xfemag64']
+                else:
+                    self.cmd = ['xfemag']
+            else:
+                if platform.machine() == 'AMD64':
+                    self.cmd = ['wfemagw64', '-m']
+                else:
+                    self.cmd = ['wfemag', '-m']
 
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`Job`
@@ -68,7 +83,9 @@ class Engine:
         """
         pool = multiprocessing.Pool(self.process_count)
         self.tasks = [pool.apply_async(run_femag,
-                                       args=(t.directory, t.fsl_file))
+                                       args=(self.cmd,
+                                             t.directory,
+                                             t.fsl_file))
                       for t in self.job.tasks]
         return len(self.tasks)
 

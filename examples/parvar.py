@@ -12,16 +12,16 @@ import numpy as np
 
 parvardef = {
     "objective_vars": [
-        {"name": "dqPar.torque[-1]"},
-        {"name": "torque[-1].ripple"},
-        {"name": "machine.plfe[-1]"}
+        {"name": "dqPar.torque[-1]", "label":"Load Torque/Nm"},
+        {"name": "torque[-1].ripple", "label":"Torque Ripple/Nm"},
+        {"name": "machine.plfe[-1]", "label":"Iron Losses/W"}
     ],
     "population_size": 25,
     "decision_vars": [
         {"steps": 4, "bounds": [-50, 0],
-         "name": "angl_i_up"},
+         "name": "angl_i_up", "label":"Beta"},
         {"steps": 3, "bounds": [100, 200],
-         "name": "current"}
+         "name": "current", "label":"Current/A"}
     ]
 }
 
@@ -142,9 +142,9 @@ f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0])).T
 
 # print header
 print(' '.join(['{:15}'.format(s)
-                for s in [d['name']
+                for s in [d['label']
                           for d in parvardef['decision_vars']] +
-                [o['name']
+                [o['label']
                  for o in parvardef['objective_vars']]]))
 print()
 # print values in table format
@@ -157,8 +157,8 @@ import matplotlib.pyplot as pl
 import mpl_toolkits.mplot3d as mpl
 fig = pl.figure()
 ax = fig.add_subplot(111, projection='3d')
-ax.scatter(x[:, 0], x[:, 1], np.array(f[0]).ravel())
-ax.set_xlabel(parvardef['decision_vars'][0]['name'])
-ax.set_ylabel(parvardef['decision_vars'][1]['name'])
-ax.set_zlabel(parvardef['objective_vars'][0]['name'])
+ax.scatter(x[:, 0], x[:, 1], np.array(f[:, 0]))
+ax.set_xlabel(parvardef['decision_vars'][0]['label'])
+ax.set_ylabel(parvardef['decision_vars'][1]['label'])
+ax.set_zlabel(parvardef['objective_vars'][0]['label'])
 pl.savefig('parvar.png')

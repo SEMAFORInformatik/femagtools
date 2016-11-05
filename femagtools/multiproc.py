@@ -24,6 +24,7 @@ def run_femag(cmd, workdir, fslfile):
 
     :internal:
 
+    :param cmd: The program (executable image) to be run
     :param workdir: The workdir where the calculation files are stored
     :param fslfile: The name of the start file (usually femag.fsl)
     """
@@ -48,6 +49,8 @@ class Engine:
     This is more or less a decorator for the `Python multiprocessing Module
     <https://docs.python.org/3.6/library/multiprocessing.html>`_
 
+    :param cmd: the program (executable image) to be run 
+        (femag dc is used if None)
     :param process_count: number of processes (cpu_count() if None)
     """
     def __init__(self, cmd=None, process_count=None):

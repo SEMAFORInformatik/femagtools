@@ -4,17 +4,24 @@
  """
 import os
 from femagtools.multiproc import Engine
-#import femagtools.google
-#import femagtools.amazon
+# instead you can use on of the following
+#
+# from femagtools.condor import Engine
+# from femagtools.amazon import Engine
+# from femagtools.google import Engine
+#
 import femagtools.grid
 import logging
 import numpy as np
 
 parvardef = {
     "objective_vars": [
-        {"name": "dqPar.torque[-1]", "label":"Load Torque/Nm"},
-        {"name": "torque[-1].ripple", "label":"Torque Ripple/Nm"},
-        {"name": "machine.plfe[-1]", "label":"Iron Losses/W"}
+        {"name": "dqPar.torque[-1]",
+         "label": "Load Torque/Nm"},
+        {"name": "torque[-1].ripple",
+         "label": "Torque Ripple/Nm"},
+        {"name": "machine.plfe[-1]",
+         "label": "Iron Losses/W"}
     ],
     "population_size": 25,
     "decision_vars": [
@@ -119,8 +126,6 @@ logging.basicConfig(level=logging.INFO,
 
 engine = Engine()
 
-# engine.config.from_ini_file('config.ini')
-
 userdir = os.path.expanduser('~')
 workdir = os.path.join(userdir, 'parvar')
 try:
@@ -136,9 +141,6 @@ results = parvar(parvardef, machine, operatingConditions, engine)
 
 x = femagtools.grid.create_parameter_range(results['x'])
 f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0])).T
-
-#print("x: {}".format(results['x']))
-#print("f: {}".format(results['f']))
 
 # print header
 print(' '.join(['{:15}'.format(s)

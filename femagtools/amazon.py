@@ -40,23 +40,28 @@ class Engine(object):
 
     """The Amazon Engine
 
-    This enginge uses the boto3 Python module to interact with the amazon ec2 and s3 services
+    This enginge uses the boto3 Python module to interact 
+       with the amazon ec2 and s3 services
 
     :param list buckets: Existing buckets with femag calculation files
+    :param str configfile: Filename of config file
 
     .. :note: If possible you should use the same location for all services
 
     """
-    def __init__(self, buckets=None):
+    def __init__(self, buckets=None, configfile='config.ini'):
         self.buckets = buckets
         self.job = None
 
-        self.s3_resource = self._create_amazon_resource('s3')    # Amazon file storage
-        self.ec2_resource = self._create_amazon_resource('ec2')  # Amazon Server administration
+        # Amazon file storage
+        self.s3_resource = self._create_amazon_resource('s3')
+        # Amazon Server administration
+        self.ec2_resource = self._create_amazon_resource('ec2')
 
         # Create instance of config
-        self.config = Config(self.default_config)
-
+        self.config = Config(self.default_config, configfile)
+        self.config.from_ini_file(configfile)
+        
     def _create_amazon_resource(self, resource):
         import boto3
         return boto3.resource(resource)

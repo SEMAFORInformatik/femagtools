@@ -6,9 +6,7 @@ try:
     import mock
 except ImportError:
     import unittest.mock as mock
-import tempfile
 import os
-import boto3
 
 
 class PropulationTest(unittest.TestCase):
@@ -66,6 +64,5 @@ export BUCKET_NAME=1
         # self.engine._get_status_code('exit_code')    
 
         
-        
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

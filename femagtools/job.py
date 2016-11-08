@@ -124,6 +124,7 @@ class CloudTask(Task):
         data = io.BytesIO(str.encode(content))
         self.tar_file.addfile(info, data)
 
+
 class Job(object):
     """represents a FEMAG job consisting of one or more tasks
     each to be executed by a dedicated process
@@ -191,7 +192,7 @@ class CondorJob(Job):
             OpSys = "WINDOWS"
 
         else:
-            xfemag = which("xfemag")
+            xfemag = which("xfemag64")
             if not xfemag:
                 raise JobError("xfemag not found in {}".format(
                     os.environ["PATH"]))

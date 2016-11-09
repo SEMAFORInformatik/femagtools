@@ -39,17 +39,8 @@ class BaseFemag(object):
         if cmd:
             self.cmd = cmd
         else:
-            if sys.platform.startswith('linux'):
-                if platform.machine() == 'x86_64':
-                    self.cmd = 'xfemag64'
-                else:
-                    self.cmd = 'xfemag'
-            else:
-                if platform.machine() == 'AMD64':
-                    self.cmd = 'wfemagw64'
-                else:
-                    self.cmd = 'wfemag'
-                
+            self.cmd = cfg.get_femag()
+            
         if magnetizingCurves:
             if isinstance(magnetizingCurves,
                           femagtools.mcv.MagnetizingCurve):

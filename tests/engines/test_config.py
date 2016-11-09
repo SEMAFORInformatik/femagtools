@@ -1,8 +1,18 @@
 import femagtools.config
 import os.path
+import platform
 
 
-def test_config():
+def test_femag():
+    if platform.system() == "Windows":
+        expected = "wfemagw64"
+    else:
+        expected = "xfemag64"
+
+    assert femagtools.config.get_femag() == expected
+    
+
+def test_engine_config():
     default_config = {
         'ENGINE': 'amazon',
         'INSTANCE_TYPE': 't2.micro'}

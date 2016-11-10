@@ -13,12 +13,10 @@ To use Amazon as a calculation engine you have to:
 
 Fast start
 ==========
-To use Amazon as engine, setup a configuartion and a cloud init file and use amazon as engine::
+To use Amazon as engine, setup a configuration and a cloud init file and use amazon as engine::
 
   import femagtools
-  engine = femagtools.amazon.Engine(buckets=None)
-  # Load config file
-  engine.config.from_ini_file('config.ini')
+  engine = femagtools.amazon.Engine(buckets=None, configfile='config.ini')
 
 If you already uploaded some FEMAG files you can add the bucket as list::
 
@@ -60,7 +58,7 @@ Example of a configuration file::
 
 Cloud Init
 ----------
-With the cloud init file you can define, what happens, after the instance started up. This is a good place to start the calculation.
+With the cloud init file you can define the command to be excuted after the instance has started up. This is a good place to start the calculation.
 
 The special entry *{{ENV}}* indicates the femagtools module to put all the configuration options as environment variables. Additionally it adds the bucket name as *BUCKET_NAME* environment to download the files from the correct Bucket.
 

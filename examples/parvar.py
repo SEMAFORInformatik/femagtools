@@ -4,24 +4,31 @@
  """
 import os
 from femagtools.multiproc import Engine
-#import femagtools.google
-#import femagtools.amazon
+# instead you can use on of the following
+#
+# from femagtools.condor import Engine
+# from femagtools.amazon import Engine
+# from femagtools.google import Engine
+#
 import femagtools.grid
 import logging
 import numpy as np
 
 parvardef = {
     "objective_vars": [
-        {"name": "dqPar.torque[-1]"},
-        {"name": "torque[-1].ripple"},
-        {"name": "machine.plfe[-1]"}
+        {"name": "dqPar.torque[-1]",
+         "label": "Load Torque/Nm"},
+        {"name": "torque[-1].ripple",
+         "label": "Torque Ripple/Nm"},
+        {"name": "machine.plfe[-1]",
+         "label": "Iron Losses/W"}
     ],
     "population_size": 25,
     "decision_vars": [
         {"steps": 4, "bounds": [-50, 0],
-         "name": "angl_i_up"},
+         "name": "angl_i_up", "label":"Beta"},
         {"steps": 3, "bounds": [100, 200],
-         "name": "current"}
+         "name": "current", "label":"Current/A"}
     ]
 }
 
@@ -119,8 +126,6 @@ logging.basicConfig(level=logging.INFO,
 
 engine = Engine()
 
-# engine.config.from_ini_file('config.ini')
-
 userdir = os.path.expanduser('~')
 workdir = os.path.join(userdir, 'parvar')
 try:
@@ -135,16 +140,13 @@ parvar = femagtools.grid.Grid(workdir,
 results = parvar(parvardef, machine, operatingConditions, engine)
 
 x = femagtools.grid.create_parameter_range(results['x'])
-f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0]))
-
-#print("x: {}".format(results['x']))
-#print("f: {}".format(results['f']))
+f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0])).T
 
 # print header
 print(' '.join(['{:15}'.format(s)
-                for s in [d['name']
+                for s in [d['label']
                           for d in parvardef['decision_vars']] +
-                [o['name']
+                [o['label']
                  for o in parvardef['objective_vars']]]))
 print()
 # print values in table format
@@ -157,8 +159,8 @@ import matplotlib.pyplot as pl
 import mpl_toolkits.mplot3d as mpl
 fig = pl.figure()
 ax = fig.add_subplot(111, projection='3d')
-ax.scatter(x[:, 0], x[:, 1], np.array(f[0]).ravel())
-ax.set_xlabel(parvardef['decision_vars'][0]['name'])
-ax.set_ylabel(parvardef['decision_vars'][1]['name'])
-ax.set_zlabel(parvardef['objective_vars'][0]['name'])
+ax.scatter(x[:, 0], x[:, 1], np.array(f[:, 0]))
+ax.set_xlabel(parvardef['decision_vars'][0]['label'])
+ax.set_ylabel(parvardef['decision_vars'][1]['label'])
+ax.set_zlabel(parvardef['objective_vars'][0]['label'])
 pl.savefig('parvar.png')

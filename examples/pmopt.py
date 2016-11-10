@@ -32,11 +32,6 @@ operatingConditions = {
     "magn_temp": 60.0,
     "current": 10.0,
     "eval_force": 0,
-    "windings": {
-        "skew_angle": 0.0,
-        "num_par_wdgs": 1,
-        "num_skew_steps": 0},
-    "calc_fe_loss": 1,
     "speed": 50.0,
     "optim_i_up": 0
 }
@@ -49,11 +44,7 @@ magnetMat = [{
     "magntemp": 20.0,
     "temcoefhc": -0.001,
     "hcb": 810000.4,
-    "relperm": 1.05,
-    "magncond": 833333,
-    "magnwidth": 15.0e-3,
-    "magnlength": 100.0e-3,
-    "hc_min": 760000.0}
+    "relperm": 1.05}
 ]
 
 magnetizingCurve = "./magnetcurves"

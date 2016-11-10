@@ -17,7 +17,7 @@ except ImportError:
 
 class Config(dict):
 
-    def __init__(self, defaults=None):
+    def __init__(self, defaults=None, configfile=None):
         dict.__init__(self, defaults or {})
 
     def from_ini_file(self, ini_file):
@@ -27,26 +27,28 @@ class Config(dict):
         config.read(ini_file)
 
         # Only get config for this engine
-        engine = self['ENGINE']
+        section = self['ENGINE']
 
         try:
-            config[engine.lower()]
-            engine = engine.lower()
-        except KeyError:
+            if config.items(section.lower()):
+                engine = section.lower()
+            else:
+                if config.items(section.upper()):
+                    engine = section.upper()
+                else:
+                    return
+        except configparser.NoSectionError:
             try:
-                config[engine.upper()]
-                engine = engine.upper()
-            except KeyError:
-                engine = None
+                config[section.upper()]
+                engine = section.upper()
+            except:
+                return
 
-        if not engine:
-            return
-
-        for key in config[engine]:
-            if ',' in config[engine][key]:
-                self[key.upper()] = config[engine][key].split(',')
+        for key, value in config.items(engine):
+            if ',' in value:
+                self[key.upper()] = value.split(',')
                 continue
-            self[key.upper()] = config[engine][key]
+            self[key.upper()] = value
 
     def from_ini_file_all(self, ini_file):
         if not ini_file:

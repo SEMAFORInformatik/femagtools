@@ -1,5 +1,10 @@
 Introduction and Overview
 *************************
+Note: consider the usage of logging when executing long running commands::
+
+  import logging
+  logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(message)s')
 
 Run FEMAG with FSL
 ++++++++++++++++++
@@ -123,7 +128,7 @@ Definition of the PM or Reluctance machine with Ld,Lq parameters::
   wind_temp = 20.0
   ld = [0.0014522728, 0.0014522728]
   lq = [0.0032154, 0.0038278836]
-  psim = [0.11171972000000001, 0.11171972000000001]
+  psim = [0.11171972, 0.11171972]
   i1 = [80.0]
   beta = [0.0, -41.1]
 
@@ -170,9 +175,9 @@ Example: calculate torque, torque ripple and iron losses at beta=-50°,-25°,0°
 
   parvar = {
     "objective_vars": [
-      {"name": "dqPar.torque"},
-      {"name": "torque.ripple"},
-      {"name": "machine.plfe"}],
+      {"name": "dqPar.torque[-1]"},
+      {"name": "torque[-1].ripple"},
+      {"name": "machine.plfe[-1]"}],
     "population_size": 3,
     "decision_vars": [
       {"steps": 3,
@@ -207,11 +212,11 @@ Make a Multi-Objective Optimization
 
 Example: minimize ripple and losses and maximize torque (note the sign parameter) by varying magnet width and height ::
   
-  opt = {
+  optdef = {
     "objective_vars": [
-        {"name": "dqPar.torque", "desc": "Torque / Nm", "sign": -1},
-        {"name": "torque.ripple", "desc": "Torque Ripple / Nm"},
-        {"name": "machine.plfe", "desc": "Iron Loss / W" }
+        {"name": "dqPar.torque[-1]", "desc": "Torque / Nm", "sign": -1},
+        {"name": "torque[0].ripple", "desc": "Torque Ripple / Nm"},
+        {"name": "machine.plfe[-1]", "desc": "Iron Loss / W" }
     ],
     "population_size": 24,
     "decision_vars": [
@@ -227,10 +232,10 @@ Example: minimize ripple and losses and maximize torque (note the sign parameter
   }
 
   engine = femagtools.condor.Engine()
-  o = femagtools.opt.Optimizer(workdir,
-                               magnetizingCurve, magnetMat)
+  opt = femagtools.opt.Optimizer(workdir,
+                                 magnetizingCurve, magnetMat)
 
   num_generations = 3
-  results = o.optimize(num_generations,
-                       opt, machine, operatingConditions, engine)
+  results = opt.optimize(num_generations,
+                         optdef, machine, operatingConditions, engine)
 

@@ -82,6 +82,11 @@ class Optimizer(object):
 
         pop.update()
 
+    def __call__(self, num_generations, opt, pmMachine,
+                 operatingConditions, engine):
+        self.optimize(num_generations, opt, pmMachine,
+                 operatingConditions, engine)
+        
     def optimize(self, num_generations, opt, pmMachine,
                  operatingConditions, engine):
         """execute optimization"""

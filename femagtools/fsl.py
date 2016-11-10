@@ -57,7 +57,7 @@ class Builder:
             self.__render(model, 'basic_modpar')
 
     def set_modpar(self, model):
-            self.__render(model, 'basic_modpar')
+        return self.__render(model, 'basic_modpar')
 
     def create_new_model(self, model):
         return self.__render(model, 'new_model')

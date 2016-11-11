@@ -130,7 +130,7 @@ class Reader:
             'Losses': Reader.__read_dummy,
             'Fe-Hysteresis- and Eddy current Losses[W] > 0.1 % Max':
             Reader.__read_hysteresis_eddy_current_losses,
-            'Losses [W]':  Reader.__read_losses,
+            'Losses [W]': Reader.__read_losses,
             'Losses for speed [1/min]': Reader.__read_losses_tab,
             'Losses from PSID-Psiq-Identification for speed [1/min]':
             Reader.__read_losses_tab,

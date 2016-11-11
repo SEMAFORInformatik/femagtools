@@ -23,6 +23,7 @@ import femagtools.mcv
 import femagtools.fsl
 import time
 import platform
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class BaseFemag(object):
                     self.cmd = 'wfemagw64'
                 else:
                     self.cmd = 'wfemag'
-                
+
         if magnetizingCurves:
             if isinstance(magnetizingCurves,
                           femagtools.mcv.MagnetizingCurve):
@@ -80,13 +81,26 @@ class BaseFemag(object):
         model = femagtools.MachineModel(pmMachine)
         self.modelname = model.name
         self.copy_magnetizing_curves(model)
-        
+
         builder = femagtools.fsl.Builder()
         return builder.create(model, operatingConditions, self.magnets)
-    
-    def read_bch(self, modelname):
+
+    def get_log_value(self, pattern, modelname='FEMAG-FSL.log'):
+        result = []
+        pat = re.compile(pattern)
+        with open(os.path.join(self.workdir, 'FEMAG-FSL.log')) as f:
+            for line in f:
+                m = pat.search(line)
+                if m:
+                    result.append(float(line.split(':')[-1].split()[0]) )
+        return result
+
+    def read_bch(self, modelname=None):
         "read most recent BCH/BATCH file and return result"
         # read latest bch file if any
+        if not modelname:
+            modelname = self._get_modelname_from_log()
+
         result = femagtools.bch.Reader()
         bchfile_list = sorted(glob.glob(os.path.join(
             self.workdir, modelname+'_[0-9][0-9][0-9]'+BCHEXT)))
@@ -97,7 +111,18 @@ class BaseFemag(object):
                 result.read(f)
         return result
 
-    
+    def _get_modelname_from_log(self):
+        """
+        Read the modelname from the Femag Log file
+        """
+        with open(os.path.join(self.workdir, 'FEMAG-FSL.log')) as f:
+            for l in f:
+                if l.startswith('New model') or l.startswith('Load model'):
+                    model = l.split()[2].replace('"', '').replace(',', '')
+                    break
+        return model
+
+
 class Femag(BaseFemag):
     """Invoke and control execution of FEMAG
 
@@ -110,7 +135,7 @@ class Femag(BaseFemag):
                  magnetizingCurves=None, magnets=None):
         super(self.__class__, self).__init__(workdir, cmd,
                                              magnetizingCurves, magnets)
-            
+
     def run(self, filename, options=['-b']):
         """invoke FEMAG in current workdir
 
@@ -142,7 +167,7 @@ class Femag(BaseFemag):
                 print(l.strip())
                 if l.find('ERROR') > -1:
                     errs.append(l.strip())
-        
+
         rc = proc.returncode
         logger.info("%s exited with returncode %d (num errs=%d)",
                     self.cmd, rc, len(errs))
@@ -150,7 +175,7 @@ class Femag(BaseFemag):
             raise FemagError('Exit code {}'.format(rc))
         if len(errs) > 0:
             raise FemagError('\n'.join(errs))
-     
+
     def cleanup(self):
         "removes all created files in workdir"
         if not os.path.exists(self.workdir):
@@ -171,7 +196,7 @@ class Femag(BaseFemag):
         self.run(fslfile)
         return self.read_bch(self.modelname)
 
-    
+
 class ZmqFemag(BaseFemag):
     """Invoke and control execution of FEMAG with ZeroMQ
 
@@ -186,7 +211,7 @@ class ZmqFemag(BaseFemag):
         self.port = port
         self.request_socket = None
         self.subscriber_socket = None
-        
+
     def __req_socket(self):
         """returns a new request client"""
         if self.request_socket:
@@ -197,7 +222,7 @@ class ZmqFemag(BaseFemag):
             self.host, self.port))
         self.request_socket.setsockopt(zmq.LINGER, 500)
         return self.request_socket
-    
+
     def __sub_socket(self):
         """returns a new subscriber client"""
         context = zmq.Context.instance()
@@ -209,7 +234,7 @@ class ZmqFemag(BaseFemag):
                 self.host, self.port+1))
         self.subscriber_socket.setsockopt(zmq.SUBSCRIBE, b'')
         return self.subscriber_socket
-    
+
     def __is_process_running(self, procId):
         try:
             import psutil
@@ -221,7 +246,7 @@ class ZmqFemag(BaseFemag):
             if procId > 0:
                if platform.system() == "Windows":
                    #                   if procId in psutil.get_pid_list():
-                   proc=subprocess.Popen(["tasklist"],stdout=subprocess.PIPE)
+                   proc=subprocess.Popen(["tasklist"], stdout=subprocess.PIPE)
                    for l in proc.stdout:
                        ls = l.split()
                        try:
@@ -230,7 +255,7 @@ class ZmqFemag(BaseFemag):
                        except:
                            continue
                else:
-                   if not os.kill(procId, 0) :
+                   if not os.kill(procId, 0):
                        return True
         except OSError as e:
             # No such process
@@ -241,13 +266,13 @@ class ZmqFemag(BaseFemag):
             logger.info("Error: unknown\n")
             return True
         return False
-    
+
     def __is_running(self, timeout=1500):
         """check if FEMAG is running in ZMQ mode
-        
+
         :param timeout: The timeout (in milliseconds) to wait for a response
         :returns: True if FEMAG is running, False otherwise
-        
+
         """
         try:
             request_socket = self.__req_socket()
@@ -267,7 +292,7 @@ class ZmqFemag(BaseFemag):
         self.request_socket.close()
         self.request_socket = None
         return False
-    
+
     def send_fsl(self, fsl, header=b'FSL'):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
         
@@ -305,7 +330,7 @@ class ZmqFemag(BaseFemag):
         :raises: FemagError
         """
         args = [self.cmd] + options
-        
+
         if self.__is_running():
             if restart:
                 logging.info("must restart")
@@ -330,7 +355,7 @@ class ZmqFemag(BaseFemag):
                 except Exception:
                     pass
                 return procId
-            
+
         if self.request_socket:
             self.request_socket.close()
         self.request_socket = None
@@ -359,13 +384,13 @@ class ZmqFemag(BaseFemag):
                                            [b'exit_on_end = true',
                                             b'exit_on_error = true'])])
         response = request_socket.recv_multipart()
-        
+
         # send quit command
         request_socket.send_multipart([b"CONTROL", b'quit'])
 
         # readd response
         response = request_socket.recv_multipart()
-        #self.log_result(response, "Quit Response")
+        # self.log_result(response, "Quit Response")
 
         # if query, send a answer
         obj = json.loads(response[0].decode())
@@ -374,8 +399,8 @@ class ZmqFemag(BaseFemag):
                         obj['message'], 'saved' if save_model else 'not saved')
             request_socket.send(b'Ok' if save_model else b'Cancel')
             response = request_socket.recv_multipart()
-            #self.log_result(response, "Quit Query Response")
-            #self.subscriber_is_running = False
+            # self.log_result(response, "Quit Query Response")
+            # self.subscriber_is_running = False
         return response
 
     def __call__(self, pmMachine, operatingConditions):

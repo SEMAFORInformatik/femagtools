@@ -21,6 +21,7 @@ import json
 import io
 import femagtools.mcv
 import femagtools.fsl
+import femagtools.config as cfg
 import time
 import platform
 import re
@@ -40,17 +41,8 @@ class BaseFemag(object):
         if cmd:
             self.cmd = cmd
         else:
-            if sys.platform.startswith('linux'):
-                if platform.machine() == 'x86_64':
-                    self.cmd = 'xfemag64'
-                else:
-                    self.cmd = 'xfemag'
-            else:
-                if platform.machine() == 'AMD64':
-                    self.cmd = 'wfemagw64'
-                else:
-                    self.cmd = 'wfemag'
-
+            self.cmd = cfg.get_femag()
+            
         if magnetizingCurves:
             if isinstance(magnetizingCurves,
                           femagtools.mcv.MagnetizingCurve):
@@ -92,7 +84,7 @@ class BaseFemag(object):
             for line in f:
                 m = pat.search(line)
                 if m:
-                    result.append(float(line.split(':')[-1].split()[0]) )
+                    result.append(float(line.split(':')[-1].split()[0]))
         return result
 
     def read_bch(self, modelname=None):
@@ -244,19 +236,20 @@ class ZmqFemag(BaseFemag):
         # long version, self made
         try:
             if procId > 0:
-               if platform.system() == "Windows":
-                   #                   if procId in psutil.get_pid_list():
-                   proc=subprocess.Popen(["tasklist"], stdout=subprocess.PIPE)
-                   for l in proc.stdout:
-                       ls = l.split()
-                       try:
-                           if str(procId) == ls[1]:
-                               return True
-                       except:
-                           continue
-               else:
-                   if not os.kill(procId, 0):
-                       return True
+                if platform.system() == "Windows":
+                    #                   if procId in psutil.get_pid_list():
+                    proc = subprocess.Popen(["tasklist"],
+                                            stdout=subprocess.PIPE)
+                    for l in proc.stdout:
+                        ls = l.split()
+                        try:
+                            if str(procId) == ls[1]:
+                                return True
+                        except:
+                            continue
+                else:
+                    if not os.kill(procId, 0):
+                        return True
         except OSError as e:
             # No such process
             logger.info("OSError: '{}'\n".format(str(e)))

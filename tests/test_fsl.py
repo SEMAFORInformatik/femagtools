@@ -110,6 +110,23 @@ class FslBuilderTest(unittest.TestCase):
         fsl = self.builder.create_stator_model(model)
         self.assertEqual(len(fsl), 22)
 
+    def test_statorBG(self):
+        self.m['stator']['statorBG'] = dict(
+            yoke_diam_ins=0.0344,
+            slottooth=0.0,
+            tip_rad=0.0,
+            middle_line=1,
+            slot_h1=1e-3,
+            slot_r1=0,
+            slot_h3=2e-3,
+            slot_r2=3e-4,
+            tooth_width=3.2e-3,
+            slot_width=22e-3)
+
+        model = femagtools.MachineModel(self.m)
+        fsl = self.builder.create_stator_model(model)
+        self.assertEqual(len(fsl), 21)
+
     def test_magnetSector(self):
         self.m['magnet'] = dict(
             magnetSector=dict(

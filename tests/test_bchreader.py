@@ -153,7 +153,9 @@ class BchReaderTest(unittest.TestCase):
 
     def test_read_linearforce(self):
         bch = self.read_bch('linearForce.BATCH')
+
         self.assertEqual(sorted(bch.linearForce.keys()), ['1'])
+        self.assertEqual(len(bch.linearForce['1']), 1)
         self.assertEqual(len(bch.linearForce['1'][0]['displ']), 26)
         self.assertEqual(bch.linearForce['1'][0]['displ'][5], 15.0)
         self.assertEqual(bch.linearForce['1'][0]['force_x'][7], -553.9)

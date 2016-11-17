@@ -78,7 +78,7 @@ def _readSections(f):
 
 class Reader:
     """Reads a BCH/BATCH-File"""
-    _numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)')
+    _numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
 
     def __init__(self):
         self._fft = None
@@ -393,8 +393,9 @@ class Reader:
                     f['force_y'].append(floatnan(rec[4].strip()))
                     # TODO f['f_idpsi'].append(floatnan(rec[5].strip()))
 
-                    self.linearForce[self.wdg].append(f)
-                    self._fft = Reader.__read_linearForce_fft
+        if f['displ']:
+            self.linearForce[self.wdg].append(f)
+        self._fft = Reader.__read_linearForce_fft
 
     def __read_linearForce_fft(self, content):
         "read and append linear force fft section"

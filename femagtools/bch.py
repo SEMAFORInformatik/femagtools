@@ -78,7 +78,7 @@ def _readSections(f):
 
 class Reader:
     """Reads a BCH/BATCH-File"""
-    _numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)')
+    _numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
 
     def __init__(self):
         self._fft = None
@@ -104,6 +104,8 @@ class Reader:
         self.magnet = {}
         self.airgapInduction = {}
         self.flux_fft = {}
+        self.linearForce = {}
+        self.linearForce_fft = {}
         self.scData = {}
         self.dqPar = {}
         self.ldq = {}
@@ -153,7 +155,8 @@ class Reader:
             'Results for Angle I-Up [Degree]': Reader.__read_dummy,
             'Demagnetisation': Reader.__read_demagnetization,
             'Transient short circuit': Reader.__read_short_circuit,
-            'Flux observed': Reader.__read_flux}
+            'Flux observed': Reader.__read_flux,
+            'Linear Force': Reader.__read_linear_force}
 
     def getStep(self):
         """@returns displacement step of flux values"""
@@ -172,8 +175,14 @@ class Reader:
             if title == 'Function':
                 title = s[0].split(':')[1].strip()
             logger.debug("'%s': %d", title, len(s[1:]))
+
+            # Check if we are finish with the fourier analysis part(s)
+            if title != 'Fourier Analysis':
+                self._fft = None
+
             if title in self.dispatch:
                 self.dispatch[title](self, s)
+
         if len(self.weights) > 0:
             w = list(zip(*self.weights))
             self.weight['iron'] = sum(w[0])
@@ -363,11 +372,53 @@ class Reader:
                     self.flux[self.wdg] = []
         self.flux[self.wdg].append(f)
         self._fft = Reader.__read_flux_fft
-        
+
+    def __read_linear_force(self, content):
+        "read and append linear force section"
+        f = {'displ': [], 'magnet_1': [], 'force_x': [],
+             'force_y': [], 'f_idpsi': []}
+
+        for l in content:
+            if l.startswith('Base-curr'):
+                rec = self._numPattern.findall(l)
+                self.wdg = rec[-1]
+                if self.wdg not in self.linearForce:
+                    self.linearForce[self.wdg] = []
+            else:
+                rec = self._numPattern.findall(l)
+                if len(rec) > 4:
+                    f['displ'].append(floatnan(rec[1].strip()))
+                    f['magnet_1'].append(floatnan(rec[2].strip()))
+                    f['force_x'].append(floatnan(rec[3].strip()))
+                    f['force_y'].append(floatnan(rec[4].strip()))
+                    # TODO f['f_idpsi'].append(floatnan(rec[5].strip()))
+
+        if f['displ']:
+            self.linearForce[self.wdg].append(f)
+        self._fft = Reader.__read_linearForce_fft
+
+    def __read_linearForce_fft(self, content):
+        "read and append linear force fft section"
+        if not self._fft:
+            return
+        linearForce_fft = dict(order=[], force=[], force_perc=[],
+                               a=[], b=[])
+        for l in content:
+            rec = self._numPattern.findall(l)
+            if len(rec) > 4:
+                linearForce_fft['order'].append(int(rec[0].strip()))
+                linearForce_fft['force'].append(floatnan(rec[1].strip()))
+                linearForce_fft['force_perc'].append(floatnan(rec[2].strip()))
+                linearForce_fft['a'].append(floatnan(rec[3].strip()))
+                linearForce_fft['b'].append(floatnan(rec[4].strip()))
+        if self.wdg not in self.linearForce_fft:
+            self.linearForce_fft[self.wdg] = []
+        self.linearForce_fft[self.wdg].append(linearForce_fft)
+
     def __read_fft(self, content):
         if self._fft:
             self._fft(self, content)
-            
+
     def __read_flux_fft(self, content):
         "read and append flux fft section"
 
@@ -390,7 +441,7 @@ class Reader:
         if self.wdg not in self.flux_fft:
             self.flux_fft[self.wdg] = []
         self.flux_fft[self.wdg].append(flux_fft)
-                
+
     def __read_torque_force(self, content):
         "read and append force/torque section"
 
@@ -890,7 +941,9 @@ class Reader:
             ('dqPar', self.dqPar),
             ('ldq', self.ldq),
             ('losses', self.losses),
-            ('demag', self.demag)]
+            ('demag', self.demag),
+            ('linearForce', self.linearForce),
+            ('linearForce_fft', self.linearForce_fft)]
 
     def __str__(self):
         "return string format of this object"
@@ -912,7 +965,9 @@ class Reader:
                 'dqPar: {}'.format(self.dqPar),
                 'ldq: {}'.format(self.ldq),
                 'losses: {}'.format(self.losses),
-                'demag: {}'.format(self.demag)])
+                'demag: {}'.format(self.demag),
+                'linearForce: {}'.format(self.linearForce),
+                'linearForce_fft: {}'.format(self.linearForce_fft)])
 
         return "{}"
     

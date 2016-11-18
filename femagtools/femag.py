@@ -128,18 +128,19 @@ class Femag(BaseFemag):
         super(self.__class__, self).__init__(workdir, cmd,
                                              magnetizingCurves, magnets)
 
-    def run(self, filename, options=['-b']):
+    def run(self, filename, options=['-b'], fsl_args=[]):
         """invoke FEMAG in current workdir
 
         :param filename: name of file to execute
         :param options: list of FEMAG options
+        :param fsl_args: list of FSL argument options
         :raises: FemagError
         """
         if self.cmd.startswith('wfemag') and \
            '-b' in options and \
            '-m' not in options:
             options.insert(0, '-m')
-        args = [self.cmd] + options + [filename]
+        args = [self.cmd] + options + [filename] + fsl_args
 
         basename, ext = os.path.splitext(os.path.basename(filename))
         outname = os.path.join(self.workdir, basename+'.out')

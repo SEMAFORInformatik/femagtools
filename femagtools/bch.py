@@ -20,6 +20,8 @@ logger = logging.getLogger('femagtools.bch')
 alpha20 = 3.93e-3  # temperature coeff of copper
 
 _indxOpPattern = re.compile(r'[a-zA-Z0-9_]+(\[[-0-9]+\])')
+_statloss = re.compile(r'Fe-Losses\s*Stator')
+_rotloss = re.compile(r'Fe-Losses\s*Rotor')
 
 
 def splitindex(name):
@@ -797,9 +799,8 @@ class Reader:
             if l.startswith('Results for Angle I-Up'):
                 losses['beta'] = floatnan(l.split(':')[-1])
                 losses['current'] = floatnan(content[i+1].split(':')[-1])
-                losses['total'] = 0.0
-                for k in ('stacu', 'staza', 'stajo', 'rotfe',
-                          'magnetJ', 'magnetB'):
+                for k in ('winding', 'staza', 'stajo', 'rotfe',
+                          'magnetJ', 'magnetB', 'r1', 'total'):
                     losses[k] = 0.0
                 break
 
@@ -807,10 +808,10 @@ class Reader:
             if l.find('Cu-losses') > -1:
                 rec = self._numPattern.findall(content[i+1])
                 if len(rec) > 0:
-                    losses['winding'] = floatnan(rec[0])
+                    losses['winding'] += floatnan(rec[0])
                     losses['total'] += losses['winding']
                 if len(rec) > 2:
-                    losses['r1'] = floatnan(rec[2])
+                    losses['r1'] += floatnan(rec[2])
                     
             if l.startswith('StZa') or l.startswith('RoZa'):
                 rec = self._numPattern.findall(content[i+2])
@@ -819,15 +820,22 @@ class Reader:
                     losses['staza'] = floatnan(rec[0])
                     losses['total'] += losses['staza']+losses['stajo']
 
-            if l.startswith('StJo') or l.startswith('RoJo'):
+            if l.startswith('StJo') or l.startswith('RoJo') or \
+               _statloss.search(l):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 2:
                     losses['stajo'] = floatnan(rec[0])
                     losses['staza'] = floatnan(rec[1])
                     losses['total'] += losses['staza']+losses['stajo']
-                        
-            if l.find('Fe-Losses   Rotor:') > -1 or \
-               l.find('Fe-Losses   Stator:') > -1:
+                elif len(rec) == 1:
+                    t = l.split(':')[-1].strip()
+                    if t == 'Iron':
+                        losses['staza'] = floatnan(rec[0])
+                    else:
+                        losses['stajo'] += floatnan(rec[0])
+                    losses['total'] += losses['staza']+losses['stajo']
+                            
+            if _rotloss.search(l):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 1:
                     losses['rotfe'] = floatnan(rec[0])

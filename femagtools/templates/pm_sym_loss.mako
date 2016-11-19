@@ -12,13 +12,13 @@ m.fc_mult_move_type =  1.0 --  Type of move path in air gap
 m.fc_force_points   =  0.0 --    number move points in air gap       
 m.phi_start       =    0.0 --  
 m.range_phi       =    720./m.num_poles
-m.nu_move_steps   =    ${model.get('num_move_steps')}
+m.nu_move_steps   =    ${model.get('num_move_steps', 49)}
 m.fc_radius       =    (da1+da2)/4
 m.num_par_wdgs    =    ${model.get('num_par_wdgs',1)}
 
 m.winding_temp    =    ${model.get('wind_temp')}
 m.current         =    1.0
-m.ntibfilename    =    '${model.get('ntibfilename')}'
+m.ntibfilename    =    model..'.ntib'
 
 m.pocfilename    = model..'_'..m.num_poles..'p.poc'
 

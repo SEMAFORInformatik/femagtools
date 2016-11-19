@@ -17,6 +17,7 @@ ld_lq_fast.py: execute a ld-lq identification and calculate the frequency and cu
 
 cogg_calc.py: execute a cogging calculation and print the fft of the torque
 pm_sym_fast.py: execute a PM/Rel machine simulation and print the torque
+pm_sym_loss.py: execute a PM/Rel machine loss simulation and print losses
 
 parvar.py: execute a parameter variation
 

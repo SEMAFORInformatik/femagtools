@@ -26,7 +26,7 @@ machine = dict(
     ),
     
     magnet=dict(
-        mcvkey_mshaft="dummy",
+        mcvkey_shaft="dummy",
         mcvkey_yoke="dummy",
         magnetSector=dict(
             magn_num=1,

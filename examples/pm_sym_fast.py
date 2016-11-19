@@ -26,7 +26,7 @@ machine = dict(
     ),
     
     magnet=dict(
-        mcvkey_mshaft="dummy",
+        mcvkey_shaft="dummy",
         mcvkey_yoke="dummy",
         magnetSector=dict(
             magn_num=1,
@@ -73,3 +73,8 @@ r = femag(machine,
           operatingConditions)
 
 print('Torque [Nm] = {}'.format(r.machine['torque']))
+print('Losses [W]: Stator Teeth {} Yoke {} Rotor {} Total {}'.format(
+    r.losses[-1]['staza'],
+    r.losses[-1]['stajo'],
+    r.losses[-1]['rotfe'],
+    r.losses[-1]['total']))

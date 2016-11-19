@@ -143,7 +143,7 @@ class FslBuilderTest(unittest.TestCase):
                 magn_num=1))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
-        self.assertEqual(len(fsl), 27)
+        self.assertEqual(len(fsl), 29)
 
     def test_magnetIron(self):
         self.m['magnet'] = dict(
@@ -161,8 +161,8 @@ class FslBuilderTest(unittest.TestCase):
                 iron_shape=0))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
-#        print('\n'.join(fsl))
-        self.assertEqual(len(fsl), 23)
+        # print('\n'.join(fsl))
+        self.assertEqual(len(fsl), 25)
 
     def test_magnetIron2(self):
         self.m['magnet'] = dict(
@@ -180,7 +180,7 @@ class FslBuilderTest(unittest.TestCase):
                 iron_shape=0))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
-        self.assertEqual(len(fsl), 25)
+        self.assertEqual(len(fsl), 27)
         
     def test_magnetIron3(self):
         self.m['magnet'] = dict(
@@ -199,7 +199,7 @@ class FslBuilderTest(unittest.TestCase):
                 iron_shape=0))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
-        self.assertEqual(len(fsl), 24)
+        self.assertEqual(len(fsl), 26)
 
     def test_magnetIron4(self):
         self.m['magnet'] = dict(
@@ -218,7 +218,7 @@ class FslBuilderTest(unittest.TestCase):
                 iron_shape=0))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
-        self.assertEqual(len(fsl), 24)
+        self.assertEqual(len(fsl), 26)
 
     def test_magnetIron5(self):
         self.m['magnet'] = dict(
@@ -237,7 +237,7 @@ class FslBuilderTest(unittest.TestCase):
                 iron_shape=0))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
-        self.assertEqual(len(fsl), 24)
+        self.assertEqual(len(fsl), 26)
 
     def test_magnetIronV(self):
         self.m['magnet'] = dict(
@@ -255,7 +255,7 @@ class FslBuilderTest(unittest.TestCase):
                 iron_shape=0))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
-        self.assertEqual(len(fsl), 24)
+        self.assertEqual(len(fsl), 26)
 
     def test_magnetFC2(self):
         self.m['magnet'] = dict(
@@ -273,7 +273,7 @@ class FslBuilderTest(unittest.TestCase):
                 iron_shape=0))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
-        self.assertEqual(len(fsl), 23)
+        self.assertEqual(len(fsl), 25)
 
     def test_run_models(self):
         feapars['calculationMode'] = "cogg_calc"

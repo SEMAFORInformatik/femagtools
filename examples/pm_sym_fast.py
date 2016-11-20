@@ -73,8 +73,20 @@ r = femag(machine,
           operatingConditions)
 
 print('Torque [Nm] = {}'.format(r.machine['torque']))
-print('Losses [W]: Stator Teeth {} Yoke {} Rotor {} Total {}'.format(
+print("""
+Losses [W]:
+
+ Stator Teeth {0:8.1f}
+        Yoke  {1:8.1f}
+ Rotor        {2:8.1f}
+ Magnet       {3:8.1f}
+ Windings     {4:8.1f}
+
+        Total {5:8.1f}
+""".format(
     r.losses[-1]['staza'],
     r.losses[-1]['stajo'],
     r.losses[-1]['rotfe'],
+    r.losses[-1]['magnetJ'],
+    r.losses[-1]['winding'],
     r.losses[-1]['total']))

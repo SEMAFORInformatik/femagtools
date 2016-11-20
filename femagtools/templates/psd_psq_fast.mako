@@ -13,7 +13,6 @@ m.fc_mult_move_type =  1.0 --  Type of move path in air gap
 m.phi_start       =    0.0 --  
 m.range_phi       =    720./m.num_poles
 m.nu_move_steps   =    ${model.get('num_move_steps')}
-m.fc_radius       =    (da1+da2)/4
 m.num_par_wdgs    =    ${model.get('num_par_wdgs',1)}
 
 m.maxid           =    ${model['maxid']}/m.num_par_wdgs

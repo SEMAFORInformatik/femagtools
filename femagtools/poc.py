@@ -11,10 +11,27 @@
 
 
 class Poc:
-    def __init__(self, parameters=dict()):
-        """initialize this object from a set of parameters"""
+    def __init__(self, arg, parameters=dict()):
+        """initialize this object from a set of parameters or a file
+        :param: arg filename or pole_pitch
+        """
         for k in parameters.keys():
             self.__setattr__(k, parameters[k])
+
+        if isinstance(arg, str):
+            with open(arg) as f:
+                self.readfile(f)
+        else:
+            self.pole_pitch = arg
+            self.pocType = parameters.get('pocType', 'Function')
+            self.shape_current = parameters.get('shape_current', 'sin')
+            self.num_winding = parameters.get('num_winding', 3)
+            self.key_winding = parameters.get('key_winding',
+                                          list(range(1, self.num_winding+1)))
+            b = parameters.get('offset', 0)
+            self.phi_voltage_winding = parameters.get('phi_voltage_winding',
+                                                      [b+i*360/self.num_winding
+                                                       for i in range(self.num_winding)])
 
     def __setattr__(self, name, val):
         self.__dict__[name] = val  # this will create the attribute name
@@ -129,20 +146,21 @@ def curr(x, n, A, phi ):
     return A*np.sin(n*x-phi)
 
 if __name__ == "__main__":
-    p = Poc()
-    with open('test/2p_sin.poc') as f:
-        p.readfile(f)
-    print( p.getProps() )
+    p = Poc('2p_sin.poc')
+    print(p.getProps())
 
-    import numpy as np
-    import numpy.linalg as la
-    import matplotlib.pyplot as pl
+    p = Poc(60)
+    print(p.getProps())
 
-    A = [0.9866, 0.011181, 0.018624, 0.022322, 0.020109, 0.016582]
-    n = [1,11,13,14,16,17]
-    phi = [0, 225.801, 162.3245, 195.1087, 321.5113, -3.517]
-    x = np.linspace( 0, 2*np.pi, 40 )
-    y = curr( x, n, A,phi)
-    pl.plot( x, y )
-    pl.grid()
-    pl.show()
+#    import numpy as np
+#    import numpy.linalg as la
+#    import matplotlib.pyplot as pl
+
+#    A = [0.9866, 0.011181, 0.018624, 0.022322, 0.020109, 0.016582]
+#    n = [1,11,13,14,16,17]
+#    phi = [0, 225.801, 162.3245, 195.1087, 321.5113, -3.517]
+#    x = np.linspace( 0, 2*np.pi, 40 )
+#    y = curr( x, n, A,phi)
+#    pl.plot( x, y )
+#    pl.grid()
+#    pl.show()

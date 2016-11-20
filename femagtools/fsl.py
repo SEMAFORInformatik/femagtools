@@ -59,6 +59,12 @@ class Builder:
             pass  # no magnet
         return []
 
+    def create_connect_models(self, model):
+        """return connect_model if rotating machine"""
+        if model.get('move_action') == 0:
+            return ['pre_models("connect_models")']
+        return []
+    
     def create_open(self, model):
         return self.__render(model, 'open') + \
             self.__render(model, 'basic_modpar')
@@ -75,8 +81,8 @@ class Builder:
             self.__render(model, 'gen_winding') + \
             self.create_magnet(model, magnets) + \
             self.create_magnet_model(model) + \
-            ['pre_models("connect_models")\n',
-             'save_model(cont)']
+            self.create_connect_models(model) + \
+            ['', 'save_model(cont)']
     
     def open_model(self, model, magnets=None):
         return self.create_open(model) + \
@@ -121,6 +127,7 @@ class Builder:
     def create(self, model, fea, magnets=None):
         "create model and analysis function"
         fea['lfe'] = model.get('lfe')
+        fea['move_action'] = model.get('move_action')
         fea.update(model.windings)
         if model.is_complete():
             return self.create_model(model, magnets) + \

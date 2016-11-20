@@ -120,6 +120,11 @@ class MachineModel(Model):
             for mcv in ('mcvkey_yoke', 'mcvkey_shaft'):
                 if mcv not in self.magnet:
                     self.magnet[mcv] = 'dummy'
+        if 'coord_system' in parameters:
+            self.move_action = 1
+        else:
+            self.coord_system = 0
+            self.move_action = 0
             
     def set_magcurves(self, magcurves):
         """set and return real names of magnetizing curve material

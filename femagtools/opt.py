@@ -85,7 +85,7 @@ class Optimizer(object):
     def __call__(self, num_generations, opt, pmMachine,
                  operatingConditions, engine):
         self.optimize(num_generations, opt, pmMachine,
-                 operatingConditions, engine)
+                      operatingConditions, engine)
         
     def optimize(self, num_generations, opt, pmMachine,
                  operatingConditions, engine):
@@ -101,6 +101,7 @@ class Optimizer(object):
         self.fea = operatingConditions
         self.fea.update(self.model.windings)
         self.fea['lfe'] = self.model.lfe
+        self.fea['move_action'] = self.model.move_action
         self.pop = Population(problem, population_size)
         
         algo = Nsga2()

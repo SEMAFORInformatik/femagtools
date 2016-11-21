@@ -536,6 +536,8 @@ class MagnetizingCurve(object):
                 shutil.copy(os.path.join(self.mcdirectory,
                                          filename), directory)
                 return filename
+            except shutil.SameFileError:
+                return filename
             except:
                 logger.error("MCV %s not found", str(filename))
             return None

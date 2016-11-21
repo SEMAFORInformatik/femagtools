@@ -33,9 +33,11 @@ class Builder:
         return self.__render(model, templ)
     
     def create_magnet_model(self, model):
+        mcv = ["mcvkey_yoke='{}'".format(
+            model.magnet.get('mcvkey_yoke', 'dummy')),
+               "mcvkey_shaft='{}'".format(
+                   model.magnet.get('mcvkey_shaft', 'dummy'))]
         try:
-            mcv = ["mcvkey_yoke='" + model.magnet['mcvkey_yoke'] + "'",
-                   "mcvkey_shaft='" + model.magnet['mcvkey_shaft'] + "'"]
             if 'magnetFsl' in model.magnet:
                 if 'parameter' in model.magnet['magnetFsl']:
                     return mcv + self.render_template(
@@ -82,7 +84,7 @@ class Builder:
             self.create_magnet(model, magnets) + \
             self.create_magnet_model(model) + \
             self.create_connect_models(model) + \
-            ['', 'save_model(cont)']
+            ['']
     
     def open_model(self, model, magnets=None):
         return self.create_open(model) + \

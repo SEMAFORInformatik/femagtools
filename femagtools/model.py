@@ -117,9 +117,16 @@ class MachineModel(Model):
             self.external_rotor = False
         self.move_inside = 1.0 if self.external_rotor else 0.0
         if 'magnet' in parameters:
-            for mcv in ('mcvkey_yoke', 'mcvkey_mshaft'):
+            if 'mcvkey_mshaft' in self.magnet:
+                self.magnet['mcvkey_shaft'] = self.magnet['mcvkey_mshaft']
+            for mcv in ('mcvkey_yoke', 'mcvkey_shaft'):
                 if mcv not in self.magnet:
                     self.magnet[mcv] = 'dummy'
+        if 'coord_system' in parameters:
+            self.move_action = 1
+        else:
+            self.coord_system = 0
+            self.move_action = 0
             
     def set_magcurves(self, magcurves):
         """set and return real names of magnetizing curve material
@@ -164,16 +171,16 @@ class MachineModel(Model):
                     pass
 
                 try:
-                    if self.magnet['mcvkey_mshaft'] != 'dummy':
-                        mcv = magcurves.find(self.magnet['mcvkey_mshaft'])
+                    if self.magnet['mcvkey_shaft'] != 'dummy':
+                        mcv = magcurves.find(self.magnet['mcvkey_shaft'])
                         if mcv:
-                            logger.debug('mshaft mcv %s', mcv)
-                            self.magnet['mcvkey_mshaft'] = mcv
+                            logger.debug('shaft mcv %s', mcv)
+                            self.magnet['mcvkey_shaft'] = mcv
                             names.append(mcv)
                         else:
-                            missing.append(self.magnet['mcvkey_mshaft'])
+                            missing.append(self.magnet['mcvkey_shaft'])
                             logger.error('magnet shaft %s not found',
-                                         self.magnet['mcvkey_mshaft'])
+                                         self.magnet['mcvkey_shaft'])
                 except KeyError:
                     pass
         if missing:

@@ -16,7 +16,7 @@ m.shaft_rad       =     ${model.get(['magnet','magnetIronV', 'condshaft_r'])*1e3
 
 m.zeroangl        =     0.0
 
-m.mcvkey_yoke     =     '${model.magnet.get('mcvkey_yoke','dummy')}'
+m.mcvkey_yoke     =   mcvkey_yoke
 
 m.nodedist        =   ${model.magnet.get('nodedist',1)}
 

@@ -15,6 +15,8 @@ import subprocess
 import os
 import logging
 from .job import Job
+import femagtools.config as cfg
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,18 +58,11 @@ class Engine:
     def __init__(self, cmd=None, process_count=None):
         self.process_count = process_count
         if cmd:
-            self.cmd = cmd
+            self.cmd = [cmd]
         else:
-            if sys.platform.startswith('linux'):
-                if platform.machine() == 'x86_64':
-                    self.cmd = ['xfemag64']
-                else:
-                    self.cmd = ['xfemag']
-            else:
-                if platform.machine() == 'AMD64':
-                    self.cmd = ['wfemagw64', '-m']
-                else:
-                    self.cmd = ['wfemag', '-m']
+            self.cmd = [cfg.get_femag()]
+            if not sys.platform.startswith('linux'):
+                    self.cmd.append('-m')
 
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`Job`

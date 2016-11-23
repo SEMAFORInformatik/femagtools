@@ -20,6 +20,8 @@ logger = logging.getLogger('femagtools.bch')
 alpha20 = 3.93e-3  # temperature coeff of copper
 
 _indxOpPattern = re.compile(r'[a-zA-Z0-9_]+(\[[-0-9]+\])')
+_statloss = re.compile(r'Fe-Losses\s*Stator')
+_rotloss = re.compile(r'Fe-Losses\s*Rotor')
 
 
 def splitindex(name):
@@ -78,7 +80,7 @@ def _readSections(f):
 
 class Reader:
     """Reads a BCH/BATCH-File"""
-    _numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)')
+    _numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
 
     def __init__(self):
         self._fft = None
@@ -104,6 +106,8 @@ class Reader:
         self.magnet = {}
         self.airgapInduction = {}
         self.flux_fft = {}
+        self.linearForce = {}
+        self.linearForce_fft = {}
         self.scData = {}
         self.dqPar = {}
         self.ldq = {}
@@ -113,6 +117,7 @@ class Reader:
         self.weight = {}
         self.areas = []
         self.current_angles = []
+        self.demagnetization = {}
         self.dispatch = {
             'General Machine Data': Reader.__read_general_machine_data,
             'Weigths': Reader.__read_weights,
@@ -130,7 +135,7 @@ class Reader:
             'Losses': Reader.__read_dummy,
             'Fe-Hysteresis- and Eddy current Losses[W] > 0.1 % Max':
             Reader.__read_hysteresis_eddy_current_losses,
-            'Losses [W]':  Reader.__read_losses,
+            'Losses [W]': Reader.__read_losses,
             'Losses for speed [1/min]': Reader.__read_losses_tab,
             'Losses from PSID-Psiq-Identification for speed [1/min]':
             Reader.__read_losses_tab,
@@ -153,7 +158,9 @@ class Reader:
             'Results for Angle I-Up [Degree]': Reader.__read_dummy,
             'Demagnetisation': Reader.__read_demagnetization,
             'Transient short circuit': Reader.__read_short_circuit,
-            'Flux observed': Reader.__read_flux}
+            'Flux observed': Reader.__read_flux,
+            'Linear Force': Reader.__read_linear_force,
+            'Demagnetization Data': Reader.__read_demagnetization}
 
     def getStep(self):
         """@returns displacement step of flux values"""
@@ -172,8 +179,14 @@ class Reader:
             if title == 'Function':
                 title = s[0].split(':')[1].strip()
             logger.debug("'%s': %d", title, len(s[1:]))
+
+            # Check if we are finish with the fourier analysis part(s)
+            if title != 'Fourier Analysis':
+                self._fft = None
+
             if title in self.dispatch:
                 self.dispatch[title](self, s)
+
         if len(self.weights) > 0:
             w = list(zip(*self.weights))
             self.weight['iron'] = sum(w[0])
@@ -287,11 +300,13 @@ class Reader:
                     break
 
         return l
-    
+
     def __read_demagnetization( self, content ):
         keys = ('displ', 'current_1', 'current_2', 'current_3',
                 'h_max', 'h_av', 'area')
+        
         for l in content:
+            import pdb
             rec = self._numPattern.findall(l)
             if len(rec) == 7:
                 for r, k in zip(rec, keys):
@@ -299,6 +314,15 @@ class Reader:
                         self.demag[k].append(floatnan(r.strip()))
                     else:
                         self.demag[k] = [floatnan(r.strip())]
+            else:
+                for v in [["Limit Hc value", "lim_hc"],
+                          ["Max. Magnetization", "br_max"],
+                          ["Min. Magnetization", "br_min"],
+                          ["Area demagnetized", "area"]]:
+                    if l.find(v[0]) > -1:
+                        rec = self._numPattern.findall(l)
+                        if len(rec) > 0:
+                            self.demag[v[1]] = floatnan(rec[-1])
 
     def __read_short_circuit(self, content):
         "read short circuit section"
@@ -363,11 +387,58 @@ class Reader:
                     self.flux[self.wdg] = []
         self.flux[self.wdg].append(f)
         self._fft = Reader.__read_flux_fft
-        
+
+    def __read_linear_force(self, content):
+        "read and append linear force section"
+        f = {'displ': [], 'magnet_1': [], 'force_x': [],
+             'force_y': [], 'f_idpsi': []}
+
+        for l in content:
+            if l.startswith('Base-curr'):
+                rec = self._numPattern.findall(l)
+                self.wdg = rec[-1]
+                if self.wdg not in self.linearForce:
+                    self.linearForce[self.wdg] = []
+            else:
+                rec = self._numPattern.findall(l)
+                if len(rec) > 4:
+                    f['displ'].append(floatnan(rec[1].strip()))
+                    f['magnet_1'].append(floatnan(rec[2].strip()))
+                    f['force_x'].append(floatnan(rec[3].strip()))
+                    f['force_y'].append(floatnan(rec[4].strip()))
+                    # TODO f['f_idpsi'].append(floatnan(rec[5].strip()))
+
+        if f['displ']:
+            self.linearForce[self.wdg].append(f)
+        self._fft = Reader.__read_linearForce_fft
+
+    def __read_linearForce_fft(self, content):
+        "read and append linear force fft section"
+        if not self._fft:
+            return
+        linearForce_fft = dict(order=[], force=[], force_perc=[],
+                               a=[], b=[])
+        for l in content:
+            rec = self._numPattern.findall(l)
+            if len(rec) > 2:
+                linearForce_fft['order'].append(int(rec[0].strip()))
+                linearForce_fft['force'].append(floatnan(rec[1].strip()))
+                linearForce_fft['force_perc'].append(floatnan(rec[2].strip()))
+                if len(rec) > 4:
+                    linearForce_fft['a'].append(floatnan(rec[3].strip()))
+                    linearForce_fft['b'].append(floatnan(rec[4].strip()))
+                else:
+                    linearForce_fft['a'].append(0.0)
+                    linearForce_fft['b'].append(0.0)
+
+        if self.wdg not in self.linearForce_fft:
+            self.linearForce_fft[self.wdg] = []
+        self.linearForce_fft[self.wdg].append(linearForce_fft)
+
     def __read_fft(self, content):
         if self._fft:
             self._fft(self, content)
-            
+
     def __read_flux_fft(self, content):
         "read and append flux fft section"
 
@@ -390,7 +461,7 @@ class Reader:
         if self.wdg not in self.flux_fft:
             self.flux_fft[self.wdg] = []
         self.flux_fft[self.wdg].append(flux_fft)
-                
+
     def __read_torque_force(self, content):
         "read and append force/torque section"
 
@@ -641,15 +712,18 @@ class Reader:
                                     for pl in zip(*[self.machine[k]
                                                     for k in ('plfe1',
                                                               'plfe2')])]
-                                                          
+
     def __read_dq_parameter(self, content):
+        import pdb
         if content[1].find('Windings') > -1:
+            
             for l in content[1:]:
                 for v in [['Windings Current', 'i1'],
                           ['Angle I vs. Up', 'beta'],
                           ["LD", 'ld'],
                           ["LQ at nom. current", 'lq'],
                           ["Torque TO", 'torque'],
+                          ["Force", 'force'],
                           ["Torque constant Kt", 'kt'],
                           ["Magn.Flux no-load", 'psim0'],
                           ["Voltage Up  (RMS)  no-load", 'up0'],
@@ -663,32 +737,41 @@ class Reader:
                         rec = l.split()
                         self.dqPar[v[1]] = [floatnan(rec[-1])]
 
+            # pdb.set_trace()
             for k in ('speed', 'npoles', 'lfe', 'dag', 'up0', 'up', 'psim0'):
                 if k in self.dqPar:
                     self.dqPar[k] = self.dqPar[k][0]
             lfe = self.dqPar['lfe']
             self.dqPar['lfe'] = 1e-3*self.dqPar['lfe']
-            self.dqPar['dag'] = 1e-3*self.dqPar['dag']
-            for k in ('ld', 'lq', 'psim', 'torque'):
-                self.dqPar[k][0] = lfe*self.dqPar[k][0]
-            self.dqPar['speed'] = self.dqPar['speed']/60
-            self.dqPar['npoles'] = int(self.dqPar['npoles'])
+            for k in ('ld', 'lq', 'psim', 'torque', 'force'):
+                if k in self.dqPar:
+                    self.dqPar[k][0] = lfe*self.dqPar[k][0]
+            if 'torque' in self.dqPar:
+                self.dqPar['speed'] = self.dqPar['speed']/60
+            if 'dag' in self.dqPar:
+                self.dqPar['dag'] = 1e-3*self.dqPar['dag']
+            if 'npoles' in self.dqPar:
+                self.dqPar['npoles'] = int(self.dqPar['npoles'])
             self.dqPar['i1'] = [self.dqPar['i1'][0]/np.sqrt(2)]
             beta = np.pi*self.dqPar['beta'][0]/180
             iq = np.cos(beta)*self.dqPar['i1'][0]
             id = np.sin(beta)*self.dqPar['i1'][0]
-            w1 = np.pi*self.dqPar['speed']*self.dqPar['npoles']
-            uq, ud = (self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
-                      iq*w1*self.dqPar['lq'][0])
-            self.dqPar['u1'] = [np.sqrt(uq**2 + ud**2)]
-            self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
-            self.dqPar['psim0'] = lfe*self.dqPar['psim0']
-            self.dqPar['phi'] = [self.dqPar['beta'][0] +
-                                 self.dqPar['gamma'][0]]
-            self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
-                                    for phi in self.dqPar['phi']]
-            self.dqPar['i1'].insert(0, 0)
-            self.dqPar['u1'].insert(0, self.dqPar['up0'])
+            try:
+                w1 = np.pi*self.dqPar['speed']*self.dqPar['npoles']
+                uq, ud = (self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
+                          iq*w1*self.dqPar['lq'][0])
+                self.dqPar['u1'] = [np.sqrt(uq**2 + ud**2)]
+                self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
+                self.dqPar['psim0'] = lfe*self.dqPar['psim0']
+                self.dqPar['phi'] = [self.dqPar['beta'][0] +
+                                     self.dqPar['gamma'][0]]
+                self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
+                                        for phi in self.dqPar['phi']]
+                self.dqPar['i1'].insert(0, 0)
+                self.dqPar['u1'].insert(0, self.dqPar['up0'])
+            except KeyError:
+                pass
+
             return
         
         for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'psid', 'psiq', 'torque',
@@ -746,47 +829,57 @@ class Reader:
             if l.startswith('Results for Angle I-Up'):
                 losses['beta'] = floatnan(l.split(':')[-1])
                 losses['current'] = floatnan(content[i+1].split(':')[-1])
-                losses['total'] = 0.0
-                for k in ('stacu', 'staza', 'stajo', 'rotfe',
-                          'magnetJ', 'magnetB'):
+                for k in ('winding', 'staza', 'stajo', 'rotfe',
+                          'magnetJ', 'magnetB', 'r1', 'total'):
                     losses[k] = 0.0
-                break
-
-        for i, l in enumerate(content):
+                continue
+            
             if l.find('Cu-losses') > -1:
                 rec = self._numPattern.findall(content[i+1])
                 if len(rec) > 0:
-                    losses['winding'] = floatnan(rec[0])
-                    losses['total'] += losses['winding']
+                    losses['winding'] += floatnan(rec[0])
+                    losses['total'] += floatnan(rec[0])
                 if len(rec) > 2:
-                    losses['r1'] = floatnan(rec[2])
+                    losses['r1'] += floatnan(rec[2])
+                continue
                     
-            if l.startswith('StZa') or l.startswith('RoZa'):
+            elif l.startswith('StZa') or l.startswith('RoZa'):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 2:
                     losses['stajo'] = floatnan(rec[1])
                     losses['staza'] = floatnan(rec[0])
                     losses['total'] += losses['staza']+losses['stajo']
-
-            if l.startswith('StJo') or l.startswith('RoJo'):
+                continue
+                
+            if l.startswith('StJo') or l.startswith('RoJo') or \
+               _statloss.search(l):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 2:
                     losses['stajo'] = floatnan(rec[0])
                     losses['staza'] = floatnan(rec[1])
                     losses['total'] += losses['staza']+losses['stajo']
-                        
-            if l.find('Fe-Losses   Rotor:') > -1 or \
-               l.find('Fe-Losses   Stator:') > -1:
+                elif len(rec) == 1:
+                    t = l.split(':')[-1].strip()
+                    if t == 'Iron':
+                        losses['staza'] = floatnan(rec[0])
+                    else:
+                        losses['stajo'] += floatnan(rec[0])
+                    losses['total'] += losses['staza']+losses['stajo']
+                continue
+                            
+            if _rotloss.search(l):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 1:
                     losses['rotfe'] = floatnan(rec[0])
                     losses['total'] += losses['rotfe']
+                continue
                     
             if l.find('Fe-Losses-Rotor') > -1:
                 rec = self._numPattern.findall(content[i+3])
                 if len(rec) == 2:
                     losses['rotfe'] = floatnan(rec[1])
                     losses['total'] += losses['rotfe']
+                continue
                     
             if l.find('Magnet-Losses') > -1:
                 rec = self._numPattern.findall(content[i+1])
@@ -890,7 +983,9 @@ class Reader:
             ('dqPar', self.dqPar),
             ('ldq', self.ldq),
             ('losses', self.losses),
-            ('demag', self.demag)]
+            ('demag', self.demag),
+            ('linearForce', self.linearForce),
+            ('linearForce_fft', self.linearForce_fft)]
 
     def __str__(self):
         "return string format of this object"
@@ -912,7 +1007,9 @@ class Reader:
                 'dqPar: {}'.format(self.dqPar),
                 'ldq: {}'.format(self.ldq),
                 'losses: {}'.format(self.losses),
-                'demag: {}'.format(self.demag)])
+                'demag: {}'.format(self.demag),
+                'linearForce: {}'.format(self.linearForce),
+                'linearForce_fft: {}'.format(self.linearForce_fft)])
 
         return "{}"
     
@@ -928,10 +1025,11 @@ def main():
     for name in sys.argv[1:]:
         with codecs.open(name, encoding='ascii') as f:
             bch.read( f )
-        print( bch.type )
-        print( bch.date )
-        #print bch.torque
-        print( bch.losses )
+        print(bch.type)
+        print(bch.date)
+        #print(bch.torque)
+        print(bch.losses[-1])
+        #print(bch.linearForce)
         #print( bch.losses[-1]['stajo'] + bch.losses[-1]['stajo'] )
         #print( bch.areas )
         #print( bch.weights )

@@ -190,7 +190,8 @@ class Reader:
             str = self.getString(8)  # dummy 8 '\4\0\0\0' + '(' + '\0\0\0'
         else:
             self.version_mc_curve = int(self.fp.readline().strip())
-    
+        logger.info("MC Version %s", self.version_mc_curve)
+        
         # read dummy text and title 2x (CHARACTER*40)
         if binary:
             str = self.getString(40)  # info text '*** File with magnetic curve ***'
@@ -232,7 +233,7 @@ class Reader:
         else:
             line = self.fp.readline()
             (self.mc1_remz, self.mc1_bsat, self.mc1_bref, self.mc1_fillfac) = \
-                            map( float, line.split())
+                            map(float, line.split())
             
         if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
                self.version_mc_curve == self.PARAMETER_PM_CURVE:
@@ -342,7 +343,7 @@ class Reader:
         self.ch_freq = vals[4]
         self.cw = vals[3]
         self.cw_freq = vals[5]
-        self.b_coeff =  vals[6]
+        self.b_coeff = vals[6]
         self.rho = vals[7]
         self.fe_sat_mag = vals[8]
 
@@ -535,6 +536,8 @@ class MagnetizingCurve(object):
                 shutil.copy(os.path.join(self.mcdirectory,
                                          filename), directory)
                 return filename
+            except shutil.SameFileError:
+                return filename
             except:
                 logger.error("MCV %s not found", str(filename))
             return None
@@ -665,21 +668,17 @@ class MagnetizingCurve(object):
         
         return filename
     
-    def fitLossCoeffs( self ):
+    def fitLossCoeffs(self):
         for m in self.mcv:
-            if 'losses' not in self.mcv[m]: continue
+            if 'losses' not in self.mcv[m]:
+                continue
             losses = self.mcv[m]['losses']
-            # make block matrix
-            maxlen=0
-            for p in losses['pfe']:
-                 if len(p)>maxlen: maxlen=len(p)
-            for p in losses['pfe']:
-                if len(p)<maxlen: p += [None]*(maxlen-len(p))
-            cw,alfa,beta = femagtools.losscoeffs.fit( losses['f'],
-                                                      losses['B'],
-                                                      losses['pfe'],
-                                                      self.mcv[m]['Bo'],
-                                                      self.mcv[m]['fo'] )
+            cw, alfa, beta = femagtools.losscoeffs.fitsteinmetz(
+                losses['f'],
+                losses['B'],
+                losses['pfe'],
+                self.mcv[m]['Bo'],
+                self.mcv[m]['fo'])
             losses['cw'] = cw
             losses['alfa'] = alfa
             losses['beta'] = beta
@@ -687,16 +686,15 @@ class MagnetizingCurve(object):
             losses['fo'] = self.mcv[m]['fo']
             
 if __name__ == "__main__":
-    if len(sys.argv)==2 :
-        filename=sys.argv[1]
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
     else:
-        filename=sys.stdin.readline().strip()
+        filename = sys.stdin.readline().strip()
 
-    file=open(filename)
-    mcvdata=json.load(file)
-    file.close()
+    with open(filename) as file:
+        mcvdata = json.load(file)
         
     mcv = MagnetizingCurve(mcvdata)
-    mcv.writefile(mcvdata['name'], '.','cat')
+    mcv.writefile(mcvdata['name'], '.', 'cat')
     #mcv.recalc()
     #mcv.writefile(mcvdata['name'], '.','cat')

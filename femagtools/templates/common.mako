@@ -13,9 +13,9 @@ dy2 = ${model.get(['inner_diam'])*1e3}
 da2 = da1 - 2*ag 
 % endif
 
-m.tot_num_slot    =   ${model.get(['stator','num_slots'])}
-m.num_sl_gen      =   ${model.get(['stator','num_slots_gen'])}
-m.num_poles       =   ${model.get(['poles'])}
+m.tot_num_slot    =   ${int(model.get(['stator','num_slots']))}
+m.num_sl_gen      =   ${int(model.get(['stator','num_slots_gen']))}
+m.num_poles       =   ${int(model.get(['poles']))}
 m.num_slots       =   m.num_sl_gen 
 m.npols_gen       =   m.num_poles * m.num_sl_gen / m.tot_num_slot
 m.tot_num_sl      =   m.tot_num_slot

@@ -1,7 +1,7 @@
 --  Magnet-data
  m.remanenc       =    ${model.get('remanenc')}
  m.relperm        =    ${model.get('relperm')}
- m.spmaweight     =    ${model.get('spmaweight', 7.5)}
+ m.spmaweight     =    ${model.get('spmaweight', 7.5e3)*1e-3}
  m.temcoefbr      =    ${model.get('temcoefbr', -0.001)*100}
  m.temcoefhc      =    ${model.get('temcoefhc', -0.001)*100}
  m.magntemp       =    ${model.get('magntemp', 20)}

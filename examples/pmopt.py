@@ -80,7 +80,7 @@ machine = dict(
     
     magnet=dict(
         nodedist=1.0,
-        mcvkey_mshaft="M270-35A",
+        mcvkey_shaft="M270-35A",
         mcvkey_yoke="M270-35A",
         material="M395",
         magnetSector=dict(

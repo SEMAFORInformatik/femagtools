@@ -1,4 +1,7 @@
 import femagtools
+import os
+import logging
+
 
 machine = dict(
     name="PM 130 L4",
@@ -46,13 +49,41 @@ machine = dict(
         num_layers=1)
 )
 
-operatingConditions = dict(
-    calculationMode="pm_sym_fast",
-    current=12.0,
-    angl_i_up=0.0,
-    speed=15.0,
-    wind_temp=60.0,
-    magn_temp=60.0)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(message)s')
 
-fsl = femagtools.create_fsl(machine, operatingConditions)
-print('\n'.join(fsl))
+workdir = os.path.join(
+    os.path.expanduser('~'), 'femag')
+try:
+    os.makedirs(workdir)
+except OSError:
+    pass
+
+femag = femagtools.Femag(workdir)
+
+operatingConditions = dict(
+    angl_i_up=[0.0, 0.0],
+    calculationMode="pm_sym_loss",
+    wind_temp=60.0,
+    magn_temp=60.0,
+    current=[50.0, 50.0],
+    speed=[50.0, 100.0])
+
+r = femag(machine,
+          operatingConditions)
+
+print("""
+Speed   Torque  Current    Teeth    Yoke    Rotor    Total
+1/min    Nm       A         W         W      W         W
+""")
+for x in zip(
+        r['speed'],
+        r['torque'],
+        r['i1'],
+        r['staza'],
+        r['stajo'],
+        r['rotfe'],
+        r['total']):
+    print("{0:6.1f}{1:9.1f}{2:8.2f}{3:9.1f}{4:9.1f}{5:8.1f}{6:10.1f}".format(
+        60*x[0], x[1], x[2], x[3], x[4], x[5], x[6]))
+

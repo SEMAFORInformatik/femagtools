@@ -13,6 +13,7 @@ import platform
 import shutil
 import glob
 import femagtools.bch
+import femagtools.config as cfg
 import logging
 import uuid
 
@@ -22,24 +23,6 @@ logger = logging.getLogger(__name__)
 class JobError(Exception):
     """raised when an error occured"""
 
-
-def is_exe(fpath):
-    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-
-def which(program):
-    fpath, fname = os.path.split(program)
-    if fpath:
-        if is_exe(program):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            path = path.strip('"')
-            exe_file = os.path.join(path, program)
-            if is_exe(exe_file):
-                return exe_file
-
-    return None
 
 class Task(object):
     """represents a single execution unit that may include data files"""
@@ -176,28 +159,8 @@ class CondorJob(Job):
         transfer_files = [item for sublist in
                           [t.transfer_files for t in self.tasks]
                           for item in sublist]
-        if platform.system() == "Windows":
-            wfemag = which("wfemagw64.exe")
-            if not wfemag:
-                raise JobError("wfemag not found in {}".format(
-                    os.environ["PATH"]))
-            for l in ['libstdc++-6.dll', 'libgcc_s_dw2-1.dll']:
-                lib = which(l)
-                if not lib:
-                    raise JobError("{} not found in {}".format(
-                        l, os.environ["PATH"]))
-                
-                transfer_files.append(lib)
-            Executable = wfemag
-            OpSys = "WINDOWS"
 
-        else:
-            xfemag = which("xfemag64")
-            if not xfemag:
-                raise JobError("xfemag not found in {}".format(
-                    os.environ["PATH"]))
-            Executable = xfemag
-            OpSys = "LINUX"
+        OpSys = "WINDOWS" if platform.system() == "Windows" else "LINUX"
 
         fslFilename = ''
         for f in transfer_files:
@@ -211,7 +174,7 @@ class CondorJob(Job):
             'InitialDir   = {}/{}$(Process)'.format(
                 self.basedir, self.runDirPrefix),
             'Universe     = vanilla',
-            'Executable   = {}'.format(Executable),
+            'Executable   = {}'.format(cfg.get_executable()),
             'Arguments    = -b {}'.format(fslFilename),
             'Output       = femag.out',
             'Log          = femag.log',

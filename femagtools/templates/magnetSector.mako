@@ -18,8 +18,8 @@ m.br_width        =    ${model.get(['magnet','magnetSector', 'bridge_width'])*1e
 
 m.zeroangl        =     0.0
 m.cond_shaft      =     0.000
-m.mcvkey_yoke     =     '${model.magnet.get('mcvkey_yoke','dummy')}'
-m.mcvkey_mshaft   =     '${model.magnet.get('mcvkey_mshaft','dummy')}'
+m.mcvkey_yoke     =     mcvkey_yoke
+m.mcvkey_mshaft   =     mcvkey_shaft
 
 m.nodedist        =   ${model.magnet.get('nodedist',1)}
 

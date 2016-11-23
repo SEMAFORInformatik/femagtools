@@ -1,0 +1,57 @@
+
+
+import femagtools
+
+machine = dict(
+    name="PM lin",
+    lfe=0.1,
+    poles=10,
+    outer_diam=0.13,
+    bore_diam=0.07,
+    inner_diam=0.015,
+    airgap=0.001,
+    coord_system=1,
+    stator=dict(
+        num_slots=12,
+        num_slots_gen=6,
+        mcvkey_yoke="dummy",
+        rlength=1.0,
+        stator3Linear=dict(
+            l_corner_x0=0.0,
+            l_corner_y0=0.0,
+            slot_height=0.02,
+            slot_h1=0.002,
+            slot_h2=0.002,
+            tip_slot=0.003,
+            yoke_height=0.008,
+            slot_r1=0.004,
+            slot_r2=0.005,
+            tooth_width=0.01,
+            width_bz=0.025,
+	    middle_line=1)
+    ),
+    magnet=dict(
+        mcvkey_yoke="dummy",
+        magnetSectorLinear=dict(
+            l_corner_x0=0.0,
+            l_corner_y0=0.0,
+            magn_height=0.008,
+            magn_width=0.8,
+            pole_width=0.03,  # bz * Q/P
+            yoke_height=0.008,
+            magn_len=1.0,
+            gap_ma_yoke=0,
+            magn_ori=0,
+            airgap_shape=0.0,
+            magn_type=1)
+    ),
+    windings=dict(
+        num_phases=3,
+        num_wires=100,
+        coil_span=3.0,
+        num_layers=1)
+)
+
+fsl = femagtools.create_fsl(machine)
+print('\n'.join(fsl))
+

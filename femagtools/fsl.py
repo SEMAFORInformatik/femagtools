@@ -1,6 +1,6 @@
 """
-    femagtools.femag
-    ~~~~~~~~~~~~~~~~
+    femagtools.fsl
+    ~~~~~~~~~~~~~~
 
     Creating FSL Scripts
 
@@ -12,7 +12,6 @@ import mako
 import mako.lookup
 import os
 import re
-import math
 
 logger = logging.getLogger(__name__)
 
@@ -34,24 +33,40 @@ class Builder:
         return self.__render(model, templ)
     
     def create_magnet_model(self, model):
-        if 'magnetFsl' in model.magnet:
-            if 'parameter' in model.magnet['magnetFsl']:
-                return self.render_template(
-                    model.magnet['magnetFsl']['content_template'],
-                    model.magnet['magnetFsl']['parameter'])
-            if isinstance(model.magnet['magnetFsl']['content_template'], str):
-                with open(model.magnet['magnetFsl']['content_template']) as f:
-                    templ = [l.strip() for l in f.readlines()]
-            else:
-                templ = model.magnet['magnetFsl']['content_template']
-            logger.info(model.magnet['magnetFsl'])
-            return self.render_template(
-                '\n'.join(templ),
-                model.magnet['magnetFsl'])
-            
-        templ = model.magnettype()
-        return self.__render(model, templ)
+        mcv = ["mcvkey_yoke='{}'".format(
+            model.magnet.get('mcvkey_yoke', 'dummy')),
+               "mcvkey_shaft='{}'".format(
+                   model.magnet.get('mcvkey_shaft', 'dummy'))]
+        try:
+            if 'magnetFsl' in model.magnet:
+                if 'parameter' in model.magnet['magnetFsl']:
+                    return mcv + self.render_template(
+                        model.magnet['magnetFsl']['content_template'],
+                        model.magnet['magnetFsl']['parameter'])
+                if isinstance(model.magnet['magnetFsl']
+                              ['content_template'], str):
+                    with open(model.magnet['magnetFsl']
+                              ['content_template']) as f:
+                        templ = [l.strip() for l in f.readlines()]
+                else:
+                    templ = model.magnet['magnetFsl']['content_template']
+                logger.info(model.magnet['magnetFsl'])
+                return mcv + self.render_template(
+                    '\n'.join(templ),
+                    model.magnet['magnetFsl'])
 
+            templ = model.magnettype()
+            return mcv + self.__render(model, templ)
+        except AttributeError:
+            pass  # no magnet
+        return []
+
+    def create_connect_models(self, model):
+        """return connect_model if rotating machine"""
+        if model.get('move_action') == 0:
+            return ['pre_models("connect_models")']
+        return []
+    
     def create_open(self, model):
         return self.__render(model, 'open') + \
             self.__render(model, 'basic_modpar')
@@ -70,11 +85,9 @@ class Builder:
              'agndst=ndst[1]*1e3'] + \
             self.__render(model, 'gen_winding') + \
             self.create_magnet(model, magnets) + \
-            ["mcvkey_yoke='" + model.magnet['mcvkey_yoke'] + "'",
-             "mcvkey_shaft='" + model.magnet['mcvkey_mshaft'] + "'"] + \
             self.create_magnet_model(model) + \
-            ['pre_models("connect_models")\n',
-             'save_model(cont)']
+            self.create_connect_models(model) + \
+            ['']
     
     def open_model(self, model, magnets=None):
         return self.create_open(model) + \
@@ -85,15 +98,19 @@ class Builder:
         return self.__render(model, 'open')
     
     def create_magnet(self, model, magnets):
-        if magnets and 'material' in model.magnet:
-            magnet = magnets.find(model.magnet['material'])
-            if magnet:
-                return self.__render(magnet, 'magnet')
-            raise FslBuilderError('magnet material {} not found'.format(
-                model.magnet['material']))
-        return [' m.remanenc       =  1.2',
-                ' m.relperm        =  1.05']
-    
+        try:
+            if magnets and 'material' in model.magnet:
+                magnet = magnets.find(model.magnet['material'])
+                if magnet:
+                    return self.__render(magnet, 'magnet')
+                raise FslBuilderError('magnet material {} not found'.format(
+                    model.magnet['material']))
+            return [' m.remanenc       =  1.2',
+                    ' m.relperm        =  1.05']
+        except AttributeError:
+            pass  # no magnet
+        return []
+
     def create_common(self, model):
         return self.__render(model, 'common')
     
@@ -115,6 +132,7 @@ class Builder:
     def create(self, model, fea, magnets=None):
         "create model and analysis function"
         fea['lfe'] = model.get('lfe')
+        fea['move_action'] = model.get('move_action')
         fea.update(model.windings)
         if model.is_complete():
             return self.create_model(model, magnets) + \
@@ -137,16 +155,6 @@ class Builder:
         return template.render_unicode(
             model=parameters).split('\n')
     
-    def createNtib(self, speed, current, beta, r1):
-        """return Ntib info"""
-        return ['Speed[1/min], Current[A], beta[Degr], R_STATOR[Ohm], n-p',
-                'Number of values:      {0}'.format(len(speed))] + \
-                ['{0:12.1f}{1:12.3f}{2:12.3f}{3:12f}{4:12f}'.format(
-                    60*n, math.sqrt(2.0)*i1,
-                    b,
-                    self.machine['r1'], 3.0)
-                 for n, i1, b in zip(speed, current, beta)]
-
     def read(self, fslfile):
         """extracts parameters from content and creates template"""
         parpat = re.compile(

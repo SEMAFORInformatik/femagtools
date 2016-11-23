@@ -16,8 +16,8 @@ m.magn_num        =    ${model.get(['magnet','magnetIron4', 'magn_num'])}
 m.cond_shaft      =    0.0 -- ignored
 m.zeroangl        =     0.0
 
-m.mcvkey_yoke     =   '${model.magnet.get('mcvkey_yoke','dummy')}'
-m.mcvkey_mshaft    =   '${model.magnet.get('mcvkey_mshaft','dummy')}'
+m.mcvkey_yoke     =   mcvkey_yoke
+m.mcvkey_mshaft    =  mcvkey_shaft
 m.nodedist        =   ${model.magnet.get('nodedist',1)}
 
  pre_models("Magnet Iron 4")

@@ -2,51 +2,48 @@ import femagtools
 import os
 import logging
 
-
 machine = dict(
-    name="PM 130 L4",
-    lfe=0.1,
-    poles=4,
-    outer_diam=0.13,
-    bore_diam=0.07,
-    inner_diam=0.015,
+    name="PM lin",
+    lfe=0.05,
+    poles=10,
     airgap=0.001,
+    coord_system=1,
      
     stator=dict(
         num_slots=12,
-        num_slots_gen=3,
+        num_slots_gen=6,
         mcvkey_yoke="dummy",
         rlength=1.0,
-        stator1=dict(
-            slot_rf1=0.057,
-            tip_rh1=0.037,
-            tip_rh2=0.037,
-            tooth_width=0.009,
-            slot_width=0.003)
+        stator3Linear=dict(
+            slot_height=0.02,
+            slot_h1=0.002,
+            slot_h2=0.002,
+            tip_slot=0.003,
+            yoke_height=0.008,
+            slot_r1=0.004,
+            slot_r2=0.005,
+            tooth_width=0.01,
+            width_bz=0.025,
+            middle_line=1)
     ),
-    
     magnet=dict(
-        mcvkey_shaft="dummy",
         mcvkey_yoke="dummy",
-        magnetSector=dict(
-            magn_num=1,
-            magn_width_pct=0.8,
-            magn_height=0.004,
-            magn_shape=0.0,
-            bridge_height=0.0,
-            magn_type=1,
-            condshaft_r=0.02,
-            magn_ori=2,
-            magn_rfe=0.0,
-            bridge_width=0.0,
-            magn_len=1.0)
+        magnetSectorLinear=dict(
+            magn_height=0.008,
+            magn_width=0.8,
+            pole_width=0.03,  # bz * Q/P
+            yoke_height=0.008,
+            magn_len=1.0,
+            gap_ma_yoke=0,
+            magn_ori=0,
+            airgap_shape=0.0,
+            magn_type=1)
     ),
-    
     windings=dict(
         num_phases=3,
-        num_wires=100,
+        num_wires=20,
         coil_span=3.0,
-        num_layers=1)
+        num_layers=2)
 )
 
 logging.basicConfig(level=logging.INFO,
@@ -66,13 +63,15 @@ operatingConditions = dict(
     calculationMode="pm_sym_fast",
     wind_temp=60.0,
     magn_temp=60.0,
-    current=50.0,
-    speed=50.0)
+    current=25.0,
+    speed=10.0)
 
 r = femag(machine,
           operatingConditions)
 
-print('Torque [Nm] = {}'.format(r.machine['torque']))
+print("""
+Force [Nm] = {}
+""".format(r.dqPar['force']))
 print("""
 Losses [W]:
 

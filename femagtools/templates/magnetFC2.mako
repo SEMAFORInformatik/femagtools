@@ -17,6 +17,6 @@ m.magn_num        =   ${model.get(['magnet','magnetFC2', 'magn_num'])}
 m.nodedist        =   ${model.magnet.get('nodedist',0.0)}
 m.zeroangl        =          0.000 --   Reference angle to x-axis [grad]        
  
-m.mcvkey_yoke     =   '${model.magnet.get('mcvkey_yoke','dummy')}'
+m.mcvkey_yoke     =   mcvkey_yoke
  
  pre_models("Rotor_FC2")                                                     

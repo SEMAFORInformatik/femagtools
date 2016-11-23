@@ -23,20 +23,14 @@ machine = dict(
     ),
     
     magnet=dict(
-        mcvkey_shaft="dummy",
         mcvkey_yoke="dummy",
-        magnetSector=dict(
-            magn_num=1,
-            magn_width_pct=0.8,
-            magn_height=0.004,
-            magn_shape=0.0,
-            bridge_height=0.0,
-            magn_type=1,
-            condshaft_r=0.02,
-            magn_ori=2,
-            magn_rfe=0.0,
-            bridge_width=0.0,
-            magn_len=1.0)
+        magnetFsl=dict(
+            magn_height=0.012,
+            shaft_diam=0.01,
+            slot_width=0.006,
+            magn_width=0.022,
+            content_template="spoke.fsl"
+        )
     ),
     
     windings=dict(
@@ -46,13 +40,5 @@ machine = dict(
         num_layers=1)
 )
 
-operatingConditions = dict(
-    calculationMode="pm_sym_fast",
-    current=12.0,
-    angl_i_up=0.0,
-    speed=15.0,
-    wind_temp=60.0,
-    magn_temp=60.0)
-
-fsl = femagtools.create_fsl(machine, operatingConditions)
+fsl = femagtools.create_fsl(machine)
 print('\n'.join(fsl))

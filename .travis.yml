@@ -31,11 +31,6 @@ notifications:
     on_success: change
     on_failure: always
 
-branches:
-  only:
-    - master
-    - development
-
 
 deploy:
   provider: pypi

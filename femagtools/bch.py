@@ -20,6 +20,8 @@ logger = logging.getLogger('femagtools.bch')
 alpha20 = 3.93e-3  # temperature coeff of copper
 
 _indxOpPattern = re.compile(r'[a-zA-Z0-9_]+(\[[-0-9]+\])')
+_statloss = re.compile(r'Fe-Losses\s*Stator')
+_rotloss = re.compile(r'Fe-Losses\s*Rotor')
 
 
 def splitindex(name):
@@ -721,6 +723,7 @@ class Reader:
                           ["LD", 'ld'],
                           ["LQ at nom. current", 'lq'],
                           ["Torque TO", 'torque'],
+                          ["Force", 'force'],
                           ["Torque constant Kt", 'kt'],
                           ["Magn.Flux no-load", 'psim0'],
                           ["Voltage Up  (RMS)  no-load", 'up0'],
@@ -739,52 +742,35 @@ class Reader:
                 if k in self.dqPar:
                     self.dqPar[k] = self.dqPar[k][0]
             lfe = self.dqPar['lfe']
-
-            if 'lfe' in self.dqPar:
-                self.dqPar['lfe'] = 1e-3 * self.dqPar['lfe']
-
-            if 'dag' in self.dqPar:
-                self.dqPar['dag'] = 1e-3 * self.dqPar['dag']
-
-            for k in ('ld', 'lq', 'psim', 'torque'):
+            self.dqPar['lfe'] = 1e-3*self.dqPar['lfe']
+            for k in ('ld', 'lq', 'psim', 'torque', 'force'):
                 if k in self.dqPar:
-                    self.dqPar[k][0] = lfe * self.dqPar[k][0]
-
-            if 'speed' in self.dqPar:
+                    self.dqPar[k][0] = lfe*self.dqPar[k][0]
+            if 'torque' in self.dqPar:
                 self.dqPar['speed'] = self.dqPar['speed']/60
-
+            if 'dag' in self.dqPar:
+                self.dqPar['dag'] = 1e-3*self.dqPar['dag']
             if 'npoles' in self.dqPar:
                 self.dqPar['npoles'] = int(self.dqPar['npoles'])
-
-            if 'i1' in self.dqPar:
-                self.dqPar['i1'] = [self.dqPar['i1'][0]/np.sqrt(2)]
-
+            self.dqPar['i1'] = [self.dqPar['i1'][0]/np.sqrt(2)]
             beta = np.pi*self.dqPar['beta'][0]/180
-            iq = np.cos(beta) * self.dqPar['i1'][0]
-            id = np.sin(beta) * self.dqPar['i1'][0]
-
-            if 'speed' in self.dqPar and 'npoles' in self.dqPar:
-                w1 = np.pi * self.dqPar['speed'] * self.dqPar['npoles']
-            else:
-                w1 = 0
-
-            if 'up' in self.dqPar and 'ld' in self.dqPar:
-                uq, ud = (self.dqPar['up'] + id * w1 * self.dqPar['ld'][0],
-                          iq * w1 * self.dqPar['lq'][0])
-            else:
-                uq = ud = 0
-
-            self.dqPar['u1'] = [np.sqrt(uq**2 + ud**2)]
-            self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
-            self.dqPar['psim0'] = lfe*self.dqPar['psim0']
-            self.dqPar['phi'] = [self.dqPar['beta'][0] +
-                                 self.dqPar['gamma'][0]]
-            self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
-                                    for phi in self.dqPar['phi']]
-            self.dqPar['i1'].insert(0, 0)
-
-            if 'up0' in self.dqPar:
+            iq = np.cos(beta)*self.dqPar['i1'][0]
+            id = np.sin(beta)*self.dqPar['i1'][0]
+            try:
+                w1 = np.pi*self.dqPar['speed']*self.dqPar['npoles']
+                uq, ud = (self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
+                          iq*w1*self.dqPar['lq'][0])
+                self.dqPar['u1'] = [np.sqrt(uq**2 + ud**2)]
+                self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
+                self.dqPar['psim0'] = lfe*self.dqPar['psim0']
+                self.dqPar['phi'] = [self.dqPar['beta'][0] +
+                                     self.dqPar['gamma'][0]]
+                self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
+                                        for phi in self.dqPar['phi']]
+                self.dqPar['i1'].insert(0, 0)
                 self.dqPar['u1'].insert(0, self.dqPar['up0'])
+            except KeyError:
+                pass
 
             return
         
@@ -843,47 +829,57 @@ class Reader:
             if l.startswith('Results for Angle I-Up'):
                 losses['beta'] = floatnan(l.split(':')[-1])
                 losses['current'] = floatnan(content[i+1].split(':')[-1])
-                losses['total'] = 0.0
-                for k in ('stacu', 'staza', 'stajo', 'rotfe',
-                          'magnetJ', 'magnetB'):
+                for k in ('winding', 'staza', 'stajo', 'rotfe',
+                          'magnetJ', 'magnetB', 'r1', 'total'):
                     losses[k] = 0.0
-                break
-
-        for i, l in enumerate(content):
+                continue
+            
             if l.find('Cu-losses') > -1:
                 rec = self._numPattern.findall(content[i+1])
                 if len(rec) > 0:
-                    losses['winding'] = floatnan(rec[0])
-                    losses['total'] += losses['winding']
+                    losses['winding'] += floatnan(rec[0])
+                    losses['total'] += floatnan(rec[0])
                 if len(rec) > 2:
-                    losses['r1'] = floatnan(rec[2])
+                    losses['r1'] += floatnan(rec[2])
+                continue
                     
-            if l.startswith('StZa') or l.startswith('RoZa'):
+            elif l.startswith('StZa') or l.startswith('RoZa'):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 2:
                     losses['stajo'] = floatnan(rec[1])
                     losses['staza'] = floatnan(rec[0])
                     losses['total'] += losses['staza']+losses['stajo']
-
-            if l.startswith('StJo') or l.startswith('RoJo'):
+                continue
+                
+            if l.startswith('StJo') or l.startswith('RoJo') or \
+               _statloss.search(l):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 2:
                     losses['stajo'] = floatnan(rec[0])
                     losses['staza'] = floatnan(rec[1])
                     losses['total'] += losses['staza']+losses['stajo']
-                        
-            if l.find('Fe-Losses   Rotor:') > -1 or \
-               l.find('Fe-Losses   Stator:') > -1:
+                elif len(rec) == 1:
+                    t = l.split(':')[-1].strip()
+                    if t == 'Iron':
+                        losses['staza'] = floatnan(rec[0])
+                    else:
+                        losses['stajo'] += floatnan(rec[0])
+                    losses['total'] += losses['staza']+losses['stajo']
+                continue
+                            
+            if _rotloss.search(l):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 1:
                     losses['rotfe'] = floatnan(rec[0])
                     losses['total'] += losses['rotfe']
+                continue
                     
             if l.find('Fe-Losses-Rotor') > -1:
                 rec = self._numPattern.findall(content[i+3])
                 if len(rec) == 2:
                     losses['rotfe'] = floatnan(rec[1])
                     losses['total'] += losses['rotfe']
+                continue
                     
             if l.find('Magnet-Losses') > -1:
                 rec = self._numPattern.findall(content[i+1])
@@ -1029,10 +1025,11 @@ def main():
     for name in sys.argv[1:]:
         with codecs.open(name, encoding='ascii') as f:
             bch.read( f )
-        print( bch.type )
-        print( bch.date )
-        #print bch.torque
-        print( bch.losses )
+        print(bch.type)
+        print(bch.date)
+        #print(bch.torque)
+        print(bch.losses[-1])
+        #print(bch.linearForce)
         #print( bch.losses[-1]['stajo'] + bch.losses[-1]['stajo'] )
         #print( bch.areas )
         #print( bch.weights )

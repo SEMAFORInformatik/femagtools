@@ -21,6 +21,7 @@ import json
 import io
 import femagtools.mcv
 import femagtools.fsl
+import femagtools.ntib as ntib
 import femagtools.config as cfg
 import time
 import platform
@@ -102,6 +103,19 @@ class BaseFemag(object):
                          errors='ignore') as f:
                 result.read(f)
         return result
+    
+    def read_los(self, modelname=None):
+        "read most recent LOS file and return result"
+        # read latest los file if any
+        if not modelname:
+            modelname = self._get_modelname_from_log()
+
+        losfile_list = sorted(glob.glob(os.path.join(
+            self.workdir, modelname+'_[0-9][0-9][0-9].LOS')))
+        if len(losfile_list) > 0:
+            return ntib.read_los(losfile_list[-1])
+
+        return dict()
 
     def _get_modelname_from_log(self):
         """
@@ -186,7 +200,18 @@ class Femag(BaseFemag):
         with open(os.path.join(self.workdir, fslfile), 'w') as f:
             f.write('\n'.join(self.create_fsl(pmMachine,
                                               operatingConditions)))
+        if operatingConditions['calculationMode'] == "pm_sym_loss":
+            with open(os.path.join(self.workdir,
+                                   self.modelname+'.ntib'), 'w') as f:
+                f.write('\n'.join(ntib.create(
+                    operatingConditions['speed'],
+                    operatingConditions['current'],
+                    operatingConditions['angl_i_up'])))
+                # TODO: add r1, m
+
         self.run(fslfile)
+        if operatingConditions['calculationMode'] == "pm_sym_loss":
+            return self.read_los(self.modelname)
         return self.read_bch(self.modelname)
 
 

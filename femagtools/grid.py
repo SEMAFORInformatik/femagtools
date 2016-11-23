@@ -98,6 +98,7 @@ class Grid(object):
                                if hasattr(model,
                                           d['name'].split('.')[0])]) == 0
         operatingConditions['lfe'] = model.lfe
+        operatingConditions['move_action'] = model.move_action
         operatingConditions.update(model.windings)
         fea = femagtools.model.FeaModel(operatingConditions)
 

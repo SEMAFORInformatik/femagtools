@@ -5,25 +5,23 @@ import tempfile
 import femagtools.poc
 import os
 
-sinPars =dict(
-    pocType="Function"
-    ,shape_current="sin"
-    ,phi_voltage_winding=[0.0,120.0,240.0]
-    ,pole_pitch=360.0
-    ,skew_angle=30.0
-    ,num_winding=3
-    ,key_winding=[1,2,3]
-    ,num_skew_steps=3 )
+sinPars = dict(
+    pocType="Function",
+    shape_current="sin",
+    phi_voltage_winding=[0.0, 120.0, 240.0],
+    skew_angle=30.0,
+    num_winding=3,
+    key_winding=[1, 2, 3],
+    num_skew_steps=3)
 
-funPars =dict(
-    pocType="Function"
-    ,shape_current="sin"
-    ,func_steps=34
-    ,phi_voltage_winding=[-80.0,40.0,160.0]
-    ,pole_pitch=360.0
-    ,num_winding=3
-    ,key_winding=[1,2,3]
-    ,func_current= [0.0,
+funPars = dict(
+    pocType="Function",
+    shape_current="sin",
+    func_steps=34,
+    phi_voltage_winding=[-80.0, 40.0, 160.0],
+    num_winding=3,
+    key_winding=[1, 2, 3],
+    func_current=[0.0,
                    11.25,
                    11.25,
                    33.75,
@@ -98,31 +96,30 @@ funcPars = dict(
         ,harmonic_id=[1,3,5,7,9,11,13,15,17,19]
         ,func_steps=10 )
 
+
 class PocFileTest(unittest.TestCase):
-    maxDiff=None
 
     def test_write_poc(self):
-
-        poc = femagtools.poc.Poc(sinPars)
+        poc = femagtools.poc.Poc(360, sinPars)
         filename = tempfile.mkstemp()[1]
         with open(filename, 'w') as f:
             poc.writefile(f)
 
-        expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n360.0\nsin\n30.0\n3\n\n'
+        expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n360\nsin\n30.0\n3\n\n'
         with open(filename) as f:
             result = f.read()
         self.assertEqual(result, expected)
 
     def _createPoc(self, filename):
-        poc = femagtools.poc.Poc()
-        testPath = os.path.split(__file__)[0]
-        if not testPath: testPath='.'
-        with open('{0}/{1}'.format(testPath, filename)) as f:
-            poc.readfile(f)
-        return poc
-        
-    def test_read_poc( self ):
-        poc=self._createPoc(filename='data/test.poc')
+        testdir = os.path.split(__file__)[0]
+        if not testdir:
+            testdir = '.'
+        return femagtools.poc.Poc(os.path.join(testdir, filename))
+
+    def test_read_poc(self):
+        poc = self._createPoc(filename='data/test.poc')
+        expected = sinPars
+        expected['pole_pitch'] = 360.0
         self.assertEqual(poc.getProps(), sinPars)
 
 #    def test_read_poc_with_fun( self ):
@@ -130,4 +127,4 @@ class PocFileTest(unittest.TestCase):
 #        self.assertEqual(poc.getProps(), funPars)
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

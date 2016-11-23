@@ -150,7 +150,6 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.dqPar['i1'][1], 70.0, 1)
         self.assertAlmostEqual(bch.dqPar['beta'][0], -38.0, 1)
         
-
     def test_read_linearforce(self):
         bch = self.read_bch('linearForce.BATCH')
 
@@ -169,11 +168,14 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.flux_fft['2']), 1)
         self.assertEqual(len(bch.flux_fft['3']), 1)
 
-
     def test_dq(self):
         bch = self.read_bch('dq.BATCH')
         
-
-
+    def test_read_felosses(self):
+        bch = self.read_bch('rel-felosses.BATCH')
+        self.assertEqual(len(bch.losses), 4)
+        self.assertEqual(bch.losses[-1]['stajo'], 4425.106)
+        self.assertEqual(bch.losses[-1]['staza'], 7504.659)
+    
 if __name__ == '__main__':
     unittest.main()

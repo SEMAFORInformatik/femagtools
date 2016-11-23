@@ -158,15 +158,21 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.linearForce['1']), 1)
         self.assertEqual(len(bch.linearForce['1'][0]['displ']), 26)
         self.assertEqual(bch.linearForce['1'][0]['displ'][5], 15.0)
-        self.assertEqual(bch.linearForce['1'][0]['force_x'][7], -553.9)
-        self.assertEqual(bch.linearForce['1'][0]['force_y'][2], 0.5181E-01)
-        self.assertEqual(bch.linearForce['1'][0]['magnet_1'][13], 0.0)
+        self.assertEqual(bch.linearForce['1'][0]['force_x'][7], -0.3439)
+        self.assertEqual(bch.linearForce['1'][0]['force_y'][2], 03107.0)
+        self.assertEqual(bch.linearForce['1'][0]['magnet_1'][13], 10.0)
+        self.assertEqual(bch.linearForce_fft['1'][0]['force'][0], 0.3483)
+        self.assertEqual(bch.linearForce_fft['1'][1]['force'][0], 3157.)
 
         self.assertEqual(len(bch.linearForce_fft['1']), 2)
         self.assertEqual(len(bch.flux_fft['1']), 1)
         self.assertEqual(len(bch.flux_fft['2']), 1)
         self.assertEqual(len(bch.flux_fft['3']), 1)
 
+
+    def test_dq(self):
+        bch = self.read_bch('dq.BATCH')
+        
 
 
 if __name__ == '__main__':

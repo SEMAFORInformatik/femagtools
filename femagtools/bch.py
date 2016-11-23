@@ -115,6 +115,7 @@ class Reader:
         self.weight = {}
         self.areas = []
         self.current_angles = []
+        self.demagnetization = {}
         self.dispatch = {
             'General Machine Data': Reader.__read_general_machine_data,
             'Weigths': Reader.__read_weights,
@@ -156,7 +157,8 @@ class Reader:
             'Demagnetisation': Reader.__read_demagnetization,
             'Transient short circuit': Reader.__read_short_circuit,
             'Flux observed': Reader.__read_flux,
-            'Linear Force': Reader.__read_linear_force}
+            'Linear Force': Reader.__read_linear_force,
+            'Demagnetization Data': Reader.__read_demagnetization}
 
     def getStep(self):
         """@returns displacement step of flux values"""
@@ -296,11 +298,13 @@ class Reader:
                     break
 
         return l
-    
+
     def __read_demagnetization( self, content ):
         keys = ('displ', 'current_1', 'current_2', 'current_3',
                 'h_max', 'h_av', 'area')
+        
         for l in content:
+            import pdb
             rec = self._numPattern.findall(l)
             if len(rec) == 7:
                 for r, k in zip(rec, keys):
@@ -308,6 +312,15 @@ class Reader:
                         self.demag[k].append(floatnan(r.strip()))
                     else:
                         self.demag[k] = [floatnan(r.strip())]
+            else:
+                for v in [["Limit Hc value", "lim_hc"],
+                          ["Max. Magnetization", "br_max"],
+                          ["Min. Magnetization", "br_min"],
+                          ["Area demagnetized", "area"]]:
+                    if l.find(v[0]) > -1:
+                        rec = self._numPattern.findall(l)
+                        if len(rec) > 0:
+                            self.demag[v[1]] = floatnan(rec[-1])
 
     def __read_short_circuit(self, content):
         "read short circuit section"
@@ -405,12 +418,17 @@ class Reader:
                                a=[], b=[])
         for l in content:
             rec = self._numPattern.findall(l)
-            if len(rec) > 4:
+            if len(rec) > 2:
                 linearForce_fft['order'].append(int(rec[0].strip()))
                 linearForce_fft['force'].append(floatnan(rec[1].strip()))
                 linearForce_fft['force_perc'].append(floatnan(rec[2].strip()))
-                linearForce_fft['a'].append(floatnan(rec[3].strip()))
-                linearForce_fft['b'].append(floatnan(rec[4].strip()))
+                if len(rec) > 4:
+                    linearForce_fft['a'].append(floatnan(rec[3].strip()))
+                    linearForce_fft['b'].append(floatnan(rec[4].strip()))
+                else:
+                    linearForce_fft['a'].append(0.0)
+                    linearForce_fft['b'].append(0.0)
+
         if self.wdg not in self.linearForce_fft:
             self.linearForce_fft[self.wdg] = []
         self.linearForce_fft[self.wdg].append(linearForce_fft)
@@ -692,9 +710,11 @@ class Reader:
                                     for pl in zip(*[self.machine[k]
                                                     for k in ('plfe1',
                                                               'plfe2')])]
-                                                          
+
     def __read_dq_parameter(self, content):
+        import pdb
         if content[1].find('Windings') > -1:
+            
             for l in content[1:]:
                 for v in [['Windings Current', 'i1'],
                           ['Angle I vs. Up', 'beta'],
@@ -714,23 +734,46 @@ class Reader:
                         rec = l.split()
                         self.dqPar[v[1]] = [floatnan(rec[-1])]
 
+            # pdb.set_trace()
             for k in ('speed', 'npoles', 'lfe', 'dag', 'up0', 'up', 'psim0'):
                 if k in self.dqPar:
                     self.dqPar[k] = self.dqPar[k][0]
             lfe = self.dqPar['lfe']
-            self.dqPar['lfe'] = 1e-3*self.dqPar['lfe']
-            self.dqPar['dag'] = 1e-3*self.dqPar['dag']
+
+            if 'lfe' in self.dqPar:
+                self.dqPar['lfe'] = 1e-3 * self.dqPar['lfe']
+
+            if 'dag' in self.dqPar:
+                self.dqPar['dag'] = 1e-3 * self.dqPar['dag']
+
             for k in ('ld', 'lq', 'psim', 'torque'):
-                self.dqPar[k][0] = lfe*self.dqPar[k][0]
-            self.dqPar['speed'] = self.dqPar['speed']/60
-            self.dqPar['npoles'] = int(self.dqPar['npoles'])
-            self.dqPar['i1'] = [self.dqPar['i1'][0]/np.sqrt(2)]
+                if k in self.dqPar:
+                    self.dqPar[k][0] = lfe * self.dqPar[k][0]
+
+            if 'speed' in self.dqPar:
+                self.dqPar['speed'] = self.dqPar['speed']/60
+
+            if 'npoles' in self.dqPar:
+                self.dqPar['npoles'] = int(self.dqPar['npoles'])
+
+            if 'i1' in self.dqPar:
+                self.dqPar['i1'] = [self.dqPar['i1'][0]/np.sqrt(2)]
+
             beta = np.pi*self.dqPar['beta'][0]/180
-            iq = np.cos(beta)*self.dqPar['i1'][0]
-            id = np.sin(beta)*self.dqPar['i1'][0]
-            w1 = np.pi*self.dqPar['speed']*self.dqPar['npoles']
-            uq, ud = (self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
-                      iq*w1*self.dqPar['lq'][0])
+            iq = np.cos(beta) * self.dqPar['i1'][0]
+            id = np.sin(beta) * self.dqPar['i1'][0]
+
+            if 'speed' in self.dqPar and 'npoles' in self.dqPar:
+                w1 = np.pi * self.dqPar['speed'] * self.dqPar['npoles']
+            else:
+                w1 = 0
+
+            if 'up' in self.dqPar and 'ld' in self.dqPar:
+                uq, ud = (self.dqPar['up'] + id * w1 * self.dqPar['ld'][0],
+                          iq * w1 * self.dqPar['lq'][0])
+            else:
+                uq = ud = 0
+
             self.dqPar['u1'] = [np.sqrt(uq**2 + ud**2)]
             self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
             self.dqPar['psim0'] = lfe*self.dqPar['psim0']
@@ -739,7 +782,10 @@ class Reader:
             self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
                                     for phi in self.dqPar['phi']]
             self.dqPar['i1'].insert(0, 0)
-            self.dqPar['u1'].insert(0, self.dqPar['up0'])
+
+            if 'up0' in self.dqPar:
+                self.dqPar['u1'].insert(0, self.dqPar['up0'])
+
             return
         
         for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'psid', 'psiq', 'torque',

@@ -67,6 +67,17 @@ statorRotor3
                  middle_line, 
                  tooth_width, 
                  slot_top_sh 
+statorBG
+                 yoke_diam_ins
+                 slot_h1,    
+                 slot_h3,    
+                 slot_width, 
+                 slot_r1,    
+                 slot_r2,
+                 middle_line, 
+                 tooth_width,
+		 tip_rad,
+                 slottooth
 ============    ==============  
 
 Note: all units are metric units
@@ -95,7 +106,7 @@ Magnets have basic parameters and slots:
 Parameter        Description                  Default  
 ==============  ============================  =======  
 mcvkey_yoke      Name of lamination material
-mcvkey_mshaft    Name of shaft material
+mcvkey_shaft     Name of shaft material
 material         Name of magnet material
 nodedist         Factor for node distance       1.0
 ==============  ============================  =======
@@ -226,7 +237,7 @@ Example::
 	 ),
 
      magnet=dict(
-         mcvkey_mshaft="dummy",
+         mcvkey_shaft="dummy",
          mcvkey_yoke="dummy",
          magnetSector=dict (
 	     magn_num=1,
@@ -249,7 +260,26 @@ Example::
            num_layers=1)
   )
   
- 
+Magnet Material
+===============
+
+List of dict objects with a unique name (or id) describing the magnet properties.
+
+============= ============================   =========   =======
+Parameter      Description                    Default     Unit
+============= ============================   =========   =======
+name          Name of Magnet Material
+remanenc      Remanence Induction Br
+relperm       Rel. Permeability
+spmaweight    Specific Weight                 7.5e3        kg/m³
+temcoefbr     Br Temperature Coefficient      -1e-3        1/K
+temcoefhc     Hc Temperature Coefficient      -1e-3        1/K
+magntemp      Magnet Temperature              20           °C
+magncond      Magnet Conductivity             625000       S m
+magnwidth     Magnet Width                    0            m
+magnlength    Magnet Length                   0            m
+============= ============================   =========   =======
+
 
 Calculation
 ===========
@@ -262,7 +292,7 @@ Parameter        Description                   Default      Unit
 speed           Speed                                     1/s
 skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        deg Celsius
+magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0          
@@ -285,8 +315,8 @@ Parameter        Description                   Default      Unit
 speed           Speed                                     1/s
 skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        deg Celsius
-wind_temp       Winding Temperature             20        deg Celsius
+magn_temp       Magnet Temperature                        °C
+wind_temp       Winding Temperature             20        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0         
@@ -312,7 +342,7 @@ Parameter        Description                   Default      Unit
 speed           Speed                                     1/s
 skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        deg Celsius
+magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0         
@@ -345,7 +375,7 @@ Parameter        Description                   Default      Unit
 speed           Speed                                     1/s
 skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        deg Celsius
+magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0         

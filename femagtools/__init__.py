@@ -31,7 +31,11 @@ def read_bchfile(filename):
 
 
 def create_fsl(machine, operatingconditions=None, magnetmat=None):
-    """create FSL command list from model parameters"""
+    """create FSL command list from model parameters
+    :param: machine dict with parameters
+    :param: operatuîngConditions dict with parameters
+    :param: magnetmat list fo dict with parameters
+"""
     model = MachineModel(machine)
     builder = Builder()
     if operatingconditions:

@@ -28,14 +28,9 @@ notifications:
     recipients:
       - tanner@semafor.ch
       - mauchle@semafor.ch
+      - amsler@semafor.ch
     on_success: change
     on_failure: always
-
-branches:
-  only:
-    - master
-    - development
-
 
 deploy:
   provider: pypi
@@ -47,4 +42,3 @@ deploy:
 
 after_deploy:
   - ./conda_deploy.sh
-  

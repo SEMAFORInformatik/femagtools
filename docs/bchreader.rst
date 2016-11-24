@@ -18,6 +18,8 @@ flux               Flux observed
 flux_fft           Fourier-Analysis of flux values
 torque             Torque-Force values
 torque_fft         Fourier-Analysis of torque values
+linearForce        Force x and y values
+linearForce_fft    Fourier-Analysis of force values
 psidq              PSID-Psiq-Identification
 psidq_ldq          PSID-Psiq-Identification (Ld, Lq)
 machine            Machine data
@@ -41,6 +43,7 @@ Flux
   Attribute          Description     
   ================  =======================================================
   displ             position
+  displunit         unit (mm, deg) of position values
   flux_k            flux 
   voltage_dpsi      voltage dpsi/dt
   voltage_four      voltage (fourier transformation)
@@ -89,6 +92,33 @@ Torque
   order             order of harmonic list
   torque            Torque amplitude list
   torque_perc       Torque in percentage of first amplitude
+  a                 amplitude list of sin term
+  b                 amplitude list of cos term
+  ================  =======================================================
+
+Linear Force
+============
+
+* linearForce: list of dictionaries for each current and/or beta angle
+
+  ================  =======================================================
+  Attribute          Description     
+  ================  =======================================================
+  displ             Position
+  magnet_1          Current
+  force_x           Force in x direction 
+  force_y           Force in y direction 
+  ================  =======================================================
+
+
+* linearForce_fft: list of dictionaries for each current and/or beta angle in x- and y-direction
+
+  ================  =======================================================
+  Attribute          Description     
+  ================  =======================================================
+  order             order of harmonic list
+  force             Force amplitude list
+  force_perc        Force in percentage of first amplitude
   a                 amplitude list of sin term
   b                 amplitude list of cos term
   ================  =======================================================

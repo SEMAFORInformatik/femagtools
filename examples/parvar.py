@@ -151,7 +151,7 @@ print(' '.join(['{:15}'.format(s)
 print()
 # print values in table format
 for l in np.hstack((x, f)):
-    print(' '.join(['{:15.2f}'.format(x) for x in l]))
+    print(' '.join(['{:15.2f}'.format(y) for y in l]))
 
 # create scatter plot
 #

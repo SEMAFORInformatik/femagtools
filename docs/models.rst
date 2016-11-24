@@ -95,15 +95,15 @@ Magnets have basic parameters and slots:
 Parameter        Description                  Default  
 ==============  ============================  =======  
 mcvkey_yoke      Name of lamination material
-mcvkey_mshaft    Name of shaft material
+mcvkey_shaft     Name of shaft material
 material         Name of magnet material
 nodedist         Factor for node distance       1.0
 ==============  ============================  =======
 
 Note:
 
-* the mcvkey parameter references a filename without extension (Example 'M330-50A')
-* the material parameter references a name of the magnet material list 
+* the mcvkey parameters reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor.
+* the material parameter references a name of the magnet material list (See below).
 
 Slots
 ^^^^^
@@ -249,7 +249,36 @@ Example::
            num_layers=1)
   )
   
- 
+
+Magnet Material
+===============
+
+list of dicts defining the magnet material.
+
+==============   ============================== ==========  ============
+Parameter         Description                   Default      Unit
+==============   ============================== ==========  ============
+name              Name of magnet material
+remanenc          Remanence Induction Br                    T
+relperm           Relative Permeability
+spmaweight        Specific Mass                  7500       kg/m³
+temcoefbr         Temperature Coefficient of Br  -0.001     T/K 
+temcoefhc         Temperature Coefficient of Br  -0.001     T/K
+magntemp          Magnet Temperature             20         °C      
+magncond          Electr. Conductivity           625000      S/m    
+magnwidth         Magnet width                    0.0       m     
+magnlength        Magnet length in z direction   0.0        m      
+==============   ============================== ==========  ============
+
+Note: name must be unique with list. It may be used as reference in the magnet model of the machine.
+
+Example::
+
+  magmats = [dict(
+     name='MX-333',
+     remanenc=1.2,
+     relperm=1.05)]
+
 
 Calculation
 ===========

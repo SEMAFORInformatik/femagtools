@@ -1,7 +1,7 @@
 import femagtools
 
 machine = dict(
-    name="PM 130 L4",
+    name="example2",
     lfe=0.1,
     poles=4,
     outer_diam=0.13,
@@ -11,7 +11,6 @@ machine = dict(
      
     stator=dict(
         num_slots=12,
-        num_slots_gen=3,
         mcvkey_yoke="dummy",
         rlength=1.0,
         stator1=dict(
@@ -25,10 +24,10 @@ machine = dict(
     magnet=dict(
         mcvkey_yoke="dummy",
         magnetFsl=dict(
-            magn_height=0.012,
+            magn_height=0.01,
             shaft_diam=0.01,
             slot_width=0.006,
-            magn_width=0.022,
+            magn_width=0.024,
             content_template="spoke.fsl"
         )
     ),

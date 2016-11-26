@@ -26,15 +26,15 @@ Stator
 
 Stators have basic parameters and slots:
 
-==============  ============================  =======  ====
-Parameter        Description                  Default  Unit
-==============  ============================  =======  ====
-num_slots        Number of Slots
-num_slots_gen    Number of Slots in Model
+==============  ============================  =====================
+Parameter        Description                  Default  
+==============  ============================  =====================
+num_slots        Number of Slots Q
+num_slots_gen    Number of Slots in Model      Q/gcd(Q, 2p)
 rlength          Relative iron length          1.0
 mcvkey_yoke      Name of lamination material
 nodedist         Factor for node distance      1.0
-==============  ============================  =======  ====
+==============  ============================  =====================
 
 
 Slots

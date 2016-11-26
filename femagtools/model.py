@@ -13,6 +13,18 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
+
+
+def lcm(a, b):
+    if a or b:
+        return abs(a*b)/gcd(a, b)
+    return 0
+
+
 class MCerror(Exception):
     pass
 
@@ -127,6 +139,11 @@ class MachineModel(Model):
         else:
             self.coord_system = 0
             self.move_action = 0
+
+        if 'stator' in parameters and 'num_slots_gen' not in self.stator:
+            self.stator['num_slots_gen'] = (self.stator['num_slots'] /
+                                            gcd(self.stator['num_slots'],
+                                                self.poles))
             
     def set_magcurves(self, magcurves):
         """set and return real names of magnetizing curve material

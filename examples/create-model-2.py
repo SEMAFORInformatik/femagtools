@@ -4,7 +4,7 @@ machine = dict(
     name="example2",
     lfe=0.1,
     poles=4,
-    outer_diam=0.13,
+    outer_diam=0.143,
     bore_diam=0.07,
     inner_diam=0.015,
     airgap=0.001,
@@ -17,16 +17,16 @@ machine = dict(
             slot_rf1=0.057,
             tip_rh1=0.037,
             tip_rh2=0.037,
-            tooth_width=0.009,
+            tooth_width=0.011,
             slot_width=0.003)
     ),
     
     magnet=dict(
         mcvkey_yoke="dummy",
         magnetFsl=dict(
-            magn_height=0.01,
+            magn_height=0.008,
             shaft_diam=0.01,
-            slot_width=0.006,
+            slot_width=0.004,
             magn_width=0.024,
             content_template="spoke.fsl"
         )

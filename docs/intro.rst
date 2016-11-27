@@ -1,10 +1,10 @@
 Introduction and Overview
 *************************
-Note: consider the usage of logging when executing long running commands::
+.. note:: consider the usage of logging when executing long running commands::
 
   import logging
   logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(message)s')
+                      format='%(asctime)s %(message)s')
 
 Run FEMAG with FSL
 ++++++++++++++++++
@@ -94,7 +94,7 @@ Create a FE model from the templates stator1 and magnetSector::
 
 After opening this file in FEMAG the shown geometry is created:
 
-.. image:: geom.png
+.. image:: img/geom.png
    :height: 240pt
 
 The same machine and operating parameters can be used to run FEMAG directly::

@@ -8,18 +8,18 @@ Machine
 
 Machines have a set of basic parameters, a stator, a magnet and a winding:
 
-==============  =================  ====
-Parameter        Description       Unit
-==============  =================  ====
+==============  =============================  ====
+Parameter        Description                   Unit
+==============  =============================  ====
 name             Name of machine
-lfe              Lenght of iron     m
+lfe              Lenght of iron                 m
 poles            Number of poles
-outer_diam       Outer diameter     m
-bore_diam        Bore diameter      m
-inner_diam       Inner diameter     m
-airgap           airgap width       m
+outer_diam       Outer diameter (yoke side)     m
+bore_diam        Bore diameter  (airgap side)   m
+inner_diam       Inner diameter (yoke)          m
+airgap           airgap width                   m
 external_rotor   True, False
-==============  =================  ====
+==============  =============================  ====
 
 Stator
 ------
@@ -36,6 +36,8 @@ mcvkey_yoke      Name of lamination material
 nodedist         Factor for node distance      1.0
 ==============  ============================  =====================
 
+.. note:: if no value for num_slots_gen is given its value is calculated from the the number of slots Q and pole pairs p.
+	  .. version added 0.0.16
 
 Slots
 ^^^^^
@@ -80,7 +82,7 @@ statorBG
                  slottooth
 ============    ==============  
 
-Note: all units are metric units
+.. note:: all units are metric units
 
 Windings
 --------
@@ -111,10 +113,10 @@ material         Name of magnet material
 nodedist         Factor for node distance       1.0
 ==============  ============================  =======
 
-Note:
+.. note::
 
-* the mcvkey parameter references a filename without extension (Example 'M330-50A')
-* the material parameter references a name of the magnet material list 
+  * the mcvkey parameter references a filename without extension (Example 'M330-50A')
+  * the material parameter references a name of the `Magnet Material`_ list 
 
 Slots
 ^^^^^
@@ -259,7 +261,9 @@ Example::
            coil_span=3.0,
            num_layers=1)
   )
-  
+
+.. include:: userspec.rst
+   
 Magnet Material
 ===============
 

@@ -121,46 +121,47 @@ machine = {
     }
 }
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(message)s')
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
 
-engine = Engine()
+    engine = Engine()
 
-userdir = os.path.expanduser('~')
-workdir = os.path.join(userdir, 'parvar')
-try:
-    os.makedirs(workdir)
-except OSError:
-    pass
+    userdir = os.path.expanduser('~')
+    workdir = os.path.join(userdir, 'parvar')
+    try:
+        os.makedirs(workdir)
+    except OSError:
+        pass
 
-parvar = femagtools.grid.Grid(workdir,
-                              magnetizingCurves=magnetizingCurve,
-                              magnets=magnetMat)
+    parvar = femagtools.grid.Grid(workdir,
+                                  magnetizingCurves=magnetizingCurve,
+                                  magnets=magnetMat)
 
-results = parvar(parvardef, machine, operatingConditions, engine)
+    results = parvar(parvardef, machine, operatingConditions, engine)
 
-x = femagtools.grid.create_parameter_range(results['x'])
-f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0])).T
+    x = femagtools.grid.create_parameter_range(results['x'])
+    f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0])).T
 
-# print header
-print(' '.join(['{:15}'.format(s)
-                for s in [d['label']
-                          for d in parvardef['decision_vars']] +
-                [o['label']
-                 for o in parvardef['objective_vars']]]))
-print()
-# print values in table format
-for l in np.hstack((x, f)):
-    print(' '.join(['{:15.2f}'.format(y) for y in l]))
+    # print header
+    print(' '.join(['{:15}'.format(s)
+                    for s in [d['label']
+                              for d in parvardef['decision_vars']] +
+                    [o['label']
+                     for o in parvardef['objective_vars']]]))
+    print()
+    # print values in table format
+    for l in np.hstack((x, f)):
+        print(' '.join(['{:15.2f}'.format(y) for y in l]))
 
-# create scatter plot
-#
-import matplotlib.pyplot as pl
-import mpl_toolkits.mplot3d as mpl
-fig = pl.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter(x[:, 0], x[:, 1], np.array(f[:, 0]))
-ax.set_xlabel(parvardef['decision_vars'][0]['label'])
-ax.set_ylabel(parvardef['decision_vars'][1]['label'])
-ax.set_zlabel(parvardef['objective_vars'][0]['label'])
-pl.savefig('parvar.png')
+    # create scatter plot
+    #
+    import matplotlib.pyplot as pl
+    import mpl_toolkits.mplot3d as mpl
+    fig = pl.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(x[:, 0], x[:, 1], np.array(f[:, 0]))
+    ax.set_xlabel(parvardef['decision_vars'][0]['label'])
+    ax.set_ylabel(parvardef['decision_vars'][1]['label'])
+    ax.set_zlabel(parvardef['objective_vars'][0]['label'])
+    pl.savefig('parvar.png')

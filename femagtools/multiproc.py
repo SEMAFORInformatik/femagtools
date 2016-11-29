@@ -9,7 +9,6 @@
     :authors: R. Tanner, N. Mauchle
 """
 import sys
-import platform
 import multiprocessing
 import subprocess
 import os

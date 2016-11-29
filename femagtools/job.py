@@ -20,10 +20,6 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-class JobError(Exception):
-    """raised when an error occured"""
-
-
 class Task(object):
     """represents a single execution unit that may include data files"""
     def __init__(self, id, directory):
@@ -41,7 +37,9 @@ class Task(object):
         self.id = id
         
     def add_file(self, fname, content=None):
-        """adds a file required by this task"""
+        """adds a file required by this task
+        :param fname: file name 
+        :param content: list of str written to file if not None"""
         base = os.path.basename(fname)
         self.transfer_files.append(fname)
         if os.path.splitext(base)[-1] == '.fsl':
@@ -121,10 +119,10 @@ class Job(object):
         """removes all files and directories of previous run"""
         try:
             os.makedirs(self.basedir)
-        except:
+        except OSError as e:
             if not os.path.isdir(self.basedir):
                 e.args += self.basedir
-                raise
+                raise e
         for d in os.listdir(self.basedir):
             d = os.path.join(self.basedir, d)
             if os.path.isdir(d):
@@ -206,13 +204,3 @@ class CloudJob(Job):
                                            len(self.tasks)))
         self.tasks.append(CloudTask(taskid, dir))
         return self.tasks[-1]
-
-
-if __name__ == "__main__":
-    import tempfile
-    workdir = tempfile.mkdtemp()
-    job = CondorJob(workdir)
-    task = job.add_task()
-    task.add_file('femag.fsl', ['exit_on_end=True'])
-    job.prepareDescription()
-    print("Done: {}".format(workdir))

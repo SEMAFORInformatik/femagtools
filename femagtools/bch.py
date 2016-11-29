@@ -106,8 +106,8 @@ class Reader:
         self.magnet = {}
         self.airgapInduction = {}
         self.flux_fft = {}
-        self.linearForce = {}
-        self.linearForce_fft = {}
+        self.linearForce = [] 
+        self.linearForce_fft = [] 
         self.scData = {}
         self.dqPar = {}
         self.ldq = {}
@@ -394,22 +394,20 @@ class Reader:
              'force_y': [], 'f_idpsi': []}
 
         for l in content:
-            if l.startswith('Base-curr'):
-                rec = self._numPattern.findall(l)
-                self.wdg = rec[-1]
-                if self.wdg not in self.linearForce:
-                    self.linearForce[self.wdg] = []
-            else:
-                rec = self._numPattern.findall(l)
-                if len(rec) > 4:
-                    f['displ'].append(floatnan(rec[1].strip()))
-                    f['magnet_1'].append(floatnan(rec[2].strip()))
-                    f['force_x'].append(floatnan(rec[3].strip()))
-                    f['force_y'].append(floatnan(rec[4].strip()))
-                    # TODO f['f_idpsi'].append(floatnan(rec[5].strip()))
-
-        if f['displ']:
-            self.linearForce[self.wdg].append(f)
+            rec = self._numPattern.findall(l)
+            if len(rec) > 4:
+                f['displ'].append(floatnan(rec[1].strip()))
+                f['magnet_1'].append(floatnan(rec[2].strip()))
+                f['force_x'].append(floatnan(rec[3].strip()))
+                f['force_y'].append(floatnan(rec[4].strip()))
+                # TODO f['f_idpsi'].append(floatnan(rec[5].strip()))
+        if len(f['displ']) > 0:
+            ripple_x = max(f['force_x']) - min(f['force_x'])
+            ripple_y = max(f['force_y']) - min(f['force_y'])
+            f['ripple_x'] = ripple_x
+            f['ripple_y'] = ripple_y
+            self.linearForce.append(f)
+        
         self._fft = Reader.__read_linearForce_fft
 
     def __read_linearForce_fft(self, content):
@@ -431,10 +429,9 @@ class Reader:
                     linearForce_fft['a'].append(0.0)
                     linearForce_fft['b'].append(0.0)
 
-        if self.wdg not in self.linearForce_fft:
-            self.linearForce_fft[self.wdg] = []
-        self.linearForce_fft[self.wdg].append(linearForce_fft)
-
+        if linearForce_fft['order']:
+            self.linearForce_fft.append(linearForce_fft)
+       
     def __read_fft(self, content):
         if self._fft:
             self._fft(self, content)

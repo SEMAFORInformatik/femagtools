@@ -163,7 +163,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(bch.linearForce_fft[1]['force'][0], 3157.)
 
         self.assertEqual(len(bch.linearForce_fft), 2)
-        self.assertEqual(len(bch.flux_fft), 1)
+        self.assertEqual(len(bch.flux_fft), 3)
 
     def test_dq(self):
         bch = self.read_bch('dq.BATCH')

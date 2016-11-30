@@ -121,10 +121,10 @@ machine = {
     }
 }
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(message)s')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(message)s')
 
+if __name__ == '__main__':
     engine = Engine()
 
     userdir = os.path.expanduser('~')

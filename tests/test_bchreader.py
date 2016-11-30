@@ -167,6 +167,9 @@ class BchReaderTest(unittest.TestCase):
 
     def test_dq(self):
         bch = self.read_bch('dq.BATCH')
+        bch.get(['torque', 'torque']) == []
+        bch.get(['linearForce[-1]', 'ripple_x']) == 0.0
+        assert bch.get(['linearForce', 'ripple_z']) is None
         
     def test_read_felosses(self):
         bch = self.read_bch('rel-felosses.BATCH')

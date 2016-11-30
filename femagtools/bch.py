@@ -926,36 +926,39 @@ class Reader:
         name can be a list such as ['torque[1]', 'ripple']
         or a string: 'dqPar'
         """
-        if isinstance(name, str):  # ignore r
-            lname, indx = splitindex(name)
-            if indx is None:
-                return self.__getattr__(name)
-            return self.__getattr__(lname).__getitem__(indx)
-        
-        if len(name) > 1:
+        try:
+            if isinstance(name, str):  # ignore r
+                lname, indx = splitindex(name)
+                if indx is None:
+                    return self.__getattr__(name)
+                return self.__getattr__(lname).__getitem__(indx)
+
+            if len(name) > 1:
+                lname, indx = splitindex(name[0])
+                if r:
+                    if indx is None:
+                        return self.get(name[1:],
+                                        getattr(r, lname))
+                    return self.get(name[1:],
+                                    getattr(r, lname).__getitem__(indx))
+
+                if indx is None:
+                    return self.get(name[1:],
+                                    getattr(self, lname))
+                return self.get(name[1:],
+                                getattr(self, lname).__getitem__(indx))
+
             lname, indx = splitindex(name[0])
             if r:
                 if indx is None:
-                    return self.get(name[1:],
-                                    getattr(r, lname))
-                return self.get(name[1:],
-                                getattr(r, lname).__getitem__(indx))
-                    
-            if indx is None:
-                return self.get(name[1:],
-                                getattr(self, lname))
-            return self.get(name[1:],
-                            getattr(self, lname).__getitem__(indx))
+                    return r.get(name[0])
+                return r.get(lname).__getitem__(indx)
 
-        lname, indx = splitindex(name[0])
-        if r:
             if indx is None:
-                return r.get(name[0])
-            return r.get(lname).__getitem__(indx)
-        
-        if indx is None:
-            return self.__getattr__(name[0])
-        return self.__getattr__(lname).__getitem__(indx)
+                return self.__getattr__(name[0])
+            return self.__getattr__(lname).__getitem__(indx)
+        except (KeyError, IndexError, AttributeError):
+            return None
         
     def __getattr__(self, k):
         return self.__dict__[k]

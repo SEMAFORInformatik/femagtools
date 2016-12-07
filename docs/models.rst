@@ -267,7 +267,8 @@ Example::
 Magnet Material
 ===============
 
-List of dict objects with a unique name (or id) describing the magnet properties.
+List of dict objects each having a unique name (or id) and a set of parameters
+that describe the magnet properties.
 
 ============= ============================   =========   =======
 Parameter      Description                    Default     Unit
@@ -275,9 +276,9 @@ Parameter      Description                    Default     Unit
 name          Name of Magnet Material
 remanenc      Remanence Induction Br
 relperm       Rel. Permeability
-spmaweight    Specific Weight                 7.5e3        kg/m³
-temcoefbr     Br Temperature Coefficient      -1e-3        1/K
-temcoefhc     Hc Temperature Coefficient      -1e-3        1/K
+spmaweight    Specific Weight                 7500        kg/m³
+temcoefbr     Br Temperature Coefficient      -0.001        1/K
+temcoefhc     Hc Temperature Coefficient      -0.001        1/K
 magntemp      Magnet Temperature              20           °C
 magncond      Magnet Conductivity             625000       S m
 magnwidth     Magnet Width                    0            m

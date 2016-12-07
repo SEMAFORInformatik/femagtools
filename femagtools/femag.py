@@ -178,11 +178,14 @@ class Femag(BaseFemag):
         rc = proc.returncode
         logger.info("%s exited with returncode %d (num errs=%d)",
                     self.cmd, rc, len(errs))
-        if rc != 0:
-            raise FemagError('Exit code {}'.format(rc))
-        if len(errs) > 0:
-            raise FemagError('\n'.join(errs))
-
+        if rc != 0 or errs:
+            with io.open(errname, encoding='latin1',
+                         errors='ignore') as errfile:
+                for l in errfile:
+                    errs.append(l.strip())
+            errs.insert(0, 'Exit code {}'.format(rc))
+            raise FemagError(errs)
+        
     def cleanup(self):
         "removes all created files in workdir"
         if not os.path.exists(self.workdir):

@@ -30,7 +30,7 @@ Stators have basic parameters and slots:
 Parameter        Description                  Default  
 ==============  ============================  =====================
 num_slots        Number of Slots Q
-num_slots_gen    Number of Slots in Model      Q/gcd(Q, 2p)
+num_slots_gen    Number of Slots in Model      m*Q/gcd(Q, 2p*m)
 rlength          Relative iron length          1.0
 mcvkey_yoke      Name of lamination material
 nodedist         Factor for node distance      1.0
@@ -90,7 +90,7 @@ Windings
 ============    ============================  =======
 Name             Parameter                    Default
 ============    ============================  =======
-num_phases      number of phases
+num_phases      number of phases (m)
 num_wires       number of wires per slot
 coil_span       coil span
 num_layers      number of layers

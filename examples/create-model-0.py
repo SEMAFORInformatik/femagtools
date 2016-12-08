@@ -11,7 +11,6 @@ machine = dict(
      
     stator=dict(
         num_slots=12,
-        num_slots_gen=3,
         mcvkey_yoke="dummy",
         rlength=1.0,
         stator1=dict(

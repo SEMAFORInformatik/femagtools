@@ -141,9 +141,17 @@ class MachineModel(Model):
             self.move_action = 0
 
         if 'stator' in parameters and 'num_slots_gen' not in self.stator:
-            self.stator['num_slots_gen'] = (self.stator['num_slots'] /
-                                            gcd(self.stator['num_slots'],
-                                                self.poles))
+            try:
+                m = self.windings['num_phases']
+            except:
+                m = 1
+
+            try:
+                self.stator['num_slots_gen'] = (m*self.stator['num_slots'] /
+                                                gcd(self.stator['num_slots'],
+                                                    m*self.poles))
+            except:
+                pass
             
     def set_magcurves(self, magcurves):
         """set and return real names of magnetizing curve material

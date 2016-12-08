@@ -36,8 +36,7 @@ mcvkey_yoke      Name of lamination material
 nodedist         Factor for node distance      1.0
 ==============  ============================  =====================
 
-.. note:: if no value for num_slots_gen is given its value is calculated from the the number of slots Q and pole pairs p.
-	  .. version added 0.0.16
+.. note:: if no value for num_slots_gen is given its value is calculated from the the number of slots Q and pole pairs p. (version added 0.0.16)
 
 Slots
 ^^^^^
@@ -69,6 +68,17 @@ statorRotor3
                  middle_line, 
                  tooth_width, 
                  slot_top_sh 
+stator4
+                 slot_height,
+                 slot_h1,    
+                 slot_h2,    
+                 slot_h3,    
+                 slot_h4,
+                 slot_width, 
+                 slot_r1,    
+                 wedge_width1,
+                 wedge_width2,
+                 wedge_width3
 statorBG
                  yoke_diam_ins
                  slot_h1,    

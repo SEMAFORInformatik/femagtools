@@ -282,11 +282,11 @@ class FslBuilderTest(unittest.TestCase):
 
         feapars['calculationMode'] = "pm_sym_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 64)
+        self.assertEqual(len(fsl), 65)
 
         feapars['calculationMode'] = "mult_cal_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 49)
+        self.assertEqual(len(fsl), 50)
 
     def test_readfsl(self):
         content = [

@@ -310,16 +310,23 @@ num_skew_steps  Number of skew steps            0
 magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
-eval_force      Evaluate force                  0          
+eval_force      Evaluate force                  0
+plots           Create plots                    []
 ==============  ============================= ==========  ============
 
+.. Note::
+   plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
+   'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
+   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.femag.de/ColorGrad.html) added in version 0.0.16
+   
 Example::
 
   operatingConditions = dict(
     calculationMode="cogg_fast",
     magn_temp=60.0,
     num_move_steps=49,
-    speed=50.0)
+    speed=50.0,
+    plots=['field_lines', 'Babs'])
 
 
 PM/Rel Machine Simulation (pm_sym_fast)
@@ -338,6 +345,7 @@ eval_force      Evaluate force                  0
 current         Phase current                             A (RMS)
 angl_i_up       Angle I vs. Up                  0         deg
 optim_i_up      Optimize Current                0
+plots           Create plots                    []
 ==============  ============================= ==========  ============
 
 Example::
@@ -366,6 +374,7 @@ beta_min        Min. Beta angle                           deg
 beta_max        Max. beta angle                           deg
 num_cur_steps   Number of current steps
 num_beta_steps  Number of beta steps
+plots           Create plots                    []
 ==============  ============================= ==========  ============
 
 Example::
@@ -400,6 +409,7 @@ max_iq          Max. Amplitude Iq current                 A
 min_iq          Min. Amplitude Iq current                 A 
 delta_id        Delta of Id current steps                 A
 delta_iq        Delta of Iq current steps                 A
+plots           Create plots                    []
 ==============  ============================= ==========  ============
 
 Example::

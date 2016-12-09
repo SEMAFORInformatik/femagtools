@@ -6,7 +6,7 @@ machine = dict(
     name="PM lin",
     lfe=0.05,
     poles=10,
-    airgap=0.001,
+    airgap=0.0015,
     coord_system=1,
      
     stator=dict(
@@ -30,7 +30,7 @@ machine = dict(
         mcvkey_yoke="dummy",
         magnetSectorLinear=dict(
             magn_height=0.008,
-            magn_width=0.8,
+            magn_width_pct=0.8,
             pole_width=0.03,  # bz * Q/P
             yoke_height=0.008,
             magn_len=1.0,
@@ -42,7 +42,7 @@ machine = dict(
     windings=dict(
         num_phases=3,
         num_wires=20,
-        coil_span=3.0,
+        coil_span=1.0,
         num_layers=2)
 )
 
@@ -61,9 +61,9 @@ femag = femagtools.Femag(workdir)
 operatingConditions = dict(
     angl_i_up=0.0,
     calculationMode="pm_sym_fast",
-    wind_temp=60.0,
-    magn_temp=60.0,
-    current=25.0,
+    wind_temp=20.0,
+    magn_temp=20.0,
+    current=7.07,
     speed=10.0)
 
 r = femag(machine,
@@ -89,3 +89,4 @@ Losses [W]:
     r.losses[-1]['magnetJ'],
     r.losses[-1]['winding'],
     r.losses[-1]['total']))
+

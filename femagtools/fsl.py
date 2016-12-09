@@ -71,6 +71,9 @@ class Builder:
         return self.__render(model, 'open') + \
             self.__render(model, 'basic_modpar')
 
+    def set_modpar(self, model):
+        return self.__render(model, 'basic_modpar')
+
     def create_new_model(self, model):
         return self.__render(model, 'new_model')
     
@@ -117,8 +120,9 @@ class Builder:
                                         'pm_sym_loss',
                                         'psd_psq_fast'):
             return self.__render(model, model['calculationMode'])
-        return self.__render(model, 'cu_losses') + \
-            self.__render(model, model['calculationMode'])
+        return (self.__render(model, 'cu_losses') + 
+                self.__render(model, model['calculationMode']) +
+                self.__render(model, 'plots'))
             
     def create_airgap_induc(self, model):
             return self.__render(model, 'airgapinduc')

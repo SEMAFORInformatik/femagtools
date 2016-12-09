@@ -2,8 +2,6 @@ import femagtools
 import os
 import logging
 
-import matplotlib.pyplot as pl
-
 machine = dict(
     name="PM lin",
     lfe=0.05,
@@ -91,8 +89,3 @@ Losses [W]:
     r.losses[-1]['magnetJ'],
     r.losses[-1]['winding'],
     r.losses[-1]['total']))
-
-pl.plot(r.flux['1'][0]['displ'], r.flux['1'][0]['voltage_dpsi'],
-        r.flux['2'][0]['displ'], r.flux['2'][0]['voltage_dpsi'],
-        r.flux['3'][0]['displ'], r.flux['2'][0]['voltage_dpsi'], label='UdPsi')
-pl.show()

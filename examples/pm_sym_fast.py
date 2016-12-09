@@ -67,7 +67,8 @@ operatingConditions = dict(
     wind_temp=60.0,
     magn_temp=60.0,
     current=50.0,
-    speed=50.0)
+    speed=50.0,
+    plots=['field_lines', 'Babs'])
 
 r = femag(machine,
           operatingConditions)

@@ -76,13 +76,15 @@ Torque
   ================  =======================================================
   angle             Position
   current_1         Current
-  force_x           Force in tangetial direction 
-  force_y           Force in radial direction 
-  t_idpsi           Torque
-  torque            Torque
+  force_x           Force in x-direction 
+  force_y           Force in y-direction 
+  t_idpsi           Torque with dq-parameters
+  torque            Torque with Maxwell stress tensor
   ripple            Diff between max and min torque value
   ================  =======================================================
 
+  .. Note:: the force values are valid for the simulated model segment only.
+	    The torque values are valid for the complete machine.
 
 * torque_fft: list of dictionaries for each current and/or beta angle
 

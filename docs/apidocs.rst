@@ -42,7 +42,8 @@ Calculation Engines
 .. autoclass:: femagtools.google.Engine
    :members:
 
-Parameter Variation
--------------------
+Parameter Variation and Optimization
+------------------------------------
 .. autoclass:: femagtools.grid.Grid
+.. autoclass:: femagtools.opt.Optimizer
       

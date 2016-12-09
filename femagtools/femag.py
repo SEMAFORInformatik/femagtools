@@ -178,11 +178,14 @@ class Femag(BaseFemag):
         rc = proc.returncode
         logger.info("%s exited with returncode %d (num errs=%d)",
                     self.cmd, rc, len(errs))
-        if rc != 0:
-            raise FemagError('Exit code {}'.format(rc))
-        if len(errs) > 0:
-            raise FemagError('\n'.join(errs))
-
+        if rc != 0 or errs:
+            with io.open(errname, encoding='latin1',
+                         errors='ignore') as errfile:
+                for l in errfile:
+                    errs.append(l.strip())
+            errs.insert(0, 'Exit code {}'.format(rc))
+            raise FemagError(errs)
+        
     def cleanup(self):
         "removes all created files in workdir"
         if not os.path.exists(self.workdir):
@@ -229,6 +232,12 @@ class ZmqFemag(BaseFemag):
         self.port = port
         self.request_socket = None
         self.subscriber_socket = None
+
+    def __del__(self):
+        if self.request_socket:
+            self.request_socket.close()
+        if self.subscriber_socket:
+            self.subscriber_socket.close()
 
     def __req_socket(self):
         """returns a new request client"""
@@ -295,8 +304,8 @@ class ZmqFemag(BaseFemag):
         """
         try:
             request_socket = self.__req_socket()
-            request_socket.send(b"FSL", flags=zmq.SNDMORE)
-            request_socket.send(b"testvar=0")
+            request_socket.send_string("FSL", flags=zmq.SNDMORE)
+            request_socket.send_string("testvar=0")
             poller = zmq.Poller()
             # use POLLIN for recv, POLLOUT for send
             poller.register(request_socket, zmq.POLLIN)
@@ -304,15 +313,16 @@ class ZmqFemag(BaseFemag):
                 logger.info('femag is running for %s',
                             self.request_socket.getsockopt_string(
                                 zmq.IDENTITY))
-                request_socket.recv()
+                request_socket.recv_multipart()
                 return True
         except Exception as e:
             logger.error(e)
         self.request_socket.close()
         self.request_socket = None
+        logger.debug("femag is not running")
         return False
-
-    def send_fsl(self, fsl, header=b'FSL'):
+    
+    def send_fsl(self, fsl, header='FSL'):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
         
         :param fsl: FSL commands
@@ -320,20 +330,21 @@ class ZmqFemag(BaseFemag):
         """
         try:
             request_socket = self.__req_socket()
-            request_socket.send_multipart([header,
-                                           fsl.encode("ascii", "ignore")])
+            request_socket.send_string(header, flags=zmq.SNDMORE)
+            request_socket.send_string(fsl)
             response = request_socket.recv_multipart()
-            return response[0]
+            logger.debug("send_fsl["+fsl+"] done")
+            return [s.decode() for s in response]
         except Exception as e:
-            logger.error(e)
-        return '{"status":"error"}'
+            logger.error("send_fsl, for error: %s", str(e))
+        return ['{"status":"error"}']
 
     def read(self):
         """reads from subscriber socket"""
         subscriber_socket = self.__sub_socket()
         try:
             response = subscriber_socket.recv_multipart()
-            return response
+            return [s.decode() for s in response]
         except Exception as e:
             logger.error(e)
             time.sleep(1)
@@ -353,12 +364,9 @@ class ZmqFemag(BaseFemag):
         if self.__is_running():
             if restart:
                 logging.info("must restart")
-                if self.send_fsl(b"exit",
-                                 header=b"CONTROL"):
-                    logger.debug("send_fsl response Ok")
-                else:
-                    logger.warn("send_fsl response error")
-                # check if process really finished
+                self.quit(True)
+
+                # check if process really finished (mq_connection)
                 logger.info("procId: %s", procId)
                 if procId:
                     for t in range(200):
@@ -366,6 +374,7 @@ class ZmqFemag(BaseFemag):
                         if not self.__is_process_running(procId):
                             break
                         logger.info("femag (pid: '{}') not stopped yet".format(procId))
+                logger.info("Stopped procId: %s", procId)
             else:
                 try:
                     with open(os.path.join(self.workdir,
@@ -378,7 +387,7 @@ class ZmqFemag(BaseFemag):
         if self.request_socket:
             self.request_socket.close()
         self.request_socket = None
-        
+
         basename = str(self.port)
         args.append(basename)
 
@@ -389,6 +398,15 @@ class ZmqFemag(BaseFemag):
             proc = subprocess.Popen(
                 args,
                 stdout=out, stderr=err, cwd=self.workdir)
+
+        # check if mq is ready for listening
+        for t in range(200):
+            time.sleep(0.1)
+            if self.__is_running():
+                logger.info("femag (pid: '{}') is listening".format(proc.pid))
+                break
+
+        # write femag.pid
         logger.info("ready %s", proc.pid)
         with open(os.path.join(self.workdir, 'femag.pid'), 'w') as pidfile:
             pidfile.write("{}\n".format(proc.pid))
@@ -396,30 +414,26 @@ class ZmqFemag(BaseFemag):
 
     def quit(self, save_model=False):
         """terminates femag"""
+
+        if not self.__is_running():
+            return
+
         # send exit flags
         request_socket = self.__req_socket()
-        request_socket.send_multipart([b"FSL",
-                                       b'\n'.join(
-                                           [b'exit_on_end = true',
-                                            b'exit_on_error = true'])])
-        response = request_socket.recv_multipart()
+        f = '\n'.join([
+                       'exit_on_end = true',
+                       'exit_on_error = true'])
+        response = self.send_fsl(f)
 
         # send quit command
-        request_socket.send_multipart([b"CONTROL", b'quit'])
-
-        # readd response
-        response = request_socket.recv_multipart()
-        # self.log_result(response, "Quit Response")
+        response =  self.send_fsl('quit', 'CONTROL')
 
         # if query, send a answer
-        obj = json.loads(response[0].decode())
+        obj = json.loads(response[0])
         if obj['status'] == 'Query':
             logger.info('query: %s => %s',
                         obj['message'], 'saved' if save_model else 'not saved')
-            request_socket.send(b'Ok' if save_model else b'Cancel')
-            response = request_socket.recv_multipart()
-            # self.log_result(response, "Quit Query Response")
-            # self.subscriber_is_running = False
+            response = self.send_fsl('Ok' if save_model else 'Cancel')
         return response
 
     def __call__(self, pmMachine, operatingConditions):

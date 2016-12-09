@@ -8,34 +8,35 @@ Machine
 
 Machines have a set of basic parameters, a stator, a magnet and a winding:
 
-==============  =================  ====
-Parameter        Description       Unit
-==============  =================  ====
+==============  =============================  ====
+Parameter        Description                   Unit
+==============  =============================  ====
 name             Name of machine
-lfe              Lenght of iron     m
+lfe              Lenght of iron                 m
 poles            Number of poles
-outer_diam       Outer diameter     m
-bore_diam        Bore diameter      m
-inner_diam       Inner diameter     m
-airgap           airgap width       m
+outer_diam       Outer diameter (yoke side)     m
+bore_diam        Bore diameter  (airgap side)   m
+inner_diam       Inner diameter (yoke)          m
+airgap           airgap width                   m
 external_rotor   True, False
-==============  =================  ====
+==============  =============================  ====
 
 Stator
 ------
 
 Stators have basic parameters and slots:
 
-==============  ============================  =======  ====
-Parameter        Description                  Default  Unit
-==============  ============================  =======  ====
-num_slots        Number of Slots
-num_slots_gen    Number of Slots in Model
+==============  ============================  =====================
+Parameter        Description                  Default  
+==============  ============================  =====================
+num_slots        Number of Slots Q
+num_slots_gen    Number of Slots in Model      m*Q/gcd(Q, 2p*m)
 rlength          Relative iron length          1.0
 mcvkey_yoke      Name of lamination material
 nodedist         Factor for node distance      1.0
-==============  ============================  =======  ====
+==============  ============================  =====================
 
+.. note:: if no value for num_slots_gen is given its value is calculated from the the number of slots Q and pole pairs p. (version added 0.0.16)
 
 Slots
 ^^^^^
@@ -67,9 +68,31 @@ statorRotor3
                  middle_line, 
                  tooth_width, 
                  slot_top_sh 
+stator4
+                 slot_height,
+                 slot_h1,    
+                 slot_h2,    
+                 slot_h3,    
+                 slot_h4,
+                 slot_width, 
+                 slot_r1,    
+                 wedge_width1,
+                 wedge_width2,
+                 wedge_width3
+statorBG
+                 yoke_diam_ins
+                 slot_h1,    
+                 slot_h3,    
+                 slot_width, 
+                 slot_r1,    
+                 slot_r2,
+                 middle_line, 
+                 tooth_width,
+		 tip_rad,
+                 slottooth
 ============    ==============  
 
-Note: all units are metric units
+.. note:: all units are metric units
 
 Windings
 --------
@@ -77,7 +100,7 @@ Windings
 ============    ============================  =======
 Name             Parameter                    Default
 ============    ============================  =======
-num_phases      number of phases
+num_phases      number of phases (m)
 num_wires       number of wires per slot
 coil_span       coil span
 num_layers      number of layers
@@ -100,10 +123,11 @@ material         Name of magnet material
 nodedist         Factor for node distance       1.0
 ==============  ============================  =======
 
-Note:
+.. note::
 
 * the mcvkey parameters reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor.
-* the material parameter references a name of the magnet material list (See below).
+* the material parameter references a name of the 'Magnet Material'_ list.
+
 
 Slots
 ^^^^^
@@ -226,7 +250,7 @@ Example::
 	 ),
 
      magnet=dict(
-         mcvkey_mshaft="dummy",
+         mcvkey_shaft="dummy",
          mcvkey_yoke="dummy",
          magnetSector=dict (
 	     magn_num=1,
@@ -248,12 +272,14 @@ Example::
            coil_span=3.0,
            num_layers=1)
   )
+<<<<<<< HEAD
   
 
 Magnet Material
 ===============
 
-list of dicts defining the magnet material.
+list of dict objects each having a unique name (or id) and a set of parameters
+that describe the magnet properties.
 
 ==============   ============================== ==========  ============
 Parameter         Description                   Default      Unit
@@ -279,6 +305,8 @@ Example::
      remanenc=1.2,
      relperm=1.05)]
 
+.. include:: userspec.rst
+
 
 Calculation
 ===========
@@ -291,19 +319,26 @@ Parameter        Description                   Default      Unit
 speed           Speed                                     1/s
 skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        deg Celsius
+magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
-eval_force      Evaluate force                  0          
+eval_force      Evaluate force                  0
+plots           Create plots                    []
 ==============  ============================= ==========  ============
 
+.. Note::
+   plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
+   'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
+   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.femag.de/ColorGrad.html) added in version 0.0.16
+   
 Example::
 
   operatingConditions = dict(
     calculationMode="cogg_fast",
     magn_temp=60.0,
     num_move_steps=49,
-    speed=50.0)
+    speed=50.0,
+    plots=['field_lines', 'Babs'])
 
 
 PM/Rel Machine Simulation (pm_sym_fast)
@@ -314,14 +349,15 @@ Parameter        Description                   Default      Unit
 speed           Speed                                     1/s
 skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        deg Celsius
-wind_temp       Winding Temperature             20        deg Celsius
+magn_temp       Magnet Temperature                        °C
+wind_temp       Winding Temperature             20        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0         
 current         Phase current                             A (RMS)
 angl_i_up       Angle I vs. Up                  0         deg
 optim_i_up      Optimize Current                0
+plots           Create plots                    []
 ==============  ============================= ==========  ============
 
 Example::
@@ -341,7 +377,7 @@ Parameter        Description                   Default      Unit
 speed           Speed                                     1/s
 skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        deg Celsius
+magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0         
@@ -350,6 +386,7 @@ beta_min        Min. Beta angle                           deg
 beta_max        Max. beta angle                           deg
 num_cur_steps   Number of current steps
 num_beta_steps  Number of beta steps
+plots           Create plots                    []
 ==============  ============================= ==========  ============
 
 Example::
@@ -374,7 +411,7 @@ Parameter        Description                   Default      Unit
 speed           Speed                                     1/s
 skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        deg Celsius
+magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0         
@@ -384,6 +421,7 @@ max_iq          Max. Amplitude Iq current                 A
 min_iq          Min. Amplitude Iq current                 A 
 delta_id        Delta of Id current steps                 A
 delta_iq        Delta of Iq current steps                 A
+plots           Create plots                    []
 ==============  ============================= ==========  ============
 
 Example::

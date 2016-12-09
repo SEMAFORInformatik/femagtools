@@ -4,7 +4,15 @@
 m.l_corner_x0     = 0.0
 m.l_corner_y0     = 0.0
 m.magn_height     = ${model.get(['magnet', 'magnetSectorLinear', 'magn_height'])*1e3}
+<<<<<<< HEAD
 m.magn_width      = ${model.get(['magnet', 'magnetSectorLinear', 'magn_width_pct'])*100}
+=======
+% if model.get(['magnet', 'magnetSectorLinear', 'magn_width_pct']):
+m.magn_width      = ${model.get(['magnet', 'magnetSectorLinear', 'magn_width_pct'])*1e2}
+% else:
+m.magn_width      = -${model.get(['magnet', 'magnetSectorLinear', 'magn_width'])*1e3}
+% endif
+>>>>>>> development
 m.pole_width      = ${model.get(['magnet', 'magnetSectorLinear', 'pole_width'])*1e3}
 m.yoke_heigth     = ${model.get(['magnet', 'magnetSectorLinear', 'yoke_height'])*1e3}
 m.magn_len        = ${model.get(['magnet', 'magnetSectorLinear', 'magn_len'])*100}

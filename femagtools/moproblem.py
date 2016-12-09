@@ -24,8 +24,8 @@ class FemagMoProblem(Problem):
         lbounds, ubounds = zip(*[d['bounds'] for d in decision_vars])
         self.set_bounds(lbounds, ubounds)
         self.decision_vars = decision_vars
-        logger.info("Cnt decision_vars: %d", len(decision_vars))
-        logger.info("bounds l: %s  u: %s", lbounds, ubounds)
+        logger.info("Decision Vars: %s", [d['name'] for d in decision_vars])
+        logger.info("bounds lower: %s  upper: %s", lbounds, ubounds)
         self.objective_vars = objective_vars
 
     # prepare model

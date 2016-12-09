@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 __title__ = 'femagtools'
-__version__ = '0.0.15'
+__version__ = '0.0.16'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2016 SEMAFOR Informatik & Energie AG'
@@ -31,7 +31,11 @@ def read_bchfile(filename):
 
 
 def create_fsl(machine, operatingconditions=None, magnetmat=None):
-    """create FSL command list from model parameters"""
+    """create FSL command list from model parameters
+    :param: machine dict with parameters
+    :param: operatuîngConditions dict with parameters
+    :param: magnetmat list fo dict with parameters
+"""
     model = MachineModel(machine)
     builder = Builder()
     if operatingconditions:

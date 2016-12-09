@@ -2,8 +2,10 @@ Examples:
 
 create-model-0.py: create the file femag.fsl of a PM machine with stator3
                    and magnet sector
-create-model-1.py: create FSL commands of a PM machine with a stator3
-                   and a user defined magnet (ring-magnet.fsl)
+create-model-1.py: create FSL commands of a 12kW wind generator with a stator4
+                   and an outer magnet sector
+create-model-2.py: create FSL commands of a PM machine with a stator1
+                   and a user defined magnet (spoke.fsl)
 create-model-3.py: create FSL commands of a PM machine with a stator3,
                    magnet sector and pm_sym_fast invocation
 

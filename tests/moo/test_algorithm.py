@@ -73,16 +73,16 @@ class AlgorithmTest(unittest.TestCase):
             newpop.eval()
             pop.merge(newpop)
             
-        F = np.array([ind.cur_f for ind in pop.individuals]).T
-        plt.scatter(F[0], F[1], c="r", s=200, alpha=0.5)
+        #F = np.array([ind.cur_f for ind in pop.individuals]).T
+        #plt.scatter(F[0], F[1], c="r", s=200, alpha=0.5)
     
-        plt.xlabel("$f^{(1)}$")
-        plt.ylabel("$f^{(2)}$")
-        plt.savefig('moo.png')
+        #plt.xlabel("$f^{(1)}$")
+        #plt.ylabel("$f^{(2)}$")
+        #plt.savefig('moo.png')
 
         # np.testing.assert_almost_equal(pop.compute_norm_dist(), 1.0 )
         self.assertEqual(pop.dom_count, [0]*pop.size())
-        self.assertEqual(pop.pareto_rank, [0]*pop.size() )
+        #self.assertEqual(pop.pareto_rank, [0]*pop.size() )
         #self.assertEqual(pop.best_idx(), [0, 1, 3, 4, 2, 6, 5, 7] )
 
 if __name__ == '__main__':

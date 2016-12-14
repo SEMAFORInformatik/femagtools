@@ -7,7 +7,7 @@ install:
   - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib anaconda-client conda-build
   - conda install --yes -c dan_blanchard python-coveralls
   - pip install .
-  - pip install boto3 zmq pytest mock
+  - pip install boto3 zmq pytest mock travis-tox
 
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
@@ -21,7 +21,7 @@ before_install:
   - sudo rm -rf /dev/shm
   - sudo ln -s /run/shm /dev/shm
 
-script: pytest tests/
+script: tox -e py27,py34pytest tests/
 
 notifications:
   email:

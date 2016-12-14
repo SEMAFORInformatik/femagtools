@@ -15,7 +15,7 @@ class PropulationTest(unittest.TestCase):
     def setUp(self, create_amazone_resource):
         create_amazone_resource = mock.Mock()
         self.engine = femagtools.amazon.Engine()
-        
+
     def tearDown(self):
         self.engine = None
 
@@ -24,7 +24,6 @@ class PropulationTest(unittest.TestCase):
         if len(testPath) == 0:
             testPath = os.path.join(os.path.abspath('.'), 'data')
 
-        
         result = """Test Cloud init
 export ACL=authenticated-read
 export CLOUD_INIT={}/cloud_init.txt
@@ -36,11 +35,10 @@ export INSTANCE_TYPE=t2.micro
 export SERVER_LOCATION=eu-central-1
 export BUCKET_NAME=1
 """.format(testPath)
-        
+
         self.engine.config['CLOUD_INIT'] = "{}/cloud_init.txt".format(testPath)
         user_data = self.engine._read_cloud_init('1')
         self.assertEqual(user_data, result)
-
 
     # This test does not work, cause mock can not mock attributes in a class which are
     # not defined in the init method
@@ -61,8 +59,8 @@ export BUCKET_NAME=1
         self.engine.job.tasks.append(m(2, "/tmp/"))
 
         # This is the test
-        # self.engine._get_status_code('exit_code')    
+        # self.engine._get_status_code('exit_code')
 
-        
+
 if __name__ == '__main__':
     unittest.main()

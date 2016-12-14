@@ -40,7 +40,7 @@ class Engine(object):
 
     """The Amazon Engine
 
-    This enginge uses the boto3 Python module to interact 
+    This enginge uses the boto3 Python module to interact
        with the amazon ec2 and s3 services
 
     :param list buckets: Existing buckets with femag calculation files
@@ -61,7 +61,7 @@ class Engine(object):
         # Create instance of config
         self.config = Config(self.default_config)
         self.config.from_ini_file(configfile)
-        
+
     def _create_amazon_resource(self, resource):
         import boto3
         return boto3.resource(resource)

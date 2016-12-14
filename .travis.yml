@@ -21,7 +21,7 @@ before_install:
   - sudo rm -rf /dev/shm
   - sudo ln -s /run/shm /dev/shm
 
-script: tox -e py27,py34pytest tests/
+script: tox
 
 notifications:
   email:

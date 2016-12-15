@@ -15,7 +15,10 @@ import os
 import logging
 from .job import Job
 import femagtools.config as cfg
-
+try:
+    from subprocess import DEVNULL
+except ImportError:
+    DEVNULL = open(os.devnull, 'wb')
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +34,18 @@ def run_femag(cmd, workdir, fslfile):
     """
     logger.info('FEMAG %s: %s', workdir, fslfile)
     with open(os.path.join(workdir, "femag.out"), "wb") as out, \
-         open(os.path.join(workdir, "femag.err"), "wb") as err:
-        proc = subprocess.Popen(cmd + ['-b', fslfile],
-                                shell=False,
-                                stdout=out,
-                                stderr=err,
-                                cwd=workdir)
+            open(os.path.join(workdir, "femag.err"), "wb") as err:
+        try:
+            proc = subprocess.Popen(cmd + ['-b', fslfile],
+                                    shell=False,
+                                    stdin=DEVNULL,
+                                    stdout=out,
+                                    stderr=err,
+                                    cwd=workdir)
+        except OSError:
+            logger.error("Command {} not found in path".format(cmd))
+            raise
+
         # wait
         proc.wait()
 

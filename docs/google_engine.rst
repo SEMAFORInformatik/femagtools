@@ -73,7 +73,7 @@ Example::
  gsutil rsync gs://$CS_BUCKET data
  cd data
  tar -xzf *.tar.gz
- xfemag -b femag.fsl
+ xfemag -b femag.fsl </dev/null
  echo $? > exit_code
  gsutil rsync /data gs://$CS_BUCKET
  

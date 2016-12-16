@@ -78,6 +78,6 @@ Example::
  aws s3 sync s3://$BUCKET_NAME/ ~/data
  cd ~/data
  tar -xzf *.tar.gz
- /usr/local/bin/xfemag -b femag.fsl
+ /usr/local/bin/xfemag -b femag.fsl </dev/null
  echo $? > ~/data/exit_code
  aws s3 sync ~/data s3://$BUCKET_NAME

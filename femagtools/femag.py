@@ -43,7 +43,7 @@ class BaseFemag(object):
             self.cmd = cmd
         else:
             self.cmd = cfg.get_femag()
-            
+
         if magnetizingCurves:
             if isinstance(magnetizingCurves,
                           femagtools.mcv.MagnetizingCurve):
@@ -321,10 +321,10 @@ class ZmqFemag(BaseFemag):
         self.request_socket = None
         logger.debug("femag is not running")
         return False
-    
+
     def send_fsl(self, fsl, header='FSL'):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
-        
+
         :param fsl: FSL commands
         :returns: response
         """
@@ -352,8 +352,8 @@ class ZmqFemag(BaseFemag):
             self.subscriber_socket.close()
         self.subscriber_socket = None
         return None
-    
-    def run(self, options=['-b'], restart=False, procId=None):
+
+    def run(self, options=['-b'], restart=False, procId=None):  # noqa: C901
         """invokes FEMAG in current workdir and returns pid
 
         :param options: list of FEMAG options
@@ -419,14 +419,13 @@ class ZmqFemag(BaseFemag):
             return
 
         # send exit flags
-        request_socket = self.__req_socket()
-        f = '\n'.join([
-                       'exit_on_end = true',
+        self.__req_socket()
+        f = '\n'.join(['exit_on_end = true',
                        'exit_on_error = true'])
         response = self.send_fsl(f)
 
         # send quit command
-        response =  self.send_fsl('quit', 'CONTROL')
+        response = self.send_fsl('quit', 'CONTROL')
 
         # if query, send a answer
         obj = json.loads(response[0])

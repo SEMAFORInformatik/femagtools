@@ -13,6 +13,7 @@ from femagtools.multiproc import Engine
 import femagtools.grid
 import logging
 import numpy as np
+import matplotlib.pyplot as pl
 
 parvardef = {
     "objective_vars": [
@@ -156,8 +157,6 @@ if __name__ == '__main__':
 
     # create scatter plot
     #
-    import matplotlib.pyplot as pl
-    import mpl_toolkits.mplot3d as mpl
     fig = pl.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(x[:, 0], x[:, 1], np.array(f[:, 0]))

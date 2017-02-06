@@ -125,8 +125,9 @@ nodedist         Factor for node distance       1.0
 
 .. note::
 
-  * the mcvkey parameter references a filename without extension (Example 'M330-50A')
-  * the material parameter references a name of the `Magnet Material`_ list 
+* the mcvkey parameters reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor.
+* the material parameter references a name of the 'Magnet Material'_ list.
+
 
 Slots
 ^^^^^
@@ -271,29 +272,40 @@ Example::
            coil_span=3.0,
            num_layers=1)
   )
+<<<<<<< HEAD
+  
 
-.. include:: userspec.rst
-   
 Magnet Material
 ===============
 
-List of dict objects each having a unique name (or id) and a set of parameters
+list of dict objects each having a unique name (or id) and a set of parameters
 that describe the magnet properties.
 
-============= ============================   =========   =======
-Parameter      Description                    Default     Unit
-============= ============================   =========   =======
-name          Name of Magnet Material
-remanenc      Remanence Induction Br
-relperm       Rel. Permeability
-spmaweight    Specific Weight                 7500        kg/m³
-temcoefbr     Br Temperature Coefficient      -0.001        1/K
-temcoefhc     Hc Temperature Coefficient      -0.001        1/K
-magntemp      Magnet Temperature              20           °C
-magncond      Magnet Conductivity             625000       S m
-magnwidth     Magnet Width                    0            m
-magnlength    Magnet Length                   0            m
-============= ============================   =========   =======
+==============   ============================== ==========  ============
+Parameter         Description                   Default      Unit
+==============   ============================== ==========  ============
+name              Name of magnet material
+remanenc          Remanence Induction Br                    T
+relperm           Relative Permeability
+spmaweight        Specific Mass                  7500       kg/m³
+temcoefbr         Temperature Coefficient of Br  -0.001     T/K 
+temcoefhc         Temperature Coefficient of Br  -0.001     T/K
+magntemp          Magnet Temperature             20         °C      
+magncond          Electr. Conductivity           625000      S/m    
+magnwidth         Magnet width                    0.0       m     
+magnlength        Magnet length in z direction   0.0        m      
+==============   ============================== ==========  ============
+
+Note: name must be unique with list. It may be used as reference in the magnet model of the machine.
+
+Example::
+
+  magmats = [dict(
+     name='MX-333',
+     remanenc=1.2,
+     relperm=1.05)]
+
+.. include:: userspec.rst
 
 
 Calculation

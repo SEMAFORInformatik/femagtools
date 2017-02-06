@@ -89,4 +89,3 @@ Losses [W]:
     r.losses[-1]['magnetJ'],
     r.losses[-1]['winding'],
     r.losses[-1]['total']))
-

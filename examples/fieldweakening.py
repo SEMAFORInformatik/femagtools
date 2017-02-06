@@ -31,31 +31,31 @@ i1 = np.linalg.norm(np.array((iqx, idx)))
 
 fig, ax = pl.subplots()
 
-id = np.linspace(i1*np.sin(beta[0]/180*np.pi),
-                 i1*np.sin(beta[-1]/180*np.pi))
+id = np.linspace(i1 * np.sin(beta[0] / 180 * np.pi),
+                 i1 * np.sin(beta[-1] / 180 * np.pi))
 iq = [pm.iq_u(w1, u1, ix) for ix in id]
 ax.plot(id, iq, label='U1={} V'.format(u1))
 
-i1x = pm.i1_torque(tq, beta[0]/180*np.pi)
-iqmin = i1x*np.cos(beta[0]/180*np.pi)
-i1x = pm.i1_torque(tq, beta[-1]/180*np.pi)
-iqmax = i1x*np.cos(beta[-1]/180*np.pi)
+i1x = pm.i1_torque(tq, beta[0] / 180 * np.pi)
+iqmin = i1x * np.cos(beta[0] / 180 * np.pi)
+i1x = pm.i1_torque(tq, beta[-1] / 180 * np.pi)
+iqmax = i1x * np.cos(beta[-1] / 180 * np.pi)
 iq = np.linspace(iqmin, iqmax, 20)
 id = np.array([pm.id_torque(tq, ix) for ix in iq])
 ax.plot(id, iq, label='Tq={} Nm'.format(tq))
 
-ax.annotate('f1={0:4.1f} Hz'.format(w1/np.pi/2),
-            xy=(idx, iqx), xytext=(1.3*idx, 1.5*iqx),
+ax.annotate('f1={0:4.1f} Hz'.format(w1 / np.pi / 2),
+            xy=(idx, iqx), xytext=(1.3 * idx, 1.5 * iqx),
             arrowprops=dict(arrowstyle="->"))
 
-ax.arrow(0, 0, idx+0.075*i1, iqx-0.08*i1, color='r',
-         head_width=0.05*i1, head_length=0.08*i1)
-ax.text(1.38*idx, 0.5*iqx,
-        r'$I_1={0:3.1f} A$'.format(np.sqrt(iqx**2+idx**2)), fontsize=18)
-ax.arrow(0, 0, 0, 170, color='k', head_width=0.05*i1, head_length=0.08*i1)
+ax.arrow(0, 0, idx + 0.075 * i1, iqx - 0.08 * i1, color='r',
+         head_width=0.05 * i1, head_length=0.08 * i1)
+ax.text(1.38 * idx, 0.5 * iqx,
+        r'$I_1={0:3.1f} A$'.format(np.sqrt(iqx**2 + idx**2)), fontsize=18)
+ax.arrow(0, 0, 0, 170, color='k', head_width=0.05 * i1, head_length=0.08 * i1)
 
 ax.annotate("",
-            xy=(0.36*idx, 0.36*iqx), xycoords='data',
+            xy=(0.36 * idx, 0.36 * iqx), xycoords='data',
             xytext=(0, 0.4*i1), textcoords='data',
             arrowprops=dict(arrowstyle="->",
                             color="0.5",
@@ -63,17 +63,17 @@ ax.annotate("",
                             patchA=None,
                             patchB=None,
                             connectionstyle="arc3,rad=0.3"))
-ax.text(0.52*idx, 0.58*iqx,
-        r'$\beta={0:3.1f}^o$'.format(np.arctan2(idx, iqx)/np.pi*180),
+ax.text(0.52 * idx, 0.58 * iqx,
+        r'$\beta={0:3.1f}^o$'.format(np.arctan2(idx, iqx)/np.pi * 180),
         fontsize=14)
 
 # current limit
-iqx0 = i1*np.cos(beta[0]/180*np.pi)
-idx0 = i1*np.sin(beta[0]/180*np.pi)
+iqx0 = i1 * np.cos(beta[0] / 180 * np.pi)
+idx0 = i1 * np.sin(beta[0] / 180 * np.pi)
 id = np.linspace(idx0, idx)
 
-iqmin = i1x*np.cos(beta[0]/180*np.pi)
-iqmax = i1x*np.cos(beta[-1]/180*np.pi)
+iqmin = i1x * np.cos(beta[0] / 180 * np.pi)
+iqmax = i1x * np.cos(beta[-1] / 180 * np.pi)
 iq = np.linspace(iqmin, iqmax, 20)
 id = np.array([pm.id_torque(tq, ix) for ix in iq])
 

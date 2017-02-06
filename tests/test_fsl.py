@@ -3,6 +3,7 @@
 import unittest
 import femagtools.fsl
 import copy
+import re
 
 modelpars = dict(
     name="PM 130 L4",
@@ -282,12 +283,39 @@ class FslBuilderTest(unittest.TestCase):
 
         feapars['calculationMode'] = "pm_sym_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 65)
+        self.assertEqual(len(fsl), 66)
 
         feapars['calculationMode'] = "mult_cal_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 50)
+        self.assertEqual(len(fsl), 51)
 
+    def test_create_plots(self):
+        pars = copy.deepcopy(feapars)
+        pars['calculationMode'] = "pm_sym_fast"
+        pars['plots'] = ['field_lines', 'Babs']
+        fsl = self.builder.create_analysis(pars)
+        field_lines = re.findall('field_lines\(([^)]*)\)', ''.join(fsl))
+        self.assertEqual(len(field_lines), 1)
+        self.assertEqual(int(field_lines[0].split(',')[-1]), 20)
+        
+        colorgrad = re.findall('color_gradation\(([^)]*)\)', ''.join(fsl))
+        self.assertEqual(len(field_lines), 1)
+        min, max = [int(l) for l in colorgrad[0].split(',')[4:6]]
+        self.assertEqual(min, 0)
+        self.assertEqual(max, 0)
+        
+        pars['plots'] = [('field_lines', 10), ('Babs', 0.0, 2.0)]
+        fsl = self.builder.create_analysis(pars)
+        field_lines = re.findall('field_lines\(([^)]*)\)', ''.join(fsl))
+        self.assertEqual(len(field_lines), 1)
+        self.assertEqual(int(field_lines[0].split(',')[-1]), 10)
+        
+        colorgrad = re.findall('color_gradation\(([^)]*)\)', ''.join(fsl))
+        self.assertEqual(len(field_lines), 1)
+        min, max = [float(l) for l in colorgrad[0].split(',')[4:6]]
+        self.assertEqual(min, 0.0)
+        self.assertEqual(max, 2.0)
+        
     def test_readfsl(self):
         content = [
             'dshaft = 360 --shaft diameter',

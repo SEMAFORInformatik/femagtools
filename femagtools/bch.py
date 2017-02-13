@@ -755,8 +755,9 @@ class Reader:
             id = np.sin(beta)*self.dqPar['i1'][0]
             try:
                 w1 = np.pi*self.dqPar['speed']*self.dqPar['npoles']
-                uq, ud = (self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
-                          iq*w1*self.dqPar['lq'][0])
+                r1 = self.machine.get('r1', 0.0)
+                uq, ud = (r1*iq + self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
+                          r1*id - iq*w1*self.dqPar['lq'][0])
                 self.dqPar['u1'] = [np.sqrt(uq**2 + ud**2)]
                 self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
                 self.dqPar['psim0'] = lfe*self.dqPar['psim0']

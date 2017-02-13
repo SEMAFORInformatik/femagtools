@@ -14,8 +14,8 @@ feapars = {
     "calculationMode": "psd_psq_fast",
     "magn_temp": 60.0,
     "maxid": 0.0,
-    "minid": -140.0,
-    "maxiq": 140.0,
+    "minid": -120.0,
+    "maxiq": 120.0,
     "miniq": -0.0,
     "delta_id": 40.0,
     "delta_iq": 40.0,
@@ -37,7 +37,7 @@ magnetMat = [{
     "hc_min": 760000.0}
 ]
 
-magnetizingCurve = ".//magnetcurves"
+magnetizingCurve = "./magnetcurves"
 
 pmMotor = {
     "name": "PM 270 L8",

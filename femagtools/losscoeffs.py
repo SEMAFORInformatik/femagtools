@@ -9,17 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 import numpy as np
-
-
-def findNotNone(l):
-    """return lower and upper indexes of not none values in list"""
-    for i in range(len(l)):
-        if l[i]:
-            break
-    for j in range(len(l)-1, -1, -1):
-        if l[j]:
-            break
-    return (i, j)
+import scipy.optimize as so
 
 
 def fitsteinmetz(f, B, losses, Bo, fo):
@@ -27,53 +17,20 @@ def fitsteinmetz(f, B, losses, Bo, fo):
         losses(f,B)=cw*(f/fo)**alfa*(B/Bo)**beta
        returns (cw, alfa, beta)
     """
-    betacoeffs = []
-    # fit beta: pfe = cw_b*(B/Bo)**beta
-    for i in range(len(f)):
-        if f[i] > 0:
-            pfe = np.array(losses).T[i]
-            j, k = findNotNone(pfe)
-            if j <= k:
-                y = [np.log10(p) for p in pfe[j:k+1]]
-                x = [np.log10(b/Bo) for b in B[j:k+1]]
-                A = np.vstack([x, np.ones(len(x))]).T
-                beta, cw = np.linalg.lstsq(A, y)[0]
-                betacoeffs.append(beta)
+    z = []
+    for i, fx in enumerate(f):
+        z += [(fx, bx, y) for bx, y in zip(B, np.array(losses).T[i])
+              if isinstance(y, float)]
+    
+    fbx = np.array(z).T[0:2]
+    y = np.array(z).T[2]
 
-    # fit alfa: pfe = cw_f*(f/fo)**alfa
-    alfacoeffs = []
-    for i in range(len(B)):
-        if i < len(losses):
-            pfe = np.array(losses)[i]
-            j, k = findNotNone(pfe)
-            if f[j] < 1e-2:
-                j += 1
-            if j <= k:
-                y = [np.log10(p) for p in pfe[j:k+1]]
-                x = [np.log10(fx/fo) for fx in f[j:k+1]]
-                A = np.vstack([x, np.ones(len(x))]).T
-                alfa, cw = np.linalg.lstsq(A, y)[0]
-                if alfa > 1.2 and alfa < 1.8:
-                    alfacoeffs.append(alfa)
+    steinmetz = lambda x, cw, alpha, beta: (
+        cw*(x[0]/fo)**alpha*(x[1]/Bo)**beta)
 
-    if len(f) > 1:
-        alfa = np.average(alfacoeffs)
-    else:
-        alfa = 1.3
-    beta = np.average(betacoeffs)
-    # fit cw: pfe = cw * (f/fo)**alfa * (B/Bo)**beta
-    cw = []
-    for i in range(len(f)):
-        fx = f[i]
-        for k in range(len(B)):
-            b = B[k]
-            if k < len(losses) and i < len(losses[k]):
-                pfe = losses[k][i]
-                if pfe:
-                    a = (fx/fo)**alfa*(b/Bo)**beta
-                    if abs(a) > 1e-3:
-                        cw.append(pfe/a)
-    return (np.average(cw), alfa, beta)
+    fitp, cov = so.curve_fit(steinmetz,
+                             fbx, y, (1.0, 1.0, 2.0))
+    return fitp
 
 
 def fitjordan(f, B, losses, Bo, fo):
@@ -93,3 +50,43 @@ def fitjordan(f, B, losses, Bo, fo):
     
     return np.polyfit(x, y, 2)
 
+
+def fitjordan2(f, B, losses, Bo, fo):
+    """fit coeffs of 
+      losses(f,B)=(cw*(f/fo)**alpha + ch*(f/fo)**beta)*(B/Bo)**gamma
+    returns (cw, alpha, ch, beta, gamma)
+    """
+    z = []
+    for i, fx in enumerate(f):
+        if isinstance(B[0], float):
+            z += [(fx, bx, y) for bx, y in zip(B, np.array(losses).T[i])
+                  if y]
+        else:
+            z += [(fx, bx, y) for bx, y in zip(B[i], np.array(losses).T[i])
+                  if y]
+
+    jordan = lambda x, cw, alpha, ch, beta, gamma: (
+        (cw*(x[0]/fo)**alpha +
+         ch*(x[0]/fo)**beta) *
+        (x[1]/Bo)**gamma)
+
+    fbx = np.array(z).T[0:2]
+    y = np.array(z).T[2]
+    fitp, cov = so.curve_fit(jordan,
+                             fbx, y, (1.0, 2.0, 1.0, 1.0, 1.0))
+    return fitp
+
+
+if __name__ == "__main__":
+
+    f=[100.0, 200.0, 400.0, 1000.0, 2000.0]
+    pfe=[[0.15, 0.34, 0.67, 1.87, 4.37],
+         [0.37, 0.76, 1.66, 4.72, 10.84],
+         [0.62, 1.28, 2.78, 8.42, 19.27],
+         [1.08, 2.24, 4.91, 14.9, 34.67],
+         [2.03, 4.28, 9.32, 28.12, 69.33],
+         [3.46, 7.29, 15.72, 47.91, 118.7]]
+    B=[0.3, 0.5, 0.7, 1.0, 1.5, 2.0]
+
+    print(fitjordan(f, B, pfe, 1.5, 50.))
+    print(fitsteinmetz(f, B, pfe, 1.5, 50.))

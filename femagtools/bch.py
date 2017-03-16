@@ -523,7 +523,8 @@ class Reader:
         m = np.array(m).T
         ncols = len(set(m[1]))
         iq = m[1]
-        if ncols > 1 and iq[ncols-1] < iq[ncols-2]:
+        if ncols > 1 and (iq[ncols-1] < iq[ncols-2] or
+                          len(m[0]) % ncols != 0):
             ncols = ncols-1
 
         id = np.reshape(m[0], (-1, ncols)).T[0]
@@ -559,7 +560,8 @@ class Reader:
         m = np.array(m).T
         ncols = len(set(m[1]))
         iq = m[1]
-        if ncols > 1 and iq[ncols-1] < iq[ncols-2]:
+        if ncols > 1 and (iq[ncols-1] < iq[ncols-2] or
+                          len(m[0]) % ncols != 0):
             ncols = ncols-1
 
         id = np.reshape(m[0], (-1, ncols)).T[0]
@@ -623,6 +625,12 @@ class Reader:
         m = np.array(m).T
         ncols = len(set(m[1]))
         nrows = len(m[2])//ncols
+        if ncols * nrows % len(m[3]) != 0:
+            if ncols > nrows:
+                ncols = ncols-1
+            else:
+                nrows = nrows-1
+
         l = dict(
             styoke=np.reshape(m[2],
                               (nrows, ncols)).T[::-1].tolist(),
@@ -1029,14 +1037,15 @@ def main():
         print(bch.type)
         print(bch.date)
         #print(bch.torque)
-        print(bch.losses[-1])
+        #print(bch.losses[-1])
         #print(bch.linearForce)
         #print( bch.losses[-1]['stajo'] + bch.losses[-1]['stajo'] )
         #print( bch.areas )
         #print( bch.weights )
         #print( bch.windings )
-        #print bch.psidq['id']
-        #print bch.psidq['iq']
+        print( bch.psidq['id'] )
+        print( bch.psidq['iq'] )
+        print( bch.psidq_ldq['psim'] )
         #print( bch.machine )
         #print( bch.dqPar['beta'] )
         #print( bch.dqPar['ld'] )

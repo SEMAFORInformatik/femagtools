@@ -76,7 +76,8 @@ def _readSections(f):
                 section = []
         else:
             section.append(line.strip())
-        
+    yield section
+
 
 class Reader:
     """Reads a BCH/BATCH-File"""
@@ -95,6 +96,7 @@ class Reader:
         # Fast LD-LQ-Identification
         # Fast Psid-Psiq-Identification
         # Fast PM-Synchronous-Motor Simulation
+        # Characteristics of Permanent-Magnet-Motors
         self.wdg = None
         self.torque = []
         self.torque_fft = []
@@ -106,8 +108,8 @@ class Reader:
         self.magnet = {}
         self.airgapInduction = {}
         self.flux_fft = {}
-        self.linearForce = [] 
-        self.linearForce_fft = [] 
+        self.linearForce = []
+        self.linearForce_fft = []
         self.scData = {}
         self.dqPar = {}
         self.ldq = {}
@@ -115,6 +117,7 @@ class Reader:
         self.demag = {}
         self.weights = []
         self.weight = {}
+        self.characteristics = {}
         self.areas = []
         self.current_angles = []
         self.demagnetization = {}
@@ -145,10 +148,12 @@ class Reader:
             'Windings input data': Reader.__read_windings,
             'Control parameters for Loss calculation': Reader.__read_lossPar,
             'PSID-Psiq-Identification': Reader.__read_psidq,
-            'Ld-Lq-Identifikation aus PSID-Psiq-Identification': Reader.__read_psidq_ldq,
+            'Ld-Lq-Identifikation aus PSID-Psiq-Identification':
+            Reader.__read_psidq_ldq,
             'Ld-Lq-Identification RMS-values': Reader.__read_ldq,
             'Machine Data Rotor': Reader.__read_dummy,
-            'Current Angles defined from no-load test': Reader.__read_current_angles,
+            'Current Angles defined from no-load test':
+            Reader.__read_current_angles,
             'FEMAG Version': Reader.__read_version,
             'Simulation Data': Reader.__read_dummy,
             'Area [mm**2]': Reader.__read_areas,
@@ -160,7 +165,9 @@ class Reader:
             'Transient short circuit': Reader.__read_short_circuit,
             'Flux observed': Reader.__read_flux,
             'Linear Force': Reader.__read_linear_force,
-            'Demagnetization Data': Reader.__read_demagnetization}
+            'Demagnetization Data': Reader.__read_demagnetization,
+            '** Characteristics of Permanent-Magnet-Motors **':
+            Reader.__read_characteristics}
 
     def getStep(self):
         """@returns displacement step of flux values"""
@@ -175,6 +182,8 @@ class Reader:
           lines (list of str) the text lines of the BCH file
         """
         for s in _readSections(lines):
+            if not s:
+                continue
             title = s[0].split(':')[0].strip()
             if title == 'Function':
                 title = s[0].split(':')[1].strip()
@@ -186,7 +195,7 @@ class Reader:
 
             if title in self.dispatch:
                 self.dispatch[title](self, s)
-
+                
         if len(self.weights) > 0:
             w = list(zip(*self.weights))
             self.weight['iron'] = sum(w[0])
@@ -267,46 +276,45 @@ class Reader:
                 self.current_angles.append(floatnan(rec[-1]))
         return
     
-    def __read_lossPar( self,content ):
-        self.lossPar={
-            'fo':[],
-            'Bo':[],
-            'ch':[],
-            'cw':[],
-            'hf':[],
-            'ef':[],
-            'ic':[],
-            'gamfe':[],
-            'thetaw':[],
-            'fillfe':[],
-            'mat':[]}
+    def __read_lossPar(self, content):
+        self.lossPar = {
+            'fo': [],
+            'Bo': [],
+            'ch': [],
+            'cw': [],
+            'hf': [],
+            'ef': [],
+            'ic': [],
+            'gamfe': [],
+            'thetaw': [],
+            'fillfe': [],
+            'mat': []}
         for l in content:
-            for v in [ ["Base Frequency", 'fo' ],
-                       ["Base Induction", 'Bo' ],
-                       ["Hysteresis-Coefficient", 'ch'],
-                       ["Eddycurrent-Coefficient", 'cw'],
-                       ["Hysteresis-Frequency-Coefficient", 'hf'],
-                       ["Eddycurrent-Frequency-Coefficient", 'ef'],
-                       ["Induction-Coefficient", 'ic'],
-                       ["Specific Weight Iron", 'gamfe'],
-                       ["Conductor Temperature", 'thetaw'],
-                       ["Fillfactor Iron", 'fillfe'],
-                       ["Material factor", 'mat'] ]:
+            for v in [["Base Frequency", 'fo'],
+                      ["Base Induction", 'Bo'],
+                      ["Hysteresis-Coefficient", 'ch'],
+                      ["Eddycurrent-Coefficient", 'cw'],
+                      ["Hysteresis-Frequency-Coefficient", 'hf'],
+                      ["Eddycurrent-Frequency-Coefficient", 'ef'],
+                      ["Induction-Coefficient", 'ic'],
+                      ["Specific Weight Iron", 'gamfe'],
+                      ["Conductor Temperature", 'thetaw'],
+                      ["Fillfactor Iron", 'fillfe'],
+                      ["Material factor", 'mat']]:
 
-                if l.find(v[0])>-1:
-                    rec=self._numPattern.findall(l)
-                    if len(rec)>0:
+                if l.find(v[0]) > -1:
+                    rec = self._numPattern.findall(l)
+                    if len(rec) > 0:
                         self.lossPar[v[1]].append(floatnan(rec[-1]))
                     break
 
         return l
 
-    def __read_demagnetization( self, content ):
+    def __read_demagnetization(self, content):
         keys = ('displ', 'current_1', 'current_2', 'current_3',
                 'h_max', 'h_av', 'area')
         
         for l in content:
-            import pdb
             rec = self._numPattern.findall(l)
             if len(rec) == 7:
                 for r, k in zip(rec, keys):
@@ -327,7 +335,7 @@ class Reader:
     def __read_short_circuit(self, content):
         "read short circuit section"
         if content[2].startswith('Time'):
-            m=[]
+            m = []
             for l in content:
                 rec = l.split()
                 if len(rec) == 5 and not rec[0].startswith('Time'):
@@ -348,7 +356,7 @@ class Reader:
         self.scData['tkd'] = floatnan(rec[2])
         self.scData['iks'] = floatnan(rec[3])
         self.scData['tks'] = floatnan(rec[4])
-            
+
     def __read_general_machine_data(self, content):
         for l in content:
             if l.find('Armature Length [mm]:') > -1:
@@ -364,6 +372,88 @@ class Reader:
             elif l.find('Number of Slot-Sides sim.') > -1:
                 self.machine['qs_sim'] = int(l.split()[-1])
                 
+    def __read_characteristics(self, content):
+        for i, l in enumerate(content):
+            if l.startswith('[[***'):
+                break
+            for v in [['Voltage (operat. limit)', 'u1nom'],
+                      ['Current (operat. limit)', 'i1nom'],
+                      ['Angle I VS Up (speed = 0)', 'beta0'],
+                      ['Resistance stator winding', 'r1'],
+                      ['Inductance(I,Angle I-Up)', 'Ldnom'],
+                      ['Inductance(I,Angle I-Up)', 'Lqnom'],
+                      ['Power (operating limit)',  'Pnom'],
+                      ['Stator ewdg inductance',   'Le'],
+                      ['Stator external inductance Lex', 'Lex'],
+                      ['Magn. flux (RMS)', 'psimnom'],
+                      ['Effect. armature length', 'lfe'],
+                      ['Power cut-off speed NC', 'nc'],
+                      ['Number of Pole pairs', 'p'],
+                      ['Max. current (RMS)', 'i1max'],
+                      ['Rel. number wdg turns(wdg.1)', 'relw'],
+                      ['Number of Phases', 'm'],
+                      ['Min. speed', 'nmin'],
+                      ['Max. speed', 'nmax']]:
+
+                if l.find(v[0]) > -1:
+                    rec = self._numPattern.findall(l)
+                    if len(rec) > 0:
+                        self.characteristics[v[1]] = floatnan(rec[-1])
+                        break
+
+        self.characteristics['ldq'] = {}
+        self.armatureLength = self.characteristics['lfe']
+        m = []
+        for k, l in enumerate(content[i+3:]):
+            if l.startswith('[[***'):
+                break
+            rec = l.split('\t')
+            if len(rec) == 6:
+                m.append([floatnan(x) for x in rec])
+        m = np.array(m).T
+        ncols = len(set(m[1]))
+        i1 = np.reshape(m[0], (-1, ncols)).T[0]
+        nrows = len(i1)
+
+        logger.info('characteristics ld-lq %d x %d', nrows, ncols)
+        self.characteristics['ldq'] = {
+            'beta': m[1][:ncols][::-1].tolist(),
+            'i1': i1.tolist(),
+            'ld': (self.armatureLength*np.reshape(
+                m[2], (nrows, ncols)).T[::-1]).tolist(),
+            'lq': (self.armatureLength*np.reshape(
+                m[3], (nrows, ncols)).T[::-1]).tolist(),
+            'psim': (self.armatureLength*np.reshape(
+                m[4], (nrows, ncols)).T[::-1]).tolist(),
+            'torque': (self.armatureLength*np.reshape(
+                m[5], (nrows, ncols)).T[::-1]).tolist()}
+
+        m = []
+        columns = [['n', 'id', 'iq', 'torque', 'p2'],
+                   ['beta', 'cos_phi', 'u1', 'um'],
+                   ['lang', 'ud', 'uq', 'i1'],
+                   ['lang', 'ld', 'lq', 'psim']]
+        nsec = 0
+        self.characteristics['speed_torque'] = {}
+        for l in content[k+i+6:]:
+            if l.startswith('[[***'):
+                break
+            if not l:
+                continue
+            if l.startswith('Speed') and m:
+                if nsec == 0:
+                    m = np.array(m).T
+                else:
+                    m = np.array(m).T[1:]
+                for j, k in enumerate(columns[nsec]):
+                    self.characteristics['speed_torque'][k] = m[j].tolist()
+                m = []
+                nsec += 1
+            else:
+                rec = self._numPattern.findall(l)
+                if len(rec) > 3:
+                    m.append([floatnan(x) for x in rec])
+
     def __read_flux(self, content):
         "read and append flux section"
 
@@ -1033,9 +1123,10 @@ def main():
     bch = Reader()
     for name in sys.argv[1:]:
         with codecs.open(name, encoding='ascii') as f:
-            bch.read( f )
+            bch.read(f)
         print(bch.type)
         print(bch.date)
+        print(bch.characteristics)
         #print(bch.torque)
         #print(bch.losses[-1])
         #print(bch.linearForce)
@@ -1043,9 +1134,9 @@ def main():
         #print( bch.areas )
         #print( bch.weights )
         #print( bch.windings )
-        print( bch.psidq['id'] )
-        print( bch.psidq['iq'] )
-        print( bch.psidq_ldq['psim'] )
+        #print( bch.psidq['id'] )
+        #print( bch.psidq['iq'] )
+        #print( bch.psidq_ldq['psim'] )
         #print( bch.machine )
         #print( bch.dqPar['beta'] )
         #print( bch.dqPar['ld'] )

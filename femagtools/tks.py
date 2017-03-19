@@ -11,7 +11,6 @@ import sys
 import math
 import os
 import re
-import math
 import codecs
 import femagtools.losscoeffs
 import json
@@ -86,7 +85,7 @@ class Reader:
         self.fe_sat_mag = None
         self.losses = dict(f=[], B=[], pfe=[])
 
-        with open(filename) as f:
+        with codecs.open(filename, encoding='utf-8', errors='ignore') as f:
             while True:
                 l = f.readline().strip()
                 if not l:
@@ -117,7 +116,7 @@ class Reader:
 
         if self.losses and not isinstance(self.losses['B'][0], float):
             import scipy.interpolate as ip
-            z = femagtools.losscoeffs.fitjordan2(
+            z = femagtools.losscoeffs.fitjordan(
                 self.losses['f'],
                 self.losses['B'],
                 self.losses['pfe'],
@@ -129,9 +128,10 @@ class Reader:
             self.cw = z[0]
             self.cw_freq = z[1]
             self.b_coeff = z[4]
-            
+
+            # must normalize pfe matrix:
             bmin = max(list(zip(*(self.losses['B'])))[0])
-            bmax = max(list(zip(*(self.losses['B'])))[-1])
+            bmax = max([bx[-1] for bx in self.losses['B']])
             Bv = [x/10. for x in range(math.ceil(10*bmin),
                                        math.floor(10*bmax)+1)]
             m = []
@@ -167,7 +167,7 @@ class Reader:
             'losses': self.losses}
                                      
 if __name__ == "__main__":
-    import matplotlib.pylab as pl
+    #import matplotlib.pylab as pl
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:
@@ -175,7 +175,7 @@ if __name__ == "__main__":
             
     tks = Reader(filename)
     
-    if tks.losses:
+    if False and tks.losses:
         import numpy as np
         cw = tks.cw
         alpha = tks.cw_freq

@@ -33,13 +33,14 @@ pfe = [[0.01859, 0.04461, 0.10782, 0.2838, 0.39409, 1.16244, 3.57408],
 def test_steinmetz():
     c = femagtools.losscoeffs.fitsteinmetz(f, B, pfe, Bo, fo)
     np.testing.assert_almost_equal(c,
-                                   (2.703008,  1.398493,  1.865596),
+                                   (1.884, 1.5827, 2.0228),
                                    decimal=4)
 
     
 def test_jordan():
     c = femagtools.losscoeffs.fitjordan(f, B, pfe, Bo, fo)
     np.testing.assert_almost_equal(c,
-                                   (0.3079,  4.9032, -3.7216),
+                                   (1.5702,  1.6385,
+                                    1.3448,  0.4234,  2.0473),
                                    decimal=4)
     

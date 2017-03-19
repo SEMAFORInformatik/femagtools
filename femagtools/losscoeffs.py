@@ -35,24 +35,6 @@ def fitsteinmetz(f, B, losses, Bo, fo):
 
 def fitjordan(f, B, losses, Bo, fo):
     """fit coeffs of 
-      losses(f,B)=(cw*(f/fo)**2 + ch*(f/fo) + c)*(B/Bo)**2
-    returns (cw, ch, c)
-    """
-    y = []
-    x = []
-    for i, f in enumerate(f):
-        pfe = np.array(losses).T[i]
-        j, k = findNotNone(pfe)
-        if j <= k:
-            bx = np.array(B[j:k+1])
-            y.extend(pfe[j:k+1]/(bx/Bo)**2)
-            x.extend([f/fo]*(k-j+1))
-    
-    return np.polyfit(x, y, 2)
-
-
-def fitjordan2(f, B, losses, Bo, fo):
-    """fit coeffs of 
       losses(f,B)=(cw*(f/fo)**alpha + ch*(f/fo)**beta)*(B/Bo)**gamma
     returns (cw, alpha, ch, beta, gamma)
     """
@@ -79,14 +61,14 @@ def fitjordan2(f, B, losses, Bo, fo):
 
 if __name__ == "__main__":
 
-    f=[100.0, 200.0, 400.0, 1000.0, 2000.0]
-    pfe=[[0.15, 0.34, 0.67, 1.87, 4.37],
-         [0.37, 0.76, 1.66, 4.72, 10.84],
-         [0.62, 1.28, 2.78, 8.42, 19.27],
-         [1.08, 2.24, 4.91, 14.9, 34.67],
-         [2.03, 4.28, 9.32, 28.12, 69.33],
-         [3.46, 7.29, 15.72, 47.91, 118.7]]
-    B=[0.3, 0.5, 0.7, 1.0, 1.5, 2.0]
+    f = [100.0, 200.0, 400.0, 1000.0, 2000.0]
+    pfe = [[0.15, 0.34, 0.67, 1.87, 4.37],
+           [0.37, 0.76, 1.66, 4.72, 10.84],
+           [0.62, 1.28, 2.78, 8.42, 19.27],
+           [1.08, 2.24, 4.91, 14.9, 34.67],
+           [2.03, 4.28, 9.32, 28.12, 69.33],
+           [3.46, 7.29, 15.72, 47.91, 118.7]]
+    B = [0.3, 0.5, 0.7, 1.0, 1.5, 2.0]
 
     print(fitjordan(f, B, pfe, 1.5, 50.))
     print(fitsteinmetz(f, B, pfe, 1.5, 50.))

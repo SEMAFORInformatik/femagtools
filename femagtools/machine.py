@@ -92,12 +92,13 @@ class PmRelMachine(object):
 
     def iq_torque(self, torque, id):
         "q current with given torque and d-current"
+        i0 = self.i0 if torque > 0 else - self.i0
         return so.fsolve(lambda iq: self.torque_iqd(iq, id)-torque,
-                         self.i0[1])[0]
+                         i0)[0]
     
     def id_torque(self, torque, iq):
         "d current with given torque and d-current"
-        i0 = -0.1
+        i0 = self.i0 if torque > 0 else - self.i0
         return so.fsolve(lambda id: self.torque_iqd(iq, id)-torque, i0)[0]
     
     def i1_torque(self, torque, beta):
@@ -148,6 +149,8 @@ class PmRelMachineLdq(PmRelMachine):
     """
     def __init__(self, m, p, psim, ld, lq, r1, beta=None, i1=None):
         super(self.__class__, self).__init__(m, p, r1)
+        # start value for torque iterations
+        self.i0 = np.max(i1)/2 if i1 else 0.0
         if isinstance(ld, (float, int)):
             self.ld = lambda b, i: ld
             self.lq = lambda b, i: lq
@@ -314,11 +317,10 @@ class PmRelMachinePsidq(PmRelMachine):
         if isinstance(psid, (float, int)):
             self.psid = lambda id, iq: psid / np.sqrt(2.0)
             self.psiq = lambda id, iq: psiq / np.sqrt(2.0)
-            self.i0 = 0.0  # start value for iterations
+            self.i0 = 1.0  # start value for iterations
             return
 
-        self.i0 = (id[int(len(id)/2)],
-                   iq[int(len(iq)/2)])  # start value for iterations
+        self.i0 = np.max(iq)/2  # start value for iterations
         
         psid = np.asarray(psid) / np.sqrt(2.0)
         psiq = np.asarray(psiq) / np.sqrt(2.0)
@@ -377,29 +379,31 @@ def main(m, op):
 #    all (k in op for k in ('T','n')):
     r10=m.get('r1',0)
     if 'beta' in m:
-        pm = PmRelMachineLdq(3, m['p'], np.array(m['psim']),
-                        np.array(m['ld']),
-                        np.array(m['lq']),
-                        r10,
-                        np.array(m['beta'])*np.pi/180., np.array(m['i1']) )
+        pm = PmRelMachineLdq(3, m['p'],
+                             np.array(m['psim']),
+                             np.array(m['ld']),
+                             np.array(m['lq']),
+                             r10,
+                             np.array(m['beta']),
+                             np.array(m['i1']))
     else:
         pm = PmRelMachinePsidq(3, m['p'],
-                            np.array(m['psid'])/np.sqrt(2),
-                            np.array(m['psiq'])/np.sqrt(2),
-                            np.array(m['torque']),
-                            m['r1'],
-                            np.array(m['Id'])/np.sqrt(2), np.array(m['iq'])/np.sqrt(2) )
+                               np.array(m['psid']),
+                               np.array(m['psiq']),
+                               np.array(m['torque']),
+                               m['r1'],
+                               np.array(m['Id']),
+                               np.array(m['iq']))
             
-    return pm.characteristics( op['T'], op['n'], m['u1'])
+    return pm.characteristics(op['T'], op['n'], m['u1'])
 
     return {}
 
 if __name__ == "__main__":
     import json
-    import sys
-    m=json.load(sys.stdin)
+    m = json.load(sys.stdin)
 
-    r={}
-    r=main(m['machine'], m['op'])
-    json.dump( r, sys.stdout )
+    r = {}
+    r = main(m['machine'], m['op'])
+    json.dump(r, sys.stdout)
     sys.exit(0)

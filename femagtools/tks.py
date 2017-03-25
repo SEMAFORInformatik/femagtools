@@ -167,7 +167,7 @@ class Reader:
             'losses': self.losses}
                                      
 if __name__ == "__main__":
-    #import matplotlib.pylab as pl
+    import matplotlib.pylab as pl
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:
@@ -175,7 +175,7 @@ if __name__ == "__main__":
             
     tks = Reader(filename)
     
-    if False and tks.losses:
+    if tks.losses:
         import numpy as np
         cw = tks.cw
         alpha = tks.cw_freq
@@ -197,6 +197,7 @@ if __name__ == "__main__":
         pl.ylabel("Pfe [W/kg]")
         #pl.legend()
         pl.grid(True)
+        #pl.savefig('tks.png')
         pl.show()
 
     mcv = tks.getValues()

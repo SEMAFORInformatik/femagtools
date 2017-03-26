@@ -1084,7 +1084,8 @@ class Reader:
             ('losses', self.losses),
             ('demag', self.demag),
             ('linearForce', self.linearForce),
-            ('linearForce_fft', self.linearForce_fft)]
+            ('linearForce_fft', self.linearForce_fft),
+            ('characteristics', self.characteristics)]
 
     def __str__(self):
         "return string format of this object"
@@ -1108,7 +1109,9 @@ class Reader:
                 'losses: {}'.format(self.losses),
                 'demag: {}'.format(self.demag),
                 'linearForce: {}'.format(self.linearForce),
-                'linearForce_fft: {}'.format(self.linearForce_fft)])
+                'linearForce_fft: {}'.format(self.linearForce_fft),
+                'characteristics: {}'.format(self.characteristics)])
+                             
 
         return "{}"
     

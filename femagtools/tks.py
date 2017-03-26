@@ -8,7 +8,7 @@
     :license: BSD, see LICENSE for more details.
 """
 import sys
-import math
+import numpy as np
 import os
 import re
 import codecs
@@ -18,7 +18,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-MUE0 = 4e-7*math.pi  # 1.2566371E-06
+MUE0 = 4e-7*np.pi  # 1.2566371E-06
 fo = 50.
 Bo = 1.5
 numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)')
@@ -132,8 +132,8 @@ class Reader:
             # must normalize pfe matrix:
             bmin = max(list(zip(*(self.losses['B'])))[0])
             bmax = max([bx[-1] for bx in self.losses['B']])
-            Bv = [x/10. for x in range(math.ceil(10*bmin),
-                                       math.floor(10*bmax)+1)]
+            Bv = np.arange(np.ceil(10*bmin)/10.0,
+                           (np.floor(10*bmax)+1)/10.0, 0.1)
             m = []
             for i, b in enumerate(self.losses['B']):
                 pfunc = ip.interp1d(b, self.losses['pfe'][i], kind='cubic')

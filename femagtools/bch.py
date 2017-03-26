@@ -632,6 +632,9 @@ class Reader:
             'psiq': (self.armatureLength*np.reshape(
                 m[4][:mlen],
                 (nrows, ncols))).T.tolist(),
+            'torque_fe': (self.armatureLength*np.reshape(
+                m[5][:mlen],
+                (nrows, ncols))).T.tolist(),
             'torque': (self.armatureLength*np.reshape(
                 m[6][:mlen],
                 (nrows, ncols))).T.tolist()}

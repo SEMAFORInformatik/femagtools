@@ -23,7 +23,8 @@ class FslBuilderError(Exception):
 class Builder:
     def __init__(self):
         self.lookup = mako.lookup.TemplateLookup(
-            directories=[os.path.join(os.path.dirname(__file__), 'templates')],
+            directories=[os.path.join(os.path.dirname(__file__), 'templates'),
+                         os.path.join(os.getcwd(), 'templates')],
             disable_unicode=False, input_encoding='utf-8',
             output_encoding='utf-8',
             default_filters=['decode.utf8'])

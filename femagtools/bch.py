@@ -623,21 +623,12 @@ class Reader:
             nrows = nrows-1
         logger.info('psid-psiq %d x %d', nrows, ncols)
         mlen = nrows*ncols
-        self.psidq = {
-            'iq': iq[:ncols].tolist(),
-            'id': id[:nrows].tolist(),
-            'psid': (self.armatureLength*np.reshape(
-                m[3][:mlen],
-                (nrows, ncols))).T.tolist(),
-            'psiq': (self.armatureLength*np.reshape(
-                m[4][:mlen],
-                (nrows, ncols))).T.tolist(),
-            'torque_fe': (self.armatureLength*np.reshape(
-                m[5][:mlen],
-                (nrows, ncols))).T.tolist(),
-            'torque': (self.armatureLength*np.reshape(
-                m[6][:mlen],
-                (nrows, ncols))).T.tolist()}
+        self.psidq = {k: (self.armatureLength*np.reshape(
+            v[:mlen], (nrows, ncols))).T.tolist()
+                      for k, v in zip(('psid', 'psiq', 'torque_fe', 'torque'),
+                                      m[3:])}
+        self.psidq['iq'] = iq[:ncols].tolist()
+        self.psidq['id'] = id[:nrows].tolist()
         
     def __read_psidq_ldq(self, content):
         "read ldq from psid-psiq section"
@@ -681,36 +672,40 @@ class Reader:
             if l.find('[A') > -1:
                 break
         m = []
+        k = i+2
         for l in content[i+2:]:
             rec = l.split('\t')
             if len(rec) > 7:
                 m.append([floatnan(x) for x in rec[:8]])
-                
+            elif rec and rec[0].startswith('Curr Id'):
+                break
+            k += 1
+            
         m = np.array(m).T
         ncols = len(set(m[1]))
         i1 = np.reshape(m[0], (-1, ncols)).T[0]
         nrows = len(i1)
         logger.info('ld-lq %d x %d', nrows, ncols)
 
-        self.ldq = {
-            'beta': m[1][:ncols][::-1].tolist(),
-            'i1': i1.tolist(),
-            'ld': (self.armatureLength*np.reshape(
-                m[2], (nrows, ncols)).T[::-1]).tolist(),
-            'lq': (self.armatureLength*np.reshape(
-                m[3], (nrows, ncols)).T[::-1]).tolist(),
-            'psim': (self.armatureLength*np.reshape(
-                m[4], (nrows, ncols)).T[::-1]).tolist(),
-            'psid': (self.armatureLength*np.reshape(
-                m[5], (nrows, ncols)).T[::-1]).tolist(),
-            'psiq': (self.armatureLength*np.reshape(
-                m[6], (nrows, ncols)).T[::-1]).tolist(),
-            'torque': (self.armatureLength*np.reshape(
-                m[7], (nrows, ncols)).T[::-1]).tolist()}
+        self.ldq = {k: (self.armatureLength*np.reshape(
+            v, (nrows, ncols)).T[::-1]).tolist() for k, v in zip(
+                ('ld', 'lq', 'psim', 'psid', 'psiq', 'torque'),
+                m[2:])}
+        self.ldq['beta'] = m[1][:ncols][::-1].tolist()
+        self.ldq['i1'] = i1.tolist()
+
+        # skip d-q table
+        i = k+3
+        for l in content[k+3:]:
+            if l.startswith('Losses for'):
+                self.__read_losses_tab(content[i:])
+            i += 1
 
     def __read_losses_tab(self, content):
         "read losses of psidq or ldq"
         m = []
+        speed = float(content[0].split()[-1])/60.
+        logger.info('losses for speed %f', speed)
         for l in content[4:]:
             rec = l.split('\t')
             if len(rec) == 6:
@@ -724,15 +719,11 @@ class Reader:
             else:
                 nrows = nrows-1
 
-        l = dict(
-            styoke=np.reshape(m[2],
-                              (nrows, ncols)).T[::-1].tolist(),
-            stteeth=np.reshape(m[3],
-                               (nrows, ncols)).T[::-1].tolist(),
-            rotor=np.reshape(m[4],
-                             (nrows, ncols)).T[::-1].tolist(),
-            magnet=np.reshape(m[5],
-                              (nrows, ncols)).T[::-1].tolist())
+        l = {k: np.reshape(v,
+                           (nrows, ncols)).T[::-1].tolist()
+             for k, v in zip(('styoke', 'stteeth', 'rotor', 'magnet'),
+                             m[2:])}
+        l['speed'] = speed
         if self.ldq:
             self.ldq['losses'] = l
         else:

@@ -86,7 +86,7 @@ class PmRelMachine(object):
 
     def w1_u(self, u, id, iq):
         "w1 at given voltage and id,iq current"
-        w10 = np.sqrt(self.psid(iq, id)**2 + self.psiq(iq, id)**2)/u
+        w10 = u/np.sqrt(self.psid(iq, id)**2 + self.psiq(iq, id)**2)
         return so.fsolve(lambda w1:
                          la.norm(self.uqd(w1, iq, id))-u, w10)[0]
 

@@ -248,79 +248,10 @@ class FeaModel(Model):
         self.num_par_wdgs = 1
         self.eval_force = 0
         self.optim_i_up = 0
+        self.plots = []
         super(self.__class__, self).__init__(parameters)
         
     def __getitem__(self, k, default=None):
         if default:
             return getattr(self, k, default)
         return getattr(self, k)
-
-if __name__ == '__main__':
-
-    pars = dict(
-         name = "PM 130 L4",
-         lfe = 0.1,
-         bore_diam = 0.07,
-         outer_diam = 0.13,
-         inner_diam = 0.04,
-         airgap = 0.001,
-         poles_gen = 1,
-         poles = 4,
-         stator = dict(
-             zeroangle = 0.0,
-             num_slots = 12,
-             mcvkey_yoke = "3",
-             num_slots_gen = 3,
-             nodedist = 1.5,
-             rlength = 1.0,
-             statorRotor3 = dict(
-                 slot_h1 = 0.002,
-                 slot_h2 = 0.004,
-                 middle_line = 0,
-                 tooth_width = 0.009,
-                 wedge_width2 = 0.0,
-                 wedge_width1 = 0.0,
-                 slot_top_sh = 0,
-                 slot_r2 = 0.002,
-                 slot_height = 0.02,
-                 slot_r1 = 0.003,
-                 slot_width = 0.003)),
-
-         magnet = dict(
-             mcvkey_yoke = "3",
-             magn_len = 1.0,
-             mcvkey_mshaft = "3",
-             nodedist = 1.5,
-             material = "1",
-             
-            magnetSector = dict(
-                magn_num = 1,
-                magn_width_pct = 0.8,
-                magn_height = 0.004,
-                magn_shape = 0.0,
-                bridge_height = 0.0,
-                magn_type = 1,
-                condshaft_r = 0.02,
-                magn_ori = 2,
-                magn_rfe = 0.0,
-                bridge_width = 0.0,
-                magn_len = 1.0)),
-
-          windings = dict(
-               num_coils = 4.0,
-               num_phases = 3,
-               num_wires = 100,
-               coil_span = 3.0,
-               num_layers = 1) )
-
-    model = Model( pars )
-    print( model.get('lfe') )
-    model.set_value(['name'],'Model2')
-    model.set_value(['stator','yoke_diam'],0.133)
-    print( model )
-    model.set_value(['speed'],9000)
-    print( model )
-    print( model.get('name') )
-#    print( model['name'] )
-    print( model.get('u1') )
-

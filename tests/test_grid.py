@@ -22,3 +22,12 @@ def test_create_parameter_range():
                           [3, 5, 7]]
 
 
+def test_baskets():
+    x = list(range(5))*5
+    baskets = femagtools.grid.baskets(x, 5)
+
+    for i, p in enumerate(baskets):
+        assert p == [0, 1, 2, 3, 4]
+    assert i == 4
+
+        

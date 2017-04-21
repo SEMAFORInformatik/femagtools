@@ -2,6 +2,7 @@ language: python
 python:
   - "2.7"
   - "3.4"
+  - "3.6"
 
 install:
   - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib anaconda-client conda-build
@@ -10,12 +11,18 @@ install:
   - pip install boto3 zmq pytest mock
 
 before_install:
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then wget http://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh; fi
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+       wget http://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh
+    else
+      wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+    fi
   - chmod +x miniconda.sh
   - ./miniconda.sh -b
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then export PATH=/home/travis/miniconda3/bin:$PATH; fi
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then export PATH=/home/travis/miniconda2/bin:$PATH; fi
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+       export PATH=/home/travis/miniconda2/bin:$PATH
+    else
+       export PATH=/home/travis/miniconda3/bin:$PATH
+    fi    
   - conda update --yes -q conda
   # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
   - sudo rm -rf /dev/shm

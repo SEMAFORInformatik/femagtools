@@ -125,8 +125,8 @@ nodedist         Factor for node distance       1.0
 
 .. note::
 
-* the mcvkey parameters reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor.
-* the material parameter references a name of the 'Magnet Material'_ list.
+   * the mcvkey parameters reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor.
+   * the material parameter references a name of the 'Magnet Material'_ list.
 
 
 Slots
@@ -272,7 +272,6 @@ Example::
            coil_span=3.0,
            num_layers=1)
   )
-<<<<<<< HEAD
   
 
 Magnet Material

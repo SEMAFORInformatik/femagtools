@@ -1,5 +1,5 @@
 User Specified Magnet Geometries
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+================================
 
 Magnet geometries not covered by the built in models can be specified by fsl code. Here is a example:
 
@@ -81,4 +81,6 @@ The resulting model:
 
 .. figure:: img/spoke.png
 	    
-.. note:: the complete example can be found in `create-model-2.py <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/create-model-2.py>`_ and `spoke.fsl <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/spoke.fsl>`_ in the example directory on github.
+.. note::
+
+   the complete example can be found in `create-model-2.py <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/create-model-2.py>`_ and `spoke.fsl <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/spoke.fsl>`_ in the example directory on github.

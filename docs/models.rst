@@ -8,9 +8,9 @@ Machine
 
 Machines have a set of basic parameters, a stator, a magnet and a winding:
 
-==============  =============================  ====
+==============  =============================  ======
 Parameter        Description                   Unit
-==============  =============================  ====
+==============  =============================  ======
 name             Name of machine
 lfe              Lenght of iron                 m
 poles            Number of poles
@@ -18,8 +18,8 @@ outer_diam       Outer diameter (yoke side)     m
 bore_diam        Bore diameter  (airgap side)   m
 inner_diam       Inner diameter (yoke)          m
 airgap           airgap width                   m
-external_rotor   True, False
-==============  =============================  ====
+external_rotor   True, False                    False
+==============  =============================  ======
 
 Stator
 ------
@@ -32,7 +32,7 @@ Parameter        Description                  Default
 num_slots        Number of Slots Q
 num_slots_gen    Number of Slots in Model      m*Q/gcd(Q, 2p*m)
 rlength          Relative iron length          1.0
-mcvkey_yoke      Name of lamination material
+mcvkey_yoke      Name of lamination material   dummy
 nodedist         Factor for node distance      1.0
 ==============  ============================  =====================
 
@@ -117,8 +117,8 @@ Magnets have basic parameters and slots:
 ==============  ============================  =======  
 Parameter        Description                  Default  
 ==============  ============================  =======  
-mcvkey_yoke      Name of lamination material
-mcvkey_shaft     Name of shaft material
+mcvkey_yoke      Name of lamination material  dummy
+mcvkey_shaft     Name of shaft material       dummy
 material         Name of magnet material
 nodedist         Factor for node distance       1.0
 ==============  ============================  =======
@@ -295,7 +295,7 @@ magnwidth         Magnet width                    0.0       m
 magnlength        Magnet length in z direction   0.0        m      
 ==============   ============================== ==========  ============
 
-Note: name must be unique with list. It may be used as reference in the magnet model of the machine.
+Note: name must be unique within list. It may be used as reference in the magnet model of the machine.
 
 Example::
 
@@ -350,7 +350,7 @@ skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
 magn_temp       Magnet Temperature                        °C
 wind_temp       Winding Temperature             20        °C
-num_move_steps  Number of move steps
+num_move_steps  Number of move steps            49
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0         
 current         Phase current                             A (RMS)

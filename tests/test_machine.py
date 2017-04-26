@@ -101,15 +101,15 @@ ops = [
     dict(n=[16.67], u1=1400.0, T=[5600.0])]
 
 expected = [
-    dict(i1=79.87, u1=304.1, beta=-39.26, cosphi=0.758),
-    dict(i1=79.2, u1=321.77, beta=-35.04, cosphi=0.722),
-    dict(i1=211.97, u1=1263.72, beta=-30.0, cosphi=0.73),
+    dict(i1=62.68, u1=312.86, beta=-163.788, cosphi=0.929),
+    dict(i1=79.20, u1=321.77, beta=-35.04, cosphi=0.722),
+    dict(i1=235.82, u1=1400.0, beta=-14.64, cosphi=0.592),
     dict(i1=207.74, u1=1192.88, beta=-38.01, cosphi=0.79)]
 
 
 class PmMachineTest(unittest.TestCase):
 
-  def test(self):
+  def test_char(self):
     for m, o, e in zip(machines, ops, expected):
       if 'beta' in m:
         pm = femagtools.machine.PmRelMachineLdq(3, m['p'],
@@ -133,6 +133,64 @@ class PmMachineTest(unittest.TestCase):
       
       for k in e:
         self.assertAlmostEqual(r[k][0], e[k], 2)
+
+  def test_i1beta_char(self):
+    m = dict(
+      p=4,
+      r1=0.055,
+      ld=[0.0012634272, 0.0012634272],
+      lq=[0.0027257272, 0.003158568],
+      psim=[0.11171972, 0.11171972],
+      beta=[0.0,-35.0],
+      i1=[100.0])
+      
+    op = dict(
+      T=[216.58752],
+      n=[100.0],
+      u1=700.0,
+      i1=100.0,
+      beta=-35.0)
+
+    pm = femagtools.machine.PmRelMachineLdq(3, m['p'],
+                                            psim=m['psim'],
+                                            ld=m['ld'],
+                                            lq=m['lq'],
+                                            r1=m['r1'],
+                                            beta=m['beta'],
+                                            i1=m['i1'])
+    r = pm.i1beta_characteristics(op['n'],
+                                  [op['i1']],
+                                  [op['beta']], op['u1'])
+    
+    self.assertAlmostEqual(r['beta'][0], -35.0, 3)
+    self.assertAlmostEqual(r['i1'][0], 100.0)
+    self.assertAlmostEqual(r['T'][0], 216.67, 2)
+    self.assertAlmostEqual(r['u1'][0], 661.52, 2)
+      
+
+  def test_torque_iqd(self):
+    m1 = femagtools.machine.PmRelMachineLdq(3, 4,
+                                            psim=0.11172,
+                                            ld=1.2667e-3,
+                                            lq=3.1477e-3)
+    beta = -35 * 3.1415/180
+    i1 = 100
+    iq, id = femagtools.machine.iqd(beta, i1)
+    self.assertAlmostEqual(m1.torque_iqd(iq, id)[0][0], 215.87, 2)
+
+    beta = [-35, 0]
+    i1 = [100]
+    ld = [0.0012667696, 0.0012667696]
+    lq = [0.0031477052, 0.0027165356]
+    psim = [0.1117197, 0.1117197]
+
+    m2 = femagtools.machine.PmRelMachineLdq(3, 4,
+                                            psim=psim,
+                                            ld=ld,
+                                            lq=lq,
+                                            beta=beta,
+                                            i1=i1)
+    self.assertAlmostEqual(m2.torque_iqd(iq, id)[0][0], 215.87, 2)
 
 if __name__ == '__main__':
   unittest.main()

@@ -227,14 +227,14 @@ class PmRelMachineLdq(PmRelMachine):
     
     def torque_iqd(self, iq, id, meshing=False):
         "torque at q-d-current"
-        beta, i1 = betai1(iq, id, meshing)
+        beta, i1 = np.around(betai1(iq, id, meshing), 9)
         if meshing:
             size = [1 if np.isscalar(x) else np.asarray(x).size
                     for x in (iq, id)]
             return self.m*self.p/2*(self._psid(beta, i1)*iq.reshape(size) -
                                     self._psiq(beta, i1)*id.reshape(size))
-        return self.m*self.p/2*(self._psid(beta, i1)*iq -
-                                self._psiq(beta, i1)*id)
+        return self.m*self.p/2*(self._psid(beta, i1)[:, 0]*iq -
+                                self._psiq(beta, i1)[:, 0]*id)
 
     def uqd(self, w, iq, id):
         beta, i1 = betai1(iq, id, meshing=False)

@@ -9,23 +9,29 @@ import scipy.interpolate as ip
 logger = logging.getLogger(__name__)
 
 
-def betai1(iq, id):
-    size = [1 if np.isscalar(x) else np.asarray(x).size
-            for x in (id, iq)]
-    v = (np.tile(id, size[0]),
-         np.repeat(iq, size[1]))
-    return (np.arctan2(v[0], v[1]),
-            la.norm(v, axis=0)/np.sqrt(2.0))
-            
+def betai1(iq, id, meshing=True):
+    if meshing:
+        size = [1 if np.isscalar(x) else np.asarray(x).size
+                for x in (id, iq)]
+        v = (np.tile(id, size[0]),
+             np.repeat(iq, size[1]))
+        return (np.arctan2(v[0], v[1]),
+                la.norm(v, axis=0)/np.sqrt(2.0))
+    return (np.arctan2(id, iq),
+            la.norm((id, iq), axis=0)/np.sqrt(2.0))
+    
 
-def iqd(beta, i1):
-    size = [1 if np.isscalar(x) else np.asarray(x).size
-            for x in (beta, i1)]
-    bv = np.repeat(beta, size[1])
-    return np.sqrt(2.0)*np.tile(i1,
-                                size[0])*np.array([np.cos(bv),
-                                                   np.sin(bv)])
-
+def iqd(beta, i1, meshing=True):
+    if meshing:
+        size = [1 if np.isscalar(x) else np.asarray(x).size
+                for x in (beta, i1)]
+        bv = np.repeat(beta, size[1])
+        return np.sqrt(2.0)*np.tile(i1,
+                                    size[0])*np.array([np.cos(bv),
+                                                       np.sin(bv)])
+    return np.sqrt(2.0)*i1*np.array([np.cos(beta),
+                                     np.sin(beta)])
+    
 
 class PmRelMachine(object):
     """Abstract base class for PmRelMachines
@@ -179,8 +185,9 @@ class PmRelMachineLdq(PmRelMachine):
         self.io = iqd(np.min(beta)/2, np.max(i1)/2).ravel()
         if 'psid' not in kwargs:
             iq, id = iqd(beta, i1)
-            psid = np.asarray(ld)*id + np.sqrt(2)*np.asarray(psim)
-            psiq = np.asarray(lq)*iq
+            psid = np.asarray(ld)*id.reshape((
+                beta.size, len(i1))) + np.sqrt(2)*np.asarray(psim)
+            psiq = np.asarray(lq)*iq.reshape((beta.size, len(i1)))
         else:
             psid = np.sqrt(2)*np.asarray(kwargs['psid'])
             psiq = np.sqrt(2)*np.asarray(kwargs['psiq'])
@@ -218,21 +225,24 @@ class PmRelMachineLdq(PmRelMachine):
         self._psiq = ip.RectBivariateSpline(beta, i1, psiq)
         logger.debug("rectbivariatespline beta %s i1 %s", beta, i1)
     
-    def torque_iqd(self, iq, id):
+    def torque_iqd(self, iq, id, meshing=False):
         "torque at q-d-current"
-        size = [1 if np.isscalar(x) else np.asarray(x).size
-                for x in (iq, id)]
-        beta, i1 = betai1(iq, id)
-        return self.m*self.p/2*(self._psid(beta, i1)*iq.reshape(size) -
-                                self._psiq(beta, i1)*id.reshape(size))
+        beta, i1 = betai1(iq, id, meshing)
+        if meshing:
+            size = [1 if np.isscalar(x) else np.asarray(x).size
+                    for x in (iq, id)]
+            return self.m*self.p/2*(self._psid(beta, i1)*iq.reshape(size) -
+                                    self._psiq(beta, i1)*id.reshape(size))
+        return self.m*self.p/2*(self._psid(beta, i1)*iq -
+                                self._psiq(beta, i1)*id)
 
     def uqd(self, w, iq, id):
-        beta, i1 = betai1(iq, id)
+        beta, i1 = betai1(iq, id, meshing=False)
         return (self.r1*iq + w*self._psid(beta, i1),
                 self.r1*id - w*self._psiq(beta, i1))
 
     def psi(self, iq, id):
-        beta, i1 = betai1(iq, id)
+        beta, i1 = betai1(iq, id, meshing=False)
         return (self._psid(beta, i1),
                 self._psiq(beta, i1))
 

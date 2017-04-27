@@ -16,8 +16,12 @@ fieldweakening.py: calculate the frequency and current using an analytical model
 
 ld_lq_fast.py: execute a ld-lq identification and calculate the frequency and current
                at given voltage and torque
+	       f1    222.5 Hz,  I1     76.3 A, Beta -38.7 °
+	       
+psd_psq_fast.py: same with Psid-Psiq-Identification
+               f1    230.0 Hz,  I1     76.2 A, Beta -38.5 °
 
-cogg_calc.py: execute a cogging calculation and print the fft of the torque
+cogg_calc.py: execute a cogging calculation and print the fft spectrum of the torque
 pm_sym_fast.py: execute a PM/Rel machine simulation and print the torque
 pm_sym_loss.py: execute a PM/Rel machine loss simulation and print losses
 

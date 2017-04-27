@@ -112,12 +112,12 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.torque), 5)
         self.assertEqual(len(bch.torque[-1]['torque']), 46)
 
-        self.assertEqual(len(bch.psidq), 6)
+        self.assertEqual(len(bch.psidq), 7)
         self.assertEqual(len(bch.psidq_ldq), 6)
         self.assertEqual(len(bch.psidq['psid']), 4)
         self.assertEqual(len(bch.psidq_ldq['ld']), 4)
         
-        self.assertEqual(len(bch.psidq['losses']), 4)
+        self.assertEqual(len(bch.psidq['losses']), 5)
         self.assertEqual(len(bch.psidq['losses']['styoke']), 4)
 
     def test_read_ldq(self):
@@ -138,7 +138,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.torque), 13)
         self.assertEqual(len(bch.torque[-1]['torque']), 46)
 
-        self.assertEqual(len(bch.ldq['losses']), 4)
+        self.assertEqual(len(bch.ldq['losses']), 5)
         self.assertEqual(len(bch.ldq['losses']['styoke']), 4)
         #self.assertTrue('i1' in bch.airgapInduction)
         #self.assertEqual(len(bch.airgapInduction['i1']), 5)

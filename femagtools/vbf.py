@@ -87,24 +87,30 @@ if __name__ == "__main__":
 #    pl.grid(True)
 #    pl.show()
 
-    z = femagtools.losscoeffs.fitjordan(
+    z = femagtools.losscoeffs.fitjordan2(
         vbf.vbf['f'],
         vbf.vbf['B'],
         vbf.vbf['pfe'],
         vbf.vbf['Bo'],
         vbf.vbf['fo'])
 
-    cw, ch = (z[0], z[1])
+    cw, alpha, ch, beta, gamma = z
+#    cw, alpha, beta = z
+#    print(cw, alpha, beta)
+#    cw = 2.89
+#    alpha = 1.43
+#    beta = 1.85
     for i, f in enumerate(vbf.vbf['f']):
         pfe = [p for p in np.array(vbf.vbf['pfe']).T[i] if p]
-        pl.plot(B, pfe1(f, B, ch, 1, cw, 2, 2))
+        pl.plot(B, pfe1(f, B, cw, alpha, ch, beta, gamma))
         pl.plot(vbf. vbf['B'][:len(pfe)], pfe,
-                marker='o', label="f1={} Hz".format(f))
+                marker='o', label="{} Hz".format(f))
 
     pl.title("Iron Losses " + filename)
     pl.yscale('log')
     pl.xscale('log')
     pl.xlabel("Induction [T]")
     pl.ylabel("Pfe [W/kg]")
+    pl.legend()
     pl.grid(True)
     pl.show()

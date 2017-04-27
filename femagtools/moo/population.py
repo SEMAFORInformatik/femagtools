@@ -89,6 +89,39 @@ class Population:
             w = (self.problem.upper[i] - self.problem.lower[i])/2
             self.individuals[-1].cur_v.append(np.random.uniform(-w, w))
 
+    def populate(self, x, f, s):
+        """populate with decision and objective values multiplied by sign
+        x: vector of decision values
+        f: matrix of objective values
+        s: vector of signs (1, -1)"""
+        for k, i in enumerate(self.individuals):
+            i.cur_x = x[k]
+            i.cur_f = [v*sign
+                       for v, sign in zip(f[:, k], s)]
+        self.update()
+        
+    def get_ranked_decisions(self):
+        px = dict()
+        for i in self.individuals:
+            k = i.rank
+            if k in px:
+                px[k].append(i.cur_x)
+            else:
+                px[k] = [i.cur_x]
+        return px
+    
+    def get_ranked_objectives(self, s):
+        po = dict()
+        for i in self.individuals:
+            cur_f = [v*sign
+                     for v, sign in zip(i.cur_f, s)]
+            k = i.rank
+            if k in po:
+                po[k].append(cur_f)
+            else:
+                po[k] = [cur_f]
+        return po
+    
     def update(self):
         size = len(self.individuals)
         self.dom_count = []

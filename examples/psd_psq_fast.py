@@ -11,15 +11,14 @@ import numpy as np
 
 feapars = {
     "num_move_steps": 25,
-    "calculationMode": "ld_lq_fast",
+    "calculationMode": "psd_psq_fast",
     "magn_temp": 60.0,
-    "i1_max": 150.0,
-    "beta_max": 0.0,
-    "beta_min": -60.0,
-    "num_cur_steps": 3,
-    "num_beta_steps": 4,
-    "skew_angle": 0.0,
-    "num_par_wdgs": 1,
+    "maxid": 0.0,
+    "minid": -120.0,
+    "maxiq": 120.0,
+    "miniq": -0.0,
+    "delta_id": 40.0,
+    "delta_iq": 40.0,
     "speed": 50.0
 }
 
@@ -110,28 +109,27 @@ femag = femagtools.Femag(workdir,
                          magnets=magnetMat)
 
 r = femag(pmMotor, feapars)
+
 print(r.type)
 
 # find speed at u1max
 u1max = 340
 tq = 170
 
-ld = r.ldq['ld']
-lq = r.ldq['lq']
-i1 = r.ldq['i1']
-beta = r.ldq['beta']
-psim = r.ldq['psim']
+psid = r.psidq['psid']
+psiq = r.psidq['psiq']
+id = r.psidq['id']
+iq = r.psidq['iq']
 
 p = r.machine['p']
 r1 = 0.0
 
-pm = femagtools.machine.PmRelMachineLdq(3, p,
-                                        psim,
-                                        ld,
-                                        lq,
-                                        r1,
-                                        beta,
-                                        i1)
+pm = femagtools.machine.PmRelMachinePsidq(3, p,
+                                          psid,
+                                          psiq,
+                                          r1,
+                                          id,
+                                          iq)
 
 tq = 170.0
 u1 = 340.0

@@ -46,7 +46,7 @@ class PmRelMachine(object):
         res = so.minimize(lambda idq: la.norm(idq), self.io, method='SLSQP',
                           constraints=({'type': 'eq',
                                         'fun': lambda iqd:
-                                        self.torque_iqd(*iqd)[0] - torque}))
+                                        self.torque_iqd(*iqd) - torque}))
         return res.x
 
     def w1_u(self, u, iq, id):
@@ -58,19 +58,25 @@ class PmRelMachine(object):
     def beta_u(self, w1, u, i1):
         "beta at given frequency, voltage and current"
         return so.fsolve(lambda b:
-                         la.norm(self.uqd(w1, *(iqd(i1, b[0]))))-u,
+                         la.norm(self.uqd(w1, *(iqd(b, i1))))-u*np.sqrt(2),
                          -np.pi/3)[0]
     
     def iq_u(self, w1, u, id):
         "iq at given frequency, voltage and id current"
         return so.fsolve(lambda iq:
-                         la.norm(self.uqd(w1, iq, id))-u, self.io[0])[0]
+                         la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2),
+                         self.io[0])[0]
     
     def i1_torque(self, torque, beta):
         "i1 current with given torque and beta"
         i0 = 0  # torque/(self.m*self.p*self.psid(beta, 0))
         return so.fsolve(lambda i1:
-                         self.torque_iqd(*iqd(beta, i1))[0]-torque, i0)[0]
+                         self.torque_iqd(*iqd(beta, i1))-torque, i0)[0]
+    
+    def id_torque(self, torque, iq):
+        "d current with given torque and d-current"
+        i0 = -0.1
+        return so.fsolve(lambda id: self.torque_iqd(iq, id)-torque, i0)[0]
     
     def iqd_torque_umax(self, torque, w1, u1max):
         "d-q current and torque at stator frequency and max voltage"
@@ -81,8 +87,17 @@ class PmRelMachine(object):
         # decrease psi (flux weakening mode)
         return so.fsolve(
             lambda iqd: (la.norm(self.uqd(w1, *iqd)) - u1max*np.sqrt(2),
-                         self.torque_iqd(*iqd)[0] - torque),
+                         self.torque_iqd(*iqd) - torque),
             (iq, id))
+
+    def mtpa(self, i1):
+        """ return iq, id, torque at maximum torque of current i1"""
+        maxtq = lambda x: -self.torque_iqd(*iqd(x, i1))
+        bopt, fopt, iter, funcalls, warnflag = so.fmin(maxtq, 0,
+                                                       full_output=True,
+                                                       disp=0)
+        iq, id = iqd(bopt[0], i1)
+        return [iq, id, -fopt]
 
     def characteristics(self, T, n, u1max):
         """calculate torque speed characteristics"""
@@ -94,14 +109,14 @@ class PmRelMachine(object):
             r['id'].append(id)
             r['iq'].append(iq)
             uq, ud = self.uqd(w1, iq, id)
-            r['uq'].append(uq[0])
-            r['ud'].append(ud[0])
+            r['uq'].append(uq)
+            r['ud'].append(ud)
             r['u1'].append(la.norm((ud, uq))/np.sqrt(2.0))
             r['i1'].append(la.norm((id, iq))/np.sqrt(2.0))
-            tq = self.torque_iqd(iq, id)[0]
+            tq = self.torque_iqd(iq, id)
             r['T'].append(tq)
             r['beta'].append(np.arctan2(id, iq)/np.pi*180.)
-            r['gamma'].append(np.arctan2(ud, uq)[0]/np.pi*180.)
+            r['gamma'].append(np.arctan2(ud, uq)/np.pi*180.)
 
             r['n'].append(nx)
             r['phi'].append(r['beta'][-1] - r['gamma'][-1])
@@ -174,17 +189,15 @@ class PmRelMachineLdq(PmRelMachine):
 
         super(self.__class__, self).__init__(m, p, r1)
         if np.isscalar(ld):
-            self._psid = lambda b, i: np.sqrt(2)*np.array(
-                [ld*i*np.sin(b) + psim]).T
-            self._psiq = lambda b, i: np.sqrt(2)*np.array([lq*i*np.cos(b)]).T
+            self._psid = lambda b, i: np.sqrt(2)*(ld*i*np.sin(b) + psim)
+            self._psiq = lambda b, i: np.sqrt(2)*lq*i*np.cos(b)
             logger.debug("ld %s lq %s psim %s", ld, lq, psim)
             return
 
         if len(ld) == 1:
             self.io = iqd(min(beta)*np.pi/360, max(i1)/2).ravel()
-            self._psid = lambda b, i: np.sqrt(2)*np.array(
-                [ld[0]*i*np.sin(b) + psim[0]])
-            self._psiq = lambda b, i: np.sqrt(2)*np.array([lq[0]*i**np.cos(b)])
+            self._psid = lambda b, i: np.sqrt(2)*(ld[0]*i*np.sin(b) + psim[0])
+            self._psiq = lambda b, i: np.sqrt(2)*lq[0]*i**np.cos(b)
             logger.debug("ld %s lq %s psim %s", ld, lq, psim)
             return
         
@@ -205,46 +218,39 @@ class PmRelMachineLdq(PmRelMachine):
             psiq = np.sqrt(2)*np.asarray(kwargs['psiq'])
         if len(i1) < 4 or len(beta) < 4:
             if len(i1) == len(beta):
-                self._psid = lambda x, y: np.array(
-                    [ip.interp2d(beta, i1, psid.T)(x, y)])
-                self._psiq = lambda x, y: np.array(
-                    [ip.interp2d(beta, i1, psiq.T)(x, y)])
+                self._psid = lambda x, y: ip.interp2d(beta, i1, psid.T)(x, y)
+                self._psiq = lambda x, y: ip.interp2d(beta, i1, psiq.T)(x, y)
                 logger.debug("interp2d beta %s i1 %s", beta, i1)
                 return
             elif len(i1) == 1:
-                self._psid = lambda x, y: np.array(
-                    [ip.InterpolatedUnivariateSpline(
-                        beta, psid, k=1)(x)]).T
-                self._psiq = lambda x, y: np.array(
-                    [ip.InterpolatedUnivariateSpline(
-                        beta, psiq, k=1)(x)]).T
+                self._psid = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    beta, psid, k=1)(x)
+                self._psiq = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    beta, psiq, k=1)(x)
                 logger.debug("interpolatedunivariatespline beta %s", beta)
                 return
             if len(beta) == 1:
-                self._psid = lambda x, y: np.array(
-                    [ip.InterpolatedUnivariateSpline(
-                        i1, psid, k=1)(y)])
-                self._psiq = lambda x, y: np.array(
-                    [ip.InterpolatedUnivariateSpline(
-                        i1, psiq, k=1)(y)])
+                self._psid = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    i1, psid, k=1)(y)
+                self._psiq = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    i1, psiq, k=1)(y)
                 logger.debug("interpolatedunivariatespline i1 %s", i1)
                 return
             
             raise ValueError("unsupported array size {}x{}".format(
                 len(beta), len(i1)))
             
-        self._psid = ip.RectBivariateSpline(beta, i1, psid)
-        self._psiq = ip.RectBivariateSpline(beta, i1, psiq)
+        self._psid = lambda x, y: ip.RectBivariateSpline(
+            beta, i1, psid).ev(x, y)
+        self._psiq = lambda x, y: ip.RectBivariateSpline(
+            beta, i1, psiq).ev(x, y)
         logger.debug("rectbivariatespline beta %s i1 %s", beta, i1)
     
     def torque_iqd(self, iq, id):
         "torque at q-d-current"
         beta, i1 = np.around(betai1(np.asarray(iq), np.asarray(id)), 9)
-        if np.isscalar(beta) and np.isscalar(i1):
-            return self.m*self.p/2*(self._psid(beta, i1)*iq -
-                                    self._psiq(beta, i1)*id)
-        return self.m*self.p/2*(self._psid(beta, i1)[:, 0]*iq -
-                                self._psiq(beta, i1)[:, 0]*id)
+        return self.m*self.p/2*(self._psid(beta, i1)*iq -
+                                self._psiq(beta, i1)*id)
 
     def uqd(self, w, iq, id):
         beta, i1 = betai1(iq, id)
@@ -288,20 +294,19 @@ class PmRelMachinePsidq(PmRelMachine):
             self._psiq = ip.interp2d(iq, id, psiq.T)
 
         else:
-            self._psid = ip.RectBivariateSpline(iq, id, psid)
-            self._psiq = ip.RectBivariateSpline(iq, id, psiq)
+            self._psid = lambda x, y: ip.RectBivariateSpline(
+                iq, id, psid).ev(x, y)
+            self._psiq = lambda x, y: ip.RectBivariateSpline(
+                iq, id, psiq).ev(x, y)
 
     def torque_iqd(self, iq, id):
         "torque at q-d-current"
-        if np.isscalar(iq) and np.isscalar(id):
-            return self.m*self.p/2*(self._psid(iq, id)[0]*iq -
-                                    self._psiq(iq, id)[0]*id)
-        return self.m*self.p/2*(self._psid(iq, id)[:, 0]*iq -
-                                self._psiq(iq, id)[:, 0]*id)
+        return self.m*self.p/2*(self._psid(iq, id)*iq -
+                                self._psiq(iq, id)*id)
 
     def uqd(self, w, iq, id):
-        return (self.r1*iq + w*self._psid(iq, id)[0],
-                self.r1*id - w*self._psiq(iq, id)[0])
+        return (self.r1*iq + w*self._psid(iq, id),
+                self.r1*id - w*self._psiq(iq, id))
 
     def psi(self, iq, id):
         return (self._psid(iq, id),

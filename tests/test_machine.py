@@ -184,7 +184,7 @@ class PmMachineTest(unittest.TestCase):
     
     self.assertAlmostEqual(r['beta'][0], -35.0, 3)
     self.assertAlmostEqual(r['i1'][0], 100.0)
-    self.assertAlmostEqual(r['T'][0][0], 185.37, 2)
+    self.assertAlmostEqual(r['T'][0], 185.37, 2)
     self.assertAlmostEqual(r['u1'][0], 488.7, 2)
       
 
@@ -196,7 +196,7 @@ class PmMachineTest(unittest.TestCase):
     beta = -35 * 3.1415/180
     i1 = 100
     iq, id = femagtools.machine.iqd(beta, i1)
-    self.assertAlmostEqual(m1.torque_iqd(iq, id)[0], 215.87, 2)
+    self.assertAlmostEqual(m1.torque_iqd(iq, id), 215.87, 2)
 
     beta = [-35, 0]
     i1 = [100]
@@ -210,7 +210,7 @@ class PmMachineTest(unittest.TestCase):
                                             lq=lq,
                                             beta=beta,
                                             i1=i1)
-    self.assertAlmostEqual(m2.torque_iqd(iq, id)[0], 184.81, 2)
+    self.assertAlmostEqual(m2.torque_iqd(iq, id), 184.81, 2)
 
 if __name__ == '__main__':
   unittest.main()

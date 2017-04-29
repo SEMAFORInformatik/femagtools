@@ -13,33 +13,32 @@ torque = bch.ldq['torque']
 
 r10 = 0.1
 p = 4
-psim = bch.ldq['psim']
-ld = bch.ldq['ld']
-lq = bch.ldq['lq']
-pm = femagtools.machine.PmRelMachineLdq(3, p,
-                                        psim, ld, lq,
-                                        r10,
-                                        beta, i1)
 
+pm = femagtools.machine.PmRelMachineLdq(3, p,
+                                        r1=r10,
+                                        psid=bch.ldq['psid'],
+                                        psiq=bch.ldq['psiq'],
+                                        beta=beta,
+                                        i1=i1)
 
 u1 = 340
 tq = 200
 
 iqx, idx = pm.iqd_torque(tq)
-w1 = pm.w1_u(u1, idx, iqx)
-i1 = np.linalg.norm(np.array((iqx, idx)))
+w1 = pm.w1_u(u1, iqx, idx)
+i1 = np.linalg.norm(np.array((iqx, idx)))/np.sqrt(2)
 
 fig, ax = pl.subplots()
 
-id = np.linspace(i1 * np.sin(beta[0] / 180 * np.pi),
-                 i1 * np.sin(beta[-1] / 180 * np.pi))
+id = np.linspace(np.sqrt(2)*i1 * np.sin(beta[0] / 180 * np.pi),
+                 np.sqrt(2)*i1 * np.sin(beta[-1] / 180 * np.pi))
 iq = [pm.iq_u(w1, u1, ix) for ix in id]
 ax.plot(id, iq, label='U1={} V'.format(u1))
 
 i1x = pm.i1_torque(tq, beta[0] / 180 * np.pi)
-iqmin = i1x * np.cos(beta[0] / 180 * np.pi)
+iqmin = np.sqrt(2)*i1x * np.cos(beta[0] / 180 * np.pi)
 i1x = pm.i1_torque(tq, beta[-1] / 180 * np.pi)
-iqmax = i1x * np.cos(beta[-1] / 180 * np.pi)
+iqmax = np.sqrt(2)*i1x * np.cos(beta[-1] / 180 * np.pi)
 iq = np.linspace(iqmin, iqmax, 20)
 id = np.array([pm.id_torque(tq, ix) for ix in iq])
 ax.plot(id, iq, label='Tq={} Nm'.format(tq))

@@ -66,17 +66,9 @@ ax.text(0.52 * idx, 0.58 * iqx,
         r'$\beta={0:3.1f}^o$'.format(np.arctan2(idx, iqx)/np.pi * 180),
         fontsize=14)
 
-# current limit
-iqx0 = i1 * np.cos(beta[0] / 180 * np.pi)
-idx0 = i1 * np.sin(beta[0] / 180 * np.pi)
-id = np.linspace(idx0, idx)
-
-iqmin = i1x * np.cos(beta[0] / 180 * np.pi)
-iqmax = i1x * np.cos(beta[-1] / 180 * np.pi)
-iq = np.linspace(iqmin, iqmax, 20)
-id = np.array([pm.id_torque(tq, ix) for ix in iq])
-
 ax.grid()
+xlim = ax.get_xlim()
+ax.set_xlim([xlim[0], 20])
 ax.set_xlabel('Id / A')
 ylim = ax.get_ylim()
 ax.set_ylim([0, ylim[1]])

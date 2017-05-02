@@ -83,11 +83,12 @@ class PmRelMachine(object):
         iq, id = self.iqd_torque(torque)
         # check voltage
         uq, ud = self.uqd(w1, iq, id)
-        if la.norm((uq, ud)) <= u1max*np.sqrt(2):
+        if la.norm(np.array((uq, ud))) <= u1max*np.sqrt(2):
             return (iq, id)
         # decrease psi (flux weakening mode), let i1 == i1max
         return so.fsolve(
-            lambda iqd: (la.norm(self.uqd(w1, *iqd)) - u1max*np.sqrt(2),
+            lambda iqd: (la.norm(np.array(
+                self.uqd(w1, *iqd))) - u1max*np.sqrt(2),
                          self.torque_iqd(*iqd) - torque),
             (iq, id))
 

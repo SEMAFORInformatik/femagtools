@@ -87,11 +87,15 @@ class PmRelMachine(object):
             return (iq, id)
         # decrease psi (flux weakening mode), let i1 == i1max
         return so.fsolve(
-            lambda iqd: (la.norm(np.array(
-                self.uqd(w1, *iqd))) - u1max*np.sqrt(2),
-                         self.torque_iqd(*iqd) - torque),
+            lambda iqd: (
+                self.uabs(w1, *iqd) - u1max*np.sqrt(2),
+                self.torque_iqd(*iqd) - torque),
             (iq, id))
 
+    def uabs(self, w1, iq, id):
+        uq, ud = self.uqd(w1, iq, id)
+        return np.sqrt(uq**2 + ud**2)
+    
     def mtpa(self, i1):
         """ return iq, id, torque at maximum torque of current i1"""
         maxtq = lambda x: -self.torque_iqd(*iqd(x, i1))

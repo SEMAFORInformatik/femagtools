@@ -3,29 +3,6 @@
 import unittest
 import femagtools.machine
 
-machines = [
-    
-  
-  dict(
-    p=6,
-    r1=0.0, ls=0.0, le=0.0,
-    wind_temp=20.0,
-    ld=[0.005152],
-    lq=[0.0104825],
-    psim=[1.1298],
-    beta=[0.0],
-    i1=[0.0])]
-
-
-ops = [
-    dict(n=[16.67], u1=1400.0, T=[5600.0])]
-    
-
-expected = [
-
-    dict(i1=237.02, u1=1330.72, beta=-16.76, cosphi=0.62)]
-
-
 class PmMachineTest(unittest.TestCase):
 
   def test_char_ld_vector(self):
@@ -50,10 +27,10 @@ class PmMachineTest(unittest.TestCase):
     T = [171.0]
     r = pm.characteristics(T, n, u1)
       
-    self.assertAlmostEqual(r['i1'][0], 94.07, 2)
-    self.assertAlmostEqual(r['u1'][0], 215.88, 2)
-    self.assertAlmostEqual(r['beta'][0], -49.22, 2)
-    self.assertAlmostEqual(r['cosphi'][0], 0.917, 2)
+    self.assertAlmostEqual(r['i1'][0], 79.873, 2)
+    self.assertAlmostEqual(r['u1'][0], 304.090, 2)
+    self.assertAlmostEqual(r['beta'][0], -39.27, 2)
+    self.assertAlmostEqual(r['cosphi'][0], 0.7584, 2)
 
   def test_char_ld_scalar(self):
      m =   dict(p=4,
@@ -154,6 +131,34 @@ class PmMachineTest(unittest.TestCase):
     self.assertAlmostEqual(r['beta'][0], -57.53, 2)
     self.assertAlmostEqual(r['cosphi'][0], 0.834, 2)
 
+  def test_char_ldd_fieldweakening(self):
+    m = dict(
+      p=6,
+      r1=0.0,
+      ld=[0.005152],
+      lq=[0.0104825],
+      psim=[1.1298],
+      beta=[0.0],
+      i1=[0.0])
+
+    pm = femagtools.machine.PmRelMachineLdq(3, m['p'],
+                                            m['psim'],
+                                            m['ld'],
+                                            m['lq'],
+                                            m['r1'],
+                                            m['beta'],
+                                            m['i1'])
+
+    n = [16.67]
+    u1 = [1400]
+    T = [5600.0]
+    r = pm.characteristics(T, n, u1)
+  
+    self.assertAlmostEqual(r['i1'][0], 233.47, 2)
+    self.assertAlmostEqual(r['u1'][0], 989.95, 2)
+    self.assertAlmostEqual(r['beta'][0], -50.34, 2)
+    self.assertAlmostEqual(r['cosphi'][0], 0.846, 2)
+
   def test_i1beta_char(self):
     m = dict(
       p=4,
@@ -164,28 +169,23 @@ class PmMachineTest(unittest.TestCase):
       beta=[0.0,-35.0],
       i1=[100.0])
       
-    op = dict(
-      T=[216.58752],
-      n=[100.0],
-      u1=700.0,
-      i1=100.0,
-      beta=-35.0)
-
     pm = femagtools.machine.PmRelMachineLdq(3, m['p'],
-                                            psim=m['psim'],
-                                            ld=m['ld'],
-                                            lq=m['lq'],
-                                            r1=m['r1'],
-                                            beta=m['beta'],
-                                            i1=m['i1'])
-    r = pm.i1beta_characteristics(op['n'],
-                                  [op['i1']],
-                                  [op['beta']], op['u1'])
-    
-    self.assertAlmostEqual(r['beta'][0], -35.0, 3)
-    self.assertAlmostEqual(r['i1'][0], 100.0)
-    self.assertAlmostEqual(r['T'][0], 185.37, 2)
-    self.assertAlmostEqual(r['u1'][0], 488.7, 2)
+                                            m['psim'],
+                                            m['ld'],
+                                            m['lq'],
+                                            m['r1'],
+                                            m['beta'],
+                                            m['i1'])
+
+    n = [50]
+    u1 = [340]
+    T = [171]
+    r = pm.characteristics(T, n, u1)
+      
+    self.assertAlmostEqual(r['i1'][0], 88.71, 2)
+    self.assertAlmostEqual(r['u1'][0], 240.42, 2)
+    self.assertAlmostEqual(r['beta'][0], -51.29, 2)
+    self.assertAlmostEqual(r['cosphi'][0], 0.86, 2)
       
 
   def test_torque_iqd(self):
@@ -210,7 +210,7 @@ class PmMachineTest(unittest.TestCase):
                                             lq=lq,
                                             beta=beta,
                                             i1=i1)
-    self.assertAlmostEqual(m2.torque_iqd(iq, id), 184.81, 2)
+    self.assertAlmostEqual(m2.torque_iqd(iq, id), 215.87, 2)
 
 if __name__ == '__main__':
   unittest.main()

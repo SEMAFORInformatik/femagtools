@@ -47,14 +47,14 @@ class PmMachineTest(unittest.TestCase):
                                              m['r1'])
 
      n = [50]
-     u1 = [340]
+     u1 = 340
      T = [171]
      r = pm.characteristics(T, n, u1)
       
-     self.assertAlmostEqual(r['i1'][0], 90.4, 2)
-     self.assertAlmostEqual(r['u1'][0], 240.42, 2)
-     self.assertAlmostEqual(r['beta'][0], -57.41, 2)
-     self.assertAlmostEqual(r['cosphi'][0], 0.854, 2)
+     self.assertAlmostEqual(r['i1'][0], 79.2, 2)
+     self.assertAlmostEqual(r['u1'][0], 321.77, 2)
+     self.assertAlmostEqual(r['beta'][0], -35.04, 2)
+     self.assertAlmostEqual(r['cosphi'][0], 0.7225, 2)
 
   def test_char_psid_array(self):
     m = dict(p=6,
@@ -122,14 +122,14 @@ class PmMachineTest(unittest.TestCase):
                                               m['Id'], m['iq'])
         
     n = [16.67]
-    u1 = [1400]
+    u1 = 1400
     T = [5600.0]
     r = pm.characteristics(T, n, u1)
   
-    self.assertAlmostEqual(r['i1'][0], 236.56, 2)
-    self.assertAlmostEqual(r['u1'][0], 989.95, 2)
-    self.assertAlmostEqual(r['beta'][0], -57.53, 2)
-    self.assertAlmostEqual(r['cosphi'][0], 0.834, 2)
+    self.assertAlmostEqual(r['i1'][0], 207.74350, 2)
+    self.assertAlmostEqual(r['u1'][0], 1192.88, 2)
+    self.assertAlmostEqual(r['beta'][0], -38.01, 2)
+    self.assertAlmostEqual(r['cosphi'][0], 0.788, 2)
 
   def test_char_ldd_fieldweakening(self):
     m = dict(
@@ -150,14 +150,14 @@ class PmMachineTest(unittest.TestCase):
                                             m['i1'])
 
     n = [16.67]
-    u1 = [1400]
+    u1 = 1400
     T = [5600.0]
     r = pm.characteristics(T, n, u1)
   
-    self.assertAlmostEqual(r['i1'][0], 233.47, 2)
-    self.assertAlmostEqual(r['u1'][0], 989.95, 2)
-    self.assertAlmostEqual(r['beta'][0], -50.34, 2)
-    self.assertAlmostEqual(r['cosphi'][0], 0.846, 2)
+    self.assertAlmostEqual(r['i1'][0], 211.971, 2)
+    self.assertAlmostEqual(r['u1'][0], 1263.721, 2)
+    self.assertAlmostEqual(r['beta'][0], -30.0, 2)
+    self.assertAlmostEqual(r['cosphi'][0], 0.729, 2)
 
   def test_i1beta_char(self):
     m = dict(
@@ -178,14 +178,14 @@ class PmMachineTest(unittest.TestCase):
                                             m['i1'])
 
     n = [50]
-    u1 = [340]
+    u1 = 340
     T = [171]
     r = pm.characteristics(T, n, u1)
       
-    self.assertAlmostEqual(r['i1'][0], 88.71, 2)
-    self.assertAlmostEqual(r['u1'][0], 240.42, 2)
-    self.assertAlmostEqual(r['beta'][0], -51.29, 2)
-    self.assertAlmostEqual(r['cosphi'][0], 0.86, 2)
+    self.assertAlmostEqual(r['i1'][0], 84.9758, 2)
+    self.assertAlmostEqual(r['u1'][0], 278.48, 2)
+    self.assertAlmostEqual(r['beta'][0], -38.02, 2)
+    self.assertAlmostEqual(r['cosphi'][0], 0.774, 2)
       
 
   def test_torque_iqd(self):

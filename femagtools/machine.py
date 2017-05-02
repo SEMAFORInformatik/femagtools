@@ -82,8 +82,7 @@ class PmRelMachine(object):
         "d-q current and torque at stator frequency and max voltage"
         iq, id = self.iqd_torque(torque)
         # check voltage
-        uq, ud = self.uqd(w1, iq, id)
-        if la.norm(np.array((uq, ud))) <= u1max*np.sqrt(2):
+        if self.uabs(w1, iq, id) <= u1max*np.sqrt(2):
             return (iq, id)
         # decrease psi (flux weakening mode), let i1 == i1max
         return so.fsolve(

@@ -50,7 +50,7 @@ class PmRelMachine(object):
         return res.x
 
     def w1_u(self, u, iq, id):
-        "return frequency w1 at given voltage and id, iq current"
+        "return frequency w1 at given voltage u and id, iq current"
         w10 = np.sqrt(2)*u/la.norm(self.psi(iq, id))
         return so.fsolve(lambda w1:
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2), w10)[0]
@@ -84,7 +84,7 @@ class PmRelMachine(object):
         # check voltage
         if la.norm(self.uqd(w1, iq, id)) <= u1max*np.sqrt(2):
             return (iq, id)
-        # decrease psi (flux weakening mode)
+        # decrease psi (flux weakening mode), let i1 == i1max
         return so.fsolve(
             lambda iqd: (la.norm(self.uqd(w1, *iqd)) - u1max*np.sqrt(2),
                          self.torque_iqd(*iqd) - torque),
@@ -122,9 +122,6 @@ class PmRelMachine(object):
             r['phi'].append(r['beta'][-1] - r['gamma'][-1])
             r['cosphi'].append(np.cos(r['phi'][-1]/180*np.pi))
             r['pmech'].append((2*np.pi*nx*tq))
-            #k = (cw*(p*nx/fo)**alfal + ch * (p*nx/fo)**betal)/(ch+cw)
-            #r['losses'].append(k*self._losses(*betai1(iq, id))[0][0] +
-            #                   la.norm((iq, id))**2/2*r1)
 
         return r
 
@@ -149,11 +146,10 @@ class PmRelMachine(object):
                 logger.debug("ud %s uq %s --> u1 %s", ud, uq, u1)
                 
             tq = self.torque_iqd(iq, id)
-            #print( 'p={} w1={} tq={} id={} iq={} u1={}'.format(self.p,w1,torque,id,iq,u1) )
+
             r['id'].append(id)
             r['iq'].append(iq)
 
-            #print( 'uq={} ud={}'.format(uq, ud) )
             r['uq'].append(uq)
             r['ud'].append(ud)
             r['u1'].append(u1)
@@ -188,79 +184,94 @@ class PmRelMachineLdq(PmRelMachine):
                  r1=0, beta=[], i1=[], **kwargs):
 
         super(self.__class__, self).__init__(m, p, r1)
+        self.psid = None
         if np.isscalar(ld):
-            self._psid = lambda b, i: np.sqrt(2)*(ld*i*np.sin(b) + psim)
-            self._psiq = lambda b, i: np.sqrt(2)*lq*i*np.cos(b)
+            self.io = (0, 0)
+            self.ld = lambda b, i: ld
+            self.psim = lambda b, i: psim
+            self.lq = lambda b, i: lq
             logger.debug("ld %s lq %s psim %s", ld, lq, psim)
             return
 
         if len(ld) == 1:
-            self.io = iqd(min(beta)*np.pi/360, max(i1)/2).ravel()
-            self._psid = lambda b, i: np.sqrt(2)*(ld[0]*i*np.sin(b) + psim[0])
-            self._psiq = lambda b, i: np.sqrt(2)*lq[0]*i**np.cos(b)
+            try:
+                self.io = iqd(min(beta)*np.pi/360, max(i1)/2)
+            except:
+                self.io = (0, 0)
+            self.ld = lambda b, i: ld[0]
+            self.psim = lambda b, i: psim[0]
+            self.lq = lambda b, i: lq[0]
             logger.debug("ld %s lq %s psim %s", ld, lq, psim)
             return
         
         beta = np.asarray(beta)/180.0*np.pi
-        self.io = iqd(np.min(beta)/2, np.max(i1)/2).ravel()
-        if 'psid' not in kwargs:
-            if np.ndim(ld) < 2:
-                iq, id = iqd(beta, i1)
-                psid = np.asarray(ld)*id + np.sqrt(2)*np.asarray(psim)
-                psiq = np.asarray(lq)*iq
-            else:
-                iq, id = iqd(*mesh(beta, i1))
-                psid = np.asarray(ld)*id.reshape((
-                    beta.size, len(i1))) + np.sqrt(2)*np.asarray(psim)
-                psiq = np.asarray(lq)*iq.reshape((beta.size, len(i1)))
-        else:
+        self.io = iqd(np.min(beta)/2, np.max(i1)/2)
+        if 'psid' in kwargs:
             psid = np.sqrt(2)*np.asarray(kwargs['psid'])
             psiq = np.sqrt(2)*np.asarray(kwargs['psiq'])
+            self.psid = lambda x, y: ip.RectBivariateSpline(
+                beta, i1, psid).ev(x, y)
+            self.psiq = lambda x, y: ip.RectBivariateSpline(
+                beta, i1, psiq).ev(x, y)
+            return
         if len(i1) < 4 or len(beta) < 4:
             if len(i1) == len(beta):
-                self._psid = lambda x, y: ip.interp2d(beta, i1, psid.T)(x, y)
-                self._psiq = lambda x, y: ip.interp2d(beta, i1, psiq.T)(x, y)
+                self.ld = lambda x, y: ip.interp2d(beta, i1, ld.T)(x, y)
+                self.psim = lambda x, y: ip.interp2d(beta, i1, psim.T)(x, y)
+                self.lq = lambda x, y: ip.interp2d(beta, i1, lq.T)(x, y)
                 logger.debug("interp2d beta %s i1 %s", beta, i1)
                 return
             elif len(i1) == 1:
-                self._psid = lambda x, y: ip.InterpolatedUnivariateSpline(
-                    beta, psid, k=1)(x)
-                self._psiq = lambda x, y: ip.InterpolatedUnivariateSpline(
-                    beta, psiq, k=1)(x)
+                self.ld = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    beta, ld, k=1)(x)
+                self.psim = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    beta, psim, k=1)(x)
+                self.lq = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    beta, lq, k=1)(x)
                 logger.debug("interpolatedunivariatespline beta %s", beta)
                 return
             if len(beta) == 1:
-                self._psid = lambda x, y: ip.InterpolatedUnivariateSpline(
-                    i1, psid, k=1)(y)
-                self._psiq = lambda x, y: ip.InterpolatedUnivariateSpline(
-                    i1, psiq, k=1)(y)
+                self.ld = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    i1, ld, k=1)(y)
+                self.psim = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    i1, ld, k=1)(y)
+                self.lq = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    i1, lq, k=1)(y)
                 logger.debug("interpolatedunivariatespline i1 %s", i1)
                 return
             
             raise ValueError("unsupported array size {}x{}".format(
                 len(beta), len(i1)))
             
-        self._psid = lambda x, y: ip.RectBivariateSpline(
-            beta, i1, psid).ev(x, y)
-        self._psiq = lambda x, y: ip.RectBivariateSpline(
-            beta, i1, psiq).ev(x, y)
+        self.ld = lambda x, y: ip.RectBivariateSpline(
+            beta, i1, np.asarray(ld)).ev(x, y)
+        self.psim = lambda x, y: ip.RectBivariateSpline(
+            beta, i1, np.asarray(psim)).ev(x, y)
+        self.lq = lambda x, y: ip.RectBivariateSpline(
+            beta, i1, np.asarray(lq)).ev(x, y)
         logger.debug("rectbivariatespline beta %s i1 %s", beta, i1)
     
     def torque_iqd(self, iq, id):
         "torque at q-d-current"
-        beta, i1 = np.around(betai1(np.asarray(iq), np.asarray(id)), 9)
-        return self.m*self.p/2*(self._psid(beta, i1)*iq -
-                                self._psiq(beta, i1)*id)
-
+        psid, psiq = self.psi(iq, id)
+        tq = self.m*self.p/2*(psid*iq - psiq*id)
+        return tq
+       
     def uqd(self, w, iq, id):
-        beta, i1 = betai1(iq, id)
-        return (self.r1*iq + w*self._psid(beta, i1),
-                self.r1*id - w*self._psiq(beta, i1))
+        """return uq, ud, psiq of frequency w1, iq, id"""
+        psid, psiq = self.psi(iq, id)
+        return (self.r1*iq + w*psid,
+                self.r1*id - w*psiq)
 
     def psi(self, iq, id):
-        beta, i1 = betai1(iq, id)
-        return (self._psid(beta, i1),
-                self._psiq(beta, i1))
+        """return psid, psiq of currents iq, id"""
+        beta, i1 = betai1(np.asarray(iq), np.asarray(id))
+        if self.psid:
+            return (self.psid(beta, i1), self.psiq(beta, i1))
+
+        psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
+        psiq = self.lq(beta, i1)*iq
+        return (psid, psiq)
 
 
 class PmRelMachinePsidq(PmRelMachine):

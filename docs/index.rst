@@ -18,6 +18,9 @@ Femagtools can be installed on any 2.7 or 3.x Python distribution with Numpy, Sc
 
   $ pip install femagtools
 
+Anaconda
+  $ conda install -c semafor femagtools
+
 Prerequisite: a fairly recent FEMAG version (see http://www.profemag.ch) must be found in one of the
 directories listed in your PATH variable.
 

@@ -82,7 +82,8 @@ class PmRelMachine(object):
         "d-q current and torque at stator frequency and max voltage"
         iq, id = self.iqd_torque(torque)
         # check voltage
-        if la.norm(self.uqd(w1, iq, id)) <= u1max*np.sqrt(2):
+        uq, ud = self.uqd(w1, iq, id)
+        if la.norm((uq, ud)) <= u1max*np.sqrt(2):
             return (iq, id)
         # decrease psi (flux weakening mode), let i1 == i1max
         return so.fsolve(
@@ -260,8 +261,9 @@ class PmRelMachineLdq(PmRelMachine):
     def uqd(self, w, iq, id):
         """return uq, ud, psiq of frequency w1, iq, id"""
         psid, psiq = self.psi(iq, id)
-        return (self.r1*iq + w*psid,
-                self.r1*id - w*psiq)
+        uq, ud = (self.r1*iq + w*psid,
+                  self.r1*id - w*psiq)
+        return (uq, ud)
 
     def psi(self, iq, id):
         """return psid, psiq of currents iq, id"""

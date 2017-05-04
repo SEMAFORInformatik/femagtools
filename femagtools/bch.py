@@ -342,11 +342,11 @@ class Reader:
                     m.append([floatnan(x) for x in rec])
 
             m = np.array(m).T
-            self.scData['time'] = m[0]
-            self.scData['ia'] = m[1]
-            self.scData['ib'] = m[2]
-            self.scData['ic'] = m[3]
-            self.scData['torque'] = m[4]
+            self.scData['time'] = m[0].tolist()
+            self.scData['ia'] = m[1].tolist()
+            self.scData['ib'] = m[2].tolist()
+            self.scData['ic'] = m[3].tolist()
+            self.scData['torque'] = m[4].tolist()
             return
     
         l = content[-1]

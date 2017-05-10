@@ -18,6 +18,7 @@ def mesh(x, y):
 
 def K(d):
     """space phasor transformation matrix
+    (Inverse Park Transformation) T-1 * dq
     arguments:
       d: rotation angle
       
@@ -26,6 +27,18 @@ def K(d):
         (np.cos(d), np.sin(d)),
         (np.cos(d-2*np.pi/3), np.sin(d-2*np.pi/3)),
         (np.cos(d+2*np.pi/3), np.sin(d+2*np.pi/3))))
+
+
+def T(d):
+    """space phasor transformation matrix
+    (Park Transformation) T * abc
+    arguments:
+      d: rotation angle
+      
+    returns transformation matrix"""
+    return np.array((
+        (np.cos(d), np.cos(d-2*np.pi/3), np.cos(d+2*np.pi/3)),
+        (np.sin(d)), np.sin(d-2*np.pi/3), np.sin(d+2*np.pi/3)))
 
 
 def betai1(iq, id):
@@ -79,6 +92,12 @@ class PmRelMachine(object):
         return so.fsolve(lambda iq:
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2),
                          self.io[0])[0]
+    
+    def iqd_uqd(self, w1, uq, ud):
+        "iq, id at given frequency, voltage"
+        return so.fsolve(lambda iqd:
+                         np.array((uq, ud)) - self.uqd(w1, *iqd),
+                         (0, 0))
     
     def i1_torque(self, torque, beta):
         "i1 current with given torque and beta"
@@ -328,15 +347,30 @@ class PmRelMachinePsidq(PmRelMachine):
         iq = np.asarray(iq)
         self.io = np.max(iq)/2, np.min(id)/2
         
-        if len(iq) < 4 or len(id) < 4:
-            self._psid = ip.interp2d(iq, id, psid.T)
-            self._psiq = ip.interp2d(iq, id, psiq.T)
-
-        else:
-            self._psid = lambda x, y: ip.RectBivariateSpline(
-                iq, id, psid).ev(x, y)
-            self._psiq = lambda x, y: ip.RectBivariateSpline(
-                iq, id, psiq).ev(x, y)
+        if np.any(psid.shape < (4, 4)):
+            if psid.shape[0] > 1 and psid.shape[1] > 1:
+                self._psid = ip.interp2d(iq, id, psid.T)
+                self._psiq = ip.interp2d(iq, id, psiq.T)
+                return
+            if len(id) == 1 or psid.shape[1] == 1:
+                self._psid = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    iq, psid)(x)
+                self._psiq = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    iq, psiq)(x)
+                return
+            if len(iq) == 1 or psid.shape[0] == 1:
+                self._psid = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    id, psid)(y)
+                self._psiq = lambda x, y: ip.InterpolatedUnivariateSpline(
+                    id, psiq)(y)
+                return
+            raise ValueError("unsupported array size {}x{}".format(
+                len(psid.shape[0]), psid.shape[1]))
+            
+        self._psid = lambda x, y: ip.RectBivariateSpline(
+            iq, id, psid).ev(x, y)
+        self._psiq = lambda x, y: ip.RectBivariateSpline(
+            iq, id, psiq).ev(x, y)
 
     def torque_iqd(self, iq, id):
         "torque at q-d-current"

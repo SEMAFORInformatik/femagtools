@@ -114,7 +114,6 @@ class PmMachineTest(unittest.TestCase):
              iq=[0.0, 60.0, 120.0, 180.0, 240.0, 300.0,
                  360.0, 420.0, 480.0, 540.0, 600.0])
 
-
     pm = femagtools.machine.PmRelMachinePsidq(3, m['p'],
                                               m['psid'],
                                               m['psiq'],
@@ -187,7 +186,6 @@ class PmMachineTest(unittest.TestCase):
     self.assertAlmostEqual(r['beta'][0], -38.02, 2)
     self.assertAlmostEqual(r['cosphi'][0], 0.774, 2)
       
-
   def test_torque_iqd(self):
     m1 = femagtools.machine.PmRelMachineLdq(3, 4,
                                             psim=0.11172,
@@ -212,6 +210,24 @@ class PmMachineTest(unittest.TestCase):
                                             i1=i1)
     self.assertAlmostEqual(m2.torque_iqd(iq, id), 215.87, 2)
 
+  def test_psidq_shortcircuit(self):
+    psid = [[-0.51364332, -0.48331104, -0.44353648,
+             -0.35671764, -0.15149428, 0.16361048]]
+    psiq = [[0.0]*6]
+    id = [-1000.0, -800.0, -600.0, -400.0, -200.0, 0.0]
+    iq = [0]*6
+    r1 = 0.1
+    ls = 1e-3
+    m1 = femagtools.machine.PmRelMachinePsidq(3, 4,
+                                              psid=psid,
+                                              psiq=psiq,
+                                              id=id,
+                                              iq=iq,
+                                              r1=r1, ls=ls)
+    w1 = 500
+    iqs, ids = m1.iqd_uqd(w1, 0, 0)
+    self.assertAlmostEqual(femagtools.machine.betai1(iqs, ids)[1], 96.41, 2)
+    
 if __name__ == '__main__':
   unittest.main()
 

@@ -349,8 +349,8 @@ class Reader(Mcv):
         st = []
         for i in range(0, len(block)):
             (s,) = struct.unpack('c', block[i:i+1])
-            st.append(s)
-        return ''.join(st).decode('latin1').encode('utf-8')
+            st.append(s.decode('latin1'))
+        return ''.join(st)
 
     def getInteger(self, length=4):
         block = self.fp.read(length)
@@ -557,7 +557,7 @@ class Reader(Mcv):
 #        print "title : ", self.mc1_title
         result = {
             'name': self.name,
-            'desc': self.mc1_title.decode('utf-8'),
+            'desc': self.mc1_title,
             'cversion': self.version_mc_curve,
             'ni': self.mc1_ni,
             'mi': self.mc1_mi,

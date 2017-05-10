@@ -54,7 +54,7 @@ class MagnetizingCurveTest(unittest.TestCase):
         with open('dummy.mc') as f:
             out = f.readlines()
             
-        self.assertEqual(len(out), 49)
+        self.assertEqual(len(out), 37)
         os.remove('dummy.mc')
 
 if __name__ == '__main__':

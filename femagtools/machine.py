@@ -16,6 +16,18 @@ def mesh(x, y):
             np.tile(y, size[0]))
 
 
+def K(d):
+    """space phasor transformation matrix
+    arguments:
+      d: rotation angle
+      
+    returns transformation matrix"""
+    return np.array((
+        (np.cos(d), np.sin(d)),
+        (np.cos(d-2*np.pi/3), np.sin(d-2*np.pi/3)),
+        (np.cos(d+2*np.pi/3), np.sin(d+2*np.pi/3))))
+
+
 def betai1(iq, id):
     """return beta and amplitude of dq currents"""
     return (np.arctan2(id, iq),
@@ -35,10 +47,11 @@ class PmRelMachine(object):
     ::param p: number of pole pairs
     ::param r1: stator winding resistance (in Ohm)
     """
-    def __init__(self, m, p, r1):
+    def __init__(self, m, p, r1, ls):
         self.p = p
         self.m = m
         self.r1 = r1
+        self.ls = ls
         self.io = (0, 0)
         
     def iqd_torque(self, torque):
@@ -59,7 +72,7 @@ class PmRelMachine(object):
         "beta at given frequency, voltage and current"
         return so.fsolve(lambda b:
                          la.norm(self.uqd(w1, *(iqd(b, i1))))-u*np.sqrt(2),
-                         -np.pi/3)[0]
+                         np.arctan2(self.io[1], self.io[0]))[0]
     
     def iq_u(self, w1, u, id):
         "iq at given frequency, voltage and id current"
@@ -69,13 +82,12 @@ class PmRelMachine(object):
     
     def i1_torque(self, torque, beta):
         "i1 current with given torque and beta"
-        i0 = 0  # torque/(self.m*self.p*self.psid(beta, 0))
         return so.fsolve(lambda i1:
-                         self.torque_iqd(*iqd(beta, i1))-torque, i0)[0]
+                         self.torque_iqd(*iqd(beta, i1))-torque, self.io[1])[0]
     
     def id_torque(self, torque, iq):
         "d current with given torque and d-current"
-        i0 = -0.1
+        i0 = iqd(*self.io)[1]
         return so.fsolve(lambda id: self.torque_iqd(iq, id)-torque, i0)[0]
     
     def iqd_torque_umax(self, torque, w1, u1max):
@@ -97,6 +109,21 @@ class PmRelMachine(object):
                                                        full_output=True,
                                                        disp=0)
         iq, id = iqd(bopt[0], i1)
+        return [iq, id, -fopt]
+   
+    def mtpv(self, w1, u1):
+        """ return iq, id, torque at maximum torque of voltage u1"""
+        p2c = lambda phi, r: np.sqrt(2.0)*r*np.array([np.cos(phi),
+                                                      np.sin(phi)])
+        iqduqd = lambda uq, ud: so.fsolve(
+            lambda iqd: (np.array((uq, ud)) -
+                         np.array(self.uqd(w1, *iqd))), self.io)
+
+        tmax = lambda a: -self.torque_iqd(*iqduqd(*p2c(a[0], u1)))
+        aopt, fopt, iter, fcalls, wflag = so.fmin(tmax, -np.pi/3,
+                                                  full_output=True,
+                                                  disp=0)
+        iq, id = iqduqd(w1, *p2c(aopt[0], u1))
         return [iq, id, -fopt]
 
     def characteristics(self, T, n, u1max):
@@ -173,6 +200,7 @@ class PmRelMachineLdq(PmRelMachine):
     ld d-inductance in H
     lq q-inductance in H
     r1 stator resistance
+    ls stator leakage inductance in H
     beta angle i1 vs up in degrees
     i1 current in A (RMS)
 
@@ -181,12 +209,11 @@ class PmRelMachineLdq(PmRelMachine):
     psiq Q-Flux in Vs (RMS)
     """
     def __init__(self,  m, p, psim=[], ld=[], lq=[],
-                 r1=0, beta=[], i1=[], **kwargs):
+                 r1=0, beta=[], i1=[], ls=0, **kwargs):
 
-        super(self.__class__, self).__init__(m, p, r1)
+        super(self.__class__, self).__init__(m, p, r1, ls)
         self.psid = None
         if np.isscalar(ld):
-            self.io = (0, 0)
             self.ld = lambda b, i: ld
             self.psim = lambda b, i: psim
             self.lq = lambda b, i: lq
@@ -260,8 +287,8 @@ class PmRelMachineLdq(PmRelMachine):
     def uqd(self, w, iq, id):
         """return uq, ud, psiq of frequency w1, iq, id"""
         psid, psiq = self.psi(iq, id)
-        return (self.r1*iq + w*psid,
-                self.r1*id - w*psiq)
+        return (self.r1*iq + w*(self.ls*id + psid),
+                self.r1*id - w*(self.ls*iq + psiq))
 
     def psi(self, iq, id):
         """return psid, psiq of currents iq, id"""
@@ -281,13 +308,14 @@ class PmRelMachinePsidq(PmRelMachine):
 
     psid d-flux (Vs Peak)
     psiq q-flux (Vs Peak)
-    r1 stator resistance
+    r1 stator resistance (Ohm)
+    r1 stator leakage inductance (H)
     id q current (A, Peak)
     iq q current (A, Peak)
     """
 
-    def __init__(self, m, p, psid, psiq, r1, id, iq):
-        super(self.__class__, self).__init__(m, p, r1)
+    def __init__(self, m, p, psid, psiq, r1, id, iq, ls=0):
+        super(self.__class__, self).__init__(m, p, r1, ls)
 
         if isinstance(psid, (float, int)):
             self._psid = lambda id, iq: np.array([[psid]])
@@ -316,8 +344,8 @@ class PmRelMachinePsidq(PmRelMachine):
                                 self._psiq(iq, id)*id)
 
     def uqd(self, w, iq, id):
-        return (self.r1*iq + w*self._psid(iq, id),
-                self.r1*id - w*self._psiq(iq, id))
+        return (self.r1*iq + w*(self.ls*iq + self._psid(iq, id)),
+                self.r1*id - w*(self.ls*id + self._psiq(iq, id)))
 
     def psi(self, iq, id):
         return (self._psid(iq, id),

@@ -20,28 +20,25 @@ pm = femagtools.machine.PmRelMachineLdq(3, p,
                                         psim=bch.ldq['psim'],
                                         lq=bch.ldq['lq'],
                                         beta=beta,
-                                        i1=i1)
+                                        i1=i1,
+                                        ls=1e-3)
 
 u1 = 340
 tq = 200
 
 iqx, idx = pm.iqd_torque(tq)
 w1 = pm.w1_u(u1, iqx, idx)
-i1 = np.linalg.norm(np.array((iqx, idx)))/np.sqrt(2)
+i1 = femagtools.machine.betai1(iqx, idx)[1]
 
 fig, ax = pl.subplots()
 
-id = np.linspace(np.sqrt(2)*i1 * np.sin(beta[0] / 180 * np.pi),
-                 np.sqrt(2)*i1 * np.sin(beta[-1] / 180 * np.pi))
+id = np.linspace(1.5*idx,
+                 femagtools.machine.iqd(np.sin(beta[-1] / 180 * np.pi), i1)[1])
 iq = [pm.iq_u(w1, u1, ix) for ix in id]
 ax.plot(id, iq, label='U1={} V'.format(u1))
 
-betamin = beta[0]
-i1x = pm.i1_torque(tq, betamin / 180 * np.pi)
-iqmin = np.sqrt(2)*i1x * np.cos(betamin / 180 * np.pi)
 i1x = pm.i1_torque(tq, beta[-1] / 180 * np.pi)
-iqmax = np.sqrt(2)*i1x * np.cos(beta[-2] / 180 * np.pi)
-iq = np.linspace(iqmin, iqmax, 20)
+iq = np.linspace(0.8*iqx, 1.8*iqx, 20)
 id = np.array([pm.id_torque(tq, ix) for ix in iq])
 ax.plot(id, iq, label='Tq={} Nm'.format(tq))
 
@@ -52,7 +49,8 @@ ax.annotate('f1={0:4.1f} Hz'.format(w1 / np.pi / 2),
 ax.arrow(0, 0, idx + 0.075 * i1, iqx - 0.08 * i1, color='r',
          head_width=0.05 * i1, head_length=0.08 * i1)
 ax.text(1.38 * idx, 0.5 * iqx,
-        r'$I_1={0:3.1f} A$'.format(np.sqrt((iqx**2 + idx**2)/2)), fontsize=18)
+        r'$I_1={0:3.1f} A$'.format(
+            femagtools.machine.betai1(iqx, idx)[1]), fontsize=18)
 ax.arrow(0, 0, 0, 170, color='k', head_width=0.05 * i1, head_length=0.08 * i1)
 
 ax.annotate("",

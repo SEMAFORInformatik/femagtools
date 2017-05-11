@@ -103,6 +103,16 @@ class Mcv:
         self.MC1_FE_SPEZ_WEIGTH = 7.65
         self.MC1_FE_SAT_MAGNETIZATION = 2.15
 
+        self.mc1_base_frequency = self.MC1_BASE_FREQUENCY
+        self.mc1_base_induction = self.MC1_BASE_INDUCTION
+        self.mc1_ch_factor = self.MC1_CH_FACTOR
+        self.mc1_cw_factor = self.MC1_CW_FACTOR
+        self.mc1_ch_freq_factor = self.MC1_CH_FREQ_FACTOR
+        self.mc1_cw_freq_factor = self.MC1_CW_FREQ_FACTOR
+        self.mc1_induction_factor = self.MC1_INDUCTION_FACTOR
+        self.mc1_fe_spez_weigth = self.MC1_FE_SPEZ_WEIGTH
+        self.mc1_fe_sat_magnetization = self.MC1_FE_SAT_MAGNETIZATION
+        
         self.mc1_title = ''
         self.version_mc_curve = self.ACT_VERSION_MC_CURVE
         self.mc1_type = 1
@@ -165,8 +175,8 @@ class Writer(Mcv):
 #                    logger.debug("Append dictionary to list with name: %s", l)
                     lst.append(dic)
                 self.__setattr__(l, lst)
-            else:
-                self.__setattr__(transl.get(l), data.get(l, None))
+#            else:
+#                self.__setattr__(transl.get(l), data.get(l, None))
 #        self.mc1_title = self.mc1_title.encode('utf-8')
         return
 
@@ -267,17 +277,29 @@ class Writer(Mcv):
 
             # bi2, nuer
             lb = self.curve[K].get('bi2', [])
+            if not lb:
+                lb = []
             ln = self.curve[K].get('nuer', [])
+            if not ln:
+                ln = []
             self.writeBlock(zip(*[
-                [lb[I] if I < len(lb) else 0. for I in range(self.MC1_NIMAX)],
-                [ln[I] if I < len(ln) else 0. for I in range(self.MC1_NIMAX)]]))
+                [lb[I] if I < len(lb) else 0.
+                 for I in range(self.MC1_NIMAX)],
+                [ln[I] if I < len(ln) else 0.
+                 for I in range(self.MC1_NIMAX)]]))
 
             # a, b, c, d
             la = self.curve[K].get('a', [])
+            if not la:
+                la = []
             lb = self.curve[K].get('b', [])
+            if not lb:
+                lb = []
             self.writeBlock(zip(*[
-                [la[I] if I < len(la) else 0. for I in range(self.MC1_NIMAX)],
-                [lb[I] if I < len(lb) else 0. for I in range(self.MC1_NIMAX)],
+                [la[I] if I < len(la) else 0.
+                 for I in range(self.MC1_NIMAX)],
+                [lb[I] if I < len(lb) else 0.
+                 for I in range(self.MC1_NIMAX)],
                 [0.]*50,
                 [0.]*50
             ]))
@@ -615,8 +637,11 @@ class MagnetizingCurve(object):
             logger.info("MagnetizingCurve is dict")
             if 'id' in mcvpar:
                 self.mcv[str(mcvpar['id'])] = mcvpar
-            elif 'name' in mcvpar:
+                return
+            if 'name' in mcvpar:
                 self.mcv[mcvpar['name']] = mcvpar
+                return
+            self.mcv['0'] = mcvpar
 
         # Do not use unicode in PYTHON 3 as all strings are sequences of Unicode
         elif isinstance(mcvpar, string_types) or isinstance(mcvpar, unicode):
@@ -648,10 +673,16 @@ class MagnetizingCurve(object):
 
     def find_by_name(self, name):
         """find mcv by name"""
-        for k in self.mcv.keys():
-            if self.mcv[k]['name'] == name:
+        try:
+            for k in self.mcv.keys():
+                if self.mcv[k]['name'] == name:
                     return self.mcv[k]
-            # not found
+        except KeyError:
+            pass
+        # not found
+        if len(self.mcv) == 1 and '0' in self.mcv:
+            self.mcv['0']['name'] = name
+            return self.mcv['0']
         return None
 
     def recalc(self):
@@ -712,11 +743,9 @@ class MagnetizingCurve(object):
             curve['a'].append(1.0)
             curve['b'].append(MUE0*curve['hi'][-1]-curve['bi'][-1])
             
-    def writefile(self, name, directory='.', writeproc='mcvwriter'):
+    def writefile(self, name, directory='.', writeproc=''):
         """find magnetic curve by name or id and write binary file
         returns filename if found else None"""
-        if not id:
-            return None
         ext = '.MC' if sys.platform == 'win32' else '.MCV'
         mcv = self.find_by_name(name)
         if not mcv:
@@ -734,6 +763,14 @@ class MagnetizingCurve(object):
             return None
 
         filename = ''.join((mcv['name'], ext))
+        if writeproc:
+            self._writefile(mcv, directory, filename, writeproc)
+        else:
+            writer = Writer(mcv)
+            writer.writeMcv(os.path.join(directory, filename))
+        return filename
+
+    def _writefile(self, mcv, directory, filename, writeproc):
         try:
             logger.info("create %s", str(filename))
             proc = subprocess.Popen([writeproc],
@@ -856,9 +893,7 @@ class MagnetizingCurve(object):
 
         for l in proc.stderr:
             logger.error(l)
-        
-        return filename
-    
+            
     def fitLossCoeffs(self):
         for m in self.mcv:
             if 'losses' not in self.mcv[m]:

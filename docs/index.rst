@@ -35,6 +35,7 @@ Contents
    models
    userspec
    bchreader
+   mcv
    amazon_engine
    google_engine
    apidocs

@@ -328,7 +328,7 @@ plots           Create plots                    []
 .. Note::
    plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
    'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
-   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.femag.de/ColorGrad.html) added in version 0.0.16
+   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.profemag.ch/ColorGrad.html) added in version 0.0.16
    
 Example::
 

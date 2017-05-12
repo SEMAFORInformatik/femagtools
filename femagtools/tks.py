@@ -167,7 +167,6 @@ class Reader:
             'losses': self.losses}
                                      
 if __name__ == "__main__":
-    import matplotlib.pylab as pl
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:
@@ -176,6 +175,7 @@ if __name__ == "__main__":
     tks = Reader(filename)
     
     if tks.losses:
+        import matplotlib.pylab as pl
         import numpy as np
         cw = tks.cw
         alpha = tks.cw_freq

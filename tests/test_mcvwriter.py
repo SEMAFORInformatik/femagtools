@@ -54,7 +54,6 @@ class McvReaderTest(unittest.TestCase):
         self.assertAlmostEqual(r['curve'][0]['bi'][-1], 1.836, 3)
 
         # test mcv writer
-        import json
         writer = femagtools.mcv.Writer(r)
         # writer.setData(r)
         writeMcvFile = '{0}/{1}'.format(testPath, filename_out)
@@ -77,22 +76,17 @@ class McvReaderTest(unittest.TestCase):
                                       reader2.mc1_type, reader2.mc1_recalc,
                                       reader2.mc1_db2[0]])
         
-        for i in ['version_mc_curve', 'mc1_curves']: #, 'mc1_title']:
-            self.assertAlmostEqual(eval('reader.'+i), eval('reader2.'+i), 3)
-        for i in ['mc1_ni[0]', 'mc1_mi[0]', 'mc1_type']: #  'mc1_db2[0]']:
-            self.assertAlmostEqual(eval('reader.'+i), eval('reader2.'+i), 3)
-        for i in ['mc1_remz', 'mc1_bsat', 'mc1_bref', 'mc1_fillfac']:
-            self.assertAlmostEqual(eval('reader.'+i), eval('reader2.'+i), 3)
-        for i in ['curve[0]["hi"]', 'curve[0]["bi"]',
-                  'curve[0]["bi2"]', 'curve[0]["nuer"]']:
-            self.assertAlmostEqual(eval('reader.'+i), eval('reader2.'+i), 3)
-        for i in ['curve[0]["a"]', 'curve[0]["b"]']:
-            self.assertAlmostEqual(eval('reader.'+i), eval('reader2.'+i), 3)
-#        for i in ['fo', 'Bo', 'ch', 'ch_freq', 'cw',
-#                  'cw_freq', 'b_coeff', 'rho', 'fe_sat_mag']:
-#            print(i)
-#            self.assertAlmostEqual(eval('reader.'+i), eval('reader2.'+i), 3)
-
+        for attr in ['version_mc_curve', 'mc1_curves', 'mc1_title']:
+            self.assertAlmostEqual(getattr(reader, attr),
+                                   getattr(reader2, attr))
+        for attr in ['mc1_remz', 'mc1_bsat', 'mc1_bref', 'mc1_fillfac',
+                     'fo', 'Bo', 'ch', 'ch_freq', 'cw',
+                     'cw_freq', 'b_coeff', 'rho', 'fe_sat_mag']:
+            self.assertAlmostEqual(getattr(reader, attr),
+                                   getattr(reader2, attr), 3)
+        for attr in ['hi', 'bi']:
+            self.assertAlmostEqual(reader.curve[0][attr],
+                                   reader2.curve[0][attr], 3)
 
 setup_logging()
 logger = logging.getLogger('test_read_mcv')

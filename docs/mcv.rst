@@ -65,7 +65,7 @@ Using a magnetizingcurve to Write a mcv file::
            15000, 20000, 25000, 30000, 35000, 40000]
        )],
        desc=u"Demo Steel",
-       ch=4.0
+       ch=4.0,
        cw_freq=2.0,
        cw=1.68)
 

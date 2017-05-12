@@ -160,24 +160,13 @@ class Writer(Mcv):
             logger.debug("setAttr Exception, name: %s, value: %s", name, val)
 
     def setData(self, data):
-        for l in transl:
-            # list data
-            if isinstance(transl.get(l), list):
-                lst = []
-                for i, p in enumerate(transl.get(l)):
-#                    logger.debug("list prop: %s", p)
-                    dic = dict()
-                    if isinstance(p, dict):
-                        for pc in p:
-                            dic.update({pc: data.get(l)[i].get(pc)})
-#                            logger.debug("list dict prop: %s, DATA: %s",
-#                                         pc, data.get(l)[i].get(pc))
-#                    logger.debug("Append dictionary to list with name: %s", l)
-                    lst.append(dic)
-                self.__setattr__(l, lst)
-#            else:
-#                self.__setattr__(transl.get(l), data.get(l, None))
-#        self.mc1_title = self.mc1_title.encode('utf-8')
+        wtrans = {transl[k]: k
+                  for k in transl if not isinstance(transl[k], list)}
+        for k in wtrans:
+            if wtrans[k] in data:
+                self.__setattr__(k, data[wtrans[k]])
+        self.curve = [dict(bi=c['bi'], hi=c['hi'])
+                      for c in data['curve']]
         return
 
     def getBlockLength(self, d):
@@ -216,7 +205,7 @@ class Writer(Mcv):
         elif isinstance(d, list):
             for i in d:
                 self.writeData(i)
-        elif isinstance(d, zip): # !!!!
+        elif isinstance(d, zip):  # python3
             for i in d:
                 self.writeData(i)
         else:
@@ -270,35 +259,28 @@ class Writer(Mcv):
             # hi, bi
             lb = self.curve[K].get('bi', [])
             lh = self.curve[K].get('hi', [])
-            l = [lb[I] if I < len(lb) else 0. for I in range(self.MC1_NIMAX)]
             self.writeBlock(zip(*[
-                [lb[I] if I < len(lb) else 0. for I in range(self.MC1_NIMAX)],
-                [lh[I] if I < len(lh) else 0. for I in range(self.MC1_NIMAX)]]))
+                [float(lb[I]) if I < len(lb) else 0.
+                 for I in range(self.MC1_NIMAX)],
+                [float(lh[I]) if I < len(lh) else 0.
+                 for I in range(self.MC1_NIMAX)]]))
 
             # bi2, nuer
             lb = self.curve[K].get('bi2', [])
-            if not lb:
-                lb = []
             ln = self.curve[K].get('nuer', [])
-            if not ln:
-                ln = []
             self.writeBlock(zip(*[
-                [lb[I] if I < len(lb) else 0.
+                [float(lb[I]) if I < len(lb) else 0.
                  for I in range(self.MC1_NIMAX)],
-                [ln[I] if I < len(ln) else 0.
+                [float(ln[I]) if I < len(ln) else 0.
                  for I in range(self.MC1_NIMAX)]]))
 
             # a, b, c, d
             la = self.curve[K].get('a', [])
-            if not la:
-                la = []
             lb = self.curve[K].get('b', [])
-            if not lb:
-                lb = []
             self.writeBlock(zip(*[
-                [la[I] if I < len(la) else 0.
+                [float(la[I]) if I < len(la) else 0.
                  for I in range(self.MC1_NIMAX)],
-                [lb[I] if I < len(lb) else 0.
+                [float(lb[I]) if I < len(lb) else 0.
                  for I in range(self.MC1_NIMAX)],
                 [0.]*50,
                 [0.]*50
@@ -309,11 +291,15 @@ class Writer(Mcv):
                self.version_mc_curve == self.PARAMETER_PM_CURVE:
                 self.writeBlock([self.mc1_angle[K], self.mc1_db2[K]])
 
-            self.writeBlock([self.mc1_base_frequency, self.mc1_base_induction,
-                             self.mc1_ch_factor, self.mc1_cw_factor,
-                             self.mc1_ch_freq_factor, self.mc1_cw_freq_factor,
-                             self.mc1_induction_factor, self.mc1_fe_spez_weigth,
-                             self.mc1_fe_sat_magnetization])
+            self.writeBlock([float(self.mc1_base_frequency),
+                             float(self.mc1_base_induction),
+                             float(self.mc1_ch_factor),
+                             float(self.mc1_cw_factor),
+                             float(self.mc1_ch_freq_factor),
+                             float(self.mc1_cw_freq_factor),
+                             float(self.mc1_induction_factor),
+                             float(self.mc1_fe_spez_weigth),
+                             float(self.mc1_fe_sat_magnetization)])
 
     def writeMcv(self, filename):
         # intens bug : windows needs this strip to remove '\r'
@@ -399,7 +385,7 @@ class Reader(Mcv):
             binary = False
             self.fp = open(filename, "r")
 
-        self.name = os.path.splitext(filename)[0]
+        self.name = os.path.splitext(os.path.basename(filename))[0]
         # read curve version (INTEGER)
         if binary:
             self.version_mc_curve = self.readBlock(int)
@@ -581,18 +567,18 @@ class Reader(Mcv):
             'name': self.name,
             'desc': self.mc1_title,
             'cversion': self.version_mc_curve,
-            'ni': self.mc1_ni,
-            'mi': self.mc1_mi,
+            #'ni': [n for n in self.mc1_ni if n],
+            #'mi': [m for m in self.mc1_mi if m],
             'ctype': self.mc1_type,
             'recalc': self.mc1_recalc,
-            'db2': self.mc1_db2,
+            #'db2': self.mc1_db2,
             'remz': self.mc1_remz,
             'bsat': self.mc1_bsat,
             'bref': self.mc1_bref,
             'fillfac': self.mc1_fillfac,
             #  'curves': self.mc1_curves,
-            'curve': self.curve,
-            'energy': self.mc1_energy,
+            #'curve': self.curve,
+            #'energy': self.mc1_energy,
             'fo': self.fo,
             'Bo': self.Bo,
             'ch': self.ch,
@@ -605,10 +591,10 @@ class Reader(Mcv):
             'curve': [{
                 'bi': self.curve[i].get('bi'),
                 'hi': self.curve[i].get('hi'),
-                'bi2': self.curve[i].get('bi2'),
-                'nuer': self.curve[i].get('nuer'),
-                'a': self.curve[i].get('a'),
-                'b': self.curve[i].get('b')
+                #'bi2': self.curve[i].get('bi2'),
+                #'nuer': self.curve[i].get('nuer'),
+                #'a': self.curve[i].get('a'),
+                #'b': self.curve[i].get('b')
             } for i in range(len(self.curve))]
         }
 #        print "Title: [",  self.mc1_title, "] CurveVersion :", self.version_mc_curve
@@ -654,9 +640,9 @@ class MagnetizingCurve(object):
         """find mcv by id or name"""
         try:
             return self.mcv[id]['name']
-        except ValueError as ex:
+        except ValueError:
             pass  # not found
-        except KeyError as ex:
+        except KeyError:
             try:
                 ext = '.MC' if sys.platform == 'win32' else '.MCV'
                 filename = ''.join((id, ext))
@@ -687,52 +673,56 @@ class MagnetizingCurve(object):
 
     def recalc(self):
         for m in self.mcv:
-            curve=self.mcv[m]['curve'][0]
-            mi=MC1_MIMAX-2
+            curve = self.mcv[m]['curve'][0]
+            mi = MC1_MIMAX-2
             dh = curve['hi'][-1]-curve['hi'][-2]
             db = curve['bi'][-1]-curve['bi'][-2]
-            dmue_d=db/dh
+            dmue_d = db/dh
             dmue = curve['bi'][-1]/curve['hi'][-1]
             db = 3e-2*curve['bi'][-1]
             n3=1.5
 
-            curve['muer']=[b/MUE0/h for b,h in zip( curve['bi'],curve['hi'] )]
+            curve['muer'] = [b/MUE0/h
+                             for b,h in zip(curve['bi'],
+                                            curve['hi'])]
             
             # extend bh-curve into saturation
-            while dmue_d>1.01*MUE0 and dmue>1.5*MUE0:
-                dmue_d=MUE0 + (dmue_d-MUE0)/np.sqrt(n3)
+            while dmue_d > 1.01*MUE0 and dmue > 1.5*MUE0:
+                dmue_d = MUE0 + (dmue_d-MUE0)/np.sqrt(n3)
                 curve['bi'].append(curve['bi'][-1]+db)
                 curve['hi'].append(curve['hi'][-1]+db/dmue_d)
                 curve['muer'].append(curve['bi'][-1]/MUE0/curve['hi'][-1])
-                n3+=0.2
+                n3 += 0.2
                 dmue = curve['bi'][-1]/curve['hi'][-1]
 
-            self.mcv[m]['db2'] = (curve['bi'][-1]**2 - curve['bi'][0]**2)/(mi-1)
-            nuek0 = (curve['hi'][1]-curve['hi'][0])/\
-              (curve['bi'][1]-curve['bi'][0])
+            self.mcv[m]['db2'] = (curve['bi'][-1]**2 -
+                                  curve['bi'][0]**2)/(mi-1)
+            nuek0 = (curve['hi'][1] - curve['hi'][0]) / \
+                    (curve['bi'][1]-curve['bi'][0])
             for j1 in range(len(curve['bi'])):
-                    bk02=curve['bi'][j1]**2
-                    if bk02>0: break
-            curve['nuer']=[MUE0*nuek0]
-            curve['bi2']=[bk02]
-            curve['a']=[]
-            curve['b']=[]
+                    bk02 = curve['bi'][j1]**2
+                    if bk02 > 0: break
+            curve['nuer'] = [MUE0*nuek0]
+            curve['bi2'] = [bk02]
+            curve['a'] = []
+            curve['b'] = []
 
-            bk1=0.0
-            while bk1<=curve['bi'][-1]:
+            bk1 = 0.0
+            while bk1 <= curve['bi'][-1]:
                     bk12 = bk02 + self.mcv[m]['db2']
-                    bk1=np.sqrt(bk12)
-                    j=2
-                    while j<len(curve['bi']) and bk1 <= curve['bi'][j]:
-                           j+=1
-                    j-=1
+                    bk1 = np.sqrt(bk12)
+                    j = 2
+                    while j < len(curve['bi']) and bk1 <= curve['bi'][j]:
+                        j += 1
+                    j -= 1
                     bdel = curve['bi'][j] - curve['bi'][j1]
                     c1 = (curve['hi'][j] - curve['hi'][j1])/bdel
                     c2 = curve['hi'][j1] - c1*curve['bi'][j1]
 
                     nuek1 = c1 + c2/bk1
 
-                    curve['a'].append(MUE0*(bk12*nuek0 - bk02*nuek1)/self.mcv[m]['db2'])
+                    curve['a'].append(MUE0*(bk12*nuek0 -
+                                            bk02*nuek1)/self.mcv[m]['db2'])
                     curve['b'].append(MUE0*(nuek1 - nuek0)/self.mcv[m]['db2'])
                     nuek0 = nuek1
                     bk02 = bk12
@@ -917,10 +907,9 @@ if __name__ == "__main__":
     else:
         filename = sys.stdin.readline().strip()
 
-    with open(filename) as file:
-        mcvdata = json.load(file)
-        
-    mcv = MagnetizingCurve(mcvdata)
-    mcv.writefile(mcvdata['name'], '.', 'cat')
+    mcv = Reader()
+    mcv.readMcv(filename)
+    json.dump(mcv.get_results(), sys.stdout)
+    #print(mcv.get_results()
     #mcv.recalc()
     #mcv.writefile(mcvdata['name'], '.','cat')

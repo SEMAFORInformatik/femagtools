@@ -786,7 +786,7 @@ class Reader:
         self.machine['n'] = self.machine['n']/60
         self.machine['lfe'] = 1e-3*self.machine['lfe']
         i1 = self.machine['i1']
-        if 'plfe1' in self.machine:  # calc sum of losses
+        if self.machine['plfe1']:  # calc sum of losses
             self.machine['i1'] = i1*len(self.machine['plfe1'])
             plfe1 = self.machine['plfe1']
             plcu = self.machine.get('plcu', 0.0)
@@ -1057,56 +1057,37 @@ class Reader:
         return self.__dict__[k]
 
     def items(self):
-        return [
-            ('version', self.version),
-            ('type', self.type),
-            ('filename', self.filename),
-            ('date', self.date),
-            ('torque', self.torque),
-            ('torque_fft', self.torque_fft),
-            ('psidq', self.psidq),
-            ('psidq_ldq', self.psidq_ldq),
-            ('machine', self.machine),
-            ('lossPar', self.lossPar),
-            ('flux', self.flux),
-            ('flux_fft', self.flux_fft),
-            ('airgapInduction', self.airgapInduction),
-            ('magnet', self.magnet),
-            ('scData', self.scData),
-            ('dqPar', self.dqPar),
-            ('ldq', self.ldq),
-            ('losses', self.losses),
-            ('demag', self.demag),
-            ('linearForce', self.linearForce),
-            ('linearForce_fft', self.linearForce_fft),
-            ('characteristics', self.characteristics)]
+        return [(k, self.get(k)) for k in ('version',
+                                           'type',
+                                           'filename',
+                                           'date',
+                                           'torque',
+                                           'torque_fft',
+                                           'psidq',
+                                           'psidq_ldq',
+                                           'machine',
+                                           'lossPar',
+                                           'flux',
+                                           'flux_fft',
+                                           'airgapInduction',
+                                           'magnet',
+                                           'scData',
+                                           'dqPar',
+                                           'ldq',
+                                           'losses',
+                                           'demag',
+                                           'linearForce',
+                                           'linearForce_fft',
+                                           'characteristics') if self.get(k)]
 
     def __str__(self):
         "return string format of this object"
         if self.type:
             return "\n".join([
                 'FEMAG {}: {}'.format(self.version, self.type),
-                'File: {}  {}'.format(self.filename, self.date),
-                'torque:{}'.format(self.torque),
-                'torque_fft:{}'.format(self.torque_fft),
-                'psidq: {}'.format(self.psidq),
-                'psidq_ldq: {}'.format(self.psidq_ldq),
-                'machine: {}'.format(self.machine),
-                'lossPar: {}'.format(self.lossPar),
-                'flux: {}'.format(self.flux),
-                'flux_fft: {}'.format(self.flux_fft),
-                'magnet: {}'.format(self.magnet),
-                'airgapInduction: {}'.format(self.airgapInduction),
-                'scData: {}'.format(self.scData),
-                'dqPar: {}'.format(self.dqPar),
-                'ldq: {}'.format(self.ldq),
-                'losses: {}'.format(self.losses),
-                'demag: {}'.format(self.demag),
-                'linearForce: {}'.format(self.linearForce),
-                'linearForce_fft: {}'.format(self.linearForce_fft),
-                'characteristics: {}'.format(self.characteristics)])
-                             
-
+                'File: {}  {}'.format(self.filename, self.date)] +
+                             ['{}: {}'.format(k, v)
+                              for k, v in self.items()])
         return "{}"
     
     def __repr__(self):
@@ -1114,7 +1095,7 @@ class Reader:
         return self.__str__()
 
 def main():
-    from io import open
+#    from io import open
 #    with open('logging.json', 'rt') as f:
 #        logging.config.dictConfig( json.load(f) )
     bch = Reader()
@@ -1164,5 +1145,18 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    status = main()
-    sys.exit(status)
+    import json
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
+    else:
+        filename = sys.stdin.readline().strip()
+
+    b = Reader()
+
+    with codecs.open(filename, encoding='ascii') as f:
+        b.read(f)
+
+    #json.dump(b, sys.stdout)
+    print(b)
+#    status = main()
+#    sys.exit(status)

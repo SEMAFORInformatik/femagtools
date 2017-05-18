@@ -81,6 +81,12 @@ class PmRelMachine(object):
         return so.fsolve(lambda w1:
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2), w10)[0]
 
+    def w2_imax_umax(self, imax, umax):
+        return so.fsolve(
+            lambda x: (self.mtpv(x, umax)[:2] -
+                       self.iqd_imax_umax(imax, x, umax)),
+            np.sqrt(2)*umax/la.norm(self.psi(*self.io)))[0]
+        
     def beta_u(self, w1, u, i1):
         "beta at given frequency, voltage and current"
         return so.fsolve(lambda b:
@@ -121,6 +127,15 @@ class PmRelMachine(object):
                          self.torque_iqd(*iqd) - torque),
             (iq, id))
 
+    def iqd_imax_umax(self, i1max, w1, u1max):
+        "d-q current at stator frequency and max voltage and max current"
+        # decrease psi (flux weakening mode), let i1 == i1max
+        beta = so.fsolve(lambda b:
+                         la.norm(
+                             self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
+                         np.arctan2(self.io[1], self.io[0]))[0]
+        return iqd(beta, i1max)
+    
     def mtpa(self, i1):
         """ return iq, id, torque at maximum torque of current i1"""
         maxtq = lambda x: -self.torque_iqd(*iqd(x, i1))
@@ -134,41 +149,70 @@ class PmRelMachine(object):
         """ return iq, id, torque at maximum torque of voltage u1"""
         p2c = lambda phi, r: np.sqrt(2.0)*r*np.array([np.cos(phi),
                                                       np.sin(phi)])
-        iqduqd = lambda uq, ud: so.fsolve(
-            lambda iqd: (np.array((uq, ud)) -
-                         np.array(self.uqd(w1, *iqd))), self.io)
+        iqduqd = lambda uqd: so.fsolve(
+            lambda iqd: np.ravel(uqd) - np.ravel(self.uqd(w1, *iqd)), self.io)
 
-        tmax = lambda a: -self.torque_iqd(*iqduqd(*p2c(a[0], u1)))
-        aopt, fopt, iter, fcalls, wflag = so.fmin(tmax, -np.pi/3,
+        tmax = lambda gamma: -self.torque_iqd(*iqduqd(p2c(gamma, u1)))
+        aopt, fopt, iter, fcalls, wflag = so.fmin(tmax,
+                                                  np.arctan2(self.io[1],
+                                                             self.io[0]),
                                                   full_output=True,
                                                   disp=0)
-        iq, id = iqduqd(w1, *p2c(aopt[0], u1))
+        iq, id = iqduqd(p2c(aopt[0], u1))
         return [iq, id, -fopt]
 
     def characteristics(self, T, n, u1max):
         """calculate torque speed characteristics"""
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[], losses=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
-        for t, nx in zip(T, n):
+        if np.isscalar(T):
+            iq, id = self.iqd_torque(T)
+            w1 = self.w1_u(u1max, iq, id)
+            i1max = betai1(iq, id)[1]
+            #w2 = self.w2_imax_umax(i1max, u1max)
+            #if w2 < 2*np.pi*self.p*n:
+            #    n2 = w2 / (2*np.pi*self.p)
+            #else:
+            n2 = n
+            dn = n/25
+            for nx in np.arange(0, w1/2/np.pi/self.p+dn, dn):
+                r['id'].append(id)
+                r['iq'].append(iq)
+                r['n'].append(nx)
+                r['T'].append(T)
+            for nx in np.arange(w1/2/np.pi/self.p+dn, n2+dn, dn):
+                w1 = 2*np.pi*nx*self.p
+                iq, id = self.iqd_imax_umax(i1max, w1, u1max)
+                r['id'].append(id)
+                r['iq'].append(iq)
+                r['n'].append(nx)
+                r['T'].append(self.torque_iqd(iq, id))
+        else:
+            for t, nx in zip(T, n):
+                w1 = 2*np.pi*nx*self.p
+                iq, id = self.iqd_torque_umax(t, w1, u1max)
+                r['id'].append(id)
+                r['iq'].append(iq)
+                tq = self.torque_iqd(iq, id)
+                r['T'].append(tq)
+                r['n'].append(nx)
+
+        for nx, iq, id in zip(r['n'], r['iq'], r['id']):
             w1 = 2*np.pi*nx*self.p
-            iq, id = self.iqd_torque_umax(t, w1, u1max)
-            r['id'].append(id)
-            r['iq'].append(iq)
             uq, ud = self.uqd(w1, iq, id)
             r['uq'].append(uq)
             r['ud'].append(ud)
             r['u1'].append(la.norm((ud, uq))/np.sqrt(2.0))
             r['i1'].append(la.norm((id, iq))/np.sqrt(2.0))
-            tq = self.torque_iqd(iq, id)
-            r['T'].append(tq)
             r['beta'].append(np.arctan2(id, iq)/np.pi*180.)
             r['gamma'].append(np.arctan2(ud, uq)/np.pi*180.)
 
-            r['n'].append(nx)
             r['phi'].append(r['beta'][-1] - r['gamma'][-1])
             r['cosphi'].append(np.cos(r['phi'][-1]/180*np.pi))
-            r['pmech'].append((2*np.pi*nx*tq))
 
+        for nx, tq in zip(r['n'], r['T']):
+            r['pmech'].append((2*np.pi*nx*tq))
+            
         return r
 
     def i1beta_characteristics(self, n_list, i1_list, beta_list, u1max):

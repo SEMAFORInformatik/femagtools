@@ -129,11 +129,11 @@ class Mcv:
         self.MC1_MIMAX = 50
 
         self.curve = []
-        self.mc1_mi = [0.]*self.MCURVES_MAX
+        self.mc1_mi = [0]*self.MCURVES_MAX
         self.mc1_db2 = [0.]*self.MCURVES_MAX
         self.mc1_angle = [0.]*self.MCURVES_MAX
 
-        self.mc1_ni = [float('nan')]*self.MCURVES_MAX
+        self.mc1_ni = [0]*self.MCURVES_MAX
 
         self.mc1_energy = [[0]*self.MCURVES_MAX]*self.MC1_NIMAX
 
@@ -231,12 +231,24 @@ class Writer(Mcv):
         # write line, text '    *** File with magnetic curve ***    '
         self.writeBlock('    *** File with magnetic curve ***    ')
 
+        for K in range(0, self.mc1_curves):
+            I = 0
+            for mc_bi, mc_hi in zip(self.curve[K].get('bi', []),
+                                    self.curve[K].get('hi', [])):
+                if mc_bi != 0.0 or mc_hi != 0.0:
+                    self.mc1_ni[K] = I+1
+                    
         # write line, mc1_title
         self.writeBlock(self.mc1_title.ljust(40))
-
+        if np.isscalar(self.mc1_db2):
+            db2 = [self.mc1_db2]
+        else:
+            db2 = self.mc1_db2
         # write line, mc1_ni(1),mc1_mi(1),mc1_type,mc1_recalc,mc1_db2(1)
-        self.writeBlock([self.mc1_ni[0], self.mc1_mi[0], self.mc1_type,
-                         self.mc1_recalc, self.mc1_db2[0]])
+        self.writeBlock([int(self.mc1_ni[0]),
+                         int(self.mc1_mi[0]),
+                         int(self.mc1_type),
+                         int(self.mc1_recalc), db2[0]])
 
         # write line, mc1_remz, mc1_bsat, mc1_bref, mc1_fillfac
         if self.version_mc_curve == self.ACT_VERSION_MC_CURVE:
@@ -680,11 +692,11 @@ class MagnetizingCurve(object):
             dmue_d = db/dh
             dmue = curve['bi'][-1]/curve['hi'][-1]
             db = 3e-2*curve['bi'][-1]
-            n3=1.5
+            n3 = 1.5
 
             curve['muer'] = [b/MUE0/h
-                             for b,h in zip(curve['bi'],
-                                            curve['hi'])]
+                             for b, h in zip(curve['bi'],
+                                             curve['hi'])]
             
             # extend bh-curve into saturation
             while dmue_d > 1.01*MUE0 and dmue > 1.5*MUE0:
@@ -701,7 +713,8 @@ class MagnetizingCurve(object):
                     (curve['bi'][1]-curve['bi'][0])
             for j1 in range(len(curve['bi'])):
                     bk02 = curve['bi'][j1]**2
-                    if bk02 > 0: break
+                    if bk02 > 0:
+                        break
             curve['nuer'] = [MUE0*nuek0]
             curve['bi2'] = [bk02]
             curve['a'] = []

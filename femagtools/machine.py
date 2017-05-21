@@ -68,7 +68,7 @@ class PmRelMachine(object):
         self.io = (0, 0)
         
     def iqd_torque(self, torque):
-        """minimum d-q-current for torque"""
+        """return minimum d-q-current for torque"""
         res = so.minimize(lambda idq: la.norm(idq), self.io, method='SLSQP',
                           constraints=({'type': 'eq',
                                         'fun': lambda iqd:
@@ -76,13 +76,17 @@ class PmRelMachine(object):
         return res.x
 
     def w1_umax(self, u, iq, id):
-        "return frequency w1 at given voltage u and id, iq current"
+        """return frequency w1 at given voltage u and id, iq current
+
+        Keyword arguments:
+        u -- the maximum voltage (RMS)
+        iq, id -- the d-q currents"""
         w10 = np.sqrt(2)*u/la.norm(self.psi(iq, id))
         return so.fsolve(lambda w1:
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2), w10)[0]
         
     def w1_u(self, u, iq, id):
-        "return frequency w1 at given voltage u and id, iq current (obsolete)"
+        """return frequency w1 at given voltage u and id, iq current (obsolete, use w1_umax)"""
         return self.w1_umax(u, iq, id)
     
     def w1max(self, u, iq, id):
@@ -92,6 +96,7 @@ class PmRelMachine(object):
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2), w10)[0]
 
     def w2_imax_umax(self, imax, umax):
+        """return frequency at current and voltage"""
         return so.fsolve(
             lambda x: (self.mtpv(x, umax)[:2] -
                        self.iqd_imax_umax(imax, x, umax)),
@@ -110,23 +115,23 @@ class PmRelMachine(object):
                          self.io[0])[0]
     
     def iqd_uqd(self, w1, uq, ud):
-        "iq, id at given frequency, voltage"
+        "return iq, id current at given frequency, voltage"
         return so.fsolve(lambda iqd:
                          np.array((uq, ud)) - self.uqd(w1, *iqd),
                          (0, 0))
     
     def i1_torque(self, torque, beta):
-        "i1 current with given torque and beta"
+        "return i1 current with given torque and beta"
         return so.fsolve(lambda i1:
                          self.torque_iqd(*iqd(beta, i1))-torque, self.io[1])[0]
     
     def id_torque(self, torque, iq):
-        "d current with given torque and d-current"
+        "return d current with given torque and d-current"
         i0 = iqd(*self.io)[1]
         return so.fsolve(lambda id: self.torque_iqd(iq, id)-torque, i0)[0]
     
     def iqd_torque_umax(self, torque, w1, u1max):
-        "d-q current and torque at stator frequency and max voltage"
+        "return d-q current and torque at stator frequency and max voltage"
         iq, id = self.iqd_torque(torque)
         # check voltage
         if la.norm(self.uqd(w1, iq, id)) <= u1max*np.sqrt(2):
@@ -138,7 +143,7 @@ class PmRelMachine(object):
             (iq, id))
 
     def iqd_imax_umax(self, i1max, w1, u1max):
-        "d-q current at stator frequency and max voltage and max current"
+        "return d-q current at stator frequency and max voltage and max current"
         beta = so.fsolve(lambda b:
                          la.norm(
                              self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
@@ -146,7 +151,7 @@ class PmRelMachine(object):
         return iqd(beta, i1max)
     
     def mtpa(self, i1):
-        """ return iq, id, torque at maximum torque of current i1"""
+        """return iq, id, torque at maximum torque of current i1"""
         maxtq = lambda x: -self.torque_iqd(*iqd(x, i1))
         bopt, fopt, iter, funcalls, warnflag = so.fmin(maxtq, 0,
                                                        full_output=True,
@@ -155,7 +160,7 @@ class PmRelMachine(object):
         return [iq, id, -fopt]
    
     def mtpv(self, w1, u1):
-        """ return iq, id, torque at maximum torque of voltage u1"""
+        """return iq, id, torque at maximum torque of voltage u1"""
         p2c = lambda phi, r: np.sqrt(2.0)*r*np.array([np.cos(phi),
                                                       np.sin(phi)])
         iqduqd = lambda uqd: so.fsolve(
@@ -171,7 +176,13 @@ class PmRelMachine(object):
         return [iq, id, -fopt]
 
     def characteristics(self, T, n, u1max):
-        """calculate torque speed characteristics"""
+        """calculate torque speed characteristics.
+        return id, iq, n, T, ud, uq, u1, i1, beta, gamma, phi, cosphi, pmech
+        
+        Keyword arguments:
+        T -- the maximum torque or the list of torque values in Nm
+        n -- the maximum speed or the list of speed values in 1/s
+        u1max -- the maximum voltage in V rms"""
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[], losses=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
         if np.isscalar(T):

@@ -75,8 +75,18 @@ class PmRelMachine(object):
                                         self.torque_iqd(*iqd) - torque}))
         return res.x
 
-    def w1_u(self, u, iq, id):
+    def w1_umax(self, u, iq, id):
         "return frequency w1 at given voltage u and id, iq current"
+        w10 = np.sqrt(2)*u/la.norm(self.psi(iq, id))
+        return so.fsolve(lambda w1:
+                         la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2), w10)[0]
+        
+    def w1_u(self, u, iq, id):
+        "return frequency w1 at given voltage u and id, iq current (obsolete)"
+        return self.w1_umax(u, iq, id)
+    
+    def w1max(self, u, iq, id):
+        "return max frequency w1 at given voltage u and d-q current"
         w10 = np.sqrt(2)*u/la.norm(self.psi(iq, id))
         return so.fsolve(lambda w1:
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2), w10)[0]
@@ -129,7 +139,6 @@ class PmRelMachine(object):
 
     def iqd_imax_umax(self, i1max, w1, u1max):
         "d-q current at stator frequency and max voltage and max current"
-        # decrease psi (flux weakening mode), let i1 == i1max
         beta = so.fsolve(lambda b:
                          la.norm(
                              self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
@@ -167,20 +176,22 @@ class PmRelMachine(object):
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
         if np.isscalar(T):
             iq, id = self.iqd_torque(T)
-            w1 = self.w1_u(u1max, iq, id)
             i1max = betai1(iq, id)[1]
-            #w2 = self.w2_imax_umax(i1max, u1max)
-            #if w2 < 2*np.pi*self.p*n:
-            #    n2 = w2 / (2*np.pi*self.p)
-            #else:
-            n2 = n
-            dn = n/25
-            for nx in np.arange(0, w1/2/np.pi/self.p+dn, dn):
+            w1 = self.w1max(u1max, iq, id)
+            nmax = max(w1,
+                       self.w1max(u1max, *self.iqdmin(i1max)))/2/np.pi/self.p
+            n1 = min(w1/2/np.pi/self.p, nmax)
+            n2 = min(nmax, max(n, n1))
+
+            nsamples = 36
+            for nx in np.linspace(0, n1, int(n1/(n2/nsamples))):
                 r['id'].append(id)
                 r['iq'].append(iq)
                 r['n'].append(nx)
                 r['T'].append(T)
-            for nx in np.arange(w1/2/np.pi/self.p+dn, n2+dn, dn):
+            nsamples = nsamples - int(n1/(n2/nsamples))
+            dn = (n2-n1)/nsamples
+            for nx in np.linspace(n1+dn, n2, nsamples):
                 w1 = 2*np.pi*nx*self.p
                 iq, id = self.iqd_imax_umax(i1max, w1, u1max)
                 r['id'].append(id)
@@ -276,6 +287,7 @@ class PmRelMachineLdq(PmRelMachine):
 
         super(self.__class__, self).__init__(m, p, r1, ls)
         self.psid = None
+        self.betamin = -np.pi/2
         if np.isscalar(ld):
             self.ld = lambda b, i: ld
             self.psim = lambda b, i: psim
@@ -295,6 +307,7 @@ class PmRelMachineLdq(PmRelMachine):
             return
         
         beta = np.asarray(beta)/180.0*np.pi
+        self.betamin = min(beta)
         self.io = iqd(np.min(beta)/2, np.max(i1)/2)
         if 'psid' in kwargs:
             psid = np.sqrt(2)*np.asarray(kwargs['psid'])
@@ -347,11 +360,11 @@ class PmRelMachineLdq(PmRelMachine):
         tq = self.m*self.p/2*(psid*iq - psiq*id)
         return tq
        
-    def uqd(self, w, iq, id):
-        """return uq, ud, psiq of frequency w1, iq, id"""
+    def uqd(self, w1, iq, id):
+        """return uq, ud of frequency w1 and d-q current"""
         psid, psiq = self.psi(iq, id)
-        return (self.r1*iq + w*(self.ls*id + psid),
-                self.r1*id - w*(self.ls*iq + psiq))
+        return (self.r1*iq + w1*(self.ls*id + psid),
+                self.r1*id - w1*(self.ls*iq + psiq))
 
     def psi(self, iq, id):
         """return psid, psiq of currents iq, id"""
@@ -362,6 +375,10 @@ class PmRelMachineLdq(PmRelMachine):
         psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
         psiq = self.lq(beta, i1)*iq
         return (psid, psiq)
+
+    def iqdmin(self, i1):
+        """max iq, min id for given current"""
+        return iqd(self.betamin, i1)
 
 
 class PmRelMachinePsidq(PmRelMachine):
@@ -389,6 +406,7 @@ class PmRelMachinePsidq(PmRelMachine):
         psiq = np.asarray(psiq)
         id = np.asarray(id)
         iq = np.asarray(iq)
+        self.idmin = min(id)
         self.io = np.max(iq)/2, np.min(id)/2
         
         if np.any(psid.shape < (4, 4)):
@@ -421,10 +439,18 @@ class PmRelMachinePsidq(PmRelMachine):
         return self.m*self.p/2*(self._psid(iq, id)*iq -
                                 self._psiq(iq, id)*id)
 
-    def uqd(self, w, iq, id):
-        return (self.r1*iq + w*(self.ls*iq + self._psid(iq, id)),
-                self.r1*id - w*(self.ls*id + self._psiq(iq, id)))
+    def uqd(self, w1, iq, id):
+        return (self.r1*iq + w1*(self.ls*iq + self._psid(iq, id)),
+                self.r1*id - w1*(self.ls*id + self._psiq(iq, id)))
 
     def psi(self, iq, id):
         return (self._psid(iq, id),
                 self._psiq(iq, id))
+
+    def iqdmin(self, i1):
+        """max iq, min id for given current"""
+        idmin = np.sqrt(2)*i1
+        if idmin < self.idmin:
+            return (0, idmin)
+        
+        return (np.sqrt(self.idmin**2 - idmin**2), idmin)

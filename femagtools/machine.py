@@ -175,14 +175,15 @@ class PmRelMachine(object):
         iq, id = iqduqd(p2c(aopt[0], u1))
         return [iq, id, -fopt]
 
-    def characteristics(self, T, n, u1max):
+    def characteristics(self, T, n, u1max, nsamples=36):
         """calculate torque speed characteristics.
-        return id, iq, n, T, ud, uq, u1, i1, beta, gamma, phi, cosphi, pmech
+        return id, iq, n, T, ud, uq, u1, i1, beta, gamma, phi, cosphi, pmech, n_type
         
         Keyword arguments:
         T -- the maximum torque or the list of torque values in Nm
         n -- the maximum speed or the list of speed values in 1/s
-        u1max -- the maximum voltage in V rms"""
+        u1max -- the maximum voltage in V rms
+        nsamples -- (optional) number of speed samples"""
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[], losses=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
         if np.isscalar(T):
@@ -192,9 +193,9 @@ class PmRelMachine(object):
             nmax = max(w1,
                        self.w1max(u1max, *self.iqdmin(i1max)))/2/np.pi/self.p
             n1 = min(w1/2/np.pi/self.p, nmax)
+            r['n_type'] = n1
             n2 = min(nmax, max(n, n1))
 
-            nsamples = 36
             for nx in np.linspace(0, n1, int(n1/(n2/nsamples))):
                 r['id'].append(id)
                 r['iq'].append(iq)

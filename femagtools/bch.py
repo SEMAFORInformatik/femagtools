@@ -781,7 +781,7 @@ class Reader:
                         self.machine[v[1]] = si*floatnan(rec[-1])
                     break
 
-        if 'beta' in self.machine:
+        if self.machine['beta']:
             self.machine['beta'] = self.machine['beta'][1:]
         self.machine['n'] = self.machine['n']/60
         self.machine['lfe'] = 1e-3*self.machine['lfe']

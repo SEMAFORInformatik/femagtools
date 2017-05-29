@@ -53,17 +53,6 @@ transl = dict(
     )],
     db2='mc1_db2',
     fe_sat_mag='mc1_fe_sat_magnetization'
-    )
-
-loss_transl = dict(
-    f='frequency',
-    B='induction',
-    pfe='losses',
-    cw='cw_m',
-    alfa='alfa_m',
-    beta='beta_m',
-    fo='base_freq',
-    Bo='base_induct'
 )
 
 MC1_MIMAX = 50
@@ -167,6 +156,10 @@ class Writer(Mcv):
                 self.__setattr__(k, data[wtrans[k]])
         self.curve = [dict(bi=c['bi'], hi=c['hi'])
                       for c in data['curve']]
+        try:
+            self.losses = data['losses']
+        except:
+            pass
         return
 
     def getBlockLength(self, d):
@@ -313,8 +306,47 @@ class Writer(Mcv):
                              float(self.mc1_fe_spez_weigth),
                              float(self.mc1_fe_sat_magnetization)])
 
+            try:
+                nfreq = len([1 for x in self.losses['f'] if x > 0])
+                nind = len(self.losses['B'])
+                self.writeBlock([nfreq, nind])
+                self.writeBlock(self.losses['B'] +
+                                [0.0]*(M_LOSS_INDUCT - len(self.losses['B'])))
+                mloss = M_LOSS_FREQ
+                cw = self.mc1_cw_factor
+                alpha = self.mc1_cw_freq_factor
+                ch = self.mc1_ch_factor
+                beta = self.mc1_ch_freq_factor
+                gamma = self.mc1_induction_factor
+                jordan = lambda fr, Br: (
+                    (cw*fr**alpha + ch*fr**beta) * Br**gamma)
+                i = 1
+                for f, p in zip(self.losses['f'], zip(*self.losses['pfe'])):
+                    if f:
+                        pl = [px if px else jordan(f/self.losses['fo'],
+                                                   b/self.losses['Bo'])
+                              for px, b in zip(p, self.losses['B'])]
+
+                        self.writeBlock(pl +
+                                        [0.0]*(M_LOSS_INDUCT - len(p)))
+                        self.writeBlock([f])
+                        i += 1
+                        mloss -= 1
+                for m in range(mloss):
+                    self.writeBlock([0.0]*M_LOSS_INDUCT)
+                    self.writeBlock([0.0])
+                    i += 1
+
+                self.writeBlock([self.losses['cw'], self.losses['cw_freq'],
+                                 self.losses['b_coeff'], self.losses['Bo'],
+                                 self.losses['fo']])
+                self.writeBlock([1])
+                logger.info('Losses n freq %d n ind %d', nfreq, nind)
+            except:
+                pass
+            
     def writeMcv(self, filename):
-        # intens bug : windows needs this strip to remove '\r'
+        # windows needs this strip to remove '\r'
         filename = filename.strip()
         self.name = os.path.splitext(filename)[0]
 
@@ -573,8 +605,6 @@ class Reader(Mcv):
             self.mc1_energy[K] = [ energy[I] for I in range(len(energy))  ]
 
     def get_results(self):
-#        print "version : ", self.version_mc_curve,
-#        print "title : ", self.mc1_title
         result = {
             'name': self.name,
             'desc': self.mc1_title,
@@ -609,10 +639,10 @@ class Reader(Mcv):
                 #'b': self.curve[i].get('b')
             } for i in range(len(self.curve))]
         }
-#        print "Title: [",  self.mc1_title, "] CurveVersion :", self.version_mc_curve
-#        print "LINE 0: ", self.mc1_ni[0], ' ',  self.mc1_mi[0], ' ',  self.mc1_type, ' ',  self.mc1_recalc, ' ',  self.mc1_db2[0]
-#        print "LINE 1: ", self.mc1_remz, ' ',  self.mc1_bsat, ' ',  self.mc1_bref, ' ',  self.mc1_fillfac, ' ',  self.mc1_curves
-
+        try:
+            result['losses'] = self.losses
+        except:
+            pass
         return result
 
 

@@ -98,6 +98,7 @@ class Reader:
         # Fast PM-Synchronous-Motor Simulation
         # Characteristics of Permanent-Magnet-Motors
         self.wdg = None
+        self.wdgfactors = []
         self.torque = []
         self.torque_fft = []
         self.psidq = {}
@@ -126,6 +127,7 @@ class Reader:
             'Weigths': Reader.__read_weights,
             'Number of Nodes': Reader.__read_nodes_and_mesh,
             'Windings Data': Reader.__read_dummy,
+            'Winding-Factors': Reader.__read_winding_factors,
             'Machine Data': Reader.__read_machine_data,
             'CAD-Parameter Data': Reader.__read_dummy,
             'Torque-Force': Reader.__read_torque_force,
@@ -264,7 +266,22 @@ class Reader:
         self.windings = []
         for m in set([int(abs(w)) for w in np.array(wdgs).T[0]]):
             self.windings.append([w for w in wdgs if abs(w[0]) == m])
-
+            
+    def __read_winding_factors(self, content):
+        "read winding factors section"
+        self.wdgfactors = []
+        for line in content:
+            if line.startswith('Winding-Key'):
+                self.wdgfactors.append(dict(order=[], wfac=[],
+                                            skewf=[], total=[]))
+            else:
+                rec = self._numPattern.findall(line)
+                if len(rec) == 4:
+                    self.wdgfactors[-1]['order'].append(int(rec[0]))
+                    self.wdgfactors[-1]['wfac'].append(float(rec[1]))
+                    self.wdgfactors[-1]['skewf'].append(float(rec[2]))
+                    self.wdgfactors[-1]['total'].append(float(rec[3]))
+                    
     def __read_dummy(self, content):
         return
     
@@ -410,6 +427,9 @@ class Reader:
             rec = l.split('\t')
             if len(rec) == 6:
                 m.append([floatnan(x) for x in rec])
+
+        if not m:
+            return
         m = np.array(m).T
         ncols = len(set(m[1]))
         i1 = np.reshape(m[0], (-1, ncols)).T[0]
@@ -1069,6 +1089,7 @@ class Reader:
                                            'lossPar',
                                            'flux',
                                            'flux_fft',
+                                           'wdgfactors',
                                            'airgapInduction',
                                            'magnet',
                                            'scData',

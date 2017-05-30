@@ -157,7 +157,7 @@ class Reader:
             'Current Angles defined from no-load test':
             Reader.__read_current_angles,
             'FEMAG Version': Reader.__read_version,
-            'Simulation Data': Reader.__read_dummy,
+            'Simulation Data': Reader.__read_simulation_data,
             'Area [mm**2]': Reader.__read_areas,
             'Basic Machine parameters': Reader.__read_dummy,
             'Winding': Reader.__read_dummy,
@@ -283,6 +283,12 @@ class Reader:
                     self.wdgfactors[-1]['total'].append(float(rec[3]))
                     
     def __read_dummy(self, content):
+        return
+    
+    def __read_simulation_data(self, content):
+        for line in content:
+            if line.startswith('Number of Phases m'):
+                self.machine['m'] = int(float((line.split()[-1])))
         return
     
     def __read_current_angles(self, content):
@@ -428,25 +434,24 @@ class Reader:
             if len(rec) == 6:
                 m.append([floatnan(x) for x in rec])
 
-        if not m:
-            return
-        m = np.array(m).T
-        ncols = len(set(m[1]))
-        i1 = np.reshape(m[0], (-1, ncols)).T[0]
-        nrows = len(i1)
+        if m:
+            m = np.array(m).T
+            ncols = len(set(m[1]))
+            i1 = np.reshape(m[0], (-1, ncols)).T[0]
+            nrows = len(i1)
 
-        logger.info('characteristics ld-lq %d x %d', nrows, ncols)
-        self.characteristics['ldq'] = {
-            'beta': m[1][:ncols][::-1].tolist(),
-            'i1': i1.tolist(),
-            'ld': (self.armatureLength*np.reshape(
-                m[2], (nrows, ncols)).T[::-1]).tolist(),
-            'lq': (self.armatureLength*np.reshape(
-                m[3], (nrows, ncols)).T[::-1]).tolist(),
-            'psim': (self.armatureLength*np.reshape(
-                m[4], (nrows, ncols)).T[::-1]).tolist(),
-            'torque': (self.armatureLength*np.reshape(
-                m[5], (nrows, ncols)).T[::-1]).tolist()}
+            logger.info('characteristics ld-lq %d x %d', nrows, ncols)
+            self.characteristics['ldq'] = {
+                'beta': m[1][:ncols][::-1].tolist(),
+                'i1': i1.tolist(),
+                'ld': (self.armatureLength*np.reshape(
+                    m[2], (nrows, ncols)).T[::-1]).tolist(),
+                'lq': (self.armatureLength*np.reshape(
+                    m[3], (nrows, ncols)).T[::-1]).tolist(),
+                'psim': (self.armatureLength*np.reshape(
+                    m[4], (nrows, ncols)).T[::-1]).tolist(),
+                'torque': (self.armatureLength*np.reshape(
+                    m[5], (nrows, ncols)).T[::-1]).tolist()}
 
         m = []
         columns = [['n', 'id', 'iq', 'torque', 'p2'],

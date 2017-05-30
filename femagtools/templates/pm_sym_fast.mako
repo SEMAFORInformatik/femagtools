@@ -2,13 +2,17 @@
 -- PM/Rel Simulation
 --
 m.move_action     =    ${model.get('move_action')}
+% if hasattr(model, 'lfe'):
 m.arm_length      =    ${model.get('lfe')*1e3}
+% endif
+% if hasattr(model, 'poles'):
 m.num_pol_pair    =    m.num_poles/2
+% endif
 % if model.get('move_action') == 0:
 m.speed           =    ${model.get('speed')*60}
 m.skew_angle      =    ${model.get('skew_angle',0)}
 m.phi_start       =    0.0   
-m.range_phi       =    720./m.num_poles
+m.range_phi       =    0.0
 m.fc_force_points   =  0.0 
 % else:
 m.speed_linear    =    ${model.get('speed')}

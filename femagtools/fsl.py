@@ -92,8 +92,8 @@ class Builder:
     
     def open_model(self, model, magnets=None):
         return self.create_open(model) + \
-            self.create_magnet(model, magnets) + \
-            self.__render(model.windings, 'cu_losses')
+            self.create_magnet(model, magnets) 
+#            self.__render(model.windings, 'cu_losses')
     
     def load_model(self, model, magnets=None):
         return self.__render(model, 'open')
@@ -121,7 +121,7 @@ class Builder:
                                         'pm_sym_loss',
                                         'psd_psq_fast'):
             return self.__render(model, model['calculationMode'])
-        return (self.__render(model, 'cu_losses') + 
+        return (self.__render(model, 'cu_losses') +
                 self.__render(model, model['calculationMode']) +
                 self.__render(model, 'plots'))
             
@@ -133,9 +133,18 @@ class Builder:
 
     def create(self, model, fea, magnets=None):
         "create model and analysis function"
-        fea['lfe'] = model.get('lfe')
-        fea['move_action'] = model.get('move_action')
-        fea.update(model.windings)
+        try:
+            fea['lfe'] = model.get('lfe')
+        except:
+            pass
+        try:
+            fea['move_action'] = model.get('move_action')
+        except:
+            pass
+        try:
+            fea.update(model.windings)
+        except:
+            pass
         if model.is_complete():
             return self.create_model(model, magnets) + \
                 self.create_analysis(fea)

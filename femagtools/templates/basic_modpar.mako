@@ -4,6 +4,7 @@
 
 <%include file="fe-contr.mako" />
 
+% if hasattr(model, 'airgap'):
 ag  = ${model.get(['airgap'])*1e3}
 % if model.move_action == 0:
 % if model.external_rotor:
@@ -18,7 +19,9 @@ dy2 = ${model.get(['inner_diam'])*1e3}
 da2 = da1 - 2*ag 
 % endif
 % endif
+% endif
 
+% if hasattr(model, 'stator'):
 m.tot_num_slot    =   ${int(model.get(['stator','num_slots']))}
 m.num_sl_gen      =   ${int(model.get(['stator','num_slots_gen']))}
 m.num_poles       =   ${int(model.get(['poles']))}
@@ -29,3 +32,4 @@ m.tot_num_sl      =   m.tot_num_slot
 m.fc_radius       =   (da1+da2)/4
 % endif
 pre_models("basic_modpar")
+% endif

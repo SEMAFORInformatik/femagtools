@@ -1,3 +1,4 @@
+% if hasattr(model, 'num_layers'):
 --  CU-Losses-                           
 m.cufilfact       =      ${model.get('cufilfact', 0.45)}
 m.culength        =      100*${model.get('culength', 1.4)}
@@ -16,3 +17,4 @@ m.num_wire        =      0.0
  
 pre_models("CU-Losses-1") -- outside
 pre_models("CU-Losses-2") -- inside
+% endif

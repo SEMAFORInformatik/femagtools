@@ -19,6 +19,21 @@ class McvReaderTest(unittest.TestCase):
         self.assertEqual(len(r['curve'][0]['bi']), 24)
         self.assertEqual(r['curve'][0]['bi'][0], 0.0)
         self.assertAlmostEqual(r['curve'][0]['bi'][-1], 1.836, 3)
+        
+    def test_read_oriented_mcv(self):
+        testPath = os.path.split(__file__)[0]
+        if not testPath:
+            testPath = '.'
+        filename = "data/V800-50A_aniso.MCV"
+        reader = femagtools.mcv.Reader()
+        reader.readMcv('{0}/{1}'.format(testPath, filename))
+        r = reader.get_results()
+        self.assertEqual(r['curve'][0]['angle'], 0)
+        self.assertEqual(r['curve'][1]['angle'], 90)
+        self.assertEqual(len(r['curve'][0]['bi']), 17)
+        self.assertEqual(r['curve'][0]['bi'][0], 0.0)
+        self.assertAlmostEqual(r['curve'][0]['bi'][-1], 1.9763, 3)
+        self.assertAlmostEqual(r['curve'][1]['bi'][-1], 1.9763, 3)
 
         
 if __name__ == '__main__':

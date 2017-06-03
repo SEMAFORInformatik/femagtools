@@ -368,19 +368,20 @@ class Reader(Mcv):
         Mcv.__init__(self)
 
     def readBlock(self, d, length=0):
-        res = None
-        le = self.getInteger()
-        if d == string_types:
-            res = self.getString(length)
-        elif d == int:
-            res = self.getInteger()
-        elif d == float:
-            res = self.getReal()
-        elif isinstance(d, list):
-            res = [self.readData(i) for i in d]
-        else:
-            pass
+        res = []
         try:
+            le = self.getInteger()
+            if d == string_types:
+                res = self.getString(length)
+            elif d == int:
+                res = self.getInteger()
+            elif d == float:
+                res = self.getReal()
+            elif isinstance(d, list):
+                res = [self.readData(i) for i in d]
+            else:
+                pass
+
             le2 = self.getInteger()
         except:  # file format unknown
             le2 = 0
@@ -463,14 +464,17 @@ class Reader(Mcv):
 
         # read line 5
         if binary:
-            resvar = [self.mc1_remz, self.mc1_bsat, self.mc1_bref, self.mc1_fillfac]
             l_format = [float, float, float, float]
             if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
                self.version_mc_curve == self.PARAMETER_PM_CURVE:
-                resvar.append(self.mc1_curves)
                 l_format.append(int)
-            t = tuple(resvar)
             t = self.readBlock(l_format)
+            self.mc1_remz = t[0]
+            self.mc1_bsat = t[1]
+            self.mc1_bref = t[2]
+            self.mc1_fillfac = t[3]
+            if len(t) > 4:
+                self.mc1_curves = t[4]
         else:
             line = self.fp.readline()
             (self.mc1_remz, self.mc1_bsat, self.mc1_bref, self.mc1_fillfac) = \
@@ -507,13 +511,15 @@ class Reader(Mcv):
                 mc_c = res[2::4]
                 mc_d = res[3::4]
             else:
-                [mc_bi,mc_hi]= zip(*[values[2*I:2*I+2] for I in range(self.MC1_NIMAX)])
+                [mc_bi, mc_hi] = zip(*[values[2*I:2*I+2]
+                                       for I in range(self.MC1_NIMAX)])
                 idxOffset = 2*self.MC1_NIMAX
-                [mc_bi2, mc_nuer]= zip(*[values[idxOffset+2*I:idxOffset+2*I+2]
-                                         for I in range(self.MC1_NIMAX)])
+                [mc_bi2, mc_nuer] = zip(*[values[idxOffset+2*I:idxOffset+2*I+2]
+                                          for I in range(self.MC1_NIMAX)])
                 idxOffset += 2*self.MC1_NIMAX
-                [mc_a, mc_b, mc_c, mc_d] = zip(*[values[idxOffset+4*I:idxOffset+4*I+4]
-                                               for I in range(self.MC1_NIMAX)])
+                [mc_a, mc_b, mc_c, mc_d] = zip(*[
+                    values[idxOffset+4*I:idxOffset+4*I+4]
+                    for I in range(self.MC1_NIMAX)])
                 idxOffset += 4*self.MC1_NIMAX
 
             if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
@@ -602,7 +608,7 @@ class Reader(Mcv):
                     energy.append(values[idxOffset+I])
                 idxOffset += iLen
                 
-            self.mc1_energy[K] = [ energy[I] for I in range(len(energy))  ]
+            self.mc1_energy[K] = [energy[I] for I in range(len(energy))]
 
     def get_results(self):
         result = {
@@ -618,7 +624,7 @@ class Reader(Mcv):
             'bsat': self.mc1_bsat,
             'bref': self.mc1_bref,
             'fillfac': self.mc1_fillfac,
-            #  'curves': self.mc1_curves,
+            'curves': self.mc1_curves,
             #'curve': self.curve,
             #'energy': self.mc1_energy,
             'fo': self.fo,
@@ -631,18 +637,19 @@ class Reader(Mcv):
             'rho': self.rho,
             'fe_sat_mag': self.fe_sat_mag,
             'curve': [{
-                'bi': self.curve[i].get('bi'),
-                'hi': self.curve[i].get('hi'),
-                #'bi2': self.curve[i].get('bi2'),
-                #'nuer': self.curve[i].get('nuer'),
-                #'a': self.curve[i].get('a'),
-                #'b': self.curve[i].get('b')
-            } for i in range(len(self.curve))]
+                'bi': c.get('bi'),
+                'hi': c.get('hi'),
+            } for c in self.curve]
         }
         try:
             result['losses'] = self.losses
         except:
             pass
+        if (self.ORIENTED_VERSION_MC_CURVE or
+            self.PARAMETER_PM_CURVE):
+            for i in range(len(self.curve)):
+                result['curve'][i]['angle'] = self.mc1_angle[i]
+            
         return result
 
 

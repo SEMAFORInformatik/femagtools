@@ -2,11 +2,8 @@
 -- PM/Rel Simulation
 --
 m.move_action     =    ${model.get('move_action')}
-% if hasattr(model, 'lfe'):
+% if 'lfe' in model:
 m.arm_length      =    ${model.get('lfe')*1e3}
-% endif
-% if hasattr(model, 'poles'):
-m.num_pol_pair    =    m.num_poles/2
 % endif
 % if model.get('move_action') == 0:
 m.speed           =    ${model.get('speed')*60}
@@ -51,6 +48,6 @@ m.optim_i_up      =    ${model.get('optim_i_up', 0)}
 
 m.pm_eff_aktiv    =    0.0
 
-m.pocfilename    = model..'_'..m.num_poles..'p.poc'
+m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 
 run_models("pm_sym_fast")

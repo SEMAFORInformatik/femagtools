@@ -51,7 +51,7 @@ class Builder:
                         templ = [l.strip() for l in f.readlines()]
                 else:
                     templ = model.magnet['magnetFsl']['content_template']
-                logger.info(model.magnet['magnetFsl'])
+
                 return mcv + self.render_template(
                     '\n'.join(templ),
                     model.magnet['magnetFsl'])
@@ -133,6 +133,11 @@ class Builder:
 
     def create(self, model, fea, magnets=None):
         "create model and analysis function"
+        try:
+            fea['pocfilename'] = (model.get('name') +
+                                  '_' + model.get('poles') + 'p.poc')
+        except:
+            pass
         try:
             fea['lfe'] = model.get('lfe')
         except:

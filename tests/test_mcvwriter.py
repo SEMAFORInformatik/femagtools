@@ -6,38 +6,8 @@ import femagtools.mcv
 import logging
 import logging.config
 
-def setup_logging():
-    logfile = 'logging.json'
-    if os.path.exists( logfile ):
-        with open(logfile, 'rt') as f:
-            config = json.load(f)
-    else:
-        config=dict(
-            version = 1,
-            disable_existing_loggers = False,
-            formatters = {
-                'simple': {'format':
-                '%(name)-12s %(levelname)-8s %(message)s'}
-            },
-            handlers = {
-                'console': {'class': 'logging.StreamHandler',
-                'formatter': 'simple',
-                "stream": "ext://sys.stderr"}
-            },
-            loggers = {
-                'root': {'handlers': ['console'],
-                         'level': logging.WARN}
-            },
-            root = {
-                "level": "DEBUG",
-                "handlers": ["console"]
-            }
-        )
-    logging.config.dictConfig(config)
 
-
-
-class McvReaderTest(unittest.TestCase):
+class McvWriterTest(unittest.TestCase):
     def test_read_mcv(self):
         testPath = os.path.split(__file__)[0]
         if not testPath:
@@ -64,18 +34,6 @@ class McvReaderTest(unittest.TestCase):
         reader2 = femagtools.mcv.Reader()
         reader2.readMcv(writeMcvFile)
         
-        logger.debug("MC Title: %s", reader2.mc1_title)
-        logger.debug("MC Version: %d", reader2.version_mc_curve)
-        logger.debug("MC Type: %d", reader2.mc1_type)
-        logger.debug("MC numCurves: %d", reader2.mc1_curves)
-        logger.debug("MC FillFac: %f", reader2.mc1_fillfac)
-        logger.debug("MC LIST [%s]", [reader.mc1_ni[0], reader.mc1_mi[0],
-                                      reader.mc1_type, reader.mc1_recalc,
-                                      reader.mc1_db2[0]])
-        logger.debug("MC LIST [%s]", [reader2.mc1_ni[0], reader2.mc1_mi[0],
-                                      reader2.mc1_type, reader2.mc1_recalc,
-                                      reader2.mc1_db2[0]])
-        
         for attr in ['version_mc_curve', 'mc1_curves', 'mc1_title']:
             self.assertAlmostEqual(getattr(reader, attr),
                                    getattr(reader2, attr))
@@ -88,7 +46,5 @@ class McvReaderTest(unittest.TestCase):
             self.assertAlmostEqual(reader.curve[0][attr],
                                    reader2.curve[0][attr], 3)
 
-setup_logging()
-logger = logging.getLogger('test_read_mcv')
 if __name__ == '__main__':
     unittest.main()

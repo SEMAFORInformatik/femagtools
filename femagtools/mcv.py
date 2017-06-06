@@ -49,7 +49,7 @@ transl = dict(
         bi2='mc1_bi2',
         nuer='mc1_nuer',
         a='mc1_a',
-        b='mc1_b'
+        b='mc1_b',
     )],
     db2='mc1_db2',
     fe_sat_mag='mc1_fe_sat_magnetization'
@@ -127,13 +127,12 @@ class Mcv:
         self.mc1_energy = [[0]*self.MCURVES_MAX]*self.MC1_NIMAX
 
     def rtrimValueList(self, vlist):
+        """cut list at first 0"""
         le = len(vlist)
         for i in range(le-1, -1, -1):
-            if vlist[i] == 0.:
-                vlist = vlist[:-1]
-            else:
+            if vlist[i] != 0.:
                 break
-        return vlist
+        return list(vlist[:i+1])
 
 
 class Writer(Mcv):
@@ -156,6 +155,10 @@ class Writer(Mcv):
                 self.__setattr__(k, data[wtrans[k]])
         self.curve = [dict(bi=c['bi'], hi=c['hi'])
                       for c in data['curve']]
+        try:
+            self.mc1_angle = [c['angle'] for c in data['curve']]
+        except:
+            pass
         try:
             self.losses = data['losses']
         except:
@@ -223,7 +226,7 @@ class Writer(Mcv):
 
         # write line, text '    *** File with magnetic curve ***    '
         self.writeBlock('    *** File with magnetic curve ***    ')
-
+        self.mc1_curves = len(self.curve)
         for K in range(0, self.mc1_curves):
             I = 0
             for mc_bi, mc_hi in zip(self.curve[K].get('bi', []),
@@ -265,28 +268,28 @@ class Writer(Mcv):
             lb = self.curve[K].get('bi', [])
             lh = self.curve[K].get('hi', [])
             self.writeBlock(zip(*[
-                [float(lb[I]) if I < len(lb) else 0.
-                 for I in range(self.MC1_NIMAX)],
-                [float(lh[I]) if I < len(lh) else 0.
-                 for I in range(self.MC1_NIMAX)]]))
+                [float(lb[j]) if j < len(lb) else 0.
+                 for j in range(self.MC1_NIMAX)],
+                [float(lh[j]) if j < len(lh) else 0.
+                 for j in range(self.MC1_NIMAX)]]))
 
             # bi2, nuer
-            lb = self.curve[K].get('bi2', [])
-            ln = self.curve[K].get('nuer', [])
+            lb = self.curve[K].get('bi2', [0.0]*self.MC1_NIMAX)
+            ln = self.curve[K].get('nuer', [0.0]*self.MC1_NIMAX)
             self.writeBlock(zip(*[
-                [float(lb[I]) if I < len(lb) else 0.
-                 for I in range(self.MC1_NIMAX)],
-                [float(ln[I]) if I < len(ln) else 0.
-                 for I in range(self.MC1_NIMAX)]]))
+                [float(lb[j]) if j < len(lb) else 0.
+                 for j in range(self.MC1_NIMAX)],
+                [float(ln[j]) if j < len(ln) else 0.
+                 for j in range(self.MC1_NIMAX)]]))
 
             # a, b, c, d
-            la = self.curve[K].get('a', [])
-            lb = self.curve[K].get('b', [])
+            la = self.curve[K].get('a', [0.]*self.MC1_NIMAX)
+            lb = self.curve[K].get('b', [0.]*self.MC1_NIMAX)
             self.writeBlock(zip(*[
-                [float(la[I]) if I < len(la) else 0.
-                 for I in range(self.MC1_NIMAX)],
-                [float(lb[I]) if I < len(lb) else 0.
-                 for I in range(self.MC1_NIMAX)],
+                [float(la[j]) if j < len(la) else 0.
+                 for j in range(self.MC1_NIMAX)],
+                [float(lb[j]) if j < len(lb) else 0.
+                 for j in range(self.MC1_NIMAX)],
                 [0.]*50,
                 [0.]*50
             ]))
@@ -296,54 +299,54 @@ class Writer(Mcv):
                self.version_mc_curve == self.PARAMETER_PM_CURVE:
                 self.writeBlock([self.mc1_angle[K], self.mc1_db2[K]])
 
-            self.writeBlock([float(self.mc1_base_frequency),
-                             float(self.mc1_base_induction),
-                             float(self.mc1_ch_factor),
-                             float(self.mc1_cw_factor),
-                             float(self.mc1_ch_freq_factor),
-                             float(self.mc1_cw_freq_factor),
-                             float(self.mc1_induction_factor),
-                             float(self.mc1_fe_spez_weigth),
-                             float(self.mc1_fe_sat_magnetization)])
+        self.writeBlock([float(self.mc1_base_frequency),
+                         float(self.mc1_base_induction),
+                         float(self.mc1_ch_factor),
+                         float(self.mc1_cw_factor),
+                         float(self.mc1_ch_freq_factor),
+                         float(self.mc1_cw_freq_factor),
+                         float(self.mc1_induction_factor),
+                         float(self.mc1_fe_spez_weigth),
+                         float(self.mc1_fe_sat_magnetization)])
 
-            try:
-                nfreq = len([1 for x in self.losses['f'] if x > 0])
-                nind = len(self.losses['B'])
-                self.writeBlock([nfreq, nind])
-                self.writeBlock(self.losses['B'] +
-                                [0.0]*(M_LOSS_INDUCT - len(self.losses['B'])))
-                mloss = M_LOSS_FREQ
-                cw = self.mc1_cw_factor
-                alpha = self.mc1_cw_freq_factor
-                ch = self.mc1_ch_factor
-                beta = self.mc1_ch_freq_factor
-                gamma = self.mc1_induction_factor
-                jordan = lambda fr, Br: (
-                    (cw*fr**alpha + ch*fr**beta) * Br**gamma)
-                i = 1
-                for f, p in zip(self.losses['f'], zip(*self.losses['pfe'])):
-                    if f:
-                        pl = [px if px else jordan(f/self.losses['fo'],
-                                                   b/self.losses['Bo'])
-                              for px, b in zip(p, self.losses['B'])]
+        try:
+            nfreq = len([1 for x in self.losses['f'] if x > 0])
+            nind = len(self.losses['B'])
+            self.writeBlock([nfreq, nind])
+            self.writeBlock(self.losses['B'] +
+                            [0.0]*(M_LOSS_INDUCT - len(self.losses['B'])))
+            mloss = M_LOSS_FREQ
+            cw = self.mc1_cw_factor
+            alpha = self.mc1_cw_freq_factor
+            ch = self.mc1_ch_factor
+            beta = self.mc1_ch_freq_factor
+            gamma = self.mc1_induction_factor
+            jordan = lambda fr, Br: (
+                (cw*fr**alpha + ch*fr**beta) * Br**gamma)
+            i = 1
+            for f, p in zip(self.losses['f'], zip(*self.losses['pfe'])):
+                if f:
+                    pl = [px if px else jordan(f/self.losses['fo'],
+                                               b/self.losses['Bo'])
+                          for px, b in zip(p, self.losses['B'])]
 
-                        self.writeBlock(pl +
-                                        [0.0]*(M_LOSS_INDUCT - len(p)))
-                        self.writeBlock([f])
-                        i += 1
-                        mloss -= 1
-                for m in range(mloss):
-                    self.writeBlock([0.0]*M_LOSS_INDUCT)
-                    self.writeBlock([0.0])
+                    self.writeBlock(pl +
+                                    [0.0]*(M_LOSS_INDUCT - len(p)))
+                    self.writeBlock([f])
                     i += 1
+                    mloss -= 1
+            for m in range(mloss):
+                self.writeBlock([0.0]*M_LOSS_INDUCT)
+                self.writeBlock([0.0])
+                i += 1
 
-                self.writeBlock([self.losses['cw'], self.losses['cw_freq'],
-                                 self.losses['b_coeff'], self.losses['Bo'],
-                                 self.losses['fo']])
-                self.writeBlock([1])
-                logger.info('Losses n freq %d n ind %d', nfreq, nind)
-            except:
-                pass
+            self.writeBlock([self.losses['cw'], self.losses['cw_freq'],
+                             self.losses['b_coeff'], self.losses['Bo'],
+                             self.losses['fo']])
+            self.writeBlock([1])
+            logger.info('Losses n freq %d n ind %d', nfreq, nind)
+        except:
+            pass
             
     def writeMcv(self, filename):
         # windows needs this strip to remove '\r'
@@ -491,7 +494,7 @@ class Reader(Mcv):
             # read rest of file and convert all to float values
             values = map(float, ' '.join(self.fp.readlines()).split())
 
-        self.curve = [{}]*self.mc1_curves
+        self.curve = []
         for K in range(0, self.mc1_curves):
             if binary:
                 # bi, hi
@@ -532,29 +535,26 @@ class Reader(Mcv):
                      self.mc1_db2[K]) = (values[idxOffset:idxOffset+2])
                     idxOffset += 2
 
-            # assign data
-            self.curve[K]['hi'] = self.rtrimValueList(
-                [mc_hi[I] for I in range(self.MC1_NIMAX)])
-            self.curve[K]['bi'] = self.rtrimValueList(
-                [mc_bi[I] for I in range(self.MC1_NIMAX)])
-
             for I in range(self.MC1_NIMAX):
                 if mc_bi[I] != 0.0 or mc_hi[I] != 0.0:
                     self.mc1_ni[K] = I+1
-
-            self.curve[K]['bi2'] = self.rtrimValueList(
-                [mc_bi2[I] for I in range(self.MC1_MIMAX)])
-
-            self.curve[K]['nuer'] = self.rtrimValueList(
-                [mc_nuer[I] for I in range(self.MC1_MIMAX)])
-            self.curve[K]['a'] = self.rtrimValueList(
-                [mc_a[I] for I in range(self.MC1_MIMAX)])
-            self.curve[K]['b'] = self.rtrimValueList(
-                [mc_b[I] for I in range(self.MC1_MIMAX)])
-
             for I in range(self.MC1_MIMAX):
                 if mc_a[I] != 0.0 or mc_b[I] != 0.0:
                     self.mc1_mi[K] = I+1
+            # assign data
+            self.curve.append(dict(
+                hi=self.rtrimValueList(
+                    [mc_hi[I] for I in range(self.MC1_NIMAX)]),
+                bi=self.rtrimValueList(
+                    [mc_bi[I] for I in range(self.MC1_NIMAX)]),
+                bi2=self.rtrimValueList(
+                    [mc_bi2[I] for I in range(self.MC1_MIMAX)]),
+                nuer=self.rtrimValueList(
+                    [mc_nuer[I] for I in range(self.MC1_MIMAX)]),
+                a=self.rtrimValueList(
+                    [mc_a[I] for I in range(self.MC1_MIMAX)]),
+                b=self.rtrimValueList(
+                    [mc_b[I] for I in range(self.MC1_MIMAX)])))
 
         # set dummy defaults
         vals = [self.MC1_BASE_FREQUENCY,
@@ -624,7 +624,7 @@ class Reader(Mcv):
             'bsat': self.mc1_bsat,
             'bref': self.mc1_bref,
             'fillfac': self.mc1_fillfac,
-            'curves': self.mc1_curves,
+            #'curves': self.mc1_curves,
             #'curve': self.curve,
             #'energy': self.mc1_energy,
             'fo': self.fo,

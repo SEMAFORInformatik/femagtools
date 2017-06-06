@@ -32,8 +32,10 @@ class McvReaderTest(unittest.TestCase):
         self.assertEqual(r['curve'][1]['angle'], 90)
         self.assertEqual(len(r['curve'][0]['bi']), 17)
         self.assertEqual(r['curve'][0]['bi'][0], 0.0)
-        self.assertAlmostEqual(r['curve'][0]['bi'][-1], 1.9763, 3)
+        self.assertAlmostEqual(r['curve'][0]['bi'][-1], 1.973, 3)
         self.assertAlmostEqual(r['curve'][1]['bi'][-1], 1.9763, 3)
+        self.assertAlmostEqual(r['curve'][0]['hi'][-1], 16073, 0)
+        self.assertAlmostEqual(r['curve'][1]['hi'][-1], 18718, 0)
 
         
 if __name__ == '__main__':

@@ -436,3 +436,28 @@ Example::
     delta_id=50.0,
     delta_iq=50.0,
     speed=50.0)
+
+Calculation with existing model
+-------------------------------
+
+FE calculations can be executed for existing models also. In this case there is no need to fully specify the machine model::
+
+  machine = "PM 270 L8"
+
+  workdir = os.path.join(
+    os.path.expanduser('~'), 'femag')
+
+  femag = femagtools.Femag(workdir)
+
+  operatingConditions = dict(
+    angl_i_up=-38.7,
+    calculationMode="pm_sym_fast",
+    magn_temp=60.0,
+    num_move_steps=25,
+    speed=50.0,
+    wind_temp=60.0,
+    current=108.0)
+
+  r = femag(machine,
+            operatingConditions)
+

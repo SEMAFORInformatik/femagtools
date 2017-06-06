@@ -19,6 +19,14 @@ import numpy as np
 from six import string_types
 import femagtools.losscoeffs
 
+# curve types
+MAGCRV = 1
+DEMCRV = 2
+ORIENT_CRV = 3
+MAG_AC_CRV = -1
+ORIENT_PM_CRV = 5
+DEMCRV_BR = 4
+
 logger = logging.getLogger(__name__)
 
 transl = dict(
@@ -80,7 +88,6 @@ class Mcv:
         self.ACT_VERSION_MC_CURVE = 0
         self.ORIENTED_VERSION_MC_CURVE = 1
         self.PARAMETER_PM_CURVE = 2
-        self.DEMCRV_BR = 4
 
         self.MC1_BASE_FREQUENCY = 50.0
         self.MC1_BASE_INDUCTION = 1.5
@@ -250,7 +257,7 @@ class Writer(Mcv):
         if self.version_mc_curve == self.ACT_VERSION_MC_CURVE:
             self.writeBlock([self.mc1_remz, self.mc1_bsat,
                              self.mc1_bref, self.mc1_fillfac])
-        if self.mc1_type == self.DEMCRV_BR:
+        if self.mc1_type == DEMCRV_BR:
             self.mc1_remz = self.mc1_angle[self.mc1_curves]
         if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
            self.version_mc_curve == self.PARAMETER_PM_CURVE:
@@ -258,7 +265,7 @@ class Writer(Mcv):
                              self.mc1_bref, self.mc1_fillfac,
                              self.mc1_curves])
 
-        if self.mc1_type == self.DEMCRV_BR:
+        if self.mc1_type == DEMCRV_BR:
             self.mc1_angle[self.mc1_curves] = self.mc1_remz
 
         # data
@@ -487,7 +494,7 @@ class Reader(Mcv):
                self.version_mc_curve == self.PARAMETER_PM_CURVE:
                 self.mc1_curves = int(line[4])
 
-        if self.mc1_type == self.DEMCRV_BR:
+        if self.mc1_type == DEMCRV_BR:
             self.mc1_angle[self.mc1_curves] = self.mc1_remz
 
         if not binary:

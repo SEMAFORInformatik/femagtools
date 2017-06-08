@@ -5,7 +5,7 @@ m.move_action     =    0.0 -- rotate
 % if 'lfe' in model:
 m.arm_length      =    ${model.get('lfe')*1e3}
 % endif
-m.speed           =    3000./m.num_pol_pair
+m.speed           =    1000.
 m.skew_angle      =    ${model.get('skew_angle',0)}
 m.nu_skew_steps   =    ${model.get('num_skew_steps',0)}
 m.magn_temp       =    ${model.get('magn_temp')}

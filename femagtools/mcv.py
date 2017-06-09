@@ -71,6 +71,43 @@ M_LOSS_FREQ = 20
 MUE0 = 4e-7*np.pi  # 1.2566371E-06
 
 
+def approx(db2, curve):
+    """return nuer, bi2, a, b approx for curve"""
+    nuek0 = (curve['hi'][1] - curve['hi'][0]) / \
+            (curve['bi'][1]-curve['bi'][0])
+    bk02 = curve['bi'][1]**2
+    nuer = [MUE0*nuek0]
+    bi2 = [bk02]
+    a = []
+    b = []
+
+    bk1 = 0.0
+    while bk1 <= curve['bi'][-1]:
+        bk12 = bk02 + db2
+        bk1 = np.sqrt(bk12)
+        j = 1
+        while j < len(curve['bi']) and bk1 > curve['bi'][j]:
+            j += 1
+        j -= 1
+        bdel = curve['bi'][j] - curve['bi'][j-1]
+        c1 = (curve['hi'][j] - curve['hi'][j-1])/bdel
+        c2 = curve['hi'][j-1] - c1*curve['bi'][j-1]
+
+        nuek1 = c1 + c2/bk1
+        a.append(MUE0*(bk12*nuek0 -
+                       bk02*nuek1)/db2)
+        b.append(MUE0*(nuek1 - nuek0)/db2)
+        nuek0 = nuek1
+        bk02 = bk12
+
+        nuer.append(MUE0*nuek1)
+        bi2.append(bk12)
+
+    a.append(1.0)
+    b.append(MUE0*curve['hi'][-1]-curve['bi'][-1])
+    return dict(nuer=nuer, a=a, b=b, bi2=bi2)
+
+    
 def findNotNone(l):
     """return lower and upper indexes of not none values in list"""
     for i in range(len(l)):
@@ -125,7 +162,7 @@ class Mcv:
         self.MC1_MIMAX = 50
 
         self.curve = []
-        self.mc1_mi = [0]*self.MCURVES_MAX
+        self.mc1_mi = [self.MC1_MIMAX-2]*self.MCURVES_MAX
         self.mc1_db2 = [0.]*self.MCURVES_MAX
         self.mc1_angle = [0.]*self.MCURVES_MAX
 
@@ -227,31 +264,35 @@ class Writer(Mcv):
             # must be float?
             self.fp.write(struct.pack('f', d))
 
+    def _prepare(self):
+        """prepare output format (internal use only)"""
+        self.mc1_curves = len(self.curve)
+        self.mc1_ni = [min(len(c['hi']),
+                           len(c['bi']))
+                       for c in self.curve if 'hi' in c]
+        self.mc1_db2 = [(c['bi'][-1]**2 - c['bi'][0]**2)/n
+                        for c, n in zip(self.curve, self.mc1_mi)]
+        for db2, c in zip(self.mc1_db2, self.curve):
+            c.update(approx(db2, c))
+        self.mc1_mi = [len(c['a'])
+                       for c in self.curve]
+        
     def writeBinaryFile(self):
+        self._prepare()
         # write line, version_mc_curve
         self.writeBlock(self.version_mc_curve)
 
         # write line, text '    *** File with magnetic curve ***    '
         self.writeBlock('    *** File with magnetic curve ***    ')
-        self.mc1_curves = len(self.curve)
-        for K in range(0, self.mc1_curves):
-            I = 0
-            for mc_bi, mc_hi in zip(self.curve[K].get('bi', []),
-                                    self.curve[K].get('hi', [])):
-                if mc_bi != 0.0 or mc_hi != 0.0:
-                    self.mc1_ni[K] = I+1
                     
         # write line, mc1_title
         self.writeBlock(self.mc1_title.ljust(40))
-        if np.isscalar(self.mc1_db2):
-            db2 = [self.mc1_db2]
-        else:
-            db2 = self.mc1_db2
         # write line, mc1_ni(1),mc1_mi(1),mc1_type,mc1_recalc,mc1_db2(1)
         self.writeBlock([int(self.mc1_ni[0]),
                          int(self.mc1_mi[0]),
                          int(self.mc1_type),
-                         int(self.mc1_recalc), db2[0]])
+                         int(self.mc1_recalc),
+                         self.mc1_db2[0]])
 
         # write line, mc1_remz, mc1_bsat, mc1_bref, mc1_fillfac
         if self.version_mc_curve == self.ACT_VERSION_MC_CURVE:
@@ -281,8 +322,8 @@ class Writer(Mcv):
                  for j in range(self.MC1_NIMAX)]]))
 
             # bi2, nuer
-            lb = self.curve[K].get('bi2', [0.0]*self.MC1_NIMAX)
-            ln = self.curve[K].get('nuer', [0.0]*self.MC1_NIMAX)
+            lb = self.curve[K]['bi2']
+            ln = self.curve[K]['nuer']
             self.writeBlock(zip(*[
                 [float(lb[j]) if j < len(lb) else 0.
                  for j in range(self.MC1_NIMAX)],
@@ -865,13 +906,13 @@ class MagnetizingCurve(object):
                     inparams.append("induction=")
                     inparams.append(",".join(map(str, mcv[k]['B'][bstart:])))
                     inparams.append("losses=")
-                    pfeT= []
+                    pfeT = []
 #                    flen=10
 #                    blen=20
                     cw = mcv[k]['cw']
                     alfa = mcv[k]['alfa']
                     beta = mcv[k]['beta']
-                    fo  =mcv[k]['fo']
+                    fo  = mcv[k]['fo']
                     Bo = mcv[k]['Bo']
 
                     pfe = []
@@ -880,19 +921,24 @@ class MagnetizingCurve(object):
                     for i in range(len(mcv['losses']['f'])):
                         f = mcv['losses']['f'][i]
                         if f > 0:
-                            pfei = [p[i] if i<len(p) else None for p in mcv['losses']['pfe']]
+                            pfei = [p[i] if i < len(p) else None
+                                    for p in mcv['losses']['pfe']]
                             m, n = findNotNone(pfei)
-                            if m > lower: lower=m
+                            if m > lower:
+                                lower = m
                             if m <= n:
-                                y = [ np.log10(p) for p in pfei[m:n+1] ]
-                                x = [ np.log10(b/Bo) for b in mcv['losses']['B'][m:n+1]]
+                                y = [np.log10(p) for p in pfei[m:n+1]]
+                                x = [np.log10(b/Bo)
+                                     for b in mcv['losses']['B'][m:n+1]]
                                 A = np.vstack([x, np.ones(len(x))]).T
                                 beta, cw = np.linalg.lstsq(A, y)[0]
-                                for j in range(n+1,len(pfei)):
-                                    pfei[j] = 10**cw*(mcv['losses']['B'][j]/Bo)**beta
+                                for j in range(n+1, len(pfei)):
+                                    pfei[j] = 10**cw*(
+                                        mcv['losses']['B'][j]/Bo)**beta
 
                                 pfe.append(pfei)
-                    pfe+=[[0]*M_LOSS_INDUCT]*(M_LOSS_FREQ-len(mcv['losses']['f']))
+                    pfe += [[0] * M_LOSS_INDUCT] * (
+                        M_LOSS_FREQ - len(mcv['losses']['f']))
 
                     for r in pfe:
                         a=list(r[lower:]) + [0]*(M_LOSS_INDUCT-len(r[lower:]))

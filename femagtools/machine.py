@@ -112,7 +112,7 @@ class PmRelMachine(object):
         "iq at given frequency, voltage and id current"
         return so.fsolve(lambda iq:
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2),
-                         self.io[0])[0]
+                         0)[0]
     
     def iqd_uqd(self, w1, uq, ud):
         "return iq, id current at given frequency, voltage"

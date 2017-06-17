@@ -1,10 +1,19 @@
+#!/usr/bin/env python
+# read mc file with filename given as command line argument and
+# sho BH and Mue plot
+#
+# Usage:
+#  plot.mcv.py <filename>
+#
 import matplotlib.pylab as pl
 import femagtools.mcv
 import math
+import sys
+
 MUE0 = 4e-7*math.pi
 
 mcv = femagtools.mcv.Reader()
-mcv.readMcv('magnetcurves/M270-35A.MCV')
+mcv.readMcv(sys.argv[1])
 r = mcv.get_results()
 
 bh = [(bi, hi)

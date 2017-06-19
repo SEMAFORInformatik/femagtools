@@ -119,6 +119,7 @@ class Builder:
         if model['calculationMode'] in ('cogg_calc',
                                         'ld_lq_fast',
                                         'pm_sym_loss',
+                                        'torq_calc',
                                         'psd_psq_fast'):
             return self.__render(model, model['calculationMode'])
         return (self.__render(model, 'cu_losses') +
@@ -135,7 +136,8 @@ class Builder:
         "create model and analysis function"
         try:
             fea['pocfilename'] = (model.get('name') +
-                                  '_' + model.get('poles') + 'p.poc')
+                                  '_' + str(model.get('poles')) +
+                                  'p.poc')
         except:
             pass
         try:

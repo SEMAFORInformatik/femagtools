@@ -437,10 +437,38 @@ Example::
     delta_iq=50.0,
     speed=50.0)
 
+    
+PM/Rel Machine Simulation (pm_sym_fast)
+
+==============  ============================= ==========  ============
+Parameter        Description                   Default      Unit
+==============  ============================= ==========  ============
+speed           Speed                                     1/s
+skew_angle      Skewing angle                   0         deg
+num_skew_steps  Number of skew steps            0
+magn_temp       Magnet Temperature                        °C
+wind_temp       Winding Temperature             20        °C
+num_move_steps  Number of move steps            49
+num_par_wdgs    Number of parallel windings     1      
+current         Phase current                             A (RMS)
+angl_i_up       Angle I vs. Up                  0         deg
+==============  ============================= ==========  ============
+
+Example::
+
+  operatingConditions = dict(
+    calculationMode="torq_calc",
+    wind_temp=60.0,
+    magn_temp=60.0,
+    current=50.0,
+    angl_i_up=0.0,
+    speed=50.0)
+
 Calculation with existing model
 -------------------------------
 
-FE calculations can be executed for existing models also. In this case there is no need to fully specify the machine model::
+FE calculations can be executed for existing models also.
+Since Femag Rel 8.3 there is no need to fully specify the machine model::
 
   machine = "PM 270 L8"
 
@@ -461,3 +489,19 @@ FE calculations can be executed for existing models also. In this case there is 
   r = femag(machine,
             operatingConditions)
 
+For older versions the minimal data is::
+
+  machine = dict(
+      name="PM 130 L4",
+      lfe=0.1,
+      poles=4,
+      outer_diam=0.13,
+      bore_diam=0.07,
+      airgap=0.001,
+     
+      stator=dict(
+          num_slots=12,
+          num_slots_gen=3,
+          mcvkey_yoke="dummy"
+      )
+  )

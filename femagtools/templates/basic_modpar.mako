@@ -31,6 +31,7 @@ m.npols_gen       =   m.num_poles * m.num_sl_gen / m.tot_num_slot
 m.tot_num_sl      =   m.tot_num_slot
 % if model.move_action == 0:
 m.fc_radius       =   (da1+da2)/4
+m.fc_radius1      =   m.fc_radius
 % endif
 pre_models("basic_modpar")
 % endif

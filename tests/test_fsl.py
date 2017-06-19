@@ -289,6 +289,10 @@ class FslBuilderTest(unittest.TestCase):
         fsl = self.builder.create_analysis(feapars)
         self.assertEqual(len(fsl), 30)
 
+        feapars['calculationMode'] = "torq_calc"
+        fsl = self.builder.create_analysis(feapars)
+        self.assertEqual(len(fsl), 41)
+        
     def test_create_plots(self):
         pars = copy.deepcopy(feapars)
         pars['calculationMode'] = "pm_sym_fast"

@@ -887,13 +887,20 @@ class Reader:
             except KeyError:
                 pass
 
+            # if next section is absent
+            try:
+                self.dqPar['psid'] = [self.dqPar['psim'][0] * np.sqrt(2.)]
+                self.dqPar['psiq'] = [self.dqPar['lq'][0] * self.dqPar['i1'][-1]
+                                      * np.sqrt(2.)]
+            except KeyError:
+                pass
             return
         
         for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'psid', 'psiq', 'torque',
                   'p2', 'u1', 'gamma', 'phi'):
             self.dqPar[k] = []
         lfe = 1e3*self.dqPar['lfe']
-            
+
         for l in content:
             rec = self._numPattern.findall(l)
             if len(rec) == 8:

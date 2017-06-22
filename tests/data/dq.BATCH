@@ -772,7 +772,7 @@ DQ-Parameter for open Winding Modell
 Windings Current (peak) I  [A]      :	  10.0    
 Angle I vs. Up             [Degr]   :	  0.00    
 LD                         {H]      :	 0.109    
-LQ  at nom. current        [H]      :	 0.109    
+LQ at nom. current         [H]      :	 0.109
 Force:                     [N]      :	 0.357E+04
 Magn.Flux no-load (RMS)    [Vs]     :	  1.94    
 Magn.Flux load   (RMS)     [Vs]     :	  1.93    

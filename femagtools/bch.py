@@ -260,13 +260,25 @@ class Reader:
                 if rec[0].startswith('Number'):
                     index = False
                 else:
-                    wdgs.append((int(rec[1]), floatnan(rec[-1])))
+                    wdgs.append((abs(int(rec[1])),
+                                 1 if int(rec[1]) > 0 else -1,
+                                 float(rec[2]), float(rec[3]),
+                                 float(rec[4])))
             else:
                 index = False
-        self.windings = []
-        for m in set([int(abs(w)) for w in np.array(wdgs).T[0]]):
-            self.windings.append([w for w in wdgs if abs(w[0]) == m])
-            
+        phases = set(list(zip(*wdgs))[0])
+        self.windings = dict([(k, dict([(j, [])
+                                        for j in ('dir',
+                                                  'N',
+                                                  'R',
+                                                  'PHI')]))
+                              for k in phases])
+        for w in wdgs:
+            self.windings[w[0]]['dir'].append(w[1])
+            self.windings[w[0]]['N'].append(w[2])
+            self.windings[w[0]]['R'].append(w[3])
+            self.windings[w[0]]['PHI'].append(w[4])
+         
     def __read_winding_factors(self, content):
         "read winding factors section"
         self.wdgfactors = []

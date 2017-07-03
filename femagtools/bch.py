@@ -276,7 +276,7 @@ class Reader:
         for w in wdgs:
             self.windings[w[0]]['dir'].append(w[1])
             self.windings[w[0]]['N'].append(w[2])
-            self.windings[w[0]]['R'].append(w[3])
+            self.windings[w[0]]['R'].append(w[3]/1e3)
             self.windings[w[0]]['PHI'].append(w[4])
          
     def __read_winding_factors(self, content):

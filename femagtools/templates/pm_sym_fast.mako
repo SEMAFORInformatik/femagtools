@@ -2,7 +2,7 @@
 -- PM/Rel Simulation
 --
 m.move_action     =    ${model.get('move_action')}
-% if 'lfe' in model:
+% if  model.get('lfe',0):
 m.arm_length      =    ${model.get('lfe')*1e3}
 % endif
 % if model.get('move_action') == 0:

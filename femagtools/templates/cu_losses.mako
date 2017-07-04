@@ -1,9 +1,9 @@
-% if hasattr(model, 'num_layers'):
+% if model.get('num_layers',0):
 --  CU-Losses-                           
 m.cufilfact       =      ${model.get('cufilfact', 0.45)}
 m.culength        =      100*${model.get('culength', 1.4)}
 m.cuconduct       =      56e6
-m.numlayers       =      ${model['num_layers']}
+m.numlayers       =      ${model.get('num_layers')}
 m.conheight       =      0.0
 m.contemp         =      ${model.get('wind_temp',20.0)}
 m.emodul          =      210e9

@@ -99,6 +99,9 @@ class Grid(object):
                                           d['name'].split('.')[0])]) == 0
         operatingConditions['lfe'] = model.lfe
         operatingConditions['move_action'] = model.move_action
+        operatingConditions['pocfilename'] = (model.get('name') +
+                                              '_' + str(model.get('poles')) +
+                                              'p.poc')
         operatingConditions.update(model.windings)
         fea = femagtools.model.FeaModel(operatingConditions)
 

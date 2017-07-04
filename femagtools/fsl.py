@@ -92,7 +92,7 @@ class Builder:
     
     def open_model(self, model, magnets=None):
         return self.create_open(model) + \
-            self.create_magnet(model, magnets) 
+            self.create_magnet(model, magnets)
 #            self.__render(model.windings, 'cu_losses')
     
     def load_model(self, model, magnets=None):
@@ -116,14 +116,14 @@ class Builder:
         return self.__render(model, 'common')
     
     def create_analysis(self, model):
-        if model['calculationMode'] in ('cogg_calc',
-                                        'ld_lq_fast',
-                                        'pm_sym_loss',
-                                        'torq_calc',
-                                        'psd_psq_fast'):
-            return self.__render(model, model['calculationMode'])
+        if model.get('calculationMode') in ('cogg_calc',
+                                            'ld_lq_fast',
+                                            'pm_sym_loss',
+                                            'torq_calc',
+                                            'psd_psq_fast'):
+            return self.__render(model, model.get('calculationMode'))
         return (self.__render(model, 'cu_losses') +
-                self.__render(model, model['calculationMode']) +
+                self.__render(model, model.get('calculationMode')) +
                 self.__render(model, 'plots'))
             
     def create_airgap_induc(self, model):

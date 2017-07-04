@@ -32,7 +32,7 @@ class MCerror(Exception):
 class Model(object):
     def __init__(self, parameters):
         if isinstance(parameters, dict):
-           for k in parameters.keys():
+            for k in parameters.keys():
                 setattr(self, k, parameters[k])
             
     def set_value(self, name, value, p=None):
@@ -253,8 +253,3 @@ class FeaModel(Model):
         self.optim_i_up = 0
         self.plots = []
         super(self.__class__, self).__init__(parameters)
-        
-    def __getitem__(self, k, default=None):
-        if default:
-            return getattr(self, k, default)
-        return getattr(self, k)

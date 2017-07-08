@@ -197,7 +197,8 @@ class Femag(BaseFemag):
             for f in glob.glob(os.path.join(self.workdir, p)):
                 os.remove(f)
 
-    def __call__(self, pmMachine, operatingConditions):
+    def __call__(self, pmMachine, operatingConditions,
+                 options=['-b'], fsl_args=[]):
         """setup fsl file, run calculation and return BCH results"""
         fslfile = 'femag.fsl'
         with open(os.path.join(self.workdir, fslfile), 'w') as f:
@@ -212,7 +213,7 @@ class Femag(BaseFemag):
                     operatingConditions['angl_i_up'])))
                 # TODO: add r1, m
 
-        self.run(fslfile)
+        self.run(fslfile, options, fsl_args)
         if operatingConditions['calculationMode'] == "pm_sym_loss":
             return self.read_los(self.modelname)
         return self.read_bch(self.modelname)

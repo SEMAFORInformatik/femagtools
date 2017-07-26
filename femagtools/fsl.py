@@ -51,7 +51,7 @@ class Builder:
                         templ = [l.strip() for l in f.readlines()]
                 else:
                     templ = model.magnet['magnetFsl']['content_template']
-                logger.info(model.magnet['magnetFsl'])
+
                 return mcv + self.render_template(
                     '\n'.join(templ),
                     model.magnet['magnetFsl'])
@@ -92,8 +92,8 @@ class Builder:
     
     def open_model(self, model, magnets=None):
         return self.create_open(model) + \
-            self.create_magnet(model, magnets) + \
-            self.__render(model.windings, 'cu_losses')
+            self.create_magnet(model, magnets)
+#            self.__render(model.windings, 'cu_losses')
     
     def load_model(self, model, magnets=None):
         return self.__render(model, 'open')
@@ -116,13 +116,14 @@ class Builder:
         return self.__render(model, 'common')
     
     def create_analysis(self, model):
-        if model['calculationMode'] in ('cogg_calc',
-                                        'ld_lq_fast',
-                                        'pm_sym_loss',
-                                        'psd_psq_fast'):
-            return self.__render(model, model['calculationMode'])
-        return (self.__render(model, 'cu_losses') + 
-                self.__render(model, model['calculationMode']) +
+        if model.get('calculationMode') in ('cogg_calc',
+                                            'ld_lq_fast',
+                                            'pm_sym_loss',
+                                            'torq_calc',
+                                            'psd_psq_fast'):
+            return self.__render(model, model.get('calculationMode'))
+        return (self.__render(model, 'cu_losses') +
+                self.__render(model, model.get('calculationMode')) +
                 self.__render(model, 'plots'))
             
     def create_airgap_induc(self, model):
@@ -133,9 +134,24 @@ class Builder:
 
     def create(self, model, fea, magnets=None):
         "create model and analysis function"
-        fea['lfe'] = model.get('lfe')
-        fea['move_action'] = model.get('move_action')
-        fea.update(model.windings)
+        try:
+            fea['pocfilename'] = (model.get('name') +
+                                  '_' + str(model.get('poles')) +
+                                  'p.poc')
+        except:
+            pass
+        try:
+            fea['lfe'] = model.get('lfe')
+        except:
+            pass
+        try:
+            fea['move_action'] = model.get('move_action')
+        except:
+            pass
+        try:
+            fea.update(model.windings)
+        except:
+            pass
         if model.is_complete():
             return self.create_model(model, magnets) + \
                 self.create_analysis(fea)

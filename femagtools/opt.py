@@ -102,6 +102,9 @@ class Optimizer(object):
         self.fea.update(self.model.windings)
         self.fea['lfe'] = self.model.lfe
         self.fea['move_action'] = self.model.move_action
+        self.fea['pocfilename'] = (self.model.get('name') +
+                                   '_' + str(self.model.get('poles')) +
+                                   'p.poc')
         self.pop = Population(problem, population_size)
         
         algo = Nsga2()

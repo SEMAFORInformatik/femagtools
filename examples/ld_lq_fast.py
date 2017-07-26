@@ -137,9 +137,8 @@ tq = 170.0
 u1 = 340.0
 
 iqx, idx = pm.iqd_torque(tq)
-w1 = pm.w1_u(u1, idx, iqx)
-i1 = np.linalg.norm(np.array((iqx, idx)))
-betaopt = np.arctan2(idx, iqx)/np.pi*180
+w1 = pm.w1_u(u1, iqx, idx)
+betaopt, i1 = femagtools.machine.betai1(iqx, idx)
 
 print("f1 {0:8.1f} Hz,  I1 {1:8.1f} A, Beta {2:4.1f} °".format(
-    w1/2/np.pi, i1, betaopt))
+    w1/2/np.pi, i1, betaopt/np.pi*180))

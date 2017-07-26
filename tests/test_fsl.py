@@ -279,16 +279,20 @@ class FslBuilderTest(unittest.TestCase):
     def test_run_models(self):
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 26)
+        self.assertEqual(len(fsl), 25)
 
         feapars['calculationMode'] = "pm_sym_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 66)
+        self.assertEqual(len(fsl), 65)
 
         feapars['calculationMode'] = "mult_cal_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 51)
+        self.assertEqual(len(fsl), 48)
 
+        feapars['calculationMode'] = "torq_calc"
+        fsl = self.builder.create_analysis(feapars)
+        self.assertEqual(len(fsl), 41)
+        
     def test_create_plots(self):
         pars = copy.deepcopy(feapars)
         pars['calculationMode'] = "pm_sym_fast"

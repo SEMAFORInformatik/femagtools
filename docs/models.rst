@@ -273,6 +273,85 @@ Example::
            num_layers=1)
   )
   
+Magnetizing Curve
+=================
+
+The MagnetizingCurve is a container of magnetizing curves (eg. lamination material) that can be referenced by the model mcvkey attributes. It can either point to a directory of MC/MCV-File or hold a list of magnet curves which are identified by name.
+
+Each magnetizing curve is described by the following properties
+
+================  ================================ ======== =======
+Attribute          Description                     Unit     Default
+================  ================================ ======== =======
+   name           Identifier of this curve
+   desc           Description
+   curve          List of dictionaries with
+                  bi (list of induction values)    T,
+                  hi (List of field strength       A/m,
+		  values) and angle which can      deg
+                  be missing in case of 1 curve
+   ch             hysteresis loss factor                    0
+   cw             eddy current loss factor                  0
+   ch_freq        hysteresis exponent                       0
+   cw_freq        eddy-current exponent                     0
+   b_coeff        induction loss exponent                   0
+   Bo             reference induction              T        1.5
+   fo             reference frequency              Hz       50
+   fillfac        iron fill factor                          1
+   bsat           saturation induction             T        2.15
+   rho            specific weight                  kg/dm3   7.65
+================  ================================ ======== =======
+
+Loss calculation formula:
+
+ (cw*(f/fo)**cw_freq + ch*(f/fo)**ch_freq)*(B/Bo)**b_coeff
+
+The Reader object which is included in the mcv module can be used to read MCV/MC files.
+
+Permeability and polarisation calculation example::
+
+  MUE0 = 4e-7*math.pi
+
+  mcv = femagtools.mcv.Reader()
+  mcv.readMcv('magnetcurves/M270-35A.MCV')
+  r = mcv.get_results()
+
+  bh = [(bi, hi)
+        for bi, hi in zip(r['curve'][0]['bi'],
+                          r['curve'][0]['hi']) if bi > 0 and hi > 0]
+
+  ji = [b-MUE0*h for b, h in bh]
+  muer = [bx/hx/MUE0 for bx, hx in bh]
+
+
+Using a magnetizingcurve to Write a mcv file::
+
+   mcvData = dict(curve=[ dict(
+      bi=[0.0, 0.09, 0.179, 0.267, 0.358,
+          0.45, 0.543, 0.6334, 0.727,
+          0.819, 0.9142, 1.0142, 1.102,
+          1.196, 1.314, 1.3845, 1.433,
+          1.576, 1.677, 1.745, 1.787,
+          1.81, 1.825, 1.836],
+        
+       hi=[0.0, 22.16, 31.07, 37.25, 43.174,
+           49.54, 56.96, 66.11, 78.291,
+           95, 120.64, 164.6, 259.36,
+           565.86, 1650.26, 3631.12, 5000, 10000,
+           15000, 20000, 25000, 30000, 35000, 40000]
+       )],
+       name='m270-35a',
+       desc=u"Demo Steel",
+       ch=4.0,
+       cw_freq=2.0,
+       cw=1.68)
+
+    mcv = femagtools.mcv.MagnetizingCurve(mcvData)
+    
+    mcv.writefile('m270-35a')
+
+.. image:: img/mcv.png
+  :height: 290pt
 
 Magnet Material
 ===============
@@ -328,7 +407,7 @@ plots           Create plots                    []
 .. Note::
    plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
    'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
-   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.femag.de/ColorGrad.html) added in version 0.0.16
+   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.profemag.ch/ColorGrad.html) added in version 0.0.16
    
 Example::
 
@@ -436,3 +515,72 @@ Example::
     delta_id=50.0,
     delta_iq=50.0,
     speed=50.0)
+
+    
+PM/Rel Machine Simulation (pm_sym_fast)
+
+==============  ============================= ==========  ============
+Parameter        Description                   Default      Unit
+==============  ============================= ==========  ============
+speed           Speed                                     1/s
+skew_angle      Skewing angle                   0         deg
+num_skew_steps  Number of skew steps            0
+magn_temp       Magnet Temperature                        °C
+wind_temp       Winding Temperature             20        °C
+num_move_steps  Number of move steps            49
+num_par_wdgs    Number of parallel windings     1      
+current         Phase current                             A (RMS)
+angl_i_up       Angle I vs. Up                  0         deg
+==============  ============================= ==========  ============
+
+Example::
+
+  operatingConditions = dict(
+    calculationMode="torq_calc",
+    wind_temp=60.0,
+    magn_temp=60.0,
+    current=50.0,
+    angl_i_up=0.0,
+    speed=50.0)
+
+Calculation with existing model
+-------------------------------
+
+FE calculations can be executed for existing models also.
+Since Femag Rel 8.3 there is no need to fully specify the machine model::
+
+  machine = "PM 270 L8"
+
+  workdir = os.path.join(
+    os.path.expanduser('~'), 'femag')
+
+  femag = femagtools.Femag(workdir)
+
+  operatingConditions = dict(
+    angl_i_up=-38.7,
+    calculationMode="pm_sym_fast",
+    magn_temp=60.0,
+    num_move_steps=25,
+    speed=50.0,
+    wind_temp=60.0,
+    current=108.0)
+
+  r = femag(machine,
+            operatingConditions)
+
+For older versions the minimal data is::
+
+  machine = dict(
+      name="PM 130 L4",
+      lfe=0.1,
+      poles=4,
+      outer_diam=0.13,
+      bore_diam=0.07,
+      airgap=0.001,
+     
+      stator=dict(
+          num_slots=12,
+          num_slots_gen=3,
+          mcvkey_yoke="dummy"
+      )
+  )

@@ -98,6 +98,7 @@ class Reader:
         # Fast PM-Synchronous-Motor Simulation
         # Characteristics of Permanent-Magnet-Motors
         self.wdg = None
+        self.wdgfactors = []
         self.torque = []
         self.torque_fft = []
         self.psidq = {}
@@ -126,6 +127,7 @@ class Reader:
             'Weigths': Reader.__read_weights,
             'Number of Nodes': Reader.__read_nodes_and_mesh,
             'Windings Data': Reader.__read_dummy,
+            'Winding-Factors': Reader.__read_winding_factors,
             'Machine Data': Reader.__read_machine_data,
             'CAD-Parameter Data': Reader.__read_dummy,
             'Torque-Force': Reader.__read_torque_force,
@@ -155,7 +157,7 @@ class Reader:
             'Current Angles defined from no-load test':
             Reader.__read_current_angles,
             'FEMAG Version': Reader.__read_version,
-            'Simulation Data': Reader.__read_dummy,
+            'Simulation Data': Reader.__read_simulation_data,
             'Area [mm**2]': Reader.__read_areas,
             'Basic Machine parameters': Reader.__read_dummy,
             'Winding': Reader.__read_dummy,
@@ -258,14 +260,47 @@ class Reader:
                 if rec[0].startswith('Number'):
                     index = False
                 else:
-                    wdgs.append((int(rec[1]), floatnan(rec[-1])))
+                    wdgs.append((abs(int(rec[1])),
+                                 1 if int(rec[1]) > 0 else -1,
+                                 float(rec[2]), float(rec[3]),
+                                 float(rec[4])))
             else:
                 index = False
-        self.windings = []
-        for m in set([int(abs(w)) for w in np.array(wdgs).T[0]]):
-            self.windings.append([w for w in wdgs if abs(w[0]) == m])
-
+        phases = set(list(zip(*wdgs))[0])
+        self.windings = dict([(k, dict([(j, [])
+                                        for j in ('dir',
+                                                  'N',
+                                                  'R',
+                                                  'PHI')]))
+                              for k in phases])
+        for w in wdgs:
+            self.windings[w[0]]['dir'].append(w[1])
+            self.windings[w[0]]['N'].append(w[2])
+            self.windings[w[0]]['R'].append(w[3]/1e3)
+            self.windings[w[0]]['PHI'].append(w[4])
+         
+    def __read_winding_factors(self, content):
+        "read winding factors section"
+        self.wdgfactors = []
+        for line in content:
+            if line.startswith('Winding-Key'):
+                self.wdgfactors.append(dict(order=[], wfac=[],
+                                            skewf=[], total=[]))
+            else:
+                rec = self._numPattern.findall(line)
+                if len(rec) == 4:
+                    self.wdgfactors[-1]['order'].append(int(rec[0]))
+                    self.wdgfactors[-1]['wfac'].append(float(rec[1]))
+                    self.wdgfactors[-1]['skewf'].append(float(rec[2]))
+                    self.wdgfactors[-1]['total'].append(float(rec[3]))
+                    
     def __read_dummy(self, content):
+        return
+    
+    def __read_simulation_data(self, content):
+        for line in content:
+            if line.startswith('Number of Phases m'):
+                self.machine['m'] = int(float((line.split()[-1])))
         return
     
     def __read_current_angles(self, content):
@@ -342,11 +377,11 @@ class Reader:
                     m.append([floatnan(x) for x in rec])
 
             m = np.array(m).T
-            self.scData['time'] = m[0]
-            self.scData['ia'] = m[1]
-            self.scData['ib'] = m[2]
-            self.scData['ic'] = m[3]
-            self.scData['torque'] = m[4]
+            self.scData['time'] = m[0].tolist()
+            self.scData['ia'] = m[1].tolist()
+            self.scData['ib'] = m[2].tolist()
+            self.scData['ic'] = m[3].tolist()
+            self.scData['torque'] = m[4].tolist()
             return
     
         l = content[-1]
@@ -410,23 +445,25 @@ class Reader:
             rec = l.split('\t')
             if len(rec) == 6:
                 m.append([floatnan(x) for x in rec])
-        m = np.array(m).T
-        ncols = len(set(m[1]))
-        i1 = np.reshape(m[0], (-1, ncols)).T[0]
-        nrows = len(i1)
 
-        logger.info('characteristics ld-lq %d x %d', nrows, ncols)
-        self.characteristics['ldq'] = {
-            'beta': m[1][:ncols][::-1].tolist(),
-            'i1': i1.tolist(),
-            'ld': (self.armatureLength*np.reshape(
-                m[2], (nrows, ncols)).T[::-1]).tolist(),
-            'lq': (self.armatureLength*np.reshape(
-                m[3], (nrows, ncols)).T[::-1]).tolist(),
-            'psim': (self.armatureLength*np.reshape(
-                m[4], (nrows, ncols)).T[::-1]).tolist(),
-            'torque': (self.armatureLength*np.reshape(
-                m[5], (nrows, ncols)).T[::-1]).tolist()}
+        if m:
+            m = np.array(m).T
+            ncols = len(set(m[1]))
+            i1 = np.reshape(m[0], (-1, ncols)).T[0]
+            nrows = len(i1)
+
+            logger.info('characteristics ld-lq %d x %d', nrows, ncols)
+            self.characteristics['ldq'] = {
+                'beta': m[1][:ncols][::-1].tolist(),
+                'i1': i1.tolist(),
+                'ld': (self.armatureLength*np.reshape(
+                    m[2], (nrows, ncols)).T[::-1]).tolist(),
+                'lq': (self.armatureLength*np.reshape(
+                    m[3], (nrows, ncols)).T[::-1]).tolist(),
+                'psim': (self.armatureLength*np.reshape(
+                    m[4], (nrows, ncols)).T[::-1]).tolist(),
+                'torque': (self.armatureLength*np.reshape(
+                    m[5], (nrows, ncols)).T[::-1]).tolist()}
 
         m = []
         columns = [['n', 'id', 'iq', 'torque', 'p2'],
@@ -781,12 +818,12 @@ class Reader:
                         self.machine[v[1]] = si*floatnan(rec[-1])
                     break
 
-        if 'beta' in self.machine:
+        if self.machine['beta']:
             self.machine['beta'] = self.machine['beta'][1:]
         self.machine['n'] = self.machine['n']/60
         self.machine['lfe'] = 1e-3*self.machine['lfe']
         i1 = self.machine['i1']
-        if 'plfe1' in self.machine:  # calc sum of losses
+        if self.machine['plfe1']:  # calc sum of losses
             self.machine['i1'] = i1*len(self.machine['plfe1'])
             plfe1 = self.machine['plfe1']
             plcu = self.machine.get('plcu', 0.0)
@@ -862,13 +899,20 @@ class Reader:
             except KeyError:
                 pass
 
+            # if next section is absent
+            try:
+                self.dqPar['psid'] = [self.dqPar['psim'][0] * np.sqrt(2.)]
+                self.dqPar['psiq'] = [self.dqPar['lq'][0] * self.dqPar['i1'][-1]
+                                      * np.sqrt(2.)]
+            except KeyError:
+                pass
             return
         
         for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'psid', 'psiq', 'torque',
                   'p2', 'u1', 'gamma', 'phi'):
             self.dqPar[k] = []
         lfe = 1e3*self.dqPar['lfe']
-            
+
         for l in content:
             rec = self._numPattern.findall(l)
             if len(rec) == 8:
@@ -1057,56 +1101,38 @@ class Reader:
         return self.__dict__[k]
 
     def items(self):
-        return [
-            ('version', self.version),
-            ('type', self.type),
-            ('filename', self.filename),
-            ('date', self.date),
-            ('torque', self.torque),
-            ('torque_fft', self.torque_fft),
-            ('psidq', self.psidq),
-            ('psidq_ldq', self.psidq_ldq),
-            ('machine', self.machine),
-            ('lossPar', self.lossPar),
-            ('flux', self.flux),
-            ('flux_fft', self.flux_fft),
-            ('airgapInduction', self.airgapInduction),
-            ('magnet', self.magnet),
-            ('scData', self.scData),
-            ('dqPar', self.dqPar),
-            ('ldq', self.ldq),
-            ('losses', self.losses),
-            ('demag', self.demag),
-            ('linearForce', self.linearForce),
-            ('linearForce_fft', self.linearForce_fft),
-            ('characteristics', self.characteristics)]
+        return [(k, self.get(k)) for k in ('version',
+                                           'type',
+                                           'filename',
+                                           'date',
+                                           'torque',
+                                           'torque_fft',
+                                           'psidq',
+                                           'psidq_ldq',
+                                           'machine',
+                                           'lossPar',
+                                           'flux',
+                                           'flux_fft',
+                                           'wdgfactors',
+                                           'airgapInduction',
+                                           'magnet',
+                                           'scData',
+                                           'dqPar',
+                                           'ldq',
+                                           'losses',
+                                           'demag',
+                                           'linearForce',
+                                           'linearForce_fft',
+                                           'characteristics') if self.get(k)]
 
     def __str__(self):
         "return string format of this object"
         if self.type:
             return "\n".join([
                 'FEMAG {}: {}'.format(self.version, self.type),
-                'File: {}  {}'.format(self.filename, self.date),
-                'torque:{}'.format(self.torque),
-                'torque_fft:{}'.format(self.torque_fft),
-                'psidq: {}'.format(self.psidq),
-                'psidq_ldq: {}'.format(self.psidq_ldq),
-                'machine: {}'.format(self.machine),
-                'lossPar: {}'.format(self.lossPar),
-                'flux: {}'.format(self.flux),
-                'flux_fft: {}'.format(self.flux_fft),
-                'magnet: {}'.format(self.magnet),
-                'airgapInduction: {}'.format(self.airgapInduction),
-                'scData: {}'.format(self.scData),
-                'dqPar: {}'.format(self.dqPar),
-                'ldq: {}'.format(self.ldq),
-                'losses: {}'.format(self.losses),
-                'demag: {}'.format(self.demag),
-                'linearForce: {}'.format(self.linearForce),
-                'linearForce_fft: {}'.format(self.linearForce_fft),
-                'characteristics: {}'.format(self.characteristics)])
-                             
-
+                'File: {}  {}'.format(self.filename, self.date)] +
+                             ['{}: {}'.format(k, v)
+                              for k, v in self.items()])
         return "{}"
     
     def __repr__(self):
@@ -1114,7 +1140,7 @@ class Reader:
         return self.__str__()
 
 def main():
-    from io import open
+#    from io import open
 #    with open('logging.json', 'rt') as f:
 #        logging.config.dictConfig( json.load(f) )
     bch = Reader()
@@ -1164,5 +1190,18 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    status = main()
-    sys.exit(status)
+    import json
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
+    else:
+        filename = sys.stdin.readline().strip()
+
+    b = Reader()
+
+    with codecs.open(filename, encoding='ascii') as f:
+        b.read(f)
+
+    #json.dump(b, sys.stdout)
+    print(b)
+#    status = main()
+#    sys.exit(status)

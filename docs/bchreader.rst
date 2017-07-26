@@ -14,6 +14,7 @@ version            FEMAG version
 nodes              number of nodes
 elements           number of elements
 quality            meshing quality
+windings           Winding properties
 flux               Flux observed
 flux_fft           Fourier-Analysis of flux values
 torque             Torque-Force values
@@ -307,5 +308,36 @@ Weights
 
     Example::
       
-    [[18.802, 2.853, 0.0],
-    [5.363, 0.0, 1.17],
+       [[18.802, 2.853, 0.0],
+        [5.363, 0.0, 1.17],
+
+Windings
+========
+
+  Dictionary with winding key:
+  
+  ================  ========================================== =============
+  Attribute          Description                               Unit
+  ================  ========================================== =============
+  dir                list of winding directions 
+  N                  list with number of conductors
+  R                  list of radius                            m
+  PHI                list of angles                            deg
+  ================  ========================================== =============
+
+  Example::
+
+     {  1: {'N': [4.0, 4.0, 4.0, 4.0],
+            'R': [92e-3, 92.0086, 92e-3, 92e-3],
+            'dir': [1, 1, 1, -1],
+            'PHI': [3.0203, 4.4797, 11.9797, 40.5202]},
+        2: {'N': [4.0, 4.0, 4.0, 4.0],
+            'R': [92e-3, 92e-3, 92e-3, 92.0086],
+            'dir': [1, 1, 1, 1],
+            'PHI': [25.5202, 33.0202, 34.4797, 41.9797]},
+        3: {'N': [4.0, 4.0, 4.0, 4.0],
+            'R': [92e-3, 92e-3, 92e-3, 92e-3],
+            'dir': [-1, -1, -1, -1],
+            'PHI': [10.5202, 18.0202, 19.4797, 26.9797]}
+     }
+ 

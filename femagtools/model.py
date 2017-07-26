@@ -31,8 +31,9 @@ class MCerror(Exception):
 
 class Model(object):
     def __init__(self, parameters):
-        for k in parameters.keys():
-            setattr(self, k, parameters[k])
+        if isinstance(parameters, dict):
+            for k in parameters.keys():
+                setattr(self, k, parameters[k])
             
     def set_value(self, name, value, p=None):
         """set value of parameter identified by name
@@ -93,7 +94,7 @@ class Model(object):
 class MachineModel(Model):
     """represents a machine model for a FE analysis
     
-    :param parameters: dict containing the model parameters. For example:
+    :param parameters: string or dict containing the model parameters. For example:
     ::
 
         {'lfe': 0.1,
@@ -111,18 +112,20 @@ class MachineModel(Model):
         }
         }
 
+        if parameters is string it is interpreted as the model name. 
     """
     def __init__(self, parameters):
         super(self.__class__, self).__init__(parameters)
-
-        if 'name' in parameters:
-            # must replace white space
-            name = parameters['name'].strip().replace(' ', '_')
-            for c in ('"', '(', ')'):
-                name = name.replace(c, '')
-            setattr(self, 'name', name)
-        else:
-            setattr(self, 'name', 'DRAFT')
+        name = 'DRAFT'
+        if isinstance(parameters, str):
+            name = parameters
+        elif 'name' in parameters:
+            name = parameters['name']
+        # must replace white space
+        name = name.strip().replace(' ', '_')
+        for c in ('"', '(', ')'):
+            name = name.replace(c, '')
+        setattr(self, 'name', name)
         try:
             self.external_rotor = (self.external_rotor == 1)
         except:
@@ -250,8 +253,3 @@ class FeaModel(Model):
         self.optim_i_up = 0
         self.plots = []
         super(self.__class__, self).__init__(parameters)
-        
-    def __getitem__(self, k, default=None):
-        if default:
-            return getattr(self, k, default)
-        return getattr(self, k)

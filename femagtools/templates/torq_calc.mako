@@ -1,16 +1,17 @@
 --
--- PM/Rel Simulation
+-- Torque/Force calculation
 --
 m.move_action     =    ${model.get('move_action')}
-% if  model.get('lfe',0):
+% if 'lfe' in model:
 m.arm_length      =    ${model.get('lfe')*1e3}
 % endif
 % if model.get('move_action') == 0:
 m.speed           =    ${model.get('speed')*60}
 m.skew_angle      =    ${model.get('skew_angle',0)}
+m.fc_radius2      =    0.0
 m.phi_start       =    0.0   
 m.range_phi       =    0.0
-m.fc_force_points   =  0.0 
+m.nu_force_pat    =    0.0
 % else:
 m.speed_linear    =    ${model.get('speed')}
 m.skew_linear     =    ${model.get('skew_displ',0)}
@@ -35,19 +36,16 @@ m.npols_gen       =  1 -- nuber of sectors simulated
 
 % endif
 m.nu_skew_steps   =    ${model.get('num_skew_steps',0)}
-m.magn_temp       =    ${model.get('magn_temp')}
+m.magn_temp       =    ${model.get('magn_temp',20.0)}
+m.winding_temp    =    ${model.get('wind_temp', 20.0)}
 m.fc_mult_move_type =  1.0 --  Type of move path in air gap
 m.nu_move_steps   =    ${model.get('num_move_steps', 49)}
 
 m.num_par_wdgs    =    ${model.get('num_par_wdgs',1)}
 
-m.eval_force      =    ${model.get('eval_force', 0)}
 m.current         =    ${model.get('current')}*math.sqrt(2.0)/m.num_par_wdgs
 m.angl_i_up       =    ${model.get('angl_i_up', 0)}
-m.optim_i_up      =    ${model.get('optim_i_up', 0)}
-
-m.pm_eff_aktiv    =    0.0
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 
-run_models("pm_sym_fast")
+run_models("torq_calc")

@@ -774,6 +774,9 @@ class Reader:
                 if contentline.find(v[0]) > -1:
                     si = get_si_factor(contentline)
                     rec = l.split()
+                    # Check if torque is saved in kNm instead of Nm. thomas.maier/OSWALD
+                    if v[1] == "torque" and rec[1] == "[kNm]":
+                        si = si * 1000
                     if v[1] in self.machine and isinstance(
                             self.machine[v[1]], list):
                         self.machine[v[1]].append(si*floatnan(rec[-1]))

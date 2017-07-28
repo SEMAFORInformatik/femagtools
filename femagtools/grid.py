@@ -59,6 +59,20 @@ class Grid(object):
         self.femag = femagtools.Femag(workdir,
                                       magnetizingCurves=magnetizingCurves,
                                       magnets=magnets)
+        self.stop = False  # rudimentary: gives the ability to stop a running parameter variation. thomas.maier/OSWALD
+        """
+        the "owner" of the Grid have to take care to terminate all running xfemag64 or wfemagw64
+        processes after setting stop to True
+        For example:
+        
+        def killFemagThreads():
+            if sys.platform.startswith('linux'):
+                os.system("kill $(ps aux | grep '[x]femag64' | awk '{print $2}')")
+            else:
+                os.system("taskkill /f /im wfemagw64.exe")
+                
+        thomas.maier/OSWALD
+        """
 
     def setup_model(self, builder, model):
         """builds model in current workdir and returns its filenames"""
@@ -86,6 +100,9 @@ class Grid(object):
     def __call__(self, opt, pmMachine, operatingConditions,
                  engine, bchMapper=None):
         """calculate objective vars for all decision vars"""
+
+        self.stop = False  # make sure the calculation will start. thomas.maier/OSWALD
+
         decision_vars = opt['decision_vars']
         objective_vars = opt.get('objective_vars', {})
 
@@ -128,6 +145,27 @@ class Grid(object):
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:
         for population in baskets(par_range, opt['population_size']):
+            if self.stop:  # try to return the results so far. thomas.maier/OSWALD
+                logger.info('stopping grid execution... returning results so far...')
+                try:
+                    shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
+                    logger.debug("BEFORE: f shape %s --> %s", np.shape(np.array(f).T), shape)
+                    complete = int(reduce((lambda x, y: x * y), [len(z) for z in domain]))
+                    logger.debug("need {} in total".format(complete))
+                    remaining = complete - int(np.shape(np.array(f).T)[1])
+                    values = int(np.shape(np.array(f).T)[0])
+                    logger.debug("going to append {} None values".format(remaining))
+                    f += remaining * [values * [np.nan]]
+                    shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
+                    logger.debug("AFTER: f shape %s --> %s", np.shape(np.array(f).T), shape)
+                    objectives = np.reshape(np.array(f).T, shape)
+                    r = dict(f=objectives.tolist(),
+                             x=domain)
+                    return r
+                except:
+                    return {}
+                    pass
+
             logger.info('........ %d / %d', p, len(par_range)//len(population))
             job.cleanup()
             for k, x in enumerate(population):

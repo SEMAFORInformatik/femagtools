@@ -24,7 +24,7 @@ def list_to_xml(tag, l):
     '''
     elem = el.Element(re.sub(r'^(\d+)$', r'w\1', tag))
     for v in l:
-        if v:
+        if v is not None:  # check against None explicitly to keep ZERO values. thomas.maier/OSWALD
             if isinstance(v, list):
                 elem.append(list_to_xml('val', v))
             elif isinstance(v, dict):
@@ -43,7 +43,7 @@ def dict_to_xml(tag, d):
     
     elem = el.Element(re.sub(r'^(\d+)$', r'w\1', tag))
     for key, val in d.items():
-        if val:
+        if val != None:  # check against None explicitly to keep ZERO values. thomas.maier/OSWALD
             if isinstance(val, dict):
                 elem.append(dict_to_xml(key, val))
             elif isinstance(val, list):

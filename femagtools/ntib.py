@@ -62,7 +62,6 @@ def read_los(filename):
                     p = 4
                     if len(r) > 8:
                         pfe2 = toFloat(r[5])
-                        pfe1 = pfe1 + pfe2 if pfe1 >= 0 and pfe2 >= 0 else 0
                         p = 5
                     result['stajo'].append(pfe1)
                     result['staza'].append(pfe2)

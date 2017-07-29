@@ -4,6 +4,7 @@ import unittest
 import os
 import femagtools.bch
 from io import open
+import numpy as np
 
 
 class BchReaderTest(unittest.TestCase):
@@ -42,7 +43,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(bch.flux_fft['1'][0]['order'], [1, 3, 5, 7, 9, 11])
 
         self.assertEqual(len(bch.torque), 1)
-        self.assertEqual(sorted(bch.torque[0].keys()), 
+        self.assertEqual(sorted(bch.torque[0].keys()),
                          sorted(['angle', 'force_y', 'force_x', 'torque',
                                  'current_1', 'ripple', 't_idpsi']))
         self.assertEqual(len(bch.torque[0]['torque']), 61)
@@ -72,29 +73,49 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.torque_fft), 2)
         self.assertTrue('order' in bch.torque_fft[0])
         self.assertTrue('torque' in bch.torque_fft[0])
-        self.assertEqual(len(bch.torque_fft[0]['torque']), 5)
-        self.assertEqual(bch.torque_fft[1]['order'], [0, 12, 24, 36])
+        self.assertEqual(len(bch.torque_fft[0]['torque']), 7)
+        self.assertEqual(bch.torque_fft[1]['order'], [0, 12, 24, 30, 36, 42])
 
         self.assertEqual(sorted(bch.flux['1'][0].keys()),
                          sorted(['displ', 'voltage_four',
                                  'current_k', 'flux_k',
                                  'voltage_ir', 'displunit',
                                  'voltage_dpsi']))
-        self.assertEqual(len(bch.flux['1'][0]['flux_k']), 61)
+        self.assertEqual(len(bch.flux['1'][0]['flux_k']), 46)
 
         self.assertEqual(len(bch.torque), 2)
         self.assertTrue('torque' in bch.torque[1])
-        self.assertEqual(len(bch.torque[1]['torque']), 61)
+        self.assertEqual(len(bch.torque[1]['torque']), 46)
 
         self.assertTrue('ld' in bch.dqPar)
-        self.assertAlmostEqual(bch.dqPar['i1'][1], 14.142, 3)
-        self.assertAlmostEqual(bch.dqPar['ld'][0], 0.241e-3, 6)
-        self.assertAlmostEqual(bch.dqPar['ld'][0], 0.241e-3, 6)
-        self.assertAlmostEqual(bch.dqPar['u1'][1], 3.423, 3)
-        self.assertAlmostEqual(bch.dqPar['torque'][0], 0.36, 2)
+        self.assertAlmostEqual(bch.dqPar['i1'][1], 49.992, 3)
+        self.assertAlmostEqual(bch.dqPar['ld'][0], 9.9e-3, 6)
+        self.assertAlmostEqual(bch.dqPar['ld'][0], 9.9e-3, 6)
+        self.assertAlmostEqual(bch.dqPar['u1'][1], 358.38, 2)
+        self.assertAlmostEqual(bch.dqPar['torque'][0], 65.3, 1)
 
         self.assertAlmostEqual(bch.lossPar['fo'][0], 50.0, 1)
-
+        
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo'],
+                                       [[1, 100.0, 10.33, 15.804],
+                                        [3, 300.0, 9.391, 142.234],
+                                        [5, 500.0, 9.391, 395.094],
+                                        [7, 700.0, 9.391, 774.383],
+                                        [9, 900.0, 3.348, 455.591],
+                                        [11, 1100.0, 2.971, 603.881],
+                                        [13, 1300.0, 1.476, 419.063],
+                                        [15, 1500.0, 0.882, 333.395]])
+                               
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza'],
+                                       [[1, 100.0, 8.641, 13.065],
+                                        [3, 300.0, 7.774, 117.587],
+                                        [5, 500.0, 7.774, 326.631],
+                                        [7, 700.0, 7.748, 637.999],
+                                        [9, 900.0, 3.679, 500.663],
+                                        [11, 1100.0, 2.915, 592.805],
+                                        [13, 1300.0, 1.303, 370.023],
+                                        [15, 1500.0, 0.626, 236.594]])
+        
     def test_read_psidq(self):
         bch = self.read_bch('psidpsiq.BATCH')
 

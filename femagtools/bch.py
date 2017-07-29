@@ -1036,8 +1036,7 @@ class Reader:
                 break
 
             if l.find('StJo') > -1 or \
-               l.find('RoJo') > -1 or \
-               l.find('Stat') > -1:
+               l.find('RoJo') > -1:
                 k = 'stajo'
             elif l.find('StZa') > -1 or \
                  l.find('RoZa') > -1:
@@ -1045,6 +1044,8 @@ class Reader:
             elif l.find('Iron') > -1 or \
                  l.find('Roto') > -1:
                 k = 'rotor'
+            elif l.find('Stat') > -1:
+                k = 'stajo'
             else:
                 try:
                     rec = self._numPattern.findall(l)

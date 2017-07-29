@@ -115,7 +115,26 @@ class BchReaderTest(unittest.TestCase):
                                         [11, 1100.0, 2.915, 592.805],
                                         [13, 1300.0, 1.303, 370.023],
                                         [15, 1500.0, 0.626, 236.594]])
-        
+
+    def test_read_pmsim_external(self):
+        bch = self.read_bch('pmsim-external.BATCH')
+
+        self.assertTrue('ld' in bch.dqPar)
+        self.assertAlmostEqual(bch.dqPar['i1'][1], 49.992, 3)
+        self.assertAlmostEqual(bch.dqPar['ld'][0], 0.86688e-3, 6)
+        self.assertAlmostEqual(bch.dqPar['ld'][0], 0.86688e-3, 6)
+        self.assertAlmostEqual(bch.dqPar['u1'][1], 2409.142, 2)
+        self.assertAlmostEqual(bch.dqPar['torque'][0], 1137.92, 1)
+
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo'],
+                                       [[1, 800.0, 2619.555, 15512.529],
+                                        [3, 2400.0, 49.438, 1186.523]])
+                               
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza'],
+                                       [[1, 800.0, 5688.175, 43864.352],
+                                        [3, 2400.0, 296.19, 7108.561],
+                                        [5, 4000.0, 0.989, 39.563]])
+
     def test_read_psidq(self):
         bch = self.read_bch('psidpsiq.BATCH')
 

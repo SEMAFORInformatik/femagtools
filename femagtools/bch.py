@@ -87,6 +87,7 @@ class Reader:
         self._fft = None
         self.type = None
         self.filename = ''
+        self.external_rotor = False
         self.project = ''
         self.date = ''
         self.version = ''
@@ -191,7 +192,7 @@ class Reader:
                 title = s[0].split(':')[1].strip()
             logger.debug("'%s': %d", title, len(s[1:]))
 
-            # Check if we are finish with the fourier analysis part(s)
+            # Check if we are finished with the fourier analysis part(s)
             if title != 'Fourier Analysis':
                 self._fft = None
 
@@ -962,7 +963,8 @@ class Reader:
         for i, l in enumerate(content):
             if l.startswith('Results for Angle I-Up'):
                 losses['beta'] = floatnan(l.split(':')[-1])
-                losses['current'] = floatnan(content[i+1].split(':')[-1])
+                losses['current'] = floatnan(
+                    content[i+1].split(':')[-1])/np.sqrt(2)
                 for k in ('winding', 'staza', 'stajo', 'rotfe',
                           'magnetJ', 'magnetB', 'r1', 'total'):
                     losses[k] = 0.0
@@ -1011,8 +1013,15 @@ class Reader:
             if l.find('Fe-Losses-Rotor') > -1:
                 rec = self._numPattern.findall(content[i+3])
                 if len(rec) == 2:
-                    losses['rotfe'] = floatnan(rec[1])
-                    losses['total'] += losses['rotfe']
+                    if content[i+1].find('Iron') > -1 and content[i+1].find('StJo') > 0:
+                        self.external_rotor = True
+                        # TODO: there might be better places to check this
+                        losses['stajo'] = floatnan(rec[0])
+                        losses['staza'] = floatnan(rec[1])
+                        losses['total'] += losses['staza']+losses['stajo']
+                    else:
+                        losses['rotfe'] = floatnan(rec[1])
+                        losses['total'] += losses['rotfe']
                 continue
                     
             if l.find('Magnet-Losses') > -1:
@@ -1032,7 +1041,11 @@ class Reader:
         losses = dict(staza=[], stajo=[], rotor=[])
         for i, l in enumerate(content):
             if l.startswith('*************'):
-                self.__read_losses(content[i:])
+                for k in losses:
+                    for x in losses[k]:
+                        x[0] = int(x[0])
+                self.losses[-1]['fft'] = losses
+                self.__read_losses(content[i+1:])
                 break
 
             if l.find('StJo') > -1 or \
@@ -1043,7 +1056,10 @@ class Reader:
                 k = 'staza'
             elif l.find('Iron') > -1 or \
                  l.find('Roto') > -1:
-                k = 'rotor'
+                if self.external_rotor:
+                    k = 'staza'
+                else:
+                    k = 'rotor'
             elif l.find('Stat') > -1:
                 k = 'stajo'
             else:
@@ -1053,12 +1069,7 @@ class Reader:
                         losses[k].append([floatnan(x) for x in rec])
                 except:
                     pass
-                
-        for k in losses:
-            for x in losses[k]:
-                x[0] = int(x[0])
-        self.losses[-1]['fft'] = losses
-    
+                    
     def get(self, name, r=None):
         """return value of key name
         name can be a list such as ['torque[1]', 'ripple']

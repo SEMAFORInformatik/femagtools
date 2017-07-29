@@ -26,6 +26,7 @@ psd_psq_fast.py: same with Psid-Psiq-Identification
                f1    230.0 Hz,  I1     76.2 A, Beta -38.5 °
 
 cogg_calc.py: execute a cogging calculation and print the fft spectrum of the torque
+cogg-2.py: cogging calculation with magnetic curve data
 pm_sym_fast.py: execute a PM/Rel machine simulation and print the torque and losses
 torq_calc.py: execute a Torq/Force calculation and print the torque and losses
 pm_sym_loss.py: execute a PM/Rel machine loss simulation and print losses

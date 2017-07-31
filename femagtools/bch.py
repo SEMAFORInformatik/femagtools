@@ -1044,7 +1044,13 @@ class Reader:
                 for k in losses:
                     for x in losses[k]:
                         x[0] = int(x[0])
-                self.losses[-1]['fft'] = losses
+                self.losses[-1]['fft'] = {k: {k1: l
+                                              for k1, l in zip(['order',
+                                                                'freq',
+                                                                'hyst',
+                                                                'eddy'],
+                                                               zip(*losses[k]))}
+                                          for k in losses}
                 self.__read_losses(content[i+1:])
                 break
 

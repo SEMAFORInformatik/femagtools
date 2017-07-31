@@ -96,25 +96,26 @@ class BchReaderTest(unittest.TestCase):
 
         self.assertAlmostEqual(bch.lossPar['fo'][0], 50.0, 1)
         
-        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo'],
-                                       [[1, 100.0, 10.33, 15.804],
-                                        [3, 300.0, 9.391, 142.234],
-                                        [5, 500.0, 9.391, 395.094],
-                                        [7, 700.0, 9.391, 774.383],
-                                        [9, 900.0, 3.348, 455.591],
-                                        [11, 1100.0, 2.971, 603.881],
-                                        [13, 1300.0, 1.476, 419.063],
-                                        [15, 1500.0, 0.882, 333.395]])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order'],
+                                       [1, 3, 5, 7, 9, 11, 13, 15])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['freq'],
+                                       [100.0, 300.0, 500.0, 700.0, 900.0,
+                                        1100.0, 1300.0, 1500.0])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['hyst'],
+                                       [10.33, 9.391, 9.391, 9.391, 3.348,
+                                        2.971, 1.476, 0.882])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['eddy'],
+                                       [15.804, 142.234, 395.094, 774.383,
+                                        455.591, 603.881, 419.063, 333.395])
                                
-        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza'],
-                                       [[1, 100.0, 8.641, 13.065],
-                                        [3, 300.0, 7.774, 117.587],
-                                        [5, 500.0, 7.774, 326.631],
-                                        [7, 700.0, 7.748, 637.999],
-                                        [9, 900.0, 3.679, 500.663],
-                                        [11, 1100.0, 2.915, 592.805],
-                                        [13, 1300.0, 1.303, 370.023],
-                                        [15, 1500.0, 0.626, 236.594]])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['order'],
+                                       [1, 3, 5, 7, 9, 11, 13, 15])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['freq'],
+                                       [100.0, 300.0, 500.0, 700.0, 900.0, 1100.0, 1300.0, 1500.0])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['hyst'],
+                                       [8.641, 7.774, 7.774, 7.748, 3.679, 2.915, 1.303, 0.626])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['eddy'],
+                                       [13.065, 117.587, 326.631, 637.999, 500.663, 592.805, 370.023, 236.594])
 
     def test_read_pmsim_external(self):
         bch = self.read_bch('pmsim-external.BATCH')
@@ -126,14 +127,23 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.dqPar['u1'][1], 2409.142, 2)
         self.assertAlmostEqual(bch.dqPar['torque'][0], 1137.92, 1)
 
-        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo'],
-                                       [[1, 800.0, 2619.555, 15512.529],
-                                        [3, 2400.0, 49.438, 1186.523]])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order'],
+                                       [1, 3])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['freq'],
+                                       [800.0, 2400.0])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['hyst'],
+                                       [2619.555, 49.438])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['eddy'],
+                                       [15512.529, 1186.523])
                                
-        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza'],
-                                       [[1, 800.0, 5688.175, 43864.352],
-                                        [3, 2400.0, 296.19, 7108.561],
-                                        [5, 4000.0, 0.989, 39.563]])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['order'],
+                                       [1, 3, 5])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['freq'],
+                                       [800.0, 2400.0, 4000.0])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['hyst'],
+                                       [5688.175, 296.19, 0.989])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['eddy'],
+                                       [43864.352, 7108.561, 39.563])
 
     def test_read_psidq(self):
         bch = self.read_bch('psidpsiq.BATCH')

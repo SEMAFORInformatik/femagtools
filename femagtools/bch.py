@@ -748,25 +748,30 @@ class Reader:
             rec = l.split('\t')
             if len(rec) == 6:
                 m.append([floatnan(x) for x in rec])
+        if not m:
+            return
         m = np.array(m).T
-        ncols = len(set(m[1]))
-        nrows = len(m[2])//ncols
-        if ncols * nrows % len(m[3]) != 0:
-            if ncols > nrows:
-                ncols = ncols-1
-            else:
-                nrows = nrows-1
+        try:
+            ncols = len(set(m[1]))
+            nrows = len(m[2])//ncols
+            if ncols * nrows % len(m[3]) != 0:
+                if ncols > nrows:
+                    ncols = ncols-1
+                else:
+                    nrows = nrows-1
 
-        l = {k: np.reshape(v,
-                           (nrows, ncols)).T[::-1].tolist()
-             for k, v in zip(('styoke', 'stteeth', 'rotor', 'magnet'),
-                             m[2:])}
-        l['speed'] = speed
-        if self.ldq:
-            self.ldq['losses'] = l
-        else:
-            self.psidq['losses'] = l
- 
+            l = {k: np.reshape(v,
+                               (nrows, ncols)).T[::-1].tolist()
+                 for k, v in zip(('styoke', 'stteeth', 'rotor', 'magnet'),
+                                 m[2:])}
+            l['speed'] = speed
+            if self.ldq:
+                self.ldq['losses'] = l
+            else:
+                self.psidq['losses'] = l
+        except:
+            pass
+        
     def __read_machine_data(self, content):
         "read machine data section"
         for k in ('beta', 'plfe1', 'plfe2', 'plmag'):

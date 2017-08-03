@@ -41,7 +41,7 @@ setup(
     url='https://github.com/SEMAFORInformatik/femagtools',
     author_email='tar@semafor.ch',
     version=version,
-    install_requires=['numpy', 'scipy', 'mako'],
+    install_requires=['numpy', 'scipy', 'mako', 'six'],
     packages=['femagtools', 'femagtools.moo'],
     package_data={'femagtools': ['templates/*.mako']},
     license=license,

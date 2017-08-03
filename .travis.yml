@@ -6,7 +6,7 @@ python:
   - "3.6"
 
 install:
-  - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib anaconda-client conda-build
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib six anaconda-client conda-build
   - pip install .
   - pip install boto3 zmq pytest mock python-coveralls
 

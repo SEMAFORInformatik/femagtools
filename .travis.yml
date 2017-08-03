@@ -13,15 +13,11 @@ install:
 before_install:
   - BASE=https://repo.continuum.io/miniconda/Miniconda;
     END=-Linux-x86_64.sh;
-    if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      VERSION=2-latest;
-    elif [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then
-      VERSION=3-3.16.0;
-    elif [[ "$TRAVIS_PYTHON_VERSION" == "3.5" ]]; then
-      VERSION=4.2.12;
-    elif [[ "$TRAVIS_PYTHON_VERSION" == "3.6" ]]; then
-      VERSION=3-latest;
-    fi
+    if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then VERSION=2-latest;
+    elif [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then VERSION=3-3.16.0;
+    elif [[ "$TRAVIS_PYTHON_VERSION" == "3.5" ]]; then VERSION=3-4.2.12;
+    elif [[ "$TRAVIS_PYTHON_VERSION" == "3.6" ]]; then VERSION=3-latest;
+    fi;
     wget "$BASE$VERSION$END" -O miniconda.sh;
   - chmod +x miniconda.sh
   - ./miniconda.sh -b

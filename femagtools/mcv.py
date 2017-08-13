@@ -628,36 +628,37 @@ class Reader(Mcv):
             idxOffset += iLen
         logger.debug("Mcv last Props: %s", vals)
 
-        self.fo = vals[0]
-        self.Bo = vals[1]
-        self.ch = vals[2]
-        self.ch_freq = vals[4]
-        self.cw = vals[3]
-        self.cw_freq = vals[5]
-        self.b_coeff = vals[6]
-        self.rho = vals[7]
-        self.fe_sat_mag = vals[8]
+        if vals[0]:
+            self.fo = vals[0]
+            self.Bo = vals[1]
+            self.ch = vals[2]
+            self.ch_freq = vals[4]
+            self.cw = vals[3]
+            self.cw_freq = vals[5]
+            self.b_coeff = vals[6]
+            self.rho = vals[7]
+            self.fe_sat_mag = vals[8]
 
         if self.MC1_INDUCTION_FACTOR > 2.0:
             self.MC1_INDUCTION_FACTOR = 2.0
-        for K in range(0, self.mc1_curves):
-            energy = []
-            if binary:
-                for I in range(9):
-                    f = self.getReal()
-                    if math.isnan(f):
-                        break
-                    energy.append(f)
-            else:
-                iLen = min([int(s)
-                            for s in [self.MC1_MIMAX,
-                                      (len(values)-idxOffset)]])
-                for I in range(iLen):
-                    energy.append(values[idxOffset+I])
-                idxOffset += iLen
-                
-            self.mc1_energy[K] = [energy[I] for I in range(len(energy))]
 
+        self.induction = []
+        self.frequency = []
+        self.losses = []
+        try:
+            (nfreq, njind) = self.readBlock([int, int])
+            if(nfreq and njind):
+                self.induction = self.readBlock([float]*M_LOSS_INDUCT)[:njind]
+                for i in range(M_LOSS_FREQ):
+                    res = self.readBlock([float]*M_LOSS_INDUCT)
+                    f = self.readBlock(float)
+                    if f:
+                        self.losses.append(res)
+                        self.frequency.append(f)
+                (cw, alfa, beta, basefreq, baseind) = self.readBlock([float]*5)
+        except:
+            pass
+        
     def get_results(self):
         result = {
             'name': self.name,
@@ -691,6 +692,8 @@ class Reader(Mcv):
         }
         try:
             result['losses'] = self.losses
+            result['induction'] = self.induction
+            result['frequency'] = self.frequency
         except:
             pass
         if (self.ORIENTED_VERSION_MC_CURVE or

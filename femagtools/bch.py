@@ -40,7 +40,7 @@ def floatnan(s):
         return float(s)
     except ValueError:
         return float('NaN')
-    
+
 
 def r1_20(r1, theta):
     return r1/(1+alpha20*(theta-20))
@@ -67,7 +67,7 @@ def _readSections(f):
     Returns:
       list of sections
     """
-        
+
     section = []
     for line in f:
         if line.startswith('[****'):
@@ -177,7 +177,7 @@ class Reader:
         if len(self.flux) > 0:
             return self.flux[0]['displ'][1]-self.flux[0]['displ'][0]
         return None
-    
+
     def read(self, lines):
         """read bch file
 
@@ -198,23 +198,23 @@ class Reader:
 
             if title in self.dispatch:
                 self.dispatch[title](self, s)
-                
+
         if len(self.weights) > 0:
             w = list(zip(*self.weights))
             self.weight['iron'] = sum(w[0])
             self.weight['conductor'] = sum(w[1])
             self.weight['magnet'] = sum(w[2])
             self.weight['total'] = sum([sum(l) for l in w])
-        
+
     def __read_version(self, content):
         self.version = content[0].split(' ')[3]
 
     def __read_project_filename(self, content):
         self.project = content[1].strip()
-        
+
     def __read_filename(self, content):
         self.filename = content[0].split(':')[1].strip()
-        
+
     def __read_date(self, content):
         d = content[0].split(':')[1].strip().split()
         dd, MM, yy = d[0].split('.')
@@ -230,7 +230,7 @@ class Reader:
             if m:
                 self.type = m.group(1).strip()
                 return
-            
+
     def __read_magnet_data(self, content):
         """read magnet data section"""
         for l in content:
@@ -297,13 +297,13 @@ class Reader:
                     
     def __read_dummy(self, content):
         return
-    
+
     def __read_simulation_data(self, content):
         for line in content:
             if line.startswith('Number of Phases m'):
                 self.machine['m'] = int(float((line.split()[-1])))
         return
-    
+
     def __read_current_angles(self, content):
         self.current_angles = []
         for l in content:
@@ -311,7 +311,7 @@ class Reader:
             if len(rec) == 3:
                 self.current_angles.append(floatnan(rec[-1]))
         return
-    
+
     def __read_lossPar(self, content):
         self.lossPar = {
             'fo': [],
@@ -502,19 +502,25 @@ class Reader:
 
         for l in content:
             rec = l.split()
-            if len(rec) == 7:
+            if l.startswith('Flux-Area'):
+                areas = self._numPattern.findall(l)
+                if not areas:
+                    continue
+
+                self.wdg = areas[0] if len(areas)==1 else '{}-{}'.format(
+                    areas[0], areas[1])
+                if self.wdg not in self.flux:
+                    self.flux[self.wdg] = []
+            elif len(rec) == 7:
                 f['displ'].append(floatnan(rec[1].strip()))
                 f['flux_k'].append(floatnan(rec[2].strip()))
                 f['voltage_dpsi'].append(floatnan(rec[3].strip()))
                 f['voltage_four'].append(floatnan(rec[4].strip()))
                 f['current_k'].append(floatnan(rec[5].strip()))
                 f['voltage_ir'].append(floatnan(rec[6].strip()))
-            elif len(rec) > 0 and rec[0].startswith('['):
+            elif rec and rec[0].startswith('['):
                 f['displunit'] = re.search(r"\[([^\]]*)\]", l).group(1).strip()
-            elif l.startswith('Flux-Area'):
-                self.wdg = rec[-1]
-                if self.wdg not in self.flux:
-                    self.flux[self.wdg] = []
+
         self.flux[self.wdg].append(f)
         self._fft = Reader.__read_flux_fft
 
@@ -1178,43 +1184,43 @@ def main():
         print(bch.type)
         print(bch.date)
         print(bch.characteristics)
-        #print(bch.torque)
-        #print(bch.losses[-1])
-        #print(bch.linearForce)
-        #print( bch.losses[-1]['stajo'] + bch.losses[-1]['stajo'] )
-        #print( bch.areas )
-        #print( bch.weights )
-        #print( bch.windings )
-        #print( bch.psidq['id'] )
-        #print( bch.psidq['iq'] )
-        #print( bch.psidq_ldq['psim'] )
-        #print( bch.machine )
-        #print( bch.dqPar['beta'] )
-        #print( bch.dqPar['ld'] )
-        #print( bch.dqPar )
-        #print( bch.psidq )
-        #print( bch.ldq )
-        #print( bch.flux['1'][0] )#[0]['current_k'] )
-        #print( bch.flux_fft['1'][0] )#[0]['current_k'] )
-        #print( bch.torque_fft )
-        #print( bch.scData['time'] )
-        #d={}
-        #bch.get(['weight','magnet'])
-        #for k in bch.psidq:
+        # print(bch.torque)
+        # print(bch.losses[-1])
+        # print(bch.linearForce)
+        # print( bch.losses[-1]['stajo'] + bch.losses[-1]['stajo'] )
+        # print( bch.areas )
+        # print( bch.weights )
+        # print( bch.windings )
+        # print( bch.psidq['id'] )
+        # print( bch.psidq['iq'] )
+        # print( bch.psidq_ldq['psim'] )
+        # print( bch.machine )
+        # print( bch.dqPar['beta'] )
+        # print( bch.dqPar['ld'] )
+        # print( bch.dqPar )
+        # print( bch.psidq )
+        # print( bch.ldq )
+        # print( bch.flux['1'][0] )#[0]['current_k'] )
+        # print( bch.flux_fft['1'][0] )#[0]['current_k'] )
+        # print( bch.torque_fft )
+        # print( bch.scData['time'] )
+        # d={}
+        # bch.get(['weight','magnet'])
+        # for k in bch.psidq:
         #    d[k]=bch.psidq[k].tolist()
-            
-        #json.dump(d, sys.stdout)
-        #print bch.getStep()
+
+        # json.dump(d, sys.stdout)
+        # print bch.getStep()
         plot=False
         if plot:
             import matplotlib.pyplot as pl
-            for k in ('1','2','3'):
+            for k in ('1', '2', '3'):
                 pl.plot( bch.flux[k][0]['displ'], bch.flux[k][0]['current_k'] )
             pl.xlabel('Displ. / Deg')
             pl.ylabel('Current / A')
             pl.grid()
             pl.show()
-        
+
     return 0
 
 if __name__ == "__main__":

@@ -362,31 +362,23 @@ class Writer(Mcv):
             nind = len(self.losses['B'])
             self.writeBlock([nfreq, nind])
             self.writeBlock(self.losses['B'] +
-                            [0.0]*(M_LOSS_INDUCT - len(self.losses['B'])))
-            mloss = M_LOSS_FREQ
-            cw = self.mc1_cw_factor
-            alpha = self.mc1_cw_freq_factor
-            ch = self.mc1_ch_factor
-            beta = self.mc1_ch_freq_factor
-            gamma = self.mc1_induction_factor
-            jordan = lambda fr, Br: (
-                (cw*fr**alpha + ch*fr**beta) * Br**gamma)
-            i = 1
-            for f, p in zip(self.losses['f'], zip(*self.losses['pfe'])):
+                            [0.0]*(M_LOSS_INDUCT - nind))
+            cw = self.losses['cw']
+            alpha = self.losses['cw_freq']
+            beta = self.losses['b_coeff']
+            steinmetz = lambda fr, Br: (cw*fr**alpha * Br**beta)
+            
+            for f, p in zip(self.losses['f'], self.losses['pfe']):
                 if f:
-                    pl = [px if px else jordan(f/self.losses['fo'],
-                                               b/self.losses['Bo'])
+                    pl = [px if px else steinmetz(f/self.losses['fo'],
+                                                  b/self.losses['Bo'])
                           for px, b in zip(p, self.losses['B'])]
-
                     self.writeBlock(pl +
-                                    [0.0]*(M_LOSS_INDUCT - len(p)))
-                    self.writeBlock([f])
-                    i += 1
-                    mloss -= 1
-            for m in range(mloss):
+                                    [0.0]*(M_LOSS_INDUCT - nind))
+                    self.writeBlock(f)
+            for m in range(M_LOSS_FREQ -  nfreq):
                 self.writeBlock([0.0]*M_LOSS_INDUCT)
-                self.writeBlock([0.0])
-                i += 1
+                self.writeBlock(0.0)
 
             self.writeBlock([self.losses['cw'], self.losses['cw_freq'],
                              self.losses['b_coeff'], self.losses['Bo'],
@@ -591,18 +583,12 @@ class Reader(Mcv):
                     self.mc1_mi[K] = I+1
             # assign data
             self.curve.append(dict(
-                hi=self.rtrimValueList(
-                    [mc_hi[I] for I in range(self.MC1_NIMAX)]),
-                bi=self.rtrimValueList(
-                    [mc_bi[I] for I in range(self.MC1_NIMAX)]),
-                bi2=self.rtrimValueList(
-                    [mc_bi2[I] for I in range(self.MC1_MIMAX)]),
-                nuer=self.rtrimValueList(
-                    [mc_nuer[I] for I in range(self.MC1_MIMAX)]),
-                a=self.rtrimValueList(
-                    [mc_a[I] for I in range(self.MC1_MIMAX)]),
-                b=self.rtrimValueList(
-                    [mc_b[I] for I in range(self.MC1_MIMAX)])))
+                hi=self.rtrimValueList(mc_hi[:self.MC1_NIMAX]),
+                bi=self.rtrimValueList(mc_bi[:self.MC1_NIMAX]),
+                bi2=self.rtrimValueList(mc_bi2[:self.MC1_MIMAX]),
+                nuer=self.rtrimValueList(mc_nuer[:self.MC1_MIMAX]),
+                a=self.rtrimValueList(mc_a[:self.MC1_MIMAX]),
+                b=self.rtrimValueList(mc_b[:self.MC1_MIMAX])))
 
         # set dummy defaults
         vals = [self.MC1_BASE_FREQUENCY,
@@ -642,20 +628,26 @@ class Reader(Mcv):
         if self.MC1_INDUCTION_FACTOR > 2.0:
             self.MC1_INDUCTION_FACTOR = 2.0
 
-        self.induction = []
-        self.frequency = []
-        self.losses = []
+        self.losses = {}
         try:
             (nfreq, njind) = self.readBlock([int, int])
             if(nfreq and njind):
-                self.induction = self.readBlock([float]*M_LOSS_INDUCT)[:njind]
+                self.losses['B'] = self.readBlock(
+                    [float]*M_LOSS_INDUCT)[:njind]
+                self.losses['f'] = []
+                self.losses['pfe'] = []
                 for i in range(M_LOSS_FREQ):
                     res = self.readBlock([float]*M_LOSS_INDUCT)
                     f = self.readBlock(float)
                     if f:
-                        self.losses.append(res)
-                        self.frequency.append(f)
+                        self.losses['pfe'].append(res[:njind])
+                        self.losses['f'].append(f)
                 (cw, alfa, beta, basefreq, baseind) = self.readBlock([float]*5)
+                self.losses['Bo'] = baseind
+                self.losses['fo'] = basefreq
+                self.losses['cw'] = cw
+                self.losses['cw_freq'] = alfa
+                self.losses['b_coeff'] = beta
         except:
             pass
         
@@ -691,9 +683,8 @@ class Reader(Mcv):
             } for c in self.curve]
         }
         try:
-            result['losses'] = self.losses
-            result['induction'] = self.induction
-            result['frequency'] = self.frequency
+            if self.losses:
+                result['losses'] = self.losses
         except:
             pass
         if (self.ORIENTED_VERSION_MC_CURVE or

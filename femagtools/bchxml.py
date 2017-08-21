@@ -22,6 +22,14 @@ def list_to_xml(tag, l):
     '''
     Turn a list into XML
     '''
+
+    if not isinstance(tag, str):
+        try:
+            tag = str(tag)
+        except:
+            print("bchxml.list_to_xml():  Can not convert tag to str!")
+            pass
+
     elem = el.Element(re.sub(r'^(\d+)$', r'w\1', tag))
     for v in l:
         if v is not None:  # check against None explicitly to keep ZERO values. thomas.maier/OSWALD
@@ -40,10 +48,17 @@ def dict_to_xml(tag, d):
     '''
     Turn a simple dict of key/value pairs into XML
     '''
-    
+
+    if not isinstance(tag, str):
+        try:
+            tag = str(tag)
+        except:
+            print("bchxml.dict_to_xml():  Can not convert tag to str!")
+            pass
+
     elem = el.Element(re.sub(r'^(\d+)$', r'w\1', tag))
     for key, val in d.items():
-        if val != None:  # check against None explicitly to keep ZERO values. thomas.maier/OSWALD
+        if val is not None:  # check against None explicitly to keep ZERO values. thomas.maier/OSWALD
             if isinstance(val, dict):
                 elem.append(dict_to_xml(key, val))
             elif isinstance(val, list):

@@ -841,7 +841,8 @@ class Reader:
             self.machine['i1'] = i1*len(self.machine['plfe1'])
             plfe1 = self.machine['plfe1']
             plcu = self.machine.get('plcu', 0.0)
-            self.machine['plcu'] = [plcu]*len(plfe1)
+            if np.isscalar(plcu):
+                self.machine['plcu'] = [plcu]*len(plfe1)
             self.machine['pltotal'] = [sum(pl)
                                        for pl in zip(*[self.machine[k]
                                                        for k in ('plfe1',

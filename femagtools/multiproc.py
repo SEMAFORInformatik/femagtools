@@ -93,6 +93,7 @@ class Engine:
                                              t.directory,
                                              t.fsl_file))
                       for t in self.job.tasks]
+        pool.close()  # used to free resources after calculations have finished. thomas.maier/OSWALD
         return len(self.tasks)
 
     def join(self):

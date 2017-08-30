@@ -172,7 +172,8 @@ Machine
   eff               Efficiency                                  %
   m                 Number of phases
   p                 Number of pole pairs
-  Q                 Number of stator slots
+  p_sim             Number of poles in model
+  Q                 Total number of stator slots
   p2                Mechanical power                            W
   i1                Phase current                               A
   A                 current loading                             kA/m
@@ -189,6 +190,7 @@ Machine
   lpfe1_0           Iron Losses in stator at noload             W
   lpfe2_0           Iron Losses in rotor at noload              W
   lpmag_0           Magnet losses at noload                     W
+  pocfile           Name of POC file used                 
   ================  ========================================== =============
   
   Example::
@@ -341,3 +343,52 @@ Windings
             'PHI': [10.5202, 18.0202, 19.4797, 26.9797]}
      }
  
+Losses
+======
+
+ List of dictionaries with losses for noload and load calculation:
+
+  ================  ========================================== =============
+  Attribute          Description                               Unit
+  ================  ========================================== =============
+  beta               angle I Up                                °
+  current            winding current (RMS)                     A
+  staza              losses in stator teeth                    W
+  stajo              losses in stator yoke                     W
+  rotfe              losses in rotor                           W
+  winding            losses in windings                        W
+  magnetB            losses in magnet (B-Method)               W
+  magnetJ            losses in magnet (J-Method)               W
+  total              total losses                              W
+  r1                 winding resistance                        Ohm
+  fft                dict of harmonic spectrum losses
+                     rotor, staza, stajo
+		     with: order, freq, hyst, eddy
+  ================  ========================================== =============
+
+  Example::
+    
+    {'beta': 0.0,
+     'current': 0.0,
+     'magnetB': 0.0,
+     'magnetJ': 0.053,
+     'r1': 0.0,
+     'rotfe': 483.806,
+     'stajo': 1242.913,
+     'staza': 1664.52,
+     'total': 3391.292,
+     'winding': 0.0,
+     'fft': {
+        'rotor': {'eddy': (475.937,),
+                  'freq': (600.0,),
+                  'hyst': (7.869,),
+                  'order': (6,)},
+        'stajo': {'eddy': (15.777, 138.777, 394.427, 206.489, 313.927, 134.139, 5.329),
+                  'freq': (100.0, 300.0, 500.0, 700.0, 900.0, 1100.0, 1300.0),
+                 'hyst': (9.983, 9.178, 9.391, 2.508, 2.307, 0.66, 0.019),
+                 'order': (1, 3, 5, 7, 9, 11, 13)},
+        'staza': {'eddy': (13.06, 117.544, 325.934, 212.208, 417.321, 326.528, 220.231),
+                  'freq': (100.0, 300.0, 500.0, 700.0, 900.0, 1100.0, 1300.0),
+                  'hyst': (8.135, 7.774, 7.76, 2.578, 3.067, 1.606, 0.776),
+                  'order': (1, 3, 5, 7, 9, 11, 13)}}
+     }

@@ -916,13 +916,15 @@ class Reader:
 
             # if next section is absent
             try:
-                self.dqPar['psid'] = [self.dqPar['psim'][0]] # * np.sqrt(2.)
-                self.dqPar['psiq'] = [self.dqPar['lq'][0] * self.dqPar['i1'][-1]]  # * np.sqrt(2.)
+                self.dqPar['psid'] = [self.dqPar['psim'][0]]
+                self.dqPar['psiq'] = [self.dqPar['lq'][0] *
+                                      self.dqPar['i1'][-1]]
             except KeyError:
                 pass
             return
         
-        for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'psid', 'psiq', 'torque', 'torquefe',
+        for k in ('i1', 'beta', 'ld', 'lq', 'psim',
+                  'psid', 'psiq', 'torque', 'torquefe',
                   'p2', 'u1', 'gamma', 'phi'):
             self.dqPar[k] = []
         lfe = 1e3*self.dqPar['lfe']
@@ -1050,7 +1052,9 @@ class Reader:
                 losses['total'] += losses['magnetJ']
                 
         if 'total' in losses:
-            losses['totalfe'] = sum([losses[k] for k in ('staza','stajo','rotfe')])
+            losses['totalfe'] = sum([losses[k] for k in ('staza',
+                                                         'stajo',
+                                                         'rotfe')])
             self.losses.append(losses)
 
     def __read_hysteresis_eddy_current_losses(self, content):
@@ -1174,56 +1178,6 @@ class Reader:
         "representation of this object"
         return self.__str__()
 
-def main():
-#    from io import open
-#    with open('logging.json', 'rt') as f:
-#        logging.config.dictConfig( json.load(f) )
-    bch = Reader()
-    for name in sys.argv[1:]:
-        with codecs.open(name, encoding='ascii') as f:
-            bch.read(f)
-        print(bch.type)
-        print(bch.date)
-        print(bch.characteristics)
-        # print(bch.torque)
-        # print(bch.losses[-1])
-        # print(bch.linearForce)
-        # print( bch.losses[-1]['stajo'] + bch.losses[-1]['stajo'] )
-        # print( bch.areas )
-        # print( bch.weights )
-        # print( bch.windings )
-        # print( bch.psidq['id'] )
-        # print( bch.psidq['iq'] )
-        # print( bch.psidq_ldq['psim'] )
-        # print( bch.machine )
-        # print( bch.dqPar['beta'] )
-        # print( bch.dqPar['ld'] )
-        # print( bch.dqPar )
-        # print( bch.psidq )
-        # print( bch.ldq )
-        # print( bch.flux['1'][0] )#[0]['current_k'] )
-        # print( bch.flux_fft['1'][0] )#[0]['current_k'] )
-        # print( bch.torque_fft )
-        # print( bch.scData['time'] )
-        # d={}
-        # bch.get(['weight','magnet'])
-        # for k in bch.psidq:
-        #    d[k]=bch.psidq[k].tolist()
-
-        # json.dump(d, sys.stdout)
-        # print bch.getStep()
-        plot=False
-        if plot:
-            import matplotlib.pyplot as pl
-            for k in ('1', '2', '3'):
-                pl.plot( bch.flux[k][0]['displ'], bch.flux[k][0]['current_k'] )
-            pl.xlabel('Displ. / Deg')
-            pl.ylabel('Current / A')
-            pl.grid()
-            pl.show()
-
-    return 0
-
 if __name__ == "__main__":
     import json
     if len(sys.argv) == 2:
@@ -1232,11 +1186,9 @@ if __name__ == "__main__":
         filename = sys.stdin.readline().strip()
 
     b = Reader()
-
     with codecs.open(filename, encoding='ascii') as f:
         b.read(f)
 
-    #json.dump(b, sys.stdout)
-    print(b)
-#    status = main()
-#    sys.exit(status)
+    json.dump({k: v for k, v in b.items()}, sys.stdout)
+    #print(b)
+    

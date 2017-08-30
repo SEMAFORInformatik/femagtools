@@ -916,14 +916,13 @@ class Reader:
 
             # if next section is absent
             try:
-                self.dqPar['psid'] = [self.dqPar['psim'][0] * np.sqrt(2.)]
-                self.dqPar['psiq'] = [self.dqPar['lq'][0] * self.dqPar['i1'][-1]
-                                      * np.sqrt(2.)]
+                self.dqPar['psid'] = [self.dqPar['psim'][0]] # * np.sqrt(2.)
+                self.dqPar['psiq'] = [self.dqPar['lq'][0] * self.dqPar['i1'][-1]]  # * np.sqrt(2.)
             except KeyError:
                 pass
             return
         
-        for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'psid', 'psiq', 'torque',
+        for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'psid', 'psiq', 'torque', 'torquefe',
                   'p2', 'u1', 'gamma', 'phi'):
             self.dqPar[k] = []
         lfe = 1e3*self.dqPar['lfe']
@@ -939,9 +938,10 @@ class Reader:
                 for k in ('ld', 'lq', 'psim', 'psid', 'psiq', 'torque'):
                     self.dqPar[k][-1] = lfe * self.dqPar[k][-1]
             elif len(rec) == 7:
+                self.dqPar['torquefe'].append(floatnan(rec[2]))
                 self.dqPar['u1'].append(floatnan(rec[4]))
                 self.dqPar['gamma'].append(floatnan(rec[6]))
-                self.dqPar['phi'].append(self.dqPar['beta'][-1] +
+                self.dqPar['phi'].append(floatnan(rec[1]) + # self.dqPar['beta'][-1] +
                                          self.dqPar['gamma'][-1])
 
         self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
@@ -1020,7 +1020,8 @@ class Reader:
             if _rotloss.search(l):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 1:
-                    losses['rotfe'] = floatnan(rec[0])
+                    if floatnan(rec[0]) > losses['rotfe']:
+                        losses['rotfe'] = floatnan(rec[0])
                     losses['total'] += losses['rotfe']
                 continue
                     
@@ -1049,6 +1050,7 @@ class Reader:
                 losses['total'] += losses['magnetJ']
                 
         if 'total' in losses:
+            losses['totalfe'] = sum([losses[k] for k in ('staza','stajo','rotfe')])
             self.losses.append(losses)
 
     def __read_hysteresis_eddy_current_losses(self, content):
@@ -1072,6 +1074,7 @@ class Reader:
                l.find('RoJo') > -1:
                 k = 'stajo'
             elif l.find('StZa') > -1 or \
+                 l.find('StatorIron') > -1 or \
                  l.find('RoZa') > -1:
                 k = 'staza'
             elif l.find('Iron') > -1 or \

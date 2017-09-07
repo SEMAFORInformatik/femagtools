@@ -15,7 +15,9 @@ modelpars = dict(
         mcvNameYoke="3",
         num_slots_gen=3,
         nodedist=1.5,
-        rlength=1.0))
+        rlength=1.0),
+
+    magnet=dict())
 
 
 class ModelTest(unittest.TestCase):
@@ -40,6 +42,15 @@ class ModelTest(unittest.TestCase):
         newvalue = 1
         model.set_value(attr, newvalue)
         self.assertEqual(model.get(attr), newvalue)
+
+    def test_magnet_material(self):
+        m = dict(modelpars)
+        m['magnet']['magnetSector'] = dict()
+        m['magnet']['material'] = dict(name='MCV')
+        model = femagtools.MachineModel(m)
+
+        self.assertEqual(model.magnettype(), 'magnetSector')
+        self.assertEqual(model.magnet['material'], {'name': 'MCV'})
 
 if __name__ == '__main__':
     unittest.main()

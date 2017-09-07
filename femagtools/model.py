@@ -211,6 +211,19 @@ class MachineModel(Model):
                                          self.magnet['mcvkey_shaft'])
                 except KeyError:
                     pass
+                
+                try:
+                    mcv = magcurves.find(self.magnet['material']['name'])
+                    if mcv:
+                        logger.debug('magnet mcv %s', mcv)
+                        self.magnet['mcvkey_magnet'] = mcv
+                        names.append(mcv)
+                    else:
+                        missing.append(self.magnet['material']['name'])
+                        logger.error('magnet mcv %s not found',
+                                     self.magnet['material']['name'])
+                except KeyError:
+                    pass
         if missing:
             raise MCerror("MC pars missing: {}".format(
                 ', '.join(set(missing))))
@@ -226,7 +239,7 @@ class MachineModel(Model):
     def magnettype(self):
         """return type of magnet slot"""
         for k in self.magnet:
-            if isinstance(self.magnet[k], dict):
+            if k != 'material' and isinstance(self.magnet[k], dict):
                 return k
         raise MCerror("Missing magnet model in {}".format(self.magnet))
 

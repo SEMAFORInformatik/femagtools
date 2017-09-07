@@ -104,6 +104,8 @@ class Builder:
                 magnet = magnets.find(model.magnet['material'])
                 if magnet:
                     return self.__render(magnet, 'magnet')
+                elif isinstance(model.magnet['material'], dict):
+                    return []
                 raise FslBuilderError('magnet material {} not found'.format(
                     model.magnet['material']))
             return [' m.remanenc       =  1.2',

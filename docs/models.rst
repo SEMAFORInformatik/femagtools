@@ -36,7 +36,9 @@ mcvkey_yoke      Name of lamination material   dummy
 nodedist         Factor for node distance      1.0
 ==============  ============================  =====================
 
-.. note:: if no value for num_slots_gen is given its value is calculated from the the number of slots Q and pole pairs p. (version added 0.0.16)
+.. note::
+
+   if no value for num_slots_gen is given its value is calculated from the the number of slots Q and pole pairs p. (version added 0.0.16)
 
 Slots
 ^^^^^
@@ -92,7 +94,9 @@ statorBG
                  slottooth
 ============    ==============  
 
-.. note:: all units are metric units
+.. note::
+
+   All units are metric units.
 
 Windings
 --------
@@ -114,19 +118,22 @@ Magnet
 
 Magnets have basic parameters and slots:
 
-==============  ============================  =======  
-Parameter        Description                  Default  
-==============  ============================  =======  
-mcvkey_yoke      Name of lamination material  dummy
-mcvkey_shaft     Name of shaft material       dummy
-material         Name of magnet material
-nodedist         Factor for node distance       1.0
-==============  ============================  =======
+==============  ================================  =======  
+Parameter        Description                      Default  
+==============  ================================  =======  
+mcvkey_yoke      Name of lamination material      dummy
+mcvkey_shaft     Name of shaft material           dummy
+material         Name or dict of magnet material
+nodedist         Factor for node distance         1.0
+==============  ================================  =======
 
 .. note::
 
    * the mcvkey parameters reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor.
-   * the material parameter references a name of the 'Magnet Material'_ list.
+   * the material parameter references a name of the 'Magnet Material'_ list. In case of a dict it must contain the name which references a MC filename, the key orient which describes the field orientation (mcartiso, mpoliso, martaniso, mpolaniso) and the key rlen which defines the relative length. Example::
+
+       material=dict(name='BH53M', orient='mcartiso', rlen=1.0)
+   * The MC names can instead reference an entry in the magnetizing curve dict.
 
 
 Slots
@@ -276,7 +283,7 @@ Example::
 Magnetizing Curve
 =================
 
-The MagnetizingCurve is a container of magnetizing curves (eg. lamination material) that can be referenced by the model mcvkey attributes. It can either point to a directory of MC/MCV-File or hold a list of magnet curves which are identified by name.
+The MagnetizingCurve is a container of magnetizing curves (eg. lamination or PM material) that can be referenced by the model mcvkey attributes. It can either point to a directory of MC/MCV-File or hold a list of magnet curves which are identified by name.
 
 Each magnetizing curve is described by the following properties
 
@@ -284,6 +291,7 @@ Each magnetizing curve is described by the following properties
 Attribute          Description                     Unit     Default
 ================  ================================ ======== =======
    name           Identifier of this curve
+   ctype          Type of curve                             1
    desc           Description
    curve          List of dictionaries with
                   bi (list of induction values)    T,
@@ -374,7 +382,9 @@ magnwidth         Magnet width                    0.0       m
 magnlength        Magnet length in z direction   0.0        m      
 ==============   ============================== ==========  ============
 
-Note: name must be unique within list. It may be used as reference in the magnet model of the machine.
+.. note::
+
+   name must be unique within list. It may be used as reference in the magnet model of the machine.
 
 Example::
 
@@ -404,7 +414,8 @@ eval_force      Evaluate force                  0
 plots           Create plots                    []
 ==============  ============================= ==========  ============
 
-.. Note::
+.. note::
+   
    plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
    'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
    'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.profemag.ch/ColorGrad.html) added in version 0.0.16

@@ -11,6 +11,9 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 * calculate machine characteristics by using analytic machine models
 * execute parameter studies and multi-objective optimization
 
+The package is hosted on github: <https://github.com/SEMAFORInformatik/femagtools/>`_.
+Contributions are highly welcome.
+  
 Installation
 ------------
 
@@ -24,6 +27,18 @@ Or with Anaconda::
 
 Prerequisite: a fairly recent FEMAG version (see http://www.profemag.ch) must be found in one of the
 directories listed in your PATH variable.
+
+If a proxy is needed::
+
+  $ pip --proxy http://proxy.hell:3128 install femagtools
+
+For Anaconda you can setup the environment variables HTTP_PROXY and HTTPS_PROXY or the file .condarc::
+
+  proxy_servers:
+    http: http://user:pass@corp.com:8080
+    https: https://user:pass@corp.com:8080
+
+For further information: <https://conda.io/docs/user-guide/configuration>_.
 
 Contents
 ========

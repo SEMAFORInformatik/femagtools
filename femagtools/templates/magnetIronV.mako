@@ -43,13 +43,13 @@ for i = 0, m.npols_gen-1 do
     gamma = 2*i*math.pi/m.num_poles
     x0, y0 = pr2c(d, alpha[1]+gamma)
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, mcv, 0, orient, rlen)
+        def_mat_pm_nlin(x0, y0, red, mcv, 0, orient, cond, rlen)
     else
         def_mat_pm_nlin(x0, y0, green, mcv, 180, orient, cond, rlen)
     end
     x0, y0 = pr2c(d, alpha[2]+gamma)
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, mcv, 0, orient, rlen)
+        def_mat_pm_nlin(x0, y0, red, mcv, 0, orient, cond, rlen)
     else
         def_mat_pm_nlin(x0, y0, green, mcv, 180, orient, cond, rlen)
     end

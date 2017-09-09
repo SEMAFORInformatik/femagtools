@@ -21,3 +21,37 @@ m.mcvkey_yoke     =   mcvkey_yoke
 m.nodedist        =   ${model.magnet.get('nodedist',1)}
 
  pre_models("Magnet Iron V")
+
+%if isinstance(model.get(['magnet','material'],0), dict):
+orient = ${model.magnet['material'].get('orient', 'mpolaniso')}
+mcv = '${model.magnet['material']['name']}'
+rlen = ${model.magnet['material'].get('rlen', 1)*100}
+cond = ${model.magnet['material'].get('cond', 625e3)}
+
+alpha = {}
+alpha[1] = math.pi/m.num_poles/2
+alpha[2] = 3*alpha[1]
+beta = {}
+beta[1] = m.magn_angle/360*math.pi - 2*alpha[1]
+beta[2] = m.magn_angle/360*math.pi + 2*alpha[1]
+
+r = m.rotor_rad 
+d = r* (math.sin(4*alpha[1]) - math.tan(beta[2])*math.cos(4*alpha[1]))/
+      (math.sin(3*alpha[1]) - math.tan(beta[2])*math.cos(3*alpha[1])) + m.magn_height
+
+for i = 0, m.npols_gen-1 do
+    gamma = 2*i*math.pi/m.num_poles
+    x0, y0 = pr2c(d, alpha[1]+gamma)
+    if i % 2 == 0 then
+        def_mat_pm_nlin(x0, y0, red, mcv, 0, orient, rlen)
+    else
+        def_mat_pm_nlin(x0, y0, green, mcv, 180, orient, cond, rlen)
+    end
+    x0, y0 = pr2c(d, alpha[2]+gamma)
+    if i % 2 == 0 then
+        def_mat_pm_nlin(x0, y0, red, mcv, 0, orient, rlen)
+    else
+        def_mat_pm_nlin(x0, y0, green, mcv, 180, orient, cond, rlen)
+    end
+end
+%endif

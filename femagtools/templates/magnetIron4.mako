@@ -26,14 +26,15 @@ m.nodedist        =   ${model.magnet.get('nodedist',1)}
 orient = ${model.magnet['material'].get('orient', 'mpolaniso')}
 mcv = '${model.magnet['material']['name']}'
 rlen = ${model.magnet['material'].get('rlen', 1)*100}
+cond = ${model.magnet['material'].get('cond', 625e3)}
 
 for i = 0, m.npols_gen-1 do
     x0, y0 = pr2c(m.magn_rad - m.magn_height/2 - m.magn_di_ra,
                   (2*i+1)*math.pi/m.num_poles)
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, mcv, 0, orient, rlen)
+        def_mat_pm_nlin(x0, y0, red, mcv, 0, orient, cond, rlen)
     else
-        def_mat_pm_nlin(x0, y0, green, mcv, 180, orient, rlen)
+        def_mat_pm_nlin(x0, y0, green, mcv, 180, orient, cond, rlen)
     end
 end
 %endif

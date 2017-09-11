@@ -1,0 +1,154 @@
+
+-- Model parameters
+
+ds = ${model['shaft_diam']}*1e3
+hm = ${model['magn_height']}*1e3
+bm = ${model['magn_width']}*1e3
+ws = ${model['slot_width']}*1e3
+
+P = m.num_poles
+Pm = m.npols_gen
+m.zeroangl = 0  -- zero angle in degree
+taup = (m.zeroangl/180*math.pi+180/P) -- pole pitch in degree
+
+---------
+-- FML --
+---------
+fml = require("fml")
+
+fml.SetLocalCS(0, 0, 0)
+
+P = {} -- Points
+L = {} -- Lines
+C = {} -- Circles
+AC = {} -- Auxiliary-Circles
+AP = {} -- Auxiliary-Points
+
+M = fml.Point:Create(0, 0)
+
+C[1] = fml.Circle:Create(M, ds/2)
+C[2] = fml.Circle:Create(M, dy2/2)
+C[3] = fml.Circle:Create(M, dy2/2+bm)
+C[4] = fml.Circle:Create(M, da2/2)
+C[5] = fml.Circle:Create(M, dy2/2+bm/2)
+
+L[1] = fml.Line:Create(M, m.zeroangl)
+L[2] = fml.Line:Create(M, taup)
+
+
+P[10] = fml.Point:Intersection(L[1], C[4], 2) -- Point 10
+P[3] = fml.Point:Intersection(L[2], C[2], 2) -- Point 3
+P[7] = fml.Point:Intersection(L[2], C[3], 2) -- Point 7
+P[8] = fml.Point:Intersection(L[2], C[4], 2) -- Point 8
+
+AC[1] = fml.Circle:Create(P[3], 2)
+AP[1] = fml.Point:Intersection(L[2], AC[1], 1)
+AP[2] = fml.Point:Intersection(L[2], AC[1], 2)
+AC[2] = fml.Circle:Create(AP[1], 3)
+AC[3] = fml.Circle:Create(AP[2], 3)
+AP[3] = fml.Point:Intersection(AC[2], AC[3], 2)
+L[3] = fml.Line:Create(P[3], AP[3])
+AC[4] = fml.Circle:Create(P[3], hm/2)
+P[4] = fml.Point:Intersection(L[3], AC[4], 1) -- Point 4
+
+AC[5] = fml.Circle:Create(P[7], 2)
+AP[4] = fml.Point:Intersection(L[2], AC[5], 2)
+AP[5] = fml.Point:Intersection(L[2], AC[5], 1)
+AC[6] = fml.Circle:Create(AP[4], 3)
+AC[7] = fml.Circle:Create(AP[5], 3)
+AP[6] = fml.Point:Intersection(AC[6], AC[7], 2)
+L[4] = fml.Line:Create(P[7], AP[6])
+AC[8] = fml.Circle:Create(P[7], hm/2)
+P[5] = fml.Point:Intersection(L[4], AC[8], 2) -- Point 5
+
+AC[9] = fml.Circle:Create(P[7], ws/2)
+P[6] = fml.Point:Intersection(L[4], AC[9], 2) -- Point 6
+
+AC[10] = fml.Circle:Create(P[8], ws/2)
+P[9] = fml.Point:Intersection(AC[10], C[4], 2) --Point 9
+
+P[12] = fml.Point:Perpendicular(P[4], L[1]) -- Point 12
+
+AC[11] = fml.Circle:Create(M, dy2/2+bm)
+P[11] = fml.Point:Intersection(L[1], AC[11], 2) -- Point 11
+
+P[2] = fml.Point:Intersection(L[2], C[1], 2) -- Point 1
+P[1] = fml.Point:Intersection(L[1], C[1], 2) -- Point 2
+
+P[13], P[14] = fml.Point:Mirror(L[2], P[1], P[10]) -- Corner Points 13 & 14
+
+-----------------
+-- Node chains --
+-----------------
+ndt(agndst)
+nc_circle(P[10].x, P[10].y, P[9].x, P[9].y, 0)
+nc_circle(P[9].x, P[9].y, P[8].x, P[8].y, 0)
+
+ndt(1.7*agndst)
+nc_line(P[10].x, P[10].y, P[11].x, P[11].y, 0)
+nc_line(P[6].x, P[6].y, P[9].x, P[9].y, 0)
+nc_line(P[7].x, P[7].y, P[8].x, P[8].y, 0)
+
+nc_circle(P[11].x, P[11].y, P[5].x, P[5].y, 0)
+nc_line(P[5].x, P[5].y, P[6].x, P[6].y, 0)
+nc_line(P[6].x, P[6].y, P[7].x, P[7].y, 0)
+
+create_mesh_se((P[6].x+P[8].x)/2, (P[6].y+P[8].y)/2)
+
+x0, y0 = (da2+dy2+2*bm)/4, 0.1
+create_mesh_se(x0, y0)
+def_new_sreg(x0, y0, "RotorYoke", yellow)
+
+
+ndt(4*agndst)
+nc_line(P[11].x, P[11].y, P[12].x, P[12].y, 0)
+nc_line_cont(P[4].x, P[4].y, 0)
+nc_line_cont(P[5].x, P[5].y, 0)
+nc_line(P[4].x, P[4].y, P[3].y, P[3].y, 0)
+nc_line_cont(P[7].x, P[7].y, 0)
+
+x0, y0 = dy2/2+bm/4, 0.1
+create_mesh_se(x0, y0)
+add_to_sreg(x0, y0,"RotorYoke")
+
+ndt(6*agndst)
+nc_line(P[12].x, P[12].y, P[1].x, P[1].y, 0)
+nc_circle(P[1].x, P[1].y, P[2].x, P[2].y, 0)
+nc_line(P[2].x, P[2].y, P[3].x, P[3].y, 0)
+
+x0, y0 = (P[4].x+P[1].x)/2, (P[4].y+P[1].y)/2
+create_mesh_se(x0, y0)
+def_new_sreg(x0, y0, "Shaft", lightgrey)
+
+create_mesh_se((P[4].x+P[7].x)/2, (P[4].y+P[7].y)/2)
+
+mirror_nodechains(P[8].x, P[8].y, P[2].x, P[2].y)
+
+rotate_copy_nodechains(P[1].x, P[1].y, P[10].x, P[10].y, P[14].x, P[14].y, P[13].x, P[13].y, Pm-1)
+
+-- -----------------------------
+-- ---- Material Properties ----
+-- -----------------------------
+
+-- --  PM yoke
+urr=1000
+x0, y0 = (da2+dy2)/4, 0.1
+if mcvkey_yoke ~= 'dummy' then
+   def_mat_fm_nlin(x0, y0, blue, mcvkey_yoke, 100)
+else
+   def_mat_fm(x0,y0,1000.0,100)
+end
+
+-- -- Permanent magnets
+for i=0, m.npols_gen-1 do
+   phi = (2*i+1)*taup
+   x0,y0 = pr2c((da2+dy2)/4, phi*math.pi/180 - math.atan2(hm/4,(da2+dy2)/4))
+   x1,y1 = pr2c((da2+dy2)/4, phi*math.pi/180 + math.atan2(hm/4,(da2+dy2)/4))
+   if ( i % 2 == 0 ) then
+      def_mat_pm(x0, y0,red,m.remanenc, m.relperm, phi+90, m.parallel,100)
+      def_mat_pm(x1, y1,red,m.remanenc, m.relperm, phi+90, m.parallel,100)
+   else
+      def_mat_pm(x0, y0, green, m.remanenc, m.relperm, phi-90, m.parallel,100)
+      def_mat_pm(x1, y1, green, m.remanenc, m.relperm, phi-90, m.parallel,100)
+   end
+end

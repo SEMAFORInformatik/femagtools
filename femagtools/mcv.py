@@ -20,12 +20,17 @@ from six import string_types
 import femagtools.losscoeffs
 
 # curve types
+types = {1: 'Soft iron B(H)',
+         2: 'Permanent magnet B(H)',
+         3: 'Soft iron B(H,alfa)',
+         4: 'Permanent magnet B(H,Br)',
+         5: 'Permanent magnet B(H,alfa)'}
 MAGCRV = 1
 DEMCRV = 2
 ORIENT_CRV = 3
-MAG_AC_CRV = -1
-ORIENT_PM_CRV = 5
 DEMCRV_BR = 4
+ORIENT_PM_CRV = 5
+MAG_AC_CRV = -1
 
 logger = logging.getLogger(__name__)
 
@@ -649,8 +654,10 @@ class Reader(Mcv):
                 self.losses['cw_freq'] = alfa
                 self.losses['b_coeff'] = beta
         except:
-            pass
-        
+            if self.losses and 'B' in self.losses:
+                if not self.losses['f'] or not self.losses['pfe']:
+                    self.losses = {}
+    
     def get_results(self):
         result = {
             'name': self.name,

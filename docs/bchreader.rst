@@ -172,7 +172,8 @@ Machine
   eff               Efficiency                                  %
   m                 Number of phases
   p                 Number of pole pairs
-  Q                 Number of stator slots
+  p_sim             Number of poles in model
+  Q                 Total number of stator slots
   p2                Mechanical power                            W
   i1                Phase current                               A
   A                 current loading                             kA/m
@@ -189,6 +190,7 @@ Machine
   lpfe1_0           Iron Losses in stator at noload             W
   lpfe2_0           Iron Losses in rotor at noload              W
   lpmag_0           Magnet losses at noload                     W
+  pocfile           Name of POC file used                 
   ================  ========================================== =============
   
   Example::

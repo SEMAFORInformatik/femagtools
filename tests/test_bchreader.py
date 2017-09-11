@@ -220,8 +220,10 @@ class BchReaderTest(unittest.TestCase):
         bch.get(['torque', 'torque']) == []
         bch.get(['linearForce[-1]', 'ripple_x']) == 0.0
         assert bch.get(['linearForce', 'ripple_z']) is None
-        self.assertAlmostEqual(bch.dqPar['psid'][0], 2.7294321753800737, 5)
-        self.assertAlmostEqual(bch.dqPar['psiq'][0], 1.0899999999999999, 5)
+#        self.assertAlmostEqual(bch.dqPar['psid'][0], 2.7294321753800737, 5)
+#        self.assertAlmostEqual(bch.dqPar['psiq'][0], 1.0899999999999999, 5)
+        self.assertAlmostEqual(bch.dqPar['psid'][0], 1.93, 5)
+        self.assertAlmostEqual(bch.dqPar['psiq'][0], 0.77074639149333668, 5)
         
     def test_read_felosses(self):
         bch = self.read_bch('rel-felosses.BATCH')

@@ -1,10 +1,10 @@
 Examples:
 
-write_mcv.py:
-  create MC/MCV files from BH curve data
-  
-plot_mcv.py:
-  read MC file and show BH and Mue plot
+mcv:
+  write_mcv.py:
+     create MC/MCV files from BH curve data
+  plot_mcv.py:
+     read MC file and show BH and Mue plot
 
 model-creation:
   various combinations of stator and magnet models

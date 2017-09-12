@@ -38,7 +38,7 @@ magnetMat = [{
     "hc_min": 760000.0}
 ]
 
-magnetizingCurve = "./magnetcurves"
+magnetizingCurve = "../magnetcurves"
 
 pmMotor = {
     "name": "PM 270 L8",

@@ -224,13 +224,15 @@ class MachineModel(Model):
                 try:
                     magnet = magnetmat.find(self.magnet['material'])
                     if magnet and 'mcvkey' in magnet:
-                        logger.debug('magnet mcv %s', mcv)
-                        self.magnet['mcvkey_magnet'] = mcv
-                        names.append(mcv)
-                    elif magnet:
-                        missing.append(self.magnet['material'])
+                        mcv = magcurves.find(self.magnet['mcvkey'])
+                        if mcv:
+                            logger.debug('magnet mcv %s', mcv)
+                            self.magnet['mcvkey_magnet'] = mcv
+                            names.append(mcv)
+                        else:
+                            missing.append(magnet['mcvkey'])
                         logger.error('magnet mcv %s not found',
-                                     self.magnet['material'])
+                                     magnet['mcvkey'])
                 except KeyError:
                     pass
                 except AttributeError:

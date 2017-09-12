@@ -67,7 +67,8 @@ class BaseFemag(object):
         """
         dest = dir if dir else self.workdir
         return [self.magnetizingCurves.writefile(m, dest)
-                for m in model.set_magcurves(self.magnetizingCurves)]
+                for m in model.set_magcurves(
+                        self.magnetizingCurves, self.magnets)]
 
     def create_fsl(self, pmMachine, operatingConditions):
         """create list of fsl commands"""

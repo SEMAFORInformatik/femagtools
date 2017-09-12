@@ -25,19 +25,14 @@ m.nodedist        =   ${model.magnet.get('nodedist',1)}
 
  pre_models("Magnet-Sector")
 
-%if isinstance(model.get(['magnet','material'],0), dict):
-orient = ${model.magnet['material'].get('orient', 'mpolaniso')}
-mcv = '${model.magnet['material']['name']}'
-rlen = ${model.magnet['material'].get('rlen', 1)*100}
-cond = ${model.magnet['material'].get('cond', 625e3)}
-
+%if model.get_mcvkey_magnet():
 for i = 0, m.npols_gen-1 do
     x0, y0 = pr2c(m.magn_rad - m.magn_height/2,
                   (2*i+1)*math.pi/m.num_poles)
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, mcv, 0, orient, cond, rlen)
+        def_mat_pm_nlin(x0, y0, red, m.mcvkey_magnet, 0, m.orient, m.magncond, m.rlen)
     else
-        def_mat_pm_nlin(x0, y0, green, mcv, 180, orient, cond, rlen)
+        def_mat_pm_nlin(x0, y0, green, m.mcvkey_magnet, 180, m.orient, m.magncond, m.rlen)
     end
 end
 %endif

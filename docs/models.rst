@@ -123,18 +123,14 @@ Parameter        Description                      Default
 ==============  ================================  =======  
 mcvkey_yoke      Name of lamination material      dummy
 mcvkey_shaft     Name of shaft material           dummy
-material         Name or dict of magnet material
+material         Name of magnet material
 nodedist         Factor for node distance         1.0
 ==============  ================================  =======
 
 .. note::
 
    * the mcvkey parameters reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor.
-   * the material parameter references a name of the 'Magnet Material'_ list. In case of a dict it must contain the name which references a MC filename, the key orient which describes the field orientation (mcartiso, mpoliso, martaniso, mpolaniso) and the key rlen which defines the relative length. Example::
-
-       material=dict(name='BH53M', orient='mcartiso', rlen=1.0)
-   * The MC names can instead reference an entry in the magnetizing curve dict.
-
+   * the material parameter references a name of the 'Magnet Material'_ list. 
 
 Slots
 ^^^^^
@@ -371,6 +367,9 @@ that describe the magnet properties.
 Parameter         Description                   Default      Unit
 ==============   ============================== ==========  ============
 name              Name of magnet material
+mcvkey            name of nonlinear B(H) curve
+orient            Magnetizing orientation       mpolaniso
+rlen              Relative length                1.0
 remanenc          Remanence Induction Br                    T
 relperm           Relative Permeability
 spmaweight        Specific Mass                  7500       kg/m³
@@ -384,14 +383,16 @@ magnlength        Magnet length in z direction   0.0        m
 
 .. note::
 
-   name must be unique within list. It may be used as reference in the magnet model of the machine.
+  * name must be unique within list. It may be used as reference in the magnet model of the machine.
+  Example::
+    magmats = [dict(name='MX-333', remanenc=1.2, relperm=1.05)]
 
-Example::
-
-  magmats = [dict(
-     name='MX-333',
-     remanenc=1.2,
-     relperm=1.05)]
+   * In case of a dict it must contain the name which references a MC filename,
+   * the key orient describes the field orientation (mcartiso, mpoliso, martaniso, mpolaniso)
+   * rlen defines the relative length 
+     Example::
+       magmats=[dict(name='BH53M', mcvkey='BH53M', orient='mcartiso', rlen=1.0)
+   * The mcvkey can either reference a file or an entry in the magnetizing curve dict.
 
 .. include:: userspec.rst
 

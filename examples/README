@@ -1,37 +1,46 @@
 Examples:
 
-write_mcv.py: create MC/MCV files from BH curve data
-plot_mcv.py: read MC file and show BH and Mue plot
+write_mcv.py:
+  create MC/MCV files from BH curve data
+  
+plot_mcv.py:
+  read MC file and show BH and Mue plot
 
-create-model-0.py: create the file femag.fsl of a PM machine with stator3
-                   and magnet sector
-create-model-1.py: create FSL commands of a 12kW wind generator with a stator4
-                   and an outer magnet sector
-create-model-2.py: create FSL commands of a PM machine with a stator1
-                   and a user defined magnet (spoke.fsl)
-create-model-3.py: create FSL commands of a PM machine with a stator3,
-                   magnet sector and pm_sym_fast invocation
+model-creation:
+  various combinations of stator and magnet models
 
-read_bch-0.py: read BCH file from a Ld-Lq-identification and create surface plot of the torque
-read_bch-1.py: read BCH file from a PM/Rel Simulation and plot the torque vs rotor position
+bch:
+  read_ldq_bch-plot-torque.py: read BCH file from a Ld-Lq-identification
+                               and create surface plot of the torque
+  read_pm_sim-bch-plot-torque.py: read BCH file from a PM/Rel Simulation
+                               and plot the torque vs rotor position
 
-fieldweakening.py: calculate the frequency and current using an analytical model
-pmchar.py: calculate speed-torque characteristics and show plot
+analytical-model:
+  fieldweakening.py: calculate the frequency and current using an analytical model
+  pmchar.py: calculate speed-torque characteristics and show plot
 
-ld_lq_fast.py: execute a ld-lq identification and calculate the frequency and current
-               at given voltage and torque
+calculation:
+  ld_lq_fast.py: execute a ld-lq identification and calculate
+                 the frequency and current at given voltage and torque
 	       f1    222.5 Hz,  I1     76.3 A, Beta -38.7 °
 	       
-psd_psq_fast.py: same with Psid-Psiq-Identification
+  psd_psq_fast.py: same with Psid-Psiq-Identification
                f1    230.0 Hz,  I1     76.2 A, Beta -38.5 °
 
-cogg_calc.py: execute a cogging calculation and print the fft spectrum of the torque
-cogg-2.py: cogging calculation with magnetic curve data
-pm_sym_fast.py: execute a PM/Rel machine simulation and print the torque and losses
-torq_calc.py: execute a Torq/Force calculation and print the torque and losses
-pm_sym_loss.py: execute a PM/Rel machine loss simulation and print losses
+  cogg_calc_mcv.py: build model with magnetic curve data,
+                    execute a cogging calculation and print the fft
+                    spectrum of the torque
 
-parvar.py: execute a parameter variation
+  pm_sym_fast.py:
+          execute a PM/Rel machine simulation and print the torque and losses
+  torq_calc.py:
+          execute a Torq/Force calculation and print the torque and losses
+  pm_sym_loss.py:
+          execute a PM/Rel machine loss simulation and print losses
 
-pmopt.py: execute a multi objective optimization
+parameter-variation:
+  parvar.py: execute a parameter variation
+
+optimization:
+  pmopt.py: execute a multi objective optimization
 

@@ -155,8 +155,17 @@ class MachineModel(Model):
                                                     m*self.poles))
             except:
                 pass
-            
-    def set_magcurves(self, magcurves):
+
+    def set_mcvkey_magnet(self, mcvkey):
+        self.mcvkey_magnet = mcvkey
+        
+    def get_mcvkey_magnet(self):
+        try:
+            return self.mcvkey_magnet
+        except:
+            return ''
+        
+    def set_magcurves(self, magcurves, magnetmat={}):
         """set and return real names of magnetizing curve material
 
         :param magcurves: :class: 'MagnetizingCurve' including
@@ -213,17 +222,23 @@ class MachineModel(Model):
                     pass
                 
                 try:
-                    mcv = magcurves.find(self.magnet['material']['name'])
-                    if mcv:
+                    magnet = magnetmat.find(self.magnet['material'])
+                    if magnet and 'mcvkey' in magnet:
                         logger.debug('magnet mcv %s', mcv)
                         self.magnet['mcvkey_magnet'] = mcv
                         names.append(mcv)
-                    else:
-                        missing.append(self.magnet['material']['name'])
+                    elif magnet:
+                        missing.append(self.magnet['material'])
                         logger.error('magnet mcv %s not found',
-                                     self.magnet['material']['name'])
+                                     self.magnet['material'])
                 except KeyError:
                     pass
+                except AttributeError:
+                    if 'material' in self.magnet:
+                        missing.append(self.magnet['material'])
+                        logger.error('magnet mcv %s not found',
+                                     self.magnet['material'])
+                        
         if missing:
             raise MCerror("MC pars missing: {}".format(
                 ', '.join(set(missing))))

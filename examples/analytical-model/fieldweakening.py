@@ -5,7 +5,7 @@ import femagtools.machine
 import numpy as np
 import matplotlib.pylab as pl
 
-bch = femagtools.read_bchfile('TEST_001.BCH')
+bch = femagtools.read_bchfile('../bch/TEST_001.BCH')
 
 beta = bch.ldq['beta']
 i1 = bch.ldq['i1']
@@ -44,13 +44,13 @@ ax.plot(id, iq, label='Tq={} Nm'.format(tq))
 
 ax.annotate('f1={0:4.1f} Hz'.format(w1 / np.pi / 2),
             xy=(idx, iqx), xytext=(1.3 * idx, 1.5 * iqx),
-            arrowprops=dict(arrowstyle="->"))
+            arrowprops=dict(arrowstyle="->"), fontsize=12)
 
 ax.arrow(0, 0, idx + 0.075 * i1, iqx - 0.08 * i1, color='r',
          head_width=0.05 * i1, head_length=0.08 * i1)
 ax.text(1.38 * idx, 0.5 * iqx,
         r'$I_1={0:3.1f} A$'.format(
-            femagtools.machine.betai1(iqx, idx)[1]), fontsize=18)
+            femagtools.machine.betai1(iqx, idx)[1]), fontsize=14)
 ax.arrow(0, 0, 0, 170, color='k', head_width=0.05 * i1, head_length=0.08 * i1)
 
 ax.annotate("",
@@ -64,7 +64,7 @@ ax.annotate("",
                             connectionstyle="arc3,rad=0.3"))
 ax.text(0.52 * idx, 0.58 * iqx,
         r'$\beta={0:3.1f}^o$'.format(np.arctan2(idx, iqx)/np.pi * 180),
-        fontsize=14)
+        fontsize=12)
 
 ax.grid()
 xlim = ax.get_xlim()

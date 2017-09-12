@@ -384,15 +384,21 @@ magnlength        Magnet length in z direction   0.0        m
 .. note::
 
   * name must be unique within list. It may be used as reference in the magnet model of the machine.
-  Example::
-    magmats = [dict(name='MX-333', remanenc=1.2, relperm=1.05)]
+    
+    Example::
+    
+      magnets = [dict(name='MX-333', remanenc=1.2, relperm=1.05)]
 
-   * In case of a dict it must contain the name which references a MC filename,
-   * the key orient describes the field orientation (mcartiso, mpoliso, martaniso, mpolaniso)
-   * rlen defines the relative length 
+  * mcvkey is used for material that have a non-linear BH curve.
+  * the key orient describes the field orientation (mcartiso, mpoliso, martaniso, mpolaniso)
+  * rlen defines the relative length
+    
      Example::
-       magmats=[dict(name='BH53M', mcvkey='BH53M', orient='mcartiso', rlen=1.0)
-   * The mcvkey can either reference a file or an entry in the magnetizing curve dict.
+       
+       magnets=[dict(name='BH53M', mcvkey='BH53M',
+                     orient='mcartiso', rlen=1.0)]
+		     
+  * The mcvkey can either reference a file or an entry in the magnetizing curve dict.
 
 .. include:: userspec.rst
 

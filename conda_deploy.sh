@@ -3,19 +3,23 @@
 set -e
 cd /tmp
 
+# Upload the linux-64 to anaconda automaticly
+echo "Set config"
+conda config --set anaconda_upload yes
+
 echo "Create skeleton.."
 conda skeleton pypi femagtools
 
 echo "Build package.."
-conda build femagtools
+dest_dir=`conda build femagtools --output`
+echo "File located under $dest_dir"
 
 echo "Converting conda package.."
-conda convert -f --platform all $HOME/miniconda*/conda-bld/linux-64/femagtools-*.tar.bz2 -o builds/
+conda convert -f --platform all $dest_dir -o builds
 
 echo "Deploying..."
-anaconda -t $ANACONDA_TOKEN upload builds/linux-64/femagtools-*.tar.bz2
-anaconda -t $ANACONDA_TOKEN upload builds/win-64/femagtools-*.tar.bz2
-anaconda -t $ANACONDA_TOKEN upload builds/osx-64/femagtools-*.tar.bz2
+anaconda -t $ANACONDA_TOKEN upload builds/*/femagtools-*.tar.bz2
+anaconda -t $ANACONDA_TOKEN upload $dest_dir
 
 echo "Successfully deployed to Anaconda.org."
 

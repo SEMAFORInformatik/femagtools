@@ -47,7 +47,7 @@ magnetMat = [{
     "relperm": 1.05}
 ]
 
-magnetizingCurve = "./magnetcurves"
+magnetizingCurve = "../magnetcurves"
 
 machine = dict(
     name="PM 130 L4",

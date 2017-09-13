@@ -3,10 +3,10 @@
  Parameter Variation with Femag
  """
 import os
-from femagtools.multiproc import Engine
+#from femagtools.multiproc import Engine
 # instead you can use on of the following
 #
-# from femagtools.condor import Engine
+from femagtools.condor import Engine
 # from femagtools.amazon import Engine
 # from femagtools.google import Engine
 #
@@ -14,6 +14,7 @@ import femagtools.grid
 import logging
 import numpy as np
 import matplotlib.pyplot as pl
+from mpl_toolkits.mplot3d import Axes3D
 
 parvardef = {
     "objective_vars": [
@@ -64,7 +65,7 @@ magnetMat = [{
     "hc_min": 760000.0}
 ]
 
-magnetizingCurve = "./magnetcurves"
+magnetizingCurve = "../magnetcurves"
 
 machine = {
     "name": "PM 270 L8",

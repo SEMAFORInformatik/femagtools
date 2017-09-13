@@ -374,7 +374,7 @@ remanenc          Remanence Induction Br                    T
 relperm           Relative Permeability
 spmaweight        Specific Mass                  7500       kg/m³
 temcoefbr         Temperature Coefficient of Br  -0.001     T/K 
-temcoefhc         Temperature Coefficient of Br  -0.001     T/K
+temcoefhc         Temperature Coefficient of Hc  -0.001     A/m/K
 magntemp          Magnet Temperature             20         °C      
 magncond          Electr. Conductivity           625000      S/m    
 magnwidth         Magnet width                    0.0       m     

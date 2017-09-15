@@ -26,11 +26,16 @@ import femagtools.config as cfg
 import time
 import platform
 import re
+from threading import Thread
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
+
 
 logger = logging.getLogger(__name__)
 
 BCHEXT = '.BATCH' if sys.platform.startswith('linux') else '.BCH'  # win32
-
 
 class FemagError(Exception):
     pass
@@ -262,6 +267,7 @@ class ZmqFemag(BaseFemag):
             'tcp://{0}:{1}'.format(
                 self.host, self.port+1))
         self.subscriber_socket.setsockopt(zmq.SUBSCRIBE, b'')
+        self.subscriber_socket.RCVTIMEO = 900  # in milliseconds
         return self.subscriber_socket
 
     def __is_process_running(self, procId):
@@ -324,36 +330,33 @@ class ZmqFemag(BaseFemag):
         logger.debug("femag is not running")
         return False
 
-    def send_fsl(self, fsl, header='FSL'):
+    def send_fsl(self, fsl, callback=None, header='FSL'):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
 
         :param fsl: FSL commands
         :returns: response
         """
+        logger.debug("Send fsl with fsl: {}, callback: {}, header: {}".format(fsl, callback, header))
         try:
+            # Start the reader thread to get information about the next calculation
+            reader = FemagReadStream(self.__sub_socket(), callback)
+            reader.setDaemon(True)
+            reader.start()
+
             request_socket = self.__req_socket()
             request_socket.send_string(header, flags=zmq.SNDMORE)
+            logger.debug("Sent header")
             request_socket.send_string(fsl)
+            logger.debug("Sent fsl wait for response")
             response = request_socket.recv_multipart()
             logger.debug("send_fsl["+fsl+"] done")
+
+            time.sleep(.5)  # Be sure all messages are arrived over zmq
+            reader.continue_loop = False
             return [s.decode() for s in response]
         except Exception as e:
             logger.error("send_fsl, for error: %s", str(e))
         return ['{"status":"error"}']
-
-    def read(self):
-        """reads from subscriber socket"""
-        subscriber_socket = self.__sub_socket()
-        try:
-            response = subscriber_socket.recv_multipart()
-            return [s.decode() for s in response]
-        except Exception as e:
-            logger.error(e)
-            time.sleep(1)
-        if self.subscriber_socket:
-            self.subscriber_socket.close()
-        self.subscriber_socket = None
-        return None
 
     def run(self, options=['-b'], restart=False, procId=None):  # noqa: C901
         """invokes FEMAG in current workdir and returns pid
@@ -418,6 +421,7 @@ class ZmqFemag(BaseFemag):
         """terminates femag"""
 
         if not self.__is_running():
+            logger.info("Femag already stopped")
             return
 
         # send exit flags
@@ -427,14 +431,19 @@ class ZmqFemag(BaseFemag):
         response = self.send_fsl(f)
 
         # send quit command
-        response = self.send_fsl('quit', 'CONTROL')
+        response = self.send_fsl('quit', header='CONTROL')
 
+        logger.debug("Sent QUIT to femag")
         # if query, send a answer
         obj = json.loads(response[0])
+        logger.debug("status: {}".format(obj['status']))
         if obj['status'] == 'Query':
             logger.info('query: %s => %s',
                         obj['message'], 'saved' if save_model else 'not saved')
-            response = self.send_fsl('Ok' if save_model else 'Cancel')
+
+            # Only send one msg
+            request_socket = self.__req_socket()
+            response = request_socket.send_string('Ok' if save_model else 'Cancel')
         return response
 
     def __call__(self, pmMachine, operatingConditions):
@@ -442,3 +451,42 @@ class ZmqFemag(BaseFemag):
         self.send_fsl('\n'.join(self.create_fsl(pmMachine,
                                                 operatingConditions)))
         return self.read_bch(self.modelname)
+
+
+class FemagReadStream(Thread):
+    def __init__(self, sub_socket, callback):
+        Thread.__init__(self)
+        logger.debug("Initialize reader thread")
+        self.sub_socket = sub_socket
+        # TODO: use a function to handle calls without callback
+        self.callback = callback if callback else self.dummy_callback
+        self.continue_loop = True
+
+    def dummy_callback(self, data):
+        """This dummy method is used when no callback is defined.
+        """
+        logger.warn("No callback defined, fallback to dummy\n >{}".format(data))
+
+    def run(self):
+        """Listen for messages from femag as long as the continue_loop is True
+        the sub_socket has a timeout to finish the loop and thread after the continue_loop
+        is set to False and no messages are arrived.
+        """
+        logger.debug("Start thread with while condition: {}".format(self.continue_loop))
+        while self.continue_loop:
+            try:
+                response = self.sub_socket.recv_multipart()
+                # Sometimes femag send messages with only len = 1. These messages must be ignored
+                if len(response) < 2:
+                    continue
+                # Call the callback function
+                self.callback([s.decode() for s in response])
+            # The subscriber_socket has a timeout of 900 mil sec. If no answer was arrived
+            # this exception is raised - Ingnore
+            except zmq.error.Again:
+                continue
+            # Any other exception is shown in the error log
+            except Exception as e:
+                logger.error("error in reading output from femag {}".format(e))
+                continue
+        logger.debug("Exit reader thread")

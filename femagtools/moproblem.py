@@ -50,7 +50,7 @@ class FemagMoProblem(Problem):
     def objfun(self, x):
         for o in self.objective_vars:
             logger.debug("%d=====> %s", len(self.objective_vars), str(o))
-        return [f[0] * f[1] if f[1] else None
+        return [f[0] * f[1] if f[1] is not None else None
                 for f in [(o.get('sign', 1),
                            self.result.get(o['name'].split('.')))
                           for o in self.objective_vars]]

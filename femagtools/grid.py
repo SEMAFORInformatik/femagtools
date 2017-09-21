@@ -209,7 +209,7 @@ class Grid(object):
                         logger.warn("job %d failed: %s", k, r['error'])
                         f.append([float('nan')]*len(objective_vars))
                     else:
-                        prob.setResult(r)
+                        prob.setResult(bchMapper(r)) if bchMapper else prob.setResult(r)
 
                         f.append(prob.objfun([]))
             p += 1
@@ -224,32 +224,6 @@ class Grid(object):
                     x=domain)
 
     def addBchMapperData(self, bchData):
-        delObjVecAttr = {'flux_fft': ['a', 'b', 'voltage_perc', 'flux_perc'],
-                         'flux': ['displunit'],
-                         'torque_fft': ['a', 'b']}
-        delObjAttr = {'machineData': ['Q', 'p_sim', 'plfe', 'plfe1_0',
-                                      'plfe2_0', 'plmag_0', 'qs_sim'],
-                      'flux': ['displunit'],
-                      'torque_fft': ['a', 'b'],
-                      'lossPar': ['thetaw']}
-
-        # remove object vector attributes
-        for attr in delObjVecAttr:
-            for i in range(len(bchData[attr])):
-                for a in delObjVecAttr[attr]:
-                    try:
-                        del bchData[attr][i][a]
-                    except:
-                        pass
-
-        # remove object attributes
-        for attr in delObjAttr:
-            for a in delObjAttr[attr]:
-                try:
-                    del bchData[attr][a]
-                except:
-                    pass
-
         self.bchmapper_data.append(bchData)
 
     def getBchMapperData(self):

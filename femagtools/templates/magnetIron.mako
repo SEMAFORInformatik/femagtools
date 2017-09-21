@@ -23,12 +23,15 @@ m.nodedist        =   ${model.magnet.get('nodedist',1)}
 
 %if model.get_mcvkey_magnet():
 for i = 0, m.npols_gen-1 do
-    x0, y0 = pr2c(m.magn_rad*math.cos(math.pi/m.num_poles),
-                  (2*i+1)*math.pi/m.num_poles)
+    alfa = (2*i+1)*180/m.num_poles
+    x0, y0 = pd2c((m.magn_rad-m.magn_height/2)*math.cos(math.pi/m.num_poles), alfa)
+    if i < 2 and m.npols_gen > 1 then
+        delete_sreg(x0, y0)
+    end
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, m.mcvkey_magnet, 0, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, red, m.mcvkey_magnet, alfa, m.orient, m.magncond, m.rlen)
     else
-        def_mat_pm_nlin(x0, y0, green, m.mcvkey_magnet, 180, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, green, m.mcvkey_magnet, alfa-180, m.orient, m.magncond, m.rlen)
     end
 end
 %endif

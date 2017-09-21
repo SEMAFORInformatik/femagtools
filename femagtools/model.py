@@ -221,26 +221,27 @@ class MachineModel(Model):
                 except KeyError:
                     pass
                 
-                try:
-                    magnet = magnetmat.find(self.magnet['material'])
-                    if magnet and 'mcvkey' in magnet:
-                        mcv = magcurves.find(self.magnet['mcvkey'])
-                        if mcv:
-                            logger.debug('magnet mcv %s', mcv)
-                            self.magnet['mcvkey_magnet'] = mcv
-                            names.append(mcv)
-                        else:
-                            missing.append(magnet['mcvkey'])
+        if magnetmat and 'magnet' in self.__dict__:
+            try:
+                magnet = magnetmat.find(self.magnet['material'])
+                if magnet and 'mcvkey' in magnet:
+                    mcv = magcurves.find(magnet['mcvkey'])
+                    if mcv:
+                        logger.debug('magnet mcv %s', mcv)
+                        self.magnet['mcvkey_magnet'] = mcv
+                        names.append(mcv)
+                    else:
+                        missing.append(magnet['mcvkey'])
                         logger.error('magnet mcv %s not found',
                                      magnet['mcvkey'])
-                except KeyError:
-                    pass
-                except AttributeError:
-                    if 'material' in self.magnet:
-                        missing.append(self.magnet['material'])
-                        logger.error('magnet mcv %s not found',
-                                     self.magnet['material'])
-                        
+            except KeyError:
+                pass
+            except AttributeError:
+                if 'material' in self.magnet:
+                    missing.append(self.magnet['material'])
+                    logger.error('magnet mcv %s not found',
+                                 self.magnet['material'])
+
         if missing:
             raise MCerror("MC pars missing: {}".format(
                 ', '.join(set(missing))))

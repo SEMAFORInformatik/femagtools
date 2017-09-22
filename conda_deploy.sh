@@ -11,6 +11,7 @@ echo "Create skeleton.."
 conda skeleton pypi femagtools
 
 echo "Build package.."
+conda build femagtools
 dest_dir=`conda build femagtools --output`
 echo "File located under $dest_dir"
 

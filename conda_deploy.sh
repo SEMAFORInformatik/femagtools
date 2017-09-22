@@ -13,6 +13,7 @@ conda skeleton pypi femagtools
 echo "Build package.."
 dest_file=$(conda build femagtools --output)
 dest_dir=$(dirname $dest_file)
+conda build femagtools
 echo "File located under $dest_dir"
 
 echo "Converting conda package.."

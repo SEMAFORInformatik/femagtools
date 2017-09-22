@@ -18,7 +18,7 @@ echo "Converting conda package.."
 conda convert -f --platform all $dest_dir -o builds
 
 echo "Deploying..."
-anaconda -t $ANACONDA_TOKEN upload builds/*/femagtools-*.tar.bz2
+anaconda -t $ANACONDA_TOKEN upload builds/**/femagtools-*.tar.bz2
 anaconda -t $ANACONDA_TOKEN upload $dest_dir
 
 echo "Successfully deployed to Anaconda.org."

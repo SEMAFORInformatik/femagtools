@@ -139,7 +139,7 @@ class PmRelMachine(object):
         "return iq, id current at given frequency, voltage"
         return so.fsolve(lambda iqd:
                          np.array((uq, ud)) - self.uqd(w1, *iqd),
-                         (0, 0))
+                         (0, self.io[1]))
     
     def i1_torque(self, torque, beta):
         "return i1 current with given torque and beta"

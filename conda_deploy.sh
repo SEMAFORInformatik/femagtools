@@ -3,10 +3,6 @@
 set -e
 cd /tmp
 
-# Upload the linux-64 to anaconda automaticly
-echo "Set config"
-conda config --set anaconda_upload yes
-
 echo "Create skeleton.."
 conda skeleton pypi femagtools
 

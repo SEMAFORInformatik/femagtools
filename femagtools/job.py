@@ -63,8 +63,10 @@ class Task(object):
             self.directory, '*_[0-9][0-9][0-9].B*CH')))
         if bchfile_list:
             with open(bchfile_list[-1]) as f:
+                logger.info("Reading %s",
+                            bchfile_list[-1])
                 result.read(f)
-            logger.info("%s %s", result.version, result.type),
+            #logger.info("%s %s", result.version, result.type),
         else:
             msg = 'no BCH files in {}'.format(self.directory)
             logger.error(msg)

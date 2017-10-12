@@ -53,7 +53,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Femag Tools'
-copyright = u'2016, Ronald Tanner'
+copyright = u'2017, Ronald Tanner'
 author = u'Ronald Tanner'
 
 # The version info for the project you're documenting, acts as replacement for

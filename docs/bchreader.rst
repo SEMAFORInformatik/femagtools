@@ -70,7 +70,7 @@ Flux
 Torque
 ======
 
-* torque: list of dictionaries for each current and/or beta angle
+* torque: list of dictionaries for each current and/or beta angle (No load, load current with beta=0 and load current with beta)
 
   ================  =======================================================
   Attribute          Description     

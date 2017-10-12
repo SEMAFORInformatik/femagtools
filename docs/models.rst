@@ -129,7 +129,7 @@ nodedist         Factor for node distance         1.0
 
 .. note::
 
-   * the mcvkey parameters reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor.
+   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the magnetizingCurve object.
    * the material parameter references a name of the 'Magnet Material'_ list. 
 
 Slots
@@ -306,7 +306,7 @@ Attribute          Description                     Unit     Default
    rho            specific weight                  kg/dm3   7.65
 ================  ================================ ======== =======
 
-Loss calculation formula:
+The loss factors and exponents are used in the Jordan loss calculation formula:
 
  (cw*(f/fo)**cw_freq + ch*(f/fo)**ch_freq)*(B/Bo)**b_coeff
 
@@ -328,7 +328,7 @@ Permeability and polarisation calculation example::
   muer = [bx/hx/MUE0 for bx, hx in bh]
 
 
-Using a magnetizingcurve to Write a mcv file::
+Using a magnetizingcurve to write a mcv file::
 
    mcvData = dict(curve=[ dict(
       bi=[0.0, 0.09, 0.179, 0.267, 0.358,
@@ -357,6 +357,10 @@ Using a magnetizingcurve to Write a mcv file::
 .. image:: img/mcv.png
   :height: 290pt
 
+.. note::
+
+   if the curve data is used in a stator or magnet slot model there is no need to create the file explicitly. Femagtools will take care of that during the model creation.
+   
 Magnet Material
 ===============
 

@@ -107,7 +107,8 @@ class PmRelMachine(object):
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2), w10)[0]
         
     def w1_u(self, u, iq, id):
-        """return frequency w1 at given voltage u and id, iq current (obsolete, use w1_umax)"""
+        """return frequency w1 at given voltage u and id, iq current
+        (obsolete, use w1_umax)"""
         return self.w1_umax(u, iq, id)
     
     def w1max(self, u, iq, id):
@@ -164,7 +165,8 @@ class PmRelMachine(object):
             (iq, id))
 
     def iqd_imax_umax(self, i1max, w1, u1max):
-        "return d-q current at stator frequency and max voltage and max current"
+        """return d-q current at stator frequency and max voltage
+        and max current"""
         beta = so.fsolve(lambda b:
                          la.norm(
                              self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
@@ -173,7 +175,8 @@ class PmRelMachine(object):
     
     def mtpa(self, i1):
         """return iq, id, torque at maximum torque of current i1"""
-        maxtq = lambda x: -self.torque_iqd(*iqd(x, i1))
+        def maxtq(x):
+            return -self.torque_iqd(*iqd(x, i1))
         bopt, fopt, iter, funcalls, warnflag = so.fmin(maxtq, 0,
                                                        full_output=True,
                                                        disp=0)
@@ -182,12 +185,16 @@ class PmRelMachine(object):
    
     def mtpv(self, w1, u1):
         """return iq, id, torque at maximum torque of voltage u1"""
-        p2c = lambda phi, r: np.sqrt(2.0)*r*np.array([np.cos(phi),
-                                                      np.sin(phi)])
-        iqduqd = lambda uqd: so.fsolve(
-            lambda iqd: np.ravel(uqd) - np.ravel(self.uqd(w1, *iqd)), self.io)
+        def p2c(phi, r):
+            return np.sqrt(2.0)*r*np.array([np.cos(phi),
+                                            np.sin(phi)])
+        
+        def iqduqd(uqd):
+            return so.fsolve(lambda iqd: np.ravel(uqd) - np.ravel(
+                self.uqd(w1, *iqd)), self.io)
 
-        tmax = lambda gamma: -self.torque_iqd(*iqduqd(p2c(gamma, u1)))
+        def tmax(gamma):
+            return -self.torque_iqd(*iqduqd(p2c(gamma, u1)))
         aopt, fopt, iter, fcalls, wflag = so.fmin(tmax,
                                                   np.arctan2(self.io[1],
                                                              self.io[0]),
@@ -198,7 +205,8 @@ class PmRelMachine(object):
 
     def characteristics(self, T, n, u1max, nsamples=36):
         """calculate torque speed characteristics.
-        return id, iq, n, T, ud, uq, u1, i1, beta, gamma, phi, cosphi, pmech, n_type
+        return id, iq, n, T, ud, uq, u1, i1,
+               beta, gamma, phi, cosphi, pmech, n_type
         
         Keyword arguments:
         T -- the maximum torque or the list of torque values in Nm

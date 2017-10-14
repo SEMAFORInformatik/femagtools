@@ -118,18 +118,22 @@ class Builder:
         return self.__render(model, 'common')
     
     def create_analysis(self, model):
+        airgap_induc = (self.create_airgap_induc()
+                        if model.get('airgap_induc', 0) else [])
         if model.get('calculationMode') in ('cogg_calc',
                                             'ld_lq_fast',
                                             'pm_sym_loss',
                                             'torq_calc',
                                             'psd_psq_fast'):
-            return self.__render(model, model.get('calculationMode'))
+            return (self.__render(model, model.get('calculationMode')) +
+                    airgap_induc)
         return (self.__render(model, 'cu_losses') +
                 self.__render(model, model.get('calculationMode')) +
+                airgap_induc +
                 self.__render(model, 'plots'))
             
-    def create_airgap_induc(self, model):
-            return self.__render(model, 'airgapinduc')
+    def create_airgap_induc(self):
+            return self.__render(dict(), 'airgapinduc')
         
     def create_colorgrad(self, model):
             return self.__render(model, 'colorgrad')

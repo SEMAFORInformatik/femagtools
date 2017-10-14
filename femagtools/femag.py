@@ -20,6 +20,7 @@ import sys
 import json
 import io
 import femagtools.mcv
+import femagtools.airgap as ag
 import femagtools.fsl
 import femagtools.ntib as ntib
 import femagtools.config as cfg
@@ -123,6 +124,10 @@ class BaseFemag(object):
 
         return dict()
 
+    def read_airgap_induction(self):
+        """read airgap induction"""
+        return ag.read(os.path.join(self.workdir, 'bag.dat'))
+    
     def _get_modelname_from_log(self):
         """
         Read the modelname from the Femag Log file

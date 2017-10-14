@@ -458,6 +458,7 @@ current         Phase current                             A (RMS)
 angl_i_up       Angle I vs. Up                  0         deg
 optim_i_up      Optimize Current                0
 plots           Create plots                    []
+airgap_induc    calculate airgap induction      False
 ==============  ============================= ==========  ============
 
 Example::
@@ -468,7 +469,23 @@ Example::
     magn_temp=60.0,
     current=50.0,
     speed=50.0)
-  
+
+.. note::
+   If airgap_induc is True the induction in the airgap is calculated after the simulation returns. The values can be read with the method read_airgap_induc() of call Femag.
+   
+   ==============  ============================= ============
+   Parameter        Description                  Unit
+   ==============  ============================= ============
+   Baml            Amplitude of base harmonic    T
+   phi0            Phase angle of base harmonic  rad
+   pos             Position                      ° or mm
+   B               sampled values                T
+   B_fft           Values of base harmonic       T
+   ==============  ============================= ============
+
+   .. image:: img/airgapinduc.png
+      :height: 240pt
+
 Ld-Lq Identification (ld_lq_fast)
 
 ==============  ============================= ==========  ============

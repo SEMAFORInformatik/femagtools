@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 import numpy.linalg as la
+from .bch import Reader
 
 import scipy.optimize as so
 import scipy.interpolate as ip
@@ -53,26 +54,37 @@ def iqd(beta, i1):
                                      np.sin(beta)])
     
 
-def create(bch, r1, ls):
+def create(bch, r1, ls, lfe=1):
     """create PmRelMachine from BCH"""
-    m = bch.machine['m']
-    p = bch.machine['p']
-    if bch.type == 'Fast Psid-Psiq-Identification':
-        id = bch.psidq['id']
-        iq = bch.psidq['iq']
-        psid = bch.psidq['psid']
-        psiq = bch.psidq['psiq']
-        return PmRelMachinePsidq(m, p, psid, psiq, r1, id, iq, ls)
-        
-    if bch.type == 'Fast LD-LQ-Identification':
-        beta = bch.ldq['beta']
-        i1 = bch.ldq['i1']
-        psid = bch.ldq['psid']
-        psiq = bch.ldq['psiq']
-        return PmRelMachineLdq(m, p, psid=psid, psiq=psiq, r1=r1,
-                               i1=i1, beta=beta, ls=ls)
-    raise ValueError("Unsupported BCH type {}".format(bch.type))
+    if isinstance(bch, Reader):
+        m = bch.machine['m']
+        p = bch.machine['p']
+        if bch.type == 'Fast Psid-Psiq-Identification':
+            id = bch.psidq['id']
+            iq = bch.psidq['iq']
+            psid = lfe*np.array(bch.psidq['psid'])
+            psiq = lfe*np.array(bch.psidq['psiq'])
+            return PmRelMachinePsidq(m, p, psid, psiq, r1, id, iq, ls)
 
+        if bch.type == 'Fast LD-LQ-Identification':
+            beta = bch.ldq['beta']
+            i1 = bch.ldq['i1']
+            psid = lfe*np.array(bch.ldq['psid'])
+            psiq = lfe*np.array(bch.ldq['psiq'])
+            return PmRelMachineLdq(m, p, psid=psid, psiq=psiq, r1=r1,
+                                   i1=i1, beta=beta, ls=ls)
+        raise ValueError("Unsupported BCH type {}".format(bch.type))
+    # must be ERG type:
+    m = 3
+    p = int(round(np.sqrt(2)*bch['M_sim'][-1][-1]/(
+        m*bch['Psi_d'][-1][-1] * bch['i1'][-1])))
+
+    return PmRelMachineLdq(m, p, r1=r1,
+                           beta=bch['beta'], i1=bch['i1'],
+                           ld=lfe*np.array(bch['Ld']),
+                           psim=lfe*np.array(bch['Psi_pm']),
+                           lq=lfe*np.array(bch['Lq']), ls=ls)
+    
 
 class PmRelMachine(object):
     """Abstract base class for PmRelMachines
@@ -351,12 +363,17 @@ class PmRelMachineLdq(PmRelMachine):
         self.betamin = min(beta)
         self.io = iqd(np.min(beta)/2, np.max(i1)/2)
         if 'psid' in kwargs:
+            kx = ky = 3
+            if len(i1) < 4:
+                ky = len(i1)-1
+            if len(beta) < 4:
+                kx = len(beta)-1
             psid = np.sqrt(2)*np.asarray(kwargs['psid'])
             psiq = np.sqrt(2)*np.asarray(kwargs['psiq'])
             self.psid = lambda x, y: ip.RectBivariateSpline(
-                beta, i1, psid).ev(x, y)
+                beta, i1, psid, kx=kx, ky=ky).ev(x, y)
             self.psiq = lambda x, y: ip.RectBivariateSpline(
-                beta, i1, psiq).ev(x, y)
+                beta, i1, psiq, kx=kx, ky=ky).ev(x, y)
             return
         if len(i1) < 4 or len(beta) < 4:
             if len(i1) == len(beta):

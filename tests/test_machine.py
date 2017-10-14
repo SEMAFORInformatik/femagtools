@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 #
 import unittest
+import femagtools
 import femagtools.machine
+import os
 
 class PmMachineTest(unittest.TestCase):
 
@@ -227,7 +229,19 @@ class PmMachineTest(unittest.TestCase):
     w1 = 500
     iqs, ids = m1.iqd_uqd(w1, 0, 0)
     self.assertAlmostEqual(femagtools.machine.betai1(iqs, ids)[1], 96.41, 2)
+
+  def test_create(self):
+    testPath = os.path.join(os.path.split(__file__)[0], 'data')
+    if len(testPath) == 0:
+      testPath = os.path.join(os.path.abspath('.'), 'data')
+
+    bch = femagtools.read_bchfile(os.path.join(testPath, 'ldq.BATCH'))
+    pm = femagtools.machine.create(bch, r1=0, ls=0)
+    iqd = pm.iqd_torque(120)
+    self.assertAlmostEqual(iqd[0], 32.4, 1)
+    self.assertAlmostEqual(iqd[1], -68.8, 1)
     
+      
 if __name__ == '__main__':
   unittest.main()
 

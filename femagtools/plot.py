@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
     femagtools.plot
     ~~~~~~~~~~~~~~~
@@ -50,10 +51,18 @@ def phasor_plot(up, i1, beta, r1, xd, xq, file=None):
     uxd, uxq = ((r1*i1d - xq*i1q)/up, (r1*i1q + xd*i1d)/up)
 
     u1d, u1q = (uxd, 1+uxq)
+    u1 = np.sqrt(u1d**2 + u1q**2)*up
     i1d, i1q = (i1d/i1, i1q/i1)
 
     hw = 0.05
-    ax = pl.axes(aspect='equal')
+    ax = pl.gca()
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    
+    ax.set_title(
+        r'$U_1$={0} V, $I_1$={1} A, $U_p$={2} V'.format(
+            round(u1, 1), round(i1, 1), round(up, 1)), fontsize=14)
+    ax.set_aspect('equal', adjustable='box')
     ax.arrow(0, 0, 0, 1, color='k', head_width=hw,
              length_includes_head=True)
     ax.text(0.08, 0.9, r'$U_p$', fontsize=18)
@@ -62,163 +71,135 @@ def phasor_plot(up, i1, beta, r1, xd, xq, file=None):
     ax.text(u1d, 0.75*u1q, r'$U_1$', fontsize=18)
     ax.arrow(0, 1, uxd, 0, color='g', head_width=hw,
              length_includes_head=True)
-    ax.arrow(uxd, 1, 0, uxq, color='g', head_width=hw,
-             length_includes_head=True)
+    if abs(uxq) > 1e-3:
+        ax.arrow(uxd, 1, 0, uxq, color='g', head_width=hw,
+                 length_includes_head=True)
     ax.arrow(0, 0, i1d, i1q, color='b', head_width=hw,
              length_includes_head=True)
     ax.text(1.15*i1d, 0.72*i1q, r'$I_1$', fontsize=18)
 
     xmin, xmax = (min(0, uxd, i1d), max(0, i1d, uxd))
     ymin, ymax = (min(0, i1q, uxq), max(1, i1q))
-    pl.axis([xmin-0.1, xmax+0.1, ymin-0.1, ymax+0.1])
-    pl.grid(True)
-    if file:
-        pl.savefig(file)
-    else:
-        pl.show()
+    ax.set_xlim([xmin-0.1, xmax+0.1])
+    ax.set_ylim([ymin-0.1, ymax+0.1])
+    ax.grid(True)
         
-
-def pmrelsim_plot(bch, title='', file=None):
-    """creates a plot of a PM/Rel motor simulation"""
-    torque = bch.torque[-1]
-    torque_fft = bch.torque_fft[-1]
-    flux = [bch.flux[k][-1] for k in bch.flux]
-    flux_fft = bch.flux_fft['1'][-1]
+def torque_plot(torque):
+    """plot torque vs position"""
     k = 20
-
     alpha = np.linspace(0, max(torque['angle']),
                         k*len(torque['torque']))
     f = ip.interp1d(torque['angle'], torque['torque'], kind='cubic')
-    torque['angle_fit'] = alpha
-    torque['torque_spline'] = f(alpha)
+    ax = pl.gca()
+    ax.set_title('Torque / Nm')
+    ax.grid(True)
+    ax.plot(torque['angle'], torque['torque'], 'go')
+    ax.plot(alpha, f(alpha))
+    if min(torque['torque']) > 0:
+        ax.set_ylim(bottom=0)
+    
+def torque_fft_plot(torque_fft):
+    """plot torque harmonics"""
+    ax = pl.gca()
+    ax.set_title('Torque Harmonics [Nm]')
+    ax.grid(True)
+    bw = 2.5E-2*max(torque_fft['order'])
+    ax.bar(torque_fft['order'], torque_fft['torque'], width=bw, align='center')
+    ax.set_xlim(left=-bw/2)
 
-    cases = [
-        dict(
-            x=(torque['angle'],
-               torque['angle_fit']),
-            y=(torque['torque'],
-               torque['torque_spline']),
-            title='Torque [Nm]'),
-        dict(
-            x=torque_fft['order'],
-            y=torque_fft['torque'],
-            title='Torque Harmonics [Nm]'),
+def force_x_plot(torque):
+    """plot force x vs position"""
+    x = torque['angle']
+    y = torque['force_x']
+    ax = pl.gca()
+    ax.set_title('Force Fx [N]')
+    ax.grid(True)
+    ax.plot(x, y)
+    ax.set_ylim(bottom=0)
 
-        dict(
-            x=torque['angle'],
-            y=torque['force_x'],
-            title='Force Fx [N]'),
-        dict(
-            x=torque['angle'],
-            y=torque['force_y'],
-            title='Force Fy [N]'),
+def force_y_plot(torque):
+    """plot force y vs position"""
+    x = torque['angle']
+    y = torque['force_y']
+    ax = pl.gca()
+    ax.set_title('Force Fy [N]')
+    ax.grid(True)
+    ax.plot(x, y)
+    ax.set_ylim(bottom=0)
 
-        dict(
-            x=(flux[0]['displ'],
-               flux[1]['displ'],
-               flux[2]['displ']),
-            y=(flux[0]['flux_k'],
-               flux[1]['flux_k'],
-               flux[2]['flux_k']),
-            title='Winding Flux [Vs]'),
-        dict(
-            x=(flux[0]['displ'],
-               flux[1]['displ'],
-               flux[2]['displ']),
-            y=(flux[0]['current_k'],
-               flux[1]['current_k'],
-               flux[2]['current_k']),
-            title='Winding Current [A]'),
+def winding_flux_plot(flux):
+    ax = pl.gca()
+    ax.set_title('Winding Flux [Vs]')
+    ax.grid(True)
+    ax.plot(flux[0]['displ'], flux[0]['flux_k'])
+    ax.plot(flux[1]['displ'], flux[1]['flux_k'])
+    ax.plot(flux[2]['displ'], flux[2]['flux_k'])
 
-        dict(
-            x=flux[0]['displ'],
-            y=flux[0]['voltage_dpsi'],
-            title='Internal Voltage [V]'),
-        dict(
-            x=flux_fft['order'],
-            y=flux_fft['voltage'],
-            title='Internal Voltage Harmonics [V]')]
+def winding_current_plot(flux):
+    ax = pl.gca()
+    ax.set_title('Winding Currents [A]')
+    ax.grid(True)
+    ax.plot(flux[0]['displ'], flux[0]['current_k'])
+    ax.plot(flux[1]['displ'], flux[1]['current_k'])
+    ax.plot(flux[2]['displ'], flux[2]['current_k'])
 
-    if len(bch.flux['1']) > 1:
-        cases += [
-            dict(
-                x=bch.flux['1'][0]['displ'],
-                y=bch.flux['1'][0]['voltage_dpsi'],
-                title='No Load Voltage [V]'),
-            dict(
-                x=bch.flux_fft['1'][0]['order'],
-                y=bch.flux_fft['1'][0]['voltage'],
-                title='No Load Voltage Harmonics [V]')]
+def voltage_plot(title, pos, voltage):
+    ax = pl.gca()
+    ax.set_title(title)
+    ax.grid(True)
+    ax.plot(pos, voltage)
+    
+def voltage_fft_plot(title, order, voltage):
+    ax = pl.gca()
+    ax.set_title('{} [V]'.format(title))
+    ax.grid(True)
+    bw = 2.5E-2*max(order)
+    ax.bar(order, voltage, width=bw, align='center')
 
+
+def pmrelsim_plot(bch, title='', file=None):
+    """creates a plot of a PM/Rel motor simulation"""
     cols = 2
-    rows = len(cases) // cols
+    rows = 4
+    if len(bch.flux['1']) > 1:
+        rows += 1
     htitle = 1.5 if title else 0
     fig, ax = pl.subplots(nrows=rows, ncols=cols,
                           figsize=(10, 3*rows + htitle))
     if title:
         fig.suptitle(title, fontsize=16)
     
-    ax[0, 0].set_title(cases[0]['title'])
-    ax[0, 0].grid(True)
-
-    ax[0, 0].plot(cases[0]['x'][0], cases[0]['y'][0], 'go')
-    ax[0, 0].plot(cases[0]['x'][1], cases[0]['y'][1])
-    ax[0, 0].set_ylim(bottom=0)
-
-    ax[0, 1].set_title(cases[1]['title'])
-    ax[0, 1].grid(True)
-
-    bw = 2.5E-2*max(cases[1]['x'])
-    ax[0, 1].bar(cases[1]['x'], cases[1]['y'], width=bw, align='center')
-    ax[0, 1].set_xlim(left=0)
-
-    ax[1, 0].set_title(cases[2]['title'])
-    ax[1, 0].grid(True)
-
-    ax[1, 0].plot(cases[2]['x'], cases[2]['y'])
-    ax[1, 0].set_ylim(bottom=0)
-
-    ax[1, 1].set_title(cases[3]['title'])
-    ax[1, 1].grid(True)
-
-    ax[1, 1].plot(cases[3]['x'], cases[3]['y'])
-    ax[1, 1].set_ylim(bottom=0)
-
-    ax[2, 0].set_title(cases[4]['title'])
-    ax[2, 0].grid(True)
-
-    ax[2, 0].plot(cases[4]['x'][0], cases[4]['y'][0])
-    ax[2, 0].plot(cases[4]['x'][1], cases[4]['y'][1])
-    ax[2, 0].plot(cases[4]['x'][2], cases[4]['y'][2])
-
-    ax[2, 1].set_title(cases[5]['title'])
-    ax[2, 1].grid(True)
-
-    ax[2, 1].plot(cases[5]['x'][0], cases[5]['y'][0])
-    ax[2, 1].plot(cases[5]['x'][1], cases[5]['y'][1])
-    ax[2, 1].plot(cases[5]['x'][2], cases[5]['y'][2])
-
-    ax[3, 0].set_title('Internal Voltage [V]')
-    ax[3, 0].grid(True)
-
-    ax[3, 0].plot(cases[6]['x'], cases[6]['y'])
-
-    ax[3, 1].set_title(cases[7]['title'])
-    ax[3, 1].grid(True)
-    bw = 2.5E-2*max(cases[7]['x'])
-    ax[3, 1].bar(cases[7]['x'], cases[7]['y'], width=bw, align='center')
-
-    if len(cases) > 8:
-        ax[4, 0].set_title('No Load Voltage [V]')
-        ax[4, 0].grid(True)
-
-        ax[4, 0].plot(cases[8]['x'], cases[8]['y'])
-
-        ax[4, 1].set_title(cases[9]['title'])
-        ax[4, 1].grid(True)
-
-        bw = 2.5E-2*max(cases[9]['x'])
-        ax[4, 1].bar(cases[9]['x'], cases[9]['y'], width=bw, align='center')
+    pl.subplot(rows, cols, 1)
+    torque_plot(bch.torque[-1])
+    pl.subplot(rows, cols, 2)
+    torque_fft_plot(bch.torque_fft[-1])
+    pl.subplot(rows, cols, 3)
+    force_x_plot(bch.torque[-1])
+    pl.subplot(rows, cols, 4)
+    force_y_plot(bch.torque[-1])
+    pl.subplot(rows, cols, 5)
+    flux = [bch.flux[k][-1] for k in bch.flux]
+    winding_flux_plot(flux)
+    pl.subplot(rows, cols, 6)
+    winding_current_plot(flux)
+    pl.subplot(rows, cols, 7)
+    voltage_plot('Internal Voltage [V]',
+                 bch.flux['1'][-1]['displ'],
+                 bch.flux['1'][-1]['voltage_dpsi'])
+    pl.subplot(rows, cols, 8)
+    voltage_fft_plot('Internal Voltage Harmonics [V]',
+                     bch.flux_fft['1'][-1]['order'],
+                     bch.flux_fft['1'][-1]['voltage'])
+                              
+    if len(bch.flux['1']) > 1:
+        pl.subplot(rows, cols, 9)
+        voltage_plot('No Load Voltage [V]',
+                     bch.flux['1'][0]['displ'],
+                     bch.flux['1'][0]['voltage_dpsi'])
+        pl.subplot(rows, cols, 10)
+        voltage_fft_plot('No Load Voltage Harmonics [V]',
+                         bch.flux_fft['1'][-1]['order'],
+                         bch.flux_fft['1'][-1]['voltage'])
 
     if title:
         fig.tight_layout(h_pad=2.5)
@@ -233,104 +214,52 @@ def pmrelsim_plot(bch, title='', file=None):
     pl.close()
 
 
-def cogging_plot(bch, file=None):
-    torque = bch.torque[0]
-    torque_fft = bch.torque_fft[0]
+def cogging_plot(bch, title='', file=None):
+    """creates a cogging plot"""
     flux = [bch.flux[k][0] for k in bch.flux]
-    flux_fft = bch.flux_fft['1'][0]
-    k = 20
-
-    alpha = np.linspace(0, max(torque['angle']),
-                        k*len(torque['torque']))
-    f = ip.interp1d(torque['angle'], torque['torque'], kind='cubic')
-    torque['angle_fit'] = alpha
-    torque['torque_spline'] = f(alpha)
-
-    cases = [
-        dict(
-            x=(torque['angle'],
-               torque['angle_fit']),
-            y=(torque['torque'],
-               torque['torque_spline']),
-            title='Torque [Nm]'),
-        dict(
-            x=torque_fft['order'],
-            y=torque_fft['torque'],
-            title='Torque Harmonics [Nm]'),
-
-        dict(
-            x=torque['angle'],
-            y=torque['force_x'],
-            title='Force Fx [N]'),
-        dict(
-            x=torque['angle'],
-            y=torque['force_y'],
-            title='Force Fy [N]'),
-        
-        dict(
-            x=flux[0]['displ'],
-            y=(flux[0]['voltage_dpsi'],
-               flux[1]['voltage_dpsi'],
-               flux[2]['voltage_dpsi']),
-            title='Voltage [V]'),
-        dict(
-            x=flux_fft['order'],
-            y=flux_fft['voltage'],
-            title='Voltage Harmonics [V]')]
 
     cols = 2
-    rows = len(cases) // cols
-    fig1, ax = pl.subplots(ncols=cols, nrows=rows, figsize=(10, 3*rows))
-
-    ax[0, 0].set_title(cases[0]['title'])
-    ax[0, 0].grid(True)
-
-    ax[0, 0].plot(cases[0]['x'][0], cases[0]['y'][0], 'go')
-    ax[0, 0].plot(cases[0]['x'][1], cases[0]['y'][1])
-
-    ax[0, 1].set_title(cases[1]['title'])
-    ax[0, 1].grid(True)
-
-    bw = 2.5E-2*max(cases[1]['x'])
-    ax[0, 1].bar(cases[1]['x'], cases[1]['y'], width=bw, align='center')
-    ax[0, 1].set_xlim(left=0)
+    rows = 4
+    htitle = 1.5 if title else 0
+    fig, ax = pl.subplots(nrows=rows, ncols=cols,
+                          figsize=(10, 3*rows + htitle))
+    if title:
+        fig.suptitle(title, fontsize=16)
     
-    ax[1, 0].set_title(cases[0]['title'])
-    ax[1, 0].grid(True)
+    pl.subplot(rows, cols, 1)
+    torque_plot(bch.torque[0])
+    pl.subplot(rows, cols, 2)
+    torque_fft_plot(bch.torque_fft[0])
+    pl.subplot(rows, cols, 3)
+    force_x_plot(bch.torque[0])
+    pl.subplot(rows, cols, 4)
+    force_y_plot(bch.torque[0])
+    pl.subplot(rows, cols, 5)
+    flux = [bch.flux[k][-1] for k in bch.flux]
+    winding_flux_plot(flux)
+    pl.subplot(rows, cols, 6)
+    winding_current_plot(flux)
+    pl.subplot(rows, cols, 7)
+    voltage_plot('Voltage [V]',
+                 bch.flux['1'][0]['displ'],
+                 bch.flux['1'][0]['voltage_dpsi'])
+    pl.subplot(rows, cols, 8)
+    voltage_fft_plot('Voltage Harmonics [V]',
+                     bch.flux_fft['1'][0]['order'],
+                     bch.flux_fft['1'][0]['voltage'])
 
-    ax[1, 0].set_title(cases[2]['title'])
-    ax[1, 0].grid(True)
-
-    ax[1, 0].plot(cases[2]['x'], cases[2]['y'])
-    ax[1, 0].set_ylim(bottom=0)
-
-    ax[1, 1].set_title(cases[3]['title'])
-    ax[1, 1].grid(True)
-
-    ax[1, 1].plot(cases[3]['x'], cases[3]['y'])
-    ax[1, 1].set_ylim(bottom=0)
-
-    ax[2, 0].set_title(cases[4]['title'])
-    ax[2, 0].grid(True)
-
-    ax[2, 0].plot(cases[4]['x'], cases[4]['y'][0])
-    ax[2, 0].plot(cases[4]['x'], cases[4]['y'][1])
-    ax[2, 0].plot(cases[4]['x'], cases[4]['y'][2])
-
-    ax[2, 1].set_title(cases[5]['title'])
-    ax[2, 1].grid(True)
-
-    bw = 2.5E-2*max(cases[5]['x'])
-    ax[2, 1].bar(cases[5]['x'], cases[5]['y'], width=bw, align='center')
-    ax[2, 1].set_xlim(left=0)
-
-    fig1.tight_layout()
+    if title:
+        fig.tight_layout(h_pad=2.5)
+        fig.subplots_adjust(top=0.9)
+    else:
+        fig.tight_layout(h_pad=2.5)
+       
     if file:
         pl.savefig(file)
     else:
         pl.show()
     pl.close()
-
+    
 
 def ldlq_plot(bch):
     beta = bch.ldq['beta']

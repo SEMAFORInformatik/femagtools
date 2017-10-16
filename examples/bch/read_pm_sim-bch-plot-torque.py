@@ -18,14 +18,12 @@ ax.set_ylabel(u'Torque [Nm]')
 ax.plot(pos, torque, 'go', label='Calculated')
 
 k = 20
-pos = np.linspace(0, max(bch.torque[-1]['angle']),
-                  k*len(bch.torque[-1]['torque']))
-f = ip.interp1d(bch.torque[-1]['angle'],
-                bch.torque[-1]['torque'], kind='cubic')
+posip = np.linspace(0, pos[-1], k*len(torque))
 
-ax.plot(pos, f(pos), label='Interpolated')
-ax.plot(pos, [np.average(
-    bch.torque[-1]['torque'])]*len(pos), label='Average')
+f = ip.interp1d(pos, torque, kind='cubic')
+
+ax.plot(posip, f(posip), label='Interpolated')
+ax.plot(pos, [np.average(torque)] * len(pos), label='Average')
 ax.legend()
 
 pl.grid()

@@ -220,7 +220,7 @@ def voltage_fft_plot(title, order, voltage):
     ax.bar(order, voltage, width=bw, align='center')
 
 
-def pmrelsim_plot(bch, title='', file=None):
+def pmrelsim_plot(bch, title=''):
     """creates a plot of a PM/Rel motor simulation"""
     cols = 2
     rows = 4
@@ -276,9 +276,9 @@ def pmrelsim_plot(bch, title='', file=None):
     fig.tight_layout(h_pad=3.5)
     if title:
         fig.subplots_adjust(top=0.92)
-       
+    
 
-def cogging_plot(bch, title='', file=None):
+def cogging_plot(bch, title=''):
     """creates a cogging plot"""
     cols = 2
     rows = 3
@@ -453,7 +453,6 @@ def ldlq_plot(bch):
     fig.add_subplot(rows, 2, 6, projection='3d')
     i1beta_lq_plot(i1, beta, lq)
 
-        
 
 def psidq_plot(bch):
     """creates the surface plots of a BCH reader object

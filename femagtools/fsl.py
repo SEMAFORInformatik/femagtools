@@ -79,37 +79,41 @@ class Builder:
         return self.__render(model, 'new_model')
     
     def create_model(self, model, magnets=None):
+        magnetMat = None
+        magndata = ['']
+        if magnets and 'material' in model.magnet:
+            magnetMat = magnets.find(model.magnet['material'])
+            if not magnetMat:
+                raise FslBuilderError('magnet material {} not found'.format(
+                    model.magnet['material']))
+            if not magnetMat.get('mcvkey', 0):
+                magndata = ['pre_models("Magnet-data")', '']
+        
         return self.create_new_model(model) + \
             self.__render(model.windings, 'cu_losses') + \
             self.create_stator_model(model) + \
             ['post_models("nodedistance", "ndst" )',
              'agndst=ndst[1]*1e3'] + \
             self.__render(model, 'gen_winding') + \
-            self.create_magnet(model, magnets) + \
+            self.create_magnet(model, magnetMat) + \
             self.create_magnet_model(model) + \
             self.create_connect_models(model) + \
-            ['']
+            magndata
     
     def open_model(self, model, magnets=None):
-        return self.create_open(model) + \
-            self.create_magnet(model, magnets)
-#            self.__render(model.windings, 'cu_losses')
+        return self.create_open(model)
     
     def load_model(self, model, magnets=None):
         return self.__render(model, 'open')
     
-    def create_magnet(self, model, magnets):
+    def create_magnet(self, model, magnetMat):
         try:
-            if magnets and 'material' in model.magnet:
-                magnet = magnets.find(model.magnet['material'])
-                if magnet:
-                    if 'mcvkey' in magnet:
-                        model.set_mcvkey_magnet(magnet['mcvkey'])
-                    return self.__render(magnet, 'magnet')
-                raise FslBuilderError('magnet material {} not found'.format(
-                    model.magnet['material']))
-            return [' m.remanenc       =  1.2',
-                    ' m.relperm        =  1.05']
+            if magnetMat:
+                if 'mcvkey' in magnetMat:
+                    model.set_mcvkey_magnet(magnetMat['mcvkey'])
+                return self.__render(magnetMat, 'magnet')
+            return ['m.remanenc       =  1.2',
+                    'm.relperm        =  1.05']
         except AttributeError:
             pass  # no magnet
         return []
@@ -130,7 +134,8 @@ class Builder:
         return (self.__render(model, 'cu_losses') +
                 self.__render(model, model.get('calculationMode')) +
                 airgap_induc +
-                self.__render(model, 'plots'))
+                self.__render(model, 'plots') +
+                ['save_model(cont)'])
             
     def create_airgap_induc(self):
             return self.__render(dict(), 'airgapinduc')

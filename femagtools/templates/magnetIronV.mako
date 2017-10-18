@@ -11,7 +11,11 @@ m.iron_height     =    ${model.get(['magnet','magnetIronV', 'iron_height'])*1e3}
 m.iron_shape      =    ${model.get(['magnet','magnetIronV', 'iron_shape'])*1e3}
 m.air_triangle    =    ${model.get(['magnet','magnetIronV', 'air_triangle'])}
 m.gap_ma_iron     =    ${model.get(['magnet','magnetIronV', 'gap_ma_iron'])*1e3}
-m.magn_rem         =    ${model.get(['magnet','magnetIronV', 'magn_rem'])}
+% if model.get(['magnet','magnetIronV', 'magn_rem']):
+m.magn_rem        =    ${model.get(['magnet','magnetIronV', 'magn_rem'])}
+% else:
+m.magn_rem        =    ${model.get('remanenc', 1.2)}
+%endif
 m.shaft_rad       =     ${model.get(['magnet','magnetIronV', 'condshaft_r'])*1e3}
 
 m.zeroangl        =     0.0

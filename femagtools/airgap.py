@@ -8,7 +8,11 @@
     :copyright: 2017 Semafor Informatik & Energie AG, Basel
     :license: BSD, see LICENSE for more details.
 """
+import sys
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def read(filename):
@@ -20,6 +24,7 @@ def read(filename):
     """
     bag = np.loadtxt(filename).T
     if len(bag) < 3:
+        logger.warn("%s has incomplete content", filename)
         return(dict())
 
     phi = bag[0]
@@ -33,6 +38,8 @@ def read(filename):
     
     # find the peak and interpolate
     i = np.argmax(abs(Y))
+    logger.debug("Len %d max phi %f max amp %f",
+                 len(phi), phi[-1], abs(Y[i]))
     if i == 0 or abs((br[-1] - br[0])/(np.max(br) - np.min(br))) > 1e-3:
         br = np.append(br, -1*br)
         Y = 2*np.fft.rfft(br)/len(br)
@@ -40,6 +47,8 @@ def read(filename):
         i = np.argmax(abs(Y))
 
     if freq[i] > 0:
+        logger.info("%s: Period %f max phi %f B amp %f",
+                    filename, 1/freq[i], len(br)*dphi, abs(Y[i]))
         a = abs(Y[i])
         T0 = abs(1/freq[i])
         x0 = np.angle(Y[i])
@@ -52,3 +61,12 @@ def read(filename):
                 B=br.tolist(),
                 B_fft=(a*np.cos(x+x0)).tolist())
 
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
+    else:
+        filename = sys.stdin.readline().strip()
+            
+    print(read(filename)['Bamp'])

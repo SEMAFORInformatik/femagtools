@@ -40,7 +40,7 @@ def read(filename):
     i = np.argmax(abs(Y))
     logger.debug("Len %d max phi %f max amp %f",
                  len(phi), phi[-1], abs(Y[i]))
-    if i == 0 or abs((br[-1] - br[0])/(np.max(br) - np.min(br))) > 1e-3:
+    if i == 0 or abs((br[-1] - br[0])/(np.max(br) - np.min(br))) > 1e-2:
         br = np.append(br, -1*br)
         Y = 2*np.fft.rfft(br)/len(br)
         freq = np.fft.fftfreq(len(br), d=dphi)

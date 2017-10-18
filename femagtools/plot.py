@@ -270,8 +270,8 @@ def pmrelsim_plot(bch, title=''):
                      bch.flux['1'][0]['voltage_dpsi'])
         pl.subplot(rows, cols, 10)
         voltage_fft_plot('No Load Voltage Harmonics',
-                         bch.flux_fft['1'][-1]['order'],
-                         bch.flux_fft['1'][-1]['voltage'])
+                         bch.flux_fft['1'][0]['order'],
+                         bch.flux_fft['1'][0]['voltage'])
 
     fig.tight_layout(h_pad=3.5)
     if title:

@@ -156,8 +156,11 @@ class Reader:
             self.losses['B'] = Bv.tolist()
             self.losses['pfe'] = list(zip(*m))
 
+    def __getitem__(self, index):
+        return self.__getattribute__(index)
+    
     def getValues(self):
-            
+        """return values as mcv dict"""
         return {
             'name': self.name,
             'desc': self.mc1_title,

@@ -12,6 +12,7 @@ import numpy as np
 import os
 import re
 import codecs
+import femagtools.mcv as mcv
 import femagtools.losscoeffs
 import json
 import logging
@@ -22,9 +23,6 @@ MUE0 = 4e-7*np.pi  # 1.2566371E-06
 fo = 50.
 Bo = 1.5
 numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)')
-
-MC1_MIMAX = 50
-MC1_NIMAX = 50
 
 
 def readlist(f):
@@ -50,27 +48,12 @@ class Reader:
 
     def __init__(self, filename):
         self.version_mc_curve = 0
-        self.mc1_type = 1
-        self.mc1_remz = 0.0
-        self.mc1_recalc = 0
-        self.mc1_bsat = 0.0
-        self.mc1_bref = 0.0
-        self.mc1_curves = 1
-
-        self.mc1_fillfac = 1.0
-        self.rho = 7.6
-        self.MCURVES_MAX = 20
-        self.MC1_NIMAX = 50
-        self.MC1_MIMAX = 50
-        self.mc1_db2 = [0. for I in range(self.MCURVES_MAX)]
-#        self.mc1_energy = [[0 for I in range(self.MCURVES_MAX)]
-#                           for K in range(self.MC1_MIMAX)]
+        self.mc1_type = mcv.MAGCRV
 
         self.curve = []
         self.name = os.path.splitext(
             os.path.basename(filename))[0]
         self.mc1_title = 'ThyssenKrupp Steel'
-        self.mc1_curves = 1
         self.curve = [{}]
         self.curve[0]['hi'] = []
         self.curve[0]['bi'] = []
@@ -82,7 +65,6 @@ class Reader:
         self.cw_freq = None
         self.b_coeff = None
         self.rho = 7.6
-        self.fe_sat_mag = 2.15
         self.losses = dict(f=[], B=[], pfe=[])
 
         with codecs.open(filename, encoding='utf-8', errors='ignore') as f:
@@ -166,11 +148,6 @@ class Reader:
             'desc': self.mc1_title,
             'cversion': self.version_mc_curve,
             'ctype': self.mc1_type,
-            'recalc': self.mc1_recalc,
-            'remz': self.mc1_remz,
-            'bsat': self.mc1_bsat,
-            'bref': self.mc1_bref,
-            'fillfac': self.mc1_fillfac,
             'curve': self.curve,
             'fo': self.fo,
             'Bo': self.Bo,
@@ -182,7 +159,13 @@ class Reader:
             'rho': self.rho,
             'fe_sat_mag': self.fe_sat_mag,
             'losses': self.losses}
-                                     
+
+
+def read(filename):
+    """read Thyssen File TKS and return mc dict"""
+    tks = Reader(filename)
+    return tks.getValues()
+
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         filename = sys.argv[1]

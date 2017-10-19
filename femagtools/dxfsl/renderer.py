@@ -144,8 +144,7 @@ class PlotRenderer(object):
         for p in points:
             self.point(p, 'go')
             while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
-                x = lower.pop()
-#                self.point(x, 'ro')
+                lower.pop()
             lower.append(p)
         print("lower={}".format(lower))
 
@@ -165,8 +164,6 @@ class PlotRenderer(object):
                 pl.plot([h[0]], [h[1]], 'ro')
 
         if with_corners:
-#            for c in geom.find_corners(geom.g.nodes()):
-#                self.point(c, 'rs')
             for c in g.find_corners(geom.g.nodes(), True):
                 self.point(c, 'rs')
 

@@ -93,6 +93,8 @@ def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
            np.isclose(p1[1], p2[1], rtol, atol)
 
 def in_range(x, v1, v2):
+    """ Die Funktion prüft, ob der Wert x zwischen v1 und v1 liegt.
+    """
     if not greater_equal(x, v1):
         return False
     if not less_equal(x, v2):
@@ -100,13 +102,19 @@ def in_range(x, v1, v2):
     return True
 
 def normalise_angle(alpha):
-    if alpha < -np.pi:
+    """ Die Funktion liefert den Winkel alpha als Wert zwischen - und + pi.
+    """
+    while alpha < -np.pi:
         alpha += 2*np.pi
-    elif alpha > np.pi:
+
+    while alpha > np.pi:
         alpha -= 2*np.pi
+        
     return alpha
 
 def is_same_angle(angle1, angle2):
+    """ Die Funktion prüft, ob die beiden Winkelmasse logisch gleich sind.
+    """
     return np.isclose(np.cos(angle1), np.cos(angle2)) and \
            np.isclose(np.sin(angle1), np.sin(angle2))
 
@@ -119,8 +127,8 @@ def alpha_angle(startangle, endangle):
     return angle - 2.0*np.pi
 
 def part_of_circle(startangle, endangle):
-    """ Die Funktion prüft, ob der Winkel einen sich wiederholenden Teil eines
-        Kreises begrenzt.
+    """ Die Funktion prüft, ob der Winkel ein ganzzahliger Teil eines
+        Kreises ist und liefert den Nenner von 1/n.
     """
     start = normalise_angle(startangle)
     end = normalise_angle(endangle)
@@ -248,38 +256,6 @@ def reshape(geom, incl_bnd=False):
     sector.add_line(p0, p1)
 
     return sector
-
-#############################
-#           Corner          #
-#############################
-
-class Corner(object):
-    def __init__(self, center, p):
-        self.__p = p
-        self.__dist = distance(center, p)
-        self.__keep = False
-       
-    def point(self):
-        return self.__p
-        
-    def is_equal(self, p):
-        return np.isclose(self.__p[0], p[0]) and np.isclose(self.__p[1], p[1])
-        
-    def set_keep_node(self):
-        self.__keep = True
-
-    def keep_node(self):
-        return self.__keep
-
-    def __lt__(self, c):               
-        if self.__dist < c.__dist:
-            return 1
-        else:
-            return 0
-        
-    def __str__(self):
-        return "Corner: p={}".format(self.__p)
-
 
 def find_corners(nodes, all=False):
     """find corners of nodes"""
@@ -591,6 +567,37 @@ def dxfshapes(dxffile, layers=[]):
                 for p in polylines(e):
                     yield p
             id += 1
+
+#############################
+#           Corner          #
+#############################
+
+class Corner(object):
+    def __init__(self, center, p):
+        self.__p = p
+        self.__dist = distance(center, p)
+        self.__keep = False
+       
+    def point(self):
+        return self.__p
+        
+    def is_equal(self, p):
+        return np.isclose(self.__p[0], p[0]) and np.isclose(self.__p[1], p[1])
+        
+    def set_keep_node(self):
+        self.__keep = True
+
+    def keep_node(self):
+        return self.__keep
+
+    def __lt__(self, c):               
+        if self.__dist < c.__dist:
+            return 1
+        else:
+            return 0
+        
+    def __str__(self):
+        return "Corner: p={}".format(self.__p)
 
 #############################
 #       Shape (Basis)       #

@@ -53,6 +53,27 @@ def iqd(beta, i1):
                                      np.sin(beta)])
     
 
+def create(bch, r1, ls):
+    """create PmRelMachine from BCH"""
+    m = bch.machine['m']
+    p = bch.machine['p']
+    if bch.type == 'Fast Psid-Psiq-Identification':
+        id = bch.psidq['id']
+        iq = bch.psidq['iq']
+        psid = bch.psidq['psid']
+        psiq = bch.psidq['psiq']
+        return PmRelMachinePsidq(m, p, psid, psiq, r1, id, iq, ls)
+        
+    if bch.type == 'Fast LD-LQ-Identification':
+        beta = bch.ldq['beta']
+        i1 = bch.ldq['i1']
+        psid = bch.ldq['psid']
+        psiq = bch.ldq['psiq']
+        return PmRelMachineLdq(m, p, psid=psid, psiq=psiq, r1=r1,
+                               i1=i1, beta=beta, ls=ls)
+    raise ValueError("Unsupported BCH type {}".format(bch.type))
+
+
 class PmRelMachine(object):
     """Abstract base class for PmRelMachines
 

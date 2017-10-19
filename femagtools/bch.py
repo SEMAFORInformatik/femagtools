@@ -855,7 +855,6 @@ class Reader:
                                                               'plfe2')])]
 
     def __read_dq_parameter(self, content):
-        import pdb
         if content[1].find('Windings') > -1:
             
             for l in content[1:]:
@@ -923,29 +922,44 @@ class Reader:
                 pass
             return
         
-        for k in ('i1', 'beta', 'ld', 'lq', 'psim',
+        for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'up',
                   'psid', 'psiq', 'torque', 'torquefe',
                   'p2', 'u1', 'gamma', 'phi'):
             self.dqPar[k] = []
         lfe = 1e3*self.dqPar['lfe']
 
+        keys = []
         for l in content:
             rec = self._numPattern.findall(l)
             if len(rec) == 8:
-                for k, r in zip(*[('i1', 'beta', 'ld', 'lq', 'psim',
-                                   'psid', 'psiq', 'torque'), rec]):
+                for k, r in zip(*[keys, rec]):
                     self.dqPar[k].append(floatnan(r))
                 self.dqPar['p2'].append(self.dqPar['torque'][-1] *
                                         lfe*2*np.pi*self.dqPar['speed'])
-                for k in ('ld', 'lq', 'psim', 'psid', 'psiq', 'torque'):
-                    self.dqPar[k][-1] = lfe * self.dqPar[k][-1]
+                for k in ('ld', 'lq', 'psim', 'psid', 'up', 'psiq', 'torque'):
+                    if self.dqPar[k]:
+                        self.dqPar[k][-1] = lfe * self.dqPar[k][-1]
             elif len(rec) == 7:
                 self.dqPar['torquefe'].append(floatnan(rec[2]))
                 self.dqPar['u1'].append(floatnan(rec[4]))
                 self.dqPar['gamma'].append(floatnan(rec[6]))
-                self.dqPar['phi'].append(floatnan(rec[1]) + # self.dqPar['beta'][-1] +
+                self.dqPar['phi'].append(floatnan(rec[1]) +
                                          self.dqPar['gamma'][-1])
-
+            else:
+                headers = l.split()
+                try:  # must distinguish ee and pm
+                    if headers[5] == 'Voltage':
+                        keys = ('i1', 'beta', 'ld', 'lq', 'up',
+                                'psid', 'psiq', 'torque')
+                    if headers[5] == 'Psi_magn':
+                        keys = ('i1', 'beta', 'ld', 'lq', 'psim',
+                                'psid', 'psiq', 'torque')
+                except:
+                    pass
+        if self.dqPar['psim']:
+            self.dqPar.pop('up', None)
+        else:
+            self.dqPar.pop('psim', None)
         self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
                                 for phi in self.dqPar['phi']]
         self.dqPar['i1'].insert(0, 0)

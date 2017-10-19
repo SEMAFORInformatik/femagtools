@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Reader:
+class Reader(object):
     def __init__(self, filename):
         self.mc1_type = mcv.MAGCRV
 

@@ -44,7 +44,7 @@ def pfe2(f, B, cw, fw, fb):
     return cw*(f/fo)**fw * (B/Bo)**fb
 
 
-class Reader:
+class Reader(object):
 
     def __init__(self, filename):
         self.version_mc_curve = 0

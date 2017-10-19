@@ -1108,6 +1108,10 @@ class Reader:
                     rec = self._numPattern.findall(l)
                     if len(rec) == 4:
                         losses[k].append([floatnan(x) for x in rec])
+                    elif len(rec) == 5:  # FEMAG Rel 8.3 with el/mech order
+                        losses[k].append([floatnan(x)
+                                          for i, x in enumerate(rec)
+                                          if not i == 1])
                 except:
                     pass
                     

@@ -89,17 +89,19 @@ class Builder:
             if not magnetMat.get('mcvkey', 0):
                 magndata = ['pre_models("Magnet-data")', '']
         
-        return self.create_new_model(model) + \
-            self.__render(model.windings, 'cu_losses') + \
-            self.create_stator_model(model) + \
-            ['post_models("nodedistance", "ndst" )',
-             'agndst=ndst[1]*1e3'] + \
-            self.__render(model, 'gen_winding') + \
-            self.create_magnet(model, magnetMat) + \
-            self.create_magnet_model(model) + \
-            self.create_connect_models(model) + \
-            magndata
-    
+        if model.is_complete():
+            return self.create_new_model(model) + \
+                self.__render(model.windings, 'cu_losses') + \
+                self.create_stator_model(model) + \
+                ['post_models("nodedistance", "ndst" )',
+                 'agndst=ndst[1]*1e3'] + \
+                self.init__render(model, 'gen_winding') + \
+                self.create_magnet(model, magnetMat) + \
+                self.create_magnet_model(model) + \
+                self.create_connect_models(model) + \
+                magndata
+        return self.open_model(model, magnets)
+
     def open_model(self, model, magnets=None):
         return self.create_open(model)
     

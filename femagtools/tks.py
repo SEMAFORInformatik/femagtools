@@ -97,7 +97,7 @@ class Reader(object):
                 self.losses['pfe'],
                 self.Bo,
                 self.fo)
-            logger.info("Loss coeffs %s", z)
+            logger.info("Jordan loss coeffs %s", z)
             self.ch = z[2]
             self.ch_freq = z[3]
             self.cw = z[0]
@@ -110,6 +110,7 @@ class Reader(object):
                 self.losses['pfe'],
                 self.Bo,
                 self.fo)
+            logger.info("Steinmeth loss coeffs %s", z)
             
             self.losses['cw'] = z[0]
             self.losses['cw_freq'] = z[1]
@@ -149,7 +150,6 @@ class Reader(object):
             'cw_freq': self.cw_freq,
             'b_coeff': self.b_coeff,
             'rho': self.rho,
-            'fe_sat_mag': self.fe_sat_mag,
             'losses': self.losses}
 
 
@@ -159,13 +159,14 @@ def read(filename):
     return tks.getValues()
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')    
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:
         filename = sys.stdin.readline().strip()
             
     tks = Reader(filename)
-    
     if tks.losses:
         import matplotlib.pylab as pl
         import numpy as np
@@ -174,14 +175,16 @@ if __name__ == "__main__":
         ch = tks.ch
         beta = tks.ch_freq
         gamma = tks.b_coeff
-        
+
         for i, f in enumerate(tks.losses['f']):
-            pfe = [p for p in np.array(tks.losses['pfe']).T[i] if p]
-            pl.plot(tks.losses['B'],
-                    lc.pfe_jordan(f, np.array(tks.losses['B']),
-                                  cw, alpha, ch, beta, gamma))
-            pl.plot(tks. losses['B'][:len(pfe)], pfe,
-                    marker='o', label="{} Hz".format(f))
+            if f > 0:
+                pfe = [p for p in np.array(tks.losses['pfe']).T[i] if p]
+                pl.plot(tks.losses['B'],
+                        lc.pfe_jordan(f, np.array(tks.losses['B']),
+                                      cw, alpha, ch, beta, gamma,
+                                      tks.fo, tks.Bo))
+                pl.plot(tks. losses['B'][:len(pfe)], pfe,
+                        marker='o', label="{} Hz".format(f))
 
         pl.title("Iron Losses " + filename)
         #pl.yscale('log')

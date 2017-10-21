@@ -17,7 +17,7 @@ import struct
 import math
 import numpy as np
 from six import string_types
-import femagtools.losscoeffs
+import femagtools.losscoeffs as lc
 
 # curve types
 types = {1: 'Soft iron B(H)',
@@ -371,17 +371,17 @@ class Writer(Mcv):
             cw = self.losses['cw']
             alpha = self.losses['cw_freq']
             beta = self.losses['b_coeff']
-            steinmetz = lambda fr, Br: (cw*fr**alpha * Br**beta)
             
             for f, p in zip(self.losses['f'], self.losses['pfe']):
                 if f:
-                    pl = [px if px else steinmetz(f/self.losses['fo'],
-                                                  b/self.losses['Bo'])
+                    pl = [px if px else lc.steinmetz(f, b, cw, alpha, beta,
+                                                     self.losses['fo'],
+                                                     self.losses['Bo'])
                           for px, b in zip(p, self.losses['B'])]
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - nind))
                     self.writeBlock(f)
-            for m in range(M_LOSS_FREQ -  nfreq):
+            for m in range(M_LOSS_FREQ - nfreq):
                 self.writeBlock([0.0]*M_LOSS_INDUCT)
                 self.writeBlock(0.0)
 
@@ -993,7 +993,7 @@ class MagnetizingCurve(object):
             if 'losses' not in self.mcv[m]:
                 continue
             losses = self.mcv[m]['losses']
-            cw, alfa, beta = femagtools.losscoeffs.fitsteinmetz(
+            cw, alfa, beta = lc.fitsteinmetz(
                 losses['f'],
                 losses['B'],
                 losses['pfe'],

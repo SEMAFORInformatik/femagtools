@@ -12,8 +12,8 @@ import numpy as np
 import os
 import re
 import codecs
-import femagtools.mcv as mcv
-import femagtools.losscoeffs
+import femagtools.losscoeffs as lc
+import femagtools.mcv
 import json
 import logging
 
@@ -36,19 +36,11 @@ def readlist(f):
             x.append(vals)
 
 
-def pfe1(f, B, ch, fh, cw, fw, fb):
-    return (ch*(f/fo)**fh + cw*(f/fo)**fw)*(B/Bo)**fb
-
-
-def pfe2(f, B, cw, fw, fb):
-    return cw*(f/fo)**fw * (B/Bo)**fb
-
-
 class Reader(object):
 
     def __init__(self, filename):
         self.version_mc_curve = 0
-        self.mc1_type = mcv.MAGCRV
+        self.mc1_type = femagtools.mcv.MAGCRV
 
         self.curve = []
         self.name = os.path.splitext(
@@ -99,7 +91,7 @@ class Reader(object):
 
         if self.losses and not np.isscalar(self.losses['B'][0]):
             import scipy.interpolate as ip
-            z = femagtools.losscoeffs.fitjordan(
+            z = lc.fitjordan(
                 self.losses['f'],
                 self.losses['B'],
                 self.losses['pfe'],
@@ -112,7 +104,7 @@ class Reader(object):
             self.cw_freq = z[1]
             self.b_coeff = z[4]
             
-            z = femagtools.losscoeffs.fitsteinmetz(
+            z = lc.fitsteinmetz(
                 self.losses['f'],
                 self.losses['B'],
                 self.losses['pfe'],
@@ -185,8 +177,9 @@ if __name__ == "__main__":
         
         for i, f in enumerate(tks.losses['f']):
             pfe = [p for p in np.array(tks.losses['pfe']).T[i] if p]
-            pl.plot(tks.losses['B'], pfe1(f, np.array(tks.losses['B']),
-                                          cw, alpha, ch, beta, gamma))
+            pl.plot(tks.losses['B'],
+                    lc.pfe_jordan(f, np.array(tks.losses['B']),
+                                  cw, alpha, ch, beta, gamma))
             pl.plot(tks. losses['B'][:len(pfe)], pfe,
                     marker='o', label="{} Hz".format(f))
 

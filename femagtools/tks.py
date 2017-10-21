@@ -88,6 +88,8 @@ class Reader(object):
                     self.losses['f'].append(fxref)
                     self.losses['B'].append(b)
                     self.losses['pfe'].append(p)
+                    
+        logger.info("%s Bmax %3.2f", filename, max(self.curve[0]['bi']))
 
         if self.losses and not np.isscalar(self.losses['B'][0]):
             import scipy.interpolate as ip
@@ -159,8 +161,9 @@ def read(filename):
     return tks.getValues()
 
 if __name__ == "__main__":
+    
     logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(message)s')    
+                        format='%(asctime)s %(message)s')
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:
@@ -169,6 +172,7 @@ if __name__ == "__main__":
     tks = Reader(filename)
     if tks.losses:
         import matplotlib.pylab as pl
+        import femagtools.plot
         import numpy as np
         cw = tks.cw
         alpha = tks.cw_freq
@@ -176,25 +180,10 @@ if __name__ == "__main__":
         beta = tks.ch_freq
         gamma = tks.b_coeff
 
-        for i, f in enumerate(tks.losses['f']):
-            if f > 0:
-                pfe = [p for p in np.array(tks.losses['pfe']).T[i] if p]
-                pl.plot(tks.losses['B'],
-                        lc.pfe_jordan(f, np.array(tks.losses['B']),
-                                      cw, alpha, ch, beta, gamma,
-                                      tks.fo, tks.Bo))
-                pl.plot(tks. losses['B'][:len(pfe)], pfe,
-                        marker='o', label="{} Hz".format(f))
-
-        pl.title("Iron Losses " + filename)
-        #pl.yscale('log')
-        #pl.xscale('log')
-        pl.xlabel("Induction [T]")
-        pl.ylabel("Pfe [W/kg]")
-        #pl.legend()
-        pl.grid(True)
-        #pl.savefig('tks.png')
+        femagtools.plot.felosses_plot(tks.losses,
+                                      (cw, alpha, ch, beta, gamma),
+                                      title=filename, log=False)
         pl.show()
-
+        
     mcv = tks.getValues()
     json.dump(mcv, sys.stdout)

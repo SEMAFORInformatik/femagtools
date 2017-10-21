@@ -489,6 +489,35 @@ def psidq_plot(bch):
     fig.add_subplot(rows, 2, 6, projection='3d')
     idq_lq_plot(id, iq, lq)
 
+
+def felosses_plot(losses, coeffs, title='', log=True):
+    import femagtools.losscoeffs as lc
+    ax = pl.gca()
+
+    fo = losses['fo']
+    Bo = losses['Bo']
+    B = pl.np.linspace(0.9*np.min(losses['B']),
+                       1.1*0.9*np.max(losses['B']))
+                                  
+    for i, f in enumerate(losses['f']):
+        pfe = [p for p in np.array(losses['pfe']).T[i] if p]
+        if f > 0:
+            if len(coeffs) == 5:
+                ax.plot(B, lc.pfe_jordan(f, B, *coeffs, fo=fo, Bo=Bo))
+            elif len(coeffs) == 3:
+                ax.plot(B, lc.pfe_steinmetz(f, B, *coeffs, fo=fo, Bo=Bo))
+        pl.plot(losses['B'][:len(pfe)], pfe,
+                marker='o', label="{} Hz".format(f))
+
+    ax.set_title("Fe Losses/(W/kg) " + title)
+    if log:
+        ax.set_yscale('log')
+        ax.set_xscale('log')
+    ax.set_xlabel("Induction [T]")
+    #pl.ylabel("Pfe [W/kg]")
+    ax.legend()
+    ax.grid(True)
+    
 if __name__ == "__main__":
     import io
     import sys

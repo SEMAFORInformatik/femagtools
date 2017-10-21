@@ -491,6 +491,13 @@ def psidq_plot(bch):
 
 
 def felosses_plot(losses, coeffs, title='', log=True):
+    """plot iron losses with steinmetz or jordan approximation
+    Args:
+      losses: dict with f, B, pfe values
+      coeffs: list with steinmetz (cw, alpha, beta) or
+              jordan (cw, alpha, ch, beta, gamma) coeffs
+      title: title string
+      log: log scale for x and y axes if True"""
     import femagtools.losscoeffs as lc
     ax = pl.gca()
 

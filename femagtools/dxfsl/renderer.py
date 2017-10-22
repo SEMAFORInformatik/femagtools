@@ -59,23 +59,23 @@ class PlotRenderer(object):
     def __init__(self):
         pass
     
-    def arc(self, startangle, endangle, center, radius):
-        color = 'blue'
+    def arc(self, startangle, endangle, center, radius, color = 'blue'):
         self.ax.add_patch(pch.Arc(center, 2*radius, 2*radius,
                                   angle=0,
                                   theta1=startangle*180/np.pi,
                                   theta2=endangle*180/np.pi,
                                   color=color))
 
-    def line(self, p1, p2):
-        color = 'blue'
+    def line(self, p1, p2, color='blue'):
         self.ax.add_line(pl.Line2D((p1[0], p2[0]),
                                    (p1[1], p2[1]), color=color))
     
-    def circle(self, center, radius):
-        color = 'blue'
+    def circle(self, center, radius, color='blue'):
         self.ax.add_patch(pch.Circle(center, radius,
                                      fill=False, color=color))
+
+    def point(self, p, col, color='blue'):
+        pl.plot([p[0]], [p[1]], col, color=color)
         
     def render(self, geom, filename=None, **kwargs):
         draw_center = kwargs.get('draw_center', False)
@@ -88,7 +88,7 @@ class PlotRenderer(object):
 
         if draw_hull:
             for h in g.convex_hull(geom.g.nodes()):
-                pl.plot([h[0]], [h[1]], 'gs')
+                pl.plot([h[0]], [h[1]], 'ro')
                 
         id = 0
         for area in geom.areas(incl_bnd):
@@ -107,7 +107,7 @@ class PlotRenderer(object):
 #                    self.ax.text(p[0], p[1], str(id))
 
         geom.remove_areas(incl_bnd)
-                
+
         # draw all remaining edges and circles
         [circle.render(self) for circle in geom.circles()]
         [attr['object'].render(self)
@@ -121,12 +121,81 @@ class PlotRenderer(object):
             for c in geom.find_corners(geom.g):
                 pl.plot([c[0]], [c[1]], 'bs')
 
+        geom.render_schnitt(self)
         self.ax.axis('scaled', aspect='equal')
         if filename:
             pl.savefig(filename)
         else:
             pl.show()
 
+    def print_convex_hull(self, nodes):
+        points = list(nodes)
+        points.sort()
+        if len(points) <= 1:
+            return points
+    
+        def cross(o, a, b):
+            dx = a[0] - o[0], a[1] - o[1]
+            dy = b[0] - o[0], b[1] - o[1]
+            return dx[0] * dy[1] - dx[1] * dy[0]
+    
+        print("=== Print Convex Hull ===")
+        lower = []
+        for p in points:
+            self.point(p, 'go')
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+                lower.pop()
+            lower.append(p)
+        print("lower={}".format(lower))
+
+    def render_elements(self, geom, type, **kwargs):
+        with_nodes = kwargs.get('with_nodes', False)
+        with_hull = kwargs.get('with_hull', False)
+        with_corners = kwargs.get('with_corners', False)
+
+        fig = pl.figure()
+        self.ax = fig.add_subplot(111)
+        
+        for e in geom.elements(type):
+            e.render(self, 'blue', with_nodes)
+        
+        if with_hull:
+            for h in g.convex_hull(geom.virtual_nodes()):
+                pl.plot([h[0]], [h[1]], 'ro')
+
+        if with_corners:
+            for c in g.find_corners(geom.g.nodes(), True):
+                self.point(c, 'rs')
+
+        geom.render_schnitt(self)
+        geom.render_airgaps(self)
+
+        if geom.center:
+            self.circle(geom.center, 3, 'darkgreen')
+            
+        self.ax.axis('scaled', aspect='equal')
+        pl.show()
+
+    def render_areas(self, geom, **kwargs):
+        with_nodes = kwargs.get('with_nodes', False)
+        
+        fig = pl.figure()
+        self.ax = fig.add_subplot(111)
+
+        colors = ('red', 'green', 'blue', 'magenta', 'orange', 'grey', 'darkgreen')
+        
+        c = -1
+        for area in geom.areas(True):
+            if len(area) > 1:
+                c += 1
+                if c >= len(colors):
+                    c = 0
+                for s in area:
+                    s.render(self, colors[c], with_nodes)
+
+        self.ax.axis('scaled', aspect='equal')
+        pl.show()
+            
     def draw_slot(self, id, slot, ax):
         poly = pch.Polygon(slot, fill=True, color='#ee82ee')
 

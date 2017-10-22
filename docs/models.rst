@@ -422,14 +422,7 @@ magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0
-plots           Create plots                    []
 ==============  ============================= ==========  ============
-
-.. note::
-   
-   plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
-   'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
-   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.profemag.ch/ColorGrad.html) added in version 0.0.16
    
 Example::
 
@@ -437,9 +430,7 @@ Example::
     calculationMode="cogg_fast",
     magn_temp=60.0,
     num_move_steps=49,
-    speed=50.0,
-    plots=['field_lines', 'Babs'])
-
+    speed=50.0)
 
 PM/Rel Machine Simulation (pm_sym_fast)
 
@@ -461,6 +452,12 @@ plots           Create plots                    []
 airgap_induc    calculate airgap induction      False
 ==============  ============================= ==========  ============
 
+.. note::
+   
+   plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
+   'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
+   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.profemag.ch/ColorGrad.html) added in version 0.0.16
+
 Example::
 
   operatingConditions = dict(
@@ -468,7 +465,8 @@ Example::
     wind_temp=60.0,
     magn_temp=60.0,
     current=50.0,
-    speed=50.0)
+    speed=50.0,
+    plots=['field_lines', 'Babs'])
 
 .. note::
    If airgap_induc is True the induction in the airgap is calculated after the simulation returns. The values can be read with the method read_airgap_induc() of call Femag.
@@ -503,7 +501,6 @@ beta_min        Min. Beta angle                           deg
 beta_max        Max. beta angle                           deg
 num_cur_steps   Number of current steps
 num_beta_steps  Number of beta steps
-plots           Create plots                    []
 ==============  ============================= ==========  ============
 
 Example::
@@ -532,13 +529,12 @@ magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0         
-max_id          Max. Amplitude Id current                 A 
-min_id          Min. Amplitude Id current                 A 
-max_iq          Max. Amplitude Iq current                 A 
-min_iq          Min. Amplitude Iq current                 A 
+maxid           Max. Amplitude Id current                 A 
+minid           Min. Amplitude Id current                 A 
+maxiq           Max. Amplitude Iq current                 A 
+miniq           Min. Amplitude Iq current                 A 
 delta_id        Delta of Id current steps                 A
 delta_iq        Delta of Iq current steps                 A
-plots           Create plots                    []
 ==============  ============================= ==========  ============
 
 Example::
@@ -547,10 +543,10 @@ Example::
     num_move_steps=25,
     calculationMode="psd_psq_fast",
     magn_temp=60.0,
-    max_id=0.0,
-    min_id=-150.0,
-    max_iq=150.0
-    min_iq=0.0,
+    maxid=0.0,
+    minid=-150.0,
+    maxiq=150.0
+    miniq=0.0,
     delta_id=50.0,
     delta_iq=50.0,
     speed=50.0)

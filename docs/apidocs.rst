@@ -11,11 +11,36 @@ Basic Classes
 .. autoclass:: femagtools.model.MachineModel
    :members:
 
-.. autoclass:: femagtools.mcv.MagnetizingCurve
-   :members:
-      
 .. autoclass:: femagtools.fsl.Builder
    :members:
+
+.. automodule:: femagtools.plot
+   :members:
+
+Material Handling
+-----------------
+
+.. autoclass:: femagtools.mcv.MagnetizingCurve
+   :members:
+
+.. autoclass:: femagtools.tks.Reader
+   :members:
+      
+.. autoclass:: femagtools.vbf.Reader
+   :members:
+      
+.. automodule:: femagtools.losscoeffs
+   :members:
+      
+
+Analytical Models
+-----------------
+.. autoclass:: femagtools.machine.PmRelMachineLdq
+   :members:
+      
+.. autoclass:: femagtools.machine.PmRelMachinePsidq
+   :members:
+
 
 Calculation Engines
 -------------------

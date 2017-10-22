@@ -95,7 +95,7 @@ class Builder:
                 self.create_stator_model(model) + \
                 ['post_models("nodedistance", "ndst" )',
                  'agndst=ndst[1]*1e3'] + \
-                self.init__render(model, 'gen_winding') + \
+                self.__render(model, 'gen_winding') + \
                 self.create_magnet(model, magnetMat) + \
                 self.create_magnet_model(model) + \
                 self.create_connect_models(model) + \

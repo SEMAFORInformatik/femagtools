@@ -188,24 +188,25 @@ def force_plot(title, pos, force):
 
 
 def winding_flux_plot(pos, flux):
+    """plot flux vs position"""
     ax = pl.gca()
     ax.set_title('Winding Flux / Vs')
     ax.grid(True)
-    ax.plot(pos[0], flux[0])
-    ax.plot(pos[1], flux[1])
-    ax.plot(pos[2], flux[2])
+    for p, f in zip(pos, flux):
+        ax.plot(p, f)
 
 
 def winding_current_plot(pos, current):
+    """plot winding currents"""
     ax = pl.gca()
     ax.set_title('Winding Currents / A')
     ax.grid(True)
-    ax.plot(pos[0], current[0])
-    ax.plot(pos[1], current[1])
-    ax.plot(pos[2], current[2])
+    for p, i in zip(pos, current):
+        ax.plot(p, i)
 
 
 def voltage_plot(title, pos, voltage):
+    """plot voltage vs. position"""
     ax = pl.gca()
     ax.set_title('{} / V'.format(title))
     ax.grid(True)
@@ -213,11 +214,57 @@ def voltage_plot(title, pos, voltage):
     
 
 def voltage_fft_plot(title, order, voltage):
+    """plot FFT harmonics of voltage"""
     ax = pl.gca()
     ax.set_title('{} / V'.format(title))
     ax.grid(True)
     bw = 2.5E-2*max(order)
     ax.bar(order, voltage, width=bw, align='center')
+
+
+def mcv_hbj_plot(mcv, log=True):
+    """plot H, B, J of mcv dict"""
+    import femagtools.mcv
+    MUE0 = 4e-7*np.pi
+
+    bh = [(bi, hi*1e-3)
+          for bi, hi in zip(mcv['curve'][0]['bi'],
+                            mcv['curve'][0]['hi'])]
+    if mcv['ctype'] in (femagtools.mcv.MAGCRV,
+                        femagtools.mcv.ORIENT_CRV):
+        ji = [b-MUE0*h*1e3 for b, h in bh]
+    else:
+        ji = []
+    bi, hi = zip(*bh)
+
+    ax = pl.gca()
+    ax.set_title(mcv['name'])
+    if log:
+        ax.semilogx(hi, bi, label='Induction')
+        if ji:
+            ax.semilogx(hi, ji, label='Polarisation')
+    else:
+        ax.plot(hi, bi, label='Induction')
+        if ji:
+            ax.plot(hi, ji, label='Polarisation')
+    ax.set_xlabel('H / kA/m')
+    ax.set_ylabel('T')
+    if ji:
+        ax.legend(loc='lower right')
+    ax.grid()
+
+
+def mcv_muer_plot(mcv):
+    """plot rel. permeability vs. B of mcv dict"""
+    MUE0 = 4e-7*np.pi
+    bi, ur = zip(*[(bx, bx/hx/MUE0)
+                   for bx, hx in zip(mcv['curve'][0]['bi'],
+                                     mcv['curve'][0]['hi']) if not hx == 0])
+    ax = pl.gca()
+    ax.plot(bi, ur)
+    ax.set_xlabel('B / T')
+    ax.set_title('rel. Permeability')
+    ax.grid()
 
 
 def pmrelsim_plot(bch, title=''):

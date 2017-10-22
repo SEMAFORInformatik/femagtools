@@ -124,7 +124,7 @@ def findNotNone(l):
     return (i, j)
 
 
-class Mcv:
+class Mcv(object):
     def __init__(self):
         # default values from file: mcv.par
         self.ACT_VERSION_MC_CURVE = 0
@@ -182,6 +182,11 @@ class Mcv:
             if vlist[i] != 0.:
                 break
         return list(vlist[:i+1])
+
+    def __getitem__(self, index):
+        if index == 'ctype':  # for compatibility purposes
+            return self.mc1_type
+        return self.__getattribute__(index)
 
 
 class Writer(Mcv):
@@ -663,18 +668,12 @@ class Reader(Mcv):
             'name': self.name,
             'desc': self.mc1_title,
             'cversion': self.version_mc_curve,
-            #'ni': [n for n in self.mc1_ni if n],
-            #'mi': [m for m in self.mc1_mi if m],
             'ctype': self.mc1_type,
             'recalc': self.mc1_recalc,
-            #'db2': self.mc1_db2,
             'remz': self.mc1_remz,
             'bsat': self.mc1_bsat,
             'bref': self.mc1_bref,
             'fillfac': self.mc1_fillfac,
-            #'curves': self.mc1_curves,
-            #'curve': self.curve,
-            #'energy': self.mc1_energy,
             'fo': self.fo,
             'Bo': self.Bo,
             'ch': self.ch,

@@ -46,5 +46,5 @@ def create_fsl(machine,
         magnets = Magnet(magnetmat)
     if operatingconditions:
             return builder.create(model, operatingconditions, magnets)
-    return builder.create_model(model, magnets)
+    return builder.create_model(model, magnets) + ['save_model(cont)']
     

@@ -32,14 +32,16 @@ def _create_3d_axis():
         
 def _plot_surface(ax, x, y, z, labels, azim=None):
     """helper function for surface plots"""
-    ax.tick_params(axis='both', which='major', pad=-3)
+    #ax.tick_params(axis='both', which='major', pad=-3)
     if azim is not None:
         ax.azim = azim
     X, Y = np.meshgrid(x, y)
     ax.plot_surface(X, Y, z,
-                    rstride=1, cstride=1, cmap=cm.jet,
-                    linewidth=0, antialiased=True,
-                    edgecolor=(0, 0, 0, 0))
+                    rstride=1, cstride=1,
+                    cmap=cm.viridis,  # alpha=0.8,
+                    vmin=np.nanmin(z), vmax=np.nanmax(z),
+                    linewidth=0, antialiased=True)
+#                    edgecolor=(0, 0, 0, 0))
 
     #ax.set_xticks(xticks)
     #ax.set_yticks(yticks)
@@ -68,7 +70,7 @@ def __phasor_plot(up, idq, uxdq):
     ax.set_title(
         r'$U_1$={0} V, $I_1$={1} A, $U_p$={2} V'.format(
             round(u1, 1), round(i1, 1), round(up, 1)), fontsize=14)
-    ax.set_aspect('equal', adjustable='box')
+
     ax.arrow(0, 0, 0, 1, color='k', head_width=hw,
              length_includes_head=True)
     ax.text(0.08, 0.9, r'$U_p$', fontsize=18)
@@ -85,13 +87,14 @@ def __phasor_plot(up, idq, uxdq):
     ax.text(1.15*i1d, 0.72*i1q, r'$I_1$', fontsize=18)
 
     xmin, xmax = (min(0, uxd, i1d), max(0, i1d, uxd))
-    ymin, ymax = (min(0, i1q, uxq), max(1, i1q))
+    ymin, ymax = (min(0, i1q, 1-uxq), max(1, i1q))
+
     ax.set_xlim([xmin-0.1, xmax+0.1])
     ax.set_ylim([ymin-0.1, ymax+0.1])
     ax.grid(True)
 
 
-def i1beta_phasor_plot(up, i1, beta, r1, xd, xq):
+def i1beta_phasor(up, i1, beta, r1, xd, xq):
     """creates a phasor plot
     up: internal voltage
     i1: current
@@ -105,7 +108,7 @@ def i1beta_phasor_plot(up, i1, beta, r1, xd, xq):
     __phasor_plot(up, (i1d, i1q), uxdq)
 
 
-def iqd_phasor_plot(up, iqd, uqd):
+def iqd_phasor(up, iqd, uqd):
     """creates a phasor plot
     up: internal voltage
     iqd: current
@@ -115,19 +118,19 @@ def iqd_phasor_plot(up, iqd, uqd):
     __phasor_plot(up, (iqd[1]/np.sqrt(2), iqd[0]/np.sqrt(2)), uxdq)
 
 
-def phasor_plot(bch):
+def phasor(bch):
     """create phasor plot from bch"""
     f1 = bch.machine['p']*bch.dqPar['speed']
     w1 = 2*np.pi*f1
     xd = w1*bch.dqPar['ld'][1]
     xq = w1*bch.dqPar['lq'][1]
     r1 = bch.machine['r1']
-    i1beta_phasor_plot(bch.dqPar['up0'],
-                       bch.dqPar['i1'][-1], bch.dqPar['beta'][1],
-                       r1, xd, xq)
+    i1beta_phasor(bch.dqPar['up0'],
+                  bch.dqPar['i1'][-1], bch.dqPar['beta'][1],
+                  r1, xd, xq)
     
 
-def airgap_plot(airgap):
+def airgap(airgap):
     """creates plot of flux density in airgap"""
     pl.title('Airgap Induction [T]')
     pl.plot(airgap['pos'], airgap['B'])
@@ -136,7 +139,7 @@ def airgap_plot(airgap):
     pl.grid()
 
     
-def torque_plot(pos, torque):
+def torque(pos, torque):
     """creates plot from torque vs position"""
     k = 20
     alpha = np.linspace(0, pos[-1],
@@ -158,7 +161,7 @@ def torque_plot(pos, torque):
         ax.set_ylim(top=0)
     
 
-def torque_fft_plot(order, torque):
+def torque_fft(order, torque):
     """plot torque harmonics"""
     unit = 'Nm'
     scale = 1
@@ -173,7 +176,7 @@ def torque_fft_plot(order, torque):
     ax.set_xlim(left=-bw/2)
 
 
-def force_plot(title, pos, force):
+def force(title, pos, force):
     """plot force vs position"""
     unit = 'N'
     scale = 1
@@ -187,7 +190,7 @@ def force_plot(title, pos, force):
     ax.set_ylim(bottom=0)
 
 
-def winding_flux_plot(pos, flux):
+def winding_flux(pos, flux):
     """plot flux vs position"""
     ax = pl.gca()
     ax.set_title('Winding Flux / Vs')
@@ -196,7 +199,7 @@ def winding_flux_plot(pos, flux):
         ax.plot(p, f)
 
 
-def winding_current_plot(pos, current):
+def winding_current(pos, current):
     """plot winding currents"""
     ax = pl.gca()
     ax.set_title('Winding Currents / A')
@@ -205,7 +208,7 @@ def winding_current_plot(pos, current):
         ax.plot(p, i)
 
 
-def voltage_plot(title, pos, voltage):
+def voltage(title, pos, voltage):
     """plot voltage vs. position"""
     ax = pl.gca()
     ax.set_title('{} / V'.format(title))
@@ -213,7 +216,7 @@ def voltage_plot(title, pos, voltage):
     ax.plot(pos, voltage)
     
 
-def voltage_fft_plot(title, order, voltage):
+def voltage_fft(title, order, voltage):
     """plot FFT harmonics of voltage"""
     ax = pl.gca()
     ax.set_title('{} / V'.format(title))
@@ -222,7 +225,7 @@ def voltage_fft_plot(title, order, voltage):
     ax.bar(order, voltage, width=bw, align='center')
 
 
-def mcv_hbj_plot(mcv, log=True):
+def mcv_hbj(mcv, log=True):
     """plot H, B, J of mcv dict"""
     import femagtools.mcv
     MUE0 = 4e-7*np.pi
@@ -254,7 +257,7 @@ def mcv_hbj_plot(mcv, log=True):
     ax.grid()
 
 
-def mcv_muer_plot(mcv):
+def mcv_muer(mcv):
     """plot rel. permeability vs. B of mcv dict"""
     MUE0 = 4e-7*np.pi
     bi, ur = zip(*[(bx, bx/hx/MUE0)
@@ -267,7 +270,28 @@ def mcv_muer_plot(mcv):
     ax.grid()
 
 
-def pmrelsim_plot(bch, title=''):
+def mtpa(pmrel, i1max):
+    """create a surface plot with torque and mtpa curve"""
+    nsamples = 50
+    iqmax, idmax = pmrel.iqdmax(i1max)
+    iqmin, idmin = pmrel.iqdmin(i1max)
+    id = np.linspace(idmin, 0, nsamples)
+    iq = np.linspace(0, iqmax, nsamples)
+    i1 = np.linspace(0, i1max, nsamples)
+    iopt = np.array([pmrel.mtpa(x) for x in i1]).T
+    torque_iqd = np.array(
+        [[pmrel.torque_iqd(x, y)
+          for y in id] for x in iq])
+
+    idq_torque(id, iq, torque_iqd)
+    ax = pl.gca()
+    ax.plot(iopt[1], iopt[0], iopt[2],
+            color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
+                iopt[2][-1]))
+    ax.legend()
+
+
+def pmrelsim(bch, title=''):
     """creates a plot of a PM/Rel motor simulation"""
     cols = 2
     rows = 4
@@ -280,43 +304,43 @@ def pmrelsim_plot(bch, title=''):
         fig.suptitle(title, fontsize=16)
     
     pl.subplot(rows, cols, 1)
-    torque_plot(bch.torque[-1]['angle'], bch.torque[-1]['torque'])
+    torque(bch.torque[-1]['angle'], bch.torque[-1]['torque'])
     pl.subplot(rows, cols, 2)
-    torque_fft_plot(bch.torque_fft[-1]['order'], bch.torque_fft[-1]['torque'])
+    torque_fft(bch.torque_fft[-1]['order'], bch.torque_fft[-1]['torque'])
     pl.subplot(rows, cols, 3)
-    force_plot('Force Fx',
+    force('Force Fx',
                bch.torque[-1]['angle'], bch.torque[-1]['force_x'])
     pl.subplot(rows, cols, 4)
-    force_plot('Force Fy',
+    force('Force Fy',
                bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
     pl.subplot(rows, cols, 5)
     flux = [bch.flux[k][-1] for k in bch.flux]
     pos = [f['displ'] for f in flux]
-    winding_flux_plot(pos,
+    winding_flux(pos,
                       (flux[0]['flux_k'],
                        flux[1]['flux_k'],
                        flux[2]['flux_k']))
     pl.subplot(rows, cols, 6)
-    winding_current_plot(pos,
+    winding_current(pos,
                          (flux[0]['current_k'],
                           flux[1]['current_k'],
                           flux[2]['current_k']))
     pl.subplot(rows, cols, 7)
-    voltage_plot('Internal Voltage',
+    voltage('Internal Voltage',
                  bch.flux['1'][-1]['displ'],
                  bch.flux['1'][-1]['voltage_dpsi'])
     pl.subplot(rows, cols, 8)
-    voltage_fft_plot('Internal Voltage Harmonics',
+    voltage_fft('Internal Voltage Harmonics',
                      bch.flux_fft['1'][-1]['order'],
                      bch.flux_fft['1'][-1]['voltage'])
                               
     if len(bch.flux['1']) > 1:
         pl.subplot(rows, cols, 9)
-        voltage_plot('No Load Voltage',
+        voltage('No Load Voltage',
                      bch.flux['1'][0]['displ'],
                      bch.flux['1'][0]['voltage_dpsi'])
         pl.subplot(rows, cols, 10)
-        voltage_fft_plot('No Load Voltage Harmonics',
+        voltage_fft('No Load Voltage Harmonics',
                          bch.flux_fft['1'][0]['order'],
                          bch.flux_fft['1'][0]['voltage'])
 
@@ -325,7 +349,7 @@ def pmrelsim_plot(bch, title=''):
         fig.subplots_adjust(top=0.92)
     
 
-def cogging_plot(bch, title=''):
+def cogging(bch, title=''):
     """creates a cogging plot"""
     cols = 2
     rows = 3
@@ -336,21 +360,21 @@ def cogging_plot(bch, title=''):
         fig.suptitle(title, fontsize=16)
     
     pl.subplot(rows, cols, 1)
-    torque_plot(bch.torque[0]['angle'], bch.torque[0]['torque'])
+    torque(bch.torque[0]['angle'], bch.torque[0]['torque'])
     pl.subplot(rows, cols, 2)
-    torque_fft_plot(bch.torque_fft[0]['order'], bch.torque_fft[0]['torque'])
+    torque_fft(bch.torque_fft[0]['order'], bch.torque_fft[0]['torque'])
     pl.subplot(rows, cols, 3)
-    force_plot('Force Fx',
+    force('Force Fx',
                bch.torque[0]['angle'], bch.torque[0]['force_x'])
     pl.subplot(rows, cols, 4)
-    force_plot('Force Fy',
+    force('Force Fy',
                bch.torque[0]['angle'], bch.torque[0]['force_y'])
     pl.subplot(rows, cols, 5)
-    voltage_plot('Voltage',
+    voltage('Voltage',
                  bch.flux['1'][0]['displ'],
                  bch.flux['1'][0]['voltage_dpsi'])
     pl.subplot(rows, cols, 6)
-    voltage_fft_plot('Voltage Harmonics',
+    voltage_fft('Voltage Harmonics',
                      bch.flux_fft['1'][0]['order'],
                      bch.flux_fft['1'][0]['voltage'])
 
@@ -359,7 +383,7 @@ def cogging_plot(bch, title=''):
         fig.subplots_adjust(top=0.92)
        
 
-def i1beta_torque_plot(i1, beta, torque):
+def i1beta_torque(i1, beta, torque):
     """creates a surface plot of torque vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
@@ -368,7 +392,7 @@ def i1beta_torque_plot(i1, beta, torque):
                   azim=210)
 
 
-def i1beta_ld_plot(i1, beta, ld):
+def i1beta_ld(i1, beta, ld):
     """creates a surface plot of ld vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
@@ -377,7 +401,7 @@ def i1beta_ld_plot(i1, beta, ld):
                   azim=60)
     
 
-def i1beta_lq_plot(i1, beta, lq):
+def i1beta_lq(i1, beta, lq):
     """creates a surface plot of ld vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
@@ -386,7 +410,7 @@ def i1beta_lq_plot(i1, beta, lq):
                   azim=60)
 
 
-def i1beta_psim_plot(i1, beta, psim):
+def i1beta_psim(i1, beta, psim):
     """creates a surface plot of psim vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
@@ -395,7 +419,7 @@ def i1beta_psim_plot(i1, beta, psim):
                   azim=60)
 
 
-def i1beta_psid_plot(i1, beta, psid):
+def i1beta_psid(i1, beta, psid):
     """creates a surface plot of psid vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
@@ -404,7 +428,7 @@ def i1beta_psid_plot(i1, beta, psid):
                   azim=-60)
 
 
-def i1beta_psiq_plot(i1, beta, psiq):
+def i1beta_psiq(i1, beta, psiq):
     """creates a surface plot of psiq vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
@@ -413,7 +437,7 @@ def i1beta_psiq_plot(i1, beta, psiq):
                   azim=210)
 
 
-def idq_torque_plot(id, iq, torque):
+def idq_torque(id, iq, torque):
     """creates a surface plot of torque vs id, iq"""
     _create_3d_axis()
     ax = pl.gca()
@@ -422,7 +446,7 @@ def idq_torque_plot(id, iq, torque):
                   azim=-60)
 
 
-def idq_psid_plot(id, iq, psid):
+def idq_psid(id, iq, psid):
     """creates a surface plot of psid vs id, iq"""
     _create_3d_axis()
     ax = pl.gca()
@@ -431,7 +455,7 @@ def idq_psid_plot(id, iq, psid):
                   azim=210)
 
 
-def idq_psiq_plot(id, iq, psiq):
+def idq_psiq(id, iq, psiq):
     """creates a surface plot of psiq vs id, iq"""
     _create_3d_axis()
     ax = pl.gca()
@@ -440,7 +464,7 @@ def idq_psiq_plot(id, iq, psiq):
                   azim=210)
 
 
-def idq_psim_plot(id, iq, psim):
+def idq_psim(id, iq, psim):
     """creates a surface plot of psim vs. id, iq"""
     _create_3d_axis()
     ax = pl.gca()
@@ -449,7 +473,7 @@ def idq_psim_plot(id, iq, psim):
                   azim=120)
     
 
-def idq_ld_plot(id, iq, ld):
+def idq_ld(id, iq, ld):
     """creates a surface plot of ld vs. id, iq"""
     _create_3d_axis()
     ax = pl.gca()
@@ -458,7 +482,7 @@ def idq_ld_plot(id, iq, ld):
                   azim=120)
     
 
-def idq_lq_plot(id, iq, lq):
+def idq_lq(id, iq, lq):
     """creates a surface plot of lq vs. id, iq"""
     _create_3d_axis()
     ax = pl.gca()
@@ -467,7 +491,7 @@ def idq_lq_plot(id, iq, lq):
                   azim=120)
     
 
-def ldlq_plot(bch):
+def ldlq(bch):
     """creates the surface plots of a BCH reader object
     with a ld-lq identification"""
     beta = bch.ldq['beta']
@@ -483,25 +507,25 @@ def ldlq_plot(bch):
     fig = pl.figure(figsize=(10, 4*rows))
     fig.suptitle('Ld-Lq Identification {}'.format(bch.filename), fontsize=16)
     fig.add_subplot(rows, 2, 1, projection='3d')
-    i1beta_torque_plot(i1, beta, torque)
+    i1beta_torque(i1, beta, torque)
 
     fig.add_subplot(rows, 2, 2, projection='3d')
-    i1beta_psid_plot(i1, beta, psid)
+    i1beta_psid(i1, beta, psid)
     
     fig.add_subplot(rows, 2, 3, projection='3d')
-    i1beta_psiq_plot(i1, beta, psiq)
+    i1beta_psiq(i1, beta, psiq)
 
     fig.add_subplot(rows, 2, 4, projection='3d')
-    i1beta_psim_plot(i1, beta, psim)
+    i1beta_psim(i1, beta, psim)
 
     fig.add_subplot(rows, 2, 5, projection='3d')
-    i1beta_ld_plot(i1, beta, ld)
+    i1beta_ld(i1, beta, ld)
 
     fig.add_subplot(rows, 2, 6, projection='3d')
-    i1beta_lq_plot(i1, beta, lq)
+    i1beta_lq(i1, beta, lq)
 
 
-def psidq_plot(bch):
+def psidq(bch):
     """creates the surface plots of a BCH reader object
     with a psid-psiq identification"""
     id = bch.psidq['id']
@@ -519,25 +543,25 @@ def psidq_plot(bch):
         bch.filename), fontsize=16)
 
     fig.add_subplot(rows, 2, 1, projection='3d')
-    idq_torque_plot(id, iq, torque)
+    idq_torque(id, iq, torque)
     
     fig.add_subplot(rows, 2, 2, projection='3d')
-    idq_psid_plot(id, iq, psid)
+    idq_psid(id, iq, psid)
     
     fig.add_subplot(rows, 2, 3, projection='3d')
-    idq_psiq_plot(id, iq, psiq)
+    idq_psiq(id, iq, psiq)
 
     fig.add_subplot(rows, 2, 4, projection='3d')
-    idq_psim_plot(id, iq, psim)
+    idq_psim(id, iq, psim)
     
     fig.add_subplot(rows, 2, 5, projection='3d')
-    idq_ld_plot(id, iq, ld)
+    idq_ld(id, iq, ld)
     
     fig.add_subplot(rows, 2, 6, projection='3d')
-    idq_lq_plot(id, iq, lq)
+    idq_lq(id, iq, lq)
 
 
-def felosses_plot(losses, coeffs, title='', log=True):
+def felosses(losses, coeffs, title='', log=True):
     """plot iron losses with steinmetz or jordan approximation
     Args:
       losses: dict with f, B, pfe values
@@ -582,13 +606,13 @@ if __name__ == "__main__":
             bchresults.read(f.readlines())
 
         if bchresults.type == 'Fast PM-Synchronous-Motor Simulation':
-            pmrelsim_plot(bchresults, bchresults.filename)
+            pmrelsim(bchresults, bchresults.filename)
         elif bchresults.type == 'Fast cogging calculation OF FORCES AND FLUX':
-            cogging_plot(bchresults, bchresults.filename)
+            cogging(bchresults, bchresults.filename)
         elif bchresults.type == 'Fast LD-LQ-Identification':
-            ldlq_plot(bchresults)
+            ldlq(bchresults)
         elif bchresults.type == 'Fast Psid-Psiq-Identification':
-            psidq_plot(bchresults)
+            psidq(bchresults)
         else:
             raise ValueError("BCH type {} not yet supported".format(
                 bchresults.type))

@@ -21,12 +21,12 @@ else:  # Permanent Magnet
 fig, ax = pl.subplots(nrows=1, ncols=ncols)
 if ncols > 1:
     pl.subplot(1, ncols, 1)
-    femagtools.plot.mcv_hbj_plot(mcv)
+    femagtools.plot.mcv_hbj(mcv)
     pl.subplot(1, ncols, 2)
-    femagtools.plot.mcv_muer_plot(mcv)
+    femagtools.plot.mcv_muer(mcv)
 else:
     pl.subplot(1, ncols, 1)
-    femagtools.plot.mcv_hbj_plot(mcv, log=False)
+    femagtools.plot.mcv_hbj(mcv, log=False)
     
 fig.tight_layout()
 fig.subplots_adjust(top=0.94)

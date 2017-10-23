@@ -79,6 +79,11 @@ def create(bch, r1, ls, lfe=1):
     p = int(round(np.sqrt(2)*bch['M_sim'][-1][-1]/(
         m*bch['Psi_d'][-1][-1] * bch['i1'][-1])))
 
+    #return PmRelMachineLdq(m, p, r1=r1,
+    #                       beta=bch['beta'], i1=bch['i1'],
+    #                       psid=lfe*np.array(bch['Psi_d'])/np.sqrt(2),
+    #                       psiq=lfe*np.array(bch['Psi_q'])/np.sqrt(2),
+    #                       ls=ls)
     return PmRelMachineLdq(m, p, r1=r1,
                            beta=bch['beta'], i1=bch['i1'],
                            ld=lfe*np.array(bch['Ld']),
@@ -340,7 +345,8 @@ class PmRelMachineLdq(PmRelMachine):
 
         super(self.__class__, self).__init__(m, p, r1, ls)
         self.psid = None
-        self.betamin = -np.pi/2
+        self.betarange = (-np.pi, 0)
+        self.i1range = (0, np.inf)
         if np.isscalar(ld):
             self.ld = lambda b, i: ld
             self.psim = lambda b, i: psim
@@ -360,7 +366,8 @@ class PmRelMachineLdq(PmRelMachine):
             return
         
         beta = np.asarray(beta)/180.0*np.pi
-        self.betamin = min(beta)
+        self.betarange = (min(beta), 0)
+        self.i1range = (0, np.max(i1))
         self.io = iqd(np.min(beta)/2, np.max(i1)/2)
         if 'psid' in kwargs:
             kx = ky = 3
@@ -427,16 +434,24 @@ class PmRelMachineLdq(PmRelMachine):
     def psi(self, iq, id):
         """return psid, psiq of currents iq, id"""
         beta, i1 = betai1(np.asarray(iq), np.asarray(id))
-        if self.psid:
-            return (self.psid(beta, i1), self.psiq(beta, i1))
+        if (self.betarange[0] <= beta <= self.betarange[1] and
+            i1 <= self.i1range[1]):
+            if self.psid:
+                return (self.psid(beta, i1), self.psiq(beta, i1))
 
-        psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
-        psiq = self.lq(beta, i1)*iq
-        return (psid, psiq)
+            psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
+            psiq = self.lq(beta, i1)*iq
+            return (psid, psiq)
+        
+        return (np.nan, np.nan)
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""
-        return iqd(self.betamin, i1)
+        return iqd(self.betarange[0], i1)
+    
+    def iqdmax(self, i1):
+        """max iq, min id for given current"""
+        return iqd(self.betarange[1], i1)
 
 
 class PmRelMachinePsidq(PmRelMachine):
@@ -464,7 +479,8 @@ class PmRelMachinePsidq(PmRelMachine):
         psiq = np.asarray(psiq)
         id = np.asarray(id)
         iq = np.asarray(iq)
-        self.idmin = min(id)
+        self.idrange = (min(id), max(id))
+        self.iqrange = (min(iq), max(iq))
         self.io = np.max(iq)/2, np.min(id)/2
         
         if np.any(psid.shape < (4, 4)):
@@ -507,8 +523,25 @@ class PmRelMachinePsidq(PmRelMachine):
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""
-        idmin = np.sqrt(2)*i1
-        if idmin < self.idmin:
-            return (0, idmin)
-        
-        return (np.sqrt(self.idmin**2 - idmin**2), idmin)
+        idmin = -np.sqrt(2)*i1
+        if self.idrange[0] <= idmin <= self.idrange[1]:
+            return (self.iqrange[1], idmin)
+
+        iqmax = np.sqrt(idmin**2 - self.idrange[0]**2)
+        if self.iqrange[0] <= iqmax <= self.iqrange[1]:
+            return (iqmax, idmin)
+
+        return (self.iqrange[1], self.idrange[0])
+
+    def iqdmax(self, i1):
+        """max iq, max id for given current"""
+        iqmax = np.sqrt(2)*i1
+        if self.iqrange[0] <= iqmax <= self.iqrange[1]:
+            return (iqmax, self.idrange[1])
+
+        idmin = np.sqrt(iqmax**2 - self.iqrange[1]**2)
+        if self.idrange[0] <= idmin <= self.idrange[1]:
+            return (iqmax, idmin)
+
+        return (self.iqrange[1], self.idrange[0])
+

@@ -3,6 +3,7 @@
 import unittest
 import femagtools
 import femagtools.machine
+import math
 import os
 
 class PmMachineTest(unittest.TestCase):
@@ -237,9 +238,11 @@ class PmMachineTest(unittest.TestCase):
 
     bch = femagtools.read_bchfile(os.path.join(testPath, 'ldq.BATCH'))
     pm = femagtools.machine.create(bch, r1=0, ls=0)
-    iqd = pm.iqd_torque(120)
-    self.assertAlmostEqual(iqd[0], 32.4, 1)
-    self.assertAlmostEqual(iqd[1], -68.8, 1)
+    iqd = pm.iqd_torque(211.35)
+
+    beta, i1 = femagtools.machine.betai1(*iqd)
+    self.assertAlmostEqual(beta*180/math.pi, -30, 0)
+    self.assertAlmostEqual(i1, 100, 0)
     
       
 if __name__ == '__main__':

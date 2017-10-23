@@ -345,7 +345,7 @@ class PmRelMachineLdq(PmRelMachine):
 
         super(self.__class__, self).__init__(m, p, r1, ls)
         self.psid = None
-        self.betarange = (-np.pi, 0)
+        self.betarange = (-np.pi, np.pi)
         self.i1range = (0, np.inf)
         if np.isscalar(ld):
             self.ld = lambda b, i: ld
@@ -366,8 +366,6 @@ class PmRelMachineLdq(PmRelMachine):
             return
         
         beta = np.asarray(beta)/180.0*np.pi
-        self.betarange = (min(beta), 0)
-        self.i1range = (0, np.max(i1))
         self.io = iqd(np.min(beta)/2, np.max(i1)/2)
         if 'psid' in kwargs:
             kx = ky = 3
@@ -411,6 +409,8 @@ class PmRelMachineLdq(PmRelMachine):
             raise ValueError("unsupported array size {}x{}".format(
                 len(beta), len(i1)))
             
+        self.betarange = (min(beta), 0)
+        self.i1range = (0, np.max(i1))
         self.ld = lambda x, y: ip.RectBivariateSpline(
             beta, i1, np.asarray(ld)).ev(x, y)
         self.psim = lambda x, y: ip.RectBivariateSpline(
@@ -442,7 +442,7 @@ class PmRelMachineLdq(PmRelMachine):
             psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
             psiq = self.lq(beta, i1)*iq
             return (psid, psiq)
-        
+
         return (np.nan, np.nan)
 
     def iqdmin(self, i1):

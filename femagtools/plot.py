@@ -38,7 +38,7 @@ def _plot_surface(ax, x, y, z, labels, azim=None):
     X, Y = np.meshgrid(x, y)
     ax.plot_surface(X, Y, z,
                     rstride=1, cstride=1,
-                    cmap=cm.viridis,  # alpha=0.8,
+                    cmap=cm.viridis, alpha=0.85,
                     vmin=np.nanmin(z), vmax=np.nanmax(z),
                     linewidth=0, antialiased=True)
 #                    edgecolor=(0, 0, 0, 0))
@@ -279,6 +279,7 @@ def mtpa(pmrel, i1max):
     iq = np.linspace(0, iqmax, nsamples)
     i1 = np.linspace(0, i1max, nsamples)
     iopt = np.array([pmrel.mtpa(x) for x in i1]).T
+
     torque_iqd = np.array(
         [[pmrel.torque_iqd(x, y)
           for y in id] for x in iq])
@@ -287,7 +288,7 @@ def mtpa(pmrel, i1max):
     ax = pl.gca()
     ax.plot(iopt[1], iopt[0], iopt[2],
             color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
-                iopt[2][-1]))
+                np.max(iopt[2])))
     ax.legend()
 
 

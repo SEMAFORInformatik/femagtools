@@ -79,17 +79,12 @@ def create(bch, r1, ls, lfe=1):
     p = int(round(np.sqrt(2)*bch['M_sim'][-1][-1]/(
         m*bch['Psi_d'][-1][-1] * bch['i1'][-1])))
 
-    #return PmRelMachineLdq(m, p, r1=r1,
-    #                       beta=bch['beta'], i1=bch['i1'],
-    #                       psid=lfe*np.array(bch['Psi_d'])/np.sqrt(2),
-    #                       psiq=lfe*np.array(bch['Psi_q'])/np.sqrt(2),
-    #                       ls=ls)
     return PmRelMachineLdq(m, p, r1=r1,
                            beta=bch['beta'], i1=bch['i1'],
-                           ld=lfe*np.array(bch['Ld']),
-                           psim=lfe*np.array(bch['Psi_pm']),
-                           lq=lfe*np.array(bch['Lq']), ls=ls)
-    
+                           psid=lfe*np.array(bch['Psi_d'])/np.sqrt(2),
+                           psiq=lfe*np.array(bch['Psi_q'])/np.sqrt(2),
+                           ls=ls)
+
 
 class PmRelMachine(object):
     """Abstract base class for PmRelMachines
@@ -373,6 +368,8 @@ class PmRelMachineLdq(PmRelMachine):
                 ky = len(i1)-1
             if len(beta) < 4:
                 kx = len(beta)-1
+            self.betarange = (min(beta), 0)
+            self.i1range = (0, np.max(i1))
             psid = np.sqrt(2)*np.asarray(kwargs['psid'])
             psiq = np.sqrt(2)*np.asarray(kwargs['psiq'])
             self.psid = lambda x, y: ip.RectBivariateSpline(
@@ -435,7 +432,7 @@ class PmRelMachineLdq(PmRelMachine):
         """return psid, psiq of currents iq, id"""
         beta, i1 = betai1(np.asarray(iq), np.asarray(id))
         if (self.betarange[0] <= beta <= self.betarange[1] and
-            i1 <= self.i1range[1]):
+            i1 <= 1.01*self.i1range[1]):
             if self.psid:
                 return (self.psid(beta, i1), self.psiq(beta, i1))
 

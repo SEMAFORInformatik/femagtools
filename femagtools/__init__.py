@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 napshot_title__ = 'femagtools'
-__version__ = '0.3'
+__version__ = '0.31-snapshot'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2016 SEMAFOR Informatik & Energie AG'

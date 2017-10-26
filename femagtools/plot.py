@@ -299,8 +299,8 @@ def mtpa(pmrel, i1max, title='', projection=''):
         ax = pl.gca()
         ax.set_aspect('equal')
         x, y = np.meshgrid(id, iq)
-        CS = ax.contour(x, y, torque_iqd, 6, fmt='%d', colors='k')
-        ax.clabel(CS, inline=1)
+        CS = ax.contour(x, y, torque_iqd, 6, colors='k')
+        ax.clabel(CS, fmt='%d', inline=1)
             
         if title:
             ax.set_title('Maximum Torque per Ampere')

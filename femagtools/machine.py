@@ -119,7 +119,6 @@ class PmRelMachine(object):
         psid, psiq = self.psi(iq, id)
         uqd = (self.r1*iq + w1*(self.ls*id + psid),
                self.r1*id - w1*(self.ls*iq + psiq))
-        #print('beta i1 {} u1 {}'.format(betai1(iq, id), np.linalg.norm(uqd)))
         return uqd
     
     def w1_umax(self, u, iq, id):
@@ -212,14 +211,19 @@ class PmRelMachine(object):
 
         beta0 = self.betarange[0]
         beta1 = np.sum(self.betarange)/2
-        du = (la.norm(self.uqd(w1, *iqd(beta0, i1max))) -
-              la.norm(self.uqd(w1, *iqd(beta1, i1max))))
+        u0 = la.norm(self.uqd(w1, *iqd(beta0, i1max)))
+        u1 = la.norm(self.uqd(w1, *iqd(beta1, i1max)))
+        du = (u0 - u1)
         db = (beta0 - beta1)
+        beta0 = beta0 + db/du*u1max*np.sqrt(2)
+        if self.betarange[0] > beta0 or self.betarange[1] < beta0:
+            beta0 = self.betarange[0]
+
         beta, info, ier, mesg = so.fsolve(
             lambda b:
             la.norm(
                 self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
-            beta0 + db/du*u1max*np.sqrt(2),
+            beta0,
             full_output=True)
 
         if ier == 1:
@@ -271,8 +275,13 @@ class PmRelMachine(object):
 
             n1 = min(w1/2/np.pi/self.p, nmax)
             r['n_type'] = n1
-            n2 = self.w2_imax_umax(i1max, u1max)/2/np.pi/self.p
-            n3 = min(nmax, n, max(n1, n2))
+            try:
+                n2 = self.w2_imax_umax(i1max, u1max)/2/np.pi/self.p
+                n3 = min(nmax, n, max(n1, n2))
+            except ValueError:
+                n2 = n
+                n3 = min(nmax, n)
+
             speedrange = sorted(
                 list(set([nx for nx in [n1, n2, n3] if nx <= n3])))
             n1 = speedrange[0]
@@ -282,7 +291,6 @@ class PmRelMachine(object):
                 dn = (n3-speedrange[1])/nsamples
             else:
                 dn = n3 / nsamples
-
             for nx in np.linspace(0, n1, int(n1/dn)):
                 r['id'].append(id)
                 r['iq'].append(iq)
@@ -293,22 +301,15 @@ class PmRelMachine(object):
                 for nx in np.linspace(nx+dn/2, min(n2, n3),
                                       int(min(n2, n3)/dn)):
                     w1 = 2*np.pi*nx*self.p
-                    iq, id = self.iqd_imax_umax(i1max, w1, u1max)
+                    try:
+                        iq, id = self.iqd_imax_umax(i1max, w1, u1max)
+                    except ValueError:
+                        break
                     r['id'].append(id)
                     r['iq'].append(iq)
                     r['n'].append(nx)
                     r['T'].append(self.torque_iqd(iq, id))
                     
-            nx += dn
-
-            while nx <= n3:
-                w1 = 2*np.pi*nx*self.p
-                iq, id = self.mtpv(w1, u1max)
-                r['id'].append(id)
-                r['iq'].append(iq)
-                r['n'].append(nx)
-                r['T'].append(self.torque_iqd(iq, id))
-                nx += dn
         else:
             for t, nx in zip(T, n):
                 w1 = 2*np.pi*nx*self.p

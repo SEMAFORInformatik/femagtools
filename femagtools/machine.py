@@ -119,6 +119,7 @@ class PmRelMachine(object):
         psid, psiq = self.psi(iq, id)
         uqd = (self.r1*iq + w1*(self.ls*id + psid),
                self.r1*id - w1*(self.ls*iq + psiq))
+        logger.debug('beta i1 %s u1 %f', betai1(iq, id), np.linalg.norm(uqd))
         return uqd
     
     def w1_umax(self, u, iq, id):
@@ -215,7 +216,7 @@ class PmRelMachine(object):
         u1 = la.norm(self.uqd(w1, *iqd(beta1, i1max)))
         du = (u0 - u1)
         db = (beta0 - beta1)
-        beta0 = beta0 + db/du*u1max*np.sqrt(2)
+        beta0 = beta0 + db/du*(u1max*np.sqrt(2) - u0)
         if self.betarange[0] > beta0 or self.betarange[1] < beta0:
             beta0 = self.betarange[0]
 
@@ -275,6 +276,7 @@ class PmRelMachine(object):
 
             n1 = min(w1/2/np.pi/self.p, nmax)
             r['n_type'] = n1
+            logger.info("Type speed %f", 60*n1)
             try:
                 n2 = self.w2_imax_umax(i1max, u1max)/2/np.pi/self.p
                 n3 = min(nmax, n, max(n1, n2))
@@ -478,6 +480,9 @@ class PmRelMachineLdq(PmRelMachine):
     def psi(self, iq, id):
         """return psid, psiq of currents iq, id"""
         beta, i1 = betai1(np.asarray(iq), np.asarray(id))
+        logger.debug('beta %f (%f, %f) i1 %f %f',
+                     beta, self.betarange[0], self.betarange[1],
+                     i1, self.i1range[1])
         if (self.betarange[0] <= beta <= self.betarange[1] and
             i1 <= 1.01*self.i1range[1]):
             if self.psid:
@@ -488,6 +493,16 @@ class PmRelMachineLdq(PmRelMachine):
             return (psid, psiq)
 
         return (np.nan, np.nan)
+    
+    def psi0(self, iq, id):
+        """return psid, psiq of currents iq, id"""
+        beta, i1 = betai1(np.asarray(iq), np.asarray(id))
+        if self.psid:
+            return (self.psid(beta, i1), self.psiq(beta, i1))
+
+        psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
+        psiq = self.lq(beta, i1)*iq
+        return (psid, psiq)
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""

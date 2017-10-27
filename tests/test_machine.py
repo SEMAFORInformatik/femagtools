@@ -229,7 +229,7 @@ class PmMachineTest(unittest.TestCase):
                                               r1=r1, ls=ls)
     w1 = 500
     iqs, ids = m1.iqd_uqd(w1, 0, 0)
-    self.assertAlmostEqual(femagtools.machine.betai1(iqs, ids)[1], 96.41, 2)
+    self.assertAlmostEqual(femagtools.machine.betai1(iqs, ids)[1], 42.48, 2)
 
   def test_create(self):
     testPath = os.path.join(os.path.split(__file__)[0], 'data')

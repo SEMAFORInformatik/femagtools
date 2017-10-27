@@ -36,7 +36,7 @@ def _plot_surface(ax, x, y, z, labels, azim=None):
     if azim is not None:
         ax.azim = azim
     X, Y = np.meshgrid(x, y)
-    ax.plot_surface(X, Y, z,
+    ax.plot_surface(X, Y, np.asarray(z),
                     rstride=1, cstride=1,
                     cmap=cm.viridis, alpha=0.85,
                     vmin=np.nanmin(z), vmax=np.nanmax(z),
@@ -229,15 +229,17 @@ def mcv_hbj(mcv, log=True):
     """plot H, B, J of mcv dict"""
     import femagtools.mcv
     MUE0 = 4e-7*np.pi
+    ji = []
 
     bh = [(bi, hi*1e-3)
           for bi, hi in zip(mcv['curve'][0]['bi'],
                             mcv['curve'][0]['hi'])]
-    if mcv['ctype'] in (femagtools.mcv.MAGCRV,
-                        femagtools.mcv.ORIENT_CRV):
-        ji = [b-MUE0*h*1e3 for b, h in bh]
-    else:
-        ji = []
+    try:
+        if mcv['ctype'] in (femagtools.mcv.MAGCRV,
+                            femagtools.mcv.ORIENT_CRV):
+            ji = [b-MUE0*h*1e3 for b, h in bh]
+    except:
+        pass
     bi, hi = zip(*bh)
 
     ax = pl.gca()
@@ -270,25 +272,44 @@ def mcv_muer(mcv):
     ax.grid()
 
 
-def mtpa(pmrel, i1max):
-    """create a surface plot with torque and mtpa curve"""
-    nsamples = 50
+def mtpa(pmrel, i1max, title='', projection=''):
+    """create a line or surface plot with torque and mtpa curve"""
+    nsamples = 20
+    i1 = np.linspace(0, i1max, nsamples)
+    iopt = np.array([pmrel.mtpa(x) for x in i1]).T
+
+    if projection == '3d':
+        nsamples = 50
+        
     iqmax, idmax = pmrel.iqdmax(i1max)
     iqmin, idmin = pmrel.iqdmin(i1max)
     id = np.linspace(idmin, 0, nsamples)
     iq = np.linspace(0, iqmax, nsamples)
-    i1 = np.linspace(0, i1max, nsamples)
-    iopt = np.array([pmrel.mtpa(x) for x in i1]).T
 
     torque_iqd = np.array(
         [[pmrel.torque_iqd(x, y)
           for y in id] for x in iq])
-
-    idq_torque(id, iq, torque_iqd)
-    ax = pl.gca()
-    ax.plot(iopt[1], iopt[0], iopt[2],
-            color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
-                np.max(iopt[2])))
+    if projection == '3d':
+        idq_torque(id, iq, torque_iqd)
+        ax = pl.gca()
+        ax.plot(iopt[1], iopt[0], iopt[2],
+                color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
+                    np.max(iopt[2])))
+    else:
+        ax = pl.gca()
+        ax.set_aspect('equal')
+        x, y = np.meshgrid(id, iq)
+        CS = ax.contour(x, y, torque_iqd, 6, colors='k')
+        ax.clabel(CS, fmt='%d', inline=1)
+            
+        if title:
+            ax.set_title('Maximum Torque per Ampere')
+        ax.set_xlabel('Id/A')
+        ax.set_ylabel('Iq/A')
+        ax.plot(iopt[1], iopt[0],
+                color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
+                    np.max(iopt[2])))
+        ax.grid()
     ax.legend()
 
 
@@ -310,10 +331,10 @@ def pmrelsim(bch, title=''):
     torque_fft(bch.torque_fft[-1]['order'], bch.torque_fft[-1]['torque'])
     pl.subplot(rows, cols, 3)
     force('Force Fx',
-               bch.torque[-1]['angle'], bch.torque[-1]['force_x'])
+          bch.torque[-1]['angle'], bch.torque[-1]['force_x'])
     pl.subplot(rows, cols, 4)
     force('Force Fy',
-               bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
+          bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
     pl.subplot(rows, cols, 5)
     flux = [bch.flux[k][-1] for k in bch.flux]
     pos = [f['displ'] for f in flux]

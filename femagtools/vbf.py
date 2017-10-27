@@ -66,12 +66,12 @@ if __name__ == "__main__":
     losses = read(filename)
     print(losses)
     
-    femagtools.plot.felosses_plot(losses,
-                                  lc.fitjordan(
-                                      losses['f'],
-                                      losses['B'],
-                                      losses['pfe'],
-                                      losses['Bo'],
-                                      losses['fo']),
-                                  title=filename, log=False)
+    femagtools.plot.felosses(losses,
+                             lc.fitjordan(
+                                 losses['f'],
+                                 losses['B'],
+                                 losses['pfe'],
+                                 losses['Bo'],
+                                 losses['fo']),
+                             title=filename, log=False)
     pl.show()

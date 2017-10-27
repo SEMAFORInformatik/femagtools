@@ -83,4 +83,4 @@ The resulting model:
 	    
 .. note::
 
-   the complete example can be found in `create-model-2.py <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/create-model-2.py>`_ and `spoke.fsl <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/spoke.fsl>`_ in the example directory on github.
+   the complete example can be found in `stator1-spoke.py <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/stator1-spoke.py>`_ and `spokefml.fsl <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/spokefml.fsl>`_ in the example directory on github.

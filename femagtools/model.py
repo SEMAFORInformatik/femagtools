@@ -290,4 +290,5 @@ class FeaModel(Model):
         self.eval_force = 0
         self.optim_i_up = 0
         self.plots = []
+        self.airgap_induc = []
         super(self.__class__, self).__init__(parameters)

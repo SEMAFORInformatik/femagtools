@@ -180,9 +180,9 @@ if __name__ == "__main__":
         beta = tks.ch_freq
         gamma = tks.b_coeff
 
-        femagtools.plot.felosses_plot(tks.losses,
-                                      (cw, alpha, ch, beta, gamma),
-                                      title=filename, log=False)
+        femagtools.plot.felosses(tks.losses,
+                                 (cw, alpha, ch, beta, gamma),
+                                 title=filename, log=False)
         pl.show()
         
     mcv = tks.getValues()

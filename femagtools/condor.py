@@ -5,8 +5,8 @@
 
     Creating and managing condor jobs
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 #
 import os

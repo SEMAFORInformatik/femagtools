@@ -4,8 +4,8 @@
 
     Manage TKS magnetizing curve data files
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import sys
 import numpy as np

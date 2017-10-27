@@ -5,8 +5,8 @@
 
     Managing model parameters
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import logging
 
@@ -38,8 +38,9 @@ class Model(object):
     def set_value(self, name, value, p=None):
         """set value of parameter identified by name
         
-        :param name: name of parameter
-        :param value: value to be assigned to parameter
+        Args:
+            name: name of parameter
+            value: value to be assigned to parameter
         """
         if isinstance(name, str):
             setattr(self, name, value)
@@ -63,8 +64,11 @@ class Model(object):
     def get(self, name, r=None):
         """return value of key name
 
-        :param name: key of parameter value
-        :returns: value of parameter identified by key
+        Args:
+            name: key of parameter value
+
+        Return:
+            value of parameter identified by key
         """        
         try:
             if isinstance(name, str):
@@ -94,7 +98,8 @@ class Model(object):
 class MachineModel(Model):
     """represents a machine model for a FE analysis
     
-    :param parameters: string or dict containing the model parameters. For example:
+    Args:
+        parameters: string or dict containing the model parameters. For example:
     ::
 
         {'lfe': 0.1,
@@ -168,10 +173,12 @@ class MachineModel(Model):
     def set_magcurves(self, magcurves, magnetmat={}):
         """set and return real names of magnetizing curve material
 
-        :param magcurves: :class: 'MagnetizingCurve' including
+        Args:
+            magcurves: :class: 'MagnetizingCurve' including
                               magnetizing curve materials
 
-        :returns: set of magnetizing curve names attached to this model
+        Return:
+            set of magnetizing curve names attached to this model
 
         """
         names = []

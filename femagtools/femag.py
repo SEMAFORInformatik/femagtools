@@ -5,8 +5,8 @@
 
     Running FEMAG
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import subprocess
 import os
@@ -69,7 +69,9 @@ class BaseFemag(object):
 
     def copy_magnetizing_curves(self, model, dir=None):
         """extract mc names from model and write files into workdir or dir if given
-        :returns: list of extracted mc names
+
+        Return:
+            list of extracted mc names (:obj:`list`)
         """
         dest = dir if dir else self.workdir
         return [self.magnetizingCurves.writefile(m, dest)
@@ -143,10 +145,11 @@ class BaseFemag(object):
 class Femag(BaseFemag):
     """Invoke and control execution of FEMAG
 
-    :param workdir: name of working directory
-    :param cmd: name of femag program
-    :param magnetizingCurves: collection of lamination material curves
-    :param magnets: collection of magnet material
+    Args:
+        workdir: name of working directory
+        cmd: name of femag program
+        magnetizingCurves: collection of lamination material curves
+        magnets: collection of magnet material
     """
     def __init__(self, workdir, cmd=None,
                  magnetizingCurves=None, magnets=None):
@@ -156,10 +159,13 @@ class Femag(BaseFemag):
     def run(self, filename, options=['-b'], fsl_args=[]):
         """invoke FEMAG in current workdir
 
-        :param filename: name of file to execute
-        :param options: list of FEMAG options
-        :param fsl_args: list of FSL argument options
-        :raises: FemagError
+        Args:
+            filename: name of file to execute
+            options: list of FEMAG options
+            fsl_args: list of FSL argument options
+
+        Raises:
+            FemagError
         """
         if self.cmd.startswith('wfemag') and \
            '-b' in options and \
@@ -233,8 +239,9 @@ class Femag(BaseFemag):
 class ZmqFemag(BaseFemag):
     """Invoke and control execution of FEMAG with ZeroMQ
 
-    :param workdir: name of working directory
-    :param cmd: name of femag program
+    Args:
+        workdir: name of working directory
+        cmd: name of femag program
     """
     def __init__(self, workdir, port, host='localhost', cmd=None,
                  magnetizingCurves=None, magnets=None):
@@ -311,8 +318,11 @@ class ZmqFemag(BaseFemag):
     def __is_running(self, timeout=1500):
         """check if FEMAG is running in ZMQ mode
 
-        :param timeout: The timeout (in milliseconds) to wait for a response
-        :returns: True if FEMAG is running, False otherwise
+        Args:
+            timeout: The timeout (in milliseconds) to wait for a response
+
+        Return:
+            True if FEMAG is running, False otherwise
 
         """
         try:
@@ -338,8 +348,11 @@ class ZmqFemag(BaseFemag):
     def send_fsl(self, fsl, callback=None, header='FSL'):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
 
-        :param fsl: FSL commands
-        :returns: response
+        Args:
+            fsl: FSL commands
+
+        Return:
+            response
         """
         logger.debug("Send fsl with fsl: {}, callback: {}, header: {}".format(fsl, callback, header))
         try:
@@ -366,8 +379,11 @@ class ZmqFemag(BaseFemag):
     def run(self, options=['-b'], restart=False, procId=None):  # noqa: C901
         """invokes FEMAG in current workdir and returns pid
 
-        :param options: list of FEMAG options
-        :raises: FemagError
+        Args:
+            options: list of FEMAG options
+
+        Raises:
+            FemagError
         """
         args = [self.cmd] + options
 

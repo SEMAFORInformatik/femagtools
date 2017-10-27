@@ -1,11 +1,11 @@
 """
-    femagtools.engin.multiproc
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    femagtools.engine.multiproc
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     Creating and managing multicore/multiprocessing jobs
 
-    :copyright: (c) (c) 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
     :authors: R. Tanner, N. Mauchle
 """
 import sys
@@ -28,9 +28,10 @@ def run_femag(cmd, workdir, fslfile):
 
     :internal:
 
-    :param cmd: The program (executable image) to be run
-    :param workdir: The workdir where the calculation files are stored
-    :param fslfile: The name of the start file (usually femag.fsl)
+    Args:
+        cmd: The program (executable image) to be run
+        workdir: The workdir where the calculation files are stored
+        fslfile: The name of the start file (usually femag.fsl)
     """
     logger.info('FEMAG %s: %s', workdir, fslfile)
     with open(os.path.join(workdir, "femag.out"), "wb") as out, \
@@ -59,9 +60,10 @@ class Engine:
     This is more or less a decorator for the `Python multiprocessing Module
     <https://docs.python.org/3.6/library/multiprocessing.html>`_
 
-    :param cmd: the program (executable image) to be run 
-        (femag dc is used if None)
-    :param process_count: number of processes (cpu_count() if None)
+    Args:
+        cmd: the program (executable image) to be run 
+            (femag dc is used if None)
+        process_count: number of processes (cpu_count() if None)
     """
     def __init__(self, cmd=None, process_count=None):
         self.process_count = process_count
@@ -75,8 +77,11 @@ class Engine:
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`Job`
 
-        :param workdir: The workdir where the calculation files are stored
-        :return: FEMAG :py:class:`Job`
+        Args:
+            workdir: The workdir where the calculation files are stored
+        
+        Return:
+            FEMAG :py:class:`Job`
         """
         self.job = Job(workdir)
         return self.job
@@ -85,7 +90,8 @@ class Engine:
         """Starts the FEMAG calculation(s) with the internal
         :py:meth:`multiproc.run_femag` function
 
-        :return: length of started tasks
+        Return:
+            length of started tasks
         """
         pool = multiprocessing.Pool(self.process_count)
         self.tasks = [pool.apply_async(run_femag,
@@ -99,7 +105,8 @@ class Engine:
     def join(self):
         """Wait until all calculations are finished
 
-        :return: list of all calculations status (C = Ok, X = error)
+        Return:
+            list of all calculations status (C = Ok, X = error)
         """
         results = [task.get() for task in self.tasks]
         status = []

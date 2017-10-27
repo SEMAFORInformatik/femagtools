@@ -4,8 +4,8 @@
 
     Manage VBF magnetizing curve data files
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import sys
 import femagtools.losscoeffs as lc

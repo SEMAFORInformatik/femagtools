@@ -5,8 +5,8 @@
 
     Read airgap dat file
 
-    :copyright: 2017 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import sys
 import numpy as np

@@ -5,15 +5,17 @@
 
     Manage POC files
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 
 
 class Poc:
     def __init__(self, arg, parameters=dict()):
         """initialize this object from a set of parameters or a file
-        :param: arg filename or pole_pitch
+
+        Args:
+            arg filename or pole_pitch
         """
         for k in parameters.keys():
             self.__setattr__(k, parameters[k])

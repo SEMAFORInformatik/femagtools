@@ -5,8 +5,8 @@
 
     Creating plots
 
-    :copyright: 2017 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import os
 import matplotlib.pyplot as pl

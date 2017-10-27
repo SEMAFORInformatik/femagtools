@@ -89,9 +89,10 @@ def create(bch, r1, ls, lfe=1):
 class PmRelMachine(object):
     """Abstract base class for PmRelMachines
 
-    ::param m: number of winding phases
-    ::param p: number of pole pairs
-    ::param r1: stator winding resistance (in Ohm)
+    Args:
+        m: number of winding phases
+        p: number of pole pairs
+        r1: stator winding resistance (in Ohm)
     """
     def __init__(self, m, p, r1, ls):
         self.p = p

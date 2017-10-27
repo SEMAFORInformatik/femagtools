@@ -5,8 +5,8 @@
 
     Python bindings for FEMAG
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 napshot_title__ = 'femagtools'
 __version__ = '0.31-snapshot'
@@ -34,9 +34,11 @@ def create_fsl(machine,
                operatingconditions={},
                magnetmat=[]):
     """create FSL command list from model parameters
-    :param: machine dict with parameters
-    :param: operatuîngConditions dict with parameters
-    :param: magnetmat list fo dict with parameters
+    
+    Args:
+        machine: dict with parameters
+        operatuingConditions: dict with parameters
+        magnetmat: list fo dict with parameters
 """
     model = MachineModel(machine)
     

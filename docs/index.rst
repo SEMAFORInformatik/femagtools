@@ -2,6 +2,9 @@
 Welcome to FEMAG Tools's documentation!
 =======================================
 
+   .. image:: img/femagtools.png
+
+
 Femagtools is an Open-Source Python-API for FEMAG offering following features:
 
 * run Femag with a FSL file anywhere:

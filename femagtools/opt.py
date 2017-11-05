@@ -84,8 +84,8 @@ class Optimizer(object):
 
     def __call__(self, num_generations, opt, pmMachine,
                  operatingConditions, engine):
-        self.optimize(num_generations, opt, pmMachine,
-                      operatingConditions, engine)
+        return self.optimize(num_generations, opt, pmMachine,
+                             operatingConditions, engine)
         
     def optimize(self, num_generations, opt, pmMachine,
                  operatingConditions, engine):

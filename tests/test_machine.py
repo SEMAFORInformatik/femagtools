@@ -9,14 +9,14 @@ import os
 class PmMachineTest(unittest.TestCase):
 
   def test_char_ld_vector(self):
-    m =   dict(p=4,
-               r1=0.0806, le=0.0, ls=0.0,
-               wind_temp=20.0,
-               ld=[0.0014522728, 0.0014522728],
-               lq=[0.0032154, 0.0038278836],
-               psim=[0.11171972, 0.11171972],
-               i1=[80.0],
-               beta=[0.0, -41.1])
+    m = dict(p=4,
+             r1=0.0806, le=0.0, ls=0.0,
+             wind_temp=20.0,
+             ld=[0.0014522728, 0.0014522728],
+             lq=[0.0038278836, 0.0032154],
+             psim=[0.11171972, 0.11171972],
+             i1=[80.0],
+             beta=[-41.1, 0.0])
 
     pm = femagtools.machine.PmRelMachineLdq(3, m['p'],
                                             m['psim'],
@@ -36,12 +36,12 @@ class PmMachineTest(unittest.TestCase):
     self.assertAlmostEqual(r['cosphi'][0], 0.7584, 2)
 
   def test_char_ld_scalar(self):
-     m =   dict(p=4,
-                r1=0.0806, le=0.0, ls=0.0,
-                wind_temp=20.0,
-                ld=0.0014522728,
-                lq=0.0038278836,
-                psim=0.11171972)
+     m = dict(p=4,
+              r1=0.0806, le=0.0, ls=0.0,
+              wind_temp=20.0,
+              ld=0.0014522728,
+              lq=0.0038278836,
+              psim=0.11171972)
 
      pm = femagtools.machine.PmRelMachineLdq(3, m['p'],
                                              m['psim'],
@@ -166,9 +166,9 @@ class PmMachineTest(unittest.TestCase):
       p=4,
       r1=0.055,
       ld=[0.0012634272, 0.0012634272],
-      lq=[0.0027257272, 0.003158568],
+      lq=[0.003158568, 0.0027257272],
       psim=[0.11171972, 0.11171972],
-      beta=[0.0,-35.0],
+      beta=[-35.0, 0.0],
       i1=[100.0])
       
     pm = femagtools.machine.PmRelMachineLdq(3, m['p'],

@@ -44,8 +44,8 @@ def get_point_inside(area):
     logger.debug("line %s -- %s", line.start(), line.end())
     for e in area:
         intersect += [(round(ip[0], 2), round(ip[1], 2))
-                      for ip in e.intersect(line, pickdist,
-                                            include_end=True) if ip]
+                      for ip in e.intersect_line(line, pickdist,
+                                                 include_end=True) if ip]
 
     if len(set(intersect)) > 1:
         logger.debug("Intersections %s", list(set(intersect)))
@@ -155,6 +155,39 @@ class PlotRenderer(object):
         with_nodes = kwargs.get('with_nodes', False)
         with_hull = kwargs.get('with_hull', False)
         with_corners = kwargs.get('with_corners', False)
+        single_view = kwargs.get('single_view', False)
+        neighbors = kwargs.get('neighbors', False)
+
+        mm = geom.minmax()
+        
+        if single_view:
+            count=0            
+            for e in geom.elements(type):
+                print("Render Element {}".format(e))                
+                if count == 0:
+                    fig = pl.figure()
+                    self.ax = fig.add_subplot(111)
+                    
+                e.render(self, 'blue', True)
+
+                count += 1
+                if count == 3:
+                    self.point((mm[0]-5, mm[2]-5), 'ro', color='red')
+                    self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
+                    self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
+                    self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
+                    self.ax.axis('scaled', aspect='equal')
+                    pl.show()
+                    count = 0
+                    
+            if count != 0:
+                self.point((mm[0]-5, mm[2]-5), 'ro', color='red')
+                self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
+                self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
+                self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
+                self.ax.axis('scaled', aspect='equal')
+                pl.show()
+            return
 
         fig = pl.figure()
         self.ax = fig.add_subplot(111)
@@ -172,10 +205,16 @@ class PlotRenderer(object):
 
         geom.render_cut_lines(self)
         geom.render_airgaps(self)
-
+        if neighbors:
+            geom.render_neighbors(self)
+        
         if geom.center:
             self.circle(geom.center, 3, 'darkgreen')
-            
+
+        self.point((mm[0]-5, mm[2]-5), 'ro', color='red')
+        self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
+        self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
+        self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
         self.ax.axis('scaled', aspect='equal')
         pl.show()
 
@@ -183,24 +222,65 @@ class PlotRenderer(object):
         with_nodes = kwargs.get('with_nodes', False)
         single_view = kwargs.get('single_view', False)
         
-        fig = pl.figure()
-        self.ax = fig.add_subplot(111)
+        if not single_view:
+            fig = pl.figure()
+            self.ax = fig.add_subplot(111)
 
         colors = ('red', 'green', 'blue', 'magenta', 'orange', 'grey', 'darkgreen')
         
         c = -1
-        for area in geom.areas(True):
+#        for area in geom.areas(incl_bnd=True):
+        geom.create_list_of_areas()
+        for area in geom.area_list:
             if len(area) > 1:
                 c += 1
                 if c >= len(colors):
                     c = 0
+                if single_view:                    
+                    fig = pl.figure()
+                    self.ax = fig.add_subplot(111)
+                    
                 for s in area:
                     s.render(self, colors[c], with_nodes)
-            if single_view:
-                self.ax.axis('scaled', aspect='equal')
-                pl.show()
+
+                if single_view:
+                    self.ax.axis('scaled', aspect='equal')
+                    pl.show()
+
+        if not single_view:
+            self.ax.axis('scaled', aspect='equal')
+            pl.show()
+
+    def render_area_nodes(self, geom, **kwargs):
+        single_view = kwargs.get('single_view', False)
+
+        mm = geom.minmax()
+        
+        if not single_view:
+            fig = pl.figure()
+            self.ax = fig.add_subplot(111)
+
+        colors = ('red', 'green', 'blue', 'magenta', 'orange', 'grey', 'darkgreen')
+        
+        c = -1
+        for nodes in geom.area_nodes(incl_bnd=True):
+            c += 1
+            if c >= len(colors):
+                c = 0
+            if single_view:                    
                 fig = pl.figure()
                 self.ax = fig.add_subplot(111)
+
+            for p in nodes:
+                self.point(p, 'ro', colors[c])
+
+            if single_view:
+                self.point((mm[0]-5, mm[2]-5), 'ro', color='white')
+                self.point((mm[0]-5, mm[3]+5), 'ro', color='white')
+                self.point((mm[1]+5, mm[2]-5), 'ro', color='white')
+                self.point((mm[1]+5, mm[3]+5), 'ro', color='white')
+                self.ax.axis('scaled', aspect='equal')
+                pl.show()
 
         if not single_view:
             self.ax.axis('scaled', aspect='equal')

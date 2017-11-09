@@ -909,7 +909,7 @@ class Reader:
                 self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
                                         for phi in self.dqPar['phi']]
                 self.dqPar['i1'].insert(0, 0)
-                self.dqPar['u1'].insert(0, self.dqPar['up0'])
+                self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
             except KeyError:
                 pass
 
@@ -963,7 +963,7 @@ class Reader:
         self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
                                 for phi in self.dqPar['phi']]
         self.dqPar['i1'].insert(0, 0)
-        self.dqPar['u1'].insert(0, self.dqPar['up0'])
+        self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
         
     def __read_weights( self, content ):
     #              Stator-Iron      - Conductors      - Magnets 

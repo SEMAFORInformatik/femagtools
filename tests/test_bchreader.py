@@ -117,6 +117,22 @@ class BchReaderTest(unittest.TestCase):
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['eddy'],
                                        [13.065, 117.587, 326.631, 637.999, 500.663, 592.805, 370.023, 236.594])
 
+    def test_read_relsim(self):
+        bch = self.read_bch('relsim.BATCH')
+
+        self.assertEqual(len(bch.torque), 1)
+        self.assertTrue('torque' in bch.torque[0])
+        self.assertAlmostEqual(np.mean(bch.torque[0]['torque']), 5.656, 2)
+        self.assertAlmostEqual(bch.dqPar['u1'][1], 261.0, 1)
+        self.assertAlmostEqual(bch.dqPar['torque'][0], 5.775, 1)
+        
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['freq'],
+                                       [50.0])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['hyst'],
+                                       [0.152])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['hyst'],
+                                       [0.066])
+        
     def test_read_pmsim_external(self):
         bch = self.read_bch('pmsim-external.BATCH')
 

@@ -1,0 +1,576 @@
+[******************************************************** 
+FEMAG Version: Version 8.3.x (Rev. 2877)
+[******************************************************** 
+Project File name:
+.\Testfall.I7                                                              
+LDPEM                                                                           
+[******************************************************** 
+  Number of Nodes   :      5398
+  Number of Elements:      7970
+  Mesh Quality   [%]:   100.000
+*************************************************                               
+***** Fast PM-Synchronous-Motor Simulation ***                                  
+[******************************************************** 
+File name: Testfall_001                       
+[******************************************************** 
+ Date:   09.11.2017    8.51 h.min 
+----                                                                            
+                                                                                                    
+[******************************************************** 
+Machine excitation:
+Rotor with reluctance:
+[******************************************************** 
+General Machine Data:
+  Windings-Connection:        	Open  
+Voltage, Current, Ra, Ld, Lq are phase values
+ No of parallel wdgs-sections:	         0
+(value 0 equals a = 1)
+   Angle current I vs.Vp [Deg]	    45.000
+ Speed [1/min]:               	  1500.000
+   Armature Length [mm]:      	    85.000
+   Skew angle  [Degr]:        	    10.000
+ infinite skew steps
+ Nonlinear Calculation
+   MC-File used in calculation	M270-35A-AM-50Hz-96                                                             
+   Losses[W/kg] in MC-File    	     0.020
+   Max. No. Iterations:       	       300
+   Change of Perm. max %:     	     0.005
+       actual permeability used 
+   Start angle [Degr]:        	     0.000
+   End angle   [Degr]:        	   180.000
+ Permeability status of the model:
+   Maximum Muer:              	  6065.712
+   Minimum Muer:              	  1000.000
+ POC-File used in calculation:	.\Testfall_4p.poc                                                          
+       Current control  :     	   sin
+   Number of Pole pairs :     	         2
+   Number of Poles simulated :	         1
+   Period-Length [Degr/mm/s] :	   180.000
+   Phase angle [Degr]:        	     0.000
+ 
+   Total Number of Slots  :   	        36
+   Total Number of Slot-Sides:	        36
+ 
+   Number of Slot-Sides sim. :	         9
+[********************************************************
+ CAD-Parameter Data:
+ 
+         0
+         1
+         3
+STATOR_3       
+Total number of teeth on 2pi          	 36
+Number of teeth be generated          	  9
+ 
+Outer diameter yoke   DAS        [mm] 	   125.000
+Inner diameter        DIS        [mm] 	    79.000
+Total slot height     HSL        [mm] 	    12.000
+Slot opening height   H1S        [mm] 	     0.800
+Slot head height      H2S        [mm] 	     0.800
+Slot width SWI;< 0 groove in Slot[mm] 	     2.200
+Upper Radius          R1S        [mm] 	     0.000
+Lower Radius          R2S        [mm] 	     1.000
+Distance middlepoints B1S        [mm] 	     3.050
+Distance middlepoints B2S        [mm] 	     3.800
+Rel.nod-dist > 0 begin tooth;< 0 slot 	    10.000
+Layers: 0;vert:1;horiz:2;vert+horiz:3 	     0.000
+Tooth width TW (replaces B1; B2) [mm] 	     0.000
+Top of slot: corner=2; line=1; arc=0  	     1.000
+Airgap 2/3 height:>0; <0:no ndchn[mm] 	     0.133
+[********************************************************
+ Simulation Data:
+ 
+         0
+        13
+         1
+Gen_winding    
+ 
+Total Number of slots Q               	    36.000
+Number of Poles 2p                    	     4.000
+Number of Phases m  <=  200           	     3.000
+Number of Layers (slot sides)per slot 	     1.000
+Number of wires per slot side         	    66.000
+Wdg-Current [A] or flux [Vs/mm];peak  	     0.000
+Coil span Y  >= 1                     	     9.000
+Number of slots in Model (Rot-Mot)    	     9.000
+Ma-type:1=Rot;21=lin-x;22=lin-y       	     1.000
+W-typ:1=w&cur;2=w&flux;3=bar&cur      	     1.000
+asy. slot pitch: 1=sym.; <1=asym.     	     1.000
+Windg location:1: stator; 2: rotor    	     1.000
+Curent:Const:0; Q-axis:1; D-axis:-1   	     0.000
+Offset to D-axis:>=0 Compl;<0 only Re 	     0.000
+Number of Poles simulated      (>= 1) 	     0.000
+[********************************************************
+ Simulation Data:
+ 
+         0
+        13
+         2
+gen_pocfile    
+ 
+Number of Poles 2p                   =	     4.000
+Rot-Motor:0.0; Lin-Motor:2xTaupol[mm]=	     0.000
+Skew angle [Deg] or displacement [mm]=	    10.000
+No of skew sect:> 0:finite; 0:infinit=	     0.000
+Current shape:                        	     2.000
+sinus   = 2                           	     0.000
+cosinus = 3                           	     0.000
+rect3   = 1                           	     0.000
+rect6   = 4                           	     0.000
+[********************************************************
+ Simulation Data:
+ 
+         0
+        11
+         2
+pm_sym_fast    
+Move range angle                      	   180.000
+Number of move steps requested        	 16
+ 
+Move Action: rotate=0; linear=1       	     0.000
+Effect. armature length          [mm] 	    85.000
+Number of Pole pairs           (>= 1) 	     2.000
+Number of Poles simulated      (>= 1) 	     1.000
+Speed: rotate                 [1/min] 	  1500.000
+Skew angle                  [Deg; mm] 	    10.000
+No of skew sect:>0:finite;0:infinite  	     0.000
+Evaluate force density: no = 0;yes >0 	     0.000
+Nominal stator coil current(Peak) [A] 	     3.055
+Angle current I vs. voltage Up  [Deg] 	    45.000
+Number of parallel Windings   (>= 1)  	     1.000
+Temperature Magnet            [Deg C] 	    20.000
+Radius air-gap center (torque)   [mm] 	    39.400
+Optimize < I vs Up : no = 0; yes > 0  	     0.000
+Calculate Losses:>0; areas>0; no = 0  	     1.000
+         
+[********************************************************
+Windings input data:                                                            
+ Number of coil sides:
+           9
+ Type of machine: 1 = Rot, 21 = Lin-x, 22 = Lin-y
+           1
+ Index  w-keys     N-turns         R[mm]        PHI[Degr]
+   1        1         66.0000           46.7561         5.0000
+   2        1         66.0000           46.7561        15.0000
+   3        1         66.0000           46.7561        25.0000
+   4       -3         66.0000           46.7561        35.0000
+   5       -3         66.0000           46.7561        45.0000
+   6       -3         66.0000           46.7561        55.0000
+   7        2         66.0000           46.7561        64.9999
+   8        2         66.0000           46.7561        74.9999
+   9        2         66.0000           46.7561        84.9999
+ Number of windings saved :
+           3
+ W-Key Coil-Current [A]   W-Types: (=1 :wire&cur)
+           1          3.05470133       0.00000000                            1
+           2          3.05470133       0.00000000                            1
+           3          3.05470133       0.00000000                            1
+         
+
+   Optimization of angle I vs Up linear simulation
+
+Angle [Degr]	 Torque or Force
+   0.00        	       -0.0017544
+   5.00        	        0.2212163
+   0.00        	        0.7872152
+   5.00        	        1.4028935
+  20.00        	        1.9770112
+  25.00        	        2.4925969
+  30.00        	        2.9390461
+  35.00        	        3.3148475
+  37.50        	        3.4775116
+  40.00        	        3.6215048
+  42.50        	        3.7462215
+  45.00        	        3.8518744
+  47.50        	        3.9370966
+  50.00        	        4.0007358
+  52.50        	        4.0419493
+  55.00        	        4.0583253
+  55.39        	        4.0626912
+  55.38        	        4.0626717
+  57.50        	        4.0537863
+  60.00        	        4.0204792
+  62.50        	        3.9554691
+  65.00        	        3.8531055
+  67.50        	        3.6989479
+ Optimimal angle I vs Up 	      35.00
+[********************************************************   
+Current Angles defined from no-load test :
+Area i: Winding       Key:	     1	  3.05    	[A]  	     -60.00	Degr
+Area i: Winding       Key:	     2	  3.05    	[A]  	      60.00	Degr
+Area i: Winding       Key:	     3	  3.05    	[A]  	     180.00	Degr
+[******************************************************** 
+Winding: Nu-Turns, Current, Angle
+Winding   Key:	 1	Nu-Turns:	   66.00	Coil-Cur[A]:	  3.05    	Angle:	   -60.000	[Deg
+Wire & current type
+Winding   Key:	 2	Nu-Turns:	   66.00	Coil-Cur[A]:	  3.05    	Angle:	    60.000	[Deg
+Wire & current type
+Winding   Key:	 3	Nu-Turns:	   66.00	Coil-Cur[A]:	  3.05    	Angle:	   180.000	[Deg
+Wire & current type
+[******************************************************** 
+Windings Data : Displ, Flux_k, Voltage, Current 
+Elements observed during calculation:         
+FEMAG internal flux and voltage multiplied by:
+armature length                               
+Results for speed [1/min]:              	  1500.000
+[******************************************************** 
+Results for Angle I-Up [Degree]:        	    45.000
+[******************************************************** 
+Flux observed: 
+Flux-Area k : Winding  	Key:	     1
+F-Path 	 Displ. 	 Flux_k 	Voltage Dpsi	Voltage Four	  Current_K	Voltage Four+i*R
+       	 [Degr] 	  [Vs]  	        [V] 	        [V] 	      [A]  	             [V]
+1 	     0.000 	-0.3383     	   317.9421 	   320.4174 	      0.7906 	    329.1595
+2 	    11.800 	 0.7858E-01 	   325.9536 	   333.1492 	      1.9058 	    354.2219
+3 	    23.600 	 0.5164     	   317.2960 	   330.7686 	      2.7021 	    360.6470
+4 	    35.400 	 0.9106     	   240.3930 	   252.7095 	      3.0465 	    286.3957
+5 	    47.200 	  1.147     	    91.0302 	    94.1673 	      2.8813 	    126.0265
+6 	    59.000 	  1.149     	   -77.3891 	   -82.2976 	      2.2341 	    -57.5948
+7 	    70.800 	 0.9439     	  -212.3169 	  -221.7688 	      1.2132 	   -208.3544
+8 	    82.600 	 0.5926     	  -296.4625 	  -305.4320 	     -0.0107 	   -305.5499
+9 	    94.400 	 0.1665     	  -342.5207 	  -351.7890 	     -1.2327 	   -365.4196
+10 	   106.200 	-0.3056     	  -351.4066 	  -364.8258 	     -2.2486 	   -389.6888
+11 	   118.000 	-0.7550     	  -294.8405 	  -307.3758 	     -2.8883 	   -339.3125
+12 	   129.800 	 -1.079     	  -173.6721 	  -179.1014 	     -3.0449 	   -212.7696
+13 	   141.600 	 -1.210     	   -19.5090 	   -21.2178 	     -2.6921 	    -50.9855
+14 	   153.400 	 -1.130     	   140.4854 	   146.3935 	     -1.8891 	    125.5055
+15 	   165.200 	-0.8420     	   262.2388 	   275.9970 	     -0.7700 	    267.4828
+16 	   177.000 	-0.4423     	   304.8969 	   318.9549 	      0.4779 	    324.2387
+17 	   180.000 	-0.3383     	   311.9121 	   320.4174 	      0.7906 	    329.1595
+[********************************************************
+Fourier Analysis: Values > 0.1 % Max-Value 
+Voltage of Winding                                                                                  
+Total No. Harmonics evaluated: 	   8
+Harm.    Flux [Vs]        Peak %            Voltage Peak     %           cos %           sin %      
+Order                                          [V]                                                  
+0  	     0.37E-01	   3.168	       0.0000	   0.000
+1  	      1.2    	 100.000	     370.3505	 100.000	  95.401	  29.976
+2  	     0.15E-01	   1.265	       9.3687	   2.530	  -2.035	  -1.502
+3  	     0.25E-01	   2.156	      23.9557	   6.468	  -5.684	  -3.088
+4  	     0.63E-02	   0.538	       7.9741	   2.153	  -0.040	  -2.153
+5  	     0.27E-02	   0.229	       4.2409	   1.145	  -0.796	  -0.824
+[******************************************************** 
+Flux observed: 
+Flux-Area k : Winding  	Key:	     2
+F-Path 	 Displ. 	 Flux_k 	Voltage Dpsi	Voltage Four	  Current_K	Voltage Four+i*R
+       	 [Degr] 	  [Vs]  	        [V] 	        [V] 	      [A]  	             [V]
+1 	     0.000 	-0.8315     	  -218.4307 	  -284.6411 	     -2.9506 	   -317.2671
+2 	    11.800 	 -1.118     	  -149.2259 	  -153.1795 	     -3.0204 	   -186.5767
+3 	    23.600 	 -1.223     	     6.1567 	     3.6563 	     -2.5849 	    -24.9255
+4 	    35.400 	 -1.102     	   168.0922 	   177.4546 	     -1.7170 	    158.4692
+5 	    47.200 	-0.7821     	   275.1816 	   288.5158 	     -0.5619 	    282.3025
+6 	    59.000 	-0.3802     	   313.3610 	   320.4203 	      0.6872 	    328.0184
+7 	    70.800 	 0.3963E-01 	   322.4360 	   330.7674 	      1.8213 	    350.9061
+8 	    82.600 	 0.4653     	   311.9705 	   322.1715 	      2.6508 	    351.4819
+9 	    94.400 	 0.8577     	   246.2305 	   260.1600 	      3.0368 	    293.7393
+10 	   106.200 	  1.111     	   106.2532 	   110.3524 	      2.9149 	    142.5837
+11 	   118.000 	  1.136     	   -64.5981 	   -68.7274 	      2.3054 	    -43.2357
+12 	   129.800 	 0.9416     	  -202.8806 	  -213.2701 	      1.3103 	   -198.7820
+13 	   141.600 	 0.6043     	  -284.6777 	  -293.2216 	      0.0960 	   -292.1606
+14 	   153.400 	 0.1951     	  -332.8367 	  -339.5467 	     -1.1344 	   -352.0903
+15 	   165.200 	-0.2685     	  -353.1383 	  -369.5154 	     -2.1750 	   -393.5654
+16 	   177.000 	-0.7309     	  -352.7158 	  -316.9260 	     -2.8518 	   -348.4594
+17 	   180.000 	-0.8315     	  -301.8850 	  -284.6411 	     -2.9506 	   -317.2671
+[********************************************************
+Fourier Analysis: Values > 0.1 % Max-Value 
+Voltage of Winding                                                                                  
+Total No. Harmonics evaluated: 	   8
+Harm.    Flux [Vs]        Peak %            Voltage Peak     %           cos %           sin %      
+Order                                          [V]                                                  
+0  	     0.68E-01	   5.798	       0.0000	   0.000
+1  	      1.2    	 100.000	     367.3925	 100.000	 -73.571	  67.729
+2  	     0.16E-01	   1.332	       9.7846	   2.663	  -1.062	   2.442
+3  	     0.26E-01	   2.227	      24.5449	   6.681	  -5.823	  -3.275
+4  	     0.75E-02	   0.643	       9.4446	   2.571	   1.731	   1.900
+5  	     0.33E-02	   0.282	       5.1717	   1.408	   0.532	   1.303
+6  	     0.16E-02	   0.139	       3.0610	   0.833	   0.281	   0.784
+7  	     0.78E-03	   0.067	       1.7245	   0.469	   0.159	   0.442
+[******************************************************** 
+Flux observed: 
+Flux-Area k : Winding  	Key:	     3
+F-Path 	 Displ. 	 Flux_k 	Voltage Dpsi	Voltage Four	  Current_K	Voltage Four+i*R
+       	 [Degr] 	  [Vs]  	        [V] 	        [V] 	      [A]  	             [V]
+1 	     0.000 	  1.217     	  -169.0765 	   -91.3229 	      2.1600 	    -67.4390
+2 	    11.800 	 0.9949     	  -224.8777 	  -237.0800 	      1.1146 	   -224.7555
+3 	    23.600 	 0.6269     	  -308.6577 	  -317.8972 	     -0.1173 	   -319.1938
+4 	    35.400 	 0.1856     	  -348.3812 	  -358.1318 	     -1.3295 	   -372.8326
+5 	    47.200 	-0.2866     	  -344.9552 	  -358.8469 	     -2.3193 	   -384.4927
+6 	    59.000 	-0.7190     	  -279.6210 	  -289.3865 	     -2.9212 	   -321.6875
+7 	    70.800 	 -1.020     	  -159.0238 	  -165.5639 	     -3.0345 	   -199.1169
+8 	    82.600 	 -1.136     	    -6.1863 	    -7.0124 	     -2.6401 	    -36.2049
+9 	    94.400 	 -1.036     	   154.5893 	   160.8761 	     -1.8041 	    140.9272
+10 	   106.200 	-0.7306     	   272.1820 	   286.0916 	     -0.6664 	    278.7234
+11 	   118.000 	-0.3223     	   319.9911 	   328.9622 	      0.5829 	    335.4072
+12 	   129.800 	 0.1085     	   325.0667 	   333.1386 	      1.7346 	    352.3186
+13 	   141.600 	 0.5301     	   308.3669 	   318.1902 	      2.5962 	    346.8970
+14 	   153.400 	 0.9171     	   247.6799 	   258.9050 	      3.0235 	    292.3366
+15 	   165.200 	  1.180     	   122.6741 	   130.4930 	      2.9450 	    163.0572
+16 	   177.000 	  1.239     	    45.1669 	   -41.3502 	      2.3740 	    -15.1006
+17 	   180.000 	  1.217     	   -66.4438 	   -91.3229 	      2.1600 	    -67.4390
+[********************************************************
+Fourier Analysis: Values > 0.1 % Max-Value 
+Voltage of Winding                                                                                  
+Total No. Harmonics evaluated: 	   8
+Harm.    Flux [Vs]        Peak %            Voltage Peak     %           cos %           sin %      
+Order                                          [V]                                                  
+0  	     0.11    	   9.288	       0.0000	   0.000
+1  	      1.2    	 100.000	     369.4501	 100.000	 -22.608	 -97.411
+2  	     0.18E-01	   1.560	      11.5252	   3.120	   2.972	  -0.947
+3  	     0.22E-01	   1.861	      20.6242	   5.582	  -3.527	  -4.327
+4  	     0.46E-02	   0.390	       5.7638	   1.560	  -1.560	   0.034
+5  	     0.21E-02	   0.182	       3.3658	   0.911	   0.479	  -0.775
+7  	     0.11E-02	   0.091	       2.3660	   0.640	  -0.074	  -0.636
+[******************************************************** 
+Torque-Force
+FEMAG internal torque  multiplied by:
+armature length X total number of poles/number of poles simulated
+  Base-curr 1 : Winding    Key:	     1
+Results skewed
+[******************************************************** 
+Results for Angle I-Up [Degree]:        	    45.000
+[******************************************************** 
+Torque-Force
+F-Path	   Angle   	Current_w	  Force_X	  Force_Y	  T-idpsi	 Torque  
+      	  DEGREE   	      [A]	  [N]    	  [N]    	  [Nm]   	  [Nm]   
+1	     0.000	  3.046    	  2513.    	  2405.    	  4.869    	  5.625    
+2	    11.800	  3.046    	  2853.    	  2027.    	  5.228    	  3.360    
+3	    23.600	  3.046    	  2897.    	  2094.    	  5.587    	  5.618    
+4	    35.400	  3.046    	  2694.    	  2571.    	  5.774    	  7.636    
+5	    47.200	  3.046    	  2314.    	  3096.    	  5.779    	  7.476    
+6	    59.000	  3.046    	  2020.    	  3306.    	  5.470    	  5.389    
+7	    70.800	  3.046    	  1963.    	  2988.    	  5.171    	  3.372    
+8	    82.600	  3.046    	  2134.    	  2493.    	  5.389    	  4.181    
+9	    94.400	  3.046    	  2465.    	  2174.    	  5.673    	  6.642    
+10	   106.200	  3.046    	  2853.    	  2156.    	  5.847    	  7.891    
+11	   118.000	  3.046    	  3109.    	  2470.    	  5.661    	  6.663    
+12	   129.800	  3.046    	  2776.    	  2854.    	  5.264    	  4.266    
+13	   141.600	  3.046    	  2183.    	  3005.    	  5.257    	  3.237    
+14	   153.400	  3.046    	  1777.    	  2995.    	  5.482    	  5.382    
+15	   165.200	  3.046    	  1805.    	  2773.    	  5.904    	  7.370    
+16	   177.000	  3.046    	  2354.    	  2505.    	  8.014    	  6.422    
+17	   180.000	  3.046    	  2513.    	  2405.    	  8.550    	  5.625    
+[********************************************************
+Fourier Analysis: Values > 0.1 % Max-Value 
+                                                                                                    
+Total No. Harmonics evaluated: 	  16
+Harm.     Torque [Nm]          %          cos %           sin %                                     
+Order                                                                                               
+0  	    5.658    	 100.000
+2  	   0.2023    	   3.575	  -0.520	   3.537
+4  	   0.6419    	  11.344	  -0.453	  11.335
+6  	    1.972    	  34.844	  -0.585	 -34.839
+8  	   0.3481    	   6.152	  -0.561	  -6.126
+10 	   0.1486    	   2.627	  -0.496	  -2.579
+12 	   0.8670E-01	   1.532	   1.308	  -0.799
+14 	   0.6624E-01	   1.171	   1.159	  -0.167
+[********************************************************
+Fourier Analysis: Values > 0.1 % Max-Value 
+                                                                                                    
+Total No. Harmonics evaluated: 	  16
+Harm.    Torq i_dps_dal[Nm]    %          cos %           sin %                                     
+Order                                                                                               
+0  	    5.648    	 100.000
+2  	   0.2214    	   3.920	   3.888	  -0.498
+4  	   0.2203    	   3.900	   3.885	  -0.343
+6  	   0.4457    	   7.891	   2.611	  -7.446
+8  	   0.2581    	   4.569	   2.385	  -3.897
+10 	   0.2331    	   4.126	   1.764	  -3.731
+12 	   0.2411    	   4.268	   1.457	  -4.012
+14 	   0.1962    	   3.474	   0.926	  -3.349
+[********************************************************
+Fourier Analysis: Values > 0.1 % Max-Value 
+                                                                                                    
+Total No. Harmonics evaluated: 	  16
+Harm.     Force 1 [N]          %          cos %           sin %                                     
+Order                                                                                               
+0  	    2419.    	 100.000
+2  	    28.89    	   1.194	  -0.960	  -0.710
+4  	    578.9    	  23.926	  -1.359	  23.887
+6  	    112.8    	   4.664	   3.893	   2.569
+8  	    21.70    	   0.897	   0.551	  -0.707
+10 	    16.44    	   0.680	   0.389	   0.557
+12 	    13.70    	   0.566	   0.564	   0.057
+14 	    3.515    	   0.145	   0.071	  -0.127
+[********************************************************
+Fourier Analysis: Values > 0.1 % Max-Value 
+                                                                                                    
+Total No. Harmonics evaluated: 	  16
+Harm.     Force 2 [N]          %          cos %           sin %                                     
+Order                                                                                               
+0  	    2619.    	 100.000
+2  	    44.32    	   1.692	  -1.656	   0.348
+4  	    545.1    	  20.810	 -13.025	 -16.230
+6  	    105.5    	   4.027	   3.855	  -1.164
+8  	    24.59    	   0.939	   0.931	  -0.120
+10 	    7.471    	   0.285	   0.093	  -0.270
+12 	    11.66    	   0.445	   0.432	   0.108
+14 	    6.242    	   0.238	   0.236	  -0.030
+
+[******************************************************** 
+Fourier Analysis: Airgap Induction Br [T]
+AN(I):cos term, BN(I):sin term, I = order
+                                                                                                    
+Total No. Harmonics evaluated: 	 7
+                                                                                                    
+Results for Current RMS     [A]:	      2.160
+Results for Angle I-Up [Degree]:	     45.000
+                                                                                                    
+C_STEP B_STEP    AN(1)   BN(1)   AN(3)   BN(3)   AN(5)   BN(5)  AN(7)   BN(7)                       
+
+ 1	 1	-0.8742	-0.1903	 0.0454	 0.0420	 0.0033	 0.0371	-0.0106	-0.0414	
+
+                                                                                                    
+[********************************************************
+Fourier Analysis: > 0.025 % Max_value
+Load Voltage Winding Terminal                                                   
+Harm. Voltage [V] (RMS   %                                                      
+   
+1  	     369.4501	 100.000
+2  	      12.1206	   3.281
+3  	      21.6895	   5.871
+4  	       6.0615	   1.641
+5  	       3.5396	   0.958
+6  	       1.0271	   0.278
+7  	       2.4882	   0.673
+[********************************************************
+Power Situation (VZS): Terminal internal [RMS] values
+W-Key 	Voltage    	Current_1	Angle U-I	  cos phi	  Power P	  Power Q
+      	    [V]    	   [A]   	  [degr] 	         	   [kW]  	    [kVA]
+  1	  261.9    	  2.173    	  57.55    	 0.5365    	 0.3053    	 0.4802    
+  2	  259.8    	  2.174    	  57.62    	 0.5355    	 0.3024    	 0.4770    
+  3	  261.2    	  2.174    	  58.08    	 0.5287    	 0.3002    	 0.4820    
+Total Active Internal   Power P [kW]:	 0.9080    
+Total Reactive Internal Power Q [kW]:	  1.439    
+ 
+Angle current I vs.Vp [Deg]         :	  45.00    
+[******************************************************** 
+ Basic Machine parameters: 
+Stator = area outside air gap
+Rotor  = area inside  air gap
+[******************************************************** 
+Weigths : [kg]
+              Stator-Iron      - Conductors      - Magnets 
+                  3.568	      0.385	      0.000
+              Rotor-Iron       - Conductors       - Magnets  
+                  1.781	      0.000	      0.000
+[******************************************************** 
+Area [mm**2]: Stator-Iron           - slots         - Magnets  
+                  5486.7	       804.2	         0.0
+Area [mm**2]: Rotor-Iron            - slots         - Magnets 
+                  2739.4	         0.0	         0.0
+[******************************************************** 
+Inertia: GD**2/4 [gr m**2]
+Stator :	       12.336964
+Rotor  :	        1.518900
+[******************************************************** 
+Losses [W]: in iron, magnets and conductors from Move-calc 
+Stator = area outside air gap
+Rotor  = area inside  air gap
+Losses in Areas : [w]
+*********************************************************                       
+Results for Angle I-Up [Degree]:	     45.000
+Results for Terminal Current[A]:	      3.046
+*********************************************************                       
+Cu-losses-Stator   KW-factor-stator   Resistance [Ohm]
+     154.768	        1.00	    11.06    
+Fe-Losses-Stator   Fe-Losses-stator
+StJo                        StZa    
+MCVTYPE =  1            MCV-Key =  1
+       0.156	         0.069
+No Magn-Losses in stator
+No EC-Loss-calculation
+ Cu-losses-Rotor    KW-factor-Rotor   Resistance [Ohm]
+       0.000	        1.00	    0.000    
+ Fe-Losses   Rotor: Roto
+MCVTYPE =  1
+       0.002
+No Magn-Losses in rotor
+No EC-Loss-calculation
+[******************************************************** 
+Fe-Hysteresis- and Eddy current Losses[W] > 0.1 % Max:
+Order	 Frequency [Hz]	   Hysteresis-Losses	 Eddy current-Losses
+
+Fe-Losses  in StatorStJo
+ 1	          50	       0.152	            0.001
+Fe-Losses  in StatorStZa
+ 1	          50	       0.066	            0.000
+
+Fe-Losses in Rotor: Roto
+
+*********************************************************                       
+
+[***********************************************************                    
+Machine Data: 
+
+Number of phases                    :	 3
+Phase Current (RMS)             [A] :	      2.1600
+Beta-angle                   [Degr] :	     45.0000
+Current loading (RMS)       [kA/m]  :	     20.7312
+Current Density (RMS)       [A/mm2] :	     14.1861
+Cu fillfactor                 [%]   :	     45.0000
+Therm.Loading A*J (RMS)  [A/cm.mm2] :	   2940.9485
+torque [Nm]                         :	      5.6581
+Force Density               [kN/m2] :	      6.8247
+
+Inductance Ld                   [H] :	  0.5309    
+Inductance Lq                   [H] :	  0.1182    
+Stator Resistance             [Ohm] :	     11.0574
+ Armature Length               [mm] :	     85.0000
+Simulation factor:2p/psim           :	      4.0000
+Speed                       [1/min] :	   1500.0000
+Mechanical Power                [W] :	    888.7747
+
+Beta-angle                   [Degr] :	     45.0000
+Stator-Fe-Losses                [W] :	      0.2244
+Rotor-Fe-Losses                 [W] :	      0.0024
+Magnet-Losses                   [W] :	      0.0000
+Cu-Losses                       [W] :	    154.7676
+Efficiency                           	     85.1505
+[********************************************************
+DQ-Parameter for open Winding Modell              
+Windings Current (peak) I  [A]      :	  3.05    
+Angle I vs. Up             [Degr]   :	  45.0    
+LD                         [H/mm]   :	 0.625E-02
+LQ at nom. current         [H/mm]   :	 0.139E-02
+Torque TO                  [Nm/mm]  :	 0.679E-01
+Torque constant Kt (peak)  [Nm/A]   :	  1.89    
+Kt = TO X L /I                       
+Voltage const Ke noload (peak) [Vs] :	  0.00    
+Voltage const Ke load (peak) [Vs]   :	  0.00    
+Ke = m/2 Flux load x L x POLPAAR_ZAHL
+Speed                      [1/min]  :	    1500.00
+Number of Poles                     :	  4
+Armature length            [mm]     :	      85.00
+Airgap diameter            [mm]     :	      78.80
+[**************************************************************                 
+DQ-Parameter for open Winding Modell              
+
+  Wdg.-Curr 	 Angle Beta 	      Ld    	      Lq    	   Psi_magn 	     Psi_d  	     Psi_q  	   Torque   	
+ [A (RMS)]  	    [Degr]  	    [H/mm]  	    [H/mm]  	[Vs/mm(RMS)]	[Vs/mm(RMS)]	[Vs/mm(RMS)]	   [Nm/mm]  	
+
+  2.160    	  45.00    	 0.6245E-02	 0.1391E-02	  0.000    	 0.9539E-02	 0.2125E-02	 0.6795E-01	
+
+ Wdg.-Curr  	 Angle Beta 	 Torque FE  	 Torque sim 	 Voltage FE 	 Voltage sim	 Angle Up-U 	
+  [A (RMS)] 	    [Degr]  	     [Nm]   	     [Nm]   	  [V (RMS)] 	  [V (RMS)] 	   [Degree] 	
+  2.160    	  45.00    	  5.656    	  5.775    	  261.0    	  261.0    	  282.6    
+
+
+Self-and Mutal-Inductances Laa and Lab
+Laa =     Lho + Lh2 cos(2alpha)
+Lab = -0.5Lho + Lh2 cos(2alpha-2pi/m)
+Lac = -0.5Lho + Lh2 cos(2alpha-4pi/m)
+Psim = Psimo cos(alpha)
+
+Ld = 1.5 Lho + 1.5Lh2
+Lq = 1.5 Lho - 1.5Lh2
+Lho = (Ld + Lq)/3
+Lh2 = (Ld - Lq)/3
+
+  Wdg.-Curr 	 Angle Beta 	     Lho    	     Lh2    	   Psi_magn 	
+   [A(RMS)] 	    [Degr]  	    [H/mm]  	    [H/mm]  	[Vs/mm(RMS)]	
+  2.160    	  45.00    	 0.2546E-02	 0.1618E-02	  0.000    	
+
+[*************************************************
+ Calculation time [sec]:
+          27
+[*************************************************

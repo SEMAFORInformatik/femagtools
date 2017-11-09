@@ -42,6 +42,22 @@ def T(d):
         (np.sin(d)), np.sin(d-2*np.pi/3), np.sin(d+2*np.pi/3)))
 
 
+def invpark(a, q, d):
+    """ convert a dq vector to the abc reference frame
+    (inverse park transformation)
+
+    Args:
+        a: rotation angle
+        d: value in direct axis
+        q: value in quadrature axis
+    """
+    if np.isscalar(a) and np.isscalar(q) and np.isscalar(d):
+        return np.dot(K(a), (q, d))
+    if np.isscalar(q) and np.isscalar(d):
+        return np.array([K(x).dot((q, d)) for x in a]).T
+    return np.array([K(x).dot((y, z)) for x, y, z in zip(a, d, q)]).T
+
+
 def betai1(iq, id):
     """return beta and amplitude of dq currents"""
     return (np.arctan2(id, iq),

@@ -243,8 +243,21 @@ class PmMachineTest(unittest.TestCase):
     beta, i1 = femagtools.machine.betai1(*iqd)
     self.assertAlmostEqual(beta*180/math.pi, -30, 0)
     self.assertAlmostEqual(i1, 100, 0)
+  
+  def test_invpark(self):
+    w1 = 314.15
+    w1t = [w1*t/500.0 for t in range(6)]
+    iq = 1
+    id = 0
+    ia, ib, ic = femagtools.machine.invpark(w1t, iq, id)
+    self.assertAlmostEqual(ia[0], 1.0, 0)
+    self.assertAlmostEqual(ia[-1], -1.0, 0)
+    self.assertAlmostEqual(ib[0], -0.5, 0)
+    self.assertAlmostEqual(ib[-1], 0.5, 0)
+    self.assertAlmostEqual(ic[1], -0.5, 0)
+    self.assertAlmostEqual(ic[-1], 0.5, 0)
     
-      
+    
 if __name__ == '__main__':
   unittest.main()
 

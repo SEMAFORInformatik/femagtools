@@ -8,7 +8,6 @@
 
 
 """
-import os
 import matplotlib.pyplot as pl
 import matplotlib.cm as cm
 import numpy as np

@@ -5,8 +5,8 @@
 
     Reading, Creating and managing MCV/MC files
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import json
 import subprocess
@@ -17,7 +17,7 @@ import struct
 import math
 import numpy as np
 from six import string_types
-import femagtools.losscoeffs
+import femagtools.losscoeffs as lc
 
 # curve types
 types = {1: 'Soft iron B(H)',
@@ -124,7 +124,7 @@ def findNotNone(l):
     return (i, j)
 
 
-class Mcv:
+class Mcv(object):
     def __init__(self):
         # default values from file: mcv.par
         self.ACT_VERSION_MC_CURVE = 0
@@ -182,6 +182,11 @@ class Mcv:
             if vlist[i] != 0.:
                 break
         return list(vlist[:i+1])
+
+    def __getitem__(self, index):
+        if index == 'ctype':  # for compatibility purposes
+            return self.mc1_type
+        return self.__getattribute__(index)
 
 
 class Writer(Mcv):
@@ -371,17 +376,17 @@ class Writer(Mcv):
             cw = self.losses['cw']
             alpha = self.losses['cw_freq']
             beta = self.losses['b_coeff']
-            steinmetz = lambda fr, Br: (cw*fr**alpha * Br**beta)
             
             for f, p in zip(self.losses['f'], self.losses['pfe']):
                 if f:
-                    pl = [px if px else steinmetz(f/self.losses['fo'],
-                                                  b/self.losses['Bo'])
+                    pl = [px if px else lc.steinmetz(f, b, cw, alpha, beta,
+                                                     self.losses['fo'],
+                                                     self.losses['Bo'])
                           for px, b in zip(p, self.losses['B'])]
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - nind))
                     self.writeBlock(f)
-            for m in range(M_LOSS_FREQ -  nfreq):
+            for m in range(M_LOSS_FREQ - nfreq):
                 self.writeBlock([0.0]*M_LOSS_INDUCT)
                 self.writeBlock(0.0)
 
@@ -663,18 +668,12 @@ class Reader(Mcv):
             'name': self.name,
             'desc': self.mc1_title,
             'cversion': self.version_mc_curve,
-            #'ni': [n for n in self.mc1_ni if n],
-            #'mi': [m for m in self.mc1_mi if m],
             'ctype': self.mc1_type,
             'recalc': self.mc1_recalc,
-            #'db2': self.mc1_db2,
             'remz': self.mc1_remz,
             'bsat': self.mc1_bsat,
             'bref': self.mc1_bref,
             'fillfac': self.mc1_fillfac,
-            #'curves': self.mc1_curves,
-            #'curve': self.curve,
-            #'energy': self.mc1_energy,
             'fo': self.fo,
             'Bo': self.Bo,
             'ch': self.ch,
@@ -993,7 +992,7 @@ class MagnetizingCurve(object):
             if 'losses' not in self.mcv[m]:
                 continue
             losses = self.mcv[m]['losses']
-            cw, alfa, beta = femagtools.losscoeffs.fitsteinmetz(
+            cw, alfa, beta = lc.fitsteinmetz(
                 losses['f'],
                 losses['B'],
                 losses['pfe'],

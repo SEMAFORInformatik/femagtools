@@ -5,8 +5,8 @@
 
     Reading ERG files
 
-    :copyright: 2017 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import re
 import numpy as np

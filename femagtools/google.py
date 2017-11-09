@@ -61,7 +61,8 @@ class Engine():
     def __init__(self, buckets=None):
         """Initalize the Google cloud service
 
-        :param buckets:     to prevent uploads and use these buckets with data
+        Args:
+            buckets:     to prevent uploads and use these buckets with data
         """
         if not GOOGLE_MODULE_FOUND:
             logger.error("Could not find one of [google-api-python-client, gcloud, googleapis-common-protos] modules")
@@ -131,8 +132,8 @@ class Engine():
     def _upload(self, task):
         """Upload the file to the google storage
 
-        Parameters:
-        :param task:  The task which define which folder (task.directory) should be uploaded
+        Args:
+            task:  The task which define which folder (task.directory) should be uploaded
                       to which storage (task.id)
         """
         # We can not use the self.gcs cause we use it in a thread and if we use self.gcs an exception
@@ -157,9 +158,11 @@ class Engine():
         """At the moment it is not possible to create a new project overt the python api
         So we use always the default project
 
-        :param str name:     The name of the project
-        :return: Google Cloud project
-        :rtype: Google Cloud Project
+        Args:
+            name (str):     The name of the project
+
+        Return:
+            Google Cloud project (:obj:`Google Cloud Project`)
         """
         gcrm = resource_manager.Client()
 
@@ -236,8 +239,9 @@ class Engine():
     def _wait_for_threads_finished(self, threads, operation):
         """This generic methods waits until all threads are finished
 
-        :param list threads:    List of threads to check if they are finished
-        :param str operation:   Name of the operation to write a meaningful log message
+        Args:
+            list threads:    List of threads to check if they are finished
+            str operation:   Name of the operation to write a meaningful log message
 
         """
         # Wait until all threads are not running
@@ -250,7 +254,8 @@ class Engine():
     def _wait_for_operations_finished(self, operations):
         """This methods waits until all operations (started on google cloud) are finished
 
-        :param list operations: A list of google cloud operations
+        Args:
+            operations (:obj:`list`): A list of google cloud operations
         """
         threads = []
         # timeout = 300
@@ -267,7 +272,8 @@ class Engine():
         """Wait until a operation is finished
         Is called from :py:meth:`_wait_for_operations_finished`
 
-        :param Operation One Google Operation Object
+        Args:
+            Operation One Google Operation Object
         """
 
         #  Do not use self.compute: SSL VERSION Exception when called in thread
@@ -292,7 +298,8 @@ class Engine():
     def _delete_instances(self, instances):
         """Delete one ore more instances
 
-        :param list instances:   A list of instances/task to be deleted
+        Args:
+            instances (:obj:`list`):   A list of instances/task to be deleted
 
         """
         # You always have to be logged in. With GoogleCredentials.get_application_default()
@@ -317,7 +324,8 @@ class Engine():
     def _download_bucket(self, task):
         """Download all files from one bucket bucket name is task.id in a thread
 
-        :param :py:class:`CloudTask` task:  The task which is assigned to this bucket to get the bucket name
+        Args:
+            task (:py:class:`CloudTask`):  The task which is assigned to this bucket to get the bucket name
         """
         # !Threads!
         gcs = storage.Client(self.project.project_id)
@@ -356,7 +364,8 @@ class Engine():
         """Get the status code from the caluclation
         Status code is written in a file
 
-        :param str filename: The filename where the exit code is stored
+        Args:
+            filename (str): The filename where the exit code is stored
         """
         status_code = []
         for t in self.job.tasks:
@@ -369,8 +378,9 @@ class Engine():
         """Wait until all calculation are finished:
         This means wait until every bucket has an file with the name of the given filename
 
-        :param str filename: The filename where the exit code is stored
-        :param bool delete:  Should the instance be deleted after calculation
+        Args:
+            filename (str): The filename where the exit code is stored
+            delete (bool):  Should the instance be deleted after calculation
         """
         finished_tasks = []
         logger.info("Calculating..")
@@ -413,9 +423,11 @@ class Engine():
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`CloudJob`
 
-        :param str workdir: The workdir where the calculation files are stored
-        :return: Cloud job
-        :rtype: :py:class:`CloudJob`
+        Args:
+            workdir (str): The workdir where the calculation files are stored
+
+        Return:
+            Cloud job (:py:class:`CloudJob`)
         """
         self.job = femagtools.job.CloudJob(workdir)
         return self.job
@@ -423,8 +435,8 @@ class Engine():
     def submit(self):
         """Starts the FEMAG calculation(s) on Google Cloud
 
-        :returns: length of started tasks
-        :rtype: int
+        Return:
+            length of started tasks (int)
         """
         self._create_data_buckets()
         self._upload_files_to_buckets()
@@ -434,8 +446,8 @@ class Engine():
     def join( self ):
         """Wait until all calculations are finished
 
-        :return: list of all calculations status (C = Ok, X = error)
-        :rtype: list
+        Return:
+            list of all calculations status (C = Ok, X = error) (:obj:`list`)
         """
         self._join(filename='exit_code', delete=True)
 

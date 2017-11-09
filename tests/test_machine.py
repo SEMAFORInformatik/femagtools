@@ -3,19 +3,20 @@
 import unittest
 import femagtools
 import femagtools.machine
+import math
 import os
 
 class PmMachineTest(unittest.TestCase):
 
   def test_char_ld_vector(self):
-    m =   dict(p=4,
-               r1=0.0806, le=0.0, ls=0.0,
-               wind_temp=20.0,
-               ld=[0.0014522728, 0.0014522728],
-               lq=[0.0032154, 0.0038278836],
-               psim=[0.11171972, 0.11171972],
-               i1=[80.0],
-               beta=[0.0, -41.1])
+    m = dict(p=4,
+             r1=0.0806, le=0.0, ls=0.0,
+             wind_temp=20.0,
+             ld=[0.0014522728, 0.0014522728],
+             lq=[0.0038278836, 0.0032154],
+             psim=[0.11171972, 0.11171972],
+             i1=[80.0],
+             beta=[-41.1, 0.0])
 
     pm = femagtools.machine.PmRelMachineLdq(3, m['p'],
                                             m['psim'],
@@ -35,12 +36,12 @@ class PmMachineTest(unittest.TestCase):
     self.assertAlmostEqual(r['cosphi'][0], 0.7584, 2)
 
   def test_char_ld_scalar(self):
-     m =   dict(p=4,
-                r1=0.0806, le=0.0, ls=0.0,
-                wind_temp=20.0,
-                ld=0.0014522728,
-                lq=0.0038278836,
-                psim=0.11171972)
+     m = dict(p=4,
+              r1=0.0806, le=0.0, ls=0.0,
+              wind_temp=20.0,
+              ld=0.0014522728,
+              lq=0.0038278836,
+              psim=0.11171972)
 
      pm = femagtools.machine.PmRelMachineLdq(3, m['p'],
                                              m['psim'],
@@ -165,9 +166,9 @@ class PmMachineTest(unittest.TestCase):
       p=4,
       r1=0.055,
       ld=[0.0012634272, 0.0012634272],
-      lq=[0.0027257272, 0.003158568],
+      lq=[0.003158568, 0.0027257272],
       psim=[0.11171972, 0.11171972],
-      beta=[0.0,-35.0],
+      beta=[-35.0, 0.0],
       i1=[100.0])
       
     pm = femagtools.machine.PmRelMachineLdq(3, m['p'],
@@ -228,7 +229,7 @@ class PmMachineTest(unittest.TestCase):
                                               r1=r1, ls=ls)
     w1 = 500
     iqs, ids = m1.iqd_uqd(w1, 0, 0)
-    self.assertAlmostEqual(femagtools.machine.betai1(iqs, ids)[1], 96.41, 2)
+    self.assertAlmostEqual(femagtools.machine.betai1(iqs, ids)[1], 42.48, 2)
 
   def test_create(self):
     testPath = os.path.join(os.path.split(__file__)[0], 'data')
@@ -237,11 +238,26 @@ class PmMachineTest(unittest.TestCase):
 
     bch = femagtools.read_bchfile(os.path.join(testPath, 'ldq.BATCH'))
     pm = femagtools.machine.create(bch, r1=0, ls=0)
-    iqd = pm.iqd_torque(120)
-    self.assertAlmostEqual(iqd[0], 32.4, 1)
-    self.assertAlmostEqual(iqd[1], -68.8, 1)
+    iqd = pm.iqd_torque(211.35)
+
+    beta, i1 = femagtools.machine.betai1(*iqd)
+    self.assertAlmostEqual(beta*180/math.pi, -30, 0)
+    self.assertAlmostEqual(i1, 100, 0)
+  
+  def test_invpark(self):
+    w1 = 314.15
+    w1t = [w1*t/500.0 for t in range(6)]
+    iq = 1
+    id = 0
+    ia, ib, ic = femagtools.machine.invpark(w1t, iq, id)
+    self.assertAlmostEqual(ia[0], 1.0, 0)
+    self.assertAlmostEqual(ia[-1], -1.0, 0)
+    self.assertAlmostEqual(ib[0], -0.5, 0)
+    self.assertAlmostEqual(ib[-1], 0.5, 0)
+    self.assertAlmostEqual(ic[1], -0.5, 0)
+    self.assertAlmostEqual(ic[-1], 0.5, 0)
     
-      
+    
 if __name__ == '__main__':
   unittest.main()
 

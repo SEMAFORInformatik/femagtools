@@ -115,7 +115,6 @@ The same machine and operating parameters can be used to run FEMAG directly::
   print('Torque [Nm] = {}'.format(r.machine['torque']))
 
 
-
 Evaluate PM/Reluctance machine characteristics
 ++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -123,11 +122,9 @@ Definition of the PM or Reluctance machine with Ld,Lq parameters::
 
   p = 4
   r1 = 0.0806
-  le = 0.0
   ls = 0.0
-  wind_temp = 20.0
-  ld = [0.0014522728, 0.0014522728]
-  lq = [0.0032154, 0.0038278836]
+  ld = [1.4522728e-3, 1.4522728e-3]
+  lq = [3.2154e-3, 3.8278836e-3]
   psim = [0.11171972, 0.11171972]
   i1 = [80.0]
   beta = [0.0, -41.1]

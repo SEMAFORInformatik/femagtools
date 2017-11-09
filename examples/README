@@ -9,11 +9,12 @@ mcv:
 model-creation:
   various combinations of stator and magnet models
 
-bch:
+bch-erg:
   read_ldq_bch-plot-torque.py: read BCH file from a Ld-Lq-identification
                                and create surface plot of the torque
   read_pm_sim-bch-plot-torque.py: read BCH file from a PM/Rel Simulation
                                and plot the torque vs rotor position
+  erg-torque-mtpa.py: read ERG file and create surface plot with MTPA curve
 
 analytical-model:
   fieldweakening.py: calculate the frequency and current using an analytical model

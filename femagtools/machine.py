@@ -42,6 +42,22 @@ def T(d):
         (np.sin(d)), np.sin(d-2*np.pi/3), np.sin(d+2*np.pi/3)))
 
 
+def invpark(a, q, d):
+    """ convert a dq vector to the abc reference frame
+    (inverse park transformation)
+
+    Args:
+        a: rotation angle
+        d: value in direct axis
+        q: value in quadrature axis
+    """
+    if np.isscalar(a) and np.isscalar(q) and np.isscalar(d):
+        return np.dot(K(a), (q, d))
+    if np.isscalar(q) and np.isscalar(d):
+        return np.array([K(x).dot((q, d)) for x in a]).T
+    return np.array([K(x).dot((y, z)) for x, y, z in zip(a, d, q)]).T
+
+
 def betai1(iq, id):
     """return beta and amplitude of dq currents"""
     return (np.arctan2(id, iq),
@@ -81,33 +97,48 @@ def create(bch, r1, ls, lfe=1):
 
     return PmRelMachineLdq(m, p, r1=r1,
                            beta=bch['beta'], i1=bch['i1'],
-                           ld=lfe*np.array(bch['Ld']),
-                           psim=lfe*np.array(bch['Psi_pm']),
-                           lq=lfe*np.array(bch['Lq']), ls=ls)
-    
+                           psid=lfe*np.array(bch['Psi_d'])/np.sqrt(2),
+                           psiq=lfe*np.array(bch['Psi_q'])/np.sqrt(2),
+                           ls=ls)
+
 
 class PmRelMachine(object):
     """Abstract base class for PmRelMachines
 
-    ::param m: number of winding phases
-    ::param p: number of pole pairs
-    ::param r1: stator winding resistance (in Ohm)
+    Args:
+        m: number of winding phases
+        p: number of pole pairs
+        r1: stator winding resistance (in Ohm)
     """
     def __init__(self, m, p, r1, ls):
         self.p = p
         self.m = m
         self.r1 = r1
         self.ls = ls
-        self.io = (0, 0)
+        self.io = (1, -1)
         
+    def torque_iqd(self, iq, id):
+        "torque at q-d-current"
+        psid, psiq = self.psi(iq, id)
+        tq = self.m*self.p/2*(psid*iq - psiq*id)
+        return tq
+    
     def iqd_torque(self, torque):
         """return minimum d-q-current for torque"""
-        res = so.minimize(lambda idq: la.norm(idq), self.io, method='SLSQP',
+        res = so.minimize(lambda iqd: la.norm(iqd), self.io, method='SLSQP',
                           constraints=({'type': 'eq',
                                         'fun': lambda iqd:
                                         self.torque_iqd(*iqd) - torque}))
         return res.x
 
+    def uqd(self, w1, iq, id):
+        """return uq, ud of frequency w1 and d-q current"""
+        psid, psiq = self.psi(iq, id)
+        uqd = (self.r1*iq + w1*(self.ls*id + psid),
+               self.r1*id - w1*(self.ls*iq + psiq))
+        logger.debug('beta i1 %s u1 %f', betai1(iq, id), np.linalg.norm(uqd))
+        return uqd
+    
     def w1_umax(self, u, iq, id):
         """return frequency w1 at given voltage u and id, iq current
 
@@ -124,16 +155,15 @@ class PmRelMachine(object):
         return self.w1_umax(u, iq, id)
     
     def w1max(self, u, iq, id):
-        "return max frequency w1 at given voltage u and d-q current"
-        w10 = np.sqrt(2)*u/la.norm(self.psi(iq, id))
-        return so.fsolve(lambda w1:
-                         la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2), w10)[0]
+        """return max frequency w1 at given voltage u and d-q current
+        (obsolete, use w1_umax)"""
+        return self.w1_umax(u, iq, id)
 
     def w2_imax_umax(self, imax, umax):
         """return frequency at current and voltage"""
         return so.fsolve(
-            lambda x: (self.mtpv(x, umax)[:2] -
-                       self.iqd_imax_umax(imax, x, umax)),
+            lambda x: la.norm(self.mtpv(x, umax) -
+                              self.iqd_imax_umax(imax, x, umax)),
             np.sqrt(2)*umax/la.norm(self.psi(*self.io)))[0]
         
     def beta_u(self, w1, u, i1):
@@ -156,8 +186,25 @@ class PmRelMachine(object):
     
     def i1_torque(self, torque, beta):
         "return i1 current with given torque and beta"
-        return so.fsolve(lambda i1:
-                         self.torque_iqd(*iqd(beta, i1))-torque, self.io[1])[0]
+        i1, info, ier, mesg = so.fsolve(
+            lambda i1: self.torque_iqd(*iqd(beta, i1))-torque,
+            self.io[0],
+            full_output=True)
+        if ier == 1:
+            return i1
+        raise ValueError("no solution found for torque {}, beta {}".format(
+            torque, beta))
+    
+    def i1_voltage(self, w1, u1, beta):
+        "return i1 current with given w1, u1 and beta"
+        i1, info, ier, mesg = so.fsolve(
+            lambda i1: la.norm(self.uqd(w1, *iqd(beta, i1)))-np.sqrt(2)*u1,
+            la.norm(self.io),
+            full_output=True)
+        if ier == 1:
+            return i1
+        raise ValueError("no solution found for w1 {}, u1 {}, beta {}".format(
+            w1, u1, beta))
     
     def id_torque(self, torque, iq):
         "return d current with given torque and d-current"
@@ -179,11 +226,29 @@ class PmRelMachine(object):
     def iqd_imax_umax(self, i1max, w1, u1max):
         """return d-q current at stator frequency and max voltage
         and max current"""
-        beta = so.fsolve(lambda b:
-                         la.norm(
-                             self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
-                         np.arctan2(self.io[1], self.io[0]))[0]
-        return iqd(beta, i1max)
+
+        beta0 = self.betarange[0]
+        beta1 = np.sum(self.betarange)/2
+        u0 = la.norm(self.uqd(w1, *iqd(beta0, i1max)))
+        u1 = la.norm(self.uqd(w1, *iqd(beta1, i1max)))
+        du = (u0 - u1)
+        db = (beta0 - beta1)
+        beta0 = beta0 + db/du*(u1max*np.sqrt(2) - u0)
+        if self.betarange[0] > beta0 or self.betarange[1] < beta0:
+            beta0 = self.betarange[0]
+
+        beta, info, ier, mesg = so.fsolve(
+            lambda b:
+            la.norm(
+                self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
+            beta0,
+            full_output=True)
+
+        if ier == 1:
+            return iqd(beta[0], i1max)
+        raise ValueError(
+            "no solution found for imax {}, w1 {}, u1max {}".format(
+                i1max, w1, u1max))
     
     def mtpa(self, i1):
         """return iq, id, torque at maximum torque of current i1"""
@@ -196,28 +261,20 @@ class PmRelMachine(object):
         return [iq, id, -fopt]
    
     def mtpv(self, w1, u1):
-        """return iq, id, torque at maximum torque of voltage u1"""
-        def p2c(phi, r):
-            return np.sqrt(2.0)*r*np.array([np.cos(phi),
-                                            np.sin(phi)])
-        
-        def iqduqd(uqd):
-            return so.fsolve(lambda iqd: np.ravel(uqd) - np.ravel(
-                self.uqd(w1, *iqd)), self.io)
-
-        def tmax(gamma):
-            return -self.torque_iqd(*iqduqd(p2c(gamma, u1)))
-        aopt, fopt, iter, fcalls, wflag = so.fmin(tmax,
-                                                  np.arctan2(self.io[1],
-                                                             self.io[0]),
-                                                  full_output=True,
-                                                  disp=0)
-        iq, id = iqduqd(p2c(aopt[0], u1))
-        return [iq, id, -fopt]
+        """return d-q-current for voltage and frequency with maximum torque"""
+        res = so.minimize(
+            lambda iqd: -self.torque_iqd(*iqd),
+            self.io, method='SLSQP',
+            constraints=(
+                {'type': 'eq',
+                 'fun': lambda iqd:
+                 la.norm(self.uqd(w1, *iqd)) - np.sqrt(2)*u1}))
+        return res.x
 
     def characteristics(self, T, n, u1max, nsamples=36):
         """calculate torque speed characteristics.
-        return id, iq, n, T, ud, uq, u1, i1,
+        return dict with list values of
+               id, iq, n, T, ud, uq, u1, i1,
                beta, gamma, phi, cosphi, pmech, n_type
         
         Keyword arguments:
@@ -233,24 +290,45 @@ class PmRelMachine(object):
             w1 = self.w1max(u1max, iq, id)
             nmax = max(w1,
                        self.w1max(u1max, *self.iqdmin(i1max)))/2/np.pi/self.p
+
             n1 = min(w1/2/np.pi/self.p, nmax)
             r['n_type'] = n1
-            n2 = min(nmax, max(n, n1))
+            logger.info("Type speed %f", 60*n1)
+            try:
+                n2 = self.w2_imax_umax(i1max, u1max)/2/np.pi/self.p
+                n3 = min(nmax, n, max(n1, n2))
+            except ValueError:
+                n2 = n
+                n3 = min(nmax, n)
 
-            for nx in np.linspace(0, n1, int(n1/(n2/nsamples))):
+            speedrange = sorted(
+                list(set([nx for nx in [n1, n2, n3] if nx <= n3])))
+            n1 = speedrange[0]
+            n3 = speedrange[-1]
+            if len(speedrange) > 2:
+                nsamples = nsamples - int(speedrange[1]/(n3/nsamples))
+                dn = (n3-speedrange[1])/nsamples
+            else:
+                dn = n3 / nsamples
+            for nx in np.linspace(0, n1, int(n1/dn)):
                 r['id'].append(id)
                 r['iq'].append(iq)
                 r['n'].append(nx)
                 r['T'].append(T)
-            nsamples = nsamples - int(n1/(n2/nsamples))
-            dn = (n2-n1)/nsamples
-            for nx in np.linspace(n1+dn, n2, nsamples):
-                w1 = 2*np.pi*nx*self.p
-                iq, id = self.iqd_imax_umax(i1max, w1, u1max)
-                r['id'].append(id)
-                r['iq'].append(iq)
-                r['n'].append(nx)
-                r['T'].append(self.torque_iqd(iq, id))
+
+            if nx < n3:
+                for nx in np.linspace(nx+dn/2, min(n2, n3),
+                                      int(min(n2, n3)/dn)):
+                    w1 = 2*np.pi*nx*self.p
+                    try:
+                        iq, id = self.iqd_imax_umax(i1max, w1, u1max)
+                    except ValueError:
+                        break
+                    r['id'].append(id)
+                    r['iq'].append(iq)
+                    r['n'].append(nx)
+                    r['T'].append(self.torque_iqd(iq, id))
+                    
         else:
             for t, nx in zip(T, n):
                 w1 = 2*np.pi*nx*self.p
@@ -340,7 +418,8 @@ class PmRelMachineLdq(PmRelMachine):
 
         super(self.__class__, self).__init__(m, p, r1, ls)
         self.psid = None
-        self.betamin = -np.pi/2
+        self.betarange = (-np.pi, np.pi)
+        self.i1range = (0, np.inf)
         if np.isscalar(ld):
             self.ld = lambda b, i: ld
             self.psim = lambda b, i: psim
@@ -352,7 +431,7 @@ class PmRelMachineLdq(PmRelMachine):
             try:
                 self.io = iqd(min(beta)*np.pi/360, max(i1)/2)
             except:
-                self.io = (0, 0)
+                self.io = (1, -1)
             self.ld = lambda b, i: ld[0]
             self.psim = lambda b, i: psim[0]
             self.lq = lambda b, i: lq[0]
@@ -360,7 +439,6 @@ class PmRelMachineLdq(PmRelMachine):
             return
         
         beta = np.asarray(beta)/180.0*np.pi
-        self.betamin = min(beta)
         self.io = iqd(np.min(beta)/2, np.max(i1)/2)
         if 'psid' in kwargs:
             kx = ky = 3
@@ -368,6 +446,8 @@ class PmRelMachineLdq(PmRelMachine):
                 ky = len(i1)-1
             if len(beta) < 4:
                 kx = len(beta)-1
+            self.betarange = (min(beta), 0)
+            self.i1range = (0, np.max(i1))
             psid = np.sqrt(2)*np.asarray(kwargs['psid'])
             psiq = np.sqrt(2)*np.asarray(kwargs['psiq'])
             self.psid = lambda x, y: ip.RectBivariateSpline(
@@ -404,6 +484,8 @@ class PmRelMachineLdq(PmRelMachine):
             raise ValueError("unsupported array size {}x{}".format(
                 len(beta), len(i1)))
             
+        self.betarange = (min(beta), 0)
+        self.i1range = (0, np.max(i1))
         self.ld = lambda x, y: ip.RectBivariateSpline(
             beta, i1, np.asarray(ld)).ev(x, y)
         self.psim = lambda x, y: ip.RectBivariateSpline(
@@ -411,20 +493,25 @@ class PmRelMachineLdq(PmRelMachine):
         self.lq = lambda x, y: ip.RectBivariateSpline(
             beta, i1, np.asarray(lq)).ev(x, y)
         logger.debug("rectbivariatespline beta %s i1 %s", beta, i1)
-    
-    def torque_iqd(self, iq, id):
-        "torque at q-d-current"
-        psid, psiq = self.psi(iq, id)
-        tq = self.m*self.p/2*(psid*iq - psiq*id)
-        return tq
-       
-    def uqd(self, w1, iq, id):
-        """return uq, ud of frequency w1 and d-q current"""
-        psid, psiq = self.psi(iq, id)
-        return (self.r1*iq + w1*(self.ls*id + psid),
-                self.r1*id - w1*(self.ls*iq + psiq))
-
+           
     def psi(self, iq, id):
+        """return psid, psiq of currents iq, id"""
+        beta, i1 = betai1(np.asarray(iq), np.asarray(id))
+        logger.debug('beta %f (%f, %f) i1 %f %f',
+                     beta, self.betarange[0], self.betarange[1],
+                     i1, self.i1range[1])
+        if (self.betarange[0] <= beta <= self.betarange[1] and
+            i1 <= 1.01*self.i1range[1]):
+            if self.psid:
+                return (self.psid(beta, i1), self.psiq(beta, i1))
+
+            psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
+            psiq = self.lq(beta, i1)*iq
+            return (psid, psiq)
+
+        return (np.nan, np.nan)
+    
+    def psi0(self, iq, id):
         """return psid, psiq of currents iq, id"""
         beta, i1 = betai1(np.asarray(iq), np.asarray(id))
         if self.psid:
@@ -436,7 +523,11 @@ class PmRelMachineLdq(PmRelMachine):
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""
-        return iqd(self.betamin, i1)
+        return iqd(self.betarange[0], i1)
+    
+    def iqdmax(self, i1):
+        """max iq, min id for given current"""
+        return iqd(self.betarange[1], i1)
 
 
 class PmRelMachinePsidq(PmRelMachine):
@@ -455,6 +546,7 @@ class PmRelMachinePsidq(PmRelMachine):
     def __init__(self, m, p, psid, psiq, r1, id, iq, ls=0):
         super(self.__class__, self).__init__(m, p, r1, ls)
 
+        self.betarange = (-np.pi, np.pi)
         if isinstance(psid, (float, int)):
             self._psid = lambda id, iq: np.array([[psid]])
             self._psiq = lambda id, iq: np.array([[psiq]])
@@ -464,7 +556,8 @@ class PmRelMachinePsidq(PmRelMachine):
         psiq = np.asarray(psiq)
         id = np.asarray(id)
         iq = np.asarray(iq)
-        self.idmin = min(id)
+        self.idrange = (min(id), max(id))
+        self.iqrange = (min(iq), max(iq))
         self.io = np.max(iq)/2, np.min(id)/2
         
         if np.any(psid.shape < (4, 4)):
@@ -492,23 +585,31 @@ class PmRelMachinePsidq(PmRelMachine):
         self._psiq = lambda x, y: ip.RectBivariateSpline(
             iq, id, psiq).ev(x, y)
 
-    def torque_iqd(self, iq, id):
-        "torque at q-d-current"
-        return self.m*self.p/2*(self._psid(iq, id)*iq -
-                                self._psiq(iq, id)*id)
-
-    def uqd(self, w1, iq, id):
-        return (self.r1*iq + w1*(self.ls*iq + self._psid(iq, id)),
-                self.r1*id - w1*(self.ls*id + self._psiq(iq, id)))
-
     def psi(self, iq, id):
         return (self._psid(iq, id),
                 self._psiq(iq, id))
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""
-        idmin = np.sqrt(2)*i1
-        if idmin < self.idmin:
-            return (0, idmin)
-        
-        return (np.sqrt(self.idmin**2 - idmin**2), idmin)
+        idmin = -np.sqrt(2)*i1
+        if self.idrange[0] <= idmin <= self.idrange[1]:
+            return (self.iqrange[1], idmin)
+
+        iqmax = np.sqrt(idmin**2 - self.idrange[0]**2)
+        if self.iqrange[0] <= iqmax <= self.iqrange[1]:
+            return (iqmax, idmin)
+
+        return (self.iqrange[1], self.idrange[0])
+
+    def iqdmax(self, i1):
+        """max iq, max id for given current"""
+        iqmax = np.sqrt(2)*i1
+        if self.iqrange[0] <= iqmax <= self.iqrange[1]:
+            return (iqmax, self.idrange[1])
+
+        idmin = np.sqrt(iqmax**2 - self.iqrange[1]**2)
+        if self.idrange[0] <= idmin <= self.idrange[1]:
+            return (iqmax, idmin)
+
+        return (self.iqrange[1], self.idrange[0])
+

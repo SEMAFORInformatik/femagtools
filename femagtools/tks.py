@@ -4,16 +4,16 @@
 
     Manage TKS magnetizing curve data files
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import sys
 import numpy as np
 import os
 import re
 import codecs
-import femagtools.mcv as mcv
-import femagtools.losscoeffs
+import femagtools.losscoeffs as lc
+import femagtools.mcv
 import json
 import logging
 
@@ -36,19 +36,11 @@ def readlist(f):
             x.append(vals)
 
 
-def pfe1(f, B, ch, fh, cw, fw, fb):
-    return (ch*(f/fo)**fh + cw*(f/fo)**fw)*(B/Bo)**fb
-
-
-def pfe2(f, B, cw, fw, fb):
-    return cw*(f/fo)**fw * (B/Bo)**fb
-
-
 class Reader(object):
 
     def __init__(self, filename):
         self.version_mc_curve = 0
-        self.mc1_type = mcv.MAGCRV
+        self.mc1_type = femagtools.mcv.MAGCRV
 
         self.curve = []
         self.name = os.path.splitext(
@@ -96,28 +88,31 @@ class Reader(object):
                     self.losses['f'].append(fxref)
                     self.losses['B'].append(b)
                     self.losses['pfe'].append(p)
+                    
+        logger.info("%s Bmax %3.2f", filename, max(self.curve[0]['bi']))
 
         if self.losses and not np.isscalar(self.losses['B'][0]):
             import scipy.interpolate as ip
-            z = femagtools.losscoeffs.fitjordan(
+            z = lc.fitjordan(
                 self.losses['f'],
                 self.losses['B'],
                 self.losses['pfe'],
                 self.Bo,
                 self.fo)
-            logger.info("Loss coeffs %s", z)
+            logger.info("Jordan loss coeffs %s", z)
             self.ch = z[2]
             self.ch_freq = z[3]
             self.cw = z[0]
             self.cw_freq = z[1]
             self.b_coeff = z[4]
             
-            z = femagtools.losscoeffs.fitsteinmetz(
+            z = lc.fitsteinmetz(
                 self.losses['f'],
                 self.losses['B'],
                 self.losses['pfe'],
                 self.Bo,
                 self.fo)
+            logger.info("Steinmeth loss coeffs %s", z)
             
             self.losses['cw'] = z[0]
             self.losses['cw_freq'] = z[1]
@@ -157,7 +152,6 @@ class Reader(object):
             'cw_freq': self.cw_freq,
             'b_coeff': self.b_coeff,
             'rho': self.rho,
-            'fe_sat_mag': self.fe_sat_mag,
             'losses': self.losses}
 
 
@@ -167,38 +161,29 @@ def read(filename):
     return tks.getValues()
 
 if __name__ == "__main__":
+    
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:
         filename = sys.stdin.readline().strip()
             
     tks = Reader(filename)
-    
     if tks.losses:
         import matplotlib.pylab as pl
+        import femagtools.plot
         import numpy as np
         cw = tks.cw
         alpha = tks.cw_freq
         ch = tks.ch
         beta = tks.ch_freq
         gamma = tks.b_coeff
-        
-        for i, f in enumerate(tks.losses['f']):
-            pfe = [p for p in np.array(tks.losses['pfe']).T[i] if p]
-            pl.plot(tks.losses['B'], pfe1(f, np.array(tks.losses['B']),
-                                          cw, alpha, ch, beta, gamma))
-            pl.plot(tks. losses['B'][:len(pfe)], pfe,
-                    marker='o', label="{} Hz".format(f))
 
-        pl.title("Iron Losses " + filename)
-        #pl.yscale('log')
-        #pl.xscale('log')
-        pl.xlabel("Induction [T]")
-        pl.ylabel("Pfe [W/kg]")
-        #pl.legend()
-        pl.grid(True)
-        #pl.savefig('tks.png')
+        femagtools.plot.felosses(tks.losses,
+                                 (cw, alpha, ch, beta, gamma),
+                                 title=filename, log=False)
         pl.show()
-
+        
     mcv = tks.getValues()
     json.dump(mcv, sys.stdout)

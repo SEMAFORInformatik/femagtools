@@ -5,8 +5,8 @@
 
     Reading BCH/BATCH files
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import sys
 import numpy as np
@@ -909,7 +909,7 @@ class Reader:
                 self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
                                         for phi in self.dqPar['phi']]
                 self.dqPar['i1'].insert(0, 0)
-                self.dqPar['u1'].insert(0, self.dqPar['up0'])
+                self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
             except KeyError:
                 pass
 
@@ -963,7 +963,7 @@ class Reader:
         self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
                                 for phi in self.dqPar['phi']]
         self.dqPar['i1'].insert(0, 0)
-        self.dqPar['u1'].insert(0, self.dqPar['up0'])
+        self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
         
     def __read_weights( self, content ):
     #              Stator-Iron      - Conductors      - Magnets 
@@ -1108,6 +1108,10 @@ class Reader:
                     rec = self._numPattern.findall(l)
                     if len(rec) == 4:
                         losses[k].append([floatnan(x) for x in rec])
+                    elif len(rec) == 5:  # FEMAG Rel 8.3 with el/mech order
+                        losses[k].append([floatnan(x)
+                                          for i, x in enumerate(rec)
+                                          if not i == 1])
                 except:
                     pass
                     

@@ -4,8 +4,8 @@
 
     Running FEMAG on Amazon Cloud EC2
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 
     .. note: To use this engine you have to install the boto3 module from amazon
 """
@@ -40,11 +40,12 @@ class Engine(object):
 
     """The Amazon Engine
 
-    This enginge uses the boto3 Python module to interact
+    This engine uses the boto3 Python module to interact
        with the amazon ec2 and s3 services
 
-    :param list buckets: Existing buckets with femag calculation files
-    :param str configfile: Filename of config file
+    Args:
+        buckets (:obj:`list`): Existing buckets with femag calculation files
+        configfile (str): Filename of config file
 
     .. :note: If possible you should use the same location for all services
 
@@ -69,7 +70,8 @@ class Engine(object):
     def _create_data_buckets(self):
         """Create unique S3 Buckets for calculation
 
-        :param str ACL: ACL-Rules for Amazon
+        Args:
+            ACL (str): ACL-Rules for Amazon
         """
         # If buckets exsists map them with a folder
         if self.buckets:
@@ -110,7 +112,8 @@ class Engine(object):
 
         :internal:
 
-        :param :py:class:`CloudTask` task: The task which belongs to the uploading folder
+        Args:
+            task (py:class:`CloudTask`): The task which belongs to the uploading folder
         """
         # Upload one single tar_file
         task.tar_file.close()
@@ -124,8 +127,9 @@ class Engine(object):
 
         :internal:
 
-        :param list threads: List of threads to check if they are finished
-        :param str operation: Name of the operation to write a meaningful log message
+        Args:
+            threads (:obj:`list`): List of threads to check if they are finished
+            operation (str): Name of the operation to write a meaningful log message
 
         """
         # Wait until all threads are not running
@@ -179,7 +183,8 @@ class Engine(object):
 
         :internal:
 
-        :param Tast task: the task for calculation
+        Args:
+            task (Task): the task for calculation
 
         """
         user_data = self._read_cloud_init(task.id)
@@ -202,8 +207,9 @@ class Engine(object):
 
         :internal:
 
-        :param int task_id: The task id (Same as the S3 Bucket name)
-        :param int instance_id: The instance_id to set the tag to the right instance
+        Args:
+            task_id (int): The task id (Same as the S3 Bucket name)
+            instance_id (int): The instance_id to set the tag to the right instance
         """
         tag = '{}-{}'.format(task_id, self.config.get('COMPANY_NAME', 'femag'))
         self.ec2_resource.create_tags(Resources=[instance_id], Tags=[{'Key': 'Name', 'Value': tag}])
@@ -233,8 +239,9 @@ class Engine(object):
 
         :internal:
 
-        :param int timeout: How long we wait between a check
-        :param str filename: What is the filename of the exit_code
+        Args:
+            timeout (int): How long we wait between a check
+            filename (str): What is the filename of the exit_code
         """
         import botocore       # For exception
 
@@ -276,7 +283,8 @@ class Engine(object):
     def _get_status_code(self, filename='exit_code'):
         """Get the status code from the caluclation
 
-        :param str filename: Filename of exit_code
+        Args:
+            filename (str): Filename of exit_code
         """
         status_code = []
         for t in self.job.tasks:
@@ -313,9 +321,11 @@ class Engine(object):
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`CloudJob`
 
-        :param str workdir: The workdir where the calculation files are stored
-        :return: Cloud job
-        :rtype: :py:class:`CloudJob`
+        Args:
+            workdir (str): The workdir where the calculation files are stored
+
+        Return:
+            Cloud job (:class:`CloudJob`)
         """
         self.job = femagtools.job.CloudJob(workdir)
         return self.job
@@ -323,8 +333,8 @@ class Engine(object):
     def submit(self):
         """Starts the FEMAG calculation(s) on Amazon
 
-        :returns: length of started tasks
-        :rtype: int
+        Return:
+            length of started tasks (int)
         """
         self._create_data_buckets()
         self._upload_files_to_s3()
@@ -334,8 +344,8 @@ class Engine(object):
     def join( self ):
         """Wait until all calculations are finished
 
-        :return: list of all calculations status (C = Ok, X = error)
-        :rtype: list
+        Return:
+            list of all calculations status (C = Ok, X = error) (:obj:`list`)
         """
         status = []
         # Wait until all tasks are finished

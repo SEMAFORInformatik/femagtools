@@ -5,8 +5,8 @@
 
     Creating and managing calculation jobs.
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import os
 import platform
@@ -38,8 +38,10 @@ class Task(object):
         
     def add_file(self, fname, content=None):
         """adds a file required by this task
-        :param fname: file name 
-        :param content: list of str written to file if not None"""
+
+        Args:
+            fname: file name 
+            content: list of str written to file if not None"""
         base = os.path.basename(fname)
         self.transfer_files.append(fname)
         if os.path.splitext(base)[-1] == '.fsl':

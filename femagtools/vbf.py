@@ -4,113 +4,74 @@
 
     Manage VBF magnetizing curve data files
 
-    :copyright: 2016 Semafor Informatik & Energie AG, Basel
-    :license: BSD, see LICENSE for more details.
+
+
 """
 import sys
-import numpy as np
-import femagtools.losscoeffs
+import femagtools.losscoeffs as lc
+import logging
 
+logger = logging.getLogger(__name__)
 
 fo = 50.
 Bo = 1.5
 
 
-def pfe1(f, B, ch, fh, cw, fw, fb):
-    return (ch*(f/fo)**fh + cw*(f/fo)**fw)*(B/Bo)**fb
-
-
-def pfe2(f, B, cw, fw, fb):
-    return cw*(f/fo)**fw * (B/Bo)**fb
-
-
-def logpfe2(f, B, cw, fw, fb):
-    return np.log10(cw) + fw*np.log10(f/fo) * fb*np.log10(B/Bo)
-
-
-class Reader:
+class Reader(object):
 
     def __init__(self, filename):
-        self.vbf = {}
+        self.losses = {}
         with open(filename) as f:
-            self.vbf['name'] = f.readline().strip()
-            self.vbf['fo'], self.vbf['Bo'] = [float(s)
-                                              for s in f.readline().strip().split()]
+            self.losses['name'] = f.readline().strip()
+            self.losses['fo'], self.losses['Bo'] = [float(s)
+                                                    for s in f.readline().strip().split()]
             # Ignore the next line
             f.readline()
-            self.vbf['f'] = [float(s) for s in f.readline().strip().split()]
-            self.vbf['B'] = []
-            self.vbf['pfe'] = []
+            self.losses['f'] = [float(s) for s in f.readline().strip().split()]
+            self.losses['B'] = []
+            self.losses['pfe'] = []
             for l in f.readlines():
                 values = [float(s) for s in l.strip().split()]
                 if len(values) > 1:
-                    self.vbf['B'].append(values[0])
-                    self.vbf['pfe'].append(
+                    self.losses['B'].append(values[0])
+                    self.losses['pfe'].append(
                         [v if v > 0 else None for v in values[1:]])
-            
-    def getLossValues(self):
-        return self.vbf
+        logger.info("%s fmax %5.1f Bmax %3.2f", filename,
+                    max(self.losses['f']), max(self.losses['B']))
+
+    def __getitem__(self, index):
+        return self.losses[index]
     
+    def getLossValues(self):
+        return self.losses
+
+
+def read(filename):
+    """read VBF file and return dict of content"""
+    vbf = Reader(filename)
+    return vbf.getLossValues()
+    
+
 if __name__ == "__main__":
     import matplotlib.pylab as pl
+    import femagtools.plot
+    
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:
         filename = sys.stdin.readline().strip()
-            
-    vbf = Reader(filename)
 
-    print(vbf.getLossValues())
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
+    losses = read(filename)
+    print(losses)
     
-#    cw, alfa, beta = femagtools.losscoeffs.fitsteinmetz(
-#        vbf.vbf['f'],
-#        vbf.vbf['B'],
-#        vbf.vbf['pfe'],
-#        vbf.vbf['Bo'],
-#        vbf.vbf['fo'])
-
-    n = 100
-    B = pl.np.linspace(0.1, 2, n)
-    
-#    for i in range(len(vbf.vbf['f'])):
-#        f = vbf.vbf['f'][i]
-#        pfe = [p for p in np.array(vbf.vbf['pfe']).T[i] if p]
-#        pl.plot(B, pfe2(f, B, cw, alfa, beta))
-#        pl.plot(vbf. vbf['B'][:len(pfe)], pfe,
-#                marker='o', label="f1={} Hz".format(f))
-
-#    pl.title("Iron Losses " + filename)
-#    pl.yscale('log')
-#    pl.xscale('log')
-#    pl.xlabel("Induction [T]")
-#    pl.ylabel("Pfe [W/kg]")
-#    pl.grid(True)
-#    pl.show()
-
-    z = femagtools.losscoeffs.fitjordan2(
-        vbf.vbf['f'],
-        vbf.vbf['B'],
-        vbf.vbf['pfe'],
-        vbf.vbf['Bo'],
-        vbf.vbf['fo'])
-
-    cw, alpha, ch, beta, gamma = z
-#    cw, alpha, beta = z
-#    print(cw, alpha, beta)
-#    cw = 2.89
-#    alpha = 1.43
-#    beta = 1.85
-    for i, f in enumerate(vbf.vbf['f']):
-        pfe = [p for p in np.array(vbf.vbf['pfe']).T[i] if p]
-        pl.plot(B, pfe1(f, B, cw, alpha, ch, beta, gamma))
-        pl.plot(vbf. vbf['B'][:len(pfe)], pfe,
-                marker='o', label="{} Hz".format(f))
-
-    pl.title("Iron Losses " + filename)
-    pl.yscale('log')
-    pl.xscale('log')
-    pl.xlabel("Induction [T]")
-    pl.ylabel("Pfe [W/kg]")
-    pl.legend()
-    pl.grid(True)
+    femagtools.plot.felosses(losses,
+                             lc.fitjordan(
+                                 losses['f'],
+                                 losses['B'],
+                                 losses['pfe'],
+                                 losses['Bo'],
+                                 losses['fo']),
+                             title=filename, log=False)
     pl.show()

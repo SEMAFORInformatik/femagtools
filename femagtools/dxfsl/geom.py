@@ -207,7 +207,7 @@ def part_of_circle(startangle, endangle, pos=3):
         x = float(round(2*np.pi/angle, pos))
     else:
         x = float(0.0)
-    print("part_of_circle: {}".format(x))
+    logger.debug("part_of_circle: {}".format(x))
     if x.is_integer():
         return x
     return 0
@@ -1532,7 +1532,6 @@ class Motor(object):
                 
     def rotate_to(self, new_startangle):
         if np.isclose(new_startangle, self.startangle):
-            print("rotate nicht nötig")
             return
             
         if points_are_close(self.center, [0.0, 0.0]):
@@ -1540,16 +1539,11 @@ class Motor(object):
             self.geom.rotate(angle)
             self.startangle = new_startangle
             self.endangle += angle
-            print("ROTATED: new start={}, end={}".format(self.startangle, self.endangle))
-        else:
-            print("rotate nur mit Center(0,0) möglich")
         
     def airgap(self, correct_airgap=0.0, atol=0.05):
-        print("Motor::airgap({})".format(correct_airgap))
         self.airgap_radius = 0.0
         
         if np.isclose(self.radius, 0.0):
-            print("   no radius available")
             return
             
         self.airgaps = self.geom.detect_airgaps(self.center, self.startangle, self.endangle, atol)
@@ -1562,17 +1556,16 @@ class Motor(object):
                    in_range(correct_airgap, g[0], g[1], 0.0, 0.0):
                     circle = Circle(Element(center=self.center, radius=gap_radius))
                     if self.geom.is_airgap(self.center, self.radius, self.startangle, self.endangle, circle, atol):
-#                        print("Airgap with radius {}".format(gap_radius))
                         self.geom.airgaps.append(circle)
                         num_airgaps += 1
                         self.airgap_radius = gap_radius
                     else:
                         self.geom.airgaps.append(circle)
+                        logger.debug("DESASTER: No Airgap with radius {}".format(gap_radius))
                         print("DESASTER: No Airgap with radius {}".format(gap_radius))
                         sys.exit(1)
                     
             if num_airgaps == 1:
-                print("One Airgap found !!! {}".format(self.airgap_radius))
                 return
                 
             if num_airgaps > 1:
@@ -1751,22 +1744,16 @@ class Area(object):
             a_prev = a
 
         delta_sorted = list([v, k] for (k, v) in delta.items())
-#        for x in delta_sorted:
-#            print(" delta_sorted: {}".format(x))
             
         if len(delta_sorted) == 1:
             # Wir erhalten für alle Objekte denselben Winkel. Dies ist der
             # einfachste Fall.
-            print(" = 1 Winkel")
             self.delta = alpha_angle(self.min_angle, self.equal_areas[0].min_angle)
             self.start = middle_angle(self.max_angle ,self.equal_areas[0].min_angle) 
             self.symmetry = part_of_circle(0.0, self.delta, 1)
             return
-            
-#        print("DELTA {}".format(delta_sorted))
-        
+                   
         if len(delta_sorted) > 2:
-            print(" > 2 Winkel")
             # Mehr als 2 Winkel untersuchen wir (noch) nicht. Wir brechen
             # die Suche nach dem richtigen Winkel ab.
             return
@@ -1775,15 +1762,13 @@ class Area(object):
         # Objekte zusammen genommen.
 
         if len(self.equal_areas) < 4:
-            print(" < 4 Areas")
             # Wenn nicht mehr als 4 Objekte vorhanden sind, brechen wir auch
             # ab.
             return
 
         percent = delta_sorted[0][0] / (len(self.equal_areas)+1)
-        if percent > 0.7:
-            # Bei über 70 % nehmen wir an, dass es nur einen Winkel gibt
-            print(" = 1 Winkel wegen 70%-Regel")
+        if percent > 0.75:
+            # Bei über 75 % nehmen wir an, dass es nur einen Winkel gibt
             self.delta = alpha_angle(self.min_angle, self.equal_areas[0].min_angle)
             self.start = middle_angle(self.max_angle ,self.equal_areas[0].min_angle)
             self.symmetry = part_of_circle(0.0, self.delta, 1)
@@ -1791,7 +1776,6 @@ class Area(object):
         
         # Fürs erste hoffen wir, dass sich die beiden verschiedenen Abstände
         # regelmässig abwechseln.
-        print(" = 2 Winkel")
         self.delta = alpha_angle(self.min_angle, self.equal_areas[1].min_angle)
         self.symmetry = part_of_circle(0.0, self.delta, 1)
         
@@ -1803,7 +1787,6 @@ class Area(object):
 
         if np.isclose(delta_1, delta_2):
             # Was tun? Die Abstände sind nicht abwechseln.
-            print(" gleiche Winkel :-(")
             return
         
 #        print(" = delta_1={}, delta_2={}".format(delta_1, delta_2))
@@ -1814,10 +1797,6 @@ class Area(object):
             self.start = middle_angle(self.max_angle ,self.equal_areas[0].min_angle)
             
     def symmetry_lines(self, startangle, endangle):
-        print("symmetry_lines")
-        print("  startangle={}, endangle={}".format(startangle, endangle))
-        print("  start={}, delta={}".format(self.start, self.delta))
-
         if less_equal(endangle, startangle):
             endangle += 2*np.pi
             
@@ -2674,7 +2653,6 @@ class Geometry(object):
         return True
         
     def get_motor_part(self, mm):
-        print("get_motor_part")
         center_list = []
         for e in self.elements(Arc):
             center = [round(e.center[0],3), round(e.center[1],3)]
@@ -2696,10 +2674,9 @@ class Geometry(object):
             # Wir finden keine Arc-Objekte, welche uns einen Hinweis auf den
             # Center geben können. Wir versuchen in der Verzweiflung mit
             # x(min) und y(min)
-            print("what's that?")
             center = [round(mm[0], 4), round(mm[2], 4)]
 
-        print("Center is {}".format(center))                
+        logger.debug("Center is {}".format(center))                
         
         min_radius = 99999
         max_radius = 0
@@ -2709,7 +2686,7 @@ class Geometry(object):
         for h in convex_hull(self.virtual_nodes()):
             angle = alpha_line(center, [round(h[0], 4), round(h[1], 4)])
             if angle < 0.0:
-                print("Seltsamer Punkt {}".format(h))
+                logger.debug("Seltsamer Punkt {}".format(h))
             startangle = min(startangle, angle)
             endangle = max(endangle, angle)
             
@@ -2725,20 +2702,12 @@ class Geometry(object):
         min_r = min(center_left, center_right, center_up, center_down)
         max_r = max(center_left, center_right, center_up, center_down)
         
-        print("   left={}, right={}, up={}, down={}"
-            .format(center_left, center_right, center_up, center_down))        
-        print("   startangle={}, endangle={}".format(startangle, endangle))
-        print("   min_radius={}, max_radius={}".format(min_radius, max_radius))
-
-
         if less_equal(center_left, 0.0) or less_equal(center_right, 0.0) or \
            less_equal(center_up, 0.0) or less_equal(center_down, 0.0):
             if not np.isclose(center_left, center_right):
                 x = part_of_circle(startangle, endangle)
-                print("Teiler {}, start={}, end={}".format(x, startangle, endangle))
 
                 if x > 2:
-                    print("Teiler {} => ok".format(x))
                     return Motor(self, [round(center[0], 8), round(center[1], 8)], max_radius, startangle, endangle)
         
         if min_radius >= max_radius*0.9 and min_r >= max_r*0.9:

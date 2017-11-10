@@ -64,7 +64,7 @@ def symmetry_search(motor, kind, sym_tolerance, show_plots):
         print("===== Final Result of {} =====".format(kind))
         p.render_elements(motor_ok.geom, dg.Shape)
         
-    if args.f:
+    if args.fsl:
         write_fsl(motor_ok, basename, basename+"_"+kind+'.fsl')
    
 #############################
@@ -79,11 +79,8 @@ if __name__ == "__main__":
         description='Process DXF file and create a plot or FSL file.')
     argparser.add_argument('dxfile',
                            help='name of DXF file')
-    argparser.add_argument('-f',
+    argparser.add_argument('-f', '--fsl',
                            help='create fsl',
-                           action="store_true")
-    argparser.add_argument('-r',
-                           help='reshape based on symmetry detection',
                            action="store_true")
     argparser.add_argument('-a', '--airgap',
                            help='correct airgap',
@@ -106,6 +103,10 @@ if __name__ == "__main__":
     argparser.add_argument('-v', '--view',
                            help='show a view only',
                            dest='view',
+                           action="store_true")
+    argparser.add_argument('-d', '--debug',
+                           help='print debug information',
+                           dest='debug',
                            action="store_true")
 
     args = argparser.parse_args()
@@ -151,13 +152,12 @@ if __name__ == "__main__":
         motor = motor_base.full_copy()
     else:
         # Es ist nicht klar, wie das Motorenteil aussieht
-        print("Es ist nicht klar, wie das Motorenteil aussieht")
         motor_base.set_center(0.0, 0.0)
         motor_base.set_radius(9999999)
         motor = motor_base.full_copy()
         
     if motor.part_of_circle() == 0:
-        print("Teil ist kein Teiler eines Kreises")
+        print("Teil ist kein Teilsegment eines Kreises")
         sys.exit(1)
         
     motor.clear_cut_lines()

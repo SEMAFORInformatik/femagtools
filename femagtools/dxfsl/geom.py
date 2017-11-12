@@ -1515,7 +1515,7 @@ class Motor(object):
             return Motor(clone, self.center, new_radius, startangle, endangle)
         else:
             # Der Originalwinkel bleibt bestehen
-            return Motor(clone, self.center, new_radius, self.startangle, self.endangle)            
+            return Motor(clone, self.center, new_radius, self.startangle, self.endangle)
 
     def full_copy(self):
         clone = self.geom.copy_shape( self.center, self.radius, 0.0, 2*np.pi, 0.0, self.radius+9999)
@@ -1524,7 +1524,7 @@ class Motor(object):
     def copy_mirror(self, startangle, midangle, endangle):
         geom1 = self.geom.copy_shape( self.center, self.radius, startangle, midangle, 0.0, self.radius+9999)
         geom2 = self.geom.copy_shape( self.center, self.radius, midangle, endangle, 0.0, self.radius+9999)
-        motor = geom1.get_motor()
+        motor = Motor(geom1, self.center, self.radius, startangle, midangle)
         motor.mirror_geom = geom2
         motor.mirror_startangle = midangle
         motor.mirror_endangle = endangle
@@ -1662,6 +1662,7 @@ class Area(object):
         self.start = 0.0
         self.sym_startangle = 0.0
         self.sym_endangle = 0.0
+        self.sym_type = 0
         self.symmetry = 0
         self.sym_tolerance = sym_tolerance
         self.calc_signature(center)
@@ -1749,7 +1750,8 @@ class Area(object):
             # Wir erhalten für alle Objekte denselben Winkel. Dies ist der
             # einfachste Fall.
             self.delta = alpha_angle(self.min_angle, self.equal_areas[0].min_angle)
-            self.start = middle_angle(self.max_angle ,self.equal_areas[0].min_angle) 
+            self.start = middle_angle(self.max_angle ,self.equal_areas[0].min_angle)
+            self.sym_type = 3 
             self.symmetry = part_of_circle(0.0, self.delta, 1)
             return
                    
@@ -1771,12 +1773,14 @@ class Area(object):
             # Bei über 75 % nehmen wir an, dass es nur einen Winkel gibt
             self.delta = alpha_angle(self.min_angle, self.equal_areas[0].min_angle)
             self.start = middle_angle(self.max_angle ,self.equal_areas[0].min_angle)
+            self.sym_type = 2
             self.symmetry = part_of_circle(0.0, self.delta, 1)
             return    
         
         # Fürs erste hoffen wir, dass sich die beiden verschiedenen Abstände
         # regelmässig abwechseln.
         self.delta = alpha_angle(self.min_angle, self.equal_areas[1].min_angle)
+        self.sym_type = 1
         self.symmetry = part_of_circle(0.0, self.delta, 1)
         
 #        self.delta = delta_sorted[0][1] + delta_sorted[1][1]
@@ -1787,6 +1791,7 @@ class Area(object):
 
         if np.isclose(delta_1, delta_2):
             # Was tun? Die Abstände sind nicht abwechseln.
+            self.delta = 0.0
             return
         
 #        print(" = delta_1={}, delta_2={}".format(delta_1, delta_2))
@@ -1823,6 +1828,9 @@ class Area(object):
     def __lt__(self, a):
         if self.symmetry != a.symmetry:
             return self.symmetry > a.symmetry
+            
+        if self.sym_type != a.sym_type:
+            return self.sym_type > a.sym_type
             
         if self.count != a.count:
             return self.count > a.count
@@ -2441,10 +2449,8 @@ class Geometry(object):
         def add(areas, a):
             for area in areas:
                 if area.is_equal(a, sym_tolerance):
-#                    print("INCREMENT {}".format(a))
                     area.increment(a)
                     return
-#            print("APPEND {}".format(a))
             areas.append(a)
             
         arealist_match = []
@@ -2453,7 +2459,7 @@ class Geometry(object):
  
         for a in arealist_match:
             a.set_delta()
-        arealist_match.sort()  
+        arealist_match.sort()
 
 #        print(">>>>> AREAS >>>>>")
 #        for a in arealist_match:
@@ -2462,12 +2468,12 @@ class Geometry(object):
         
         area = arealist_match[0]
         if area.delta == 0.0:
-            print("Delta: Keine Symetrie gefunden")
+            print("Delta: Keine Symmetrie gefunden")
             return False
             
         sym = part_of_circle(0.0, area.delta, 1)
         if sym == 0.0:
-            print("Part: Keine Symetrie gefunden")
+            print("Part: Keine Symmetrie gefunden")
             return False
         area.delta = 2*np.pi/sym
         print("Symetrie 1/{}".format(sym))
@@ -2595,8 +2601,8 @@ class Geometry(object):
         mm = self.minmax()
         height = mm[3]-mm[2]
         width = mm[1]-mm[0]
-        print("\nGet Motor mit minmax={}".format(mm))
-        print("   Motor hoch={}, breit={}".format(height, width))
+#        print("\nGet Motor mit minmax={}".format(mm))
+#        print("   Motor hoch={}, breit={}".format(height, width))
         
         c = []
         r = 0.0
@@ -2607,7 +2613,6 @@ class Geometry(object):
             c = [mm[1]-r, mm[3]-r]
             logger.info("check for full motor")
             if self.check_hull(c, r, None, None, self.pickdist, atol):
-                print("full")
                 return Motor(self, c, r, 0.0, 0.0)
                 
             logger.info("check for quarter motor")

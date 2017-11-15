@@ -58,7 +58,7 @@ def symmetry_search(motor, kind, sym_tolerance, show_plots):
     else:
         motor_ok = motor_slice
         
-    print("Mirror: {}".format(motor_mirror))
+#    print("Mirror: {}".format(motor_mirror))
         
     if show_plots:
         print("===== Final Result of {} =====".format(kind))

@@ -1,10 +1,11 @@
 Introduction and Overview
 *************************
-.. note:: consider the usage of logging when executing long running commands::
+.. note::
+   consider the usage of logging when executing long running commands::
 
-  import logging
-  logging.basicConfig(level=logging.INFO,
-                      format='%(asctime)s %(message)s')
+     import logging
+     logging.basicConfig(level=logging.INFO,
+                         format='%(asctime)s %(message)s')
 
 Run FEMAG with FSL
 ++++++++++++++++++

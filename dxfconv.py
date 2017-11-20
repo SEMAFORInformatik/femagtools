@@ -13,7 +13,7 @@ import argparse
 import logging
 import logging.config
 import numpy as np
-import io
+#import io
 
 logger = logging.getLogger(__name__)
 
@@ -22,18 +22,97 @@ def usage(name):
     print("Usage: ", name,
           " [-h] [--help]", file=sys.stderr)
 
+def write_fsl(motor, basename, filename):
+    model = dr.NewFslRenderer(basename)
+    model.render(motor.geom, filename)
+
+def symmetry_search(motor, kind, sym_tolerance, show_plots):
+    motor.clear_cut_lines()
+    if show_plots:
+        print("===== {} =====".format(kind))
+        p.render_elements(motor.geom, dg.Shape, neighbors=True)
+#        p.render_areas(motor.geom, with_nodes=False, single_view=True)
+        
+    if not motor.find_symmetry(sym_tolerance):
+        print("symmetry_search: Keine Symmetrie gefunden")
+        motor_mirror = motor.get_symmetry_mirror()
+        motor_slice = motor
+    else:
+        p.render_elements(motor.geom, dg.Shape)
+        motor_slice = motor.get_symmetry_slice()
+        if motor_slice == None:
+            return
+            
+        if show_plots:
+            print("===== Slice of {} =====".format(kind))
+            p.render_elements(motor_slice.geom, dg.Shape)
+        
+        motor_mirror = motor_slice.get_symmetry_mirror()
+        
+    if motor_mirror == None:
+        return
+    if motor_mirror.check_symmetry_graph():
+        print("===== Mirror of {} =====".format(kind))
+        p.render_elements(motor_mirror.mirror_geom, dg.Shape)
+        motor_ok = motor_mirror
+    else:
+        motor_ok = motor_slice
+        
+#    print("Mirror: {}".format(motor_mirror))
+        
+    if show_plots:
+        print("===== Final Result of {} =====".format(kind))
+        p.render_elements(motor_ok.geom, dg.Shape)
+        
+    if args.fsl:
+        write_fsl(motor_ok, basename, basename+"_"+kind+'.fsl')
+   
+#############################
+#            Main           #
+#############################
+   
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,
                         format='%(message)s')
 
     argparser = argparse.ArgumentParser(
         description='Process DXF file and create a plot or FSL file.')
-    argparser.add_argument('dxfile', help='name of DXF file')
-    argparser.add_argument('-f', help='create fsl', action="store_true")
-    argparser.add_argument('-r', help='reshape based on symmetry detection',
+    argparser.add_argument('dxfile',
+                           help='name of DXF file')
+    argparser.add_argument('-f', '--fsl',
+                           help='create fsl',
                            action="store_true")
-    args = argparser.parse_args()
+    argparser.add_argument('-a', '--airgap',
+                           help='correct airgap',
+                           dest='airgap',
+                           type=float,
+                           default=0.0)
+    argparser.add_argument('-t', '--symtol',
+                           help='absolut tolerance to find symmetrys',
+                           dest='sym_tolerance',
+                           type=float,
+                           default=0.0)
+    argparser.add_argument('-s', '--split',
+                           help='split intersections',
+                           dest='split',
+                           action="store_true")
+    argparser.add_argument('-p', '--plot',
+                           help='show plots',
+                           dest='show_plots',
+                           action="store_true")
+    argparser.add_argument('-v', '--view',
+                           help='show a view only',
+                           dest='view',
+                           action="store_true")
+    argparser.add_argument('-d', '--debug',
+                           help='print debug information',
+                           dest='debug',
+                           action="store_true")
 
+    args = argparser.parse_args()
+    if args.airgap > 0.0:
+        print("Airgap is set to {}".format(args.airgap))
+        
     layers = ()
     
     incl_bnd = True
@@ -43,95 +122,60 @@ if __name__ == "__main__":
     logger.info("start reading %s", basename)
 
     basegeom = dg.Geometry(dg.dxfshapes(args.dxfile, layers=layers),
-                           pickdist=pickdist)
+                           pickdist=pickdist,
+                           split=args.split)
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = dr.PlotRenderer()
+    if args.view:
+        p.render_elements(basegeom, dg.Shape)
+        sys.exit(0)
 
     motor_base = basegeom.get_motor()
-    print("===== Original (nodes) =====")
-    p.render_elements(basegeom, dg.Shape, with_nodes=True)
-    if not motor_base.is_full():
-        print("===== Original (hull) =====")
+    if args.show_plots:
+        print("===== Original (nodes) =====")
+        p.render_elements(basegeom, dg.Shape, neighbors=True)
         p.render_elements(basegeom, dg.Shape, with_hull=True)
-        print("===== Original (corners) =====")
-        p.render_elements(basegeom, dg.Shape, with_corners=True)
-
-        motor_base.repair_hull(basegeom)
-        print("===== Original (REPAIRED HULL) =====")
-        p.render_elements(basegeom, dg.Shape, with_corners=True)
 
     if not motor_base.is_a_motor():
-        print("Not a Motor!!")
-    else:
-        geom_half = None
-        geom_quarter = None
+        print("it's Not a Motor!!")
+        sys.exit(1)
         
-        if motor_base.is_full():
-            motor_base.move_to_middle(basegeom)
-            geom_half = motor_base.copy(basegeom, 0.0, np.pi)
-        elif motor_base.is_half():
-            motor_base.move_to_middle(basegeom)
-            geom_half = motor_base.copy(basegeom, 0.0, 2*np.pi)
-            
-        if geom_half != None:
-            motor_half = geom_half.get_motor()
-            assert(motor_half.is_half())
-            
-            if not motor_half.is_in_middle():
-                motor_half.move_to_middle(geom_half)
-            
-            motor_half.airgap(geom_half)
-            print("===== Half =====")
-            p.render_elements(geom_half, dg.Shape)
-            
-            geom_quarter = motor_half.copy(geom_half,0.0, np.pi/2)
-        else:
-            if motor_base.is_quarter():
-                print("===== Quarter =====")
-                motor_base.move_to_middle(basegeom)
-                geom_quarter = motor_base.copy(basegeom, 0.0, 2.0*np.pi )
-                
-            else:
-                # Es ist nicht klar, wie das Motorenteil aussieht
-                print("Es ist nicht klar, wie das Motorenteil aussieht")
-                motor_base.set_center(basegeom, 0.0, 0.0)
-                motor_base.set_radius(9999999)
-                geom_quarter = motor_base.copy(basegeom, 0.0, 2.0*np.pi )
-                geom_quarter.clear_schnitt()
-                print("===== Copy =====")
-                p.render_elements(geom_quarter, dg.Shape)         
-                print("===== Areas =====")            
-                p.render_areas(geom_quarter, with_nodes=True)
-            
-        motor_quarter = geom_quarter.get_motor()
-        if not motor_quarter.is_in_middle():
-            motor_quarter.move_to_middle(geom_quarter)
-        motor_quarter.rotate_to(geom_quarter, 0.0)
-                        
-        if motor_quarter.part_of_circle() == 0:
-            print("Teil ist kein Teiler eines Kreises")
-            p.render_elements(geom_quarter, dg.Shape)
-            
-        else:
-            motor_quarter.airgap(geom_quarter)
-            motor_quarter.repair_hull(geom_quarter)
-            geom_quarter.clear_schnitt()
-            print("===== Quarter =====")
-            p.render_elements(geom_quarter, dg.Shape)
-            
-            if motor_quarter.has_airgap():
-                geom_inner = motor_quarter.copy( geom_quarter, 0.0, 2*np.pi, True, True)
-                motor_inner = geom_inner.get_motor()
-                motor_inner.find_symmetrie(geom_inner)
-                print("===== Inner =====")
-                p.render_elements(geom_inner, dg.Shape)
-                
-                geom_outer = motor_quarter.copy( geom_quarter, 0.0, 2*np.pi, True, False)
-                motor_outer = geom_quarter.get_motor()
-                motor_outer.find_symmetrie(geom_outer)
-                print("===== Outer =====")
-                p.render_elements(geom_outer, dg.Shape)
-            
-#        p.render(geom_half, draw_corners=False, draw_center=False, incl_bnd=True, draw_hull=True)
-        logger.info("done")
+    if not motor_base.is_full():
+        motor_base.repair_hull()
+        if args.show_plots:
+            print("===== Original (REPAIRED HULL) =====")
+            p.render_elements(basegeom, dg.Shape, with_corners=True)
+
+    if motor_base.is_full() or motor_base.is_half() or motor_base.is_quarter():
+        # Wir erstellen eine Kopie des Originals für die weiteren Arbeiten
+        motor = motor_base.full_copy()
+    else:
+        # Es ist nicht klar, wie das Motorenteil aussieht
+        motor_base.set_center(0.0, 0.0)
+        motor_base.set_radius(9999999)
+        motor = motor_base.full_copy()
+        
+    if motor.part_of_circle() == 0:
+        print("Teil ist kein Teilsegment eines Kreises")
+        sys.exit(1)
+        
+    motor.clear_cut_lines()
+    motor.move_to_middle()
+    if args.show_plots:
+        print("===== Areas =====")            
+#        p.render_areas(motor.geom, with_nodes=True)
+        p.render_elements(motor.geom, dg.Shape, with_corners=False)
+        
+    motor.airgap(args.airgap, args.sym_tolerance)
+    
+    if motor.has_airgap():
+        motor_inner = motor.copy(0.0, 2*np.pi, True, True)
+        symmetry_search(motor_inner, "Innen", args.sym_tolerance, args.show_plots)
+
+        motor_outer = motor.copy(0.0, 2*np.pi, True, False)
+        symmetry_search(motor_outer, "Aussen", args.sym_tolerance, args.show_plots)
+    else:
+        symmetry_search(motor, "No_Airgap", args.sym_tolerance, args.show_plots)
+        
+    logger.info("done")

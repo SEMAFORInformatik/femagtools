@@ -12,6 +12,7 @@ m.middle_line     = ${model.get(['stator','statorBG','middle_line'])}
 
 m.tip_rad         = ${model.get(['stator','statorBG','tip_rad'])*1e3}
 m.slottooth       = ${model.get(['stator','statorBG','slottooth'])*1e3}
+m.wdg_location    =  -1.0 -- stator (internal values)
  
 m.zeroangl    = ${model.stator.get('zeroangle',0)}
 

@@ -22,8 +22,9 @@ def usage(name):
     print("Usage: ", name,
           " [-h] [--help]", file=sys.stderr)
 
-def write_fsl(motor, basename, filename):
+def write_fsl(motor, basename):
     model = dr.NewFslRenderer(basename)
+    filename = basename + '_' + motor.kind + '.fsl'
     model.render(motor.geom, filename)
 
 def symmetry_search(motor, kind, sym_tolerance, show_plots):
@@ -41,31 +42,32 @@ def symmetry_search(motor, kind, sym_tolerance, show_plots):
         p.render_elements(motor.geom, dg.Shape)
         motor_slice = motor.get_symmetry_slice()
         if motor_slice == None:
-            return
-            
-        if show_plots:
-            print("===== Slice of {} =====".format(kind))
-            p.render_elements(motor_slice.geom, dg.Shape)
-        
+            motor.kind = kind
+            return motor
+
         motor_mirror = motor_slice.get_symmetry_mirror()
         
     if motor_mirror == None:
-        return
-    if motor_mirror.check_symmetry_graph():
-        print("===== Mirror of {} =====".format(kind))
-        p.render_elements(motor_mirror.mirror_geom, dg.Shape)
-        motor_ok = motor_mirror
-    else:
         motor_ok = motor_slice
-        
-#    print("Mirror: {}".format(motor_mirror))
-        
+    else:
+        if show_plots:
+            print("===== Mirror of {} =====".format(kind))
+            p.render_elements(motor_mirror.mirror_geom, dg.Shape)
+            
+        motor_ok = motor_mirror
+                
     if show_plots:
         print("===== Final Result of {} =====".format(kind))
-        p.render_elements(motor_ok.geom, dg.Shape)
-        
+        p.render_elements(motor_ok.geom, dg.Shape, with_corners=True)
+#        p.render_areas(motor_ok.geom, single_view=True)
+
+    motor_ok.kind = kind
+    return motor_ok
+
+def write_fsl_file(motor):        
     if args.fsl:
-        write_fsl(motor_ok, basename, basename+"_"+kind+'.fsl')
+        write_fsl(motor, basename, basename+"_"+kind+'.fsl')
+
    
 #############################
 #            Main           #
@@ -171,11 +173,20 @@ if __name__ == "__main__":
     
     if motor.has_airgap():
         motor_inner = motor.copy(0.0, 2*np.pi, True, True)
-        symmetry_search(motor_inner, "Innen", args.sym_tolerance, args.show_plots)
+        motor_inner = symmetry_search(motor_inner, "Inner", args.sym_tolerance, args.show_plots)
 
         motor_outer = motor.copy(0.0, 2*np.pi, True, False)
-        symmetry_search(motor_outer, "Aussen", args.sym_tolerance, args.show_plots)
+        motor_outer = symmetry_search(motor_outer, "Outer", args.sym_tolerance, args.show_plots)
+        motor_inner.sync_with_counterpart(motor_outer)
+        
+        if args.fsl:
+            write_fsl(motor_inner, basename)
+            write_fsl(motor_outer, basename)
+        
     else:
-        symmetry_search(motor, "No_Airgap", args.sym_tolerance, args.show_plots)
+        motor = symmetry_search(motor, "No_Airgap", args.sym_tolerance, args.show_plots)
+        if args.fsl:
+            write_fsl(motor, basename)
+        
         
     logger.info("done")

@@ -18,7 +18,7 @@ import sys
 
 logger = logging.getLogger(__name__)
 
-ndec = 4  # number of decimals to round to
+ndec = 6  # number of decimals to round to
 
 def less_equal(v1, v2, rtol=1e-3, atol=1e-8):
     if np.isclose(v1, v2, rtol, atol):
@@ -43,6 +43,11 @@ def greater(v1, v2, rtol=1e-3, atol=1e-8):
 def alpha_line(center, p):
     return np.arctan2(p[1]-center[1], p[0]-center[0])
 
+def alpha_points(a, b, c):
+    alpha_a_b = alpha_line(a, b)
+    alpha_b_c = alpha_line(b, c)
+    return alpha_angle(alpha_a_b, alpha_b_c)
+    
 def alpha_triangle(a, b, c):
     if np.isclose(a, 0.0) or np.isclose(b, 0.0) or np.isclose(c, 0.0):
         return float('nan')
@@ -56,7 +61,7 @@ def alpha_triangle(a, b, c):
 def point(center, radius, alpha):
     return (center[0]+radius*np.cos(alpha),
             center[1]+radius*np.sin(alpha))
-
+    
 def middle_point_of_arc(center, radius, p1, p2, pickdist=1e-3):
     alpha_p1 = alpha_line(center, p1)
     alpha_p2 = alpha_line(center, p2)
@@ -211,6 +216,14 @@ def part_of_circle(startangle, endangle, pos=3):
     if x.is_integer():
         return x
     return 0
+
+def gcd(x, y):
+    while x > 0 and y > 0:
+        if x >= y:
+            x = x - y
+        else:
+            y = y - x
+    return x+y
     
 def is_angle_outside(startangle, endangle, alpha):
     return not is_angle_inside(startangle, endangle, alpha)
@@ -647,6 +660,12 @@ class Shape(object):
     def end(self):
         return self.p2
 
+    def node1(self):
+        return round(self.p1[0], ndec), round(self.p1[1], ndec)
+
+    def node2(self):
+        return round(self.p2[0], ndec), round(self.p2[1], ndec)
+        
     def xmin(self):
         return min(self.p1[0], self.p2[0])
     
@@ -929,7 +948,7 @@ class Arc(Circle):
                    self.center[1] + e.radius*np.sin(self.startangle))
         self.p2 = (self.center[0] + e.radius*np.cos(self.endangle),
                    self.center[1] + e.radius*np.sin(self.endangle))
-                            
+
     def render(self, renderer, color='blue', with_nodes=False):
         renderer.arc(self.startangle, self.endangle,
                      self.center, self.radius, color)
@@ -1196,7 +1215,7 @@ class Line(Shape):
     def __init__(self, e):
         self.p1 = e.start[0], e.start[1]
         self.p2 = e.end[0], e.end[1]
-
+        
     def render(self, renderer, color='blue', with_nodes=False):
         renderer.line(self.p1, self.p2, color)
         if with_nodes:
@@ -1420,6 +1439,8 @@ class Motor(object):
         self.part = self.part_of_circle()
         self.airgaps = []
         self.airgap_radius = 0.0
+        self.geom.center = center
+        self.kind = ''
 
     def __str__(self):        
         return "Motor: Center=({}), Radius={}, Start={}, End={}, Sym={}"\
@@ -1526,6 +1547,7 @@ class Motor(object):
         geom2 = self.geom.copy_shape( self.center, self.radius, midangle, endangle, 0.0, self.radius+9999)
         motor = Motor(geom1, self.center, self.radius, startangle, midangle)
         motor.mirror_geom = geom2
+        motor.mirror_geom.center = self.center
         motor.mirror_startangle = midangle
         motor.mirror_endangle = endangle
         return motor
@@ -1590,6 +1612,14 @@ class Motor(object):
         if self.mirror_geom != None:
             self.mirror_geom.repair_hull_line(self.center, self.mirror_startangle)
             self.mirror_geom.repair_hull_line(self.center, self.mirror_endangle)
+
+    def set_alfa_and_corners(self):
+        self.geom.start_corners = self.geom.get_corner_nodes(self.center, self.startangle)
+        self.geom.end_corners = self.geom.get_corner_nodes(self.center, self.endangle)
+        self.geom.alfa = alpha_angle(self.startangle, self.endangle)
+
+        if self.mirror_geom != None:
+            self.geom.mirror_corners = self.geom.end_corners
             
     def find_symmetry(self, sym_tolerance):
         if self.radius <= 0.0:
@@ -1605,6 +1635,7 @@ class Motor(object):
         motor_slice.clear_cut_lines()
         motor_slice.repair_hull()
         motor_slice.rotate_to(0.0)
+        motor_slice.set_alfa_and_corners()
         return motor_slice
 
     def get_symmetry_mirror(self):
@@ -1621,8 +1652,17 @@ class Motor(object):
         motor_mirror = self.copy_mirror(startangle, midangle, endangle)
         motor_mirror.clear_cut_lines()
         motor_mirror.repair_hull()
-        return motor_mirror
+        motor_mirror.set_alfa_and_corners()
+        if motor_mirror.check_symmetry_graph():
+            return motor_mirror
+        return None
 
+    def get_symmetry_part(self):
+        if self.mirror_geom != None:
+            return self.part/2
+        else:
+            return self.part
+            
     def check_symmetry_graph(self):
         axis_p = point(self.center, self.radius, self.mirror_startangle)
         axis_m = line_m(self.center, axis_p)
@@ -1643,6 +1683,13 @@ class Motor(object):
 
         hit_factor = len(nodes) / hit
         return hit_factor > 0.9
+
+    def sync_with_counterpart(self, cp_motor):       
+        self.geom.sym_counterpart = cp_motor.get_symmetry_part()
+        self.geom.sym_part = self.get_symmetry_part()
+        cp_motor.geom.sym_counterpart = self.get_symmetry_part()
+        cp_motor.geom.sym_part = cp_motor.get_symmetry_part()
+        
         
 #############################
 #            Area           #
@@ -1667,6 +1714,12 @@ class Area(object):
         self.sym_tolerance = sym_tolerance
         self.calc_signature(center)
 
+    def number_of_elements(self):
+        return len(self.area)
+    
+    def elements(self):
+        return self.area
+    
     def calc_signature(self, center):
         if len(self.area) == 0:
             return
@@ -1700,21 +1753,21 @@ class Area(object):
                 return True
         return False
 
-    def is_isdentical(self, a1, a2):
-        if np.isclose(a1.min_dist, a2.min_dist) and \
-           np.isclose(a1.max_dist, a2.max_dist) and \
-           np.isclose(a1.alpha, a2.alpha) and \
-           np.isclose(a1.min_angle, a2.min_angle) and \
-           np.isclose(a1.max_angle, a2.max_angle):
+    def is_identical(self, area):
+        if np.isclose(self.min_dist, area.min_dist) and \
+           np.isclose(self.max_dist, area.max_dist) and \
+           np.isclose(self.alpha, area.alpha) and \
+           np.isclose(self.min_angle, area.min_angle) and \
+           np.isclose(self.max_angle, area.max_angle):
             return True
         return False
         
     def increment(self, a):
-        if self.is_isdentical(self, a):
+        if self.is_identical(a):
             return
 
         for area in self.equal_areas:
-            if self.is_isdentical(area, a):
+            if area.is_identical(a):
                 return
                 
         self.count += 1
@@ -1819,6 +1872,55 @@ class Area(object):
             yield angle
             angle += self.delta
 
+    def get_point_inside(self):
+        """return point inside area"""
+        center = [n.center_of_connection() for n in self.area]
+        xymin = np.min(center, axis=0)
+        xymax = np.max(center, axis=0)
+
+        dx, dy = xymax - xymin
+        logger.debug("path min %s max %s dx, %f dy %f", xymin, xymax, dx, dy)
+
+        # intersect path with a line somewhere in the center
+        if dx > dy:
+            line = Line(Element(start=(xymin[0] + dx/2, xymin[1]),
+                                end=(xymin[0] + dx/2, xymax[1])))
+        else:
+            line = Line(Element(start=(xymin[0], xymin[1] + dy/2),
+                                end=(xymax[0], xymin[1] + dy/2)))
+
+        # collect all intersecting edges with line
+        intersect = []
+        pickdist = 0.1
+        logger.debug("line %s -- %s", line.start(), line.end())
+        for e in self.area:
+            intersect += [(round(ip[0], 2), round(ip[1], 2))
+                          for ip in e.intersect_line(line, pickdist,
+                                                     include_end=True) if ip]
+
+        if len(set(intersect)) > 1:
+            logger.debug("Intersections %s", list(set(intersect)))
+            # take the first 2 intersection points
+            p0, p1 = np.array(sorted(set(intersect))[:2])
+            return (p0 + (p1-p0)/2.).tolist()
+        return ()
+
+    def render(self, renderer, color='black', with_nodes=False):
+        for e in self.area:
+            e.render(renderer, color, with_nodes)
+        return
+        
+    def remove_edges(self, g):
+#        print("remove edges ",end='')
+        for e in self.area:
+            try:
+                g.remove_edge(e.node1(), e.node2())
+#                print('.', flush=True, end='')
+            except Exception:
+#                print('o', flush=True, end='')
+                continue
+#        print(" done")
+                    
     def print_area(self):
         center = [0.0, 0.0]
         for s in self.area:
@@ -1871,8 +1973,12 @@ class Geometry(object):
     """collection of connected shapes"""
     def __init__(self, elements=[], pickdist=1e-3, split=False, adjust=False):
         self._name = ''
-        self.mirror_axis = None
-        self.corners = []
+        self.mirror_corners = []
+        self.start_corners = []
+        self.end_corners = []
+        self.sym_part = 0
+        self.sym_counterpart = 0        
+        self.alfa = 0.0
         self.center = []
         self.cut_lines = []
         self.sym_area = None
@@ -1902,24 +2008,6 @@ class Geometry(object):
                     if e:  # must be a circle
                         self.g.add_node(e.center, object=e)
             i += 1
-
-        if self.g.nodes():
-            offset = np.min(np.array(self.g.nodes()), axis=0)
-            logger.info("xmin, ymin %s", offset)
-            if not np.isclose(offset, (0, 0)).all() and adjust:
-                self.move(-offset)
-            # set corners
-            self.corners = sorted(find_corners(self.g.nodes()))
-            logger.info("Corners %s", self.corners)
-            # set section angle
-            self.alpha = np.pi/round(np.pi/self.argmax())
-
-            self.set_diameters()
-
-            shaft = self.shaft()
-            if shaft:
-                self.diameters = (round(shaft, 3),
-                                  self.diameters[-1])
 
     def shaft(self):
         """returns shaft diameter if any"""
@@ -2115,6 +2203,17 @@ class Geometry(object):
                 self.g.add_edge(p1, p2, object=Line(Element(start=p1, end=p2)))
                 p1 = p2
 
+    def get_corner_nodes(self, center, angle):
+        rtol = 1e-4
+        atol = 1e-4
+        
+        corners = [Corner(center,c) for c in self.angle_nodes(center, angle, rtol, atol)]
+        if len(corners) < 2:
+            # Ohne genügend Corners ist die Arbeit sinnlos
+            return ()
+        corners.sort()
+        return (corners[0].point(), corners[len(corners)-1].point())
+        
     def remove_corners(self, g):
         """removes the corner nodes with their edges"""
         corners = [n for n in self.find_corners(g.nodes()) if g.degree(n) < 3]
@@ -2125,18 +2224,17 @@ class Geometry(object):
         alpha = alpha_line(p2, p1)
     
         nbrs = [n for n in self.g.neighbors(p2) if n != p1]
-#        print("point_lefthand_side: p2={}, neighbors={}".format(p2, nbrs))
         if len(nbrs) == 0:
             # Unerwartetes Ende des Rundgangs
-            return None, 0
+            return None
             
         angles = [(alpha_angle(alpha ,alpha_line(p2, n)), n) for n in nbrs]
         angles.sort()
-        return angles[len(angles)-1][1], len(nbrs)
+        return angles[len(angles)-1][1]
 
-    def get_new_area(self, start_p, next_p, solo):
-#        print("get_new_area: start {}".format(start_p))
-        e_dict = self.g.get_edge_data(start_p, next_p)
+    def get_new_area(self, start_p1, start_p2, solo):
+#        print("get_new_area: start={}, next={}".format(start_p1, start_p2))
+        e_dict = self.g.get_edge_data(start_p1, start_p2)
         if e_dict == None:
             # Das darf nicht sein!
 #            print("    *** no dict ?? ***")
@@ -2144,36 +2242,41 @@ class Geometry(object):
 
         area = []
         e = e_dict['object']
-        x = e.get_point_number(start_p)
+        x = e.get_point_number(start_p1)
         if e_dict[x]:
             # Diese Area wurde schon abgelaufen.
 #            print("    *** bereits abgelaufen ({}) ***".format(x))
             return None
 
         area.append(e)
-        first_p = start_p
-        this_p = next_p
+        first_p = start_p1
+        this_p = start_p2
 #        print("get_new_area: next {}".format(next_p))
-        next_p, num = self.point_lefthand_side(first_p, this_p)
-#        print("get_new_area: next {}".format(next_p))
+        next_p = self.point_lefthand_side(first_p, this_p)
         if next_p == None:
             # Unerwartetes Ende
 #            print("    *** Sackgasse ***")
             return None
+        
+        a = normalise_angle(alpha_points(first_p, this_p, next_p))
+        alpha = a
+#        print("get_new_area: a={}, b={}, c={} => + {} = {}".format(first_p, this_p, next_p, a, alpha))
             
-        while not points_are_close(next_p, start_p):
+        while not points_are_close(next_p, start_p1):
             e_dict = self.g.get_edge_data(this_p, next_p)
             e = e_dict['object']
             x = e.get_point_number(this_p)
             e_dict[x] = True # footprint
             first_p = this_p
             this_p = next_p
-            next_p, num = self.point_lefthand_side(first_p, this_p)
-#            print("get_new_area: next {}".format(next_p))
+            next_p = self.point_lefthand_side(first_p, this_p)
             if next_p == None:
                 # Unerwartetes Ende
-#                print("    *** Sackgasse ***")
+ #               print("    *** Sackgasse ***")
                 return None
+            a = normalise_angle(alpha_points(first_p, this_p, next_p))
+            alpha += a
+#            print("get_new_area: a={}, b={}, c={} => + {} = {}".format(first_p, this_p, next_p, a, alpha))
 
             area.append(e)
 
@@ -2182,8 +2285,14 @@ class Geometry(object):
         x = e.get_point_number(this_p)
         e_dict[x] = True # footprint
         area.append(e)
-
-#        print (">>> area found <<<")
+        a = normalise_angle(alpha_points(this_p, next_p, start_p2))
+        alpha += a
+#        print("get_new_area: a={}, b={}, c={} => + {} = {}".format(this_p, next_p, start_p2, a, alpha))
+        
+#        print (">>> area found: alpha={}<<<\n".format(alpha))
+        if alpha < 0.0:
+            # Wir wollten nach links, aber es ging immer nach rechts!
+            return None
         return area
         
     def create_list_of_areas(self):
@@ -2193,6 +2302,12 @@ class Geometry(object):
         if len(self.area_list) > 0:
             # Liste bereits vorhanden
             return
+
+        def append(area_list, a):
+            for area in area_list:
+                if area.is_identical(a):
+                    return
+            area_list.append(a)
             
         print("create new area list ... ", flush=True, end='')
         nx.set_edge_attributes(self.g, 0, True)
@@ -2206,50 +2321,18 @@ class Geometry(object):
 #                print(" -> neighbor point {}".format(next_p))
                 area = self.get_new_area(p, next_p, len(neighbors) < 3)
                 if area != None:
-                    self.area_list.append(area)
+                    a = Area(area, self.center, 0.0)
+                    append(self.area_list, a)
         print("done. {} areas found".format(len(self.area_list)))
-        
-    def area_nodes(self, incl_bnd=False):
-        """return nodes that enclose areas (eg. slots)"""
-        g = self.g.copy()
-        if not incl_bnd:
-            self.remove_corners(g)
-        return nx.cycle_basis(g)
-            
-    def areas(self, incl_bnd=False):
-        """return sorted paths that enclose areas (eg. slots)"""
-        areas = []
-        for nodes in self.area_nodes(incl_bnd):
-            edges = [e for e in self.g.edges(data=True)
-                     if e[0] in nodes and e[1] in nodes]
-            areas.append([e[2]['object'] for e in single_path(edges)])
-        return areas
-        
-    def remove_areas(self, incl_bnd=False):
-        """remove all edges that are connected to area nodes"""
-        for nodes in self.area_nodes(incl_bnd):
-            edges = [e for e in self.g.edges()
-                     if e[0] in nodes and e[1] in nodes]
-            self.g.remove_edges_from(edges)
 
-    def find_corners(self, nodes):
-        """find corners of nodes"""
-        if nodes:
-            minX, minY = np.amin(nodes, axis=0)
-            maxX, maxY = np.amax(nodes, axis=0)
-            print("find_corners: minX={}, minY={}, maxX={}, maxY={}".format(minX, minY, maxX, maxY))
-            return [n for n in nodes
-                    if n[0] in (minX, maxX) or n[1] in (minY, maxY)]
-        return []
-     
-    def find_nearest_node(self, ref, incl_bnd=True):
-        """return nearest node to ref node of all areas"""
-        n = []
-        for nodes in self.area_nodes(incl_bnd):
-            n += nodes
-        indx = np.argmin(np.array([np.linalg.norm(z)
-                                   for z in np.array(n) - np.asarray(ref)]))
-        return n[indx]
+    def list_of_areas(self):
+        self.create_list_of_areas()
+        return self.area_list
+
+    def remove_all_areas(self):
+        self.create_list_of_areas()
+        for area in self.area_list:
+            area.remove_edges(self.g)
 
     def copy_line(self, center, radius, start_angle, end_angle,
                   start_line, end_line, inner_circle, outer_circle, e):
@@ -2435,8 +2518,8 @@ class Geometry(object):
            
     def find_symmetry(self, center, radius, startangle, endangle, sym_tolerance):
 #        print("=== Find Symmetry ===")        
-        self.create_list_of_areas()
-        arealist = [Area(a, center, sym_tolerance) for a in self.area_list]
+        arealist = self.list_of_areas()
+
         if len(arealist) == 0:
             return False
             
@@ -2455,6 +2538,7 @@ class Geometry(object):
             
         arealist_match = []
         for a in arealist:
+            a.sym_tolerance = sym_tolerance
             add(arealist_match, a)
  
         for a in arealist_match:
@@ -2495,6 +2579,12 @@ class Geometry(object):
     def symmetry_endangle(self):
         return self.sym_area.sym_endangle
             
+    def get_symmetry_copies(self):
+        if self.sym_counterpart == 0:
+            return self.sym_part
+            
+        x = gcd(self.sym_part, self.sym_counterpart)
+        return self.sym_part / x - 1
         
     def __str__(self):
         return "Nodes {}\nConnected {}".format(
@@ -2520,16 +2610,6 @@ class Geometry(object):
     def get_name(self):
         return self._name
         
-    def min(self):
-        return min(self.corners)
-
-    def max(self):
-        return max(self.corners)
-
-    def argmax(self):
-        a = np.asarray(self.corners).T
-        return np.max(np.arctan2(a[1], a[0]))
-
     def minmax(self):
         """ Die Funktion bestimmt das Minimum und Maximum auf der x- und der
             y-Achse über alle Shape-Objekte in der Geometrie

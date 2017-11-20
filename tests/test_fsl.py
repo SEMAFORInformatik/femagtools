@@ -126,7 +126,7 @@ class FslBuilderTest(unittest.TestCase):
 
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 23)
+        self.assertEqual(len(fsl), 24)
 
     def test_magnetSector(self):
         self.m['magnet'] = dict(

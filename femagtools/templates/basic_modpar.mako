@@ -33,5 +33,6 @@ m.tot_num_sl      =   m.tot_num_slot
 m.fc_radius       =   (da1+da2)/4
 m.fc_radius1      =   m.fc_radius
 % endif
+m.arm_length      =   ${model.get(['lfe'])*1e3}
 pre_models("basic_modpar")
 % endif

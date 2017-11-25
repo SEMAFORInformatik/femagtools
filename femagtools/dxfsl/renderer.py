@@ -125,6 +125,7 @@ class PlotRenderer(object):
         single_view = kwargs.get('single_view', False)
         neighbors = kwargs.get('neighbors', False)
         draw_center = kwargs.get('draw_center', False)
+        draw_inside = kwargs.get('draw_inside', False)
 
         mm = geom.minmax()
         
@@ -175,13 +176,15 @@ class PlotRenderer(object):
 
         if draw_center:
             for area in geom.list_of_areas():
-                p = area.get_point_inside()
-                if p:
-                    pl.plot([p[0]], [p[1]], 'ro')
-                    
                 for s in area.elements():
                     c = s.center_of_connection()
                     pl.plot([c[0]], [c[1]], 'gs')
+
+        if draw_inside:
+            for area in geom.list_of_areas():
+                p = area.get_point_inside()
+                if p:
+                    pl.plot([p[0]], [p[1]], 'ro')
             
         geom.render_cut_lines(self)
         geom.render_airgaps(self)
@@ -191,10 +194,10 @@ class PlotRenderer(object):
         if geom.center:
             self.point(geom.center, 'ro', color='darkgreen')
 
-        self.point((mm[0]-5, mm[2]-5), 'ro', color='red')
-        self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
-        self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
-        self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
+        self.point((mm[0]-5, mm[2]-5), 'ro', color='white')
+        self.point((mm[0]-5, mm[3]+5), 'ro', color='white')
+        self.point((mm[1]+5, mm[2]-5), 'ro', color='white')
+        self.point((mm[1]+5, mm[3]+5), 'ro', color='white')
         self.ax.axis('scaled', aspect='equal')
         pl.show()
 
@@ -214,7 +217,8 @@ class PlotRenderer(object):
                 c += 1
                 if c >= len(colors):
                     c = 0
-                if single_view:                    
+                if single_view:
+                    print("*** AREA has {} elements ***".format(area.number_of_elements()))
                     fig = pl.figure()
                     self.ax = fig.add_subplot(111)
 
@@ -230,6 +234,15 @@ class PlotRenderer(object):
         if not single_view:
             self.ax.axis('scaled', aspect='equal')
             pl.show()
+
+    def render_area(self, area):
+        fig = pl.figure()
+        self.ax = fig.add_subplot(111)
+       
+        area.render(self, 'red', with_nodes=True)
+
+        self.ax.axis('scaled', aspect='equal')
+        pl.show()
             
     def draw_slot(self, id, slot, ax):
         poly = pch.Polygon(slot, fill=True, color='#ee82ee')
@@ -538,50 +551,20 @@ class NewFslRenderer(object):
 
         self.content.append(u'\n\nndt(agndst)\n')
                        
-        # render all areas
+
+        self.content.append(u'-- all elements')
+        for e in geom.elements(g.Shape):
+            e.render(self)
+        self.content.append(u'\n')
+
         for area in geom.list_of_areas():
             if area.number_of_elements() > 1:
-                area.render(self)
                 p = area.get_point_inside()
                 if p:
-                    self.content.append(u"create_mesh_se({}, {})\n".format(p[0], p[1]))
-                
-        geom.remove_all_areas()
-        
-        # and all remaining edges and circles
-#        for circle in geom.circles():
-#            coll.append((la.norm(circle.center), circle))
-#
-#        for e1, e2, attr in geom.g.edges(data=True):
-#            r = la.norm(attr['object'].center_of_connection())
-#            coll.append((r, attr['object']))
-#
-#        # create nodechains in sorted order and set nodedist
-#        self.nodedist = 0
-#        rag = (da1+da2)/4
-#        for r, e in sorted(coll, key=lambda x: x[0], reverse=True):
-#            if ndt and ndpos < len(ndt) and \
-#               r < ndt[ndpos][0]:
-#                self.content.append(
-#                    u"ndt({})\n".format(ndt[ndpos][1]))
-#                ndpos += 1
-#
-#            if isinstance(e, list):
-#                self.content.append(u"-- {})\n".format(r))
-#                acoll = sorted([(la.norm(p.center_of_connection()), p)
-#                                for p in e], key=lambda x: x[0], reverse=True)
-#                for p in acoll:
-#                    if p[0] > 0 and abs(1-p[0]/rag) < 0.06:
-#                        self.nodedist = agndst
-#                    else:
-#                        self.nodedist = 0
-#                    p[1].render(self)
-#
-#                p = get_point_inside(e)
-#                self.content.append(
-#                    u"create_mesh_se({}, {})\n".format(p[0], p[1]))
-#            else:
-#                e.render(self)
+                    self.content.append(u"x0, y0 = {}, {}".format(p[0], p[1]))
+                    self.content.append(u"point(x0, y0, red, 4)")
+                    self.content.append(u"create_mesh_se(x0, y0)\n")
+      
 
 #        ag = 0
 #        if ag > 0:
@@ -625,18 +608,18 @@ class NewFslRenderer(object):
             self.content.append(u'alfa = {}\n'.format(geom.alfa))
             
         self.content.append(u'-- rotate')
-        self.content.append(u'x0, y0 = {}, {}'.format(
-                geom.start_corners[0][0], geom.start_corners[0][1])) # min xy1
         self.content.append(u'x1, y1 = {}, {}'.format(
+                geom.start_corners[0][0], geom.start_corners[0][1])) # min xy1
+        self.content.append(u'x2, y2 = {}, {}'.format(
                 geom.start_corners[1][0], geom.start_corners[1][1])) # max xy2
             
         if geom.mirror_corners:
-            self.content.append(u'x2, y2 = pr2c(x1, alfa)')
-            self.content.append(u'x3, y3 = pr2c(x0, alfa)')
+            self.content.append(u'x3, y3 = pr2c(x2, alfa)')
+            self.content.append(u'x4, y4 = pr2c(x1, alfa)')
         else:
-            self.content.append(u'x2, y2 = {}, {}'.format(
-                    geom.end_corners[1][0], geom.end_corners[1][1])) # max xy3
             self.content.append(u'x3, y3 = {}, {}'.format(
+                    geom.end_corners[1][0], geom.end_corners[1][1])) # max xy3
+            self.content.append(u'x4, y4 = {}, {}'.format(
                     geom.end_corners[0][0], geom.end_corners[0][1])) # min xy4
 
         copies = geom.get_symmetry_copies()
@@ -666,6 +649,29 @@ class NewFslRenderer(object):
             self.content.append(u'\n'.join(mat))
 
         #f.write(u"\nadapt_window()\n")
+        with io.open(filename, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(self.content))
+                
+    def render_main(self, geom_inner, geom_outer, filename, with_header=False):
+        '''create main file'''
+
+        self.content = []
+
+        self.content.append(u'exit_on_error = false')
+        self.content.append(u'exit_on_end = false')
+        self.content.append(u'verbosity = 2')
+        self.content.append(u'pickdist = 0.001\n')
+        
+        self.content.append(u'agndst = 1.5')
+
+        self.content.append(u'new_model_force("{}","Test")\n'.format('ABC'))
+        
+#        self.content.append(u'blow_up_wind(0.0, 75.0, 75.0)')
+       
+        self.content.append(u'dofile("{}_Inner.fsl")'.format(self.model))
+        self.content.append(u'dofile("{}_Outer.fsl")'.format(self.model))
+        self.content.append(u'connect_models()')
+
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))
                 

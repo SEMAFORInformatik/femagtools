@@ -27,9 +27,14 @@ def write_fsl(motor, basename):
     filename = basename + '_' + motor.kind + '.fsl'
     model.render(motor.geom, filename)
 
+def write_main_fsl(motor_inner, motor_outer, basename):
+    model = dr.NewFslRenderer(basename)
+    filename = basename + '.fsl'
+    model.render_main(motor_inner.geom, motor_outer.geom, filename)
+
 def symmetry_search(motor, kind, sym_tolerance, show_plots):
     motor.clear_cut_lines()
-    if show_plots:
+    if show_plots and args.debug:
         print("===== {} =====".format(kind))
         p.render_elements(motor.geom, dg.Shape, neighbors=True)
 #        p.render_areas(motor.geom, with_nodes=False, single_view=True)
@@ -50,23 +55,23 @@ def symmetry_search(motor, kind, sym_tolerance, show_plots):
     if motor_mirror == None:
         motor_ok = motor_slice
     else:
-        if show_plots:
+        if show_plots and args.debug:
             print("===== Mirror of {} =====".format(kind))
             p.render_elements(motor_mirror.mirror_geom, dg.Shape)
             
         motor_ok = motor_mirror
-                
+
+    motor_ok.complete_hull()                
     if show_plots:
         print("===== Final Result of {} =====".format(kind))
-        p.render_elements(motor_ok.geom, dg.Shape, with_corners=True)
-#        p.render_areas(motor_ok.geom, single_view=True)
+        if args.debug:
+            p.render_elements(motor_ok.geom, dg.Shape, draw_inside=True, neighbors=True)
+#        p.render_areas(motor_ok.geom, single_view=True, with_nodes=True)            
+        else:
+            p.render_elements(motor_ok.geom, dg.Shape, draw_inside=True)
 
     motor_ok.kind = kind
     return motor_ok
-
-def write_fsl_file(motor):        
-    if args.fsl:
-        write_fsl(motor, basename, basename+"_"+kind+'.fsl')
 
    
 #############################
@@ -89,11 +94,26 @@ if __name__ == "__main__":
                            dest='airgap',
                            type=float,
                            default=0.0)
+    argparser.add_argument('--airgap2',
+                           help='correct airgap',
+                           dest='airgap2',
+                           type=float,
+                           default=0.0)
     argparser.add_argument('-t', '--symtol',
                            help='absolut tolerance to find symmetrys',
                            dest='sym_tolerance',
                            type=float,
                            default=0.0)
+    argparser.add_argument('--rtol',
+                           help='relative tolerance (pickdist)',
+                           dest='rtol',
+                           type=float,
+                           default=1e-03)
+    argparser.add_argument('--atol',
+                           help='absolut tolerance (pickdist)',
+                           dest='atol',
+                           type=float,
+                           default=1e-03)
     argparser.add_argument('-s', '--split',
                            help='split intersections',
                            dest='split',
@@ -113,31 +133,37 @@ if __name__ == "__main__":
 
     args = argparser.parse_args()
     if args.airgap > 0.0:
-        print("Airgap is set to {}".format(args.airgap))
+        if args.airgap2 > 0.0:
+            print("Airgap is set from {} to {}".format(args.airgap, args.airgap2))
+        else:
+            print("Airgap is set to {}".format(args.airgap))
         
     layers = ()
     
     incl_bnd = True
     
-    pickdist = 1e-3
+    rtol = args.rtol
+    atol = args.atol
+    
     basename = os.path.basename(args.dxfile).split('.')[0]
     logger.info("start reading %s", basename)
 
     basegeom = dg.Geometry(dg.dxfshapes(args.dxfile, layers=layers),
-                           pickdist=pickdist,
+                           rtol=rtol,
+                           atol=atol,
                            split=args.split)
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = dr.PlotRenderer()
     if args.view:
-        p.render_elements(basegeom, dg.Shape)
+        p.render_elements(basegeom, dg.Shape, neighbors=True)
         sys.exit(0)
 
     motor_base = basegeom.get_motor()
     if args.show_plots:
         print("===== Original (nodes) =====")
         p.render_elements(basegeom, dg.Shape, neighbors=True)
-        p.render_elements(basegeom, dg.Shape, with_hull=True)
+#        p.render_elements(basegeom, dg.Shape, with_hull=True)
 
     if not motor_base.is_a_motor():
         print("it's Not a Motor!!")
@@ -145,7 +171,7 @@ if __name__ == "__main__":
         
     if not motor_base.is_full():
         motor_base.repair_hull()
-        if args.show_plots:
+        if args.show_plots and args.debug:
             print("===== Original (REPAIRED HULL) =====")
             p.render_elements(basegeom, dg.Shape, with_corners=True)
 
@@ -164,12 +190,12 @@ if __name__ == "__main__":
         
     motor.clear_cut_lines()
     motor.move_to_middle()
-    if args.show_plots:
+    if args.show_plots and args.debug:
         print("===== Areas =====")            
 #        p.render_areas(motor.geom, with_nodes=True)
         p.render_elements(motor.geom, dg.Shape, with_corners=False)
         
-    motor.airgap(args.airgap, args.sym_tolerance)
+    motor.airgap(args.airgap, args.airgap2, args.sym_tolerance)
     
     if motor.has_airgap():
         motor_inner = motor.copy(0.0, 2*np.pi, True, True)
@@ -182,6 +208,7 @@ if __name__ == "__main__":
         if args.fsl:
             write_fsl(motor_inner, basename)
             write_fsl(motor_outer, basename)
+            write_main_fsl(motor_inner, motor_outer, basename)
         
     else:
         motor = symmetry_search(motor, "No_Airgap", args.sym_tolerance, args.show_plots)

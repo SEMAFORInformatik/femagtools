@@ -24,13 +24,13 @@ def usage(name):
 
 def write_fsl(motor, basename):
     model = dr.NewFslRenderer(basename)
-    filename = basename + '_' + motor.kind + '.fsl'
+    filename = basename + '_' + motor.geom.kind + '.fsl'
     model.render(motor.geom, filename)
 
-def write_main_fsl(motor_inner, motor_outer, basename):
+def write_main_fsl(motor, motor_inner, motor_outer, basename):
     model = dr.NewFslRenderer(basename)
     filename = basename + '.fsl'
-    model.render_main(motor_inner.geom, motor_outer.geom, filename)
+    model.render_main(motor, motor_inner.geom, motor_outer.geom, filename)
 
 def symmetry_search(motor, kind, sym_tolerance, show_plots, rows=1, cols=1, num=1):
     motor.clear_cut_lines()
@@ -75,7 +75,7 @@ def symmetry_search(motor, kind, sym_tolerance, show_plots, rows=1, cols=1, num=
                               title=kind,
                               rows=rows, cols=cols, num=num+2, show=False)
                               
-    motor_ok.kind = kind
+    motor_ok.set_kind(kind)
     return motor_ok
 
    
@@ -220,7 +220,7 @@ if __name__ == "__main__":
         if args.fsl:
             write_fsl(motor_inner, basename)
             write_fsl(motor_outer, basename)
-            write_main_fsl(motor_inner, motor_outer, basename)
+            write_main_fsl(motor, motor_inner, motor_outer, basename)
         
     else:
         motor = symmetry_search(motor, "No_Airgap",

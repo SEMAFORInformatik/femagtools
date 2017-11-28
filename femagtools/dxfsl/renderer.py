@@ -458,7 +458,7 @@ class FslRenderer(object):
                     p[1].render(self)
                     handled.add(p)
                     
-                p = get_point_inside(e)
+                p = g.get_point_inside(e)
                 self.content.append(
                     u"create_mesh_se({}, {})\n".format(p[0], p[1]))
 
@@ -654,10 +654,10 @@ class NewFslRenderer(object):
             self.content.append(u'x4, y4 = {}, {}'.format(
                     geom.end_corners[0][0], geom.end_corners[0][1])) # min xy4
 
-        copies = geom.get_symmetry_copies()
-        if copies > 0:
-            self.content.append(u'ncopies = {}'.format(copies))
-            self.content.append(u'rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,ncopies)')          
+        self.content.append(u'if m.{}_ncopies > 1 then'.format(geom.kind))
+        self.content.append(u'  rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,m.{}_ncopies-1)'
+                            .format(geom.kind))
+        self.content.append(u'  end')
 
         if self.fm_nlin:
             self.content.append(u'\nx0, y0 = {}, {}'. format(
@@ -684,14 +684,14 @@ class NewFslRenderer(object):
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))
                 
-    def render_main(self, geom_inner, geom_outer,
-                    filename, with_header=False):
+    def render_main(self, motor, geom_inner, geom_outer, filename, with_header=False):
         '''create main file'''
-
+        ##########
         n = [int(round(np.pi/x)) for x in [geom_outer.alfa,
                                            geom_inner.alfa]]
         num_poles = min(n)
         num_slots = max(n)
+        ##########
         self.content = []
 
         self.content.append(u'exit_on_error = false')
@@ -700,17 +700,30 @@ class NewFslRenderer(object):
         self.content.append(u'pickdist = 0.001\n')
         
         self.content.append(u'agndst = 1.5')
+
+        ##########
         self.content.append(u'm.num_poles = {}'.format(num_poles))
         self.content.append(u'm.num_slots = {}'.format(num_slots))
         self.content.append(u'da1 = {}'.format(2*geom_outer.min_radius))
         self.content.append(u'da2 = {}'.format(2*geom_inner.max_radius))
         self.content.append(u'ag = (da1 - da2)/2')
-        self.content.append(u'new_model_force("{}","Test")\n'.format('ABC'))
-        
+        ##########
+        self.content.append(u'new_model_force("{}","Test")\n'.format(self.model))
+
+        if geom_inner != None:
+            self.content.append(u'm.{}_ncopies = {}'
+                .format(geom_inner.kind, geom_inner.get_symmetry_copies()+1))
+        if geom_outer != None:
+            self.content.append(u'm.{}_ncopies = {}'
+                .format(geom_outer.kind, geom_outer.get_symmetry_copies()+1))
+            
 #        self.content.append(u'blow_up_wind(0.0, 75.0, 75.0)')
        
-        self.content.append(u'dofile("{}_Inner.fsl")'.format(self.model))
-        self.content.append(u'dofile("{}_Outer.fsl")'.format(self.model))
+        if geom_inner != None:
+            self.content.append(u'dofile("{}_{}.fsl")'.format(self.model, geom_inner.kind))
+        if geom_outer != None:
+            self.content.append(u'dofile("{}_{}.fsl")'.format(self.model, geom_outer.kind))
+        ########
         self.content.extend([
             '',
             '-- airgap',
@@ -731,8 +744,11 @@ class NewFslRenderer(object):
             'x0, y0 = pr2c(da1/2-ag/2, alfa/2)',
             'create_mesh_se(x0, y0)',
             ''])
-        self.content.append(u'connect_models()')
+        ########
+        self.content.append(u'connect_models()\n')
 
+        if motor.has_airgap():
+            self.content.append(u'def_mat_air({}, {})\n'.format(motor.airgap_x(), motor.airgap_y()))
+            
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))
-                

@@ -1472,7 +1472,6 @@ class Motor(object):
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
         self.geom.center = center
-        self.kind = ''
 
     def __str__(self):        
         return "Motor: Center=({}), Radius={}, Start={}, End={}, Sym={}"\
@@ -1535,6 +1534,9 @@ class Motor(object):
     def set_radius(self, radius):
         self.radius = radius
 
+    def set_kind(self, kind):
+        self.geom.kind = kind
+        
     def clear_cut_lines(self):
         self.geom.clear_cut_lines()
         if self.mirror_geom != None:
@@ -1649,6 +1651,12 @@ class Motor(object):
     def has_airgap(self):
         return self.airgap_radius > 0.0
 
+    def airgap_x(self):
+        return self.airgap_radius
+        
+    def airgap_y(self):
+        return 0.1
+        
     def part_of_circle(self, pos=3):
         return part_of_circle(self.startangle, self.endangle, pos)
 
@@ -2084,11 +2092,12 @@ class Geometry(object):
     """collection of connected shapes"""
     def __init__(self, elements=[], rtol=1e-03, atol=1e-03, split=False, debug=False):
         self._name = ''
+        self.kind = ''
         self.mirror_corners = []
         self.start_corners = []
         self.end_corners = []
         self.sym_part = 0
-        self.sym_counterpart = 0        
+        self.sym_counterpart = 0
         self.alfa = 0.0
         self.center = []
         self.min_radius = 0.0

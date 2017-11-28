@@ -684,9 +684,14 @@ class NewFslRenderer(object):
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))
                 
-    def render_main(self, geom_inner, geom_outer, filename, with_header=False):
+    def render_main(self, geom_inner, geom_outer,
+                    filename, with_header=False):
         '''create main file'''
 
+        n = [int(round(np.pi/x)) for x in [geom_outer.alfa,
+                                           geom_inner.alfa]]
+        num_poles = min(n)
+        num_slots = max(n)
         self.content = []
 
         self.content.append(u'exit_on_error = false')
@@ -695,13 +700,37 @@ class NewFslRenderer(object):
         self.content.append(u'pickdist = 0.001\n')
         
         self.content.append(u'agndst = 1.5')
-
+        self.content.append(u'm.num_poles = {}'.format(num_poles))
+        self.content.append(u'm.num_slots = {}'.format(num_slots))
+        self.content.append(u'da1 = {}'.format(2*geom_outer.min_radius))
+        self.content.append(u'da2 = {}'.format(2*geom_inner.max_radius))
+        self.content.append(u'ag = (da1 - da2)/2')
         self.content.append(u'new_model_force("{}","Test")\n'.format('ABC'))
         
 #        self.content.append(u'blow_up_wind(0.0, 75.0, 75.0)')
        
         self.content.append(u'dofile("{}_Inner.fsl")'.format(self.model))
         self.content.append(u'dofile("{}_Outer.fsl")'.format(self.model))
+        self.content.extend([
+            '',
+            '-- airgap',
+            'alfa = 2*math.pi/m.num_poles',
+            'r = da1/2 - ag/3',
+            'x1, y1 = pr2c(r, alfa)',
+            'n = r*alfa/agndst + 1',
+            'nc_circle_m(r, 0, x1, y1, 0.0, 0.0, n)',
+            'r = da1/2 - 2*ag/3',
+            'x2, y2 = pr2c(r, alfa)',
+            'nc_circle_m(r, 0, x2, y2, 0.0, 0.0, n)',
+            'nc_line(da1/2, 0, r, 0, 0)',
+            'x3, y3 = pr2c(da1/2, alfa)',
+            'nc_line(x2, y2, x3, y3, 0, 0)',
+            '',
+            'x0, y0 = pr2c(da1/2-ag/6, alfa/2)',
+            'create_mesh_se(x0, y0)',
+            'x0, y0 = pr2c(da1/2-ag/2, alfa/2)',
+            'create_mesh_se(x0, y0)',
+            ''])
         self.content.append(u'connect_models()')
 
         with io.open(filename, 'w', encoding='utf-8') as f:

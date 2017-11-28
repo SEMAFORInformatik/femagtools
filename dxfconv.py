@@ -32,19 +32,20 @@ def write_main_fsl(motor_inner, motor_outer, basename):
     filename = basename + '.fsl'
     model.render_main(motor_inner.geom, motor_outer.geom, filename)
 
-def symmetry_search(motor, kind, sym_tolerance, show_plots):
+def symmetry_search(motor, kind, sym_tolerance, show_plots, rows=1, cols=1, num=1):
     motor.clear_cut_lines()
     if show_plots and args.debug:
-        print("===== {} =====".format(kind))
-        p.render_elements(motor.geom, dg.Shape, neighbors=True)
+        p.render_elements(motor.geom, dg.Shape, neighbors=True, title=kind)
 #        p.render_areas(motor.geom, with_nodes=False, single_view=True)
         
     if not motor.find_symmetry(sym_tolerance):
-        print("symmetry_search: Keine Symmetrie gefunden")
+        if args.debug:
+            print("symmetry_search: Keine Symmetrie gefunden")
         motor_mirror = motor.get_symmetry_mirror()
         motor_slice = motor
     else:
-        p.render_elements(motor.geom, dg.Shape)
+        p.render_elements(motor.geom, dg.Shape, title=kind+' (symmetrylines)',
+                          rows=rows, cols=cols, num=num, show=False)
         motor_slice = motor.get_symmetry_slice()
         if motor_slice == None:
             motor.kind = kind
@@ -56,20 +57,24 @@ def symmetry_search(motor, kind, sym_tolerance, show_plots):
         motor_ok = motor_slice
     else:
         if show_plots and args.debug:
-            print("===== Mirror of {} =====".format(kind))
-            p.render_elements(motor_mirror.mirror_geom, dg.Shape)
-            
+            p.render_elements(motor_mirror.mirror_geom, dg.Shape,
+                              title='Mirror of '+kind,
+                              rows=rows, cols=cols, num=num, show=True)
         motor_ok = motor_mirror
 
-    motor_ok.complete_hull()                
+    motor_ok.complete_hull()
+    motor_ok.create_auxiliary_lines()
+    
     if show_plots:
-        print("===== Final Result of {} =====".format(kind))
         if args.debug:
-            p.render_elements(motor_ok.geom, dg.Shape, draw_inside=True, neighbors=True)
+            p.render_elements(motor_ok.geom, dg.Shape, draw_inside=True, neighbors=True,
+                              title=kind)
 #        p.render_areas(motor_ok.geom, single_view=True, with_nodes=True)            
         else:
-            p.render_elements(motor_ok.geom, dg.Shape, draw_inside=True)
-
+            p.render_elements(motor_ok.geom, dg.Shape, draw_inside=True,
+                              title=kind,
+                              rows=rows, cols=cols, num=num+2, show=False)
+                              
     motor_ok.kind = kind
     return motor_ok
 
@@ -161,9 +166,9 @@ if __name__ == "__main__":
 
     motor_base = basegeom.get_motor()
     if args.show_plots:
-        print("===== Original (nodes) =====")
-        p.render_elements(basegeom, dg.Shape, neighbors=True)
-#        p.render_elements(basegeom, dg.Shape, with_hull=True)
+        p.render_elements(basegeom, dg.Shape,
+                          title='Original',
+                          rows=3, cols=2, num=1, show=args.debug)
 
     if not motor_base.is_a_motor():
         print("it's Not a Motor!!")
@@ -173,7 +178,7 @@ if __name__ == "__main__":
         motor_base.repair_hull()
         if args.show_plots and args.debug:
             print("===== Original (REPAIRED HULL) =====")
-            p.render_elements(basegeom, dg.Shape, with_corners=True)
+            p.render_elements(basegeom, dg.Shape, with_corners=True, show=True)
 
     if motor_base.is_full() or motor_base.is_half() or motor_base.is_quarter():
         # Wir erstellen eine Kopie des Originals für die weiteren Arbeiten
@@ -193,25 +198,35 @@ if __name__ == "__main__":
     if args.show_plots and args.debug:
         print("===== Areas =====")            
 #        p.render_areas(motor.geom, with_nodes=True)
-        p.render_elements(motor.geom, dg.Shape, with_corners=False)
+        p.render_elements(motor.geom, dg.Shape, with_corners=False, show=True)
         
     motor.airgap(args.airgap, args.airgap2, args.sym_tolerance)
     
     if motor.has_airgap():
+        if args.show_plots:
+            p.render_elements(basegeom, dg.Shape, neighbors=True,
+                              title='Original with nodes',
+                              rows=3, cols=2, num=2, show=False)
+
         motor_inner = motor.copy(0.0, 2*np.pi, True, True)
-        motor_inner = symmetry_search(motor_inner, "Inner", args.sym_tolerance, args.show_plots)
+        motor_inner = symmetry_search(motor_inner, "Inner",
+                                      args.sym_tolerance, args.show_plots, 3, 2, 3)
 
         motor_outer = motor.copy(0.0, 2*np.pi, True, False)
-        motor_outer = symmetry_search(motor_outer, "Outer", args.sym_tolerance, args.show_plots)
+        motor_outer = symmetry_search(motor_outer, "Outer",
+                                      args.sym_tolerance, args.show_plots, 3, 2, 4)
         motor_inner.sync_with_counterpart(motor_outer)
-        
+        p.show_plot()
         if args.fsl:
             write_fsl(motor_inner, basename)
             write_fsl(motor_outer, basename)
             write_main_fsl(motor_inner, motor_outer, basename)
         
     else:
-        motor = symmetry_search(motor, "No_Airgap", args.sym_tolerance, args.show_plots)
+        motor = symmetry_search(motor, "No_Airgap",
+                                args.sym_tolerance, args.show_plots, 4, 2, 3)
+        p.show_plot()
+        
         if args.fsl:
             write_fsl(motor, basename)
         

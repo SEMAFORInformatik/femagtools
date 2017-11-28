@@ -27,8 +27,22 @@ logger = logging.getLogger(__name__)
 
 class PlotRenderer(object):
     def __init__(self):
+        self.fig = None
+        self.background = '#eeeeee'
         pass
-    
+
+    def figure(self):
+        if self.fig == None:
+            self.fig = pl.figure(figsize=(10, 10))
+            self.fig.subplots_adjust(left=0.0, right=1.0, top=1.4, bottom=0.0)
+        return self.fig
+        
+    def show_plot(self):
+        if self.fig != None:
+            #pl.tight_layout()
+            pl.show()
+            self.fig = None
+        
     def arc(self, startangle, endangle, center, radius, color = 'blue'):
         self.ax.add_patch(pch.Arc(center, 2*radius, 2*radius,
                                   angle=0,
@@ -126,7 +140,18 @@ class PlotRenderer(object):
         neighbors = kwargs.get('neighbors', False)
         draw_center = kwargs.get('draw_center', False)
         draw_inside = kwargs.get('draw_inside', False)
+        title = kwargs.get('title', "")
+        show  = kwargs.get('show', True)
+        rows  = kwargs.get('rows', 1)
+        cols  = kwargs.get('cols', 1)
+        num  = kwargs.get('num', 1)
+        points = kwargs.get('points', [])
 
+        if show:
+            rows = 1
+            cols = 1
+            num = 1
+            
         mm = geom.minmax()
         
         if single_view:
@@ -134,8 +159,8 @@ class PlotRenderer(object):
             for e in geom.elements(type):
                 print("Render Element {}".format(e))                
                 if count == 0:
-                    fig = pl.figure()
-                    self.ax = fig.add_subplot(111)
+                    self.ax = self.figure().add_subplot(111)
+                    self.ax.axis('scaled', aspect='equal')
                     
                 e.render(self, 'blue', True)
 
@@ -145,7 +170,6 @@ class PlotRenderer(object):
                     self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
                     self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
                     self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
-                    self.ax.axis('scaled', aspect='equal')
                     pl.show()
                     count = 0
                     
@@ -155,11 +179,13 @@ class PlotRenderer(object):
                 self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
                 self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
                 self.ax.axis('scaled', aspect='equal')
-                pl.show()
+                self.show_plot()
             return
-
-        fig = pl.figure()
-        self.ax = fig.add_subplot(111)
+        
+        self.ax = self.figure().add_subplot(rows, cols, num, axisbg=self.background)
+        if len(title) > 0:
+            self.ax.set_title(title, size=16)
+        self.ax.grid(color='blue',linewidth=0.5)
         
         for e in geom.elements(type):
             e.render(self, 'blue', with_nodes)
@@ -184,22 +210,28 @@ class PlotRenderer(object):
             for area in geom.list_of_areas():
                 p = area.get_point_inside()
                 if p:
-                    pl.plot([p[0]], [p[1]], 'ro')
+                    pl.plot([p[0]], [p[1]], 'ro', color='yellow')
             
         geom.render_cut_lines(self)
         geom.render_airgaps(self)
         if neighbors:
             geom.render_neighbors(self)
         
+        if len(points) > 0:
+            for p in points:
+                self.point(p, 'ro', color='red')
+                
         if geom.center:
             self.point(geom.center, 'ro', color='darkgreen')
 
-        self.point((mm[0]-5, mm[2]-5), 'ro', color='white')
-        self.point((mm[0]-5, mm[3]+5), 'ro', color='white')
-        self.point((mm[1]+5, mm[2]-5), 'ro', color='white')
-        self.point((mm[1]+5, mm[3]+5), 'ro', color='white')
-        self.ax.axis('scaled', aspect='equal')
-        pl.show()
+        self.point((mm[0]-5, mm[2]-5), 'ro', color=self.background)
+        self.point((mm[0]-5, mm[3]+5), 'ro', color=self.background)
+        self.point((mm[1]+5, mm[2]-5), 'ro', color=self.background)
+        self.point((mm[1]+5, mm[3]+5), 'ro', color=self.background)
+        self.ax.axis('scaled', aspect='equal')        
+        
+        if show:
+            self.show_plot()
 
     def render_areas(self, geom, **kwargs):
         with_nodes = kwargs.get('with_nodes', False)
@@ -251,7 +283,7 @@ class PlotRenderer(object):
                   sum(list(zip(*slot))[1])/len(slot))
         ax.text(center[0], center[1], str(id))
         ax.add_patch(poly)
-
+        
 #############################
 #       DumpRenderer        #
 #############################

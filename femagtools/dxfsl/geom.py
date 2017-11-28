@@ -172,7 +172,7 @@ def lines_intersect_point(p_L1, m_L1, n_L1, p_L2, m_L2, n_L2):
     y = m_L1 * x + n_L1
     return [x, y]
 
-def mirror_point(p, L_p, L_m, L_n):
+def intersect_point(p, L_p, L_m, L_n):
     if L_m == None:
         m = 0.0
     elif L_m == 0.0:
@@ -180,12 +180,14 @@ def mirror_point(p, L_p, L_m, L_n):
     else:
         m = -1/L_m
     n = line_n(p, m)
-
-    ps = lines_intersect_point(L_p, L_m, L_n, p, m, n)
+    return lines_intersect_point(L_p, L_m, L_n, p, m, n)
+    
+def mirror_point(p, L_p, L_m, L_n):
+    ps = intersect_point(p, L_p, L_m, L_n)
     x = p[0] - 2.0 * (p[0] - ps[0])
     y = p[1] - 2.0 * (p[1] - ps[1])
     return (x, y)
-    
+
 def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
     return np.isclose(p1[0], p2[0], rtol, atol) and \
            np.isclose(p1[1], p2[1], rtol, atol)
@@ -1184,9 +1186,14 @@ class Arc(Circle):
     def minmax_angle_from_center(self, center):
         d = distance(center, self.center)
         r = self.radius
-        r2 = np.sqrt(d**2 - r**2)
-        circ = Circle(Element(center=center, radius=r2))
-        points = self.intersect_circle(circ)
+        v = d**2 - r**2
+        if less_equal(v, 0.0):
+            points = []
+        else:
+            r2 = np.sqrt(v)
+            circ = Circle(Element(center=center, radius=r2))
+            points = self.intersect_circle(circ)
+            
         points.append(self.p2)
     
         alpha_min = alpha_line(center, self.p1)
@@ -1659,20 +1666,21 @@ class Motor(object):
         end_corners = self.geom.complete_hull_line(self.center, self.endangle)
         
         if start_corners[0].is_new_point or end_corners[0].is_new_point:
-            print("create inner hull arc")
             self.geom.complete_hull_arc(self.center,
                                         self.startangle, start_corners[0],
                                         self.endangle, end_corners[0],
                                         self.geom.min_radius)
 
         if start_corners[1].is_new_point or end_corners[1].is_new_point:
-            print("create outer hull arc")
             self.geom.complete_hull_arc(self.center,
                                         self.startangle, start_corners[1],
                                         self.endangle, end_corners[1],
                                         self.geom.max_radius)
             
         self.set_alfa_and_corners()
+        
+    def create_auxiliary_lines(self):
+        self.geom.create_auxiliary_lines(self.endangle)
         
     def set_alfa_and_corners(self):
         self.geom.start_corners = self.geom.get_corner_nodes(self.center, self.startangle)
@@ -1783,6 +1791,14 @@ class Area(object):
     def elements(self):
         return self.area
     
+    def nodes(self):
+        if len(self.area) == 0:
+            return
+
+        for e in self.area:
+            yield e.p1
+            yield e.p2            
+            
     def calc_signature(self, center):
         if len(self.area) == 0:
             return
@@ -1802,6 +1818,38 @@ class Area(object):
             self.max_angle = max_angle(self.max_angle, mm_angle[1])
             
         self.alpha = round(alpha_angle(self.min_angle, self.max_angle), 3)
+
+    def is_inside(self, area):
+        if less_equal(area.min_dist, self.min_dist):
+            return False
+        if greater_equal(area.max_dist, self.max_dist):
+            return False           
+        if less_equal(area.min_angle, self.min_angle):
+            return False
+        if greater_equal(area.max_angle, self.max_angle):
+            return False
+        return True
+
+    def get_most_left_point(self, center, radius, angle):
+        axis_p = point(center, radius, angle)
+        axis_m = line_m(center, axis_p)
+        axis_n = line_n(center, axis_m)
+
+        the_area_p = None
+        the_axis_p = None
+        dist  = 99999
+        for n in self.nodes():
+            p = intersect_point(n ,center, axis_m, axis_n)
+            d = distance(n, p)
+            if d < dist:
+                dist = d
+                the_area_p = n
+                the_axis_p = p
+                
+        return (dist, the_axis_p, the_area_p)
+        
+    def get_most_outer_point(self):
+        return []
 
     def is_equal(self, a, sym_tolerance):
         if sym_tolerance > 0.0:
@@ -2034,7 +2082,7 @@ class Area(object):
 
 class Geometry(object):
     """collection of connected shapes"""
-    def __init__(self, elements=[], rtol=1e-03, atol=1e-03, split=False, adjust=False):
+    def __init__(self, elements=[], rtol=1e-03, atol=1e-03, split=False, debug=False):
         self._name = ''
         self.mirror_corners = []
         self.start_corners = []
@@ -2052,6 +2100,7 @@ class Geometry(object):
         self.g = nx.Graph()
         self.rtol = rtol
         self.atol = atol
+        self.debug = debug
         i = 0
         
         def get_elements(elements, split):
@@ -2482,13 +2531,15 @@ class Geometry(object):
                     return
             area_list.append(a)
             
-        print("create new area list ", flush=True, end='')
+        if self.debug:
+            print("create new area list ", flush=True, end='')
         nx.set_edge_attributes(self.g, 0, True)
         nx.set_edge_attributes(self.g, 1, False)
         nx.set_edge_attributes(self.g, 2, False)
         
         for p in self.g.nodes():
-            print('.', flush=True, end='')
+            if self.debug:
+                print('.', flush=True, end='')
 #            print("Start point {}".format(p))
             neighbors = self.g.neighbors(p)
             if len(neighbors)>1:
@@ -2498,7 +2549,8 @@ class Geometry(object):
                     if area != None:
                         a = Area(area, self.center, 0.0)
                         append(self.area_list, a)
-        print(" done. {} areas found".format(len(self.area_list)))
+        if self.debug:
+            print(" done. {} areas found".format(len(self.area_list)))
 
     def list_of_areas(self):
         self.create_list_of_areas()
@@ -2685,11 +2737,11 @@ class Geometry(object):
 
         if split:
             print("\n>>>>>>>> BEGIN copy_shape with option split")
-            g = Geometry(new_elements, 0.05, 0.1, adjust=False, split=split)
+            g = Geometry(new_elements, 0.05, 0.1, split=split)
             print("\n<<<<<<<< END copy_shape with option split\n")
             return g
         else:
-            return Geometry(new_elements, self.rtol, self.atol, adjust=False)
+            return Geometry(new_elements, self.rtol, self.atol)
 
     def is_new_angle(self, alpha_list, alpha):
         for a in alpha_list:
@@ -3079,3 +3131,25 @@ class Geometry(object):
             dist_max = max(dist_max ,g[1])
 
         return airgaps
+
+    def create_auxiliary_lines(self, leftangle):
+        for area in self.list_of_areas():
+            the_axis_p = None
+            the_area_p = None
+            dist = 99999.0
+            for a in self.area_list:
+                if area.is_inside(a):
+                    d, axis_p, area_p = a.get_most_left_point(self.center, self.max_radius, leftangle)
+                    if d < dist:
+                        dist = d
+                        the_axis_p = axis_p
+                        the_area_p = area_p
+                        
+            if the_axis_p != None:
+                line = Line(Element(start=the_axis_p, end=the_area_p))
+                for e in area.elements():
+                    points = e.intersect_line(line, self.rtol, self.atol, True)
+                    assert(len(points)<2)
+                    if len(points) > 0:
+                        new_p = (round(points[0][0], ndec), round(points[0][1], ndec))
+                        add_or_join(self.g, the_area_p, new_p, line, self.rtol, self.atol)

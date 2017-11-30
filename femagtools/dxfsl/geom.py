@@ -89,13 +89,22 @@ def alpha_points(a, b, c):
     
 def alpha_triangle(a, b, c):
     if np.isclose(a, 0.0) or np.isclose(b, 0.0) or np.isclose(c, 0.0):
-        return float('nan')
-    cos_alpha = (a**2 - b**2 - c**2)/(-2*b*c)
-    if np.isnan(cos_alpha):
-        return float('nan')
+        return np.nan
+    if a<0.0 or b<0.0 or c<0.0:
+        return np.nan      
     if a + b < c:
-        return float('nan')
-    return np.arccos(cos_alpha)
+        return np.nan
+    if b + c < a:
+        return np.nan
+    if c + a < b:
+        return np.nan
+        
+    cos_alpha = (a**2 - b**2 - c**2)/(-2*b*c)
+    rslt = np.arccos(cos_alpha)
+    if np.isnan(rslt):
+        logger.debug("FATAL: arccos({}) yields nan.".format(rslt))
+        
+    return rslt
 
 def point(center, radius, alpha, rnd=-1):
     if rnd >= 0:
@@ -386,12 +395,12 @@ def remove_corners(self, g):
     g.remove_nodes_from(corners)
 
 def intersect_and_split(inp_elements, rtol, atol):
-    print("Load input elements ... ", flush=True, end='')
+    logger.info("Load input elements ... ")
     out_elements = []
     for e in inp_elements:
         out_size = len(out_elements)
         intersect_and_split_element(e, out_elements, 0, out_size, rtol, atol)
-    print(" done")
+    logger.info(" ... done")
     return out_elements
    
 def intersect_and_split_element(el, out_elements, out_start, out_size, rtol, atol):
@@ -729,7 +738,7 @@ class Shape(object):
     def get_point_number(self, p):
         if points_are_close(p, self.p1, rtol=0.0, atol=0.00001) and\
            points_are_close(p, self.p2, rtol=0.0, atol=0.00001):
-            print("WARNING: get_point_number(): both points are close !!")
+            logger.debug("WARNING: get_point_number(): both points are close !!")
         if points_are_close(p, self.p1, rtol=0.0, atol=0.00001):
             return 1
         if points_are_close(p, self.p2, rtol=0.0, atol=0.00001):
@@ -866,16 +875,7 @@ class Circle(Shape):
         """ Von zwei Circle-Objekten werden die Schnittpunkte bestimmt
             und in einer Liste ausgegeben
         """
-        d = distance(self.center, circle.center)
-        if self.radius < circle.radius:
-            if less(d + self.radius, circle.radius, rtol, atol):
-                return []
-        else:
-            if less(d + circle.radius, self.radius, rtol, atol):
-                return []
-        if greater(d, self.radius + circle.radius, rtol, atol):
-            return []
-            
+        d = distance(self.center, circle.center)            
         arc = alpha_triangle(circle.radius, self.radius, d)
 
         if np.isnan(arc):
@@ -1201,7 +1201,6 @@ class Arc(Circle):
         
         for p in points:
             alpha_p = alpha_line(center, p)
-#            print("alpha_min={}, alpha_p={}".format(alpha_min, alpha_p))            
             alpha_min = min_angle(alpha_min, alpha_p)
             alpha_max = min_angle(alpha_max, alpha_p)
             
@@ -1896,11 +1895,6 @@ class Area(object):
         self.equal_areas.append(a)
         
     def set_delta(self):
-#        print("Area::set_delta: {} are equal".format(len(self.equal_areas)+1))
-#        print(" - {}".format(self))
-#        for a in self.equal_areas:
-#            print(" - {}".format(a))
-            
         self.delta = 0.0
         self.symmetry = 0
         
@@ -1958,7 +1952,6 @@ class Area(object):
         self.sym_type = 1
         self.symmetry = part_of_circle(0.0, self.delta, 1)
         
-#        self.delta = delta_sorted[0][1] + delta_sorted[1][1]
 #        print(" = {} = {} + {}".format(self.delta, delta_sorted[0][1], delta_sorted[1][1]))
         
         delta_1 = alpha_angle(self.min_angle ,self.equal_areas[0].min_angle) 
@@ -2018,7 +2011,7 @@ class Area(object):
             points += e.intersect_line(line)
         
         if len(points) < 2:
-            print("WARNING: get_point_inside() failed ({})".format(len(points)))
+            logger.debug("WARNING: get_point_inside() failed ({})".format(len(points)))
             return None
             
         assert(len(points)> 1)
@@ -2129,7 +2122,6 @@ class Geometry(object):
                 try:
                     add_or_join(self.g, n[0], n[1], e, self.rtol, self.atol)
                 except Exception as ex:
-                    print("exception")
                     logger.warn("EXCEPTION %s", ex)
                     if e:  # must be a circle
                         self.g.add_node(e.center, object=e)
@@ -2748,10 +2740,7 @@ class Geometry(object):
                                                  start_line, end_line, inner_circle, outer_circle, e)
 
         if split:
-            print("\n>>>>>>>> BEGIN copy_shape with option split")
-            g = Geometry(new_elements, 0.05, 0.1, split=split)
-            print("\n<<<<<<<< END copy_shape with option split\n")
-            return g
+            return Geometry(new_elements, 0.05, 0.1, split=split)
         else:
             return Geometry(new_elements, self.rtol, self.atol)
 
@@ -2797,12 +2786,12 @@ class Geometry(object):
         
         area = arealist_match[0]
         if area.delta == 0.0:
-            print("Delta: Keine Symmetrie gefunden")
+            logger.info("#1: No symmetry-axis found")
             return False
             
         sym = part_of_circle(0.0, area.delta, 1)
         if sym == 0.0:
-            print("Part: Keine Symmetrie gefunden")
+            logger.info("#2: No symmetry-axis found")
             return False
         area.delta = 2*np.pi/sym
 #        print("Symetrie 1/{}".format(sym))

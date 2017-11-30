@@ -33,13 +33,12 @@ class PlotRenderer(object):
 
     def figure(self):
         if self.fig == None:
-            self.fig = pl.figure(figsize=(10, 10))
-            self.fig.subplots_adjust(left=0.0, right=1.0, top=1.4, bottom=0.0)
+            self.fig = pl.figure(figsize=(9, 10), facecolor='lightblue')
+            #self.fig.subplots_adjust(left=0.0, right=0.5, top=1.0, bottom=0.0)
         return self.fig
         
     def show_plot(self):
         if self.fig != None:
-            #pl.tight_layout()
             pl.show()
             self.fig = None
         
@@ -184,9 +183,9 @@ class PlotRenderer(object):
         
         self.ax = self.figure().add_subplot(rows, cols, num, axisbg=self.background)
         if len(title) > 0:
-            self.ax.set_title(title, size=16)
+            self.ax.set_title(title, size=14)
         self.ax.grid(color='blue',linewidth=0.5)
-        
+                  
         for e in geom.elements(type):
             e.render(self, 'blue', with_nodes)
         
@@ -574,7 +573,7 @@ class NewFslRenderer(object):
         self.content.append(u'create_mesh_se(x0, y0)')
 
         self.content.append(u'x0, y0 = pr2c(rag_{}+3*ag/6, alfa/2)'.format(geom_inner.kind))
-        self.content.append(u'create_mesh_se(x0, y0)')
+        self.content.append(u'create_mesh_se(x0, y0)\n')
 
         self.content.append(u'connect_models()\n')
            

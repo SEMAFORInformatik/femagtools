@@ -336,172 +336,6 @@ class DumpRenderer(object):
     
         return self.content
 
-#############################
-#        FslRenderer        #
-#############################
-
-class FslRenderer(object):
-    """a model that can created by FSL"""
-    
-    def __init__(self, name):
-        self.model = name
-        self.mirror_axis = None
-        self.fm_nlin = None
-        self.shaft = None
-
-    def mirror_nodechains(self, p0, p1):
-        self.mirror_axis = np.array((p0, p1)).ravel().tolist()
-
-    def material(self, p0):
-        self.fm_nlin = p0
-
-    def circle(self, center, radius):
-        num = int(2*np.pi*radius)
-        if num < 8:
-            num = 8
-        circle = [u'cx, cy = {}, {}'.format(center[0],
-                                            center[1]),
-                  u'nc_circle_m(cx,cy,{}, {})'.format(radius, num),
-                  u'create_mesh_se(cx, cy)\n']
-        self.content += circle
-
-    def arc(self, startangle, endangle, center, radius):
-        num = 0
-        if self.nodedist > 0:
-            s = startangle
-            d = endangle - s
-            n = int(d/(2*np.pi))
-            if n < 0:
-                n -= 1
-            d -= n*2*np.pi
-            num = int(radius*d/self.nodedist + 1)
-            if num < 3 and radius*d > self.nodedist:
-                num = 3
-
-        p1 = (center[0] + radius*np.cos(startangle),
-              center[1] + radius*np.sin(startangle))
-        p2 = (center[0] + radius*np.cos(endangle),
-              center[1] + radius*np.sin(endangle))
-        self.content.append(
-            u"nc_circle_m({}, {}, {}, {}, {}, {}, {})".format(
-                p1[0], p1[1], p2[0], p2[1],
-                center[0], center[1], num))
-
-    def line(self, p1, p2):
-        num = 0
-        if self.nodedist > 0:
-            l = la.norm(np.asarray(p1)-p2)
-            num = int(l/self.nodedist + 1)
-        self.content.append(
-            u"nc_line({}, {}, {}, {}, {})".format(
-                p1[0], p1[1], p2[0], p2[1], num))
-
-    def set_nodedist(self, e, airgapOutside):
-        """determine position of e and adjust nodedist if needed"""
-        r = la.norm(e.center_of_connection())
-        n = -1
-        for level in self.ndttab:
-            if ((airgapOutside and level[0] < r) or
-                (not airgapOutside and level[0] > r)):
-                break
-            n += 1
-        if n != self.ndtpos:
-            self.ndtpos = n
-            self.content.append(
-                u"ndt({})\n".format(
-                    self.ndttab[n][1] if n >= 0 else "agndst"))
-
-    def render(self, geom, airgapOutside=True, incl_bnd=True):
-        '''create fsl commands with nodechains'''
-
-        handled = set()  # prevent multiple creation
-        if airgapOutside:
-            dy, da = geom.diameters[0], geom.diameters[-1]
-            self.ndttab = [(0.98*da/2, '1.6*agndst'),
-                           (dy/2 + 0.4*(da-dy), '3*agndst')]
-        else:
-            dy, da = geom.diameters[-1], geom.diameters[0]
-            self.ndttab = [(1.06*da/2, 1.6), (dy/2 - 0.2*(da-da), 3)]
-        self.content = []
-        self.ndtpos = -1
-        self.content.append(u'\n\nndt(agndst)\n')
-            
-        # collect all areas
-        coll = []
-        for i, area in enumerate(geom.areas(incl_bnd)):
-            if len(area) > 1:
-                r = la.norm(np.sum([p.center_of_connection()
-                                    for p in area], axis=0)/len(area))
-                coll.append((r, area))
-        geom.remove_areas(incl_bnd)
-        # and all remaining edges and circles
-        for circle in geom.circles():
-            coll.append((la.norm(circle.center), circle))
-
-        for e1, e2, attr in geom.g.edges(data=True):
-            r = la.norm(attr['object'].center_of_connection())
-            coll.append((r, attr['object']))
-
-        # create nodechains in sorted order and set nodedist
-        self.nodedist = 0
-        for r, e in sorted(coll, key=lambda x: x[0], reverse=airgapOutside):
-            if isinstance(e, list):
-                self.content.append(u"-- {})\n".format(r))
-                acoll = sorted([(la.norm(p.center_of_connection()), p)
-                                for p in e],
-                               key=lambda x: x[0],
-                               reverse=airgapOutside)
-                for p in acoll:
-                    if p in handled:
-                        continue
-                    self.set_nodedist(p[1], airgapOutside)
-                    p[1].render(self)
-                    handled.add(p)
-                    
-                p = g.get_point_inside(e)
-                self.content.append(
-                    u"create_mesh_se({}, {})\n".format(p[0], p[1]))
-
-            else:
-                self.set_nodedist(e, airgapOutside)
-                e.render(self)
-
-        if airgapOutside:
-            self.content.append(u'\nx0, y0 = pr2c({}, {})'. format(
-                1.01*dy/2, geom.alpha/2))
-        else:
-            self.content.append(u'\nx0, y0 = pr2c({}, {})'. format(
-                0.99*dy/2, geom.alpha/2))
-        if not incl_bnd:
-            self.content.append(u'create_mesh_se(x0, y0)')
-        self.content.append(u'def_new_subreg(x0, y0, "Rotor", green)')
-
-        if geom.mirror_axis:
-            self.content.append(u'\nmirror_nodechains({})\n'.format(
-                ', '.join([str(x) for x in geom.mirror_axis])))
-
-        self.content += [u'-- rotate',
-                         u'alfa = {}'.format(2*geom.alpha),
-                         u'x1, y1 = {}, 0.0'.format(
-                             dy/2 if airgapOutside else da/2),
-                         u'x2, y2 = {}, 0.0'.format(
-                             da/2 if airgapOutside else dy/2),
-                         u'x3, y3 = pr2c(x2, alfa)',
-                         u'x4, y4 = pr2c(x1, alfa)',
-                         u'rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,ncopies)']
-        
-        mat = [u"if mcvkey_yoke ~= 'dummy' then",
-               u"  if fm_nlin_mcvfile == 'air' then",
-               u"    def_mat_fm(x0,y0, 1.0, fm_nlin_rlen)",
-               u"  else",
-               u"    def_mat_fm_nlin(x0,y0, blue, mcvkey_yoke, fm_nlin_rlen)",
-               u"  end",
-               u"else",
-               u"  def_mat_fm(x0,y0, 1000.0, fm_nlin_rlen)",
-               u"end"]
-        self.content += mat
-
-        return self.content
 
 #############################
 #       NewFslRenderer      #
@@ -628,16 +462,16 @@ class NewFslRenderer(object):
 #            self.content.append(
 #                u'def_new_subreg(0.1, 0.1, "Shaft", lightgrey)')
 
-        if geom.mirror_corners:
+        if geom.is_mirrored():
             self.content.append(u'-- mirror')
             self.content.append(u'mirror_nodechains({}, {}, {}, {})\n'.format(
                 geom.mirror_corners[1][0], # max x1
                 geom.mirror_corners[1][1], # max y1
                 geom.mirror_corners[0][0], # min x2
                 geom.mirror_corners[0][1]))# min y2
-            self.content.append(u'alfa = 2*{}\n'.format(geom.alfa))
-        else:
-            self.content.append(u'alfa = {}\n'.format(geom.alfa))
+                
+        # Winkel nach allfälligem Spiegeln
+        self.content.append(u'alfa = {}\n'.format(geom.get_alfa()))
             
         self.content.append(u'-- rotate')
         self.content.append(u'x1, y1 = {}, {}'.format(
@@ -645,7 +479,7 @@ class NewFslRenderer(object):
         self.content.append(u'x2, y2 = {}, {}'.format(
                 geom.start_corners[1][0], geom.start_corners[1][1])) # max xy2
             
-        if geom.mirror_corners:
+        if geom.is_mirrored():
             self.content.append(u'x3, y3 = pr2c(x2, alfa)')
             self.content.append(u'x4, y4 = pr2c(x1, alfa)')
         else:
@@ -686,12 +520,6 @@ class NewFslRenderer(object):
                 
     def render_main(self, motor, geom_inner, geom_outer, filename, with_header=False):
         '''create main file'''
-        ##########
-        n = [int(round(np.pi/x)) for x in [geom_outer.alfa,
-                                           geom_inner.alfa]]
-        num_poles = min(n)
-        num_slots = max(n)
-        ##########
         self.content = []
 
         self.content.append(u'exit_on_error = false')
@@ -699,15 +527,12 @@ class NewFslRenderer(object):
         self.content.append(u'verbosity = 2')
         self.content.append(u'pickdist = 0.001\n')
         
+        self.content.append(u'-- airgap')        
         self.content.append(u'agndst = 1.5')
+        self.content.append(u'rag_{} = {}'.format(geom_outer.kind, geom_outer.min_radius))
+        self.content.append(u'rag_{} = {}'.format(geom_inner.kind, geom_inner.max_radius))
+        self.content.append(u'ag = rag_{} - rag_{}\n'.format(geom_outer.kind, geom_inner.kind))
 
-        ##########
-        self.content.append(u'm.num_poles = {}'.format(num_poles))
-        self.content.append(u'm.num_slots = {}'.format(num_slots))
-        self.content.append(u'da1 = {}'.format(2*geom_outer.min_radius))
-        self.content.append(u'da2 = {}'.format(2*geom_inner.max_radius))
-        self.content.append(u'ag = (da1 - da2)/2')
-        ##########
         self.content.append(u'new_model_force("{}","Test")\n'.format(self.model))
 
         if geom_inner != None:
@@ -723,32 +548,35 @@ class NewFslRenderer(object):
             self.content.append(u'dofile("{}_{}.fsl")'.format(self.model, geom_inner.kind))
         if geom_outer != None:
             self.content.append(u'dofile("{}_{}.fsl")'.format(self.model, geom_outer.kind))
-        ########
-        self.content.extend([
-            '',
-            '-- airgap',
-            'alfa = 2*math.pi/m.num_poles',
-            'r = da1/2 - ag/3',
-            'x1, y1 = pr2c(r, alfa)',
-            'n = r*alfa/agndst + 1',
-            'nc_circle_m(r, 0, x1, y1, 0.0, 0.0, n)',
-            'r = da1/2 - 2*ag/3',
-            'x2, y2 = pr2c(r, alfa)',
-            'nc_circle_m(r, 0, x2, y2, 0.0, 0.0, n)',
-            'nc_line(da1/2, 0, r, 0, 0)',
-            'x3, y3 = pr2c(da1/2, alfa)',
-            'nc_line(x2, y2, x3, y3, 0, 0)',
-            '',
-            'x0, y0 = pr2c(da1/2-ag/6, alfa/2)',
-            'create_mesh_se(x0, y0)',
-            'x0, y0 = pr2c(da1/2-ag/2, alfa/2)',
-            'create_mesh_se(x0, y0)',
-            ''])
-        ########
-        self.content.append(u'connect_models()\n')
-
-        if motor.has_airgap():
-            self.content.append(u'def_mat_air({}, {})\n'.format(motor.airgap_x(), motor.airgap_y()))
             
+        alfa = geom_inner.get_alfa() * (geom_inner.get_symmetry_copies()+1)
+        alfa2 = geom_outer.get_alfa() * (geom_outer.get_symmetry_copies()+1)
+        assert(np.isclose(alfa, alfa2))
+
+        self.content.append(u'alfa = {}\n'.format(alfa))
+
+        self.content.append(u'-- airgap')
+        self.content.append(u'r1 = rag_{} + ag/3'.format(geom_inner.kind))
+        self.content.append(u'x1, y1 = pr2c(r1, alfa)')
+        self.content.append(u'n = r1*alfa/agndst + 1')
+        self.content.append(u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n')
+        
+        self.content.append(u'r2 = rag_{} + 2*ag/3'.format(geom_inner.kind))
+        self.content.append(u'x2, y2 = pr2c(r2, alfa)')
+        self.content.append(u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n')
+
+        self.content.append(u'nc_line(rag_{}, 0, r2, 0, 0)'.format(geom_inner.kind))
+        self.content.append(u'x3, y3 = pr2c(rag_{}, alfa)'.format(geom_inner.kind))
+        self.content.append(u'x4, y4 = pr2c(r2, alfa)')
+        self.content.append(u'nc_line(x3, y3, x4, y4, 0, 0)\n')
+
+        self.content.append(u'x0, y0 = pr2c(rag_{}+1*ag/6, alfa/2)'.format(geom_inner.kind))
+        self.content.append(u'create_mesh_se(x0, y0)')
+
+        self.content.append(u'x0, y0 = pr2c(rag_{}+3*ag/6, alfa/2)'.format(geom_inner.kind))
+        self.content.append(u'create_mesh_se(x0, y0)')
+
+        self.content.append(u'connect_models()\n')
+           
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))

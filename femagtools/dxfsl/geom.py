@@ -1697,7 +1697,10 @@ class Motor(object):
 
         if self.mirror_geom != None:
             self.geom.mirror_corners = self.geom.end_corners
-            
+
+    def is_mirrored(self):
+        return self.mirror_geom != None
+           
     def find_symmetry(self, sym_tolerance):
         if self.radius <= 0.0:
             return False
@@ -2827,6 +2830,15 @@ class Geometry(object):
             
         x = gcd(self.sym_part, self.sym_counterpart)
         return self.sym_part / x - 1
+
+    def is_mirrored(self):
+        return len(self.mirror_corners) > 0
+
+    def get_alfa(self):
+        if self.is_mirrored():
+            return 2*self.alfa
+        else:
+            return self.alfa
         
     def __str__(self):
         return "Nodes {}\nConnected {}".format(

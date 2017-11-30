@@ -40,7 +40,8 @@ def symmetry_search(motor, kind, sym_tolerance, show_plots, rows=1, cols=1, num=
         
     if not motor.find_symmetry(sym_tolerance):
         if args.debug:
-            print("symmetry_search: Keine Symmetrie gefunden")
+            print("no symmetry axis found")
+        logger.info("{}: no symmetry axis found".format(kind))
         motor_mirror = motor.get_symmetry_mirror()
         motor_slice = motor
     else:
@@ -94,6 +95,14 @@ if __name__ == "__main__":
     argparser.add_argument('-f', '--fsl',
                            help='create fsl',
                            action="store_true")
+    argparser.add_argument('--inner',
+                           help='name of inner element',
+                           dest='inner',
+                           default='inner')
+    argparser.add_argument('--outer',
+                           help='name of outer element',
+                           dest='outer',
+                           default='outer')
     argparser.add_argument('-a', '--airgap',
                            help='correct airgap',
                            dest='airgap',
@@ -105,7 +114,7 @@ if __name__ == "__main__":
                            type=float,
                            default=0.0)
     argparser.add_argument('-t', '--symtol',
-                           help='absolut tolerance to find symmetrys',
+                           help='absolut tolerance to find symmetry axis',
                            dest='sym_tolerance',
                            type=float,
                            default=0.0)
@@ -138,17 +147,26 @@ if __name__ == "__main__":
 
     args = argparser.parse_args()
     if args.airgap > 0.0:
-        if args.airgap2 > 0.0:
-            print("Airgap is set from {} to {}".format(args.airgap, args.airgap2))
+        if args.debug:
+            if args.airgap2 > 0.0:
+                print("Airgap is set from {} to {}".format(args.airgap, args.airgap2))
+            else:
+                print("Airgap is set to {}".format(args.airgap))
         else:
-            print("Airgap is set to {}".format(args.airgap))
-        
+            if args.airgap2 > 0.0:
+                logger.info("Airgap is set from {} to {}".format(args.airgap, args.airgap2))
+            else:
+                logger.info("Airgap is set to {}".format(args.airgap))
+            
     layers = ()
     
     incl_bnd = True
     
     rtol = args.rtol
     atol = args.atol
+
+    inner_name = args.inner
+    outer_name = args.outer
     
     basename = os.path.basename(args.dxfile).split('.')[0]
     logger.info("start reading %s", basename)
@@ -209,11 +227,11 @@ if __name__ == "__main__":
                               rows=3, cols=2, num=2, show=False)
 
         motor_inner = motor.copy(0.0, 2*np.pi, True, True)
-        motor_inner = symmetry_search(motor_inner, "Inner",
+        motor_inner = symmetry_search(motor_inner, inner_name,
                                       args.sym_tolerance, args.show_plots, 3, 2, 3)
 
         motor_outer = motor.copy(0.0, 2*np.pi, True, False)
-        motor_outer = symmetry_search(motor_outer, "Outer",
+        motor_outer = symmetry_search(motor_outer, outer_name,
                                       args.sym_tolerance, args.show_plots, 3, 2, 4)
         motor_inner.sync_with_counterpart(motor_outer)
         p.show_plot()
@@ -229,6 +247,5 @@ if __name__ == "__main__":
         
         if args.fsl:
             write_fsl(motor, basename)
-        
-        
+
     logger.info("done")

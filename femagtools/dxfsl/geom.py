@@ -100,10 +100,15 @@ def alpha_triangle(a, b, c):
         return np.nan
         
     cos_alpha = (a**2 - b**2 - c**2)/(-2*b*c)
+    if cos_alpha >= 1.0:
+        return np.nan
+    if cos_alpha <= -1.0:
+        return np.nan
+        
     rslt = np.arccos(cos_alpha)
     if np.isnan(rslt):
-        logger.debug("FATAL: arccos({}) yields nan.".format(rslt))
-        
+        logger.debug("FATAL: arccos({}) yields nan.".format(cos_alpha))
+        print("FATAL: arccos({}) yields nan. === {}/{}/{}".format(cos_alpha,a,b,c))
     return rslt
 
 def point(center, radius, alpha, rnd=-1):
@@ -395,12 +400,12 @@ def remove_corners(self, g):
     g.remove_nodes_from(corners)
 
 def intersect_and_split(inp_elements, rtol, atol):
-    logger.info("Load input elements ... ")
+    print("Load input elements ... ", end='', flush=True)
     out_elements = []
     for e in inp_elements:
         out_size = len(out_elements)
         intersect_and_split_element(e, out_elements, 0, out_size, rtol, atol)
-    logger.info(" ... done")
+    print(" done")
     return out_elements
    
 def intersect_and_split_element(el, out_elements, out_start, out_size, rtol, atol):
@@ -1292,11 +1297,11 @@ class Line(Shape):
                 return []
             else:
                 y = line_n([line.p1[0]-self.p1[0], line.p1[1]], m_L2)
-                point = [self.p1[0], y]
+                point = (self.p1[0], y)
         else:
             if m_L2 == None:
                 y = line_n([self.p1[0]-line.p1[0], self.p1[1]], m_L1)
-                point = [line.p1[0], y]
+                point = (line.p1[0], y)
             else:
                 if np.isclose(m_L1, m_L2):
                     return []
@@ -1998,7 +2003,7 @@ class Area(object):
             mm[3] = max(mm[3], n[3])
         return mm
 
-    def get_point_inside(self):
+    def get_point_inside(self, geom):
         """return point inside area"""
         mm = self.minmax()        
         y = (mm[2]+mm[3])/2
@@ -2020,8 +2025,17 @@ class Area(object):
         for p in points:
             points_sorted.append((p[0], p))
         points_sorted.sort()
-        p1 = points_sorted[0][1]
-        p2 = points_sorted[1][1]
+        p1 = points_sorted[0][1] # Startpoint
+
+        points_sorted = []
+        for e in geom.elements(Shape):
+            points = e.intersect_line(line, geom.rtol, geom.atol, True)
+            for p in points:
+                if p[0] > p1[0]:
+                    points_sorted.append((p[0], p))
+        points_sorted.sort()
+                
+        p2 = points_sorted[0][1]
         return ((p1[0]+p2[0])/2, y)
 
     def render(self, renderer, color='black', with_nodes=False):
@@ -3156,10 +3170,18 @@ class Geometry(object):
                         the_area_p = area_p
                         
             if the_axis_p != None:
+                point_list = []
                 line = Line(Element(start=the_axis_p, end=the_area_p))
                 for e in area.elements():
                     points = e.intersect_line(line, self.rtol, self.atol, True)
                     assert(len(points)<2)
-                    if len(points) > 0:
-                        new_p = (round(points[0][0], ndec), round(points[0][1], ndec))
-                        add_or_join(self.g, the_area_p, new_p, line, self.rtol, self.atol)
+                    for p in points:
+                        d = distance(p, the_area_p)
+                        point_list.append((d, p))
+
+                point_list.sort()
+                assert(len(point_list)>0)
+                p = point_list[0][1]
+                new_p = (round(p[0], ndec), round(p[1], ndec))
+                line = Line(Element(start=the_area_p, end=new_p))
+                add_or_join(self.g, the_area_p, new_p, line, self.rtol, self.atol)

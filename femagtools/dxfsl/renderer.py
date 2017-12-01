@@ -207,7 +207,7 @@ class PlotRenderer(object):
 
         if draw_inside:
             for area in geom.list_of_areas():
-                p = area.get_point_inside()
+                p = area.get_point_inside(geom)
                 if p:
                     pl.plot([p[0]], [p[1]], 'ro', color='yellow')
             
@@ -254,7 +254,7 @@ class PlotRenderer(object):
                     self.ax = fig.add_subplot(111)
 
                 area.render(self, colors[c], with_nodes)
-                p = area.get_point_inside()
+                p = area.get_point_inside(geom)
                 if p:
                     self.point(p, 'ro', color='magenta')
                 
@@ -424,7 +424,7 @@ class NewFslRenderer(object):
 
         for area in geom.list_of_areas():
             if area.number_of_elements() > 1:
-                p = area.get_point_inside()
+                p = area.get_point_inside(geom)
                 if p:
                     self.content.append(u"x0, y0 = {}, {}".format(p[0], p[1]))
                     self.content.append(u"point(x0, y0, red, 4)")

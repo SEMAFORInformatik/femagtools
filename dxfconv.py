@@ -45,8 +45,9 @@ def symmetry_search(motor, kind, sym_tolerance, show_plots, rows=1, cols=1, num=
         motor_mirror = motor.get_symmetry_mirror()
         motor_slice = motor
     else:
-        p.render_elements(motor.geom, dg.Shape, title=kind+' (symmetrylines)',
-                          rows=rows, cols=cols, num=num, show=False)
+        if show_plots:
+            p.render_elements(motor.geom, dg.Shape, title=kind+' (symmetrylines)',
+                              rows=rows, cols=cols, num=num, show=False)
         motor_slice = motor.get_symmetry_slice()
         if motor_slice == None:
             motor.kind = kind

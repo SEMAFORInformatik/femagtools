@@ -23,6 +23,9 @@ import sys
 import matplotlib.pylab as pl
 import matplotlib.patches as pch
 
+
+nxversion = int(nx.__version__.split('.')[0])
+
 def print_circle(ax, circle, color='darkblue', fill=False):
     ax.add_patch(pch.Circle(circle.center, circle.radius, fill=fill, color=color))
 
@@ -1668,9 +1671,11 @@ class Motor(object):
         self.geom.repair_hull_line(self.center, self.startangle)
         self.geom.repair_hull_line(self.center, self.endangle)
 
-        if self.mirror_geom != None:
-            self.mirror_geom.repair_hull_line(self.center, self.mirror_startangle)
-            self.mirror_geom.repair_hull_line(self.center, self.mirror_endangle)
+        if self.mirror_geom:
+            self.mirror_geom.repair_hull_line(self.center,
+                                              self.mirror_startangle)
+            self.mirror_geom.repair_hull_line(self.center,
+                                              self.mirror_endangle)
 
     def complete_hull(self):
 #        self.geom.create_list_of_areas()
@@ -2206,7 +2211,7 @@ class Geometry(object):
     def find_nodes(self, *points, **kwargs):
         """return closest nodes to points in arg within pickdist"""
         n = []
-        nodes = kwargs.get('g', self.g).nodes()
+        nodes = list(kwargs.get('g', self.g))
         if nodes:
             anodes = np.asarray(nodes)
             for p in points:
@@ -2302,7 +2307,8 @@ class Geometry(object):
     def get_corner_list(self, center, angle, rtol=1e-04, atol=1e-04):
         # Die Funktion liefert eine sortierte Liste aller Nodes auf einer
         # Linie als Corner-Objekte.
-        corners = [Corner(center,c) for c in self.angle_nodes(center, angle, rtol, atol)]
+        corners = [Corner(center, c)
+                   for c in self.angle_nodes(center, angle, rtol, atol)]
         if len(corners) > 1:
             corners.sort()
         return corners
@@ -2318,11 +2324,12 @@ class Geometry(object):
             # Ohne genügend Corners ist die Arbeit sinnlos
             return
 
-        for p1, p2 in self.g.edges():
+        for p1, p2 in [e for e in self.g.edges()]:
             for c in corners:
                 if c.is_equal(p1):
-                    if not (points_are_close(center, p2, rtol, atol) or \
-                            np.isclose(angle, alpha_line(center, p2), rtol, atol)):
+                    if not (points_are_close(center, p2, rtol, atol) or
+                            np.isclose(angle, alpha_line(center, p2),
+                                       rtol, atol)):
                         c.set_keep_node()
                 elif c.is_equal(p2):
                     if points_are_close(center, p1, rtol, atol) or \
@@ -2337,7 +2344,8 @@ class Geometry(object):
 
         # Weil uns unnötige Corners abhanden gekommen sind, bilden wir die
         # Liste neu.
-        corners = [Corner(center, c) for c in self.angle_nodes(center, angle, rtol, atol)]
+        corners = [Corner(center, c)
+                   for c in self.angle_nodes(center, angle, rtol, atol)]
         
 #        print("repair_hull_line: {}".format(angle))
 #        for c in corners:
@@ -2364,7 +2372,7 @@ class Geometry(object):
             self.set_minmax_radius(center)
 
         corners = self.get_corner_list(center, angle)
-        assert(len(corners)>0)
+        assert(corners)
         c_min = Corner(center, point(center, self.min_radius, angle, ndec))
         c_max = Corner(center, point(center, self.max_radius, angle, ndec))
 
@@ -2384,7 +2392,8 @@ class Geometry(object):
 
         return (c_min, c_max)
 
-    def complete_hull_arc(self, center, startangle, startcorner, endangle, endcorner, radius):
+    def complete_hull_arc(self, center, startangle, startcorner,
+                          endangle, endcorner, radius):
         nodes = self.radius_nodes(center, radius, 1e-04, 1e-04)
 
         if startcorner.is_new_point:
@@ -2394,9 +2403,10 @@ class Geometry(object):
             nodes_sorted.sort()
             p = nodes_sorted[0][1]
             angle_p = alpha_line(center, p)
-            self.g.add_edge(start_p, p, object=Arc(Element(center=center, radius=radius,
-                                                           start_angle=startangle*180/np.pi,
-                                                           end_angle=angle_p*180/np.pi)))
+            self.g.add_edge(start_p, p, object=Arc(
+                Element(center=center, radius=radius,
+                        start_angle=startangle*180/np.pi,
+                        end_angle=angle_p*180/np.pi)))
 
         if endcorner.is_new_point:
             end_p = endcorner.point()
@@ -2405,9 +2415,10 @@ class Geometry(object):
             inx = len(nodes_sorted)-1
             p = nodes_sorted[inx][1]
             angle_p = alpha_line(center, p)
-            self.g.add_edge(p, end_p, object=Arc(Element(center=center, radius=radius,
-                                                         start_angle=angle_p*180/np.pi,
-                                                         end_angle=endangle*180/np.pi)))
+            self.g.add_edge(p, end_p, object=Arc(
+                Element(center=center, radius=radius,
+                        start_angle=angle_p*180/np.pi,
+                        end_angle=endangle*180/np.pi)))
         
     def get_corner_nodes(self, center, angle):
         rtol = 1e-4
@@ -2461,14 +2472,12 @@ class Geometry(object):
 
     def get_new_area(self, start_p1, start_p2, solo):
         e_dict = self.g.get_edge_data(start_p1, start_p2)
-        if e_dict == None:
-            # Das darf nicht sein!
-#            print("    *** no dict ?? ***")
-            return None
-
+        if not e_dict:
+            raise ValueError("    *** no dict ?? ***")
         area = []
         e = e_dict['object']
         x = e.get_point_number(start_p1)
+
         if e_dict[x]:
             # Diese Area wurde schon abgelaufen.
 #            print("    *** bereits abgelaufen ({}) ***".format(x))
@@ -2479,7 +2488,7 @@ class Geometry(object):
         this_p = start_p2
 
         next_p = self.point_lefthand_side(first_p, this_p)
-        if next_p == None:
+        if not next_p:
             # Unerwartetes Ende
 #            print("    *** Sackgasse ***")
             return None
@@ -2551,22 +2560,26 @@ class Geometry(object):
             
         if self.debug:
             print("create new area list ", flush=True, end='')
-        nx.set_edge_attributes(self.g, 0, True)
-        nx.set_edge_attributes(self.g, 1, False)
-        nx.set_edge_attributes(self.g, 2, False)
-        
+        if nxversion == 1:
+            nx.set_edge_attributes(self.g, 0, True)
+            nx.set_edge_attributes(self.g, 1, False)
+            nx.set_edge_attributes(self.g, 2, False)
+        else:
+            nx.set_edge_attributes(self.g, True, 0)
+            nx.set_edge_attributes(self.g, False, 1)
+            nx.set_edge_attributes(self.g, False, 2)
+            
         for p in self.g.nodes():
             if self.debug:
                 print('.', flush=True, end='')
 #            print("Start point {}".format(p))
-            neighbors = self.g.neighbors(p)
-            if len(neighbors)>1:
-                for next_p in neighbors:
-#                    print(" -> neighbor point {}".format(next_p))
-                    area = self.get_new_area(p, next_p, len(neighbors) < 3)
-                    if area != None:
-                        a = Area(area, self.center, 0.0)
-                        append(self.area_list, a)
+            neighbors = [n for n in self.g[p]]
+            for next_p in neighbors:
+                #                    print(" -> neighbor point {}".format(next_p))
+                area = self.get_new_area(p, next_p, len(neighbors) < 3)
+                if area:
+                    a = Area(area, self.center, 0.0)
+                    append(self.area_list, a)
         if self.debug:
             print(" done. {} areas found".format(len(self.area_list)))
 

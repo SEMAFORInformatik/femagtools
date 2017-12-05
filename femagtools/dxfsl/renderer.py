@@ -542,8 +542,15 @@ class NewFslRenderer(object):
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))
                 
-    def render_main(self, motor, geom_inner, geom_outer, filename, with_header=False):
+    def render_main(self, motor, geom_inner, geom_outer,
+                    filename, with_header=False):
         '''create main file'''
+
+        n = [int(round(np.pi/x)) for x in [geom_outer.alfa,
+                                           geom_inner.alfa]]
+        num_poles = min(n)
+        num_slots = max(n)
+ 
         self.content = []
 
         self.content.append(u'exit_on_error = false')
@@ -551,7 +558,9 @@ class NewFslRenderer(object):
         self.content.append(u'verbosity = 2')
         self.content.append(u'pickdist = 0.001\n')
         
-        self.content.append(u'-- airgap')
+        self.content.append(u'm.num_poles = {}'.format(num_poles))
+        self.content.append(u'm.num_slots = {}'.format(num_slots))
+
         self.content.append(u'rag_{} = {}'.format(geom_outer.kind, geom_outer.min_radius))
         self.content.append(u'rag_{} = {}'.format(geom_inner.kind, geom_inner.max_radius))
         self.content.append(u'ag = rag_{} - rag_{}\n'.format(geom_outer.kind, geom_inner.kind))

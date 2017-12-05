@@ -429,7 +429,7 @@ class NewFslRenderer(object):
 
         self.content.append(u'\n\nndt(agndst)\n')
 
-        ndt_list = [(0.1, 1.3), (0.25, 1.6), (0.5, 1.8), (0.9, 2.0), (1.1, 2.0)]
+        ndt_list = [(0.25, 1.25), (0.5, 2), (0.75, 3.0), (1.1, 3.0)]
         dist = geom.max_radius - geom.min_radius
             
         el_sorted = self.sorted_elements(geom, inner)        

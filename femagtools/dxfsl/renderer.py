@@ -551,27 +551,33 @@ class NewFslRenderer(object):
         self.content.append(u'verbosity = 2')
         self.content.append(u'pickdist = 0.001\n')
         
-        self.content.append(u'-- airgap')        
-        self.content.append(u'agndst = 1.5')
+        self.content.append(u'-- airgap')
         self.content.append(u'rag_{} = {}'.format(geom_outer.kind, geom_outer.min_radius))
         self.content.append(u'rag_{} = {}'.format(geom_inner.kind, geom_inner.max_radius))
         self.content.append(u'ag = rag_{} - rag_{}\n'.format(geom_outer.kind, geom_inner.kind))
+        self.content.append(u'agndst = 0.75')
 
         self.content.append(u'new_model_force("{}","Test")\n'.format(self.model))
 
-        if geom_inner != None:
-            self.content.append(u'm.{}_ncopies = {}'
-                .format(geom_inner.kind, geom_inner.get_symmetry_copies()+1))
-        if geom_outer != None:
-            self.content.append(u'm.{}_ncopies = {}'
-                .format(geom_outer.kind, geom_outer.get_symmetry_copies()+1))
+        if geom_inner:
+            self.content.append(
+                u'm.{}_ncopies = {}'.format(
+                    geom_inner.kind,
+                    int(geom_inner.get_symmetry_copies())+1))
+        if geom_outer:
+            self.content.append(
+                u'm.{}_ncopies = {}'.format(
+                    geom_outer.kind,
+                    int(geom_outer.get_symmetry_copies())+1))
             
-#        self.content.append(u'blow_up_wind(0.0, 75.0, 75.0)')
-       
-        if geom_inner != None:
-            self.content.append(u'dofile("{}_{}.fsl")'.format(self.model, geom_inner.kind))
-        if geom_outer != None:
-            self.content.append(u'dofile("{}_{}.fsl")'.format(self.model, geom_outer.kind))
+        if geom_inner:
+            self.content.append(
+                u'dofile("{}_{}.fsl")'.format(
+                    self.model, geom_inner.kind))
+        if geom_outer:
+            self.content.append(
+                u'dofile("{}_{}.fsl")'.format(
+                    self.model, geom_outer.kind))
             
         alfa = geom_inner.get_alfa() * (geom_inner.get_symmetry_copies()+1)
         alfa2 = geom_outer.get_alfa() * (geom_outer.get_symmetry_copies()+1)

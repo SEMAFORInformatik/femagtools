@@ -22,10 +22,10 @@ def usage(name):
     print("Usage: ", name,
           " [-h] [--help]", file=sys.stderr)
 
-def write_fsl(motor, basename):
+def write_fsl(motor, basename, inner=False, outer=False):
     model = dr.NewFslRenderer(basename)
     filename = basename + '_' + motor.geom.kind + '.fsl'
-    model.render(motor.geom, filename)
+    model.render(motor.geom, filename, inner, outer)
 
 def write_main_fsl(motor, motor_inner, motor_outer, basename):
     model = dr.NewFslRenderer(basename)
@@ -237,8 +237,8 @@ if __name__ == "__main__":
         motor_inner.sync_with_counterpart(motor_outer)
         p.show_plot()
         if args.fsl:
-            write_fsl(motor_inner, basename)
-            write_fsl(motor_outer, basename)
+            write_fsl(motor_inner, basename, True, False)
+            write_fsl(motor_outer, basename, False, True)
             write_main_fsl(motor, motor_inner, motor_outer, basename)
         
     else:

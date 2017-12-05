@@ -755,7 +755,10 @@ class Shape(object):
         
     def __str__(self):
         return " {}/{}".format(self.p1, self.p2)
-    
+
+    def __lt__(self, s):
+        return False
+        
 #############################
 #       Circle (Shape)      #
 #############################

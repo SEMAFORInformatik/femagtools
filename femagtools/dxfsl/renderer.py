@@ -408,18 +408,43 @@ class NewFslRenderer(object):
         self.content.append(
             u"nc_line({}, {}, {}, {}, {})".format(
                 p1[0], p1[1], p2[0], p2[1], num))
+
+    def sorted_elements(self, geom, inner=False):
+        if inner:
+            # Abstand von airgap Richtung Nullpunkt
+            el_sorted = [(geom.max_radius - e.minmax_from_center((0.0, 0.0))[1], e)
+                        for e in geom.elements(g.Shape)]
+        else:
+            # Abstand von airgap Richtung Aussen
+            el_sorted = [(e.minmax_from_center((0.0, 0.0))[0] - geom.min_radius, e)
+                        for e in geom.elements(g.Shape)]
+            
+        el_sorted.sort()
+        return el_sorted
         
-    def render(self, geom, filename, with_header=False):
+    def render(self, geom, filename, inner=False, outer=False):
         '''create file with nodechains'''
 
         self.content = []
 
         self.content.append(u'\n\nndt(agndst)\n')
-                       
 
-        self.content.append(u'-- all elements')
-        for e in geom.elements(g.Shape):
+        ndt_list = [(0.1, 1.3), (0.25, 1.6), (0.5, 1.8), (0.9, 2.0), (1.1, 2.0)]
+        dist = geom.max_radius - geom.min_radius
+            
+        el_sorted = self.sorted_elements(geom, inner)        
+        
+#        self.content.append(u'-- all elements')
+        x = 0
+        for d, e in el_sorted:
+            d_percent = d / dist
+            if ndt_list[x][0] < d_percent:
+                self.content.append(u'\nndt({}*agndst)\n'.format(ndt_list[x][1]))
+                while ndt_list[x][0] < d_percent:
+                    x += 1
+#            self.content.append(u'-- d={} / dist={} == {}'.format(d, dist, d_percent))
             e.render(self)
+            
         self.content.append(u'\n')
 
         for area in geom.list_of_areas():

@@ -57,7 +57,8 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.lossPar['fo'][0], 50.0, 1)
         self.assertAlmostEqual(bch.lossPar['fo'][1], 50.0, 1)
         self.assertEqual(bch.get(('machine', 'p')), 2)
-                                
+        np.testing.assert_almost_equal(bch.inertia, [0.230195e-3, 0.011774e-3])
+        
     def test_read_sctest(self):
         bch = self.read_bch('sctest.BATCH')
 

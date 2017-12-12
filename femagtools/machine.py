@@ -39,7 +39,7 @@ def T(d):
     returns transformation matrix"""
     return np.array((
         (np.cos(d), np.cos(d-2*np.pi/3), np.cos(d+2*np.pi/3)),
-        (np.sin(d)), np.sin(d-2*np.pi/3), np.sin(d+2*np.pi/3)))
+        (np.sin(d), np.sin(d-2*np.pi/3), np.sin(d+2*np.pi/3))))
 
 
 def invpark(a, q, d):

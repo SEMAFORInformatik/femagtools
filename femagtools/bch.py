@@ -137,7 +137,7 @@ class Reader:
             'DQ-Parameter for open Winding Modell': Reader.__read_dq_parameter,
             'Magnet Data': Reader.__read_magnet_data,
             'Date': Reader.__read_date,
-            'Inertia': Reader.__read_dummy,
+            'Inertia': Reader.__read_inertia,
             'Losses': Reader.__read_dummy,
             'Fe-Hysteresis- and Eddy current Losses[W] > 0.1 % Max':
             Reader.__read_hysteresis_eddy_current_losses,
@@ -965,28 +965,43 @@ class Reader:
         self.dqPar['i1'].insert(0, 0)
         self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
         
-    def __read_weights( self, content ):
-    #              Stator-Iron      - Conductors      - Magnets 
-    #                105.408	     22.542	      0.000
-    #              Rotor-Iron       - Conductors       - Magnets  
-    #                 45.041	      0.000	     17.556
+    def __read_weights(self, content):
+        #              Stator-Iron      - Conductors      - Magnets
+        #                105.408	     22.542	      0.000
+        #              Rotor-Iron       - Conductors       - Magnets
+        #                 45.041	      0.000	     17.556
         if self.weights:
             return
         for line in content[2:]:
-            rec=line.split()
+            rec = line.split()
             if rec[0] != 'Stator-Iron' and rec[0] != 'Rotor-Iron':
-                self.weights.append([floatnan(x) for x in rec] )
+                self.weights.append([floatnan(x) for x in rec])
 
-    def __read_areas( self, content ):
-    #Area [mm**2]: Stator-Iron           - slots         - Magnets  
-    #                 16585.2	      2383.1	         0.0
-    #Area [mm**2]: Rotor-Iron            - slots         - Magnets 
-    #                  6372.7	         0.0	      1930.2
+    def __read_areas(self, content):
+        #  Area [mm**2]: Stator-Iron           - slots         - Magnets
+        #                 16585.2	      2383.1	         0.0
+        #  Area [mm**2]: Rotor-Iron            - slots         - Magnets
+        #                  6372.7	         0.0	      1930.2
         for line in content:
-            rec=line.split()
+            rec = line.split()
             if rec[0] != 'Area':
-                self.areas.append([floatnan(x) for x in rec] )
+                self.areas.append([floatnan(x) for x in rec])
 
+    def __read_inertia(self, content):
+        #  Inertia: GD**2/4 [gr m**2/mm]
+        #  Stator :	        0.230195
+        #  Rotor  :	        0.011774
+        self.inertia = []
+        pat = re.compile(r'\[(\w\w) .+\]')
+        unit = pat.findall(content[0])
+        f = 1
+        if unit and unit[-1] == 'gr':
+            f = 1e-3
+        for line in content[1:]:
+            x = line.split()
+            if x:
+                self.inertia.append(f*floatnan(x[-1]))
+                
     def __read_losses(self, content):
         losses = {}
         # find results for angle:

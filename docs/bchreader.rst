@@ -33,6 +33,7 @@ ldq                Ld-Lq-Identification
 losses             Losses in iron, magnets and conductors from Move-calc
 demag              Demagnetisation
 weights            Total weight and weight of iron, conductor and magnets
+inertia            Inertia of stator and rotor
 ================  =======================================================
 
 Flux
@@ -312,6 +313,15 @@ Weights
       
        [[18.802, 2.853, 0.0],
         [5.363, 0.0, 1.17],
+
+Inertia
+=======
+
+    List of inertia (Stator, rotor) [Unit kg m²/mm]
+
+    Example::
+      
+       [0.23, 0.39]
 
 Windings
 ========

@@ -250,12 +250,10 @@ class PmMachineTest(unittest.TestCase):
     iq = 1
     id = 0
     ia, ib, ic = femagtools.machine.invpark(w1t, iq, id)
-    self.assertAlmostEqual(ia[0], 1.0, 0)
-    self.assertAlmostEqual(ia[-1], -1.0, 0)
-    self.assertAlmostEqual(ib[0], -0.5, 0)
-    self.assertAlmostEqual(ib[-1], 0.5, 0)
-    self.assertAlmostEqual(ic[1], -0.5, 0)
-    self.assertAlmostEqual(ic[-1], 0.5, 0)
+    self.assertAlmostEqual(ia[0], -1.0)
+    self.assertAlmostEqual(ib[0], 0.5)
+    self.assertAlmostEqual(ic[1], 0.5, 0)
+    self.assertAlmostEqual(ic[-1], -0.5, 0)
     
     
 if __name__ == '__main__':

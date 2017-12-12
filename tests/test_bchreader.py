@@ -95,6 +95,8 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.dqPar['u1'][1], 358.38, 2)
         self.assertAlmostEqual(bch.dqPar['torque'][0], 65.3, 1)
 
+        self.assertAlmostEqual(bch.machine['i1'], 50.0)
+
         self.assertAlmostEqual(bch.lossPar['fo'][0], 50.0, 1)
         
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order'],

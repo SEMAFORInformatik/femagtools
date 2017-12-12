@@ -836,9 +836,7 @@ class Reader:
             self.machine['beta'] = self.machine['beta'][1:]
         self.machine['n'] = self.machine['n']/60
         self.machine['lfe'] = 1e-3*self.machine['lfe']
-        i1 = self.machine['i1']
         if self.machine['plfe1']:  # calc sum of losses
-            self.machine['i1'] = i1*len(self.machine['plfe1'])
             plfe1 = self.machine['plfe1']
             plcu = self.machine.get('plcu', 0.0)
             if np.isscalar(plcu):

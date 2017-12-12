@@ -1823,7 +1823,7 @@ class Area(object):
             yield e.p2            
             
     def calc_signature(self, center):
-        if len(self.area) == 0:
+        if not self.area:
             return
             
         s = self.area[0]
@@ -1853,6 +1853,13 @@ class Area(object):
             return False
         return True
 
+    def has_connection(self, g, a):
+        assert(self.area)
+        assert(a.area)
+        n1 = self.area[0].node1()
+        n2 = a.area[0].node1()
+        return nx.has_path(g, n1, n2)
+        
     def get_most_left_point(self, center, radius, angle):
         axis_p = point(center, radius, angle)
         axis_m = line_m(center, axis_p)
@@ -2520,7 +2527,7 @@ class Geometry(object):
             first_p = this_p
             this_p = next_p
             next_p = self.point_lefthand_side(first_p, this_p)
-            if next_p == None:
+            if not next_p:
                 # Unerwartetes Ende
 #                print("    *** Sackgasse ***")
                 return None
@@ -3000,7 +3007,7 @@ class Geometry(object):
                 return Motor(self, c, r, -np.pi/2.0, np.pi/2.0)
 
         motor = self.get_motor_part(mm)
-        if motor != None:
+        if motor:
             return motor
             
         return Motor(self, [0.0, 0.0], 0.0, 0.0, 0.0 )
@@ -3179,13 +3186,14 @@ class Geometry(object):
             dist = 99999.0
             for a in self.area_list:
                 if area.is_inside(a):
-                    d, axis_p, area_p = a.get_most_left_point(self.center, self.max_radius, leftangle)
-                    if d < dist:
-                        dist = d
-                        the_axis_p = axis_p
-                        the_area_p = area_p
+                    if not area.has_connection( self.g, a):
+                        d, axis_p, area_p = a.get_most_left_point(self.center, self.max_radius, leftangle)
+                        if d < dist:
+                            dist = d
+                            the_axis_p = axis_p
+                            the_area_p = area_p
                         
-            if the_axis_p != None:
+            if the_axis_p:
                 point_list = []
                 line = Line(Element(start=the_axis_p, end=the_area_p))
                 for e in area.elements():

@@ -546,38 +546,53 @@ class NewFslRenderer(object):
                     filename, with_header=False):
         '''create main file'''
 
-        n = [int(round(np.pi/x)) for x in [geom_outer.alfa,
-                                           geom_inner.alfa]]
-        num_poles = min(n)
-        num_slots = max(n)
- 
         self.content = []
-
         self.content.append(u'exit_on_error = false')
         self.content.append(u'exit_on_end = false')
         self.content.append(u'verbosity = 2')
         self.content.append(u'pickdist = 0.001\n')
         
-        self.content.append(u'm.num_poles = {}'.format(num_poles))
-        self.content.append(u'm.num_slots = {}'.format(num_slots))
-
-        self.content.append(u'rag_{} = {}'.format(geom_outer.kind, geom_outer.min_radius))
-        self.content.append(u'rag_{} = {}'.format(geom_inner.kind, geom_inner.max_radius))
-        self.content.append(u'ag = rag_{} - rag_{}\n'.format(geom_outer.kind, geom_inner.kind))
+        if geom_inner and geom_outer:
+            n = [int(round(np.pi/x)) for x in [geom_outer.alfa,
+                                               geom_inner.alfa]]
+            num_poles = min(n)
+            num_slots = max(n)
+         
+            self.content.append(u'm.num_poles = {}'.format(num_poles))
+            self.content.append(u'm.tot_num_slot = {}'.format(num_slots))
+            if num_poles == n[0]:
+                npols_gen = int(geom_outer.get_symmetry_copies())+1
+            else:
+                npols_gen = int(geom_inner.get_symmetry_copies())+1
+            self.content.append(u'm.npols_gen = {}'.format(npols_gen))
+            self.content.append(
+                u'm.num_slots = m.tot_num_slot*m.npols_gen/m.num_poles')
+                
+        self.content.append(u'da1 = {}'.format(
+            2*geom_outer.min_radius))
+        self.content.append(u'da2 = {}'.format(
+            2*geom_inner.max_radius))
+        self.content.append(u'ag = (da1 - da2)/2\n')
         self.content.append(u'agndst = 0.75')
 
-        self.content.append(u'new_model_force("{}","Test")\n'.format(self.model))
+        self.content.append(u'new_model_force("{}","Test")\n'.format(
+            self.model))
 
         if geom_inner:
+            ncopies = 'm.npols_gen'
+            if num_poles == n[0]:
+                ncopies = 'm.num_slots'
             self.content.append(
                 u'm.{}_ncopies = {}'.format(
-                    geom_inner.kind,
-                    int(geom_inner.get_symmetry_copies())+1))
+                    geom_inner.kind, ncopies))
+
         if geom_outer:
+            ncopies = 'm.num_slots'
+            if num_poles == n[0]:
+                ncopies = 'm.npols_gen'
             self.content.append(
                 u'm.{}_ncopies = {}'.format(
-                    geom_outer.kind,
-                    int(geom_outer.get_symmetry_copies())+1))
+                    geom_outer.kind, ncopies))
             
         if geom_inner:
             self.content.append(
@@ -595,24 +610,24 @@ class NewFslRenderer(object):
         self.content.append(u'alfa = {}\n'.format(alfa))
 
         self.content.append(u'-- airgap')
-        self.content.append(u'r1 = rag_{} + ag/3'.format(geom_inner.kind))
+        self.content.append(u'r1 = da2/2 + ag/3')
         self.content.append(u'x1, y1 = pr2c(r1, alfa)')
         self.content.append(u'n = r1*alfa/agndst + 1')
         self.content.append(u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n')
         
-        self.content.append(u'r2 = rag_{} + 2*ag/3'.format(geom_inner.kind))
+        self.content.append(u'r2 = da2/2 + 2*ag/3')
         self.content.append(u'x2, y2 = pr2c(r2, alfa)')
         self.content.append(u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n')
 
-        self.content.append(u'nc_line(rag_{}, 0, r2, 0, 0)'.format(geom_inner.kind))
-        self.content.append(u'x3, y3 = pr2c(rag_{}, alfa)'.format(geom_inner.kind))
+        self.content.append(u'nc_line(da2/2, 0, r2, 0, 0)')
+        self.content.append(u'x3, y3 = pr2c(da2/2, alfa)')
         self.content.append(u'x4, y4 = pr2c(r2, alfa)')
         self.content.append(u'nc_line(x3, y3, x4, y4, 0, 0)\n')
 
-        self.content.append(u'x0, y0 = pr2c(rag_{}+1*ag/6, alfa/2)'.format(geom_inner.kind))
+        self.content.append(u'x0, y0 = pr2c(da2/2+ag/6, alfa/2)')
         self.content.append(u'create_mesh_se(x0, y0)')
 
-        self.content.append(u'x0, y0 = pr2c(rag_{}+3*ag/6, alfa/2)'.format(geom_inner.kind))
+        self.content.append(u'x0, y0 = pr2c(da2/2+3*ag/6, alfa/2)')
         self.content.append(u'create_mesh_se(x0, y0)\n')
 
         self.content.append(u'connect_models()\n')

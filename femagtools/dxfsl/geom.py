@@ -2094,28 +2094,60 @@ class Area(object):
             except Exception:
                 continue
 
+    def is_rectangle(self):
+        lines = []
+        for c, e in enumerate(self.area):
+            if isinstance(e, Line):
+                l = e.length()
+                m = e.m()
+                if m == None:
+                    m = 99999.0
+                lines.append((c, m, l))
+
+        lines.sort()
+        line_count = 1
+        m_prev = 999.999999
+        c_prev = -99
+        for c, m, l in lines:
+            if c_prev >= 0:
+                if np.isclose(m_prev, m):
+                    if c_prev+1 != c: # Gleiche Steigung, aber keine Verlängerung
+                        line_count += 1
+                else:
+                    line_count += 1
+
+            m_prev = m
+            c_prev = c
+
+        return line_count == 4
+                
     def mark_stator_subregions(self, is_inner, mirrored, alpha, r_in, r_out):
-        self.type = 0
+        my_alpha = round(self.max_angle - self.min_angle, 6)
+        alpha = round(alpha, 6)
+
         if is_inner:
             close_to_ag = np.isclose(r_out, self.max_dist)
+            close_to_opposition = np.isclose(r_in, self.min_dist)
         else:
             close_to_ag = np.isclose(r_in, self.min_dist)
+            close_to_opposition = np.isclose(r_out, self.max_dist)
         
+        close_to_startangle = np.isclose(self.min_angle, 0.0)
+        close_to_endangle = np.isclose(self.max_angle, alpha)
+        
+        if close_to_startangle and close_to_endangle:
+            return
+
         if close_to_ag: # close to airgap
             if mirrored:
-                if np.isclose(self.max_angle, alpha): # in touch with mirror-axis
-                    if self.alpha / alpha > 0.5:
+                if close_to_endangle: # in touch with mirror-axis
+                    if my_alpha / alpha > 0.5:
                         self.type = 1 # iron
             else:
-                if self.alpha / alpha > 0.5:
+                if my_alpha / alpha > 0.5:
                     self.type = 1 # iron
 #            print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
             return
-
-        if is_inner:
-            close_to_opposition = np.isclose(r_in, self.min_dist)
-        else:
-            close_to_opposition = np.isclose(r_out, self.max_dist)
             
         if not close_to_opposition:
             if self.min_angle > 0.001 and self.max_angle < alpha - 0.001:
@@ -2123,7 +2155,26 @@ class Area(object):
 #        print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
 
     def mark_rotor_subregions(self, is_inner, mirrored, alpha, r_in, r_out):
-#        print("mark_rotor_subregions({}, {}, {}, {}, {})\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self))
+        my_alpha = round(self.max_angle - self.min_angle, 6)
+        alpha = round(alpha, 6)
+        
+        if is_inner:
+            close_to_ag = np.isclose(r_out, self.max_dist)
+            close_to_opposition = np.isclose(r_in, self.min_dist)
+        else:
+            close_to_ag = np.isclose(r_in, self.min_dist)
+            close_to_opposition = np.isclose(r_out, self.max_dist)
+
+        if close_to_ag or close_to_opposition:
+            if my_alpha / alpha > 0.5 and my_alpha / alpha < 0.9999:
+                self.type = 3 # magnet
+#                print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
+            return
+
+        if my_alpha / alpha > 0.5:
+            if self.is_rectangle():
+                self.type = 3 # magnet
+#        print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
         return
         
     def print_area(self):
@@ -2641,10 +2692,9 @@ class Geometry(object):
         for p in self.g.nodes():
             if self.debug:
                 print('.', flush=True, end='')
-#            print("Start point {}".format(p))
+
             neighbors = [n for n in self.g[p]]
             for next_p in neighbors:
-                #                    print(" -> neighbor point {}".format(next_p))
                 area = self.get_new_area(p, next_p, len(neighbors) < 3)
                 if area:
                     a = Area(area, self.center, 0.0)

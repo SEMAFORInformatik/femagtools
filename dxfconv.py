@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #
 # read a dxf file and create a plot or fsl file
 #
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def usage(name):
     print("Usage: ", name,
-          " [-h] [--help]", file=sys.stderr)
+          " [-h] [--help]")
 
 def write_fsl(motor, basename, inner=False, outer=False):
     model = dr.NewFslRenderer(basename)
@@ -200,16 +200,16 @@ if __name__ == "__main__":
             p.render_elements(basegeom, dg.Shape, with_corners=True, show=True)
 
     if motor_base.is_full() or motor_base.is_half() or motor_base.is_quarter():
-        # Wir erstellen eine Kopie des Originals für die weiteren Arbeiten
+        # create a copy for further processing
         motor = motor_base.full_copy()
     else:
-        # Es ist nicht klar, wie das Motorenteil aussieht
+        # machine shape is unclear
         motor_base.set_center(0.0, 0.0)
         motor_base.set_radius(9999999)
         motor = motor_base.full_copy()
         
     if motor.part_of_circle() == 0:
-        print("Teil ist kein Teilsegment eines Kreises")
+        print("No arc segment found")
         sys.exit(1)
         
     motor.clear_cut_lines()

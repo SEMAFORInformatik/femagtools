@@ -455,7 +455,12 @@ class NewFslRenderer(object):
                     self.content.append(u"point(x0, y0, red, 4)")
                     self.content.append(u"create_mesh_se(x0, y0)\n")
       
-
+                if area.type == 1:
+                    self.content.append(u'def_new_subreg(x0, y0, "iron", blue)')
+                elif area.type == 2:
+                    self.content.append(u'def_new_subreg(x0, y0, "windings", green)')
+                elif area.type == 3:
+                    self.content.append(u'def_new_subreg(x0, y0, "windings", red)')
 #        ag = 0
 #        if ag > 0:
 #            self.content.append(

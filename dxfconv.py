@@ -25,6 +25,7 @@ def usage(name):
 def write_fsl(motor, basename, inner=False, outer=False):
     model = dr.NewFslRenderer(basename)
     filename = basename + '_' + motor.geom.kind + '.fsl'
+    motor.search_subregions()
     model.render(motor.geom, filename, inner, outer)
 
 def write_main_fsl(motor, motor_inner, motor_outer, basename):
@@ -230,12 +231,19 @@ if __name__ == "__main__":
         motor_inner = motor.copy(0.0, 2*np.pi, True, True)
         motor_inner = symmetry_search(motor_inner, inner_name,
                                       args.sym_tolerance, args.show_plots, 3, 2, 3)
-
+        motor_inner.set_inner()
+        
         motor_outer = motor.copy(0.0, 2*np.pi, True, False)
         motor_outer = symmetry_search(motor_outer, outer_name,
                                       args.sym_tolerance, args.show_plots, 3, 2, 4)
+        motor_outer.set_outer()
+        
         motor_inner.sync_with_counterpart(motor_outer)
         p.show_plot()
+        
+#        print("Inner\n{}".format(motor_inner.geom))
+#        print("Outer\n{}".format(motor_outer.geom))
+        
         if args.fsl:
             write_fsl(motor_inner, basename, True, False)
             write_fsl(motor_outer, basename, False, True)

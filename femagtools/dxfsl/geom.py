@@ -1482,9 +1482,12 @@ class Motor(object):
         self.geom.center = center
 
     def __str__(self):        
-        return "Motor: Center=({}), Radius={}, Start={}, End={}, Sym={}"\
-            .format(self.center, self.radius, self.startangle, self.endangle, self.part)
-
+        return "Motor\n"+\
+               "Center: ({})\n".format(self.center)+\
+               "Radius: {}\n".format(self.radius)+\
+               "Angles: Start={}, End={}\n".format(self.startangle, self.endangle)+\
+               "Mirror: {}\n".format(self.mirror_geom != None)
+               
     def is_a_motor(self):
         return self.radius > 0.0
         
@@ -1544,6 +1547,12 @@ class Motor(object):
 
     def set_kind(self, kind):
         self.geom.kind = kind
+        
+    def set_inner(self):
+        self.geom.is_inner = True
+
+    def set_outer(self):
+        self.geom.is_outer = True
         
     def clear_cut_lines(self):
         self.geom.clear_cut_lines()
@@ -1789,6 +1798,10 @@ class Motor(object):
         cp_motor.geom.sym_counterpart = self.get_symmetry_part()
         cp_motor.geom.sym_part = cp_motor.get_symmetry_part()
         
+    def search_subregions(self):
+#        print("search_subregions\n{}".format(self))
+        self.geom.search_subregions()
+        return
         
 #############################
 #            Area           #
@@ -1797,6 +1810,7 @@ class Motor(object):
 class Area(object):
     def __init__(self, area, center, sym_tolerance):
         self.area = area
+        self.type = 0 # material
         self.min_angle = 0.0
         self.max_angle = 0.0
         self.min_dist = 99999.0
@@ -1858,12 +1872,30 @@ class Area(object):
             return False
         return True
 
-    def has_connection(self, g, a):
+    def has_connection(self, geom, a):
         assert(self.area)
         assert(a.area)
         n1 = self.area[0].node1()
+        if not geom.g.has_node(n1):
+            n = geom.find_nodes(n1)
+            if not n:
+                logger.warn("FATAL: node {} not available".format(n1))
+                return False
+            n1 = n[0]
+
         n2 = a.area[0].node1()
-        return nx.has_path(g, n1, n2)
+        if not geom.g.has_node(n2):
+            n = geom.find_nodes(n2)
+            if not n:
+                logger.warn("FATAL: node {} not available".format(n2))
+                return False
+            n2 = n[0]
+            
+        try:           
+            return nx.has_path(geom.g, n1, n2)
+        except nx.NetworkXError:
+            logger.warn("has_path() failed")
+            return False
         
     def get_most_left_point(self, center, radius, angle):
         axis_p = point(center, radius, angle)
@@ -1882,9 +1914,6 @@ class Area(object):
                 the_axis_p = p
                 
         return (dist, the_axis_p, the_area_p)
-        
-    def get_most_outer_point(self):
-        return []
 
     def is_equal(self, a, sym_tolerance):
         if sym_tolerance > 0.0:
@@ -2073,7 +2102,90 @@ class Area(object):
                 g.remove_edge(e.node1(), e.node2())
             except Exception:
                 continue
-                    
+
+    def is_rectangle(self):
+        lines = []
+        for c, e in enumerate(self.area):
+            if isinstance(e, Line):
+                l = e.length()
+                m = e.m()
+                if m == None:
+                    m = 99999.0
+                lines.append((c, m, l))
+
+        lines.sort()
+        line_count = 1
+        m_prev = 999.999999
+        c_prev = -99
+        for c, m, l in lines:
+            if c_prev >= 0:
+                if np.isclose(m_prev, m):
+                    if c_prev+1 != c: # Gleiche Steigung, aber keine Verlängerung
+                        line_count += 1
+                else:
+                    line_count += 1
+
+            m_prev = m
+            c_prev = c
+
+        return line_count == 4
+                
+    def mark_stator_subregions(self, is_inner, mirrored, alpha, r_in, r_out):
+        my_alpha = round(self.max_angle - self.min_angle, 6)
+        alpha = round(alpha, 6)
+
+        if is_inner:
+            close_to_ag = np.isclose(r_out, self.max_dist)
+            close_to_opposition = np.isclose(r_in, self.min_dist)
+        else:
+            close_to_ag = np.isclose(r_in, self.min_dist)
+            close_to_opposition = np.isclose(r_out, self.max_dist)
+        
+        close_to_startangle = np.isclose(self.min_angle, 0.0)
+        close_to_endangle = np.isclose(self.max_angle, alpha)
+        
+        if close_to_startangle and close_to_endangle:
+            return
+
+        if close_to_ag: # close to airgap
+            if mirrored:
+                if close_to_endangle: # in touch with mirror-axis
+                    if my_alpha / alpha > 0.5:
+                        self.type = 1 # iron
+            else:
+                if my_alpha / alpha > 0.5:
+                    self.type = 1 # iron
+#            print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
+            return
+            
+        if not close_to_opposition:
+            if self.min_angle > 0.001 and self.max_angle < alpha - 0.001:
+                self.type = 2 # windings
+#        print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
+
+    def mark_rotor_subregions(self, is_inner, mirrored, alpha, r_in, r_out):
+        my_alpha = round(self.max_angle - self.min_angle, 6)
+        alpha = round(alpha, 6)
+        
+        if is_inner:
+            close_to_ag = np.isclose(r_out, self.max_dist)
+            close_to_opposition = np.isclose(r_in, self.min_dist)
+        else:
+            close_to_ag = np.isclose(r_in, self.min_dist)
+            close_to_opposition = np.isclose(r_out, self.max_dist)
+
+        if close_to_ag or close_to_opposition:
+            if my_alpha / alpha > 0.5 and my_alpha / alpha < 0.9999:
+                self.type = 3 # magnet
+#                print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
+            return
+
+        if my_alpha / alpha > 0.5:
+            if self.is_rectangle():
+                self.type = 3 # magnet
+#        print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
+        return
+        
     def print_area(self):
         center = [0.0, 0.0]
         for s in self.area:
@@ -2108,14 +2220,10 @@ class Area(object):
         return self.min_angle < a.min_angle
         
     def __str__(self):
-        return "Area: dist from {} to {}, angle={} from {} to {}, count={}, delta={}, symmetry={}"\
-            .format(round(self.min_dist,4), round(self.max_dist,4), \
-                    self.alpha,\
-                    round(self.min_angle,6),\
-                    round(self.max_angle,6),\
-                    self.count,\
-                    self.delta,\
-                    self.symmetry)
+        return "Area\n"+\
+               "distance: from {} to {}\n".format(round(self.min_dist,4), round(self.max_dist,4))+\
+               "alpha...: {}\n".format(self.alpha)+\
+               "angle...: from {} to {}\n".format(round(self.min_angle,6), round(self.max_angle,6))
 
 
 #############################
@@ -2137,6 +2245,8 @@ class Geometry(object):
         self.center = []
         self.min_radius = 0.0
         self.max_radius = 0.0
+        self.is_inner = False
+        self.is_outer = False
         self.cut_lines = []
         self.sym_area = None
         self.airgaps = []
@@ -2588,11 +2698,12 @@ class Geometry(object):
             nx.set_edge_attributes(self.g, False, 2)
             
         for p in self.g.nodes():
+
             logger.debug('.')
 #            print("Start point {}".format(p))
+
             neighbors = [n for n in self.g[p]]
             for next_p in neighbors:
-                #                    print(" -> neighbor point {}".format(next_p))
                 area = self.get_new_area(p, next_p, len(neighbors) < 3)
                 if area:
                     a = Area(area, self.center, 0.0)
@@ -2874,10 +2985,13 @@ class Geometry(object):
             return self.alfa
         
     def __str__(self):
-        return "Nodes {}\nConnected {}".format(
-            len(self.g.nodes()),
-            nx.number_connected_components(self.g))
-
+        return "name...........: {}\n".format(self._name)+\
+               "kind...........: {}\n".format(self.kind)+\
+               "sym_part.......: {}\n".format(self.sym_part)+\
+               "sym_counterpart: {}\n".format(self.sym_counterpart)+\
+               "alpha..........: {}\n".format(self.alfa)+\
+               "radius.........: {} -- {}\n".format(self.min_radius, self.max_radius)
+               
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
                 self.__dict__ == other.__dict__)
@@ -3193,7 +3307,7 @@ class Geometry(object):
             dist = 99999.0
             for a in self.area_list:
                 if area.is_inside(a):
-                    if not area.has_connection( self.g, a):
+                    if not area.has_connection( self, a):
                         d, axis_p, area_p = a.get_most_left_point(self.center, self.max_radius, leftangle)
                         if d < dist:
                             dist = d
@@ -3216,3 +3330,34 @@ class Geometry(object):
                 new_p = (round(p[0], ndec), round(p[1], ndec))
                 line = Line(Element(start=the_area_p, end=new_p))
                 add_or_join(self.g, the_area_p, new_p, line, self.rtol, self.atol)
+
+    def is_rotor(self):
+        if self.sym_counterpart:
+            return self.sym_part < self.sym_counterpart
+        return False
+
+    def is_stator(self):
+        if self.sym_counterpart:
+            return self.sym_part > self.sym_counterpart
+        return False
+
+    def search_subregions(self):
+        if self.is_stator():
+            return self.search_stator_subregions()
+
+        if self.is_rotor():
+            return self.search_rotor_subregions()
+           
+    def search_stator_subregions(self):
+        for area in self.list_of_areas():
+            area.mark_stator_subregions(self.is_inner, self.is_mirrored(), self.alfa, self.min_radius, self.max_radius)
+            
+    def search_rotor_subregions(self):
+        for area in self.list_of_areas():
+            area.mark_rotor_subregions(self.is_inner, self.is_mirrored(), self.alfa, self.min_radius, self.max_radius)
+        
+    def print_nodes(self):
+        print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))
+        for n in self.g.nodes():
+            print(n)
+            

@@ -1004,14 +1004,20 @@ class MagnetizingCurve(object):
             losses['Bo'] = self.mcv[m]['Bo']
             losses['fo'] = self.mcv[m]['fo']
             
+
+def read(filename):
+    """read MC/MCV file and return mc dict"""
+    mcv = Reader()
+    mcv.readMcv(filename)
+    return mcv
+
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:
         filename = sys.stdin.readline().strip()
 
-    mcv = Reader()
-    mcv.readMcv(filename)
+    mcv = read(filename)
     json.dump(mcv.get_results(), sys.stdout)
     #print(mcv.get_results()
     #mcv.recalc()

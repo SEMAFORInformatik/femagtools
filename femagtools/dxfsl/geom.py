@@ -8,6 +8,7 @@
   Author: Ronald Tanner
     Date: 2017/07/06
 """
+from __future__ import print_function
 import ezdxf
 import dxfgrabber
 import numpy as np
@@ -15,6 +16,8 @@ import networkx as nx
 import copy
 import logging
 import sys
+import matplotlib.pylab as pl
+import matplotlib.patches as pch
 
 logger = logging.getLogger('femagtools.geom')
 
@@ -23,13 +26,14 @@ logger = logging.getLogger('femagtools.geom')
 #         Debug Plot        #
 #############################
 
-import matplotlib.pylab as pl
-import matplotlib.patches as pch
 
 nxversion = int(nx.__version__.split('.')[0])
 
+
 def print_circle(ax, circle, color='darkblue', fill=False):
-    ax.add_patch(pch.Circle(circle.center, circle.radius, fill=fill, color=color))
+    ax.add_patch(pch.Circle(circle.center,
+                            circle.radius, fideall=fill, color=color))
+
 
 def print_arc(ax, arc, color='darkblue'):
     ax.add_patch(pch.Arc(arc.center, 2*arc.radius, 2*arc.radius,
@@ -38,8 +42,12 @@ def print_arc(ax, arc, color='darkblue'):
                          theta2=arc.endangle*180/np.pi,
                          color=color))
 
+
 def print_line(ax, line, color='red'):
-    ax.add_line(pl.Line2D((line.p1[0], line.p2[0]), (line.p1[1], line.p2[1]), color=color))
+    ax.add_line(pl.Line2D((line.p1[0], line.p2[0]),
+                          (line.p1[1], line.p2[1]),
+                          color=color))
+
 
 def print_area(area):
     fig = pl.figure()
@@ -59,80 +67,91 @@ def print_area(area):
 #############################
 #            geom           #
 #############################
-        
+
 ndec = 6  # number of decimals to round to
+
 
 def less_equal(v1, v2, rtol=1e-3, atol=1e-8):
     if np.isclose(v1, v2, rtol, atol):
         return True
     return v1 < v2
 
+
 def less(v1, v2, rtol=1e-3, atol=1e-8):
     if np.isclose(v1, v2, rtol, atol):
         return False
     return v1 < v2
+
 
 def greater_equal(v1, v2, rtol=1e-3, atol=1e-8):
     if np.isclose(v1, v2, rtol, atol):
         return True
     return v1 > v2
 
+
 def greater(v1, v2, rtol=1e-3, atol=1e-8):
     if np.isclose(v1, v2, rtol, atol):
         return False
     return v1 > v2
-    
+
+
 def alpha_line(center, p):
     return np.arctan2(p[1]-center[1], p[0]-center[0])
+
 
 def alpha_points(a, b, c):
     alpha_a_b = alpha_line(a, b)
     alpha_b_c = alpha_line(b, c)
     return alpha_angle(alpha_a_b, alpha_b_c)
-    
+
+
 def alpha_triangle(a, b, c):
     if np.isclose(a, 0.0) or np.isclose(b, 0.0) or np.isclose(c, 0.0):
         return np.nan
-    if a<0.0 or b<0.0 or c<0.0:
-        return np.nan      
+    if a < 0.0 or b < 0.0 or c < 0.0:
+        return np.nan
     if a + b < c:
         return np.nan
     if b + c < a:
         return np.nan
     if c + a < b:
         return np.nan
-        
+
     cos_alpha = (a**2 - b**2 - c**2)/(-2*b*c)
     if cos_alpha >= 1.0:
         return np.nan
     if cos_alpha <= -1.0:
         return np.nan
-        
+
     rslt = np.arccos(cos_alpha)
     if np.isnan(rslt):
         logger.debug("FATAL: arccos({}) yields nan.".format(cos_alpha))
-        print('FATAL: arccos({}) yields nan. === {}/{}/{}'.format(cos_alpha, a, b, c))
+        print('FATAL: arccos({}) yields nan. === {}/{}/{}'.
+              format(cos_alpha, a, b, c))
     return rslt
+
 
 def round_point(p, n):
     """round"""
     return (round(p[0], n), round(p[1], n))
 
+
 def point(center, radius, alpha, rnd=-1):
     if rnd >= 0:
         return (round(center[0]+radius*np.cos(alpha), rnd),
                 round(center[1]+radius*np.sin(alpha), rnd))
-        
+
     return (center[0]+radius*np.cos(alpha),
             center[1]+radius*np.sin(alpha))
-    
+
+
 def middle_point_of_arc(center, radius, p1, p2, rtol=1e-3, atol=1e-8):
     alpha_p1 = alpha_line(center, p1)
     alpha_p2 = alpha_line(center, p2)
 
     if np.isclose(alpha_p1, alpha_p2, rtol, atol):
         return p1
-        
+
     if greater_equal(alpha_p1, 0.0):
         if alpha_p2 < alpha_p1:
             alpha_p2 += 2.0*np.pi
@@ -142,17 +161,18 @@ def middle_point_of_arc(center, radius, p1, p2, rtol=1e-3, atol=1e-8):
 
     if np.isclose(alpha_p1, alpha_p2):
         return copy.copy(p1)
-        
+
     alpha_pm = (alpha_p1+alpha_p2) / 2.0
     return point(center, radius, alpha_pm)
-    
+
+
 def middle_angle(alpha1, alpha2):
     a1 = normalise_angle(alpha1)
     a2 = normalise_angle(alpha2)
 
     if np.isclose(a1, a2):
         return a1
-        
+
     if greater_equal(a1, 0.0):
         if a2 < a1:
             a2 += 2.0*np.pi
@@ -162,39 +182,45 @@ def middle_angle(alpha1, alpha2):
 
     if np.isclose(a1, a2):
         return copy.copy(a1)
-        
+
     return (a1+a2)/2.0
-    
+
+
 def middle_point_of_line(p1, p2):
     return [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2]
-    
+
+
 def distance(p1, p2):
-    assert(len(p1)>1)
-    assert(len(p2)>1)
+    assert(len(p1) > 1)
+    assert(len(p2) > 1)
     return np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
+
 
 def line_m(p1, p2):
     if np.isclose(p2[0]-p1[0], 0.0):
         return None
     return (p2[1]-p1[1]) / (p2[0]-p1[0])
 
+
 def line_n(p, m):
-    if m == None:
+    if m is None:
         return None
     return p[1] - m * p[0]
 
+
 def lines_intersect_point(p_L1, m_L1, n_L1, p_L2, m_L2, n_L2):
-    if m_L1 == None:
+    if m_L1 is None:
         return (p_L1[0], p_L2[1])
-    if m_L2 == None:
+    if m_L2 is None:
         return (p_L2[0], p_L1[1])
 
     x = (n_L2-n_L1) / (m_L1-m_L2)
     y = m_L1 * x + n_L1
     return [x, y]
 
+
 def intersect_point(p, L_p, L_m, L_n):
-    if L_m == None:
+    if L_m is None:
         m = 0.0
     elif L_m == 0.0:
         m = None
@@ -202,22 +228,26 @@ def intersect_point(p, L_p, L_m, L_n):
         m = -1/L_m
     n = line_n(p, m)
     return lines_intersect_point(L_p, L_m, L_n, p, m, n)
-    
+
+
 def mirror_point(p, L_p, L_m, L_n):
     ps = intersect_point(p, L_p, L_m, L_n)
     x = p[0] - 2.0 * (p[0] - ps[0])
     y = p[1] - 2.0 * (p[1] - ps[1])
     return (x, y)
 
+
 def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
     return np.isclose(p1[0], p2[0], rtol, atol) and \
            np.isclose(p1[1], p2[1], rtol, atol)
+
 
 def within_interval(x, v1, v2, rtol=1e-3, atol=1e-8):
     """ returns true if x is in interval [v1, v2]
     """
     return np.logical_and(greater_equal(x, v1, rtol, atol),
                           less_equal(x, v2, rtol, atol))
+
 
 def normalise_angle(alpha):
     """ returns angle alpha as value within interval [-pi, pi]
@@ -227,14 +257,16 @@ def normalise_angle(alpha):
 
     while alpha > np.pi:
         alpha -= 2*np.pi
-        
+
     return alpha
+
 
 def is_same_angle(angle1, angle2):
     """ returns true if angles are equal
     """
     return np.isclose(np.cos(angle1), np.cos(angle2)) and \
-           np.isclose(np.sin(angle1), np.sin(angle2))
+        np.isclose(np.sin(angle1), np.sin(angle2))
+
 
 def alpha_angle(startangle, endangle):
     if less_equal(endangle, startangle):
@@ -244,17 +276,20 @@ def alpha_angle(startangle, endangle):
         return angle
     return angle - 2.0*np.pi
 
+
 def max_angle(alpha1, alpha2):
     angle = alpha_angle(alpha1, alpha2)
     if angle < np.pi or angle > 2.0*np.pi:
         return alpha2
     return alpha1
-    
+
+
 def min_angle(alpha1, alpha2):
     angle = alpha_angle(alpha1, alpha2)
     if angle < np.pi or angle > 2.0*np.pi:
         return alpha1
     return alpha2
+
 
 def part_of_circle(startangle, endangle, pos=3):
     """ returns the number of segments included in the circle
@@ -262,15 +297,15 @@ def part_of_circle(startangle, endangle, pos=3):
     """
     start = normalise_angle(startangle)
     end = normalise_angle(endangle)
-    
+
     if np.isclose(start, end):
         return 1
-        
+
     if end > start:
         angle = end - start
     else:
         angle = 2*np.pi + end - start
-    
+
     if angle != 0.0:
         x = float(round(2*np.pi/angle, pos))
     else:
@@ -280,16 +315,21 @@ def part_of_circle(startangle, endangle, pos=3):
         return x
     return 0
 
+
 def gcd(x, y):
+    """ The function returns the greatest common divisor
+    """
     while x > 0 and y > 0:
         if x >= y:
             x = x - y
         else:
             y = y - x
     return x+y
-    
+
+
 def is_angle_outside(startangle, endangle, alpha):
     return not is_angle_inside(startangle, endangle, alpha)
+
 
 def is_angle_inside(startangle, endangle, alpha):
     start = normalise_angle(startangle)
@@ -313,6 +353,7 @@ def is_angle_inside(startangle, endangle, alpha):
             return False
         return mid < end
 
+
 def is_point_outside_region(p, center, inner_radius, outer_radius,
                             startangle, endangle):
     alpha = alpha_line(center, p)
@@ -320,9 +361,15 @@ def is_point_outside_region(p, center, inner_radius, outer_radius,
         return True
     dist = distance(center, p)
     return not within_interval(dist, inner_radius, outer_radius)
-    
-def is_point_inside_region(p, center, inner_radius, outer_radius, startangle, endangle):
-    return not is_point_outside_region(p, center, inner_radius, outer_radius, startangle, endangle)
+
+
+def is_point_inside_region(p, center,
+                           inner_radius, outer_radius,
+                           startangle, endangle):
+    return not is_point_outside_region(p, center,
+                                       inner_radius, outer_radius,
+                                       startangle, endangle)
+
 
 def angles_on_arc(startangle, endangle):
     circle = np.isclose(startangle, endangle)
@@ -338,17 +385,20 @@ def angles_on_arc(startangle, endangle):
     alpha = endangle - startangle
 
     num = int(alpha/(np.pi/8))
-    
+
     for x in range(0, num):
         yield x/num*alpha + startangle
     if not circle:
         yield alpha + startangle
-        
+
+
 def points_on_arc(center, radius, startangle, endangle):
     start = normalise_angle(startangle)
     end = normalise_angle(endangle)
     for alpha in angles_on_arc(start, end):
-        yield (center[0] + radius * np.cos(alpha), center[1] + radius * np.sin(alpha))
+        yield (center[0] + radius * np.cos(alpha),
+               center[1] + radius * np.sin(alpha))
+
 
 def find_corners(nodes, all=False):
     """find corners of nodes"""
@@ -367,7 +417,8 @@ def find_corners(nodes, all=False):
                                 np.isclose(args, phimax).nonzero()[0])
             return np.asarray(nodes)[np.union1d(rindx, phindx)].tolist()
         else:
-            # collect real corners only (TODO: there should be some simpler way)
+            # collect real corners only
+            # (TODO: there should be some simpler way)
             corners = []
             a = np.asarray(nodes)
             minX, minY = np.amin(a, axis=0)
@@ -404,6 +455,7 @@ def remove_corners(self, g):
     logger.debug("removing corners %s", corners)
     g.remove_nodes_from(corners)
 
+
 def intersect_and_split(inp_elements, rtol, atol):
     logger.info("Load input elements ... ")
     out_elements = []
@@ -412,11 +464,12 @@ def intersect_and_split(inp_elements, rtol, atol):
         intersect_and_split_element(e, out_elements, 0, out_size, rtol, atol)
     print(" done")
     return out_elements
-   
+
+
 def intersect_and_split_element(el, out_elements, out_start,
                                 out_size, rtol, atol):
     # appends splitted elements
-    # Unchanged out_size prevents repeated processing in recursive calls 
+    # Unchanged out_size prevents repeated processing in recursive calls
     for x in range(out_start, out_size):
         split_el = add_or_split(el, x, out_elements, rtol, atol)
         if len(split_el) > 0:
@@ -424,10 +477,11 @@ def intersect_and_split_element(el, out_elements, out_start,
                 intersect_and_split_element(e, out_elements, x+1,
                                             out_size, rtol, atol)
             return
-    out_elements.append(el)  
-    
+    out_elements.append(el)
+
+
 def add_or_split(el, x, out_elements, rtol, atol):
-    if out_elements[x] == None:
+    if out_elements[x] is None:
         return []
     points = el.intersect_shape(out_elements[x], rtol, atol, True)
     if len(points) > 0:
@@ -439,6 +493,7 @@ def add_or_split(el, x, out_elements, rtol, atol):
         return split_el
 
     return []
+
 
 def add_or_join(g, n1, n2, entity, rtol, atol):
     """ adds a new entity to graph or joins entity with existing
@@ -470,7 +525,7 @@ def add_or_join(g, n1, n2, entity, rtol, atol):
 #                    return
 
     g.add_edge(n1, n2, object=entity)
-    
+
 
 def get_nodes_of_paths(g, c):
     nodes = set()
@@ -562,7 +617,7 @@ def polylines(entity):
         vertices = entity.vertices
     else:
         vertices = entity.vertices()
-        
+
     for v in vertices:
         if hasattr(v, 'bulge'):
             b = v.bulge
@@ -595,17 +650,19 @@ def polylines(entity):
         else:
             yield Line(Element(start=p1, end=p2))
         i += 1
-     
-    
+
+
 def dxfshapes0(dxffile):
     """returns a collection of dxf entities (ezdxf)"""
     dwg = ezdxf.readfile(dxffile)
     id = 0
-    # $ACADVER: AC1006 = R10, AC1009 = R11 and R12, AC1012 = R13, AC1014 = R14 AC1015 = Release 2000/0i/2
+    # $ACADVER: AC1006 = R10, AC1009 = R11 and R12, AC1012 = R13,
+    #   AC1014 = R14 AC1015 = Release 2000/0i/2
     # check units:
     # dwg.header['$ANGDIR'] 1 = Clockwise angles, 0 = Counterclockwise
     # dwg.header['$AUNITS'] Decimal Degrees, Deg/Min/Sec, Grads, Radians
-    # dwg.header['$INSUNIT'] 1 = Inches; 2 = Feet; 3 = Miles; 4 = Millimeters; 5 = Centimeters; 6 = Meters
+    # dwg.header['$INSUNIT'] 1 = Inches; 2 = Feet; 3 = Miles;
+    #   4 = Millimeters; 5 = Centimeters; 6 = Meters
     # dwg.header['$LUNITS']
     for e in dwg.modelspace():
         if e.dxftype() == 'ARC':
@@ -625,11 +682,13 @@ def dxfshapes(dxffile, layers=[]):
     """returns a collection of dxf entities (dxfgrabber)"""
     dwg = dxfgrabber.readfile(dxffile)
     id = 0
-    # $ACADVER: AC1006 = R10, AC1009 = R11 and R12, AC1012 = R13, AC1014 = R14 AC1015 = Release 2000/0i/2
+    # $ACADVER: AC1006 = R10, AC1009 = R11 and R12, AC1012 = R13,
+    #   AC1014 = R14 AC1015 = Release 2000/0i/2
     # check units:
     # dwg.header['$ANGDIR'] 1 = Clockwise angles, 0 = Counterclockwise
     # dwg.header['$AUNITS'] Decimal Degrees, Deg/Min/Sec, Grads, Radians
-    # dwg.header['$INSUNIT'] 1 = Inches; 2 = Feet; 3 = Miles; 4 = Millimeters; 5 = Centimeters; 6 = Meters
+    # dwg.header['$INSUNIT'] 1 = Inches; 2 = Feet; 3 = Miles;
+    #   4 = Millimeters; 5 = Centimeters; 6 = Meters
     # dwg.header['$LUNITS']
     for e in dwg.modelspace():
         if not layers or e.layer in layers:
@@ -645,6 +704,7 @@ def dxfshapes(dxffile, layers=[]):
                     yield p
             id += 1
 
+
 #############################
 #           Corner          #
 #############################
@@ -655,30 +715,31 @@ class Corner(object):
         self.__dist = distance(center, p)
         self.__keep = False
         self.is_new_point = False
-       
+
     def point(self):
         return self.__p
-        
+
     def is_equal(self, p):
         return np.isclose(self.__p[0], p[0]) and np.isclose(self.__p[1], p[1])
 
     def is_same_corner(self, c):
         return self.is_equal(c.__p)
-        
+
     def set_keep_node(self):
         self.__keep = True
 
     def keep_node(self):
         return self.__keep
 
-    def __lt__(self, c):               
+    def __lt__(self, c):
         if self.__dist < c.__dist:
             return 1
         else:
             return 0
-        
+
     def __str__(self):
         return "Corner: p={}".format(self.__p)
+
 
 #############################
 #       Shape (Basis)       #
@@ -688,7 +749,7 @@ class Shape(object):
     """an abstract geometry with 2 points"""
     def start(self):
         return self.p1
-    
+
     def end(self):
         return self.p2
 
@@ -697,22 +758,22 @@ class Shape(object):
 
     def node2(self):
         return round(self.p2[0], ndec), round(self.p2[1], ndec)
-        
+
     def xmin(self):
         return min(self.p1[0], self.p2[0])
-    
+
     def xmax(self):
         return max(self.p1[0], self.p2[0])
-    
+
     def ymin(self):
         return min(self.p1[1], self.p2[1])
-    
+
     def ymax(self):
         return max(self.p1[1], self.p2[1])
 
     def dx(self):
         return (self.p2[0]-self.p1[0])
-    
+
     def dy(self):
         return (self.p2[1]-self.p1[1])
 
@@ -721,7 +782,7 @@ class Shape(object):
 
     def n(self, m):
         return line_n(self.p1, m)
-    
+
     def move(self, dist):
         self.p1 = self.p1[0] + dist[0], self.p1[1] + dist[1]
         self.p2 = self.p2[0] + dist[0], self.p2[1] + dist[1]
@@ -749,7 +810,8 @@ class Shape(object):
     def get_point_number(self, p):
         if points_are_close(p, self.p1, rtol=0.0, atol=0.001) and \
            points_are_close(p, self.p2, rtol=0.0, atol=0.001):
-            logger.debug("WARNING: get_point_number(): both points are close !!")
+            logger.debug("WARNING: get_point_number(): " +
+                         "both points are close !!")
         if points_are_close(p, self.p1, rtol=0.0, atol=0.001):
             return 1
         if points_are_close(p, self.p2, rtol=0.0, atol=0.001):
@@ -762,6 +824,7 @@ class Shape(object):
     def __lt__(self, s):
         return False
 
+
 #############################
 #       Circle (Shape)      #
 #############################
@@ -773,7 +836,7 @@ class Circle(Shape):
         self.radius = e.radius
         self.p1 = self.center[0]-self.radius, self.center[1]
         self.p2 = self.center[0]+self.radius, self.center[1]
-        
+
     def render(self, renderer, color='blue', with_nodes=False):
         renderer.circle(self.center, self.radius, color)
         if with_nodes:
@@ -787,16 +850,16 @@ class Circle(Shape):
         """ Die Funktion bestimmt das Minimum und Maximum auf der x- und der
             y-Achse (return [<min-x>, <max-x>, <min-y>, <max-y>])
         """
-        return [self.center[0]-self.radius,self.center[0]+self.radius,
-                self.center[1]-self.radius,self.center[1]+self.radius]
+        return [self.center[0]-self.radius, self.center[0]+self.radius,
+                self.center[1]-self.radius, self.center[1]+self.radius]
 
     def minmax_from_center(self, center):
-        """ Die Funktion ermittelt den minimalen und maximalen Abstand vom Center 
+        """ Die Funktion ermittelt den minimalen und maximalen Abstand vom Center
         """
         d = distance(center, self.center)
         if np.isclose(d, 0.0):
             return (self.radius, self.radius)
-            
+
         dist_min = abs(d - self.radius)
         dist_max = d + self.radius
         return (dist_min, dist_max)
@@ -817,12 +880,12 @@ class Circle(Shape):
                 return (alpha_p2, alpha_p1)
         else:
             return (0.0, 0.0)
-        
+
     def get_nodes(self):
         """ returns a list of virtual nodes to create the convex hull
         """
         return (p for p in points_on_arc(self.center, self.radius, 0.0, 0.0))
-        
+
     def scale(self, factor):
         super(Circle, self).scale(factor)
         self.center = factor*self.center[0], factor*self.center[1]
@@ -843,7 +906,7 @@ class Circle(Shape):
         """
         line_m = line.m()
         p = []
-        if line_m == None:
+        if line_m is None:
             p = [line.p1[0], self.center[1]]
         elif np.isclose(line_m, 0.0, rtol, atol):
             p = [self.center[0], line.p1[1]]
@@ -853,7 +916,7 @@ class Circle(Shape):
                                       self.center, m, line_n(self.center, m))
 
         d = distance(self.center, p)
-            
+
         if np.isclose(d, self.radius, rtol, atol):
             # Wenn der Abstand d dem Radius entspricht, handelt es sich um
             # eine Tangente und es gibt genau einen Schnittpunkt
@@ -864,10 +927,10 @@ class Circle(Shape):
         if self.radius < d:
             # d liegt ausserhalb des Kreises -> kein Schnittpunkt
             return []
-            
-        A = np.sqrt(self.radius**2 - d**2)        
+
+        A = np.sqrt(self.radius**2 - d**2)
         delta = alpha_line(line.p1, line.p2)
-        
+
         p1 = point(p, -A, delta)
         p2 = point(p, A, delta)
 
@@ -884,12 +947,13 @@ class Circle(Shape):
                 return[p2]
             else:
                 return []
-                
-    def intersect_circle(self, circle, rtol=1e-03, atol=1e-03, include_end=False):
+
+    def intersect_circle(self, circle, rtol=1e-03, atol=1e-03,
+                         include_end=False):
         """ Von zwei Circle-Objekten werden die Schnittpunkte bestimmt
             und in einer Liste ausgegeben
         """
-        d = distance(self.center, circle.center)            
+        d = distance(self.center, circle.center)
         arc = alpha_triangle(circle.radius, self.radius, d)
 
         if np.isnan(arc):
@@ -907,7 +971,7 @@ class Circle(Shape):
             else:
                 return []
         return [p1, p2]
-        
+
     def intersect_arc(self, arc, rtol=1e-03, atol=1e-03, include_end=False):
         """ Von einem Circle-Objekt und einem Arc-Objekt werden die
             Schnittpunkte bestimmt und in einer Liste ausgegeben
@@ -915,13 +979,12 @@ class Circle(Shape):
         assert(isinstance(arc, Arc))
         # let Arc do the work
         return arc.intersect_circle(self, rtol, atol, include_end)
-        
+
     def split(self, points, rtol, atol):
         """ Die Funktion splittet das Circle-Objekt an den vorgegebenen Punkten
             und gibt eine Liste der neu enstandenen Elemente aus.
         """
         if len(points) == 1:
-            
             p = points[0]
             split_arcs = []
             alpha1 = alpha_line(self.center, p)
@@ -943,10 +1006,10 @@ class Circle(Shape):
                               end_angle=alpha1*180/np.pi))
             split_arcs.append(arc)
             return split_arcs
-            
+
         assert(len(points) == 0)
         return []
-        
+
     def __str__(self):
         return "Circle c={}, r={}".format(self.center, self.radius)
 
@@ -961,8 +1024,11 @@ class Circle(Shape):
         return not self == other
 
     def __hash__(self):
-        """Override the default hash behavior (that returns the id or the object)"""
+        """ Override the default hash behavior
+            (that returns the id or the object)
+        """
         return hash(tuple(sorted(self.__dict__.items())))
+
 
 #############################
 #        Arc (Shape)        #
@@ -1022,7 +1088,7 @@ class Arc(Circle):
             d -= 2*np.pi
         alpha = np.arange(s, s+d, astep)
         return self(alpha)
-    
+
     def __call__(self, alpha):
         """returns x,y coordinates of angle"""
         return (self.center[0] + self.radius*np.cos(alpha),
@@ -1033,7 +1099,7 @@ class Arc(Circle):
             Schnittpunkte bestimmt und in einer Liste ausgegeben
         """
         points = super(Arc, self).intersect_line(line, rtol, atol, include_end)
-        
+
         # all possible points have been found
         # Lets see if they are on a arc
         remaining_points = []
@@ -1047,9 +1113,8 @@ class Arc(Circle):
             einer Liste ausgegeben.
         """
         assert(isinstance(arc, Arc))
-        
         points = self.intersect_circle(arc, rtol, atol, include_end)
-        
+
         # Check if the points are on a arc
         # (has been assumed as a circle)
         remaining_points = []
@@ -1068,10 +1133,10 @@ class Arc(Circle):
                     return [self.p1, self.p2]
             # no intersection with different radius but equal center
             return []
-            
+
         points = super(Arc, self).intersect_circle(
             circle, rtol, atol, include_end)
-        
+
         # Intersection points exist. Take the ones on the arc
         remaining_points = []
         for p in points:
@@ -1093,14 +1158,13 @@ class Arc(Circle):
                               start_angle=self.startangle*180/np.pi,
                               end_angle=alpha*180/np.pi))
             split_arcs.append(arc)
-            
+
             arc = Arc(Element(center=self.center, radius=self.radius,
                               start_angle=alpha*180/np.pi,
                               end_angle=self.endangle*180/np.pi))
-            split_arcs.append(arc)   
-
+            split_arcs.append(arc)
             return split_arcs
-            
+
         assert(len(points_inside) == 0)
         return []
 
@@ -1118,10 +1182,10 @@ class Arc(Circle):
         alpha_p2 = alpha_line(self.center, self.p2)
         alpha_p = alpha_line(self.center, p)
         alpha_inside = is_angle_inside(alpha_p1, alpha_p2, alpha_p)
-            
         return alpha_inside
-        
-    def is_angle_inside(self, alpha, rtol=1e-03, atol=1e-03, include_end=False):
+
+    def is_angle_inside(self, alpha, rtol=1e-03, atol=1e-03,
+                        include_end=False):
         """ returns True if alpha is between start and end angle
         """
         return is_angle_inside(self.startangle, self.endangle, alpha)
@@ -1154,8 +1218,8 @@ class Arc(Circle):
             a = alpha_line(self.center, p)
             if self.is_angle_inside(a, 0.00001):
                 mm[0] = p[0]
-            
-        p = [self.center[0]+self.radius, self.center[1]]            
+
+        p = [self.center[0]+self.radius, self.center[1]]
         if p[0] > mm[1]:
             a = alpha_line(self.center, p)
             if self.is_angle_inside(a, 0.00001):
@@ -1166,7 +1230,7 @@ class Arc(Circle):
             a = alpha_line(self.center, p)
             if self.is_angle_inside(a, 0.00001):
                 mm[2] = p[1]
-            
+
         p = [self.center[0], self.center[1]+self.radius]
         if p[1] > mm[3]:
             a = alpha_line(self.center, p)
@@ -1175,26 +1239,29 @@ class Arc(Circle):
         return mm
 
     def minmax_from_center(self, center):
-        """ Die Funktion ermittelt den minimalen und maximalen Abstand vom Center 
+        """ Die Funktion ermittelt den minimalen und maximalen
+            Abstand vom Center
         """
         d = distance(center, self.center)
         if np.isclose(d, 0.0):
             return (self.radius, self.radius)
-            
+
         angle = alpha_line(center, self.center)
         dist_min = abs(d - self.radius)
         dist_max = d + self.radius
-        
+
         pmax = point(center, d + self.radius, angle)
         alpha_pmax = alpha_line(self.center, pmax)
         if not self.is_angle_inside(alpha_pmax, 1e-08):
-            dist_max = max(distance(center, self.p1), distance(center, self.p2))
+            dist_max = max(distance(center, self.p1),
+                           distance(center, self.p2))
 
         pmin = point(center, d - self.radius, angle)
         alpha_pmin = alpha_line(self.center, pmin)
 
         if not self.is_angle_inside(alpha_pmin, 1e-08):
-            dist_min = min(distance(center, self.p1), distance(center, self.p2))
+            dist_min = min(distance(center, self.p1),
+                           distance(center, self.p2))
 
         return (dist_min, dist_max)
 
@@ -1208,17 +1275,17 @@ class Arc(Circle):
             r2 = np.sqrt(v)
             circ = Circle(Element(center=center, radius=r2))
             points = self.intersect_circle(circ)
-            
+
         points.append(self.p2)
-    
+
         alpha_min = alpha_line(center, self.p1)
         alpha_max = alpha_min
-        
+
         for p in points:
             alpha_p = alpha_line(center, p)
             alpha_min = min_angle(alpha_min, alpha_p)
             alpha_max = min_angle(alpha_max, alpha_p)
-            
+
         return (alpha_min, alpha_max)
 
     def get_nodes(self):
@@ -1227,13 +1294,15 @@ class Arc(Circle):
         """
         return (p for p in points_on_arc(self.center, self.radius,
                                          self.startangle, self.endangle))
-        
+
     def __str__(self):
-        return "Arc c={}, r={} start={}, end={}, p1={}, p2={}".format(self.center,
-                                                                self.radius, self.startangle,
-                                                                self.endangle,
-                                                                self.p1, self.p2)
-                            
+        return "Arc c={}, r={} start={}, end={}, p1={}, p2={}".\
+            format(self.center,
+                   self.radius, self.startangle,
+                   self.endangle,
+                   self.p1,
+                   self.p2)
+
     def __eq__(self, other):
         """Override the default Equals behavior"""
         if type(other) is type(self):
@@ -1245,8 +1314,11 @@ class Arc(Circle):
         return not self == other
 
     def __hash__(self):
-        """Override the default hash behavior (that returns the id or the object)"""
+        """ Override the default hash behavior
+            (that returns the id or the object)
+        """
         return hash(tuple(sorted(self.__dict__.items())))
+
 
 #############################
 #        Line (Shape)       #
@@ -1257,7 +1329,7 @@ class Line(Shape):
     def __init__(self, e):
         self.p1 = e.start[0], e.start[1]
         self.p2 = e.end[0], e.end[1]
-        
+
     def render(self, renderer, color='blue', with_nodes=False):
         renderer.line(self.p1, self.p2, color)
         if with_nodes:
@@ -1268,15 +1340,10 @@ class Line(Shape):
         x = (self.p1[0]+self.p2[0])/2
         y = (self.p1[1]+self.p2[1])/2
         return (x, y)
-#        if np.isclose(self.dx(), 0):
-#            return (round(self.p1[0], ndec),
-#                    round(self.dy()/2. + self.ymin(), ndec))
-#        x = self.p1[0] + self.dx()/2.
-#        return (round(x, ndec), round(self(x), ndec))
 
     def length(self):
         return np.sqrt(self.dx()**2 + self.dy()**2)
-    
+
     def range(self, step=1.0):
         """returns evenly spaced values"""
         num = max(int(self.length()/step), 1)
@@ -1288,13 +1355,13 @@ class Line(Shape):
         xstep = np.sqrt((self.length()/num)**2/(1 + self.dy()**2/self.dx()**2))
         x = np.arange(self.xmin(), self.xmax(), xstep)
         return (x, self(x))
-    
+
     def __call__(self, x):
         """returns y coordinate of x"""
         if np.isclose(self.dx(), 0):
             return float('nan')
         return self.dy()/self.dx()*(x - self.p1[0]) + self.p1[1]
-        
+
     def intersect_line(self, line, rtol=1e-03, atol=1e-03, include_end=False):
         """ Von zwei Line-Objekten wird der Schnittpunkt bestimmt und in
             einer Liste ausgegeben.
@@ -1302,14 +1369,14 @@ class Line(Shape):
         point = []
         m_L1 = self.m()
         m_L2 = line.m()
-        if m_L1 == None:
-            if m_L2 == None:
+        if m_L1 is None:
+            if m_L2 is None:
                 return []
             else:
                 y = line_n([line.p1[0]-self.p1[0], line.p1[1]], m_L2)
                 point = (self.p1[0], y)
         else:
-            if m_L2 == None:
+            if m_L2 is None:
                 y = line_n([self.p1[0]-line.p1[0], self.p1[1]], m_L1)
                 point = (line.p1[0], y)
             else:
@@ -1318,7 +1385,7 @@ class Line(Shape):
                 else:
                     point = lines_intersect_point(self.p1, m_L1, self.n(m_L1),
                                                   line.p1, m_L2, line.n(m_L2))
-                    
+
         if line.is_point_inside(point, rtol, atol, include_end):
             if self.is_point_inside(point, rtol, atol, include_end):
                 return [point]
@@ -1330,7 +1397,8 @@ class Line(Shape):
         """
         return arc.intersect_line(self, rtol, atol, include_end)
 
-    def intersect_circle(self, circle, rtol=1e-03, atol=1e-03, include_end=False):
+    def intersect_circle(self, circle, rtol=1e-03, atol=1e-03,
+                         include_end=False):
         """ Von einem Line-Objekt und einem Circle-Objekt werden die
             Schnittpunkte bestimmt und in einer Liste ausgegeben.
         """
@@ -1344,22 +1412,19 @@ class Line(Shape):
                          for p in points if self.is_point_inside(p,
                                                                  rtol, atol,
                                                                  False)]
-            
+
         if len(points_inside) > 0:
-#            print(">>> split line")
             points_inside.append((0.0, self.p1))
             points_inside.append((distance(self.p1, self.p2), self.p2))
             points_inside.sort()
-#            for x in points_inside:            
-#                print("-- {}".format(x))
+
             split_lines = []
             p_start = None
-            for d,p in points_inside:
-                if p_start != None:
+            for d, p in points_inside:
+                if p_start is not None:
                     split_lines.append(Line(Element(start=p_start, end=p)))
-#                    print("-- New from {} to {}".format(p_start, p))
+
                 p_start = p
-#            print("<<< split line")
             return split_lines
         return []
 
@@ -1368,36 +1433,36 @@ class Line(Shape):
         """
         logger.debug("Arc::is_point_inside: %s in (%s, %s)",
                      point, self.p1, self.p2)
-        
+
         if points_are_close(point, self.p1, rtol, atol):
             return include_end
         if points_are_close(point, self.p2, rtol, atol):
             return include_end
-            
+
         m1 = line_m(self.p1, point)
         m2 = line_m(point, self.p2)
-        if m1 == None or m2 == None:
-            if m1 != None or m2 != None:
+        if m1 is None or m2 is None:
+            if m1 is not None or m2 is not None:
                 return False
         elif not np.isclose(m1, m2, rtol, atol):
             return False
-        
+
         length = distance(self.p1, self.p2)
         dist_p1 = distance(self.p1, point)
         dist_p2 = distance(self.p2, point)
         if dist_p1 > length or dist_p2 > length:
             return False
         return True
-         
+
     def minmax(self):
         """ Die Funktion bestimmt das Minimum und Maximum auf der x- und der
             y-Achse (return [<min-x>, <max-x>, <min-y>, <max-y>])
         """
         return [min(self.p1[0], self.p2[0]), max(self.p1[0], self.p2[0]),
                 min(self.p1[1], self.p2[1]), max(self.p1[1], self.p2[1])]
-                
+
     def minmax_from_center(self, center):
-        """ Die Funktion ermittelt den minimalen und maximalen Abstand vom Center 
+        """ Die Funktion ermittelt den minimalen und maximalen Abstand vom Center
         """
         dist_max = max(distance(center, self.p1), distance(center, self.p2))
         dist_min = min(distance(center, self.p1), distance(center, self.p2))
@@ -1431,13 +1496,16 @@ class Line(Shape):
         return not self == other
 
     def __hash__(self):
-        """Override the default hash behavior (that returns the id or the object)"""
+        """ Override the default hash behavior
+            (that returns the id or the object)
+        """
         return hash(tuple(sorted(self.__dict__.items())))
+
 
 #############################
 #       Point (Shape)       #
 #############################
-    
+
 class Point(Shape):
     """ used for plotting only """
     def __init__(self, p):
@@ -1471,6 +1539,7 @@ def single_path(edges):
         return p
     return []
 
+
 #############################
 #           Motor           #
 #############################
@@ -1482,7 +1551,7 @@ class Motor(object):
         self.radius = radius
         self.startangle = startangle
         self.endangle = endangle
-        self.mirror_geom = None       
+        self.mirror_geom = None
         self.mirror_startangle = 0.0
         self.mirror_endangle = 0.0
         self.part = self.part_of_circle()
@@ -1491,32 +1560,35 @@ class Motor(object):
         self.airgap2_radius = 0.0
         self.geom.center = center
 
-    def __str__(self):        
-        return "Motor\n"+\
-               "Center: ({})\n".format(self.center)+\
-               "Radius: {}\n".format(self.radius)+\
-               "Angles: Start={}, End={}\n".format(self.startangle, self.endangle)+\
-               "Mirror: {}\n".format(self.mirror_geom != None)
-               
+    def __str__(self):
+        return "Motor\n" + \
+               "Center: ({})\n".format(self.center) + \
+               "Radius: {}\n".format(self.radius) + \
+               "Angles: Start={}, End={}\n".format(self.startangle,
+                                                   self.endangle) + \
+               "Mirror: {}\n".format(self.mirror_geom is not None)
+
     def is_a_motor(self):
         return self.radius > 0.0
-        
+
     def is_in_middle(self):
-        return self.radius > 0.0 and points_are_close(self.center, [0.0, 0.0], 1e-8)
+        return self.radius > 0.0 and \
+            points_are_close(self.center, [0.0, 0.0], 1e-8)
 
     def is_full(self):
-        return self.radius > 0.0 and self.startangle == 0.0 and self.endangle == 0.0
-        
+        return self.radius > 0.0 and \
+            self.startangle == 0.0 and self.endangle == 0.0
+
     def is_half_up(self):
         return self.radius > 0.0 and \
                np.isclose(self.startangle, 0.0, 1e-8) and \
-               (np.isclose(self.endangle, np.pi, 1e-8) or \
+               (np.isclose(self.endangle, np.pi, 1e-8) or
                 np.isclose(self.endangle, -np.pi, 1e-8))
 
     def is_half_down(self):
         return self.radius > 0.0 and \
-               (np.isclose(self.endangle, np.pi, 1e-8) or \
-                np.isclose(self.endangle, -np.pi, 1e-8)) and\
+               (np.isclose(self.endangle, np.pi, 1e-8) or
+                np.isclose(self.endangle, -np.pi, 1e-8)) and \
                np.isclose(self.startangle, 0.0, 1e-8)
 
     def is_half_left(self):
@@ -1528,7 +1600,7 @@ class Motor(object):
         return self.radius > 0.0 and \
                np.isclose(self.startangle, -np.pi/2, 1e-8) and \
                np.isclose(self.endangle, np.pi/2, 1e-8)
-               
+
     def is_half(self):
         return self.is_half_up() or self.is_half_down() or \
                self.is_half_left() or self.is_half_right()
@@ -1536,7 +1608,7 @@ class Motor(object):
     def is_quarter(self):
         return self.radius > 0.0 and \
                np.isclose(alpha_angle(self.startangle, self.endangle), np.pi/2)
-        
+
     def move_to_middle(self):
         if not self.is_in_middle():
             if self.radius > 0.0:
@@ -1557,42 +1629,54 @@ class Motor(object):
 
     def set_kind(self, kind):
         self.geom.kind = kind
-        
+
     def set_inner(self):
         self.geom.is_inner = True
 
     def set_outer(self):
         self.geom.is_outer = True
-        
+
     def clear_cut_lines(self):
         self.geom.clear_cut_lines()
-        if self.mirror_geom != None:
+        if self.mirror_geom is not None:
             self.mirror_geom.clear_cut_lines()
-        
-    def copy(self, startangle, endangle, airgap=False, inside=True, split=False):
+
+    def copy(self, startangle, endangle,
+             airgap=False, inside=True, split=False):
         if airgap and self.airgap_radius > 0.0:
             if inside:
                 if self.airgap2_radius > 0.0:
                     new_radius = min(self.airgap_radius, self.airgap2_radius)
                 else:
                     new_radius = self.airgap_radius
-                clone = self.geom.copy_shape( self.center, self.radius, startangle, endangle, 0.0, new_radius, split)
+                clone = self.geom.copy_shape(self.center,
+                                             self.radius,
+                                             startangle, endangle,
+                                             0.0, new_radius, split)
             else:
                 new_radius = self.radius
                 gap_radius = max(self.airgap_radius, self.airgap2_radius)
-                clone = self.geom.copy_shape( self.center, self.radius, startangle, endangle, gap_radius, self.radius+9999, split)
+                clone = self.geom.copy_shape(self.center,
+                                             self.radius,
+                                             startangle, endangle,
+                                             gap_radius, self.radius+9999,
+                                             split)
 
-            circ = Circle(Element(center=self.center, radius=self.airgap_radius))
+            circ = Circle(Element(center=self.center,
+                                  radius=self.airgap_radius))
             clone.add_cut_line(circ)
         else:
             new_radius = self.radius
-            clone = self.geom.copy_shape( self.center, self.radius, startangle, endangle, 0.0, self.radius+9999, split)
+            clone = self.geom.copy_shape(self.center, self.radius,
+                                         startangle, endangle, 0.0,
+                                         self.radius+9999, split)
 
-        if not np.isclose(normalise_angle(startangle), normalise_angle(endangle), 0.0):
+        if not np.isclose(normalise_angle(startangle),
+                          normalise_angle(endangle), 0.0):
             start_p = point(self.center, self.radius+5, startangle)
             start_line = Line(Element(start=self.center, end=start_p))
             clone.add_cut_line(start_line)
-            
+
             end_p = point(self.center, self.radius+5, endangle)
             end_line = Line(Element(start=self.center, end=end_p))
             clone.add_cut_line(end_line)
@@ -1601,39 +1685,46 @@ class Motor(object):
             return Motor(clone, self.center, new_radius, startangle, endangle)
         else:
             # Der Originalwinkel bleibt bestehen
-            return Motor(clone, self.center, new_radius, self.startangle, self.endangle)
+            return Motor(clone, self.center, new_radius,
+                         self.startangle, self.endangle)
 
     def full_copy(self):
-        clone = self.geom.copy_shape( self.center, self.radius, 0.0, 2*np.pi, 0.0, self.radius+9999)
+        clone = self.geom.copy_shape(self.center, self.radius,
+                                     0.0, 2*np.pi,
+                                     0.0, self.radius+9999)
         return clone.get_motor()
 
     def copy_mirror(self, startangle, midangle, endangle):
-        geom1 = self.geom.copy_shape( self.center, self.radius, startangle, midangle, 0.0, self.radius+9999)
-        geom2 = self.geom.copy_shape( self.center, self.radius, midangle, endangle, 0.0, self.radius+9999)
+        geom1 = self.geom.copy_shape(self.center, self.radius,
+                                     startangle, midangle,
+                                     0.0, self.radius+9999)
+        geom2 = self.geom.copy_shape(self.center, self.radius,
+                                     midangle, endangle,
+                                     0.0, self.radius+9999)
         motor = Motor(geom1, self.center, self.radius, startangle, midangle)
         motor.mirror_geom = geom2
         motor.mirror_geom.center = self.center
         motor.mirror_startangle = midangle
         motor.mirror_endangle = endangle
         return motor
-                
+
     def rotate_to(self, new_startangle):
         if np.isclose(new_startangle, self.startangle):
             return
-            
+
         if points_are_close(self.center, [0.0, 0.0]):
             angle = new_startangle - self.startangle
             self.geom.rotate(angle)
             self.startangle = new_startangle
             self.endangle += angle
-        
-    def airgap(self, correct_airgap=0.0, correct_airgap2 = 0.0, atol=0.05):
+
+    def airgap(self, correct_airgap=0.0, correct_airgap2=0.0, atol=0.05):
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
-        
+
         if np.isclose(self.radius, 0.0):
             return
-            
+
         self.airgaps = self.geom.detect_airgaps(self.center,
                                                 self.startangle,
                                                 self.endangle, atol)
@@ -1653,8 +1744,10 @@ class Motor(object):
                         num_airgaps += 1
                         self.airgap_radius = gap_radius
                     else:
-                        logger.debug("DESASTER: No Airgap with radius {}".format(gap_radius))
-                        print("DESASTER: No Airgap with radius {}".format(gap_radius))
+                        logger.debug("DESASTER: No Airgap with radius {}".
+                                     format(gap_radius))
+                        print("DESASTER: No Airgap with radius {}".
+                              format(gap_radius))
                         sys.exit(1)
 
                 if correct_airgap2 > 0.0 and \
@@ -1662,17 +1755,19 @@ class Motor(object):
                     circle = Circle(Element(center=self.center,
                                             radius=gap_radius))
                     if self.geom.is_airgap(self.center, self.radius,
-                                           self.startangle, self.endangle, circle, atol):
+                                           self.startangle, self.endangle,
+                                           circle, atol):
                         self.airgap2_radius = gap_radius
                     else:
-                        logger.debug("DESASTER: No Airgap with radius {}".format(gap_radius))
-                        print("DESASTER: No Airgap with radius {}".format(gap_radius))
+                        logger.debug("DESASTER: No Airgap with radius {}".
+                                     format(gap_radius))
+                        print("DESASTER: No Airgap with radius {}".
+                              format(gap_radius))
                         sys.exit(1)
-                    
-                    
+
             if num_airgaps == 1:
                 return
-                
+
             if num_airgaps > 1:
                 print("More than one airgap candidate found:")
                 for c in self.geom.airgaps:
@@ -1681,16 +1776,16 @@ class Motor(object):
                 sys.exit(1)
             else:
                 self.airgap_radius = 0.0
-                    
+
     def has_airgap(self):
         return self.airgap_radius > 0.0
 
     def airgap_x(self):
         return self.airgap_radius
-        
+
     def airgap_y(self):
         return 0.1
-        
+
     def part_of_circle(self, pos=3):
         return part_of_circle(self.startangle, self.endangle, pos)
 
@@ -1705,10 +1800,11 @@ class Motor(object):
                                               self.mirror_endangle)
 
     def complete_hull(self):
-#        self.geom.create_list_of_areas()
-        start_corners = self.geom.complete_hull_line(self.center, self.startangle)
-        end_corners = self.geom.complete_hull_line(self.center, self.endangle)
-        
+        start_corners = self.geom.complete_hull_line(self.center,
+                                                     self.startangle)
+        end_corners = self.geom.complete_hull_line(self.center,
+                                                   self.endangle)
+
         if start_corners[0].is_new_point or end_corners[0].is_new_point:
             self.geom.complete_hull_arc(self.center,
                                         self.startangle, start_corners[0],
@@ -1720,27 +1816,29 @@ class Motor(object):
                                         self.startangle, start_corners[1],
                                         self.endangle, end_corners[1],
                                         self.geom.max_radius)
-            
+
         self.set_alfa_and_corners()
-        
+
     def create_auxiliary_lines(self):
         self.geom.create_auxiliary_lines(self.endangle)
-        
+
     def set_alfa_and_corners(self):
-        self.geom.start_corners = self.geom.get_corner_nodes(self.center, self.startangle)
-        self.geom.end_corners = self.geom.get_corner_nodes(self.center, self.endangle)
+        self.geom.start_corners = self.geom.get_corner_nodes(self.center,
+                                                             self.startangle)
+        self.geom.end_corners = self.geom.get_corner_nodes(self.center,
+                                                           self.endangle)
         self.geom.alfa = alpha_angle(self.startangle, self.endangle)
 
-        if self.mirror_geom != None:
+        if self.mirror_geom is not None:
             self.geom.mirror_corners = self.geom.end_corners
 
     def is_mirrored(self):
-        return self.mirror_geom != None
-           
+        return self.mirror_geom is not None
+
     def find_symmetry(self, sym_tolerance):
         if self.radius <= 0.0:
             return False
-            
+
         return self.geom.find_symmetry(self.center, self.radius,
                                        self.startangle, self.endangle,
                                        sym_tolerance)
@@ -1748,7 +1846,7 @@ class Motor(object):
     def get_symmetry_slice(self):
         if not self.geom.has_symmetry_area():
             return None
-            
+
         motor_slice = self.copy(self.geom.symmetry_startangle(),
                                 self.geom.symmetry_endangle())
         motor_slice.clear_cut_lines()
@@ -1762,7 +1860,7 @@ class Motor(object):
             # ein ganzer Motor
             startangle = 0.0
             endangle = 0.0
-            midangle = np.pi            
+            midangle = np.pi
         else:
             startangle = self.startangle
             endangle = self.endangle
@@ -1777,23 +1875,23 @@ class Motor(object):
         return None
 
     def get_symmetry_part(self):
-        if self.mirror_geom != None:
+        if self.mirror_geom is not None:
             return self.part/2
         else:
             return self.part
-            
+
     def check_symmetry_graph(self, rtol, atol):
         axis_p = point(self.center, self.radius, self.mirror_startangle)
         axis_m = line_m(self.center, axis_p)
         axis_n = line_n(self.center, axis_m)
-        
+
         def is_node_available(n, nodes):
-            mirror_p = mirror_point(n ,self.center, axis_m, axis_n)
+            mirror_p = mirror_point(n, self.center, axis_m, axis_n)
             for p in nodes:
                 if points_are_close(p, mirror_p, rtol, atol):
                     return True
             return False
-            
+
         hit = 0
         nodes = self.geom.g.nodes()
         for n in nodes:
@@ -1805,17 +1903,18 @@ class Motor(object):
 #        print("Nodes = {}, Match={} => ok={}".format(len(nodes), hit, ok))
         return ok
 
-    def sync_with_counterpart(self, cp_motor):       
+    def sync_with_counterpart(self, cp_motor):
         self.geom.sym_counterpart = cp_motor.get_symmetry_part()
         self.geom.sym_part = self.get_symmetry_part()
         cp_motor.geom.sym_counterpart = self.get_symmetry_part()
         cp_motor.geom.sym_part = cp_motor.get_symmetry_part()
-        
+
     def search_subregions(self):
-#        print("search_subregions\n{}".format(self))
+        # print("search_subregions\n{}".format(self))
         self.geom.search_subregions()
         return
-        
+
+
 #############################
 #            Area           #
 #############################
@@ -1823,7 +1922,7 @@ class Motor(object):
 class Area(object):
     def __init__(self, area, center, sym_tolerance):
         self.area = area
-        self.type = 0 # material
+        self.type = 0  # material
         self.min_angle = 0.0
         self.max_angle = 0.0
         self.min_dist = 99999.0
@@ -1842,43 +1941,43 @@ class Area(object):
 
     def number_of_elements(self):
         return len(self.area)
-    
+
     def elements(self):
         return self.area
-    
+
     def nodes(self):
         if len(self.area) == 0:
             return
 
         for e in self.area:
             yield e.p1
-            yield e.p2            
-            
+            yield e.p2
+
     def calc_signature(self, center):
         if not self.area:
             return
-            
+
         s = self.area[0]
         mm_angle = s.minmax_angle_from_center(center)
         self.min_angle = mm_angle[0]
         self.max_angle = mm_angle[1]
-        
+
         for s in self.area:
             mm_dist = s.minmax_from_center(center)
             self.min_dist = min(self.min_dist, mm_dist[0])
             self.max_dist = max(self.max_dist, mm_dist[1])
-            
+
             mm_angle = s.minmax_angle_from_center(center)
             self.min_angle = min_angle(self.min_angle, mm_angle[0])
             self.max_angle = max_angle(self.max_angle, mm_angle[1])
-            
+
         self.alpha = round(alpha_angle(self.min_angle, self.max_angle), 3)
 
     def is_inside(self, area):
         if less_equal(area.min_dist, self.min_dist):
             return False
         if greater_equal(area.max_dist, self.max_dist):
-            return False           
+            return False
         if less_equal(area.min_angle, self.min_angle):
             return False
         if greater_equal(area.max_angle, self.max_angle):
@@ -1903,13 +2002,13 @@ class Area(object):
                 logger.warn("FATAL: node {} not available".format(n2))
                 return False
             n2 = n[0]
-            
-        try:           
+
+        try:
             return nx.has_path(geom.g, n1, n2)
         except nx.NetworkXError:
             logger.warn("has_path() failed")
             return False
-        
+
     def get_most_left_point(self, center, radius, angle):
         axis_p = point(center, radius, angle)
         axis_m = line_m(center, axis_p)
@@ -1917,15 +2016,15 @@ class Area(object):
 
         the_area_p = None
         the_axis_p = None
-        dist  = 99999
+        dist = 99999
         for n in self.nodes():
-            p = intersect_point(n ,center, axis_m, axis_n)
+            p = intersect_point(n, center, axis_m, axis_n)
             d = distance(n, p)
             if d < dist:
                 dist = d
                 the_area_p = n
                 the_axis_p = p
-                
+
         return (dist, the_axis_p, the_area_p)
 
     def is_equal(self, a, sym_tolerance):
@@ -1940,7 +2039,7 @@ class Area(object):
                           round(a.alpha, 3),
                           1e-02, 0.001):
                 return True
-        else:            
+        else:
             if np.isclose(round(self.min_dist, 2),
                           round(a.min_dist, 2)) and \
                np.isclose(round(self.max_dist, 2),
@@ -1958,7 +2057,7 @@ class Area(object):
            np.isclose(self.max_angle, area.max_angle):
             return True
         return False
-        
+
     def increment(self, a):
         if self.is_identical(a):
             return
@@ -1966,19 +2065,19 @@ class Area(object):
         for area in self.equal_areas:
             if area.is_identical(a):
                 return
-                
+
         self.count += 1
         self.equal_areas.append(a)
-        
+
     def set_delta(self):
         self.delta = 0.0
         self.symmetry = 0
-        
+
         if len(self.equal_areas) < 2:
             # Mit zwei Objekten lässt sich das Teil nur noch halbieren. Das
             # wird zum Schluss sowieso versucht.
             return
-            
+
         a_prev = self
         delta = {}
         for a in self.equal_areas:
@@ -1990,22 +2089,22 @@ class Area(object):
             a_prev = a
 
         delta_sorted = list([v, k] for (k, v) in delta.items())
-            
+
         if len(delta_sorted) == 1:
             # simple case: all have the same angle
             self.delta = alpha_angle(self.min_angle,
                                      self.equal_areas[0].min_angle)
             self.start = middle_angle(self.max_angle,
                                       self.equal_areas[0].min_angle)
-            self.sym_type = 3 
+            self.sym_type = 3
             self.symmetry = part_of_circle(0.0, self.delta, 1)
             return
-                   
+
         if len(delta_sorted) > 2:
             # Mehr als 2 Winkel untersuchen wir (noch) nicht. Wir brechen
             # die Suche nach dem richtigen Winkel ab.
             return
-        
+
         # Bei 2 verschiedenen Winkeln werden die näher beieinander liegenden
         # Objekte zusammen genommen.
 
@@ -2023,17 +2122,15 @@ class Area(object):
                                       self.equal_areas[0].min_angle)
             self.sym_type = 2
             self.symmetry = part_of_circle(0.0, self.delta, 1)
-            return    
-        
+            return
+
         # Lets hope the distances are changing
         self.delta = alpha_angle(self.min_angle, self.equal_areas[1].min_angle)
         self.sym_type = 1
         self.symmetry = part_of_circle(0.0, self.delta, 1)
-        
-#        print(" = {} = {} + {}".format(self.delta, delta_sorted[0][1], delta_sorted[1][1]))
-        
+
         delta_1 = alpha_angle(self.min_angle,
-                              self.equal_areas[0].min_angle) 
+                              self.equal_areas[0].min_angle)
         delta_2 = alpha_angle(self.equal_areas[0].min_angle,
                               self.equal_areas[1].min_angle)
 
@@ -2041,37 +2138,37 @@ class Area(object):
             # Hm. the distances are not changing
             self.delta = 0.0
             return
-        
+
 #        print(" = delta_1={}, delta_2={}".format(delta_1, delta_2))
-        
+
         if delta_1 < delta_2:
             self.start = middle_angle(self.equal_areas[0].max_angle,
                                       self.equal_areas[1].min_angle)
         else:
             self.start = middle_angle(self.max_angle,
                                       self.equal_areas[0].min_angle)
-            
+
     def symmetry_lines(self, startangle, endangle):
         if less_equal(endangle, startangle):
             endangle += 2*np.pi
-            
+
         angle = self.start
         while less(angle, startangle):
             angle += self.delta
         while greater(angle, startangle+self.delta):
             angle -= self.delta
 
-        # Damit man anschliessend ohne Umstände schneiden kann. 
+        # Damit man anschliessend ohne Umstände schneiden kann.
         self.sym_startangle = angle
         self.sym_endangle = angle + self.delta
-            
+
         while angle < endangle:
             yield angle
             angle += self.delta
 
     def minmax(self):
-        mm = [99999,-99999,99999,-99999]
-            
+        mm = [99999, -99999, 99999, -99999]
+
         for e in self.area:
             n = e.minmax()
             mm[0] = min(mm[0], n[0])
@@ -2082,7 +2179,7 @@ class Area(object):
 
     def get_point_inside(self, geom):
         """return point inside area"""
-        mm = self.minmax()        
+        mm = self.minmax()
         y = (mm[2]+mm[3])/2
         p1 = (mm[0]-5, y)
         p2 = (mm[1]+5, y)
@@ -2093,16 +2190,17 @@ class Area(object):
             points += e.intersect_line(line, geom.rtol, geom.atol, True)
 
         if len(points) < 2:
-            logger.debug("WARNING: get_point_inside() failed ({})".format(len(points)))
+            logger.debug("WARNING: get_point_inside() failed ({})".
+                         format(len(points)))
             return None
-            
-        assert(len(points)> 1)
+
+        assert(len(points) > 1)
 
         points_sorted = []
         for p in points:
             points_sorted.append((p[0], p))
         points_sorted.sort()
-        p1 = points_sorted[0][1] # Startpoint
+        p1 = points_sorted[0][1]  # Startpoint
 
         points_sorted = []
         for e in geom.elements(Shape):
@@ -2111,7 +2209,7 @@ class Area(object):
                 if p[0] > p1[0]:
                     points_sorted.append((p[0], p))
         points_sorted.sort()
-                
+
         p2 = points_sorted[0][1]
         return ((p1[0]+p2[0])/2, y)
 
@@ -2119,7 +2217,7 @@ class Area(object):
         for e in self.area:
             e.render(renderer, color, with_nodes)
         return
-        
+
     def remove_edges(self, g):
         for e in self.area:
             try:
@@ -2133,7 +2231,7 @@ class Area(object):
             if isinstance(e, Line):
                 l = e.length()
                 m = e.m()
-                if m == None:
+                if m is None:
                     m = 99999.0
                 lines.append((c, m, l))
 
@@ -2144,7 +2242,8 @@ class Area(object):
         for c, m, l in lines:
             if c_prev >= 0:
                 if np.isclose(m_prev, m):
-                    if c_prev+1 != c: # Gleiche Steigung, aber keine Verlängerung
+                    if c_prev+1 != c:
+                        # Gleiche Steigung, aber keine Verlängerung
                         line_count += 1
                 else:
                     line_count += 1
@@ -2153,7 +2252,7 @@ class Area(object):
             c_prev = c
 
         return line_count == 4
-                
+
     def mark_stator_subregions(self, is_inner, mirrored, alpha, r_in, r_out):
         my_alpha = round(self.max_angle - self.min_angle, 6)
         alpha = round(alpha, 6)
@@ -2164,33 +2263,37 @@ class Area(object):
         else:
             close_to_ag = np.isclose(r_in, self.min_dist)
             close_to_opposition = np.isclose(r_out, self.max_dist)
-        
+
         close_to_startangle = np.isclose(self.min_angle, 0.0)
         close_to_endangle = np.isclose(self.max_angle, alpha)
-        
+
         if close_to_startangle and close_to_endangle:
             return
 
-        if close_to_ag: # close to airgap
+        if close_to_ag:  # close to airgap
             if mirrored:
-                if close_to_endangle: # in touch with mirror-axis
+                if close_to_endangle:  # in touch with mirror-axis
                     if my_alpha / alpha > 0.5:
-                        self.type = 1 # iron
+                        self.type = 1  # iron
             else:
                 if my_alpha / alpha > 0.5:
-                    self.type = 1 # iron
-#            print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
+                    self.type = 1  # iron
+#            print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".
+#                  format(is_inner, mirrored, alpha, r_in, r_out,
+#                         self.type, self))
             return
-            
+
         if not close_to_opposition:
             if self.min_angle > 0.001 and self.max_angle < alpha - 0.001:
-                self.type = 2 # windings
-#        print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
+                self.type = 2  # windings
+#        print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".
+#              format(is_inner, mirrored, alpha, r_in, r_out,
+#                     self.type, self))
 
     def mark_rotor_subregions(self, is_inner, mirrored, alpha, r_in, r_out):
         my_alpha = round(self.max_angle - self.min_angle, 6)
         alpha = round(alpha, 6)
-        
+
         if is_inner:
             close_to_ag = np.isclose(r_out, self.max_dist)
             close_to_opposition = np.isclose(r_in, self.min_dist)
@@ -2200,54 +2303,67 @@ class Area(object):
 
         if close_to_ag or close_to_opposition:
             if my_alpha / alpha > 0.5 and my_alpha / alpha < 0.9999:
-                self.type = 3 # magnet
-#                print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
+                self.type = 3  # magnet
+#                print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".
+#                      format(is_inner, mirrored, alpha, r_in, r_out,
+#                             self.type, self))
             return
 
         if my_alpha / alpha > 0.5:
             if self.is_rectangle():
-                self.type = 3 # magnet
-#        print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".format(is_inner, mirrored, alpha, r_in, r_out, self.type, self))
+                self.type = 3  # magnet
+#        print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".
+#              format(is_inner, mirrored, alpha, r_in, r_out,
+#                     self.type, self))
         return
-        
+
     def print_area(self):
         center = [0.0, 0.0]
         for s in self.area:
             mm = s.minmax_angle_from_center(center)
-            print(" --- angle min={}, max={}".format(mm[0],mm[1]))
-        
+            print(" --- angle min={}, max={}".format(mm[0], mm[1]))
+
     def __lt__(self, a):
         if self.symmetry != a.symmetry:
             return self.symmetry > a.symmetry
-            
+
         if self.sym_type != a.sym_type:
             return self.sym_type > a.sym_type
-            
+
         if self.count != a.count:
             return self.count > a.count
 
         if self.sym_tolerance > 0.0:
-            if not np.isclose(round(self.min_dist, 4), round(a.min_dist, 4), 1e-03, self.sym_tolerance):
+            if not np.isclose(round(self.min_dist, 4),
+                              round(a.min_dist, 4), 1e-03,
+                              self.sym_tolerance):
                 return less_equal(self.min_dist, a.min_dist)
-            if not np.isclose(round(self.max_dist, 4), round(a.max_dist, 4), 1e-03, self.sym_tolerance):
+            if not np.isclose(round(self.max_dist, 4),
+                              round(a.max_dist, 4), 1e-03,
+                              self.sym_tolerance):
                 return less_equal(self.max_dist, a.max_dist)
-            if not np.isclose(round(self.alpha, 2), round(a.alpha, 2), 1e-01, 1e-01):
+            if not np.isclose(round(self.alpha, 2),
+                              round(a.alpha, 2), 1e-01, 1e-01):
                 return less_equal(self.alpha, a.alpha)
         else:
-            if not np.isclose(round(self.min_dist, 2), round(a.min_dist, 2)):
+            if not np.isclose(round(self.min_dist, 2),
+                              round(a.min_dist, 2)):
                 return less_equal(self.min_dist, a.min_dist)
-            if not np.isclose(round(self.max_dist, 2), round(a.max_dist, 2)):
+            if not np.isclose(round(self.max_dist, 2),
+                              round(a.max_dist, 2)):
                 return less_equal(self.max_dist, a.max_dist)
-            if not np.isclose(round(self.alpha, 2), round(a.alpha, 2), 1e-01, 1e-02):
+            if not np.isclose(round(self.alpha, 2),
+                              round(a.alpha, 2), 1e-01, 1e-02):
                 return less_equal(self.alpha, a.alpha)
-            
+
         return self.min_angle < a.min_angle
-        
+
     def __str__(self):
-        return "Area\n"+\
-               "distance: from {} to {}\n".format(round(self.min_dist,4), round(self.max_dist,4))+\
-               "alpha...: {}\n".format(self.alpha)+\
-               "angle...: from {} to {}\n".format(round(self.min_angle,6), round(self.max_angle,6))
+        return "Area\n distance: from {} to {}\n".\
+            format(round(self.min_dist, 4), round(self.max_dist, 4)) + \
+            "alpha...: {}\n".format(self.alpha) + \
+            "angle...: from {} to {}\n".format(round(self.min_angle, 6),
+                                               round(self.max_angle, 6))
 
 
 #############################
@@ -2280,13 +2396,13 @@ class Geometry(object):
         self.atol = atol
         self.debug = debug
         i = 0
-        
+
         def get_elements(elements, split):
             if split:
                 return intersect_and_split(elements, self.rtol, self.atol)
             else:
                 return elements
-                
+
         for e in get_elements(elements, split):
             if e:
                 e.id = i
@@ -2312,7 +2428,7 @@ class Geometry(object):
                 if 0 < a.radius < self.diameters[-1]/2:
                     radius.append(a.radius)
         return 2*sorted(radius)[0] if radius else 0
-    
+
     def set_diameters(self):
         try:
             min, max = self.min(), self.max()
@@ -2321,7 +2437,7 @@ class Geometry(object):
                               round(2*np.sqrt(max[0]**2 + max[1]**2), 3))
         except:
             self.diameters = []
-            
+
     def move(self, offset):
         """moves all objects"""
         for e in self.g.edges(data=True):
@@ -2331,7 +2447,7 @@ class Geometry(object):
         mapping = {n: (round(n[0]+offset[0], 3), round(n[1]+offset[1], 3))
                    for n in self.g.nodes()}
         nx.relabel_nodes(self.g, mapping, copy=False)
-        
+
     def rotate(self, alpha):
         """rotates all objects by angle alpha"""
         T = np.array(((np.cos(alpha), -np.sin(alpha)),
@@ -2344,7 +2460,7 @@ class Geometry(object):
         mapping = {n: (round(r[0], 3), round(r[1], 3))
                    for n, r in zip(self.g.nodes(), rotnodes)}
         nx.relabel_nodes(self.g, mapping, copy=False)
-        
+
     def scale(self, factor):
         """scales all objects"""
         for e in self.g.edges(data=True):
@@ -2361,7 +2477,7 @@ class Geometry(object):
         return [tuple([round(int(x/self.atol+0.5)*self.atol, ndec)
                        for x in p])
                 for p in points]
-        
+
     def find_nodes(self, *points, **kwargs):
         """return closest nodes to points in arg within pickdist"""
         n = []
@@ -2381,7 +2497,7 @@ class Geometry(object):
         else:
             return [(round(p[0], ndec), round(p[1], ndec)) for p in points]
         return n
-    
+
     def polyline_paths(self):
         """return lists of line paths"""
         paths = []
@@ -2410,20 +2526,20 @@ class Geometry(object):
     def number_of_nodes(self):
         """returns the number of nodes in graph"""
         return self.g.number_of_nodes()
-    
+
     def number_of_edges(self):
         """return the number of edges in graph"""
         return self.g.number_of_edges()
-        
+
     def elements(self, type):
         """return lists of objects"""
         return [e[2]['object'] for e in self.g.edges(data=True)
                 if isinstance(e[2]['object'], type)]
-        
+
     def arcs(self):
         """return lists of arcs"""
         return self.elements(Arc)
-    
+
     def lines(self):
         """return lists of lines"""
         return self.elements(Line)
@@ -2466,13 +2582,13 @@ class Geometry(object):
         if len(corners) > 1:
             corners.sort()
         return corners
-        
+
     def repair_hull_line(self, center, angle):
         # We need to set our own tolerance range
         # to find the right points
         rtol = 1e-4
         atol = 1e-4
-        
+
         corners = self.get_corner_list(center, angle, rtol, atol)
         if len(corners) < 2:
             # no hull without more than 1 corners
@@ -2500,11 +2616,11 @@ class Geometry(object):
         # Liste neu.
         corners = [Corner(center, c)
                    for c in self.angle_nodes(center, angle, rtol, atol)]
-        
+
 #        print("repair_hull_line: {}".format(angle))
 #        for c in corners:
 #            print(" - corner {}".format(c))
-            
+
         if len(corners) > 1:
             corners.sort()
             p1 = corners[0].point()
@@ -2536,7 +2652,7 @@ class Geometry(object):
             p1 = c_min.point()
             p2 = c_first.point()
             self.g.add_edge(p1, p2, object=Line(Element(start=p1, end=p2)))
-            
+
         c_last = corners[len(corners)-1]
         if not c_max.is_same_corner(c_last):
             c_max.is_new_point = True
@@ -2573,17 +2689,17 @@ class Geometry(object):
                 Element(center=center, radius=radius,
                         start_angle=angle_p*180/np.pi,
                         end_angle=endangle*180/np.pi)))
-        
+
     def get_corner_nodes(self, center, angle):
         rtol = 1e-4
         atol = 1e-4
-        
+
         corners = self.get_corner_list(center, angle, rtol, atol)
         if len(corners) < 2:
             # not enough corners
             return ()
         return (corners[0].point(), corners[len(corners)-1].point())
-        
+
     def remove_corners(self, g):
         """removes the corner nodes with their edges"""
         corners = [n for n in self.find_corners(g.nodes()) if g.degree(n) < 3]
@@ -2592,13 +2708,13 @@ class Geometry(object):
 
     def point_lefthand_side(self, p1, p2):
         alpha = alpha_line(p2, p1)
-    
-        nbrs = [n for n in self.g.neighbors(p2) 
+
+        nbrs = [n for n in self.g.neighbors(p2)
                 if not (points_are_close(n, p1) or points_are_close(n, p2))]
         if len(nbrs) == 0:
             # Unerwartetes Ende des Rundgangs
             return None
-            
+
 #        angles = [(alpha_angle(alpha ,alpha_line(p2, n)), n) for n in nbrs]
         angles = []
         for p in nbrs:
@@ -2608,7 +2724,7 @@ class Geometry(object):
             px = e.center_of_connection()
             alphax = alpha_line(p2, px)
             if np.isclose(alpha, alphax, 1e-05, 0.00001):
-#                print("   >>> alpha={}, alphax={}".format(alpha, alphax))
+                # print("   >>> alpha={}, alphax={}".format(alpha, alphax))
                 angles.append((0.0, p))
             else:
                 # we don't move more than 180 degrees
@@ -2634,9 +2750,9 @@ class Geometry(object):
 
         if e_dict[x]:
             # Diese Area wurde schon abgelaufen.
- #           print("    *** bereits abgelaufen ({}) ***".format(x))
+            # print("    *** bereits abgelaufen ({}) ***".format(x))
             return None
-        e_dict[x] = True # footprint
+        e_dict[x] = True  # footprint
         area.append(e)
         first_p = start_p1
         this_p = start_p2
@@ -2644,18 +2760,20 @@ class Geometry(object):
         next_p = self.point_lefthand_side(first_p, this_p)
         if not next_p:
             # Unerwartetes Ende
-#            print("    *** Sackgasse ***")
+            # print("    *** Sackgasse ***")
             return None
 
-#        print("\nBEGIN get_new_area: start={}, next={}".format(start_p1, start_p2))
-        
+        # print("\nBEGIN get_new_area: start={}, next={}".
+        #       format(start_p1, start_p2))
+
         a = normalise_angle(alpha_points(first_p, this_p, next_p))
         alpha = a
-#        print("get_new_area: a={}, b={}, c={} => + {} = {}".format(first_p, this_p, next_p, a, alpha))
+        # print("get_new_area: a={}, b={}, c={} => + {} = {}".
+        #       format(first_p, this_p, next_p, a, alpha))
 
         c = 0
         while not points_are_close(next_p, start_p1):
- #           print("next={}, start={}".format(next_p, start_p1))
+            # print("next={}, start={}".format(next_p, start_p1))
             c += 1
             if c > 1000:
                 print("FATAL: *** over 1000 elements in area ? ***")
@@ -2665,39 +2783,42 @@ class Geometry(object):
             e = e_dict['object']
             x = e.get_point_number(this_p)
             if e_dict[x]:
- #               print('     *** da waren wir schon:\n   {}\n     ***'.format(e))
+                # print('     *** da waren wir schon:\n   {}\n     ***'.
+                #       format(e))
                 return None
-            e_dict[x] = True # footprint
+            e_dict[x] = True  # footprint
             first_p = this_p
             this_p = next_p
             next_p = self.point_lefthand_side(first_p, this_p)
             if not next_p:
                 # Unerwartetes Ende
-#                print("    *** Sackgasse ***")
+                # print("    *** Sackgasse ***")
                 return None
 
             a = normalise_angle(alpha_points(first_p, this_p, next_p))
             alpha += a
-#            print("get_new_area: a={}, b={}, c={} => + {} = {}".format(first_p, this_p, next_p, a, alpha))
+            # print("get_new_area: a={}, b={}, c={} => + {} = {}".
+            #       format(first_p, this_p, next_p, a, alpha))
             area.append(e)
 
- #       print("END get_new_area\n")
-        
+        # print("END get_new_area\n")
+
         e_dict = self.g.get_edge_data(this_p, next_p)
-        e = e_dict['object']            
+        e = e_dict['object']
         x = e.get_point_number(this_p)
-        e_dict[x] = True # footprint
+        e_dict[x] = True  # footprint
         area.append(e)
         a = normalise_angle(alpha_points(this_p, next_p, start_p2))
         alpha += a
- #       print("get_new_area: a={}, b={}, c={} => + {} = {}".format(this_p, next_p, start_p2, a, alpha))
-        
- #       print(">>> area found: alpha={}<<<\n".format(alpha))
+        # print("get_new_area: a={}, b={}, c={} => + {} = {}".
+        #       format(this_p, next_p, start_p2, a, alpha))
+
+        # print(">>> area found: alpha={}<<<\n".format(alpha))
         if alpha < 0.0:
             # Wir wollten nach links, aber es ging immer nach rechts!
             return None
         return area
-        
+
     def create_list_of_areas(self):
         """ return list of areas for each node and their neighbors
         """
@@ -2751,14 +2872,32 @@ class Geometry(object):
         """
         assert(isinstance(e, Line))
         if is_same_angle(start_angle, end_angle):
-            points = inner_circle.intersect_line(e, self.rtol, self.atol, False) + \
-                     outer_circle.intersect_line(e, self.rtol, self.atol, False) + \
+            points = inner_circle.intersect_line(e,
+                                                 self.rtol,
+                                                 self.atol,
+                                                 False) + \
+                     outer_circle.intersect_line(e,
+                                                 self.rtol,
+                                                 self.atol,
+                                                 False) + \
                      [e.p2]
         else:
-            points = e.intersect_line(start_line, self.rtol, self.atol, False) + \
-                     e.intersect_line(end_line, self.rtol, self.atol, False) + \
-                     inner_circle.intersect_line(e, self.rtol, self.atol, False) + \
-                     outer_circle.intersect_line(e, self.rtol, self.atol, False) + \
+            points = e.intersect_line(start_line,
+                                      self.rtol,
+                                      self.atol,
+                                      False) + \
+                     e.intersect_line(end_line,
+                                      self.rtol,
+                                      self.atol,
+                                      False) + \
+                     inner_circle.intersect_line(e,
+                                                 self.rtol,
+                                                 self.atol,
+                                                 False) + \
+                     outer_circle.intersect_line(e,
+                                                 self.rtol,
+                                                 self.atol,
+                                                 False) + \
                      [e.p2]
 
         new_elements = []
@@ -2766,19 +2905,21 @@ class Geometry(object):
 
         for p in points:
             dist = distance(e.p1, p)
-            sorted_points.append((dist ,p))
+            sorted_points.append((dist, p))
         sorted_points.sort()
 
         p1 = e.p1
-        for x,p2 in sorted_points:
+        for x, p2 in sorted_points:
             pm = middle_point_of_line(p1, p2)
-            if is_point_inside_region(pm, center, inner_circle.radius, outer_circle.radius,
+            if is_point_inside_region(pm, center,
+                                      inner_circle.radius,
+                                      outer_circle.radius,
                                       start_angle, end_angle):
                 new_elements.append(Line(Element(start=p1, end=p2)))
             p1 = p2
-            
+
         return new_elements
-        
+
     def copy_arc(self, center, radius, start_angle, end_angle,
                  start_line, end_line, inner_circle, outer_circle, e):
 
@@ -2787,41 +2928,61 @@ class Geometry(object):
         """
         assert(isinstance(e, Arc))
         if is_same_angle(start_angle, end_angle):
-            points = inner_circle.intersect_arc(e, self.rtol, self.atol, False) + \
-                     outer_circle.intersect_arc(e, self.rtol, self.atol, False) + \
+            points = inner_circle.intersect_arc(e,
+                                                self.rtol,
+                                                self.atol,
+                                                False) + \
+                     outer_circle.intersect_arc(e,
+                                                self.rtol,
+                                                self.atol,
+                                                False) + \
                      [e.p2]
         else:
-            points = e.intersect_line(start_line, self.rtol, self.atol, False) + \
-                     e.intersect_line(end_line, self.rtol, self.atol, False) + \
-                     inner_circle.intersect_arc(e, self.rtol, self.atol, False) + \
-                     outer_circle.intersect_arc(e, self.rtol, self.atol, False) + \
+            points = e.intersect_line(start_line,
+                                      self.rtol,
+                                      self.atol,
+                                      False) + \
+                     e.intersect_line(end_line,
+                                      self.rtol,
+                                      self.atol,
+                                      False) + \
+                     inner_circle.intersect_arc(e,
+                                                self.rtol,
+                                                self.atol,
+                                                False) + \
+                     outer_circle.intersect_arc(e,
+                                                self.rtol,
+                                                self.atol,
+                                                False) + \
                      [e.p2]
-           
+
         new_elements = []
         sorted_points = []
-        
+
         alpha_start = alpha_line(e.center, e.p1)
-        
+
         for p in points:
             alpha_next = alpha_line(e.center, p)
             if less_equal(alpha_next, alpha_start):
                 alpha_next += 2*np.pi
-            sorted_points.append((alpha_next ,p))
+            sorted_points.append((alpha_next, p))
             alpha_start = alpha_next
         sorted_points.sort()
 
         p1 = e.p1
         alpha_start = alpha_line(e.center, e.p1)
-        for x,p2 in sorted_points:
+        for x, p2 in sorted_points:
             alpha_end = alpha_line(e.center, p2)
             pm = middle_point_of_arc(e.center, e.radius, p1, p2)
             if is_point_inside_region(pm, center,
                                       inner_circle.radius, outer_circle.radius,
                                       start_angle, end_angle):
-                new_elements.append(Arc(Element(center=e.center, radius=e.radius,
-                                                start_angle=alpha_start*180/np.pi,
-                                                end_angle=alpha_end*180/np.pi)))
-            
+                new_elements.append(
+                    Arc(Element(center=e.center,
+                                radius=e.radius,
+                                start_angle=alpha_start*180/np.pi,
+                                end_angle=alpha_end*180/np.pi)))
+
             alpha_start = alpha_end
             p1 = p2
         return new_elements
@@ -2833,42 +2994,63 @@ class Geometry(object):
         """
         assert(isinstance(e, Circle))
         if is_same_angle(start_angle, end_angle):
-            points = inner_circle.intersect_circle(e, self.rtol, self.atol, False) + \
-                     outer_circle.intersect_circle(e, self.rtol, self.atol, False)
+            points = inner_circle.intersect_circle(e,
+                                                   self.rtol,
+                                                   self.atol,
+                                                   False) + \
+                     outer_circle.intersect_circle(e,
+                                                   self.rtol,
+                                                   self.atol,
+                                                   False)
         else:
-            points = e.intersect_line(start_line, self.rtol, self.atol) + \
-                     e.intersect_line(end_line, self.rtol, self.atol) + \
-                     inner_circle.intersect_circle(e, self.rtol, self.atol, False) + \
-                     outer_circle.intersect_circle(e, self.rtol, self.atol, False)
-                 
+            points = e.intersect_line(start_line,
+                                      self.rtol,
+                                      self.atol) + \
+                     e.intersect_line(end_line,
+                                      self.rtol,
+                                      self.atol) + \
+                     inner_circle.intersect_circle(e,
+                                                   self.rtol,
+                                                   self.atol,
+                                                   False) + \
+                     outer_circle.intersect_circle(e,
+                                                   self.rtol,
+                                                   self.atol,
+                                                   False)
+
         new_elements = []
         if len(points) < 2:
             if is_point_inside_region(e.p1, center,
-                                      inner_circle.radius, outer_circle.radius,
+                                      inner_circle.radius,
+                                      outer_circle.radius,
                                       start_angle, end_angle):
-                new_elements.append(Circle(Element(center=e.center, radius=e.radius)))
+                new_elements.append(
+                    Circle(Element(center=e.center, radius=e.radius)))
             return new_elements
-        
+
         sorted_points = []
         for p in points:
             alpha_p = alpha_line(e.center, p)
             sorted_points.append((alpha_p, p))
         sorted_points.sort()
 
-        x,px = sorted_points[0]
+        x, px = sorted_points[0]
         del sorted_points[0]
         p1 = px
         alpha_start = alpha_line(e.center, p1)
-        for x,p2 in sorted_points:
+        for x, p2 in sorted_points:
             alpha_end = alpha_line(e.center, p2)
             pm = middle_point_of_arc(e.center, e.radius, p1, p2)
             if is_point_inside_region(pm, center,
-                                      inner_circle.radius, outer_circle.radius,
+                                      inner_circle.radius,
+                                      outer_circle.radius,
                                       start_angle, end_angle):
-                new_elements.append(Arc(Element(center=e.center, radius=e.radius,
-                                                start_angle=alpha_start*180/np.pi,
-                                                end_angle=alpha_end*180/np.pi)))
-            
+                new_elements.append(
+                    Arc(Element(center=e.center,
+                                radius=e.radius,
+                                start_angle=alpha_start*180/np.pi,
+                                end_angle=alpha_end*180/np.pi)))
+
             alpha_start = alpha_end
             p1 = p2
 
@@ -2881,19 +3063,31 @@ class Geometry(object):
                                             start_angle=alpha_start*180/np.pi,
                                             end_angle=alpha_end*180/np.pi)))
         return new_elements
-      
-    def copy_shape(self, center, radius, startangle, endangle, inner_radius, outer_radius, split=False):
+
+    def copy_shape(self, center, radius,
+                   startangle, endangle,
+                   inner_radius, outer_radius,
+                   split=False):
         """ Die Funktion kopiert die Teile von Shape-Objekten, welche sich in
             der durch die Parameter definierten Teilkreisfläche befinden.
         """
         if is_same_angle(startangle, endangle):
-            start_line = Line(Element(start=center, end=point(center, radius+1, startangle)))
-            end_line = Line(Element(start=center, end=point(center, radius+1, startangle)))
+            start_line = Line(
+                Element(start=center,
+                        end=point(center, radius+1, startangle)))
+            end_line = Line(
+                Element(start=center,
+                        end=point(center, radius+1, startangle)))
         else:
-            start_line = Line(Element(start=center, end=point(center, radius+1, startangle)))
-            end_line = Line(Element(start=center, end=point(center, radius+1, endangle)))
+            start_line = Line(
+                Element(start=center,
+                        end=point(center, radius+1, startangle)))
+            end_line = Line(
+                Element(start=center,
+                        end=point(center, radius+1, endangle)))
 
-        if np.isclose(normalise_angle(startangle), normalise_angle(endangle), 0.0):
+        if np.isclose(normalise_angle(startangle),
+                      normalise_angle(endangle), 0.0):
             inner_circle = Circle(Element(center=center, radius=inner_radius))
             outer_circle = Circle(Element(center=center, radius=outer_radius))
         else:
@@ -2907,16 +3101,22 @@ class Geometry(object):
         new_elements = []
         for e in self.elements(Shape):
             if isinstance(e, Line):
-                new_elements += self.copy_line(center, radius, startangle, endangle,
-                                               start_line, end_line, inner_circle, outer_circle, e)
-                    
+                new_elements += self.copy_line(
+                    center, radius, startangle, endangle,
+                    start_line, end_line,
+                    inner_circle, outer_circle, e)
+
             elif isinstance(e, Arc):
-                new_elements += self.copy_arc(center, radius, startangle, endangle,
-                                              start_line, end_line, inner_circle, outer_circle, e)
+                new_elements += self.copy_arc(
+                    center, radius, startangle, endangle,
+                    start_line, end_line,
+                    inner_circle, outer_circle, e)
 
             elif isinstance(e, Circle):
-                new_elements += self.copy_circle(center, radius, startangle, endangle,
-                                                 start_line, end_line, inner_circle, outer_circle, e)
+                new_elements += self.copy_circle(
+                    center, radius, startangle, endangle,
+                    start_line, end_line,
+                    inner_circle, outer_circle, e)
 
         if split:
             return Geometry(new_elements, 0.05, 0.1, split=split)
@@ -2928,32 +3128,33 @@ class Geometry(object):
             if np.isclose(a, alpha):
                 return False
         return True
-           
-    def find_symmetry(self, center, radius, startangle, endangle, sym_tolerance):
-#        print("=== Find Symmetry ===")        
+
+    def find_symmetry(self, center, radius,
+                      startangle, endangle, sym_tolerance):
+        # print("=== Find Symmetry ===")
         arealist = self.list_of_areas()
 
         if len(arealist) == 0:
             return False
-            
+
         arealist.sort()
 #        for a in arealist:
 #            print(a)
 #            a.print_area()
 #        print("-----------------")
-        
+
         def add(areas, a):
             for area in areas:
                 if area.is_equal(a, sym_tolerance):
                     area.increment(a)
                     return
             areas.append(a)
-            
+
         arealist_match = []
         for a in arealist:
             a.sym_tolerance = sym_tolerance
             add(arealist_match, a)
- 
+
         for a in arealist_match:
             a.set_delta()
         arealist_match.sort()
@@ -2962,12 +3163,12 @@ class Geometry(object):
 #        for a in arealist_match:
 #            print(" - {}".format(a))
 #        print("<<<<< AREAS <<<<<")
-        
+
         area = arealist_match[0]
         if area.delta == 0.0:
             logger.info("#1: No symmetry-axis found")
             return False
-            
+
         sym = part_of_circle(0.0, area.delta, 1)
         if sym == 0.0:
             logger.info("#2: No symmetry-axis found")
@@ -2979,23 +3180,23 @@ class Geometry(object):
             p = point(center, radius+5, alpha)
             line = Line(Element(start=center, end=p))
             self.add_cut_line(line)
-        
+
         self.sym_area = area
         return True
 
     def has_symmetry_area(self):
-        return not self.sym_area == None
+        return self.sym_area is not None
 
     def symmetry_startangle(self):
         return self.sym_area.sym_startangle
 
     def symmetry_endangle(self):
         return self.sym_area.sym_endangle
-            
+
     def get_symmetry_copies(self):
         if self.sym_counterpart == 0:
             return self.sym_part
-            
+
         x = gcd(self.sym_part, self.sym_counterpart)
         return self.sym_part / x - 1
 
@@ -3007,15 +3208,16 @@ class Geometry(object):
             return 2*self.alfa
         else:
             return self.alfa
-        
+
     def __str__(self):
-        return "name...........: {}\n".format(self._name)+\
-               "kind...........: {}\n".format(self.kind)+\
-               "sym_part.......: {}\n".format(self.sym_part)+\
-               "sym_counterpart: {}\n".format(self.sym_counterpart)+\
-               "alpha..........: {}\n".format(self.alfa)+\
-               "radius.........: {} -- {}\n".format(self.min_radius, self.max_radius)
-               
+        return "name...........: {}\n".format(self._name) + \
+               "kind...........: {}\n".format(self.kind) + \
+               "sym_part.......: {}\n".format(self.sym_part) + \
+               "sym_counterpart: {}\n".format(self.sym_counterpart) + \
+               "alpha..........: {}\n".format(self.alfa) + \
+               "radius.........: {} -- {}\n".format(self.min_radius,
+                                                    self.max_radius)
+
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
                 self.__dict__ == other.__dict__)
@@ -3023,31 +3225,31 @@ class Geometry(object):
     def __ne__(self, other):
         """Define a non-equality test"""
         return not self.__eq__(other)
-    
+
     def __hash__(self):
         """Override the default hash behavior
         (that returns the id or the object)"""
         return hash(tuple(sorted(self.__dict__.items())))
-    
+
     def set_name(self, name):
         self._name = name
-        
+
     def get_name(self):
         return self._name
-        
+
     def minmax(self):
         """ find min and max coordinates of all shapes
             ([<min-x>, <max-x>, <min-y>, <max-y>])
         """
-        mm = [99999,-99999,99999,-99999]
-            
+        mm = [99999, -99999, 99999, -99999]
+
         for e in self.elements(Shape):
             n = e.minmax()
             mm[0] = min(mm[0], n[0])
             mm[1] = max(mm[1], n[1])
             mm[2] = min(mm[2], n[2])
             mm[3] = max(mm[3], n[3])
-            
+
         return mm
 
     def add_cut_line(self, e):
@@ -3055,7 +3257,7 @@ class Geometry(object):
 
     def clear_cut_lines(self):
         self.cut_lines = []
-        
+
     def render_cut_lines(self, renderer):
         for e in self.cut_lines:
             e.render(renderer, 'darkred')
@@ -3063,11 +3265,15 @@ class Geometry(object):
     def render_airgaps(self, renderer):
         for g in self.airgaps:
             if isinstance(g, Arc):
-                renderer.arc(g.startangle, g.endangle, g.center, g.radius, color='red')
+                renderer.arc(g.startangle, g.endangle,
+                             g.center, g.radius,
+                             color='red')
             elif isinstance(g, Circle):
-                renderer.circle(g.center, g.radius, color='red')
+                renderer.circle(g.center, g.radius,
+                                color='red')
             elif isinstance(g, Line):
-                renderer.line(g.p1, g.p2, color='red')
+                renderer.line(g.p1, g.p2,
+                              color='red')
             elif isinstance(g, Point):
                 renderer.point(g.p1, 'ro')
 
@@ -3084,49 +3290,48 @@ class Geometry(object):
                 renderer.point(n, 'ro', color='magenta')
             elif len(nbr_list) > 4:
                 renderer.point(n, 'ro', color='black')
-                
 
     def check_hull(self, center, radius, x, y, rtol, atol):
         node_count = 0
         miss_count = 0
         for h in convex_hull(self.virtual_nodes()):
             dist = distance(center, h)
-            node_count+=1
+            node_count += 1
 
             if not np.isclose(dist, radius, rtol, atol):
-                if x != None:
+                if x is not None:
                     if np.isclose(x, h[0], rtol, atol):
                         continue
-                if y != None:
+                if y is not None:
                     if np.isclose(y, h[1], rtol, atol):
                         continue
-                miss_count+=1
+                miss_count += 1
         return miss_count == 0
-        
+
     def get_motor(self):
         mm = self.minmax()
         height = mm[3]-mm[2]
         width = mm[1]-mm[0]
 #        print("\nGet Motor mit minmax={}".format(mm))
 #        print("   Motor hoch={}, breit={}".format(height, width))
-        
+
         c = []
         r = 0.0
         atol = 3.0
-        
+
         if np.isclose(height, width, self.rtol, self.atol):
             r = width/2
             c = [mm[1]-r, mm[3]-r]
             logger.info("check for full motor")
             if self.check_hull(c, r, None, None, self.rtol, atol):
                 return Motor(self, c, r, 0.0, 0.0)
-                
+
             logger.info("check for quarter motor")
             r = width
             c = [mm[0], mm[2]]
             if self.check_hull(c, r, mm[0], mm[2], self.rtol, atol):
                 return Motor(self, c, r, 0.0, np.pi/2)
-            
+
         elif np.isclose(width, height*2, self.rtol, self.atol):
             r = width/2
             c = [mm[1]-height, mm[2]]
@@ -3153,8 +3358,8 @@ class Geometry(object):
         motor = self.get_motor_part(mm)
         if motor:
             return motor
-            
-        return Motor(self, [0.0, 0.0], 0.0, 0.0, 0.0 )
+
+        return Motor(self, [0.0, 0.0], 0.0, 0.0, 0.0)
 
     def is_new_center(self, center_list, center, rtol, atol):
         for c in center_list:
@@ -3162,11 +3367,11 @@ class Geometry(object):
                 c[1][0] += 1
                 return False
         return True
-        
+
     def get_motor_part(self, mm):
         center_list = []
         for e in self.elements(Arc):
-            center = [round(e.center[0],3), round(e.center[1],3)]
+            center = [round(e.center[0], 3), round(e.center[1], 3)]
             if self.is_new_center(center_list, center, self.rtol, self.atol):
                 center_list.append((center, [1]))
 
@@ -3180,27 +3385,27 @@ class Geometry(object):
                 count = c[1][0]
                 unique = True
                 center = c[0]
-                
+
         if not unique:
             # Wir finden keine Arc-Objekte, welche uns einen Hinweis auf den
             # Center geben können. Wir versuchen in der Verzweiflung mit
             # x(min) und y(min)
             center = [round(mm[0], 4), round(mm[2], 4)]
 
-        logger.debug("Center is {}".format(center))                
-        
+        logger.debug("Center is {}".format(center))
+
         min_radius = 99999
         max_radius = 0
         startangle = 999.0
         endangle = -999.0
-        
+
         for h in convex_hull(self.virtual_nodes()):
             angle = alpha_line(center, [round(h[0], 4), round(h[1], 4)])
             if angle < 0.0:
                 logger.debug("Seltsamer Punkt {}".format(h))
             startangle = min(startangle, angle)
             endangle = max(endangle, angle)
-            
+
             dist = distance(center, h)
             min_radius = min(min_radius, dist)
             max_radius = max(max_radius, dist)
@@ -3209,41 +3414,50 @@ class Geometry(object):
         center_right = round(mm[1] - center[0], 4)
         center_down = round(center[1] - mm[2], 4)
         center_up = round(mm[3] - center[1], 4)
-        
+
         min_r = min(center_left, center_right, center_up, center_down)
         max_r = max(center_left, center_right, center_up, center_down)
-        
+
         if less_equal(center_left, 0.0) or less_equal(center_right, 0.0) or \
            less_equal(center_up, 0.0) or less_equal(center_down, 0.0):
             if not np.isclose(center_left, center_right):
                 x = part_of_circle(startangle, endangle)
 
                 if x > 2:
-                    return Motor(self, [round(center[0], 8), round(center[1], 8)], max_radius, startangle, endangle)
-        
+                    return Motor(self,
+                                 [round(center[0], 8), round(center[1], 8)],
+                                 max_radius, startangle, endangle)
+
         if min_radius >= max_radius*0.9 and min_r >= max_r*0.9:
             # Mit 10 % Abweichungen gehen wir noch von einem ganzen Motor aus.
-            return Motor(self, [round(center[0], 8), round(center[1],8)], max(max_radius, max_r), 0.0, 0.0 )
+            return Motor(self,
+                         [round(center[0], 8), round(center[1], 8)],
+                         max(max_radius, max_r), 0.0, 0.0)
 
         if np.isclose(center_down, 0.0):
             min_r = min(center_left, center_right, center_up)
             if min_r >= max_r*0.9:
                 # Vermutlich ein halber Motor
-                return Motor(self, [round(center[0], 8), round(center[1], 8)], max(max_radius, max_r), 0.0, np.pi )
-                
+                return Motor(self,
+                             [round(center[0], 8), round(center[1], 8)],
+                             max(max_radius, max_r), 0.0, np.pi)
+
             if np.isclose(center_left, 0.0):
                 min_r = min(center_right, center_up)
                 if min_r >= max_r*0.9:
                     # Vermutlich ein viertel Motor
-                    return Motor(self, [round(center[0], 8), round(center[1],8)], max(max_radius, max_r), 0.0, np.pi/2 )
+                    return Motor(self,
+                                 [round(center[0], 8), round(center[1], 8)],
+                                 max(max_radius, max_r), 0.0, np.pi/2)
 
         # TODO: handle half and quarter machines
 
         if np.isclose(center_left, center_right):
-            # Der x-Wert des Center scheint zu stimmen. Eine Symmetrie an der y-Achse
-            # ist möglich. Dem y-Wert ist nicht zu trauen!
+            # Der x-Wert des Center scheint zu stimmen.
+            # Eine Symmetrie an der y-Achse ist möglich.
+            # Dem y-Wert ist nicht zu trauen!
             if center_down > 0.0:
-                # This center is too high. 
+                # This center is too high.
                 nodes = [n for n in convex_hull(
                     self.g.nodes()) if n[0] > center[0]]
                 assert(nodes)
@@ -3251,21 +3465,21 @@ class Geometry(object):
                 for n in nodes[1:]:
                     if n[1] < p[1]:
                         p = n
-                    
+
                 m_min = 99999.0
                 for n in nodes:
                     m = line_m(p, n)
                     if m and m > 0.0:
-                        #print("m = {}, p={}, n={}".format(m, p, n))
+                        # print("m = {}, p={}, n={}".format(m, p, n))
                         m_min = min(m_min, m)
-                    
+
                 y = line_n([p[0]-center[0], p[1]], m_min)
                 center[1] = y
                 angle = alpha_line(center, p)
 
         return Motor(self, [round(center[0], 8), round(center[1], 8)],
                      max_radius, angle, np.pi - angle)
-    
+
     def is_new_radius(self, radius_list, radius):
         for r, d in radius_list:
             if np.isclose(r, radius):
@@ -3276,14 +3490,14 @@ class Geometry(object):
         """ Die Funktion untersucht, ob sich der Parameter circle in einem
             Luftspalt befindet.
         """
-        ok=True
+        ok = True
         for e in self.elements(Shape):
             for p in e.intersect_circle(circle, 0.0, True):
                 alpha_p = alpha_line(center, p)
                 if not (np.isclose(alpha_p, startangle, 1e-3, atol) or
                         np.isclose(alpha_p, endangle, 1e-3, atol)):
                     self.airgaps.append(Point(p))
-                    ok=False                          
+                    ok = False
         return ok
 
     def is_border_line(self, center, startangle, endangle, e, atol):
@@ -3296,31 +3510,31 @@ class Geometry(object):
                 angle_p2 = alpha_line(center, e.p2)
                 return np.isclose(endangle, angle_p2)
         return False
-        
+
     def detect_airgaps(self, center, startangle, endangle, atol):
         """ Die Funktion sucht Luftspalt-Kandidaten und liefert eine Liste
             von Möglichkeiten mit jeweils einem minimalen und einem maximalen
             Radius als Begrenzung des Luftspalts.
-        """       
+        """
         gaplist = []
         for e in self.elements(Shape):
             if not self.is_border_line(center, startangle, endangle, e, atol):
                 gaplist += [e.minmax_from_center(center)]
         gaplist.sort()
-                   
+
         airgaps = []
         dist_max = 0.0
-        
+
         min_radius = gaplist[0][0]
         max_radius = gaplist[len(gaplist)-1][1]
         dist_max = min_radius
-        
+
         for g in gaplist:
             if not less_equal(g[0], dist_max):
-                if not (np.isclose(min_radius, dist_max, 1e-2, 1.0) or \
+                if not (np.isclose(min_radius, dist_max, 1e-2, 1.0) or
                         np.isclose(g[0], max_radius, 1e-2, 1.0)):
                     airgaps.append((dist_max, g[0]))
-            dist_max = max(dist_max ,g[1])
+            dist_max = max(dist_max, g[1])
 
         return airgaps
 
@@ -3331,29 +3545,31 @@ class Geometry(object):
             dist = 99999.0
             for a in self.area_list:
                 if area.is_inside(a):
-                    if not area.has_connection( self, a):
-                        d, axis_p, area_p = a.get_most_left_point(self.center, self.max_radius, leftangle)
+                    if not area.has_connection(self, a):
+                        d, axis_p, area_p = a.get_most_left_point(
+                            self.center, self.max_radius, leftangle)
                         if d < dist:
                             dist = d
                             the_axis_p = axis_p
                             the_area_p = area_p
-                        
+
             if the_axis_p:
                 point_list = []
                 line = Line(Element(start=the_axis_p, end=the_area_p))
                 for e in area.elements():
                     points = e.intersect_line(line, self.rtol, self.atol, True)
-                    assert(len(points)<2)
+                    assert(len(points) < 2)
                     for p in points:
                         d = distance(p, the_area_p)
                         point_list.append((d, p))
 
                 point_list.sort()
-                assert(len(point_list)>0)
+                assert(len(point_list) > 0)
                 p = point_list[0][1]
                 new_p = (round(p[0], ndec), round(p[1], ndec))
                 line = Line(Element(start=the_area_p, end=new_p))
-                add_or_join(self.g, the_area_p, new_p, line, self.rtol, self.atol)
+                add_or_join(self.g, the_area_p, new_p, line,
+                            self.rtol, self.atol)
 
     def is_rotor(self):
         if self.sym_counterpart:
@@ -3371,17 +3587,24 @@ class Geometry(object):
 
         if self.is_rotor():
             return self.search_rotor_subregions()
-           
+
     def search_stator_subregions(self):
         for area in self.list_of_areas():
-            area.mark_stator_subregions(self.is_inner, self.is_mirrored(), self.alfa, self.min_radius, self.max_radius)
-            
+            area.mark_stator_subregions(self.is_inner,
+                                        self.is_mirrored(),
+                                        self.alfa,
+                                        self.min_radius,
+                                        self.max_radius)
+
     def search_rotor_subregions(self):
         for area in self.list_of_areas():
-            area.mark_rotor_subregions(self.is_inner, self.is_mirrored(), self.alfa, self.min_radius, self.max_radius)
-        
+            area.mark_rotor_subregions(self.is_inner,
+                                       self.is_mirrored(),
+                                       self.alfa,
+                                       self.min_radius,
+                                       self.max_radius)
+
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))
         for n in self.g.nodes():
             print(n)
-            

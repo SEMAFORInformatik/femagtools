@@ -87,8 +87,7 @@ def symmetry_search(motor, kind, sym_tolerance, show_plots, rows=1, cols=1, num=
 #############################
    
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO,
-                        format='%(message)s')
+    loglevel=logging.INFO
 
     argparser = argparse.ArgumentParser(
         description='Process DXF file and create a plot or FSL file.')
@@ -146,8 +145,16 @@ if __name__ == "__main__":
                            help='print debug information',
                            dest='debug',
                            action="store_true")
+    argparser.add_argument('-l', '--log',
+                           help='print debug information',
+                           dest='debug',
+                           action="store_true")
 
     args = argparser.parse_args()
+    if args.debug:
+        loglevel = logging.DEBUG
+    logging.basicConfig(level=loglevel,
+                        format='%(asctime)s %(message)s')
     if args.airgap > 0.0:
         if args.debug:
             if args.airgap2 > 0.0:

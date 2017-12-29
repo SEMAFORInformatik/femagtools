@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """manage a geometry with
     lines, circles and arcs built from DXF
-    
+
   NOTE: This code is in highly experimental state.
         Use at your own risk.
 
@@ -16,13 +16,15 @@ import copy
 import logging
 import sys
 
+logger = logging.getLogger('femagtools.geom')
+
+
 #############################
 #         Debug Plot        #
 #############################
 
 import matplotlib.pylab as pl
 import matplotlib.patches as pch
-
 
 nxversion = int(nx.__version__.split('.')[0])
 
@@ -58,8 +60,6 @@ def print_area(area):
 #            geom           #
 #############################
         
-logger = logging.getLogger(__name__)
-
 ndec = 6  # number of decimals to round to
 
 def less_equal(v1, v2, rtol=1e-3, atol=1e-8):
@@ -111,8 +111,12 @@ def alpha_triangle(a, b, c):
     rslt = np.arccos(cos_alpha)
     if np.isnan(rslt):
         logger.debug("FATAL: arccos({}) yields nan.".format(cos_alpha))
-        print("FATAL: arccos({}) yields nan. === {}/{}/{}".format(cos_alpha,a,b,c))
+        print('FATAL: arccos({}) yields nan. === {}/{}/{}'.format(cos_alpha, a, b, c))
     return rslt
+
+def round_point(p, n):
+    """round"""
+    return (round(p[0], n), round(p[1], n))
 
 def point(center, radius, alpha, rnd=-1):
     if rnd >= 0:
@@ -433,9 +437,9 @@ def add_or_split(el, x, out_elements, rtol, atol):
             out_elements[x] = None
         split_el = el.split(points, rtol, atol)
         return split_el
-        
+
     return []
-    
+
 def add_or_join(g, n1, n2, entity, rtol, atol):
     """ adds a new entity to graph or joins entity with existing
     g: graph
@@ -725,7 +729,7 @@ class Shape(object):
     def scale(self, factor):
         self.p1 = factor*self.p1[0], factor*self.p1[1]
         self.p2 = factor*self.p2[0], factor*self.p2[1]
-        
+
     def transform(self, T, **kwargs):
         n = T.dot(np.array((self.p1[0], self.p1[1])))
         self.p1 = (n[0], n[1])
@@ -740,24 +744,24 @@ class Shape(object):
             return self.intersect_arc(e, rtol, atol, include_end)
         if isinstance(e, Circle):
             return self.intersect_circle(e, rtol, atol, include_end)
-        return []            
+        return []
 
     def get_point_number(self, p):
-        if points_are_close(p, self.p1, rtol=0.0, atol=0.00001) and\
-           points_are_close(p, self.p2, rtol=0.0, atol=0.00001):
+        if points_are_close(p, self.p1, rtol=0.0, atol=0.001) and \
+           points_are_close(p, self.p2, rtol=0.0, atol=0.001):
             logger.debug("WARNING: get_point_number(): both points are close !!")
-        if points_are_close(p, self.p1, rtol=0.0, atol=0.00001):
+        if points_are_close(p, self.p1, rtol=0.0, atol=0.001):
             return 1
-        if points_are_close(p, self.p2, rtol=0.0, atol=0.00001):
+        if points_are_close(p, self.p2, rtol=0.0, atol=0.001):
             return 2
         return 0
-        
+
     def __str__(self):
         return " {}/{}".format(self.p1, self.p2)
 
     def __lt__(self, s):
         return False
-        
+
 #############################
 #       Circle (Shape)      #
 #############################
@@ -845,7 +849,8 @@ class Circle(Shape):
             p = [self.center[0], line.p1[1]]
         else:
             m = -1/line_m
-            p = lines_intersect_point(line.p1, line_m, line.n(line_m), self.center, m, line_n(self.center, m))
+            p = lines_intersect_point(line.p1, line_m, line.n(line_m),
+                                      self.center, m, line_n(self.center, m))
 
         d = distance(self.center, p)
             
@@ -888,7 +893,8 @@ class Circle(Shape):
         arc = alpha_triangle(circle.radius, self.radius, d)
 
         if np.isnan(arc):
-            if not np.isclose(d, circle.radius + self.radius, rtol, atol):
+            if not np.isclose(d, circle.radius + self.radius,
+                              rtol, atol):
                 return []
             arc = 0.0
         arc_C = alpha_line(self.center, circle.center)
@@ -1334,7 +1340,10 @@ class Line(Shape):
         """ Die Funktion splittet das Line-Objekt an den vorgegebenen Punkten
             und gibt eine Liste der neu enstandenen Elemente aus.
         """
-        points_inside = [(distance(p, self.p1), p) for p in points if self.is_point_inside(p, rtol, atol, False)]
+        points_inside = [(distance(p, self.p1), p)
+                         for p in points if self.is_point_inside(p,
+                                                                 rtol, atol,
+                                                                 False)]
             
         if len(points_inside) > 0:
 #            print(">>> split line")
@@ -1357,7 +1366,8 @@ class Line(Shape):
     def is_point_inside(self, point, rtol, atol, include_end=False):
         """ returns True if point is between start and end point
         """
-        logger.debug("Arc::is_point_inside: %s in (%s, %s)", point, self.p1, self.p2)
+        logger.debug("Arc::is_point_inside: %s in (%s, %s)",
+                     point, self.p1, self.p2)
         
         if points_are_close(point, self.p1, rtol, atol):
             return include_end
@@ -1731,13 +1741,16 @@ class Motor(object):
         if self.radius <= 0.0:
             return False
             
-        return self.geom.find_symmetry(self.center, self.radius, self.startangle, self.endangle, sym_tolerance)
+        return self.geom.find_symmetry(self.center, self.radius,
+                                       self.startangle, self.endangle,
+                                       sym_tolerance)
 
     def get_symmetry_slice(self):
         if not self.geom.has_symmetry_area():
             return None
             
-        motor_slice = self.copy(self.geom.symmetry_startangle(), self.geom.symmetry_endangle())
+        motor_slice = self.copy(self.geom.symmetry_startangle(),
+                                self.geom.symmetry_endangle())
         motor_slice.clear_cut_lines()
         motor_slice.repair_hull()
         motor_slice.rotate_to(0.0)
@@ -1917,14 +1930,23 @@ class Area(object):
 
     def is_equal(self, a, sym_tolerance):
         if sym_tolerance > 0.0:
-            if np.isclose(round(self.min_dist, 4), round(a.min_dist, 4), 1e-03, sym_tolerance) and \
-               np.isclose(round(self.max_dist, 4), round(a.max_dist, 4), 1e-03, sym_tolerance) and \
-               np.isclose(round(self.alpha, 3), round(a.alpha, 3), 1e-02, 0.001):
+            if np.isclose(round(self.min_dist, 4),
+                          round(a.min_dist, 4),
+                          1e-03, sym_tolerance) and \
+               np.isclose(round(self.max_dist, 4),
+                          round(a.max_dist, 4),
+                          1e-03, sym_tolerance) and \
+               np.isclose(round(self.alpha, 3),
+                          round(a.alpha, 3),
+                          1e-02, 0.001):
                 return True
         else:            
-            if np.isclose(round(self.min_dist, 2), round(a.min_dist, 2)) and \
-               np.isclose(round(self.max_dist, 2), round(a.max_dist, 2)) and \
-               np.isclose(round(self.alpha, 3), round(a.alpha, 3), 1e-02, 0.001):
+            if np.isclose(round(self.min_dist, 2),
+                          round(a.min_dist, 2)) and \
+               np.isclose(round(self.max_dist, 2),
+                          round(a.max_dist, 2)) and \
+               np.isclose(round(self.alpha, 3),
+                          round(a.alpha, 3), 1e-02, 0.001):
                 return True
         return False
 
@@ -1971,8 +1993,10 @@ class Area(object):
             
         if len(delta_sorted) == 1:
             # simple case: all have the same angle
-            self.delta = alpha_angle(self.min_angle, self.equal_areas[0].min_angle)
-            self.start = middle_angle(self.max_angle ,self.equal_areas[0].min_angle)
+            self.delta = alpha_angle(self.min_angle,
+                                     self.equal_areas[0].min_angle)
+            self.start = middle_angle(self.max_angle,
+                                      self.equal_areas[0].min_angle)
             self.sym_type = 3 
             self.symmetry = part_of_circle(0.0, self.delta, 1)
             return
@@ -2063,11 +2087,11 @@ class Area(object):
         p1 = (mm[0]-5, y)
         p2 = (mm[1]+5, y)
         line = Line(Element(start=p1, end=p2))
-        
+
         points = []
         for e in self.area:
-            points += e.intersect_line(line)
-        
+            points += e.intersect_line(line, geom.rtol, geom.atol, True)
+
         if len(points) < 2:
             logger.debug("WARNING: get_point_inside() failed ({})".format(len(points)))
             return None
@@ -2596,7 +2620,7 @@ class Geometry(object):
 #        print(" *")
         if len(angles) == 0:
             return None
-            
+
         angles.sort()
         return angles[len(angles)-1][1]
 
@@ -2610,7 +2634,7 @@ class Geometry(object):
 
         if e_dict[x]:
             # Diese Area wurde schon abgelaufen.
-#            print("    *** bereits abgelaufen ({}) ***".format(x))
+ #           print("    *** bereits abgelaufen ({}) ***".format(x))
             return None
         e_dict[x] = True # footprint
         area.append(e)
@@ -2631,8 +2655,8 @@ class Geometry(object):
 
         c = 0
         while not points_are_close(next_p, start_p1):
-#            print("next={}, start={}".format(next_p, start_p1))
-            c +=1
+ #           print("next={}, start={}".format(next_p, start_p1))
+            c += 1
             if c > 1000:
                 print("FATAL: *** over 1000 elements in area ? ***")
                 print_area(area)
@@ -2641,7 +2665,7 @@ class Geometry(object):
             e = e_dict['object']
             x = e.get_point_number(this_p)
             if e_dict[x]:
-#                print("     *** da waren wir schon")
+ #               print('     *** da waren wir schon:\n   {}\n     ***'.format(e))
                 return None
             e_dict[x] = True # footprint
             first_p = this_p
@@ -2657,7 +2681,7 @@ class Geometry(object):
 #            print("get_new_area: a={}, b={}, c={} => + {} = {}".format(first_p, this_p, next_p, a, alpha))
             area.append(e)
 
-#        print("END get_new_area\n")
+ #       print("END get_new_area\n")
         
         e_dict = self.g.get_edge_data(this_p, next_p)
         e = e_dict['object']            
@@ -2666,9 +2690,9 @@ class Geometry(object):
         area.append(e)
         a = normalise_angle(alpha_points(this_p, next_p, start_p2))
         alpha += a
-#        print("get_new_area: a={}, b={}, c={} => + {} = {}".format(this_p, next_p, start_p2, a, alpha))
+ #       print("get_new_area: a={}, b={}, c={} => + {} = {}".format(this_p, next_p, start_p2, a, alpha))
         
-#        print(">>> area found: alpha={}<<<\n".format(alpha))
+ #       print(">>> area found: alpha={}<<<\n".format(alpha))
         if alpha < 0.0:
             # Wir wollten nach links, aber es ging immer nach rechts!
             return None
@@ -2686,8 +2710,9 @@ class Geometry(object):
                 if area.is_identical(a):
                     return
             area_list.append(a)
-            
-        logger.debug("create new area list ")
+
+        if self.debug:
+            print("create new area list ", end='', flush=True)
         if nxversion == 1:
             nx.set_edge_attributes(self.g, 0, True)
             nx.set_edge_attributes(self.g, 1, False)
@@ -2696,18 +2721,17 @@ class Geometry(object):
             nx.set_edge_attributes(self.g, True, 0)
             nx.set_edge_attributes(self.g, False, 1)
             nx.set_edge_attributes(self.g, False, 2)
-            
+
         for p in self.g.nodes():
-
-            logger.debug('.')
-#            print("Start point {}".format(p))
-
+            if self.debug:
+                print('.', end='', flush=True)
             neighbors = [n for n in self.g[p]]
             for next_p in neighbors:
                 area = self.get_new_area(p, next_p, len(neighbors) < 3)
                 if area:
                     a = Area(area, self.center, 0.0)
                     append(self.area_list, a)
+
         if self.debug:
             print(" done. {} areas found".format(len(self.area_list)))
 

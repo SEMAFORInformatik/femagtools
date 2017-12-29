@@ -6,12 +6,8 @@
     renders geometry
 
 
-
-
 """
 import numpy as np
-import numpy.linalg as la
-
 import matplotlib.pylab as pl
 import matplotlib.patches as pch
 import femagtools.dxfsl.geom as g
@@ -32,17 +28,18 @@ class PlotRenderer(object):
         pass
 
     def figure(self):
-        if self.fig == None:
+        if self.fig is None:
             self.fig = pl.figure(figsize=(9, 10), facecolor='lightblue')
-            #self.fig.subplots_adjust(left=0.0, right=0.5, top=1.0, bottom=0.0)
+            pl.tight_layout()
+
         return self.fig
-        
+
     def show_plot(self):
-        if self.fig != None:
+        if self.fig is not None:
             pl.show()
             self.fig = None
-        
-    def arc(self, startangle, endangle, center, radius, color = 'blue'):
+
+    def arc(self, startangle, endangle, center, radius, color='blue'):
         self.ax.add_patch(pch.Arc(center, 2*radius, 2*radius,
                                   angle=0,
                                   theta1=startangle*180/np.pi,
@@ -52,14 +49,14 @@ class PlotRenderer(object):
     def line(self, p1, p2, color='blue'):
         self.ax.add_line(pl.Line2D((p1[0], p2[0]),
                                    (p1[1], p2[1]), color=color))
-    
+
     def circle(self, center, radius, color='blue'):
         self.ax.add_patch(pch.Circle(center, radius,
                                      fill=False, color=color))
 
     def point(self, p, col, color='blue'):
         pl.plot([p[0]], [p[1]], col, color=color)
-        
+
     def render(self, geom, filename=None, **kwargs):
         draw_center = kwargs.get('draw_center', False)
         draw_corners = kwargs.get('draw_corners', False)
@@ -72,7 +69,7 @@ class PlotRenderer(object):
         if draw_hull:
             for h in g.convex_hull(geom.g.nodes()):
                 pl.plot([h[0]], [h[1]], 'ro')
-                
+
         id = 0
         for area in geom.areas(incl_bnd):
             id += 1
@@ -116,12 +113,12 @@ class PlotRenderer(object):
         points.sort()
         if len(points) <= 1:
             return points
-    
+
         def cross(o, a, b):
             dx = a[0] - o[0], a[1] - o[1]
             dy = b[0] - o[0], b[1] - o[1]
             return dx[0] * dy[1] - dx[1] * dy[0]
-    
+
         print("=== Print Convex Hull ===")
         lower = []
         for p in points:
@@ -140,27 +137,27 @@ class PlotRenderer(object):
         draw_center = kwargs.get('draw_center', False)
         draw_inside = kwargs.get('draw_inside', False)
         title = kwargs.get('title', "")
-        show  = kwargs.get('show', True)
-        rows  = kwargs.get('rows', 1)
-        cols  = kwargs.get('cols', 1)
-        num  = kwargs.get('num', 1)
+        show = kwargs.get('show', True)
+        rows = kwargs.get('rows', 1)
+        cols = kwargs.get('cols', 1)
+        num = kwargs.get('num', 1)
         points = kwargs.get('points', [])
 
         if show:
             rows = 1
             cols = 1
             num = 1
-            
+
         mm = geom.minmax()
-        
+
         if single_view:
-            count=0            
+            count = 0
             for e in geom.elements(type):
-                print("Render Element {}".format(e))                
+                print("Render Element {}".format(e))
                 if count == 0:
                     self.ax = self.figure().add_subplot(111)
                     self.ax.axis('scaled', aspect='equal')
-                    
+
                 e.render(self, 'blue', True)
 
                 count += 1
@@ -171,7 +168,7 @@ class PlotRenderer(object):
                     self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
                     pl.show()
                     count = 0
-                    
+
             if count != 0:
                 self.point((mm[0]-5, mm[2]-5), 'ro', color='red')
                 self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
@@ -180,15 +177,17 @@ class PlotRenderer(object):
                 self.ax.axis('scaled', aspect='equal')
                 self.show_plot()
             return
-        
-        self.ax = self.figure().add_subplot(rows, cols, num, axisbg=self.background)
+
+        self.ax = self.figure().add_subplot(rows, cols,
+                                            num,
+                                            axisbg=self.background)
         if len(title) > 0:
             self.ax.set_title(title, size=14)
-        self.ax.grid(color='blue',linewidth=0.5)
-                  
+        self.ax.grid(color='blue', linewidth=0.5)
+
         for e in geom.elements(type):
             e.render(self, 'blue', with_nodes)
-        
+
         if with_hull:
             for h in g.convex_hull(geom.virtual_nodes()):
                 pl.plot([h[0]], [h[1]], 'ro')
@@ -210,16 +209,16 @@ class PlotRenderer(object):
                 p = area.get_point_inside(geom)
                 if p:
                     pl.plot([p[0]], [p[1]], 'ro', color='yellow')
-            
+
         geom.render_cut_lines(self)
         geom.render_airgaps(self)
         if neighbors:
             geom.render_neighbors(self)
-        
+
         if len(points) > 0:
             for p in points:
                 self.point(p, 'ro', color='red')
-                
+
         if geom.center:
             self.point(geom.center, 'ro', color='darkgreen')
 
@@ -227,21 +226,22 @@ class PlotRenderer(object):
         self.point((mm[0]-5, mm[3]+5), 'ro', color=self.background)
         self.point((mm[1]+5, mm[2]-5), 'ro', color=self.background)
         self.point((mm[1]+5, mm[3]+5), 'ro', color=self.background)
-        self.ax.axis('scaled', aspect='equal')        
-        
+        self.ax.axis('scaled', aspect='equal')
+
         if show:
             self.show_plot()
 
     def render_areas(self, geom, **kwargs):
         with_nodes = kwargs.get('with_nodes', False)
         single_view = kwargs.get('single_view', False)
-        
+
         if not single_view:
             fig = pl.figure()
             self.ax = fig.add_subplot(111)
 
-        colors = ('red', 'green', 'blue', 'magenta', 'orange', 'grey', 'darkgreen')
-        
+        colors = ('red', 'green', 'blue', 'magenta',
+                  'orange', 'grey', 'darkgreen')
+
         c = -1
         for area in geom.list_of_areas():
             if area.number_of_elements() > 1:
@@ -249,7 +249,8 @@ class PlotRenderer(object):
                 if c >= len(colors):
                     c = 0
                 if single_view:
-                    print("*** AREA has {} elements ***".format(area.number_of_elements()))
+                    print("*** AREA has {} elements ***".
+                          format(area.number_of_elements()))
                     fig = pl.figure()
                     self.ax = fig.add_subplot(111)
 
@@ -257,7 +258,7 @@ class PlotRenderer(object):
                 p = area.get_point_inside(geom)
                 if p:
                     self.point(p, 'ro', color='magenta')
-                
+
                 if single_view:
                     self.ax.axis('scaled', aspect='equal')
                     pl.show()
@@ -269,12 +270,12 @@ class PlotRenderer(object):
     def render_area(self, area):
         fig = pl.figure()
         self.ax = fig.add_subplot(111)
-       
+
         area.render(self, 'red', with_nodes=True)
 
         self.ax.axis('scaled', aspect='equal')
         pl.show()
-            
+
     def draw_slot(self, id, slot, ax):
         poly = pch.Polygon(slot, fill=True, color='#ee82ee')
 
@@ -282,7 +283,8 @@ class PlotRenderer(object):
                   sum(list(zip(*slot))[1])/len(slot))
         ax.text(center[0], center[1], str(id))
         ax.add_patch(poly)
-        
+
+
 #############################
 #       DumpRenderer        #
 #############################
@@ -290,7 +292,7 @@ class PlotRenderer(object):
 class DumpRenderer(object):
     def __init__(self, name):
         self.model = name
-        
+
     def circle(self, center, radius):
         self.content.append(u'Crcle({}, {}, {})'.format(center[0],
                                                         center[1],
@@ -310,13 +312,13 @@ class DumpRenderer(object):
         self.content.append(
             u"Line({}, {}, {}, {})".format(
                 p1[0], p1[1], p2[0], p2[1]))
-        
+
     def render(self, geom):
         '''create file with elements'''
         incl_bnd = True
         self.content = []
         handled = set()
-        
+
         # collect all areas
         for i, area in enumerate(geom.areas(incl_bnd)):
             self.content.append('-- {}'.format(i))
@@ -332,7 +334,7 @@ class DumpRenderer(object):
 
         for e1, e2, attr in geom.g.edges(data=True):
             attr['object'].render(self)
-    
+
         return self.content
 
 
@@ -412,16 +414,18 @@ class NewFslRenderer(object):
     def sorted_elements(self, geom, inner=False):
         if inner:
             # Abstand von airgap Richtung Nullpunkt
-            el_sorted = [(geom.max_radius - e.minmax_from_center((0.0, 0.0))[1], e)
-                        for e in geom.elements(g.Shape)]
+            el_sorted = [(geom.max_radius -
+                          e.minmax_from_center((0.0, 0.0))[1], e)
+                         for e in geom.elements(g.Shape)]
         else:
             # Abstand von airgap Richtung Aussen
-            el_sorted = [(e.minmax_from_center((0.0, 0.0))[0] - geom.min_radius, e)
-                        for e in geom.elements(g.Shape)]
-            
+            el_sorted = [(e.minmax_from_center((0.0, 0.0))[0] -
+                          geom.min_radius, e)
+                         for e in geom.elements(g.Shape)]
+
         el_sorted.sort()
         return el_sorted
-        
+
     def render(self, geom, filename, inner=False, outer=False):
         '''create file with nodechains'''
 
@@ -431,20 +435,22 @@ class NewFslRenderer(object):
 
         ndt_list = [(0.25, 1.25), (0.5, 2), (0.75, 3.0), (1.1, 3.0)]
         dist = geom.max_radius - geom.min_radius
-            
-        el_sorted = self.sorted_elements(geom, inner)        
-        
+
+        el_sorted = self.sorted_elements(geom, inner)
+
 #        self.content.append(u'-- all elements')
         x = 0
         for d, e in el_sorted:
             d_percent = d / dist
             if ndt_list[x][0] < d_percent:
-                self.content.append(u'\nndt({}*agndst)\n'.format(ndt_list[x][1]))
+                self.content.append(u'\nndt({}*agndst)\n'.
+                                    format(ndt_list[x][1]))
                 while ndt_list[x][0] < d_percent:
                     x += 1
-#            self.content.append(u'-- d={} / dist={} == {}'.format(d, dist, d_percent))
+#            self.content.append(u'-- d={} / dist={} == {}'.
+#                                format(d, dist, d_percent))
             e.render(self)
-            
+
         self.content.append(u'\n')
 
         for area in geom.list_of_areas():
@@ -454,13 +460,16 @@ class NewFslRenderer(object):
                     self.content.append(u"x0, y0 = {}, {}".format(p[0], p[1]))
                     self.content.append(u"point(x0, y0, red, 4)")
                     self.content.append(u"create_mesh_se(x0, y0)\n")
-      
+
                 if area.type == 1:
-                    self.content.append(u'def_new_subreg(x0, y0, "iron", blue)')
+                    self.content.append(
+                        u'def_new_subreg(x0, y0, "iron", blue)')
                 elif area.type == 2:
-                    self.content.append(u'def_new_subreg(x0, y0, "windings", green)')
+                    self.content.append(
+                        u'def_new_subreg(x0, y0, "windings", green)')
                 elif area.type == 3:
-                    self.content.append(u'def_new_subreg(x0, y0, "windings", red)')
+                    self.content.append(
+                        u'def_new_subreg(x0, y0, "windings", red)')
 #        ag = 0
 #        if ag > 0:
 #            self.content.append(
@@ -494,32 +503,33 @@ class NewFslRenderer(object):
         if geom.is_mirrored():
             self.content.append(u'-- mirror')
             self.content.append(u'mirror_nodechains({}, {}, {}, {})\n'.format(
-                geom.mirror_corners[1][0], # max x1
-                geom.mirror_corners[1][1], # max y1
-                geom.mirror_corners[0][0], # min x2
-                geom.mirror_corners[0][1]))# min y2
-                
+                geom.mirror_corners[1][0],   # max x1
+                geom.mirror_corners[1][1],   # max y1
+                geom.mirror_corners[0][0],   # min x2
+                geom.mirror_corners[0][1]))  # min y2
+
         # Winkel nach allfälligem Spiegeln
         self.content.append(u'alfa = {}\n'.format(geom.get_alfa()))
-            
+
         self.content.append(u'-- rotate')
         self.content.append(u'x1, y1 = {}, {}'.format(
-                geom.start_corners[0][0], geom.start_corners[0][1])) # min xy1
+                geom.start_corners[0][0], geom.start_corners[0][1]))  # min xy1
         self.content.append(u'x2, y2 = {}, {}'.format(
-                geom.start_corners[1][0], geom.start_corners[1][1])) # max xy2
-            
+                geom.start_corners[1][0], geom.start_corners[1][1]))  # max xy2
+
         if geom.is_mirrored():
             self.content.append(u'x3, y3 = pr2c(x2, alfa)')
             self.content.append(u'x4, y4 = pr2c(x1, alfa)')
         else:
             self.content.append(u'x3, y3 = {}, {}'.format(
-                    geom.end_corners[1][0], geom.end_corners[1][1])) # max xy3
+                    geom.end_corners[1][0], geom.end_corners[1][1]))  # max xy3
             self.content.append(u'x4, y4 = {}, {}'.format(
-                    geom.end_corners[0][0], geom.end_corners[0][1])) # min xy4
+                    geom.end_corners[0][0], geom.end_corners[0][1]))  # min xy4
 
         self.content.append(u'if m.{}_ncopies > 1 then'.format(geom.kind))
-        self.content.append(u'  rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,m.{}_ncopies-1)'
-                            .format(geom.kind))
+        self.content.append(
+            u'  rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,m.{}_ncopies-1)'
+            .format(geom.kind))
         self.content.append(u'  end')
 
         if self.fm_nlin:
@@ -543,10 +553,10 @@ class NewFslRenderer(object):
                    u'end']
             self.content.append(u'\n'.join(mat))
 
-        #f.write(u"\nadapt_window()\n")
+        # f.write(u"\nadapt_window()\n")
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))
-                
+
     def render_main(self, motor, geom_inner, geom_outer,
                     filename, with_header=False):
         '''create main file'''
@@ -556,13 +566,13 @@ class NewFslRenderer(object):
         self.content.append(u'exit_on_end = false')
         self.content.append(u'verbosity = 2')
         self.content.append(u'pickdist = 0.001\n')
-        
+
         if geom_inner and geom_outer:
             n = [int(round(np.pi/x)) for x in [geom_outer.alfa,
                                                geom_inner.alfa]]
             num_poles = min(n)
             num_slots = max(n)
-         
+
             self.content.append(u'm.num_poles = {}'.format(num_poles))
             self.content.append(u'm.tot_num_slot = {}'.format(num_slots))
             if num_poles == n[0]:
@@ -572,7 +582,7 @@ class NewFslRenderer(object):
             self.content.append(u'm.npols_gen = {}'.format(npols_gen))
             self.content.append(
                 u'm.num_slots = m.tot_num_slot*m.npols_gen/m.num_poles')
-                
+
         self.content.append(u'da1 = {}'.format(
             2*geom_outer.min_radius))
         self.content.append(u'da2 = {}'.format(
@@ -598,7 +608,7 @@ class NewFslRenderer(object):
             self.content.append(
                 u'm.{}_ncopies = {}'.format(
                     geom_outer.kind, ncopies))
-            
+
         if geom_inner:
             self.content.append(
                 u'dofile("{}_{}.fsl")'.format(
@@ -607,7 +617,7 @@ class NewFslRenderer(object):
             self.content.append(
                 u'dofile("{}_{}.fsl")'.format(
                     self.model, geom_outer.kind))
-            
+
         alfa = geom_inner.get_alfa() * (geom_inner.get_symmetry_copies()+1)
         alfa2 = geom_outer.get_alfa() * (geom_outer.get_symmetry_copies()+1)
         assert(np.isclose(alfa, alfa2))
@@ -619,7 +629,7 @@ class NewFslRenderer(object):
         self.content.append(u'x1, y1 = pr2c(r1, alfa)')
         self.content.append(u'n = r1*alfa/agndst + 1')
         self.content.append(u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n')
-        
+
         self.content.append(u'r2 = da2/2 + 2*ag/3')
         self.content.append(u'x2, y2 = pr2c(r2, alfa)')
         self.content.append(u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n')
@@ -636,6 +646,6 @@ class NewFslRenderer(object):
         self.content.append(u'create_mesh_se(x0, y0)\n')
 
         self.content.append(u'connect_models()\n')
-           
+
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))

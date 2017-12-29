@@ -62,10 +62,10 @@ class AlgorithmTest(unittest.TestCase):
         pop.eval()
 
         F = np.array([ind.cur_f for ind in pop.individuals]).T
-        plt.scatter(F[0], F[1], c="b", s=50, alpha=0.5)
+        #plt.scatter(F[0], F[1], c="b", s=50, alpha=0.5)
         F = np.array([ind.cur_f
                       for ind in pop.individuals if ind.rank == 0]).T
-        plt.scatter(F[0], F[1], c="g", s=100, alpha=0.5)
+        #plt.scatter(F[0], F[1], c="g", s=100, alpha=0.5)
     
         algo = moo.Nsga2()
         for i in range(25):
@@ -81,9 +81,9 @@ class AlgorithmTest(unittest.TestCase):
         #plt.savefig('moo.png')
 
         # TODO: make these random tests reproducible
-        # np.testing.assert_almost_equal(pop.compute_norm_dist(), 1.0 )
-        # self.assertEqual(pop.dom_count, [0]*pop.size())
-        #self.assertEqual(pop.pareto_rank, [0]*pop.size() )
+        #np.testing.assert_almost_equal(pop.compute_norm_dist(), 1.0 )
+        self.assertEqual(pop.dom_count, [0]*pop.size())
+        self.assertEqual(pop.pareto_rank, [0]*pop.size() )
         #self.assertEqual(pop.best_idx(), [0, 1, 3, 4, 2, 6, 5, 7] )
 
 if __name__ == '__main__':

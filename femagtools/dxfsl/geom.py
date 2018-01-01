@@ -18,7 +18,8 @@ import logging
 import sys
 import matplotlib.pylab as pl
 import matplotlib.patches as pch
-
+from .corner import Corner
+from .functions import distance
 logger = logging.getLogger('femagtools.geom')
 
 
@@ -188,12 +189,6 @@ def middle_angle(alpha1, alpha2):
 
 def middle_point_of_line(p1, p2):
     return [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2]
-
-
-def distance(p1, p2):
-    assert(len(p1) > 1)
-    assert(len(p2) > 1)
-    return np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
 
 
 def line_m(p1, p2):
@@ -706,42 +701,6 @@ def dxfshapes(dxffile, layers=[]):
 
 
 #############################
-#           Corner          #
-#############################
-
-class Corner(object):
-    def __init__(self, center, p):
-        self.__p = p
-        self.__dist = distance(center, p)
-        self.__keep = False
-        self.is_new_point = False
-
-    def point(self):
-        return self.__p
-
-    def is_equal(self, p):
-        return np.isclose(self.__p[0], p[0]) and np.isclose(self.__p[1], p[1])
-
-    def is_same_corner(self, c):
-        return self.is_equal(c.__p)
-
-    def set_keep_node(self):
-        self.__keep = True
-
-    def keep_node(self):
-        return self.__keep
-
-    def __lt__(self, c):
-        if self.__dist < c.__dist:
-            return 1
-        else:
-            return 0
-
-    def __str__(self):
-        return "Corner: p={}".format(self.__p)
-
-
-#############################
 #       Shape (Basis)       #
 #############################
 
@@ -818,6 +777,25 @@ class Shape(object):
             return 2
         return 0
 
+    def minmax_angle_dist_from_center(self, center, dist):
+        dist_p1 = distance(center, self.p1)
+        dist_p2 = distance(center, self.p2)
+        if np.isclose(dist, dist_p1):
+            alpha_p1 = alpha_line(center, self.p1)
+            if np.isclose(dist, dist_p2):
+                alpha_p2 = alpha_line(center, self.p2)
+                if alpha_angle(alpha_p1, alpha_p2) < np.pi:
+                    return (alpha_p1, alpha_p2)
+                else:
+                    return (alpha_p2, alpha_p1)
+            else:
+                return (alpha_p1, alpha_p1)
+        else:
+            if np.isclose(dist, dist_p2):
+                alpha_p2 = alpha_line(center, self.p2)
+                return (alpha_p2, alpha_p2)
+        return ()
+
     def __str__(self):
         return " {}/{}".format(self.p1, self.p2)
 
@@ -880,6 +858,9 @@ class Circle(Shape):
                 return (alpha_p2, alpha_p1)
         else:
             return (0.0, 0.0)
+        
+    def minmax_angle_dist_from_center(self, center, dist):
+        return ()
 
     def get_nodes(self):
         """ returns a list of virtual nodes to create the convex hull
@@ -1953,6 +1934,35 @@ class Area(object):
             yield e.p1
             yield e.p2
 
+    def is_iron(self):
+        if self.type == 1:
+            return 'iron'
+        if self.type == 2:
+            return 'windings'
+        if self.type == 3:
+            return 'magnet_airgap'
+        if self.type == 4:
+            return 'magnet_square'
+        return ''
+
+    def name(self):
+        if self.type == 1:
+            return 'iron'
+        if self.type == 2:
+            return 'windings'
+        if self.type == 3 or self.type == 4:
+            return 'magnet'
+        return 'unknown'
+
+    def color(self):
+        if self.type == 1:
+            return 'blue'
+        if self.type == 2:
+            return 'green'
+        if self.type == 3 or self.type == 4:
+            return 'red'
+        return 'magenta'
+
     def calc_signature(self, center):
         if not self.area:
             return
@@ -1972,6 +1982,18 @@ class Area(object):
             self.max_angle = max_angle(self.max_angle, mm_angle[1])
 
         self.alpha = round(alpha_angle(self.min_angle, self.max_angle), 3)
+
+    def minmax_angle_dist_from_center(self, center, dist):
+        s = self.area[0]
+        my_min_angle = self.max_angle
+        my_max_angle = self.min_angle
+        mm_angle = None
+        for s in self.area:
+            mm_angle = s.minmax_angle_dist_from_center(center, dist)
+            if mm_angle:
+                my_min_angle = min_angle(my_min_angle, mm_angle[0])
+                my_max_angle = max_angle(my_max_angle, mm_angle[1])
+        return (my_min_angle, my_max_angle)
 
     def is_inside(self, area):
         if less_equal(area.min_dist, self.min_dist):
@@ -2253,69 +2275,95 @@ class Area(object):
 
         return line_count == 4
 
-    def mark_stator_subregions(self, is_inner, mirrored, alpha, r_in, r_out):
+    def mark_stator_subregions(self, is_inner, mirrored, alpha,
+                               center, r_in, r_out):
         my_alpha = round(self.max_angle - self.min_angle, 6)
         alpha = round(alpha, 6)
 
         if is_inner:
             close_to_ag = np.isclose(r_out, self.max_dist)
             close_to_opposition = np.isclose(r_in, self.min_dist)
+            airgap_radius = r_out
         else:
             close_to_ag = np.isclose(r_in, self.min_dist)
             close_to_opposition = np.isclose(r_out, self.max_dist)
+            airgap_radius = r_in
 
         close_to_startangle = np.isclose(self.min_angle, 0.0)
         close_to_endangle = np.isclose(self.max_angle, alpha)
 
         if close_to_startangle and close_to_endangle:
-            return
+            self.type = 1  # iron
+            return self.type
+
+        if close_to_opposition:
+            self.type = 1  # iron
+            return self.type
 
         if close_to_ag:  # close to airgap
-            if mirrored:
-                if close_to_endangle:  # in touch with mirror-axis
-                    if my_alpha / alpha > 0.5:
-                        self.type = 1  # iron
+            mm = self.minmax_angle_dist_from_center(center, airgap_radius)
+            air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
+            if air_alpha / alpha < 0.2:
+                self.type = 0  # air
+                return self.type
             else:
-                if my_alpha / alpha > 0.5:
-                    self.type = 1  # iron
-#            print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".
-#                  format(is_inner, mirrored, alpha, r_in, r_out,
-#                         self.type, self))
-            return
+                self.type = 1  # iron
+            return self.type
 
-        if not close_to_opposition:
-            if self.min_angle > 0.001 and self.max_angle < alpha - 0.001:
+        if self.min_angle > 0.001:
+            if self.max_angle < alpha - 0.001:
                 self.type = 2  # windings
-#        print("mark_stator_subregions({}, {}, {}, {}, {}) == {}\n{}".
-#              format(is_inner, mirrored, alpha, r_in, r_out,
-#                     self.type, self))
+            elif mirrored:
+                self.type = 2  # windings
+            return self.type
 
-    def mark_rotor_subregions(self, is_inner, mirrored, alpha, r_in, r_out):
+        return 0
+
+    def mark_rotor_subregions(self, is_inner, mirrored, alpha,
+                              center, r_in, r_out):
         my_alpha = round(self.max_angle - self.min_angle, 6)
         alpha = round(alpha, 6)
 
         if is_inner:
             close_to_ag = np.isclose(r_out, self.max_dist)
             close_to_opposition = np.isclose(r_in, self.min_dist)
+            airgap_radius = r_out
         else:
             close_to_ag = np.isclose(r_in, self.min_dist)
             close_to_opposition = np.isclose(r_out, self.max_dist)
+            airgap_radius = r_in
 
-        if close_to_ag or close_to_opposition:
-            if my_alpha / alpha > 0.5 and my_alpha / alpha < 0.9999:
+        if close_to_opposition:
+            self.type = 1  # iron
+            return self.type
+
+        if close_to_ag:
+            mm = self.minmax_angle_dist_from_center(center, airgap_radius)
+            air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
+            if air_alpha / alpha < 0.2:
+                self.type = 0  # air
+                return self.type
+
+            if air_alpha / alpha > 0.6:
                 self.type = 3  # magnet
-#                print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".
-#                      format(is_inner, mirrored, alpha, r_in, r_out,
-#                             self.type, self))
-            return
+            else:
+                self.type = 1  # iron
+            return self.type
 
         if my_alpha / alpha > 0.5:
             if self.is_rectangle():
-                self.type = 3  # magnet
-#        print("mark_rotor_subregions({}, {}, {}, {}, {}) == {}\n{}".
-#              format(is_inner, mirrored, alpha, r_in, r_out,
-#                     self.type, self))
-        return
+                self.type = 4  # magnet
+                return self.type
+
+        self.type = 1  # iron
+        if self.min_angle > 0.001:
+            if my_alpha / alpha < 0.4:
+                if self.max_angle < alpha - 0.001:
+                    self.type = 0  # air
+                elif mirrored:
+                    self.type = 0  # air
+
+        return self.type
 
     def print_area(self):
         center = [0.0, 0.0]
@@ -3593,16 +3641,31 @@ class Geometry(object):
             area.mark_stator_subregions(self.is_inner,
                                         self.is_mirrored(),
                                         self.alfa,
+                                        self.center,
                                         self.min_radius,
                                         self.max_radius)
 
     def search_rotor_subregions(self):
+        types = {}
         for area in self.list_of_areas():
-            area.mark_rotor_subregions(self.is_inner,
-                                       self.is_mirrored(),
-                                       self.alfa,
-                                       self.min_radius,
-                                       self.max_radius)
+            t = area.mark_rotor_subregions(self.is_inner,
+                                           self.is_mirrored(),
+                                           self.alfa,
+                                           self.center,
+                                           self.min_radius,
+                                           self.max_radius)
+            if t in types:
+                types[t] += 1
+            else:
+                types[t] = 1
+
+        if 4 in types:  # magnet rectangle
+            if types[4] > 1:
+                logger.error("too much magnets in rotor")
+
+            for area in self.list_of_areas():
+                if area.type == 3:
+                    area.type = 1  # iron
 
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))

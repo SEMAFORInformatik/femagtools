@@ -10,15 +10,10 @@
 """
 from __future__ import print_function
 import numpy as np
-import networkx as nx
 import logging
 from .functions import distance
 
-
-logger = logging.getLogger('femagtools.shape')
-
-
-nxversion = int(nx.__version__.split('.')[0])
+logger = logging.getLogger('femagtools.corner')
 
 
 #############################

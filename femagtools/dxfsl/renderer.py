@@ -180,7 +180,8 @@ class PlotRenderer(object):
 
         self.ax = self.figure().add_subplot(rows, cols,
                                             num,
-                                            axisbg=self.background)
+                                            facecolor=self.background)
+#                                            axisbg=self.background)
         if len(title) > 0:
             self.ax.set_title(title, size=14)
         self.ax.grid(color='blue', linewidth=0.5)

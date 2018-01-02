@@ -180,7 +180,8 @@ class PlotRenderer(object):
 
         self.ax = self.figure().add_subplot(rows, cols,
                                             num,
-                                            axisbg=self.background)
+                                            facecolor=self.background)
+#                                            axisbg=self.background)
         if len(title) > 0:
             self.ax.set_title(title, size=14)
         self.ax.grid(color='blue', linewidth=0.5)
@@ -438,7 +439,6 @@ class NewFslRenderer(object):
 
         el_sorted = self.sorted_elements(geom, inner)
 
-#        self.content.append(u'-- all elements')
         x = 0
         for d, e in el_sorted:
             d_percent = d / dist
@@ -453,23 +453,27 @@ class NewFslRenderer(object):
 
         self.content.append(u'\n')
 
+        subregions = {}
         for area in geom.list_of_areas():
             if area.number_of_elements() > 1:
                 p = area.get_point_inside(geom)
                 if p:
                     self.content.append(u"x0, y0 = {}, {}".format(p[0], p[1]))
                     self.content.append(u"point(x0, y0, red, 4)")
-                    self.content.append(u"create_mesh_se(x0, y0)\n")
+                    self.content.append(u"create_mesh_se(x0, y0)")
 
-                if area.type == 1:
-                    self.content.append(
-                        u'def_new_subreg(x0, y0, "iron", blue)')
-                elif area.type == 2:
-                    self.content.append(
-                        u'def_new_subreg(x0, y0, "windings", green)')
-                elif area.type == 3:
-                    self.content.append(
-                        u'def_new_subreg(x0, y0, "windings", red)')
+                if area.type > 0:
+                    if area.type in subregions:
+                        self.content.append(
+                            u'add_to_subreg(x0, y0, "{}")'.
+                            format(area.name()))
+                    else:
+                        subregions[area.type] = 1
+                        self.content.append(
+                            u'def_new_subreg(x0, y0, "{}", {})'.
+                            format(area.name(), area.color()))
+                    self.content.append(u"\n")
+
 #        ag = 0
 #        if ag > 0:
 #            self.content.append(

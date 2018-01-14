@@ -5,7 +5,7 @@ import femagtools.machine
 import numpy as np
 import matplotlib.pylab as pl
 
-bch = femagtools.read_bchfile('../bch/TEST_001.BCH')
+bch = femagtools.read_bchfile('../bch-erg/TEST_001.BCH')
 
 beta = bch.ldq['beta']
 i1 = bch.ldq['i1']

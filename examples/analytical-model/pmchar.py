@@ -3,7 +3,7 @@ import matplotlib.pyplot as pl
 import femagtools.machine
 
 
-filename = '../bch/TEST_001.BCH'
+filename = '../bch-erg/TEST_001.BCH'
 bch = femagtools.read_bchfile(filename)
 
 beta = bch.ldq['beta']

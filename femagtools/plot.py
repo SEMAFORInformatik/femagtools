@@ -277,13 +277,15 @@ def mtpa(pmrel, i1max, title='', projection=''):
     i1 = np.linspace(0, i1max, nsamples)
     iopt = np.array([pmrel.mtpa(x) for x in i1]).T
 
-    if projection == '3d':
-        nsamples = 50
-        
     iqmax, idmax = pmrel.iqdmax(i1max)
     iqmin, idmin = pmrel.iqdmin(i1max)
-    id = np.linspace(idmin, 0, nsamples)
-    iq = np.linspace(0, iqmax, nsamples)
+    
+    if projection == '3d':
+        nsamples = 50
+    else:
+        iqmin = 0.1*iqmax
+    id = np.linspace(idmin, idmax, nsamples)
+    iq = np.linspace(iqmin, iqmax, nsamples)
 
     torque_iqd = np.array(
         [[pmrel.torque_iqd(x, y)
@@ -301,15 +303,64 @@ def mtpa(pmrel, i1max, title='', projection=''):
         CS = ax.contour(x, y, torque_iqd, 6, colors='k')
         ax.clabel(CS, fmt='%d', inline=1)
             
-        if title:
-            ax.set_title('Maximum Torque per Ampere')
         ax.set_xlabel('Id/A')
         ax.set_ylabel('Iq/A')
         ax.plot(iopt[1], iopt[0],
                 color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
                     np.max(iopt[2])))
         ax.grid()
+        
+    if title:
+        ax.set_title(title)
     ax.legend()
+
+
+def mtpv(pmrel, u1max, i1max, title='', projection=''):
+    """create a line or surface plot with voltage and mtpv curve"""
+    w1 = pmrel.w2_imax_umax(i1max, u1max)
+    nsamples = 20
+    if projection == '3d':
+        nsamples = 50
+        
+    iqmax, idmax = pmrel.iqdmax(i1max)
+    iqmin, idmin = pmrel.iqdmin(i1max)
+    id = np.linspace(idmin, idmax, nsamples)
+    iq = np.linspace(iqmin, iqmax, nsamples)
+    u1_iqd = np.array(
+        [[np.linalg.norm(pmrel.uqd(w1, iqx, idx))/np.sqrt(2)
+          for idx in id] for iqx in iq])
+    u1 = np.mean(u1_iqd)
+    imtpv = np.array([pmrel.mtpv(wx, u1)
+                      for wx in np.linspace(w1, 20*w1, nsamples)]).T
+    
+    if projection == '3d':
+        torque_iqd = np.array(
+            [[pmrel.torque_iqd(x, y)
+              for y in id] for x in iq])
+        idq_torque(id, iq, torque_iqd)
+        ax = pl.gca()
+        ax.plot(imtpv[1], imtpv[0], imtpv[2],
+                color='red', linewidth=2)
+    else:
+        ax = pl.gca()
+        ax.set_aspect('equal')
+        x, y = np.meshgrid(id, iq)
+        CS = ax.contour(x, y, u1_iqd, 4, colors='b')  # linestyles='dashed')
+        ax.clabel(CS, fmt='%d', inline=1)
+
+        ax.plot(imtpv[1], imtpv[0],
+                color='red', linewidth=2,
+                label='MTPV: {0:5.0f} Nm'.format(np.max(imtpv[2])))
+        beta = np.arctan2(imtpv[1][0], imtpv[0][0])
+        b = np.linspace(beta, 0)
+        #ax.plot(np.sqrt(2)*i1max*np.sin(b), np.sqrt(2)*i1max*np.cos(b), 'r-')
+        
+        ax.grid()
+        ax.legend()
+    ax.set_xlabel('Id/A')
+    ax.set_ylabel('Iq/A')
+    if title:
+        ax.set_title(title)
 
 
 def pmrelsim(bch, title=''):
@@ -386,18 +437,18 @@ def cogging(bch, title=''):
     torque_fft(bch.torque_fft[0]['order'], bch.torque_fft[0]['torque'])
     pl.subplot(rows, cols, 3)
     force('Force Fx',
-               bch.torque[0]['angle'], bch.torque[0]['force_x'])
+          bch.torque[0]['angle'], bch.torque[0]['force_x'])
     pl.subplot(rows, cols, 4)
     force('Force Fy',
-               bch.torque[0]['angle'], bch.torque[0]['force_y'])
+          bch.torque[0]['angle'], bch.torque[0]['force_y'])
     pl.subplot(rows, cols, 5)
     voltage('Voltage',
-                 bch.flux['1'][0]['displ'],
-                 bch.flux['1'][0]['voltage_dpsi'])
+            bch.flux['1'][0]['displ'],
+            bch.flux['1'][0]['voltage_dpsi'])
     pl.subplot(rows, cols, 6)
     voltage_fft('Voltage Harmonics',
-                     bch.flux_fft['1'][0]['order'],
-                     bch.flux_fft['1'][0]['voltage'])
+                bch.flux_fft['1'][0]['order'],
+                bch.flux_fft['1'][0]['voltage'])
 
     fig.tight_layout(h_pad=2)
     if title:

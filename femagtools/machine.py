@@ -136,7 +136,7 @@ class PmRelMachine(object):
         psid, psiq = self.psi(iq, id)
         uqd = (self.r1*iq + w1*(self.ls*id + psid),
                self.r1*id - w1*(self.ls*iq + psiq))
-        logger.debug('beta i1 %s u1 %f', betai1(iq, id), np.linalg.norm(uqd))
+        logger.debug('beta i1 %s u1 %f', betai1(iq, id), la.norm(uqd))
         return uqd
     
     def w1_umax(self, u, iq, id):
@@ -162,7 +162,7 @@ class PmRelMachine(object):
     def w2_imax_umax(self, imax, umax):
         """return frequency at current and voltage"""
         return so.fsolve(
-            lambda x: la.norm(self.mtpv(x, umax) -
+            lambda x: la.norm(self.mtpv(x, umax)[:2] -
                               self.iqd_imax_umax(imax, x, umax)),
             np.sqrt(2)*umax/la.norm(self.psi(*self.io)))[0]
         
@@ -238,12 +238,11 @@ class PmRelMachine(object):
             beta0 = self.betarange[0]
 
         beta, info, ier, mesg = so.fsolve(
-            lambda b:
-            la.norm(
+            lambda b: la.norm(
                 self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
             beta0,
             full_output=True)
-
+        
         if ier == 1:
             return iqd(beta[0], i1max)
         raise ValueError(
@@ -261,15 +260,16 @@ class PmRelMachine(object):
         return [iq, id, -fopt]
    
     def mtpv(self, w1, u1):
-        """return d-q-current for voltage and frequency with maximum torque"""
+        """return d-q-current, torque for voltage and frequency
+        with maximum torque"""
         res = so.minimize(
             lambda iqd: -self.torque_iqd(*iqd),
-            self.io, method='SLSQP',
+            (0, self.io[1]), method='SLSQP',
             constraints=(
-                {'type': 'eq',
+                {'type': 'ineq',
                  'fun': lambda iqd:
-                 la.norm(self.uqd(w1, *iqd)) - np.sqrt(2)*u1}))
-        return res.x
+                 np.sqrt(2)*u1 - la.norm(self.uqd(w1, *iqd))}))
+        return res.x[0], res.x[1], -res.fun  # la.norm(self.uqd(w1, *(res.x))))
 
     def characteristics(self, T, n, u1max, nsamples=36):
         """calculate torque speed characteristics.
@@ -293,18 +293,33 @@ class PmRelMachine(object):
 
             n1 = min(w1/2/np.pi/self.p, nmax)
             r['n_type'] = n1
-            logger.info("Type speed %f", 60*n1)
+            logger.info("Type speed %f n: %f nmax %f",
+                        60*n1, 60*n, 60*nmax)
             try:
+                w1 = self.w2_imax_umax(i1max, u1max)
                 n2 = self.w2_imax_umax(i1max, u1max)/2/np.pi/self.p
-                n3 = min(nmax, n, max(n1, n2))
+                iqmtpv, idmtpv, tq = self.mtpv(w1, u1max)
+                if self._inrange((iqmtpv, idmtpv)):
+                    n2 = w1/2/np.pi/self.p
+                    n3 = max(n, n2)
+                else:
+                    n3 = min(nmax, n)
+                    n2 = n3
+                    
+                logger.info("n1: %f n2: %f n3 : %f ",
+                            60*n1, 60*n2, 60*n3)
             except ValueError:
-                n2 = n
                 n3 = min(nmax, n)
+                n2 = n3
 
             speedrange = sorted(
                 list(set([nx for nx in [n1, n2, n3] if nx <= n3])))
             n1 = speedrange[0]
             n3 = speedrange[-1]
+            if n2 > n3:
+                n2 = n3
+            logger.info("Speed intervals %s",
+                        [60*nx for nx in speedrange])
             if len(speedrange) > 2:
                 nsamples = nsamples - int(speedrange[1]/(n3/nsamples))
                 dn = (n3-speedrange[1])/nsamples
@@ -317,18 +332,34 @@ class PmRelMachine(object):
                 r['T'].append(T)
 
             if nx < n3:
-                for nx in np.linspace(nx+dn/2, min(n2, n3),
-                                      int(min(n2, n3)/dn)):
+                for nx in np.linspace(nx+dn/2, n2, int(n2)//dn):
                     w1 = 2*np.pi*nx*self.p
                     try:
                         iq, id = self.iqd_imax_umax(i1max, w1, u1max)
                     except ValueError:
+                        logger.warn("ValueError at speed %f", 60*nx)
                         break
                     r['id'].append(id)
                     r['iq'].append(iq)
                     r['n'].append(nx)
                     r['T'].append(self.torque_iqd(iq, id))
                     
+            if nx < n3:
+                for nx in np.linspace(nx+dn/2, n3, int(n3)//dn):
+                    w1 = 2*np.pi*nx*self.p
+                    try:
+                        iq, id, tq = self.mtpv(w1, u1max)
+                        if not self._inrange((iq, id)):
+                            break
+                    except ValueError:
+                        logger.warn("ValueError at speed %f", 60*nx)
+                        break
+                    r['id'].append(id)
+                    r['iq'].append(iq)
+                    r['n'].append(nx)
+                    r['T'].append(tq)
+            logger.info("Max speed %f", 60*nx)
+            
         else:
             for t, nx in zip(T, n):
                 w1 = 2*np.pi*nx*self.p
@@ -395,6 +426,12 @@ class PmRelMachine(object):
             r['cosphi'].append(np.cos(r['phi'][-1]/180*np.pi))
             r['pmech'].append(w1/self.p*r['T'][-1])
         return r
+    
+    def _inrange(self, iqd):
+        i1 = np.linalg.norm(iqd)/np.sqrt(2)
+        iqmin, idmin = self.iqdmin(i1)
+        iqmax, idmax = self.iqdmax(i1)
+        return iqmin <= iqd[0] <= iqmax and idmin <= iqd[1] <= idmax
 
 
 class PmRelMachineLdq(PmRelMachine):
@@ -402,7 +439,7 @@ class PmRelMachineLdq(PmRelMachine):
     p number of pole pairs
     m number of phases
     psim flux in Vs (RMS)
-    ld d-inductance in H
+    ld d-inductance in 
     lq q-inductance in H
     r1 stator resistance
     ls stator leakage inductance in H
@@ -446,7 +483,7 @@ class PmRelMachineLdq(PmRelMachine):
                 ky = len(i1)-1
             if len(beta) < 4:
                 kx = len(beta)-1
-            self.betarange = (min(beta), 0)
+            self.betarange = min(beta), max(beta)
             self.i1range = (0, np.max(i1))
             psid = np.sqrt(2)*np.asarray(kwargs['psid'])
             psiq = np.sqrt(2)*np.asarray(kwargs['psiq'])
@@ -484,7 +521,7 @@ class PmRelMachineLdq(PmRelMachine):
             raise ValueError("unsupported array size {}x{}".format(
                 len(beta), len(i1)))
             
-        self.betarange = (min(beta), 0)
+        self.betarange = min(beta), max(beta)
         self.i1range = (0, np.max(i1))
         self.ld = lambda x, y: ip.RectBivariateSpline(
             beta, i1, np.asarray(ld)).ev(x, y)
@@ -546,7 +583,6 @@ class PmRelMachinePsidq(PmRelMachine):
     def __init__(self, m, p, psid, psiq, r1, id, iq, ls=0):
         super(self.__class__, self).__init__(m, p, r1, ls)
 
-        self.betarange = (-np.pi, np.pi)
         if isinstance(psid, (float, int)):
             self._psid = lambda id, iq: np.array([[psid]])
             self._psiq = lambda id, iq: np.array([[psiq]])
@@ -558,6 +594,10 @@ class PmRelMachinePsidq(PmRelMachine):
         iq = np.asarray(iq)
         self.idrange = (min(id), max(id))
         self.iqrange = (min(iq), max(iq))
+        if np.mean(self.idrange) > 0:
+            self.betarange = (0, np.pi/2)
+        else:
+            self.betarange = (-np.pi/2, 0)
         self.io = np.max(iq)/2, np.min(id)/2
         
         if np.any(psid.shape < (4, 4)):
@@ -591,25 +631,41 @@ class PmRelMachinePsidq(PmRelMachine):
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""
-        idmin = -np.sqrt(2)*i1
-        if self.idrange[0] <= idmin <= self.idrange[1]:
-            return (self.iqrange[1], idmin)
+        if np.min(self.idrange) < 0 and np.max(self.idrange) <= 0:
+            idmin = -np.sqrt(2)*i1
+        else:
+            idmin = 0
+        if np.min(self.idrange) <= idmin:
+            iqmin = 0
+            if np.min(self.iqrange) <= iqmin:
+                return (iqmin, idmin)
+            return np.min(self.iqrange), idmin
 
-        iqmax = np.sqrt(idmin**2 - self.idrange[0]**2)
-        if self.iqrange[0] <= iqmax <= self.iqrange[1]:
-            return (iqmax, idmin)
+        i1max = np.sqrt(2)*i1
+        beta = np.arccos(self.iqrange[0]/i1max)
+        iqmin = np.sqrt(2)*i1*np.sin(beta)
+        if np.min(self.iqrange) <= iqmin:
+            return (iqmin, idmin)
 
-        return (self.iqrange[1], self.idrange[0])
+        return np.min(self.iqrange), np.min(self.idrange)
 
     def iqdmax(self, i1):
         """max iq, max id for given current"""
         iqmax = np.sqrt(2)*i1
-        if self.iqrange[0] <= iqmax <= self.iqrange[1]:
-            return (iqmax, self.idrange[1])
+        if iqmax <= np.max(self.iqrange):
+            if np.min(self.idrange) < 0 and np.max(self.idrange) <= 0:
+                idmax = 0
+            else:
+                idmax = np.sqrt(2)*i1
+            if idmax <= np.max(self.idrange):
+                return (iqmax, idmax)
+            return (iqmax, np.max(self.idrange))
 
-        idmin = np.sqrt(iqmax**2 - self.iqrange[1]**2)
-        if self.idrange[0] <= idmin <= self.idrange[1]:
-            return (iqmax, idmin)
+        beta = np.arccos(self.iqrange[1]/iqmax)
+        iqmax = np.sqrt(2)*i1*np.cos(beta)
+        idmax = np.sqrt(2)*i1*np.sin(beta)
+        if idmax <= np.max(self.idrange):
+            return (iqmax, idmax)
 
-        return (self.iqrange[1], self.idrange[0])
+        return iqmax, np.max(self.idrange)
 

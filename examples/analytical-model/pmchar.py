@@ -1,7 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as pl
 import femagtools.machine
+import logging
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(message)s')
 
 filename = '../bch-erg/TEST_001.BCH'
 bch = femagtools.read_bchfile(filename)

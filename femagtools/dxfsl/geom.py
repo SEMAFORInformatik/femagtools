@@ -7,7 +7,7 @@
     Date: 2017/07/06
 """
 from __future__ import print_function
-import ezdxf
+
 import dxfgrabber
 import numpy as np
 import networkx as nx
@@ -303,6 +303,7 @@ def polylines(entity):
 
 def dxfshapes0(dxffile):
     """returns a collection of dxf entities (ezdxf)"""
+    import ezdxf
     dwg = ezdxf.readfile(dxffile)
     id = 0
     # $ACADVER: AC1006 = R10, AC1009 = R11 and R12, AC1012 = R13,

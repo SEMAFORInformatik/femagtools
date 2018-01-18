@@ -273,7 +273,7 @@ def mcv_muer(mcv):
 
 def mtpa(pmrel, i1max, title='', projection=''):
     """create a line or surface plot with torque and mtpa curve"""
-    nsamples = 20
+    nsamples = 10
     i1 = np.linspace(0, i1max, nsamples)
     iopt = np.array([pmrel.mtpa(x) for x in i1]).T
 

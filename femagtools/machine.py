@@ -72,8 +72,8 @@ def iqd(beta, i1):
 
 def create(bch, r1, ls, lfe=1):
     """create PmRelMachine from BCH"""
+    m = 3
     if isinstance(bch, Reader):
-        m = bch.machine['m']
         p = bch.machine['p']
         if bch.type == 'Fast Psid-Psiq-Identification':
             id = bch.psidq['id']
@@ -91,7 +91,6 @@ def create(bch, r1, ls, lfe=1):
                                    i1=i1, beta=beta, ls=ls)
         raise ValueError("Unsupported BCH type {}".format(bch.type))
     # must be ERG type:
-    m = 3
     p = int(round(np.sqrt(2)*bch['M_sim'][-1][-1]/(
         m*bch['Psi_d'][-1][-1] * bch['i1'][-1])))
 
@@ -251,11 +250,10 @@ class PmRelMachine(object):
     
     def mtpa(self, i1):
         """return iq, id, torque at maximum torque of current i1"""
-        def maxtq(x):
-            return -self.torque_iqd(*iqd(x, i1))
-        bopt, fopt, iter, funcalls, warnflag = so.fmin(maxtq, 0,
-                                                       full_output=True,
-                                                       disp=0)
+        bopt, fopt, iter, funcalls, warnflag = so.fmin(
+            lambda x: -self.torque_iqd(*iqd(x, i1)), 0,
+            full_output=True,
+            disp=0)
         iq, id = iqd(bopt[0], i1)
         return [iq, id, -fopt]
    

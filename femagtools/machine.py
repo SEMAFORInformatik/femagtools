@@ -70,35 +70,45 @@ def iqd(beta, i1):
                                      np.sin(beta)])
     
 
-def create(bch, r1, ls, lfe=1):
-    """create PmRelMachine from BCH"""
+def create(bch, r1, ls, lfe=1, wdg=1):
+    """create PmRelMachine from BCH
+
+    Arguments:
+      bch: BchReader or Erg object
+      r1: winding resistance
+      ls: winding leakage
+      lfe: scale factor length
+      wdg: scale factor number of windings
+"""
     m = 3
     if isinstance(bch, Reader):
         p = bch.machine['p']
         if bch.type == 'Fast Psid-Psiq-Identification':
-            id = bch.psidq['id']
-            iq = bch.psidq['iq']
-            psid = lfe*np.array(bch.psidq['psid'])
-            psiq = lfe*np.array(bch.psidq['psiq'])
-            return PmRelMachinePsidq(m, p, psid, psiq, r1, id, iq, ls)
+            id = np.array(bch.psidq['id'])/wdg
+            iq = np.array(bch.psidq['iq'])/wdg
+            psid = wdg*lfe*np.array(bch.psidq['psid'])
+            psiq = wdg*lfe*np.array(bch.psidq['psiq'])
+            return PmRelMachinePsidq(m, p, psid, psiq, r1*lfe*wdg**2,
+                                     id, iq, ls*wdg**2)
 
         if bch.type == 'Fast LD-LQ-Identification':
             beta = bch.ldq['beta']
-            i1 = bch.ldq['i1']
-            psid = lfe*np.array(bch.ldq['psid'])
-            psiq = lfe*np.array(bch.ldq['psiq'])
-            return PmRelMachineLdq(m, p, psid=psid, psiq=psiq, r1=r1,
-                                   i1=i1, beta=beta, ls=ls)
+            i1 = np.array(bch.ldq['i1'])/wdg
+            psid = wdg*lfe*np.array(bch.ldq['psid'])
+            psiq = wdg*lfe*np.array(bch.ldq['psiq'])
+            return PmRelMachineLdq(m, p, psid=psid, psiq=psiq,
+                                   r1=r1*lfe*wdg**2,
+                                   i1=i1, beta=beta, ls=ls*wdg**22)
         raise ValueError("Unsupported BCH type {}".format(bch.type))
     # must be ERG type:
     p = int(round(np.sqrt(2)*bch['M_sim'][-1][-1]/(
         m*bch['Psi_d'][-1][-1] * bch['i1'][-1])))
 
-    return PmRelMachineLdq(m, p, r1=r1,
-                           beta=bch['beta'], i1=bch['i1'],
-                           psid=lfe*np.array(bch['Psi_d'])/np.sqrt(2),
-                           psiq=lfe*np.array(bch['Psi_q'])/np.sqrt(2),
-                           ls=ls)
+    return PmRelMachineLdq(m, p, r1=r1*lfe*wdg**2,
+                           beta=bch['beta'], i1=np.array(bch['i1'])/wdg,
+                           psid=wdg*lfe*np.array(bch['Psi_d'])/np.sqrt(2),
+                           psiq=wdg*lfe*np.array(bch['Psi_q'])/np.sqrt(2),
+                           ls=ls*wdg**2)
 
 
 class PmRelMachine(object):

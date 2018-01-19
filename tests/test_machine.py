@@ -254,8 +254,40 @@ class PmMachineTest(unittest.TestCase):
     self.assertAlmostEqual(ib[0], 0.5)
     self.assertAlmostEqual(ic[1], 0.5, 0)
     self.assertAlmostEqual(ic[-1], -0.5, 0)
-    
-    
+
+  def test_create(self):
+    bch = femagtools.bch.Reader()
+    bch.type = 'Fast Psid-Psiq-Identification'
+    bch.machine = dict(p=6)
+    bch.psidq = dict(
+        psid=[[-2.4, -1.1376,  0.301322,  1.80345],
+              [-2.08654, -0.978283,  0.385186,  1.65732],
+              [-1.66857, -0.753761,  0.34352,  1.37547],
+              [-1.42619, -0.581669,  0.277301,  1.15571]],
+        psiq=[[-5.02114e-03, -1.91e-04, -7.67306e-05, -2.017e-04],
+              [1.95562,  2.32212,  2.45695,  2.33965],
+              [2.87904,  3.14081,  3.20475,  3.03648],
+              [3.30830,  3.50945,  3.54963,  3.41783]],
+        iq=[0., 200., 400., 600.],
+        id=[-600., -400., -200., 0.])
+
+    ls = 0
+    r1 = 0
+    pm = femagtools.machine.create(bch, r1, ls, lfe=1, wdg=0.6)
+    T = 4003
+    n = 10
+    w1 = 2*math.pi*n*bch.machine['p']
+    U = 338
+    iqx, idx = pm.iqd_torque(T)
+    self.assertAlmostEqual(idx, -196.815433)
+    self.assertAlmostEqual(iqx, 303.313471074)
+    uq, ud = pm.uqd(w1, iqx, idx)
+    self.assertAlmostEqual(ud, -522.735358830)
+    self.assertAlmostEqual(uq, 213.623501918)
+    iqx, idx = pm.iqd_torque_umax(T, w1, U)
+    self.assertAlmostEqual(idx, -297.9867357)
+    self.assertAlmostEqual(iqx, 248.31913889)
+
 if __name__ == '__main__':
   unittest.main()
 

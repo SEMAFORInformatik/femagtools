@@ -141,15 +141,18 @@ class Isa7(object):
         (self.SE_EL_ISA_EL_KEY,
          self.SE_EL_ISA_NXT_EL_PNTR) = reader.next_block("ii")
 
-
     def lines(self):
         """Return list of lines"""
         ln = []
         for i in range(self.NUM_LIN):
-            X1 = self.POINT_ISA_POINT_REC_PT_CO_X[abs(self.LINE_ISA_LINE_REC_LN_PNT_1[I])-1]
-            X2 = self.POINT_ISA_POINT_REC_PT_CO_X[abs(self.LINE_ISA_LINE_REC_LN_PNT_2[i])-1]
-            y1 = self.POINT_ISA_POINT_REC_PT_CO_Y[abs(self.LINE_ISA_LINE_REC_LN_PNT_1[i])-1]
-            y2 = self.POINT_ISA_POINT_REC_PT_CO_Y[abs(self.LINE_ISA_LINE_REC_LN_PNT_2[i])-1]
+            x1 = self.POINT_ISA_POINT_REC_PT_CO_X[
+                abs(self.LINE_ISA_LINE_REC_LN_PNT_1[i])-1]
+            x2 = self.POINT_ISA_POINT_REC_PT_CO_X[
+                abs(self.LINE_ISA_LINE_REC_LN_PNT_2[i])-1]
+            y1 = self.POINT_ISA_POINT_REC_PT_CO_Y[
+                abs(self.LINE_ISA_LINE_REC_LN_PNT_1[i])-1]
+            y2 = self.POINT_ISA_POINT_REC_PT_CO_Y[
+                abs(self.LINE_ISA_LINE_REC_LN_PNT_2[i])-1]
             p1 = (x1, y1)
             p2 = (x2, y2)
             ln.append((p1, p2))

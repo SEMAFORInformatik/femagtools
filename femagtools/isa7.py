@@ -30,19 +30,14 @@ class Reader(object):
             unpacked = [x for x in unpacked]
 
         except AttributeError:  # python 2 has no iter_unpack
-            chunksize = struct.calcsize(fmt_)
+            chunksize = struct.calcsize("=" + fmt_)
             offset = self.pos
             unpacked = []
             for j in range(blockSize//chunksize):
-                u = []
-                for c in list(fmt_):
-                    u.append(struct.unpack_from("={}".format(c),
-                                                self.file,
-                                                offset)[0])
-                    offset += struct.calcsize(c)
-                unpacked.append(list(u))
+                unpacked.append(struct.unpack_from("=" + fmt_, self.file, offset))
+                offset += chunksize
             logger.info("%s: %d %d", fmt_, blockSize, len(unpacked))
-
+            
         values = [[bool(x[i]) if fmt[i] == "?" else x[i]
                    for x in unpacked] for i in range(len(fmt))]
         self.pos += blockSize + 4

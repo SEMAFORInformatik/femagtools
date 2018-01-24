@@ -1209,6 +1209,15 @@ class Reader:
         "representation of this object"
         return self.__str__()
 
+
+def read(filename):
+    """Read BCH/BATCH results from file *filename*."""
+    import io
+    bchresults = Reader()
+    with io.open(filename, encoding='latin1', errors='ignore') as f:
+        bchresults.read(f.readlines())
+    return bchresults
+
 if __name__ == "__main__":
     import json
     if len(sys.argv) == 2:
@@ -1216,10 +1225,7 @@ if __name__ == "__main__":
     else:
         filename = sys.stdin.readline().strip()
 
-    b = Reader()
-    with codecs.open(filename, encoding='ascii') as f:
-        b.read(f)
-
+    b = read(filename)
     json.dump({k: v for k, v in b.items()}, sys.stdout)
     #print(b)
     

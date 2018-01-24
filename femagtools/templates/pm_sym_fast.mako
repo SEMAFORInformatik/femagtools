@@ -1,6 +1,9 @@
 --
 -- PM/Rel Simulation
 --
+% if model.get('wind_temp',0):
+set_dev_data("cond_temp", ${model.get('wind_temp')}, ${model.get('wind_temp')})
+% endif
 m.move_action     =    ${model.get('move_action')}
 % if  model.get('lfe',0):
 m.arm_length      =    ${model.get('lfe')*1e3}

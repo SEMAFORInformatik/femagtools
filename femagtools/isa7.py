@@ -3,9 +3,10 @@ import logging
 import struct
 import sys
 
+logger = logging.getLogger('femagtools.isa7')
+
 
 class Reader(object):
-
     def __init__(self, filename):
         with open(filename, mode="rb") as self.file:
             self.file = self.file.read()
@@ -22,15 +23,32 @@ class Reader(object):
 
         blockSize = struct.unpack_from("=i", self.file, self.pos)[0]
         self.pos += 4
-        unpacked = struct.iter_unpack("=" + fmt_,
-                                      self.file[self.pos:self.pos + blockSize])
-        self.pos += blockSize + 4
+        try:
+            unpacked = struct.iter_unpack("=" + fmt_,
+                                          self.file[self.pos:self.pos +
+                                                    blockSize])
+            unpacked = [x for x in unpacked]
 
-        unpacked = [x for x in unpacked]
+        except AttributeError:  # python 2 has no iter_unpack
+            chunksize = struct.calcsize(fmt_)
+            offset = self.pos
+            unpacked = []
+            for j in range(blockSize//chunksize):
+                u = []
+                for c in list(fmt_):
+                    u.append(struct.unpack_from("={}".format(c),
+                                                self.file,
+                                                offset)[0])
+                    offset += struct.calcsize(c)
+                unpacked.append(list(u))
+            logger.info("%s: %d %d", fmt_, blockSize, len(unpacked))
 
         values = [[bool(x[i]) if fmt[i] == "?" else x[i]
                    for x in unpacked] for i in range(len(fmt))]
-        return values[0] if len(fmt) == 1 else values
+        self.pos += blockSize + 4
+        if len(fmt) == 1:
+            return values[0]
+        return values
 
 
 class Isa7(object):
@@ -50,6 +68,7 @@ class Isa7(object):
              14: [0.6666666666666666, 0.0, 1.0], 
              15: [0.0, 0.8235294117647058, 1.0], 
              16: [0.8274509803921568, 0.8274509803921568, 0.8274509803921568]}
+    
     def __init__(self):
         pass
     
@@ -80,44 +99,44 @@ class Isa7(object):
          self.NUM_WN, self.WN_PTR, self.WN_HIDX,
          self.NUM_WN_SW, self.WN_SW_PTR, self.WN_SW_HIDX) = reader.next_block("i")
 
-        (self.POINT_ISA_PT_VALID, 
-         self.POINT_ISA_POINT_REC_PT_CO_X, 
+        (self.POINT_ISA_PT_VALID,
+         self.POINT_ISA_POINT_REC_PT_CO_X,
          self.POINT_ISA_POINT_REC_PT_CO_Y) = reader.next_block("?ff")
 
-        (self.LINE_ISA_LN_VALID, 
-         self.LINE_ISA_LINE_REC_LN_PNT_1, 
+        (self.LINE_ISA_LN_VALID,
+         self.LINE_ISA_LINE_REC_LN_PNT_1,
          self.LINE_ISA_LINE_REC_LN_PNT_2) = reader.next_block("?hh")
 
-        (self.NODE_ISA_ND_VALID, 
-         self.NODE_ISA_NOD_EL_PNTR, 
-         self.NODE_ISA_ND_CO_RAD, 
-         self.NODE_ISA_ND_CO_PHI, 
-         self.NODE_ISA_NODE_REC_ND_BND_CND, 
-         self.NODE_ISA_NODE_REC_ND_PER_NOD, 
-         self.NODE_ISA_NODE_REC_ND_SV_PNTR, 
-         self.NODE_ISA_NODE_REC_ND_CO_1, 
-         self.NODE_ISA_NODE_REC_ND_CO_2, 
-         self.NODE_ISA_NODE_REC_ND_VP_RE, 
+        (self.NODE_ISA_ND_VALID,
+         self.NODE_ISA_NOD_EL_PNTR,
+         self.NODE_ISA_ND_CO_RAD,
+         self.NODE_ISA_ND_CO_PHI,
+         self.NODE_ISA_NODE_REC_ND_BND_CND,
+         self.NODE_ISA_NODE_REC_ND_PER_NOD,
+         self.NODE_ISA_NODE_REC_ND_SV_PNTR,
+         self.NODE_ISA_NODE_REC_ND_CO_1,
+         self.NODE_ISA_NODE_REC_ND_CO_2,
+         self.NODE_ISA_NODE_REC_ND_VP_RE,
          self.NODE_ISA_NODE_REC_ND_VP_IM) = reader.next_block("?iffhiiffff")
 
-        (self.NOD_ELE_ISA_EL_KEY, 
+        (self.NOD_ELE_ISA_EL_KEY,
          self.NOD_ELE_ISA_NXT_EL_PNTR) = reader.next_block("ii")
 
-        (self.NDCHN_ISA_NC_VALID, 
-         self.NDCHN_ISA_NDCHN_REC_NC_NOD_1, 
-         self.NDCHN_ISA_NDCHN_REC_NC_NOD_2, 
+        (self.NDCHN_ISA_NC_VALID,
+         self.NDCHN_ISA_NDCHN_REC_NC_NOD_1,
+         self.NDCHN_ISA_NDCHN_REC_NC_NOD_2,
          self.NDCHN_ISA_NDCHN_REC_NC_NOD_MID) = reader.next_block("?iii")
 
-        (self.ELEM_ISA_EL_VALID, 
-         self.ELEM_ISA_EL_NOD_PNTR, 
-         self.ELEM_ISA_ELEM_REC_EL_TYP, 
-         self.ELEM_ISA_ELEM_REC_EL_SE_KEY, 
-         self.ELEM_ISA_ELEM_REC_EL_RELUC, 
-         self.ELEM_ISA_ELEM_REC_EL_RELUC_2, 
-         self.ELEM_ISA_ELEM_REC_EL_MAG_1, 
+        (self.ELEM_ISA_EL_VALID,
+         self.ELEM_ISA_EL_NOD_PNTR,
+         self.ELEM_ISA_ELEM_REC_EL_TYP,
+         self.ELEM_ISA_ELEM_REC_EL_SE_KEY,
+         self.ELEM_ISA_ELEM_REC_EL_RELUC,
+         self.ELEM_ISA_ELEM_REC_EL_RELUC_2,
+         self.ELEM_ISA_ELEM_REC_EL_MAG_1,
          self.ELEM_ISA_ELEM_REC_EL_MAG_2) = reader.next_block("?ihhffff")
 
-        (self.ELE_NOD_ISA_ND_KEY, 
+        (self.ELE_NOD_ISA_ND_KEY,
          self.ELE_NOD_ISA_NXT_ND_PNTR) = reader.next_block("ii")
 
         (self.SUPEL_ISA_SE_VALID,
@@ -171,14 +190,14 @@ class Isa7(object):
                 ndkeys.append(self.ELE_NOD_ISA_ND_KEY[i-1])
                 i = self.ELE_NOD_ISA_NXT_ND_PNTR[i-1]
     
-                segments.append([[self.NODE_ISA_NODE_REC_ND_CO_1[i-1],
-                                  self.NODE_ISA_NODE_REC_ND_CO_2[i-1]]
-                                 for i in ndkeys+[ndkeys[0]]])
+                segments.append([[self.NODE_ISA_NODE_REC_ND_CO_1[j-1],
+                                  self.NODE_ISA_NODE_REC_ND_CO_2[j-1]]
+                                 for j in ndkeys+[ndkeys[0]]])
         return segments
     
     def se_outline(self, spels=None):
         """Return list of nodechains"""
-        outln=[]
+        outln = []
         if spels is None:
             spels = range(self.NUM_SPEL)
         elif type(spels) == int:
@@ -208,6 +227,7 @@ class Isa7(object):
                 outln.append((p1, p2))
 
         return outln
+
 
 def read(filename):
     """Read ISA7 file and return ISA7 object."""

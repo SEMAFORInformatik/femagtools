@@ -31,6 +31,8 @@ class Area(object):
         self.type = 0  # material
         self.min_angle = 0.0
         self.max_angle = 0.0
+        self.close_to_startangle = False
+        self.close_to_endangle = False
         self.min_dist = 99999.0
         self.max_dist = 0.0
         self.alpha = 0.0
@@ -391,7 +393,6 @@ class Area(object):
 
     def mark_stator_subregions(self, is_inner, mirrored, alpha,
                                center, r_in, r_out):
-        my_alpha = round(self.max_angle - self.min_angle, 6)
         alpha = round(alpha, 6)
 
         if is_inner:
@@ -403,10 +404,10 @@ class Area(object):
             close_to_opposition = np.isclose(r_out, self.max_dist)
             airgap_radius = r_in
 
-        close_to_startangle = np.isclose(self.min_angle, 0.0)
-        close_to_endangle = np.isclose(self.max_angle, alpha)
+        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
+        self.close_to_endangle = np.isclose(self.max_angle, alpha)
 
-        if close_to_startangle and close_to_endangle:
+        if self.close_to_startangle and self.close_to_endangle:
             self.type = 1  # iron
             return self.type
 
@@ -429,6 +430,8 @@ class Area(object):
                 self.type = 2  # windings
             elif mirrored:
                 self.type = 2  # windings
+            else:
+                self.type = 0  # air
             return self.type
 
         return 0
@@ -446,6 +449,9 @@ class Area(object):
             close_to_ag = np.isclose(r_in, self.min_dist)
             close_to_opposition = np.isclose(r_out, self.max_dist)
             airgap_radius = r_in
+
+        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
+        self.close_to_endangle = np.isclose(self.max_angle, alpha)
 
         if close_to_opposition:
             self.type = 1  # iron

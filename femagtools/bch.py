@@ -607,15 +607,15 @@ class Reader:
 
         logger.info('read airgapInduction')
         i1beta = False  # format is either i1/beta or id/iq
-        if 'iWdg' in self.ldq and 'iBeta' in self.ldq:
-            iWdg = self.ldq['iWdg']
-            iBeta = self.ldq['iBeta']
+        if 'i1' in self.ldq and 'beta' in self.ldq:
+            i1 = self.ldq['i1']
+            beta = self.ldq['beta']
         elif 'id' in self.psidq and 'iq' in self.psidq:
             id = self.psidq['id']
             iq = self.psidq['iq']
         else:
-            iWdg = []
-            iBeta = []
+            i1 = []
+            beta = []
             id = []
             iq = []
 
@@ -624,12 +624,17 @@ class Reader:
         Bm = []
         Ba = []
 
-        for line in content[6:]:
+        for line in content[5:]:
             if line.startswith('[****'):
                 break
+            if line.startswith("Current"):
+                i1beta = True
+                continue
+            if line.startswith("C_STEP"):
+                return   # ignore this section
             try:
-                rec = line.split()
-                if len(rec) == 10 and self._numPattern.findall(line):
+                rec = self._numPattern.findall(line)
+                if len(rec) == 10:
                     f = [float(s) for s in rec]
                     an[0].append(f[2])
                     bn[0].append(f[3])
@@ -656,25 +661,22 @@ class Reader:
                     Bm.append(max([B(x) for x in np.linspace(
                         0, 2 * np.pi, 100)]))
 
-                elif line.startswith("Current         Beta"):
-                    i1beta = True
-                elif line.startswith("C_STEP"):
-                    break
             except Exception as e:
                 logger.debug("Conversion error: {} :: {}".format(e, line))
 
         self.airgapInduction = dict()
 
         if i1beta:
-            ncols = len(iBeta)
-            self.airgapInduction['iBeta'] = iBeta
-            self.airgapInduction['iWdg'] = iWdg
-            nrows = len(self.airgapInduction['iWdg'])
+            ncols = len(beta)
+            self.airgapInduction['beta'] = beta
+            self.airgapInduction['i1'] = i1
+            nrows = len(self.airgapInduction['i1'])
         else:
             ncols = len(iq)
             self.airgapInduction['iq'] = iq
             self.airgapInduction['id'] = id
             nrows = len(self.airgapInduction['id'])
+            
         self.airgapInduction['an'] = [np.reshape(an[j][:nrows*ncols],
                                                  (nrows, ncols)).T.tolist()
                                       for j in (0, 1, 2, 3)]

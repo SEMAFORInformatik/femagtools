@@ -189,7 +189,8 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.psidq['losses']), 5)
         self.assertEqual(len(bch.psidq['losses']['styoke']), 4)
         self.assertTrue('id' in bch.airgapInduction)
-        self.assertEqual(bch.airgapInduction['id'], [-210.0, -140.0, -70.0, 0.0])
+        self.assertEqual(bch.airgapInduction['id'],
+                         [-210.0, -140.0, -70.0, 0.0])
         self.assertEqual(len(bch.airgapInduction['Ba']), 4)
         self.assertEqual(len(bch.airgapInduction['Bm'][0]), 4)
 
@@ -213,10 +214,11 @@ class BchReaderTest(unittest.TestCase):
 
         self.assertEqual(len(bch.ldq['losses']), 5)
         self.assertEqual(len(bch.ldq['losses']['styoke']), 4)
-        #self.assertTrue('i1' in bch.airgapInduction)
-        #self.assertEqual(len(bch.airgapInduction['i1']), 5)
-        #self.assertEqual(len(bch.airgapInduction['an']), 4)
-        #self.assertEqual(len(bch.airgapInduction['an'][0]), 9)
+        
+        self.assertTrue('i1' in bch.airgapInduction)
+        self.assertEqual(len(bch.airgapInduction['i1']), 3)
+        self.assertEqual(len(bch.airgapInduction['an']), 4)
+        self.assertEqual(len(bch.airgapInduction['an'][0]), 4)
 
     def test_read_pmsim2(self):
         bch = self.read_bch('PM_270_L8_001.BATCH')

@@ -31,6 +31,7 @@ class Machine(object):
         self.radius = radius
         self.startangle = startangle
         self.endangle = endangle
+        self.mirror_orig_geom = None
         self.mirror_geom = None
         self.mirror_startangle = 0.0
         self.mirror_endangle = 0.0
@@ -162,11 +163,12 @@ class Machine(object):
             clone.add_cut_line(end_line)
 
         if not np.isclose(alpha_angle(startangle, endangle), 2*np.pi):
-            return Machine(clone, self.center, new_radius, startangle, endangle)
+            return Machine(clone, self.center, new_radius,
+                           startangle, endangle)
         else:
             # Der Originalwinkel bleibt bestehen
             return Machine(clone, self.center, new_radius,
-                         self.startangle, self.endangle)
+                           self.startangle, self.endangle)
 
     def full_copy(self):
         clone = self.geom.copy_shape(self.center, self.radius,
@@ -181,12 +183,29 @@ class Machine(object):
         geom2 = self.geom.copy_shape(self.center, self.radius,
                                      midangle, endangle,
                                      0.0, self.radius+9999)
-        machine = Machine(geom1, self.center, self.radius, startangle, midangle)
+        machine = Machine(geom1, self.center, self.radius,
+                          startangle, midangle)
+        machine.mirror_orig_geom = self.geom
         machine.mirror_geom = geom2
         machine.mirror_geom.center = self.center
         machine.mirror_startangle = midangle
         machine.mirror_endangle = endangle
         return machine
+
+    def undo_mirror(self):
+        if self.is_mirrored():
+            self.endangle = self.mirror_endangle
+            self.mirror_orig_geom.min_radius = self.geom.min_radius
+            self.mirror_orig_geom.max_radius = self.geom.max_radius
+            self.mirror_orig_geom.kind = self.geom.kind
+            self.geom = self.mirror_orig_geom
+            self.mirror_orig_geom = None
+            self.mirror_geom = None
+            self.mirror_startangle = 0.0
+            self.mirror_endangle = 0.0
+            self.part = self.part_of_circle()
+            self.set_alfa_and_corners()
+            self.geom.create_list_of_areas()
 
     def rotate_to(self, new_startangle):
         if np.isclose(new_startangle, self.startangle):
@@ -328,7 +347,7 @@ class Machine(object):
             return None
 
         machine_slice = self.copy(self.geom.symmetry_startangle(),
-                                self.geom.symmetry_endangle())
+                                  self.geom.symmetry_endangle())
         machine_slice.clear_cut_lines()
         machine_slice.repair_hull()
         machine_slice.rotate_to(0.0)
@@ -355,7 +374,7 @@ class Machine(object):
         return None
 
     def get_symmetry_part(self):
-        if self.mirror_geom is not None:
+        if self.is_mirrored():
             return self.part/2
         else:
             return self.part

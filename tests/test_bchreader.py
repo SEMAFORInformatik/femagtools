@@ -188,6 +188,10 @@ class BchReaderTest(unittest.TestCase):
         
         self.assertEqual(len(bch.psidq['losses']), 5)
         self.assertEqual(len(bch.psidq['losses']['styoke']), 4)
+        self.assertTrue('id' in bch.airgapInduction)
+        self.assertEqual(bch.airgapInduction['id'], [-210.0, -140.0, -70.0, 0.0])
+        self.assertEqual(len(bch.airgapInduction['Ba']), 4)
+        self.assertEqual(len(bch.airgapInduction['Bm'][0]), 4)
 
     def test_read_ldq(self):
         bch = self.read_bch('ldq.BATCH')

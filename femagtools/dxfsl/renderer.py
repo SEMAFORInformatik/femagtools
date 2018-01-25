@@ -444,6 +444,7 @@ class NewFslRenderer(object):
 
         subregions = {}
         num_windings = 0
+        num_magnets = 0
         for area in geom.list_of_areas():
             if area.number_of_elements() > 1:
                 p = area.get_point_inside(geom)
@@ -452,13 +453,19 @@ class NewFslRenderer(object):
                     self.content.append(u"point(x0, y0, red, 4)")
                     self.content.append(u"create_mesh_se(x0, y0)")
 
-                if area.type == 2:
-                    # No subreg for Windings
+                if area.is_winding():
                     if area.type not in subregions:
                         subregions[area.type] = 1
                     num_windings += 1
                     self.content.append(u'm.xcoil_{}, m.ycoil_{} = x0, y0'.
                                         format(num_windings, num_windings))
+
+                elif area.is_magnet():
+                    if area.type not in subregions:
+                        subregions[area.type] = 1
+                    num_magnets += 1
+                    self.content.append(u'm.xmag[{}], m.ymag[{}] = x0, y0'.
+                                        format(num_magnets, num_magnets))
 
                 elif area.type > 0:
                     if area.type in subregions:
@@ -480,6 +487,15 @@ class NewFslRenderer(object):
             else:
                 self.content.append(u'm.coil_mirrored = false')
             self.content.append(u'm.coil_alpha    = {}\n'.format(geom.alfa))
+
+        if num_magnets > 0:
+            self.content.append(u'm.mag_exists   = {}'.
+                                format(num_magnets))
+            if geom.is_mirrored():
+                self.content.append(u'm.mag_mirrored = true')
+            else:
+                self.content.append(u'm.mag_mirrored = false')
+            self.content.append(u'm.mag_alpha    = {}\n'.format(geom.get_alfa()))
 
         if geom.is_mirrored():
             self.content.append(u'-- mirror')
@@ -566,7 +582,8 @@ class NewFslRenderer(object):
                 num_slots = parts_outer
                 num_poles = parts_inner
                 npols_gen = int(geom_inner.get_symmetry_copies()+1)
-
+            self.content.append(u'm.xmag = {}')
+            self.content.append(u'm.ymag = {}')
             self.content.append(u'm.num_poles = {}'.format(num_poles))
             self.content.append(u'm.tot_num_slot = {}'.format(num_slots))
 
@@ -640,31 +657,59 @@ class NewFslRenderer(object):
 
         # Windings
         txt = [u'-- Gen_winding',
-               u'm.num_phases      = 3',
-               u'm.num_layers      = 2',
-               u'm.num_wires       = 1',
-               u'm.coil_span       = 1',
-               u'm.current         = 0.0',
-               u'm.mat_type        = 1.0 -- rotating',
-               u'm.wind_type       = 1.0 -- winding & current',
-               u'm.win_asym        = 1.0 -- sym',
-               u'm.wdg_location    = 1.0 -- stator',
-               u'm.curr_inp        = 0.0 -- const',
-               u'm.dq_offset       = 0']
-        self.content.append(u'\n'.join(txt))
-
-        txt = [u'if m.coil_exists == 1 and m.coil_mirrored then',
-               u'  r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
-               u'  m.xcoil_2, m.ycoil_2 = pr2c(r, m.coil_alpha + phi)',
-               u'end\n',
                u'if m.coil_exists > 0 then',
+               u'  m.num_phases      = 3',
+               u'  m.num_layers      = 2',
+               u'  m.num_wires       = 1',
+               u'  m.coil_span       = 1',
+               u'  m.current         = 0.0',
+               u'  m.mat_type        = 1.0 -- rotating',
+               u'  m.wind_type       = 1.0 -- winding & current',
+               u'  m.win_asym        = 1.0 -- sym',
+               u'  m.wdg_location    = 1.0 -- stator',
+               u'  m.curr_inp        = 0.0 -- const',
+               u'  m.dq_offset       = 0',
+               u'  if m.coil_exists == 1 and m.coil_mirrored then',
+               u'    r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
+               u'    m.xcoil_2, m.ycoil_2 = pr2c(r, m.coil_alpha + phi)',
+               u'  end\n',
                u'  pre_models("Gen_winding")',
                u'end\n']
         self.content.append(u'\n'.join(txt))
 
         txt = [u'-- pm magnets',
-               u'm.remanenc = 1.15',
-               u'm.relperm  = 1.05']
+               u'if m.mag_exists > 0 then',
+               u'  alfa = m.mag_alpha',
+               u'  m.remanenc = 1.15',
+               u'  m.relperm  = 1.05',
+               u'  for i=0, m.npols_gen-1 do',
+               u'    for n=1, m.mag_exists do',
+               u'      r, p = c2pr(m.xmag[n], m.ymag[n])',
+               u'      phi = i*alfa+p',
+               u'      orient = phi*180/math.pi',
+               u'      x0, y0 = pr2c(r, phi)',
+               u'      if ( i % 2 == 0 ) then',
+               u'        def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
+               u'                   orient, m.parallel, 100)',
+               u'      else',
+               u'        def_mat_pm(x0, y0, green, m.remanenc, m.relperm,',
+               u'                   orient-180, m.parallel, 100)',
+               u'      end',
+               u'      if m.mag_mirrored then',
+               u'        phi = (i+1)*alfa-p',
+               u'        orient = phi*180/math.pi',
+               u'        x0, y0 = pr2c(r, phi)',
+               u'        if ( i % 2 == 0 ) then',
+               u'          def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
+               u'                     orient, m.parallel, 100)',
+               u'        else',
+               u'          def_mat_pm(x0, y0, green, m.remanenc, m.relperm,',
+               u'                     orient-180, m.parallel, 100)',
+               u'        end',
+               u'      end',
+               u'    end',
+               u'  end',
+               u'end']
         self.content.append(u'\n'.join(txt))
 
         with io.open(filename, 'w', encoding='utf-8') as f:

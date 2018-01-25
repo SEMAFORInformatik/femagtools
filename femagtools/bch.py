@@ -132,6 +132,7 @@ class Reader:
             'Machine Data': Reader.__read_machine_data,
             'CAD-Parameter Data': Reader.__read_dummy,
             'Torque-Force': Reader.__read_torque_force,
+            'Airgap Induction Br': Reader.__read_airgapInduction,
             'Fourier Analysis': Reader.__read_fft,
             'Machine excitation': Reader.__read_dummy,
             'DQ-Parameter for open Winding Modell': Reader.__read_dq_parameter,
@@ -195,6 +196,11 @@ class Reader:
             # Check if we are finished with the fourier analysis part(s)
             if title != 'Fourier Analysis':
                 self._fft = None
+            else:
+                title2 = s[0].split(':')[1].strip()
+                for k in ['Airgap Induction Br']:
+                    if k == title2[:len(k)]:
+                        title = title2[:len(k)]
 
             if title in self.dispatch:
                 self.dispatch[title](self, s)
@@ -594,6 +600,112 @@ class Reader:
         if self.wdg not in self.flux_fft:
             self.flux_fft[self.wdg] = []
         self.flux_fft[self.wdg].append(flux_fft)
+
+    def __read_airgapInduction(self, content):
+        "read and append airgapInduction section"
+        import scipy.integrate as si
+
+        logger.info('read airgapInduction')
+        i1beta = False  # format is either i1/beta or id/iq
+        if 'iWdg' in self.ldq and 'iBeta' in self.ldq:
+            iWdg = self.ldq['iWdg']
+            iBeta = self.ldq['iBeta']
+        elif 'id' in self.psidq and 'iq' in self.psidq:
+            id = self.psidq['id']
+            iq = self.psidq['iq']
+        else:
+            iWdg = []
+            iBeta = []
+            id = []
+            iq = []
+
+        an = [[], [], [], []]
+        bn = [[], [], [], []]
+        Bm = []
+        Ba = []
+
+        for line in content[6:]:
+            if line.startswith('[****'):
+                break
+            try:
+                rec = line.split()
+                if len(rec) == 10 and self._numPattern.findall(line):
+                    f = [float(s) for s in rec]
+                    an[0].append(f[2])
+                    bn[0].append(f[3])
+                    an[1].append(f[4])
+                    bn[1].append(f[5])
+                    an[2].append(f[6])
+                    bn[2].append(f[7])
+                    an[3].append(f[8])
+                    bn[3].append(f[9])
+
+                    a = (an[0][-1], an[1][-1], an[2][-1], an[3][-1])
+                    b = (bn[0][-1], bn[1][-1], bn[2][-1], an[3][-1])
+
+                    def B(x):
+                        return sum(a[i] * np.cos((2 * i + 1) * x) +
+                                   b[i] * np.sin((2 * i + 1) * x)
+                                   for i in (0, 1, 2, 3))
+
+                    def Bdc(x):
+                        return abs(B(x))
+
+                    Ba.append(si.quad(Bdc, 0, 2 * np.pi,
+                                      limit=250)[0] / (2 * np.pi))
+                    Bm.append(max([B(x) for x in np.linspace(
+                        0, 2 * np.pi, 100)]))
+
+                elif line.startswith("Current         Beta"):
+                    i1beta = True
+                elif line.startswith("C_STEP"):
+                    break
+            except Exception as e:
+                logger.debug("Conversion error: {} :: {}".format(e, line))
+
+        self.airgapInduction = dict()
+
+        if i1beta:
+            ncols = len(iBeta)
+            self.airgapInduction['iBeta'] = iBeta
+            self.airgapInduction['iWdg'] = iWdg
+            nrows = len(self.airgapInduction['iWdg'])
+        else:
+            ncols = len(iq)
+            self.airgapInduction['iq'] = iq
+            self.airgapInduction['id'] = id
+            nrows = len(self.airgapInduction['id'])
+        self.airgapInduction['an'] = [np.reshape(an[j][:nrows*ncols],
+                                                 (nrows, ncols)).T.tolist()
+                                      for j in (0, 1, 2, 3)]
+        self.airgapInduction['bn'] = [np.reshape(bn[j][:nrows*ncols],
+                                                 (nrows, ncols)).T.tolist()
+                                      for j in (0, 1, 2, 3)]
+        self.airgapInduction['Bm'] = np.reshape(Bm[:nrows*ncols],
+                                                (nrows, ncols)).T.tolist()
+        self.airgapInduction['Ba'] = np.reshape(Ba[:nrows*ncols],
+                                                (nrows, ncols)).T.tolist()
+        # check for nan:
+        if len(self.airgapInduction['an'][0]) > 1 and \
+          len(self.airgapInduction['an'][0][0]) != len(self.airgapInduction['an'][0][1]):
+            self.airgapInduction['an'] = [self.airgapInduction['an'][i][1:]
+                                          for i in range(3)]
+            self.airgapInduction['bn'] = [self.airgapInduction['bn'][i][1:]
+                                          for i in range(3)]
+            self.airgapInduction['Ba'] = self.airgapInduction['Ba'][1:]
+            self.airgapInduction['Bm'] = self.airgapInduction['Bm'][1:]
+
+        if len(self.airgapInduction['an'][0]) > 1 and \
+           len(list(filter(lambda x: np.isnan(x),
+                           list(zip(*self.airgapInduction['an'][0]))[0]))) > 0:
+            self.airgapInduction['an'] = [self.airgapInduction['an'][i][1:]
+                                          for i in range(3)]
+            self.airgapInduction['bn'] = [self.airgapInduction['bn'][i][1:]
+                                          for i in range(3)]
+            self.airgapInduction['Ba'] = zip(*zip(*self.airgapInduction['Ba'])
+                                             [1:])
+            self.airgapInduction['Bm'] = zip(*zip(*self.airgapInduction['Bm'])
+                                             [1:])
 
     def __read_torque_force(self, content):
         "read and append force/torque section"

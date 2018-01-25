@@ -1209,10 +1209,10 @@ class Geometry(object):
 
     def get_symmetry_copies(self):
         if self.sym_counterpart == 0:
-            return self.sym_part
+            return int(self.sym_part)
 
         x = gcd(self.sym_part, self.sym_counterpart)
-        return self.sym_part / x - 1
+        return int(self.sym_part / x - 1)
 
     def is_mirrored(self):
         return len(self.mirror_corners) > 0
@@ -1630,6 +1630,14 @@ class Geometry(object):
             for area in self.list_of_areas():
                 if area.type == 3:
                     area.type = 1  # iron
+
+    def num_areas_of_type(self, type):
+        return len([area for area in self.list_of_areas()
+                    if area.type == type])
+
+    def area_close_to_endangle(self, type):
+        return len([area for area in self.list_of_areas()
+                    if area.type == type and area.close_to_endangle])
 
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))

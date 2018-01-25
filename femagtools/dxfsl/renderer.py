@@ -59,7 +59,6 @@ class PlotRenderer(object):
 
     def render(self, geom, filename=None, **kwargs):
         draw_center = kwargs.get('draw_center', False)
-        draw_corners = kwargs.get('draw_corners', False)
         draw_hull = kwargs.get('draw_hull', False)
         incl_bnd = kwargs.get('incl_bnd', False)
 
@@ -81,11 +80,6 @@ class PlotRenderer(object):
                         c = s.center_of_connection()
                         pl.plot([c[0]], [c[1]], 'gs')
 
-#                p = get_point_inside(area)
-#                if p:
-#                    pl.plot([p[0]], [p[1]], 'ro')
-#                    self.ax.text(p[0], p[1], str(id))
-
         geom.remove_areas(incl_bnd)
 
         # draw all remaining edges and circles
@@ -96,10 +90,6 @@ class PlotRenderer(object):
             for e1, e2, attr in geom.g.edges(data=True):
                 c = attr['object'].center_of_connection()
                 pl.plot([c[0]], [c[1]], 'gs')
-
-        if draw_corners:
-            for c in geom.find_corners(geom.g):
-                pl.plot([c[0]], [c[1]], 'bs')
 
         geom.render_cut_lines(self)
         self.ax.axis('scaled', aspect='equal')
@@ -181,7 +171,6 @@ class PlotRenderer(object):
         self.ax = self.figure().add_subplot(rows, cols,
                                             num,
                                             facecolor=self.background)
-#                                            axisbg=self.background)
         if len(title) > 0:
             self.ax.set_title(title, size=14)
         self.ax.grid(color='blue', linewidth=0.5)
@@ -454,6 +443,7 @@ class NewFslRenderer(object):
         self.content.append(u'\n')
 
         subregions = {}
+        num_windings = 0
         for area in geom.list_of_areas():
             if area.number_of_elements() > 1:
                 p = area.get_point_inside(geom)
@@ -462,7 +452,15 @@ class NewFslRenderer(object):
                     self.content.append(u"point(x0, y0, red, 4)")
                     self.content.append(u"create_mesh_se(x0, y0)")
 
-                if area.type > 0:
+                if area.type == 2:
+                    # No subreg for Windings
+                    if area.type not in subregions:
+                        subregions[area.type] = 1
+                    num_windings += 1
+                    self.content.append(u'm.xcoil_{}, m.ycoil_{} = x0, y0'.
+                                        format(num_windings, num_windings))
+
+                elif area.type > 0:
                     if area.type in subregions:
                         self.content.append(
                             u'add_to_subreg(x0, y0, "{}")'.
@@ -472,37 +470,16 @@ class NewFslRenderer(object):
                         self.content.append(
                             u'def_new_subreg(x0, y0, "{}", {})'.
                             format(area.name(), area.color()))
-                    self.content.append(u"\n")
+                self.content.append(u"\n")
 
-#        ag = 0
-#        if ag > 0:
-#            self.content.append(
-#                u'\n-- Airgap\nnc_circle_m({}, 0, 0, {}, 0, 0, 0)'.format(
-#                    da2/2+2*ag/3, da2/2+2*ag/3))
-#            self.content.append(
-#                u'nc_circle_m({}, 0, 0, {}, 0, 0, 0)'.format(
-#                    da1/2-2*ag/3, da1/2-2*ag/3))
-#            self.content.append(
-#                u'nc_line({}, 0, {}, 0, 0)'.format(
-#                    da1/2, da2/2))
-#            self.content.append(
-#                u'nc_line(0, {}, 0, {}, 0)'.format(
-#                    da1/2, da2/2))
-#        else:
-#            self.content.append(u'\nx0, y0 = {}, {}'. format(
-#                dy2/2+0.1, 0.1))
-#            self.content.append(u'create_mesh_se(x0, y0)')
-#            self.content.append(u'def_new_subreg(x0, y0, "Rotor", green)')
-#
-#        if dy2 > 0:
-#            self.content.append(u'\nx0, y0 = pr2c({}, {})'. format(
-#                dy2/2, geom.alpha))
-#            self.content.append(u'nc_line(0, 0, {}, 0, 0)'.format(
-#                dy2/2))
-#            self.content.append(u'nc_line(0, 0, x0, y0, 0)')
-#            self.content.append(u'create_mesh_se(0.1, 0.1)')
-#            self.content.append(
-#                u'def_new_subreg(0.1, 0.1, "Shaft", lightgrey)')
+        if num_windings > 0:
+            self.content.append(u'm.coil_exists   = {}'.
+                                format(num_windings))
+            if geom.is_mirrored():
+                self.content.append(u'm.coil_mirrored = true')
+            else:
+                self.content.append(u'm.coil_mirrored = false')
+            self.content.append(u'm.coil_alpha    = {}\n'.format(geom.alfa))
 
         if geom.is_mirrored():
             self.content.append(u'-- mirror')
@@ -561,7 +538,7 @@ class NewFslRenderer(object):
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))
 
-    def render_main(self, motor, geom_inner, geom_outer,
+    def render_main(self, motor, m_inner, m_outer,
                     filename, with_header=False):
         '''create main file'''
 
@@ -571,18 +548,28 @@ class NewFslRenderer(object):
         self.content.append(u'verbosity = 2')
         self.content.append(u'pickdist = 0.001\n')
 
-        if geom_inner and geom_outer:
-            n = [int(round(np.pi/x)) for x in [geom_outer.alfa,
-                                               geom_inner.alfa]]
-            num_poles = min(n)
-            num_slots = max(n)
+        geom_inner = None
+        geom_outer = None
+
+        if m_inner and m_outer:
+            geom_inner = m_inner.geom
+            geom_outer = m_outer.geom
+
+            parts_inner = m_inner.get_symmetry_part()
+            parts_outer = m_outer.get_symmetry_part()
+
+            if parts_inner > parts_outer:
+                num_slots = parts_inner
+                num_poles = parts_outer
+                npols_gen = int(geom_outer.get_symmetry_copies()+1)
+            else:
+                num_slots = parts_outer
+                num_poles = parts_inner
+                npols_gen = int(geom_inner.get_symmetry_copies()+1)
 
             self.content.append(u'm.num_poles = {}'.format(num_poles))
             self.content.append(u'm.tot_num_slot = {}'.format(num_slots))
-            if num_poles == n[0]:
-                npols_gen = int(geom_outer.get_symmetry_copies())+1
-            else:
-                npols_gen = int(geom_inner.get_symmetry_copies())+1
+
             self.content.append(u'm.npols_gen = {}'.format(npols_gen))
             self.content.append(
                 u'm.num_slots = m.tot_num_slot*m.npols_gen/m.num_poles')
@@ -594,21 +581,23 @@ class NewFslRenderer(object):
         self.content.append(u'ag = (da1 - da2)/2\n')
         self.content.append(u'agndst = 0.75')
 
-        self.content.append(u'new_model_force("{}","Test")\n'.format(
-            self.model))
+        self.content.append(u'new_model_force("{}","Test")\n'.
+                            format(self.model))
 
         if geom_inner:
-            ncopies = 'm.npols_gen'
-            if num_poles == n[0]:
+            if parts_inner > parts_outer:
                 ncopies = 'm.num_slots'
+            else:
+                ncopies = 'm.npols_gen'
             self.content.append(
                 u'm.{}_ncopies = {}'.format(
                     geom_inner.kind, ncopies))
 
         if geom_outer:
-            ncopies = 'm.num_slots'
-            if num_poles == n[0]:
+            if parts_inner > parts_outer:
                 ncopies = 'm.npols_gen'
+            else:
+                ncopies = 'm.num_slots'
             self.content.append(
                 u'm.{}_ncopies = {}'.format(
                     geom_outer.kind, ncopies))
@@ -628,28 +617,55 @@ class NewFslRenderer(object):
 
         self.content.append(u'alfa = {}\n'.format(alfa))
 
-        self.content.append(u'-- airgap')
-        self.content.append(u'r1 = da2/2 + ag/3')
-        self.content.append(u'x1, y1 = pr2c(r1, alfa)')
-        self.content.append(u'n = r1*alfa/agndst + 1')
-        self.content.append(u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n')
-
-        self.content.append(u'r2 = da2/2 + 2*ag/3')
-        self.content.append(u'x2, y2 = pr2c(r2, alfa)')
-        self.content.append(u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n')
-
-        self.content.append(u'nc_line(da2/2, 0, r2, 0, 0)')
-        self.content.append(u'x3, y3 = pr2c(da2/2, alfa)')
-        self.content.append(u'x4, y4 = pr2c(r2, alfa)')
-        self.content.append(u'nc_line(x3, y3, x4, y4, 0, 0)\n')
-
-        self.content.append(u'x0, y0 = pr2c(da2/2+ag/6, alfa/2)')
-        self.content.append(u'create_mesh_se(x0, y0)')
-
-        self.content.append(u'x0, y0 = pr2c(da2/2+3*ag/6, alfa/2)')
-        self.content.append(u'create_mesh_se(x0, y0)\n')
+        # Airgap
+        txt = [u'-- airgap',
+               u'r1 = da2/2 + ag/3',
+               u'x1, y1 = pr2c(r1, alfa)',
+               u'n = r1*alfa/agndst + 1',
+               u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
+               u'r2 = da2/2 + 2*ag/3',
+               u'x2, y2 = pr2c(r2, alfa)',
+               u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
+               u'nc_line(da2/2, 0, r2, 0, 0)',
+               u'x3, y3 = pr2c(da2/2, alfa)',
+               u'x4, y4 = pr2c(r2, alfa)',
+               u'nc_line(x3, y3, x4, y4, 0, 0)\n',
+               u'x0, y0 = pr2c(da2/2+ag/6, alfa/2)',
+               u'create_mesh_se(x0, y0)',
+               u'x0, y0 = pr2c(da2/2+3*ag/6, alfa/2)',
+               u'create_mesh_se(x0, y0)\n']
+        self.content.append(u'\n'.join(txt))
 
         self.content.append(u'connect_models()\n')
+
+        # Windings
+        txt = [u'-- Gen_winding',
+               u'm.num_phases      = 3',
+               u'm.num_layers      = 2',
+               u'm.num_wires       = 1',
+               u'm.coil_span       = 1',
+               u'm.current         = 0.0',
+               u'm.mat_type        = 1.0 -- rotating',
+               u'm.wind_type       = 1.0 -- winding & current',
+               u'm.win_asym        = 1.0 -- sym',
+               u'm.wdg_location    = 1.0 -- stator',
+               u'm.curr_inp        = 0.0 -- const',
+               u'm.dq_offset       = 0']
+        self.content.append(u'\n'.join(txt))
+
+        txt = [u'if m.coil_exists == 1 and m.coil_mirrored then',
+               u'  r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
+               u'  m.xcoil_2, m.ycoil_2 = pr2c(r, m.coil_alpha + phi)',
+               u'end\n',
+               u'if m.coil_exists > 0 then',
+               u'  pre_models("Gen_winding")',
+               u'end\n']
+        self.content.append(u'\n'.join(txt))
+
+        txt = [u'-- pm magnets',
+               u'm.remanenc = 1.15',
+               u'm.relperm  = 1.05']
+        self.content.append(u'\n'.join(txt))
 
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))

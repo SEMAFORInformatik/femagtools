@@ -13,7 +13,7 @@ import argparse
 import logging
 import logging.config
 import numpy as np
-#import io
+# import io
 
 logger = logging.getLogger(__name__)
 
@@ -26,16 +26,13 @@ def usage(name):
 def write_fsl(machine, basename, inner=False, outer=False):
     model = dr.NewFslRenderer(basename)
     filename = basename + '_' + machine.geom.kind + '.fsl'
-    machine.search_subregions()
     model.render(machine.geom, filename, inner, outer)
 
 
 def write_main_fsl(machine, machine_inner, machine_outer, basename):
     model = dr.NewFslRenderer(basename)
     filename = basename + '.fsl'
-    model.render_main(machine,
-                      machine_inner.geom, machine_outer.geom,
-                      filename)
+    model.render_main(machine, machine_inner, machine_outer, filename)
 
 
 def symmetry_search(machine, kind, sym_tolerance, show_plots,
@@ -217,7 +214,9 @@ if __name__ == "__main__":
             print("===== Original (REPAIRED HULL) =====")
             p.render_elements(basegeom, dg.Shape, with_corners=True, show=True)
 
-    if machine_base.is_full() or machine_base.is_half() or machine_base.is_quarter():
+    if machine_base.is_full() or \
+       machine_base.is_half() or \
+       machine_base.is_quarter():
         # create a copy for further processing
         machine = machine_base.full_copy()
     else:
@@ -235,7 +234,8 @@ if __name__ == "__main__":
     if args.show_plots and args.debug:
         print("===== Areas =====")
         # p.render_areas(machine.geom, with_nodes=True)
-        p.render_elements(machine.geom, dg.Shape, with_corners=False, show=True)
+        p.render_elements(machine.geom, dg.Shape,
+                          with_corners=False, show=True)
 
     machine.airgap(args.airgap, args.airgap2, args.sym_tolerance)
 
@@ -247,21 +247,30 @@ if __name__ == "__main__":
 
         machine_inner = machine.copy(0.0, 2*np.pi, True, True)
         machine_inner = symmetry_search(machine_inner, inner_name,
-                                      args.sym_tolerance,
-                                      args.show_plots, 3, 2, 3)
+                                        args.sym_tolerance,
+                                        args.show_plots, 3, 2, 3)
         machine_inner.set_inner()
 
         machine_outer = machine.copy(0.0, 2*np.pi, True, False)
         machine_outer = symmetry_search(machine_outer, outer_name,
-                                      args.sym_tolerance,
-                                      args.show_plots, 3, 2, 4)
-        machine_outer.set_outer()
+                                        args.sym_tolerance,
+                                        args.show_plots, 3, 2, 4)
 
         machine_inner.sync_with_counterpart(machine_outer)
         p.show_plot()
 
-#        print("Inner\n{}".format(machine_inner.geom))
-#        print("Outer\n{}".format(machine_outer.geom))
+        machine_inner.search_subregions()
+        machine_outer.search_subregions()
+
+        if machine_inner.geom.area_close_to_endangle(2) > 0:
+            machine_inner.undo_mirror()
+            machine_inner.sync_with_counterpart(machine_outer)
+            machine_inner.search_subregions()
+
+        elif machine_outer.geom.area_close_to_endangle(2) > 0:
+            machine_outer.undo_mirror()
+            machine_inner.sync_with_counterpart(machine_outer)
+            machine_outer.search_subregions()
 
         if args.fsl:
             write_fsl(machine_inner, basename, True, False)
@@ -270,10 +279,11 @@ if __name__ == "__main__":
 
     else:
         machine = symmetry_search(machine, "No_Airgap",
-                                args.sym_tolerance, args.show_plots, 4, 2, 3)
+                                  args.sym_tolerance, args.show_plots, 4, 2, 3)
         p.show_plot()
 
         if args.fsl:
+            machine.search_subregions()
             write_fsl(machine, basename)
 
     logger.info("done")

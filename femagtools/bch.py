@@ -1200,6 +1200,7 @@ class Reader:
 
     def __read_hysteresis_eddy_current_losses(self, content):
         losses = dict(staza=[], stajo=[], rotor=[])
+        k = ''
         for i, l in enumerate(content):
             if l.startswith('*************'):
                 for k in losses:
@@ -1214,7 +1215,6 @@ class Reader:
                                           for k in losses}
                 self.__read_losses(content[i+1:])
                 break
-
             if l.find('StJo') > -1 or \
                l.find('RoJo') > -1:
                 k = 'stajo'
@@ -1222,12 +1222,16 @@ class Reader:
                  l.find('StatorIron') > -1 or \
                  l.find('RoZa') > -1:
                 k = 'staza'
-            elif l.find('Iron') > -1 or \
-                 l.find('Roto') > -1:
+            elif l.find('Iron') > -1 and l.find('Stator') > -1:
+                    k = 'staza'                
+            elif l.find('Iron') > -1:
                 if self.external_rotor:
                     k = 'staza'
                 else:
                     k = 'rotor'
+            elif l.find('Roto') > -1 or \
+                 l.find('Ring') < -1:
+                k = 'rotor'
             elif l.find('Stat') > -1:
                 k = 'stajo'
             else:
@@ -1241,7 +1245,7 @@ class Reader:
                                           if not i == 1])
                 except:
                     pass
-                    
+                  
     def get(self, name, r=None):
         """return value of key name
         name can be a list such as ['torque[1]', 'ripple']

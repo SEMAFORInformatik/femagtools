@@ -79,6 +79,15 @@ class Area(object):
             return 'red'
         return 'magenta'
 
+    def is_iron(self):
+        return self.type == 1
+
+    def is_winding(self):
+        return self.type == 2
+
+    def is_magnet(self):
+        return self.type == 3 or self.type == 4
+
     def calc_signature(self, center):
         if not self.area:
             return

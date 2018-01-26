@@ -301,7 +301,7 @@ def polylines(entity):
         i += 1
 
 
-def dxfshapes0(dxffile):
+def dxfshapes0(dxffile, layers=[]):
     """returns a collection of dxf entities (ezdxf)"""
     import ezdxf
     dwg = ezdxf.readfile(dxffile)
@@ -331,6 +331,7 @@ def dxfshapes0(dxffile):
 def dxfshapes(dxffile, layers=[]):
     """returns a collection of dxf entities (dxfgrabber)"""
     dwg = dxfgrabber.readfile(dxffile)
+    # print("Layers = {}".format(dwg.layers.names()))
     id = 0
     # $ACADVER: AC1006 = R10, AC1009 = R11 and R12, AC1012 = R13,
     #   AC1014 = R14 AC1015 = Release 2000/0i/2
@@ -544,6 +545,25 @@ class Geometry(object):
     def number_of_edges(self):
         """return the number of edges in graph"""
         return self.g.number_of_edges()
+
+    def get_node(self, p):
+        for n in self.g.nodes():
+            if points_are_close(p, n):
+                return n
+        return []
+
+    def get_edge(self, eg):
+        return [[e[0], e[1], e[2]['object']] for e in self.g.edges(data=True)
+                if e[2]['object'] is eg]
+
+    def remove_edge(self, edge):
+        e = self.get_edge(edge)
+        assert(len(e) == 1)
+        self.g.remove_edge(e[0][0], e[0][1])
+
+    def remove_edges(self, edges):
+        for e in edges:
+            self.remove_edge(e)
 
     def elements(self, type):
         """return lists of objects"""
@@ -1549,6 +1569,38 @@ class Geometry(object):
             dist_max = max(dist_max, g[1])
 
         return airgaps
+
+    def get_circles(self, center, radius):
+        return [c for c in self.elements(Circle)
+                if points_are_close(center, c.center) and
+                np.isclose(radius, c.radius)]
+
+    def alpha_of_circles(self, circles, center):
+        angle = 0.0
+        for c in circles:
+            if isinstance(c, Arc):
+                alpha_c_p1 = alpha_line(center, c.p1)
+                alpha_c_p2 = alpha_line(center, c.p2)
+                angle += alpha_angle(alpha_c_p1, alpha_c_p2)
+            else:
+                angle = 2*np.pi
+        return angle
+
+    def delete_airgap_circle(self, center,
+                             lower_radius, radius, upper_radius,
+                             angle_tot):
+        lower_circles = self.get_circles(center, lower_radius)
+        angle_sum = self.alpha_of_circles(lower_circles, center)
+        if angle_sum / angle_tot < 0.75:
+            return False
+
+        upper_circles = self.get_circles(center, upper_radius)
+        angle_sum = self.alpha_of_circles(upper_circles, center)
+        if angle_sum / angle_tot < 0.75:
+            return False
+
+        self.remove_edges(self.get_circles(center, radius))
+        return True
 
     def create_auxiliary_lines(self, leftangle):
         for area in self.list_of_areas():

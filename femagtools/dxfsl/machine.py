@@ -224,9 +224,34 @@ class Machine(object):
         if np.isclose(self.radius, 0.0):
             return
 
-        self.airgaps = self.geom.detect_airgaps(self.center,
-                                                self.startangle,
-                                                self.endangle, atol)
+        self.airgaps = []
+        airgaps = self.geom.detect_airgaps(self.center,
+                                           self.startangle,
+                                           self.endangle, atol)
+
+        alpha = alpha_angle(self.startangle, self.endangle)
+
+        if len(airgaps) == 1:
+            self.airgaps = airgaps
+        elif len(airgaps) > 0:
+            lower_radius = -1.0
+            upper_radius = -1.0
+
+            for g in airgaps:
+                if np.isclose(g[0], upper_radius):
+                    if not self.geom.delete_airgap_circle(self.center,
+                                                          lower_radius,
+                                                          upper_radius,
+                                                          g[1],
+                                                          alpha):
+                        lower_radius = g[0]
+                else:
+                    if lower_radius > 0.0:
+                        self.airgaps.append((lower_radius, upper_radius))
+                    lower_radius = g[0]
+                upper_radius = g[1]
+            self.airgaps.append((lower_radius, upper_radius))
+
         if len(self.airgaps) > 0:
             num_airgaps = 0
             for g in self.airgaps:
@@ -268,11 +293,28 @@ class Machine(object):
                 return
 
             if num_airgaps > 1:
-                print("More than one airgap candidate found:")
-                for c in self.geom.airgaps:
-                    print(" --- {}".format(c.radius))
-                print("Use options --airgap/--airgap2 <float> to specify")
-                sys.exit(1)
+                airgaps = []
+                for g in self.airgaps:
+                    lower_circles = self.geom.get_circles(self.center, g[0])
+                    upper_circles = self.geom.get_circles(self.center, g[1])
+                    sum_lower_angle = self.geom.alpha_of_circles(lower_circles,
+                                                                 self.center)
+                    sum_upper_angle = self.geom.alpha_of_circles(upper_circles,
+                                                                 self.center)
+                    if(sum_lower_angle / alpha > 0.75 and
+                       sum_upper_angle / alpha > 0.75):
+                        airgaps.append(g)
+
+                if len(airgaps) == 1:
+                    g = airgaps[0]
+                    self.airgap_radius = round((g[0]+g[1])/2.0, 6)
+                    self.geom.airgaps = airgaps
+                else:
+                    print("More than one airgap candidate found:")
+                    for c in self.geom.airgaps:
+                        print(" --- {}".format(c.radius))
+                        print("Use options --airgap/--airgap2 <float> to specify")
+                    sys.exit(1)
             else:
                 self.airgap_radius = 0.0
 

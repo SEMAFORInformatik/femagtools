@@ -68,8 +68,12 @@ class Shape(object):
     def dy(self):
         return (self.p2[1]-self.p1[1])
 
-    def m(self):
-        return line_m(self.p1, self.p2)
+    def m(self, none_val=None):
+        m = line_m(self.p1, self.p2)
+        if m is None:
+            return none_val
+        else:
+            return m
 
     def n(self, m):
         return line_n(self.p1, m)

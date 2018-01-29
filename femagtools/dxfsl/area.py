@@ -13,7 +13,7 @@ import numpy as np
 import networkx as nx
 import logging
 from .functions import less_equal, less, greater_equal, greater
-from .functions import distance, alpha_angle, min_angle, max_angle
+from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point
 from .functions import middle_angle, part_of_circle
 from .shape import Element, Shape, Line
@@ -29,6 +29,7 @@ class Area(object):
     def __init__(self, area, center, sym_tolerance):
         self.area = area
         self.type = 0  # material
+        self.phi = 0.0
         self.min_angle = 0.0
         self.max_angle = 0.0
         self.close_to_startangle = False
@@ -373,16 +374,11 @@ class Area(object):
                 continue
 
     def is_rectangle(self):
-        lines = []
-        for c, e in enumerate(self.area):
-            if isinstance(e, Line):
-                l = e.length()
-                m = e.m()
-                if m is None:
-                    m = 99999.0
-                lines.append((c, m, l))
-
+        lines = [[c, e.m(99999.0), e.length()]
+                 for c, e in enumerate(self.area)
+                 if isinstance(e, Line)]
         lines.sort()
+
         line_count = 1
         m_prev = 999.999999
         c_prev = -99
@@ -399,6 +395,32 @@ class Area(object):
             c_prev = c
 
         return line_count == 4
+
+    def get_mag_orient_rectangle(self):
+        lines = [[e.m(99999.0), e.length(), alpha_line(e.p1, e.p2)]
+                 for e in self.area
+                 if isinstance(e, Line)]
+        lines.sort()
+
+        m_prev = 999.999999
+        a_prev = 0.0
+        l_total = 0.0
+        line_length = []
+        for m, l, a in lines:
+            if np.isclose(m_prev, m):
+                l_total += l
+            else:
+                if l_total > 0.0:
+                    line_length.append((l_total, m_prev, a_prev))
+                l_total = l
+                m_prev = m
+                a_prev = a
+        line_length.sort(reverse=True)
+
+        alpha = line_length[0][2]
+        if alpha < 0.0:
+            alpha += np.pi
+        return alpha + np.pi/2
 
     def mark_stator_subregions(self, is_inner, mirrored, alpha,
                                center, r_in, r_out):
@@ -475,13 +497,22 @@ class Area(object):
 
             if air_alpha / alpha > 0.6:
                 self.type = 3  # magnet
+                if self.close_to_endangle:
+                    if self.close_to_startangle:
+                        self.phi = middle_angle(self.min_angle, self.max_angle)
+                    else:
+                        self.phi = self.max_angle
+                else:
+                    self.phi = middle_angle(self.min_angle, self.max_angle)
             else:
                 self.type = 1  # iron
             return self.type
 
         if my_alpha / alpha > 0.5:
             if self.is_rectangle():
-                self.type = 4  # magnet
+                self.type = 4  # magnet embedded
+                self.phi = self.get_mag_orient_rectangle()
+                # self.phi = middle_angle(self.min_angle, self.max_angle) + 0.6
                 return self.type
 
         self.type = 1  # iron

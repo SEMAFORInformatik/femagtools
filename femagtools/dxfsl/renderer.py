@@ -313,7 +313,7 @@ class DumpRenderer(object):
         for i, area in enumerate(geom.areas(incl_bnd)):
             self.content.append('-- {}'.format(i))
             for e in area:
-                if not e in handled:
+                if e not in handled:
                     e.render(self)
                     handled.add(e)
         self.content.append('--')
@@ -347,7 +347,7 @@ class NewFslRenderer(object):
               'agndst = 0.5',
               'new_model_force("{}","Test")',
               'blow_up_wind(0,0, {}, {})']
-    
+
     def __init__(self, name):
         self.model = name
         self.mirror_axis = None
@@ -466,7 +466,8 @@ class NewFslRenderer(object):
                     num_magnets += 1
                     self.content.append(u'm.xmag[{}], m.ymag[{}] = x0, y0'.
                                         format(num_magnets, num_magnets))
-
+                    self.content.append(u'm.mag_orient[{}] = {}'.
+                                        format(num_magnets, area.phi))
                 elif area.type > 0:
                     if area.type in subregions:
                         self.content.append(
@@ -527,7 +528,7 @@ class NewFslRenderer(object):
         self.content.append(
             u'  rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,m.{}_ncopies-1)'
             .format(geom.kind))
-        self.content.append(u'  end')
+        self.content.append(u'end')
 
         if self.fm_nlin:
             self.content.append(u'\nx0, y0 = {}, {}'. format(
@@ -584,6 +585,7 @@ class NewFslRenderer(object):
                 npols_gen = int(geom_inner.get_symmetry_copies()+1)
             self.content.append(u'm.xmag = {}')
             self.content.append(u'm.ymag = {}')
+            self.content.append(u'm.mag_orient = {}')
             self.content.append(u'm.num_poles = {}'.format(num_poles))
             self.content.append(u'm.tot_num_slot = {}'.format(num_slots))
 
@@ -686,8 +688,9 @@ class NewFslRenderer(object):
                u'    for n=1, m.mag_exists do',
                u'      r, p = c2pr(m.xmag[n], m.ymag[n])',
                u'      phi = i*alfa+p',
-               u'      orient = phi*180/math.pi',
                u'      x0, y0 = pr2c(r, phi)',
+               u'      phi_orient = i*alfa+m.mag_orient[n]',
+               u'      orient = phi_orient*180/math.pi',
                u'      if ( i % 2 == 0 ) then',
                u'        def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
                u'                   orient, m.parallel, 100)',
@@ -697,8 +700,9 @@ class NewFslRenderer(object):
                u'      end',
                u'      if m.mag_mirrored then',
                u'        phi = (i+1)*alfa-p',
-               u'        orient = phi*180/math.pi',
                u'        x0, y0 = pr2c(r, phi)',
+               u'        phi_orient = (i+1)*alfa-m.mag_orient[n]',
+               u'        orient = phi_orient*180/math.pi',
                u'        if ( i % 2 == 0 ) then',
                u'          def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
                u'                     orient, m.parallel, 100)',

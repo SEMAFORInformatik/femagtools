@@ -1,8 +1,5 @@
 import femagtools.dxfsl.geom as g
-import femagtools.dxfsl.renderer as dr
 
-import os.path
-import platform
 import logging
 
 
@@ -84,17 +81,17 @@ def check_point_inside(n):
 #    p = dr.PlotRenderer()
 #    p.render_elements(geom, g.Shape, neighbors=True, points=pts)
 
+
 def test_0_point_inside():
     check_point_inside(0)
-    
+
+
 def test_1_point_inside():
     check_point_inside(1)
-    
+
 if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
 
     test_1_point_inside()
-
-    

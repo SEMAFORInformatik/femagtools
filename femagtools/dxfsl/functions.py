@@ -204,8 +204,8 @@ def mirror_point(p, L_p, L_m, L_n):
 
 
 def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
-    return np.isclose(p1[0], p2[0], rtol, atol) and \
-           np.isclose(p1[1], p2[1], rtol, atol)
+    return (np.isclose(p1[0], p2[0], rtol, atol) and
+            np.isclose(p1[1], p2[1], rtol, atol))
 
 
 def within_interval(x, v1, v2, rtol=1e-3, atol=1e-8):
@@ -230,8 +230,8 @@ def normalise_angle(alpha):
 def is_same_angle(angle1, angle2):
     """ returns true if angles are equal
     """
-    return np.isclose(np.cos(angle1), np.cos(angle2)) and \
-        np.isclose(np.sin(angle1), np.sin(angle2))
+    return (np.isclose(np.cos(angle1), np.cos(angle2)) and
+            np.isclose(np.sin(angle1), np.sin(angle2)))
 
 
 def part_of_circle(startangle, endangle, pos=3):

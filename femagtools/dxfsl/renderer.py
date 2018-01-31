@@ -10,7 +10,7 @@
 import numpy as np
 import matplotlib.pylab as pl
 import matplotlib.patches as pch
-import femagtools.dxfsl.geom as g
+from .shape import Shape
 import logging
 import io
 
@@ -406,12 +406,12 @@ class NewFslRenderer(object):
             # Abstand von airgap Richtung Nullpunkt
             el_sorted = [(geom.max_radius -
                           e.minmax_from_center((0.0, 0.0))[1], e)
-                         for e in geom.elements(g.Shape)]
+                         for e in geom.elements(Shape)]
         else:
             # Abstand von airgap Richtung Aussen
             el_sorted = [(e.minmax_from_center((0.0, 0.0))[0] -
                           geom.min_radius, e)
-                         for e in geom.elements(g.Shape)]
+                         for e in geom.elements(Shape)]
 
         el_sorted.sort()
         return el_sorted

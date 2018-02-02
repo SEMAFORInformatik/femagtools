@@ -202,7 +202,7 @@ class PlotRenderer(object):
             for area in geom.list_of_areas():
                 p = area.get_point_inside(geom)
                 if p:
-                    pl.plot([p[0]], [p[1]], 'ro', color='yellow')
+                    pl.plot([p[0]], [p[1]], 'ro', color='magenta')
 
         geom.render_cut_lines(self)
         geom.render_airgaps(self)
@@ -215,10 +215,10 @@ class PlotRenderer(object):
 
         if with_center and geom.center:
             self.point(geom.center, 'ro', color='darkgreen')
-            x_min = min(x_min, geom.center[0])
-            x_max = min(x_max, geom.center[0])
-            y_min = min(y_min, geom.center[1])
-            y_max = min(y_max, geom.center[1])
+            x_min = min(x_min, geom.center[0]-5)
+            x_max = max(x_max, geom.center[0]+5)
+            y_min = min(y_min, geom.center[1]-5)
+            y_max = max(y_max, geom.center[1]+5)
 
         self.ax.axis('scaled', aspect='equal')
         self.ax.set_xlim(x_min, x_max)

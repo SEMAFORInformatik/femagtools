@@ -196,12 +196,12 @@ def converter(dxfile,
         p.render_elements(machine_inner.geom, Shape,
                           draw_inside=True, title=inner_name,
                           rows=3, cols=2, num=5, show=False,
-                          fill_areas=False)
+                          fill_areas=True)
 
         p.render_elements(machine_outer.geom, Shape,
                           draw_inside=True, title=outer_name,
                           rows=3, cols=2, num=6, show=False,
-                          fill_areas=False)
+                          fill_areas=True)
         p.show_plot()
 
         if write_fsl:

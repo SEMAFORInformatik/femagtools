@@ -14,9 +14,9 @@ import networkx as nx
 import logging
 from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
-from .functions import point, line_m, line_n, intersect_point
+from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle
-from .shape import Element, Shape, Arc, Line
+from .shape import Element, Shape, Line
 
 logger = logging.getLogger('femagtools.area')
 
@@ -66,14 +66,32 @@ class Area(object):
         if len(self.area) == 0:
             return
 
+        prev_nodes = []
         for e in self.area:
             nodes = []
-            for n in e.get_nodes():
+            for n in e.get_nodes(parts=64):
                 nodes.append(n)
-            if isinstance(e, Arc):
-                print("virtual_nodes: {}".format(nodes))
-            for n in nodes:
-                yield n
+            if prev_nodes:
+                if points_are_close(prev_nodes[0], nodes[0]):
+                    next_nodes = prev_nodes[::-1]
+                elif points_are_close(prev_nodes[0], nodes[-1]):
+                    next_nodes = prev_nodes[::-1]
+                    nodes = nodes[::-1]
+                elif points_are_close(prev_nodes[-1], nodes[0]):
+                    next_nodes = prev_nodes
+                elif points_are_close(prev_nodes[-1], nodes[-1]):
+                    next_nodes = prev_nodes
+                    nodes = nodes[::-1]
+                else:
+                    assert(False)
+
+                for n in next_nodes:
+                    yield n
+
+            prev_nodes = nodes
+
+        for n in nodes:
+            yield n
 
     def name(self):
         if self.type == 1:

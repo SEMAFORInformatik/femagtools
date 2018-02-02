@@ -198,10 +198,13 @@ class Circle(Shape):
     def minmax_angle_dist_from_center(self, center, dist):
         return ()
 
-    def get_nodes(self):
+    def get_nodes(self, parts=8):
         """ returns a list of virtual nodes to create the convex hull
         """
-        return (p for p in points_on_arc(self.center, self.radius, 0.0, 0.0))
+        return (p for p in points_on_arc(self.center, self.radius,
+                                         0.0,  # startangle
+                                         0.0,  # endangle
+                                         parts=parts))
 
     def scale(self, factor):
         super(Circle, self).scale(factor)
@@ -605,12 +608,14 @@ class Arc(Circle):
 
         return (alpha_min, alpha_max)
 
-    def get_nodes(self):
+    def get_nodes(self, parts=8):
         """ Die Funktion liefert eine Liste von virtuellen Nodes, welche man
             zum Rechnen der convex_hull() benötigt.
         """
         return (p for p in points_on_arc(self.center, self.radius,
-                                         self.startangle, self.endangle))
+                                         self.startangle,
+                                         self.endangle,
+                                         parts=parts))
 
     def __str__(self):
         return "Arc c={}, r={} start={}, end={}, p1={}, p2={}".\
@@ -793,7 +798,7 @@ class Line(Shape):
         else:
             return (alpha_p2, alpha_p1)
 
-    def get_nodes(self):
+    def get_nodes(self, parts=8):
         """ Die Funktion liefert eine Liste von virtuellen Nodes, welche man
             zum Rechnen der convex_hull() benötigt.
         """

@@ -314,7 +314,7 @@ def is_point_inside_region(p, center,
                                        startangle, endangle)
 
 
-def angles_on_arc(startangle, endangle):
+def angles_on_arc(startangle, endangle, parts=8):
     circle = np.isclose(startangle, endangle)
     if circle:
         endangle += 2.0*np.pi
@@ -327,7 +327,7 @@ def angles_on_arc(startangle, endangle):
 
     alpha = endangle - startangle
 
-    num = int(alpha/(np.pi/8))
+    num = max(int(alpha/(np.pi/parts)), 1)
 
     for x in range(0, num):
         yield x/num*alpha + startangle
@@ -335,9 +335,9 @@ def angles_on_arc(startangle, endangle):
         yield alpha + startangle
 
 
-def points_on_arc(center, radius, startangle, endangle):
+def points_on_arc(center, radius, startangle, endangle, parts=8):
     start = normalise_angle(startangle)
     end = normalise_angle(endangle)
-    for alpha in angles_on_arc(start, end):
+    for alpha in angles_on_arc(start, end, parts=parts):
         yield (center[0] + radius * np.cos(alpha),
                center[1] + radius * np.sin(alpha))

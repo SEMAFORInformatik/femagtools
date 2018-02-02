@@ -16,7 +16,7 @@ from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point
 from .functions import middle_angle, part_of_circle
-from .shape import Element, Shape, Line
+from .shape import Element, Shape, Arc, Line
 
 logger = logging.getLogger('femagtools.area')
 
@@ -62,6 +62,19 @@ class Area(object):
             yield e.p1
             yield e.p2
 
+    def virtual_nodes(self):
+        if len(self.area) == 0:
+            return
+
+        for e in self.area:
+            nodes = []
+            for n in e.get_nodes():
+                nodes.append(n)
+            if isinstance(e, Arc):
+                print("virtual_nodes: {}".format(nodes))
+            for n in nodes:
+                yield n
+
     def name(self):
         if self.type == 1:
             return 'iron'
@@ -78,7 +91,7 @@ class Area(object):
             return 'green'
         if self.type == 3 or self.type == 4:
             return 'red'
-        return 'magenta'
+        return ''
 
     def is_iron(self):
         return self.type == 1
@@ -365,6 +378,16 @@ class Area(object):
         for e in self.area:
             e.render(renderer, color, with_nodes)
         return
+
+    def render_fill(self, renderer):
+        color = self.color()
+        # print("fill color = '{}'".format(color))
+        if not color:
+            return
+        nodes = [n for n in self.virtual_nodes()]
+        x = [n[0] for n in nodes]
+        y = [n[1] for n in nodes]
+        renderer.fill(x, y, color)
 
     def remove_edges(self, g, ndec):
         for e in self.area:

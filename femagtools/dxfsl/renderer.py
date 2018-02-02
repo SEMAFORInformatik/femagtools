@@ -31,7 +31,7 @@ class PlotRenderer(object):
     def figure(self):
         if self.fig is None:
             self.fig = pl.figure(figsize=(9, 10), facecolor='lightblue')
-            pl.tight_layout()
+            pl.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)
 
         return self.fig
 
@@ -57,6 +57,9 @@ class PlotRenderer(object):
 
     def point(self, p, col, color='blue'):
         pl.plot([p[0]], [p[1]], col, color=color)
+
+    def fill(self, x, y, color):
+        self.ax.fill(x, y, 'b', alpha=0.5, color=color)
 
     def render(self, geom, filename=None, **kwargs):
         draw_center = kwargs.get('draw_center', False)
@@ -128,6 +131,7 @@ class PlotRenderer(object):
         neighbors = kwargs.get('neighbors', False)
         draw_center = kwargs.get('draw_center', False)
         draw_inside = kwargs.get('draw_inside', False)
+        fill_areas = kwargs.get('fill_areas', False)
         title = kwargs.get('title', "")
         show = kwargs.get('show', True)
         rows = kwargs.get('rows', 1)
@@ -151,24 +155,16 @@ class PlotRenderer(object):
                 if count == 0:
                     self.ax = self.figure().add_subplot(111)
                     self.ax.axis('scaled', aspect='equal')
-
+                    self.ax.set_xlim(x_min, x_max)
+                    self.ax.set_ylim(y_min, y_max)
                 e.render(self, 'blue', True)
 
                 count += 1
                 if count == 3:
-                    self.point((mm[0]-5, mm[2]-5), 'ro', color='red')
-                    self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
-                    self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
-                    self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
                     pl.show()
                     count = 0
 
             if count != 0:
-                self.point((mm[0]-5, mm[2]-5), 'ro', color='red')
-                self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
-                self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
-                self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
-                self.ax.axis('scaled', aspect='equal')
                 self.show_plot()
             return
 
@@ -203,6 +199,10 @@ class PlotRenderer(object):
                 p = area.get_point_inside(geom)
                 if p:
                     pl.plot([p[0]], [p[1]], 'ro', color='magenta')
+
+        if fill_areas:
+            for area in geom.list_of_areas():
+                area.render_fill(self)
 
         geom.render_cut_lines(self)
         geom.render_airgaps(self)

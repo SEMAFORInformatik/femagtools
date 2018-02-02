@@ -30,13 +30,14 @@ class PlotRenderer(object):
 
     def figure(self):
         if self.fig is None:
-            self.fig = pl.figure(figsize=(9, 10), facecolor='lightblue')
-            pl.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)
-
+            self.fig = pl.figure(figsize=(10, 10), facecolor='lightblue')
+            pl.tight_layout(h_pad=0.2, w_pad=0.2)
+            pl.subplots_adjust(bottom=0.05, top=0.95, hspace=0.25, wspace=0.15)
         return self.fig
 
     def show_plot(self):
         if self.fig is not None:
+            # pl.subplots_adjust(hspace=0.2)
             pl.show()
             self.fig = None
 

@@ -8,9 +8,10 @@
 
 """
 import numpy as np
-import matplotlib.pylab as pl
+import matplotlib.pyplot as pl
 import matplotlib.patches as pch
 from .shape import Shape
+from .geom import convex_hull
 import logging
 import io
 
@@ -66,7 +67,7 @@ class PlotRenderer(object):
         self.ax = fig.add_subplot(111)
 
         if draw_hull:
-            for h in g.convex_hull(geom.g.nodes()):
+            for h in convex_hull(geom.g.nodes()):
                 pl.plot([h[0]], [h[1]], 'ro')
 
         id = 0
@@ -122,6 +123,7 @@ class PlotRenderer(object):
         with_nodes = kwargs.get('with_nodes', False)
         with_hull = kwargs.get('with_hull', False)
         with_corners = kwargs.get('with_corners', False)
+        with_center = kwargs.get('with_center', False)
         single_view = kwargs.get('single_view', False)
         neighbors = kwargs.get('neighbors', False)
         draw_center = kwargs.get('draw_center', False)
@@ -139,6 +141,8 @@ class PlotRenderer(object):
             num = 1
 
         mm = geom.minmax()
+        x_min, x_max = mm[0]-5, mm[1]+5
+        y_min, y_max = mm[2]-5, mm[3]+5
 
         if single_view:
             count = 0
@@ -179,7 +183,7 @@ class PlotRenderer(object):
             e.render(self, 'blue', with_nodes)
 
         if with_hull:
-            for h in g.convex_hull(geom.virtual_nodes()):
+            for h in convex_hull(geom.virtual_nodes()):
                 pl.plot([h[0]], [h[1]], 'ro')
 
         if with_corners:
@@ -209,14 +213,16 @@ class PlotRenderer(object):
             for p in points:
                 self.point(p, 'ro', color='red')
 
-        if geom.center:
+        if with_center and geom.center:
             self.point(geom.center, 'ro', color='darkgreen')
+            x_min = min(x_min, geom.center[0])
+            x_max = min(x_max, geom.center[0])
+            y_min = min(y_min, geom.center[1])
+            y_max = min(y_max, geom.center[1])
 
-        self.point((mm[0]-5, mm[2]-5), 'ro', color=self.background)
-        self.point((mm[0]-5, mm[3]+5), 'ro', color=self.background)
-        self.point((mm[1]+5, mm[2]-5), 'ro', color=self.background)
-        self.point((mm[1]+5, mm[3]+5), 'ro', color=self.background)
         self.ax.axis('scaled', aspect='equal')
+        self.ax.set_xlim(x_min, x_max)
+        self.ax.set_ylim(y_min, y_max)
 
         if show:
             self.show_plot()

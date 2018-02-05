@@ -30,14 +30,30 @@ class PlotRenderer(object):
 
     def figure(self):
         if self.fig is None:
-            self.fig = pl.figure(figsize=(10, 10), facecolor='lightblue')
+            self.fig = pl.figure(facecolor='lightblue',
+                                 figsize=(9, 10))
             pl.tight_layout(h_pad=0.2, w_pad=0.2)
             pl.subplots_adjust(bottom=0.05, top=0.95, hspace=0.25, wspace=0.15)
         return self.fig
 
+    def add_plot(self, rows=1, cols=1, num=1):
+        self.ax = self.figure().add_subplot(rows, cols,
+                                            num,
+                                            facecolor=self.background)
+        return self.ax
+
+    def add_emptyplot(self, rows=1, cols=1, num=1, title=''):
+        ax = self.add_plot(rows, cols, num)
+        ax.axis('off')
+        if title:
+            ax.set_title(title, size=14)
+
+    def new_legend_handle(self, color, text):
+        h = pch.Patch(color=color, alpha=0.5, label=text)
+        return h
+
     def show_plot(self):
         if self.fig is not None:
-            # pl.subplots_adjust(hspace=0.2)
             pl.show()
             self.fig = None
 
@@ -202,8 +218,20 @@ class PlotRenderer(object):
                     pl.plot([p[0]], [p[1]], 'ro', color='magenta')
 
         if fill_areas:
+            hlist = []
             for area in geom.list_of_areas():
-                area.render_fill(self)
+                h = area.render_fill(self)
+                if h:
+                    hlist.append(h)
+            if hlist:
+                legend = pl.legend(handles=hlist, loc='best',
+                                   fancybox=True,
+                                   framealpha=1.0,
+                                   fontsize=8,
+                                   labelspacing=0.2)
+                frame = legend.get_frame()
+                frame.set_facecolor('white')
+                frame.set_edgecolor('blue')
 
         geom.render_cut_lines(self)
         geom.render_airgaps(self)

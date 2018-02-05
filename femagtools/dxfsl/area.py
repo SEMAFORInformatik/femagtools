@@ -399,13 +399,13 @@ class Area(object):
 
     def render_fill(self, renderer):
         color = self.color()
-        # print("fill color = '{}'".format(color))
         if not color:
-            return
+            return None
         nodes = [n for n in self.virtual_nodes()]
         x = [n[0] for n in nodes]
         y = [n[1] for n in nodes]
         renderer.fill(x, y, color)
+        return renderer.new_legend_handle(color, self.name())
 
     def remove_edges(self, g, ndec):
         for e in self.area:

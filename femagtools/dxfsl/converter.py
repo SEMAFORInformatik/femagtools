@@ -53,6 +53,8 @@ def symmetry_search(machine,
         if debug_mode:
             print("no symmetry axis found")
         logger.info("{}: no symmetry axis found".format(kind))
+        plt.add_emptyplot(rows, cols, num, 'no symmetry axis')
+
         machine_mirror = machine.get_symmetry_mirror()
         machine_slice = machine
     else:
@@ -68,6 +70,7 @@ def symmetry_search(machine,
         machine_mirror = machine_slice.get_symmetry_mirror()
 
     if machine_mirror is None:
+        print("NO MIRROR")
         machine_ok = machine_slice
     else:
         if show_plots and debug_mode:
@@ -151,12 +154,12 @@ def converter(dxfile,
 
     machine.airgap(airgap, airgap2, symtol)
 
-    if machine.has_airgap():
-        if show_plots:
-            p.render_elements(basegeom, Shape, neighbors=True,
-                              title='Original with nodes',
-                              rows=3, cols=2, num=2, show=False)
+    if show_plots:
+        p.render_elements(basegeom, Shape, neighbors=True,
+                          title='Original with nodes',
+                          rows=3, cols=2, num=2, show=False)
 
+    if machine.has_airgap():
         machine_inner = machine.copy(0.0, 2*np.pi, True, True)
         machine_inner = symmetry_search(machine_inner,
                                         p,  # plot
@@ -210,6 +213,7 @@ def converter(dxfile,
             write_main_fsl(machine, machine_inner, machine_outer, basename)
 
     else:
+        # No airgap found
         machine = symmetry_search(machine,
                                   p,  # plot
                                   "No_Airgap",
@@ -218,6 +222,11 @@ def converter(dxfile,
                                   rows=3,  # rows
                                   cols=2,  # cols
                                   num=3)   # start num
+
+        p.render_elements(machine.geom, Shape,
+                          draw_inside=True, title='no airgap',
+                          rows=3, cols=2, num=5, show=False,
+                          fill_areas=True)
         p.show_plot()
 
         if write_fsl:

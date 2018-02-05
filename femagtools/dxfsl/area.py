@@ -100,7 +100,7 @@ class Area(object):
             return 'windings'
         if self.type == 3 or self.type == 4:
             return 'magnet'
-        return 'unknown'
+        return ''
 
     def color(self):
         if self.type == 1:
@@ -399,13 +399,14 @@ class Area(object):
 
     def render_fill(self, renderer):
         color = self.color()
-        if not color:
-            return None
-        nodes = [n for n in self.virtual_nodes()]
-        x = [n[0] for n in nodes]
-        y = [n[1] for n in nodes]
-        renderer.fill(x, y, color)
-        return renderer.new_legend_handle(color, self.name())
+        if color:
+            nodes = [n for n in self.virtual_nodes()]
+            x = [n[0] for n in nodes]
+            y = [n[1] for n in nodes]
+            renderer.fill(x, y, color)
+
+    def render_legend(self, renderer):
+        return renderer.new_legend_handle(self.color(), self.name())
 
     def remove_edges(self, g, ndec):
         for e in self.area:

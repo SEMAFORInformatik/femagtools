@@ -218,13 +218,9 @@ class PlotRenderer(object):
                     pl.plot([p[0]], [p[1]], 'ro', color='magenta')
 
         if fill_areas:
-            hlist = []
-            for area in geom.list_of_areas():
-                h = area.render_fill(self)
-                if h:
-                    hlist.append(h)
-            if hlist:
-                legend = pl.legend(handles=hlist, loc='best',
+            handles = geom.render_area_fill(self)
+            if handles:
+                legend = pl.legend(handles=handles, loc='best',
                                    fancybox=True,
                                    framealpha=1.0,
                                    fontsize=8,

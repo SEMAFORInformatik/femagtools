@@ -1325,6 +1325,16 @@ class Geometry(object):
             elif len(nbr_list) > 4:
                 renderer.point(n, 'ro', color='black')
 
+    def render_area_fill(self, renderer):
+        legend = {}
+        for area in self.list_of_areas():
+            area.render_fill(renderer)
+            if area.name() and area.name() not in legend:
+                legend[area.name()] = area.render_legend(renderer)
+        if legend:
+            return [h for (k, h) in legend.items()]
+        return []
+
     def check_hull(self, center, radius, x, y, rtol, atol):
         node_count = 0
         miss_count = 0

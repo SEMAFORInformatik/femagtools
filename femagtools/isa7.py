@@ -2,6 +2,8 @@
 import logging
 import struct
 import sys
+import numpy as np
+from collections import Counter
 
 logger = logging.getLogger('femagtools.isa7')
 
@@ -47,6 +49,7 @@ class Reader(object):
 
 
 class Isa7(object):
+        
     color = {1: [1.0, 0.0, 0.0], 
              2: [0.0, 1.0, 0.0], 
              3: [1.0, 1.0, 0.0], 
@@ -64,9 +67,146 @@ class Isa7(object):
              15: [0.0, 0.8235294117647058, 1.0], 
              16: [0.8274509803921568, 0.8274509803921568, 0.8274509803921568]}
     
-    def __init__(self):
-        pass
-    
+    def __init__(self, filename):
+        self.read(filename)
+        
+        self.points = []
+        for p in range(self.NUM_PNT):
+            self.points.append(
+                Point(self.POINT_ISA_PT_VALID,
+                      self.POINT_ISA_POINT_REC_PT_CO_X[p],
+                      self.POINT_ISA_POINT_REC_PT_CO_Y[p]))
+        
+        self.lines = []
+        for ln in range(self.NUM_LIN):
+            pk1 = self.LINE_ISA_LINE_REC_LN_PNT_1[ln]
+            pk2 = self.LINE_ISA_LINE_REC_LN_PNT_2[ln]
+            
+            point1 = self.points[abs(pk1)-1]
+            point2 = self.points[abs(pk2)-1]
+            
+            if pk1 > 0 and pk2 > 0:
+                self.lines.append(
+                    Line(self.LINE_ISA_LN_VALID, point1, point2))
+            else:
+                self.lines.append(
+                    Line(self.LINE_ISA_LN_VALID, point1, point2))
+        
+        self.nodes = []
+        for n in range(self.NUM_NOD):
+            self.nodes.append(
+                Node(self.NODE_ISA_ND_VALID[n],
+                     self.NODE_ISA_NODE_REC_ND_BND_CND[n],
+                     self.NODE_ISA_NODE_REC_ND_PER_NOD[n],
+                     self.NODE_ISA_NODE_REC_ND_CO_1[n],
+                     self.NODE_ISA_NODE_REC_ND_CO_2[n],
+                     self.NODE_ISA_NODE_REC_ND_VP_RE[n],
+                     self.NODE_ISA_NODE_REC_ND_VP_IM[n]))
+        
+        self.nodechains = []  
+        for nc in range(self.NUM_NDCH):  
+            nd1 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_1[nc]
+            nd2 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_2[nc]
+            ndm = self.NDCHN_ISA_NDCHN_REC_NC_NOD_MID[nc]
+
+            node1 = self.nodes[abs(nd1)-1]
+            nodem = self.nodes[ndm-1]
+            node2 = self.nodes[abs(nd2)-1]
+
+            if nd1 < 0 or nd2 < 0:
+                nodes = node1, nodem, node2
+            elif ndm > 0:
+                nodes = node1, nodem, node2
+            else:
+                nodes = node1, None, node2
+                
+            self.nodechains.append(
+                NodeChain(self.NDCHN_ISA_NC_VALID, nc+1, nodes))
+            
+        self.elements = []
+        for e in range(self.NUM_ELE):
+            ndkeys = []
+            ndk = self.ELEM_ISA_EL_NOD_PNTR[e]
+
+            while ndk > 0:
+                ndkeys.append(self.ELE_NOD_ISA_ND_KEY[ndk-1])
+                ndk = self.ELE_NOD_ISA_NXT_ND_PNTR[ndk-1]
+
+            vertices = [self.nodes[k-1] for k in ndkeys + [ndkeys[0]]]
+
+            self.elements.append(
+                Element(self.ELEM_ISA_EL_VALID[e],
+                        self.ELEM_ISA_ELEM_REC_EL_TYP[e],
+                        self.ELEM_ISA_ELEM_REC_EL_SE_KEY[e]-1,
+                        vertices))
+
+        self.superelements = []
+        for se in range(self.NUM_SPEL):
+            nc_keys = []
+            nc_ptr = self.SUPEL_ISA_SE_NDCHN_PNTR[se]
+
+            while nc_ptr > 0:
+                nc_keys.append(self.SE_NDCHN_ISA_NC_KEY[nc_ptr-1])
+                nc_ptr = self.SE_NDCHN_ISA_NXT_NC_PNTR[nc_ptr-1]
+                
+            nodechains = []
+            for nck in nc_keys:
+                if nck > 0:
+                    nodechains.append(self.nodechains[abs(nck)-1])
+                else:
+                    nodechains.append(self.nodechains[abs(nck)-1].reverse())
+                    
+            el_keys = []
+            el_ptr = self.SUPEL_ISA_SE_EL_PNTR[se]
+            
+            while el_ptr > 0:
+                el_keys.append(self.SE_EL_ISA_EL_KEY[el_ptr-1])
+                el_ptr = self.SE_EL_ISA_NXT_EL_PNTR[el_ptr-1]
+                
+            elements = []
+            for elk in el_keys:
+                elements.append(self.elements[elk-1])
+            
+            self.superelements.append(
+                SuperElement(self.SUPEL_ISA_SE_VALID[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_SR_KEY[se]-1,
+                             elements,
+                             nodechains,
+                             self.SUPEL_ISA_SUPEL_REC_SE_COL[se],
+                             nc_keys))
+            
+        self.subregions = []
+        for sr in range(self.NUM_SR):
+            se_keys = []
+            se_ptr = self.SR_ISA_SR_SE_PNTR[sr]
+            
+            while se_ptr > 0:
+                se_keys.append(self.SR_SE_ISA_SE_KEY[se_ptr-1])
+                se_ptr = self.SR_SE_ISA_NXT_SE_PNTR[se_ptr-1]
+                
+            superelements = []
+            for sek in se_keys:
+                superelements.append(self.superelements[sek-1])
+                
+            nodechains = []
+            nc_keys = []
+            for se in superelements:
+                nc_keys.extend([abs(nc.key) for nc in se.nodechains])
+            nc_keys = [nck for nck, count in Counter(nc_keys).items() if count < 2]
+            for se in superelements:
+                nodechains.extend([nc for nc in se.nodechains if abs(nc.key) in nc_keys])
+                
+            self.subregions.append(
+                SubRegion(self.SR_ISA_SR_VALID[sr],
+                          self.SR_ISA_SR_REC_SR_TYP[sr],
+                          self.SR_ISA_SR_REC_SR_COL[sr],
+                          self.SR_ISA_SR_REC_SR_NAME[sr],
+                          self.SR_ISA_SR_REC_SR_CUR_DIR[sr],
+                          self.SR_ISA_SR_REC_SR_WB_KEY[sr]-1,
+                          superelements,
+                          nodechains))
+            
+            
     def read(self, filename):
         reader = Reader(filename)
         
@@ -154,81 +294,103 @@ class Isa7(object):
 
         (self.SE_EL_ISA_EL_KEY,
          self.SE_EL_ISA_NXT_EL_PNTR) = reader.next_block("ii")
+        
+        (self.SR_ISA_SR_VALID,
+         self.SR_ISA_SR_SE_PNTR,
+         self.SR_ISA_SR_REC_SR_TYP,
+         self.SR_ISA_SR_REC_SR_COL,
+         self.SR_ISA_SR_REC_SR_NAME,
+         self.SR_ISA_SR_REC_SR_CUR_DIR,
+         self.SR_ISA_SR_REC_SR_WB_KEY,
+         self.SR_ISA_SR_REC_SR_NTURNS,
+         self.SR_ISA_SR_REC_SR_SV_PNTR,
+         self.SR_ISA_SR_REC_SR_ARRAY,
+         self.SR_ISA_SR_REC_SR_GCUR_RE,
+         self.SR_ISA_SR_REC_SR_GCUR_IM,
+         self.SR_ISA_SR_REC_SR_VOLT_RE,
+         self.SR_ISA_SR_REC_SR_VOLT_IM) = reader.next_block("?hhhihhhhfffff")
+        
+        (self.SR_SE_ISA_SE_KEY,
+         self.SR_SE_ISA_NXT_SE_PNTR) = reader.next_block("hh")
 
-    def lines(self):
-        """Return list of lines"""
-        ln = []
-        for i in range(self.NUM_LIN):
-            x1 = self.POINT_ISA_POINT_REC_PT_CO_X[
-                abs(self.LINE_ISA_LINE_REC_LN_PNT_1[i])-1]
-            x2 = self.POINT_ISA_POINT_REC_PT_CO_X[
-                abs(self.LINE_ISA_LINE_REC_LN_PNT_2[i])-1]
-            y1 = self.POINT_ISA_POINT_REC_PT_CO_Y[
-                abs(self.LINE_ISA_LINE_REC_LN_PNT_1[i])-1]
-            y2 = self.POINT_ISA_POINT_REC_PT_CO_Y[
-                abs(self.LINE_ISA_LINE_REC_LN_PNT_2[i])-1]
-            p1 = (x1, y1)
-            p2 = (x2, y2)
-            ln.append((p1, p2))
-        return ln
 
-    def mesh(self):
-        """Return element outlines"""
-        segments = []
-        for e in range(self.NUM_ELE):
-            ndkeys = []
-            nd = 0
-            i = self.ELEM_ISA_EL_NOD_PNTR[e]
-            
-            while i > 0 and nd <= 9:
-                nd += 1
-                ndkeys.append(self.ELE_NOD_ISA_ND_KEY[i-1])
-                i = self.ELE_NOD_ISA_NXT_ND_PNTR[i-1]
+class Point(object):
+    def __init__(self, valid, x, y):
+        self.valid = valid
+        self.x = x
+        self.y = y
+        self.xy = x, y
+        
+        
+class Line(object):
+    def __init__(self, valid, p1, p2):
+        self.valid = valid
+        self.p1 = p1
+        self.p2 = p2
+        
+        
+class Node(object):
+    def __init__(self, valid, bndcnd, pernod, x, y, vpot_re, vpot_im):
+        self.valid = valid
+        self.bndcnd = bndcnd,
+        self.pernod = pernod,
+        self.x = x
+        self.y = y
+        self.xy = x, y
+        self.vpot = vpot_re, vpot_im
+        
+
+class NodeChain(object):
+    def __init__(self, valid, key, nodes):
+        self.valid = valid
+        self.key = key
+        self.node1 = nodes[0]
+        self.nodemid = nodes[1]   
+        self.node2 = nodes[2]
+        self.nodes = (nodes[0], nodes[2]) if nodes[1] is None else (nodes[0], nodes[1], nodes[2])
     
-                segments.append([[self.NODE_ISA_NODE_REC_ND_CO_1[j-1],
-                                  self.NODE_ISA_NODE_REC_ND_CO_2[j-1]]
-                                 for j in ndkeys+[ndkeys[0]]])
-        return segments
+    def reverse(self):
+        return NodeChain(self.valid, self.key * (-1),
+                         [self.node2, self.nodemid, self.node1])
     
-    def se_outline(self, spels=None):
-        """Return list of nodechains"""
-        outln = []
-        if spels is None:
-            spels = range(self.NUM_SPEL)
-        elif type(spels) == int:
-            spels = [spels]
+    
+class Element(object):
+    def __init__(self, valid, el_type, se_key, vertices):
+        self.valid = valid
+        self.el_type = el_type
+        self.se_key = se_key
+        self.vertices = vertices
+        
+        
+class SuperElement(object):
+    def __init__(self, valid, sr_key, elements, nodechains,
+                 color, nc_keys):
+        self.valid = valid
+        self.sr_key = sr_key
+        self.elements = elements
+        self.nodechains = nodechains
+        self.color = color
+        self.nc_keys = nc_keys
+        
+        
+class SubRegion(object):
+    def __init__(self, valid, sr_type, color, name, curdir,
+                 wb_key, superelements, nodechains):
+        self.valid = valid
+        self.sr_type = sr_type
+        self.color = color
+        self.name = name
+        self.curdir = curdir
+        self.wb_key = wb_key
+        self.superelements = superelements
+        self.nodechains = nodechains
 
-        for se in spels:
-            ncp = self.SUPEL_ISA_SE_NDCHN_PNTR[se]
-            nckeys = []
-
-            while ncp > 0:
-                nckeys.append(self.SE_NDCHN_ISA_NC_KEY[ncp-1])
-                ncp = self.SE_NDCHN_ISA_NXT_NC_PNTR[ncp-1]
-
-            for nck in nckeys:
-                if nck > 0:
-                    nd1 = abs(self.NDCHN_ISA_NDCHN_REC_NC_NOD_1[abs(nck)-1])
-                    nd2 = abs(self.NDCHN_ISA_NDCHN_REC_NC_NOD_2[abs(nck)-1])
-                elif nck < 0:
-                    nd1 = abs(self.NDCHN_ISA_NDCHN_REC_NC_NOD_2[abs(nck)-1])
-                    nd2 = abs(self.NDCHN_ISA_NDCHN_REC_NC_NOD_1[abs(nck)-1])
-
-                p1 = (self.NODE_ISA_NODE_REC_ND_CO_1[nd1-1],
-                      self.NODE_ISA_NODE_REC_ND_CO_2[nd1-1])
-                p2 = (self.NODE_ISA_NODE_REC_ND_CO_1[nd2-1],
-                      self.NODE_ISA_NODE_REC_ND_CO_2[nd2-1])
-
-                outln.append((p1, p2))
-
-        return outln
-
-
+        
 def read(filename):
     """Read ISA7 file and return ISA7 object."""
-    isa = Isa7()
-    isa.read(filename)
+    isa = Isa7(filename)
     return isa
+
 
 if __name__ == "__main__":
     

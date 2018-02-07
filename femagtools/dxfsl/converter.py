@@ -196,16 +196,17 @@ def converter(dxfile,
             machine_inner.sync_with_counterpart(machine_outer)
             machine_outer.search_subregions()
 
-        p.render_elements(machine_inner.geom, Shape,
-                          draw_inside=True, title=inner_name,
-                          rows=3, cols=2, num=5, show=False,
-                          fill_areas=True)
+        if show_plots:
+            p.render_elements(machine_inner.geom, Shape,
+                              draw_inside=True, title=inner_name,
+                              rows=3, cols=2, num=5, show=False,
+                              fill_areas=True)
 
-        p.render_elements(machine_outer.geom, Shape,
-                          draw_inside=True, title=outer_name,
-                          rows=3, cols=2, num=6, show=False,
-                          fill_areas=True)
-        p.show_plot()
+            p.render_elements(machine_outer.geom, Shape,
+                              draw_inside=True, title=outer_name,
+                              rows=3, cols=2, num=6, show=False,
+                              fill_areas=True)
+            p.show_plot()
 
         if write_fsl:
             write_fsl(machine_inner, basename, True, False)
@@ -223,11 +224,12 @@ def converter(dxfile,
                                   cols=2,  # cols
                                   num=3)   # start num
 
-        p.render_elements(machine.geom, Shape,
-                          draw_inside=True, title='no airgap',
-                          rows=3, cols=2, num=5, show=False,
-                          fill_areas=True)
-        p.show_plot()
+        if show_plots:
+            p.render_elements(machine.geom, Shape,
+                              draw_inside=True, title='no airgap',
+                              rows=3, cols=2, num=5, show=False,
+                              fill_areas=True)
+            p.show_plot()
 
         if write_fsl:
             machine.search_subregions()

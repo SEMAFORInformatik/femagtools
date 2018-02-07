@@ -48,9 +48,8 @@ class PlotRenderer(object):
         if title:
             ax.set_title(title, size=14)
 
-    def new_legend_handle(self, color, text):
-        h = pch.Patch(color=color, alpha=0.5, label=text)
-        return h
+    def new_legend_handle(self, color, alpha, text):
+        return pch.Patch(color=color, alpha=alpha, label=text)
 
     def show_plot(self):
         if self.fig is not None:
@@ -75,8 +74,8 @@ class PlotRenderer(object):
     def point(self, p, col, color='blue'):
         pl.plot([p[0]], [p[1]], col, color=color)
 
-    def fill(self, x, y, color):
-        self.ax.fill(x, y, 'b', alpha=0.5, color=color)
+    def fill(self, x, y, color, alpha):
+        self.ax.fill(x, y, 'b', alpha=alpha, color=color, edgecolor='blue')
 
     def render(self, geom, filename=None, **kwargs):
         draw_center = kwargs.get('draw_center', False)
@@ -192,9 +191,6 @@ class PlotRenderer(object):
             self.ax.set_title(title, size=14)
         self.ax.grid(color='blue', linewidth=0.5)
 
-        for e in geom.elements(type):
-            e.render(self, 'blue', with_nodes)
-
         if with_hull:
             for h in convex_hull(geom.virtual_nodes()):
                 pl.plot([h[0]], [h[1]], 'ro')
@@ -228,6 +224,9 @@ class PlotRenderer(object):
                 frame = legend.get_frame()
                 frame.set_facecolor('white')
                 frame.set_edgecolor('blue')
+                
+        for e in geom.elements(type):
+            e.render(self, 'blue', with_nodes)
 
         geom.render_cut_lines(self)
         geom.render_airgaps(self)

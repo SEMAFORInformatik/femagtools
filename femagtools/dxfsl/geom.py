@@ -1328,9 +1328,27 @@ class Geometry(object):
     def render_area_fill(self, renderer):
         legend = {}
         for area in self.list_of_areas():
-            area.render_fill(renderer)
-            if area.name() and area.name() not in legend:
-                legend[area.name()] = area.render_legend(renderer)
+            if area.is_iron():
+                area.render_fill(renderer, 0.3)
+                if area.name() and area.name() not in legend:
+                    legend[area.name()] = area.render_legend(renderer, 0.3)
+
+        for area in self.list_of_areas():
+            if area.is_magnet():
+                area.render_fill(renderer)
+                if area.name() and area.name() not in legend:
+                    legend[area.name()] = area.render_legend(renderer, 1.0)
+
+        for area in self.list_of_areas():
+            if area.is_winding():
+                area.render_fill(renderer)
+                if area.name() and area.name() not in legend:
+                    legend[area.name()] = area.render_legend(renderer, 1.0)
+
+        for area in self.list_of_areas():
+            if area.is_air():
+                area.render_fill(renderer, 1.0)
+
         if legend:
             return [h for (k, h) in legend.items()]
         return []

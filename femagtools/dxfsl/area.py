@@ -114,7 +114,7 @@ class Area(object):
             return 'green'
         if self.type == 3 or self.type == 4:
             return 'red'
-        return ''
+        return 'white'
 
     def is_iron(self):
         return self.type == 1
@@ -124,6 +124,9 @@ class Area(object):
 
     def is_magnet(self):
         return self.type == 3 or self.type == 4
+
+    def is_air(self):
+        return self.type == 0
 
     def calc_signature(self, center):
         if not self.area:
@@ -402,16 +405,16 @@ class Area(object):
             e.render(renderer, color, with_nodes)
         return
 
-    def render_fill(self, renderer):
+    def render_fill(self, renderer, alpha=1.0):
         color = self.color()
         if color:
             nodes = [n for n in self.virtual_nodes()]
             x = [n[0] for n in nodes]
             y = [n[1] for n in nodes]
-            renderer.fill(x, y, color)
+            renderer.fill(x, y, color, alpha)
 
-    def render_legend(self, renderer):
-        return renderer.new_legend_handle(self.color(), self.name())
+    def render_legend(self, renderer, alpha=1.0):
+        return renderer.new_legend_handle(self.color(), alpha, self.name())
 
     def remove_edges(self, g, ndec):
         for e in self.area:

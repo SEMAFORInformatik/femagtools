@@ -72,17 +72,22 @@ class Area(object):
             for n in e.get_nodes(parts=64):
                 nodes.append(n)
             if prev_nodes:
-                if points_are_close(prev_nodes[0], nodes[0]):
+                if points_are_close(prev_nodes[0], nodes[0], 1e-01, 1e-01):
                     next_nodes = prev_nodes[::-1]
-                elif points_are_close(prev_nodes[0], nodes[-1]):
+                elif points_are_close(prev_nodes[0], nodes[-1], 1e-01, 1e-01):
                     next_nodes = prev_nodes[::-1]
                     nodes = nodes[::-1]
-                elif points_are_close(prev_nodes[-1], nodes[0]):
+                elif points_are_close(prev_nodes[-1], nodes[0], 1e-01, 1e-01):
                     next_nodes = prev_nodes
-                elif points_are_close(prev_nodes[-1], nodes[-1]):
+                elif points_are_close(prev_nodes[-1], nodes[-1], 1e-01, 1e-01):
                     next_nodes = prev_nodes
                     nodes = nodes[::-1]
                 else:
+                    print("prev {}/{}".format(prev_nodes[0], prev_nodes[-1]))
+                    print("this {}/{}".format(nodes[0], nodes[-1]))
+
+                    for e in self.area:
+                        print("  p1={}, p2={}".format(e.p1, e.p2))
                     assert(False)
 
                 for n in next_nodes:

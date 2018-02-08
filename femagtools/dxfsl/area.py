@@ -63,40 +63,34 @@ class Area(object):
             yield e.p2
 
     def virtual_nodes(self):
-        if len(self.area) == 0:
+        if len(self.area) < 2:
             return
 
-        prev_nodes = []
-        for e in self.area:
-            nodes = []
-            for n in e.get_nodes(parts=64):
-                nodes.append(n)
-            if prev_nodes:
-                if points_are_close(prev_nodes[0], nodes[0], 1e-01, 1e-01):
-                    next_nodes = prev_nodes[::-1]
-                elif points_are_close(prev_nodes[0], nodes[-1], 1e-01, 1e-01):
-                    next_nodes = prev_nodes[::-1]
-                    nodes = nodes[::-1]
-                elif points_are_close(prev_nodes[-1], nodes[0], 1e-01, 1e-01):
-                    next_nodes = prev_nodes
-                elif points_are_close(prev_nodes[-1], nodes[-1], 1e-01, 1e-01):
-                    next_nodes = prev_nodes
-                    nodes = nodes[::-1]
-                else:
-                    print("prev {}/{}".format(prev_nodes[0], prev_nodes[-1]))
-                    print("this {}/{}".format(nodes[0], nodes[-1]))
-
-                    for e in self.area:
-                        print("  p1={}, p2={}".format(e.p1, e.p2))
-                    assert(False)
-
-                for n in next_nodes:
-                    yield n
-
-            prev_nodes = nodes
-
-        for n in nodes:
+        prev_nodes = [n for n in self.area[0].get_nodes(parts=64)]
+        next_nodes = [n for n in self.area[1].get_nodes(parts=64)]
+        if points_are_close(prev_nodes[0], next_nodes[0], 1e-03, 1e-01):
+            prev_nodes = prev_nodes[::-1]
+        elif points_are_close(prev_nodes[0], next_nodes[-1], 1e-03, 1e-01):
+            prev_nodes = prev_nodes[::-1]
+            next_nodes = next_nodes[::-1]
+        elif points_are_close(prev_nodes[-1], next_nodes[-1], 1e-03, 1e-01):
+            next_nodes = next_nodes[::-1]
+        elif not points_are_close(prev_nodes[-1], next_nodes[0], 1e-03, 1e-01):
+            assert(False)
+        last_point = next_nodes[-1]
+        for n in prev_nodes:
             yield n
+        for n in next_nodes:
+            yield n
+
+        for e in self.area[2::]:
+            next_nodes = [n for n in e.get_nodes(parts=64)]
+
+            if points_are_close(next_nodes[-1], last_point, 1e-03, 1e-01):
+                next_nodes = next_nodes[::-1]
+            for n in next_nodes:
+                yield n
+            last_point = next_nodes[-1]
 
     def name(self):
         if self.type == 1:

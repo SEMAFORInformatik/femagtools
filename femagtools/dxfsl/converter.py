@@ -152,7 +152,11 @@ def converter(dxfile,
         p.render_elements(machine.geom, Shape,
                           with_corners=False, show=True)
 
-    machine.airgap(airgap, airgap2, symtol)
+    print("Symtol = {}".format(symtol))
+    if machine.airgap(airgap, airgap2, symtol):
+        p.render_elements(machine.geom, Shape,
+                          with_corners=False, show=True)
+        sys.exit(1)
 
     if show_plots:
         p.render_elements(basegeom, Shape, neighbors=True,

@@ -1552,11 +1552,13 @@ class Geometry(object):
         """
         ok = True
         for e in self.elements(Shape):
-            for p in e.intersect_circle(circle, 0.0, True):
-                alpha_p = alpha_line(center, p)
-                if not (np.isclose(alpha_p, startangle, 1e-3, atol) or
-                        np.isclose(alpha_p, endangle, 1e-3, atol)):
+            for p in e.intersect_circle(circle, 0.0, atol, True):
+                if not self.is_border_line(center, startangle, endangle, e, atol):
+                    print("BAD: Point {}".format(p))
+                    print("BAD: is_airgap: e = {}".format(e))
+                    print("BAD: is_airgap: c = {}".format(circle))
                     self.airgaps.append(Point(p))
+                    self.airgaps.append(e)
                     ok = False
         return ok
 
@@ -1565,10 +1567,10 @@ class Geometry(object):
             angle_p1 = alpha_line(center, e.p1)
             if np.isclose(startangle, angle_p1, 1e-3, atol):
                 angle_p2 = alpha_line(center, e.p2)
-                return np.isclose(startangle, angle_p2)
+                return np.isclose(startangle, angle_p2, 1e-3, atol)
             elif np.isclose(endangle, angle_p1, 1e-3, atol):
                 angle_p2 = alpha_line(center, e.p2)
-                return np.isclose(endangle, angle_p2)
+                return np.isclose(endangle, angle_p2, 1e-3, atol)
         return False
 
     def detect_airgaps(self, center, startangle, endangle, atol):
@@ -1580,6 +1582,7 @@ class Geometry(object):
         for e in self.elements(Shape):
             if not self.is_border_line(center, startangle, endangle, e, atol):
                 gaplist += [e.minmax_from_center(center)]
+
         gaplist.sort()
 
         airgaps = []

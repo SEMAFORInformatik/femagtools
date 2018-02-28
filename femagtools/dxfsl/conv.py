@@ -109,6 +109,7 @@ if __name__ == "__main__":
     converter(args.dxfile,  # DXF-Filename
               rtol=args.rtol,    # relative pickdist toleranz
               atol=args.atol,    # absolute pickdist toleranz
+              symtol=args.sym_tolerance,
               split=args.split,
               inner_name=args.inner,
               outer_name=args.outer,

@@ -217,7 +217,7 @@ class Machine(object):
             self.startangle = new_startangle
             self.endangle += angle
 
-    def airgap(self, correct_airgap=0.0, correct_airgap2=0.0, atol=0.05):
+    def airgap(self, correct_airgap=0.0, correct_airgap2=0.0, atol=0.1):
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
 
@@ -272,7 +272,8 @@ class Machine(object):
                                      format(gap_radius))
                         print("DESASTER: No Airgap with radius {}".
                               format(gap_radius))
-                        sys.exit(1)
+                        self.geom.airgaps.append(circle)
+                        return True  # bad exit
 
                 if correct_airgap2 > 0.0 and \
                    within_interval(correct_airgap2, g[0], g[1], 0.0, 0.0):
@@ -287,10 +288,10 @@ class Machine(object):
                                      format(gap_radius))
                         print("DESASTER: No Airgap with radius {}".
                               format(gap_radius))
-                        sys.exit(1)
+                        return True  # bad exit
 
             if num_airgaps == 1:
-                return
+                return False  # ok
 
             if num_airgaps > 1:
                 airgaps = []
@@ -313,10 +314,11 @@ class Machine(object):
                     print("More than one airgap candidate found:")
                     for c in self.geom.airgaps:
                         print(" --- {}".format(c.radius))
-                        print("Use options --airgap/--airgap2 <float> to specify")
+                    print("Use options --airgap/--airgap2 <float> to specify")
                     sys.exit(1)
             else:
                 self.airgap_radius = 0.0
+        return False
 
     def has_airgap(self):
         return self.airgap_radius > 0.0

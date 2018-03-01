@@ -1384,12 +1384,14 @@ class Geometry(object):
             c = [mm[1]-r, mm[3]-r]
             logger.info("check for full machine")
             if self.check_hull(c, r, None, None, self.rtol, atol):
+                logger.info("  it is full")
                 return Machine(self, c, r, 0.0, 0.0)
 
             logger.info("check for quarter machine")
             r = width
             c = [mm[0], mm[2]]
             if self.check_hull(c, r, mm[0], mm[2], self.rtol, atol):
+                logger.info("  it is a quarter")
                 return Machine(self, c, r, 0.0, np.pi/2)
 
         elif np.isclose(width, height*2, self.rtol, self.atol):
@@ -1397,10 +1399,12 @@ class Geometry(object):
             c = [mm[1]-height, mm[2]]
             logger.info("check for half machine")
             if self.check_hull(c, r, None, mm[2], self.rtol, atol):
+                logger.info("  it is a half")
                 return Machine(self, c, r, 0.0, np.pi)
 
             c = [mm[1]-height, mm[3]]
             if self.check_hull(c, r, None, mm[3], self.rtol, atol):
+                logger.info("  it is a half")
                 return Machine(self, c, r, np.pi, 0.0)
 
         elif np.isclose(width*2, height, self.rtol, self.atol):
@@ -1409,16 +1413,19 @@ class Geometry(object):
             logger.info("check for half machine")
             c = [mm[1], mm[3]-width]
             if self.check_hull(c, r, mm[1], None, self.rtol, atol):
+                logger.info("  it is a half")
                 return Machine(self, c, r, np.pi/2.0, -np.pi/2.0)
 
             c = [mm[0], mm[3]-width]
             if self.check_hull(c, r, mm[0], None, self.rtol, atol):
+                logger.info("  it is a half")
                 return Machine(self, c, r, -np.pi/2.0, np.pi/2.0)
 
         machine = self.get_machine_part(mm)
         if machine:
             return machine
 
+        logger.info("The shape of the Machine is unexpected")
         return Machine(self, [0.0, 0.0], 0.0, 0.0, 0.0)
 
     def is_new_center(self, center_list, center, rtol, atol):
@@ -1553,7 +1560,9 @@ class Geometry(object):
         ok = True
         for e in self.elements(Shape):
             for p in e.intersect_circle(circle, 0.0, atol, True):
-                if not self.is_border_line(center, startangle, endangle, e, atol):
+                if not self.is_border_line(center,
+                                           startangle, endangle,
+                                           e, atol):
                     print("BAD: Point {}".format(p))
                     print("BAD: is_airgap: e = {}".format(e))
                     print("BAD: is_airgap: c = {}".format(circle))

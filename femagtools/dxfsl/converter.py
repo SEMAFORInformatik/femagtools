@@ -89,7 +89,7 @@ def symmetry_search(machine,
 def converter(dxfile,
               rtol=1e-03,
               atol=1e-03,
-              symtol=0.0,
+              symtol=0.1,
               split=False,
               inner_name='inner',
               outer_name='outer',
@@ -118,6 +118,7 @@ def converter(dxfile,
     if show_plots:
         p.render_elements(basegeom, Shape,
                           title='Original',
+                          with_hull=True,
                           rows=3, cols=2, num=1, show=debug_mode)
 
     if not machine_base.is_a_machine():
@@ -127,8 +128,10 @@ def converter(dxfile,
     if not machine_base.is_full():
         machine_base.repair_hull()
         if show_plots and debug_mode:
-            print("===== Original (REPAIRED HULL) =====")
-            p.render_elements(basegeom, Shape, with_corners=True, show=True)
+            p.render_elements(basegeom, Shape,
+                              title='Repaired Hull',
+                              with_corners=True,
+                              show=True)
 
     if machine_base.is_full() or \
        machine_base.is_half() or \

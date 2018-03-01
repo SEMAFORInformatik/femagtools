@@ -330,7 +330,7 @@ def angles_on_arc(startangle, endangle, parts=8):
     num = max(int(alpha/(np.pi/parts)), 1)
 
     for x in range(0, num):
-        yield x/num*alpha + startangle
+        yield float(x)/num*alpha + startangle
     if not circle:
         yield alpha + startangle
 

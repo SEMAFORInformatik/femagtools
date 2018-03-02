@@ -1355,6 +1355,14 @@ class Geometry(object):
             return [h for (k, h) in legend.items()]
         return []
 
+    def get_points_in_iron(self):
+        points = []
+        for area in self.list_of_areas():
+            p = area.get_point_inside(self)
+            if p:
+                points.append(p)
+        return points
+
     def check_hull(self, center, radius, x, y, rtol, atol):
         node_count = 0
         miss_count = 0

@@ -224,7 +224,7 @@ class PlotRenderer(object):
                 frame = legend.get_frame()
                 frame.set_facecolor('white')
                 frame.set_edgecolor('blue')
-                
+
         for e in geom.elements(type):
             e.render(self, 'blue', with_nodes)
 
@@ -592,8 +592,13 @@ class NewFslRenderer(object):
         self.content = []
         self.content.append(u'exit_on_error = false')
         self.content.append(u'exit_on_end = false')
-        self.content.append(u'verbosity = 2')
-        self.content.append(u'pickdist = 0.001\n')
+        self.content.append(u'verbosity = 2\n')
+
+        self.content.append(u'new_model_force("{}","Test")'.
+                            format(self.model))
+        self.content.append(u'global_unit(mm)')
+        self.content.append(u'pickdist(0.001)')
+        self.content.append(u'cosys(polar)\n')
 
         geom_inner = None
         geom_outer = None
@@ -602,8 +607,8 @@ class NewFslRenderer(object):
             geom_inner = m_inner.geom
             geom_outer = m_outer.geom
 
-            parts_inner = m_inner.get_symmetry_part()
-            parts_outer = m_outer.get_symmetry_part()
+            parts_inner = int(m_inner.get_symmetry_part())
+            parts_outer = int(m_outer.get_symmetry_part())
 
             if parts_inner > parts_outer:
                 num_slots = parts_inner
@@ -628,10 +633,14 @@ class NewFslRenderer(object):
         self.content.append(u'da2 = {}'.format(
             2*geom_inner.max_radius))
         self.content.append(u'ag = (da1 - da2)/2\n')
-        self.content.append(u'agndst = 0.75')
 
-        self.content.append(u'new_model_force("{}","Test")\n'.
-                            format(self.model))
+        if m_inner and m_outer:
+            self.content.append(u'm.tot_num_sl  = m.tot_num_slot')
+            self.content.append(u'm.fc_radius   = (da1+da2)/4')
+            self.content.append(u'm.fc_radius1  = m.fc_radius')
+            self.content.append(u'pre_models("basic_modpar")\n')
+
+        self.content.append(u'agndst = 0.75')
 
         if geom_inner:
             if parts_inner > parts_outer:
@@ -708,6 +717,30 @@ class NewFslRenderer(object):
                u'  pre_models("Gen_winding")',
                u'end\n']
         self.content.append(u'\n'.join(txt))
+
+        txt = [u'-- iron',
+               u'urr    = 1000',
+               u"mcvkey = 'dummy'"]
+        self.content.append(u'\n'.join(txt))
+        if m_inner or m_outer:
+            self.content.append(u"if not mcvkey == 'dummy' then")
+        if geom_inner:
+            points = geom_inner.get_points_in_iron()
+            if points:
+                self.content.append(u'  x0 = {} -- {}'
+                                    .format(points[0][0], geom_inner.kind))
+                self.content.append(u'  y0 = {}'.format(points[0][1]))
+                self.content.append(u'  def_mat_fm_nlin(x0, y0, blue, mcvkey, 100)')
+        if geom_outer:
+            points = geom_outer.get_points_in_iron()
+            if points:
+                self.content.append(u'  x0 = {} -- {}'
+                                    .format(points[0][0], geom_outer.kind))
+                self.content.append(u'  y0 = {}'.format(points[0][1]))
+                self.content.append(u'  def_mat_fm_nlin(x0, y0, blue, mcvkey, 100)')
+        if m_inner or m_outer:
+            self.content.append(u"end")
+        self.content.append(u'')
 
         txt = [u'-- pm magnets',
                u'if m.mag_exists > 0 then',

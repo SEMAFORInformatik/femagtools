@@ -89,7 +89,7 @@ def symmetry_search(machine,
 def converter(dxfile,
               rtol=1e-03,
               atol=1e-03,
-              symtol=0.1,
+              symtol=0.001,
               split=False,
               inner_name='inner',
               outer_name='outer',
@@ -151,13 +151,13 @@ def converter(dxfile,
     machine.clear_cut_lines()
     machine.move_to_middle()
     if show_plots and debug_mode:
-        print("===== Areas =====")
         p.render_elements(machine.geom, Shape,
+                          title='Areas',
                           with_corners=False, show=True)
 
-    print("Symtol = {}".format(symtol))
     if machine.airgap(airgap, airgap2, symtol):
         p.render_elements(machine.geom, Shape,
+                          title='Search of Airgap failed',
                           with_corners=False, show=True)
         sys.exit(1)
 

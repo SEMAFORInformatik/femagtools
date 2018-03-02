@@ -55,7 +55,7 @@ if __name__ == "__main__":
                            help='absolut tolerance to find symmetry axis',
                            dest='sym_tolerance',
                            type=float,
-                           default=0.0)
+                           default=0.001)
     argparser.add_argument('--rtol',
                            help='relative tolerance (pickdist)',
                            dest='rtol',

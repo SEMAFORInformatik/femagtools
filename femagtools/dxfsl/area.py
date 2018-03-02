@@ -387,9 +387,12 @@ class Area(object):
         for e in geom.elements(Shape):
             points = e.intersect_line(line, geom.rtol, geom.atol, True)
             for p in points:
-                if p[0] > p1[0]:
+                if greater(p[0], p1[0]):
                     points_sorted.append((p[0], p))
         points_sorted.sort()
+        if not points_sorted:
+            logger.warning("get_point_inside: No point found")
+            return None
 
         p2 = points_sorted[0][1]
         return ((p1[0]+p2[0])/2, y)

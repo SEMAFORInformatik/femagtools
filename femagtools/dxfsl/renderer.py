@@ -722,24 +722,28 @@ class NewFslRenderer(object):
                u'urr    = 1000',
                u"mcvkey = 'dummy'"]
         self.content.append(u'\n'.join(txt))
-        if m_inner or m_outer:
-            self.content.append(u"if not mcvkey == 'dummy' then")
         if geom_inner:
             points = geom_inner.get_points_in_iron()
             if points:
-                self.content.append(u'  x0 = {} -- {}'
+                self.content.append(u'x0 = {} -- {}'
                                     .format(points[0][0], geom_inner.kind))
-                self.content.append(u'  y0 = {}'.format(points[0][1]))
+                self.content.append(u'y0 = {}'.format(points[0][1]))
+                self.content.append(u"if mcvkey ~= 'dummy' then")
                 self.content.append(u'  def_mat_fm_nlin(x0, y0, blue, mcvkey, 100)')
+                self.content.append(u'else')
+                self.content.append(u'  def_mat_fm(x0, y0, 1000.0, 100)')
+                self.content.append(u'end')
         if geom_outer:
             points = geom_outer.get_points_in_iron()
             if points:
-                self.content.append(u'  x0 = {} -- {}'
+                self.content.append(u'x0 = {} -- {}'
                                     .format(points[0][0], geom_outer.kind))
-                self.content.append(u'  y0 = {}'.format(points[0][1]))
+                self.content.append(u'y0 = {}'.format(points[0][1]))
+                self.content.append(u"if mcvkey ~= 'dummy' then")
                 self.content.append(u'  def_mat_fm_nlin(x0, y0, blue, mcvkey, 100)')
-        if m_inner or m_outer:
-            self.content.append(u"end")
+                self.content.append(u'else')
+                self.content.append(u'  def_mat_fm(x0, y0, 1000.0, 100)')
+                self.content.append(u'end')
         self.content.append(u'')
 
         txt = [u'-- pm magnets',

@@ -3,6 +3,7 @@ import logging
 import struct
 import sys
 import numpy as np
+import re
 from collections import Counter
 
 logger = logging.getLogger('femagtools.isa7')
@@ -21,14 +22,15 @@ class Reader(object):
         Arguments:
             fmt: Format string (see python struct module)
         """
+        
         fmt_ = fmt.replace("?", "i")
-
+        
         blockSize = struct.unpack_from("=i", self.file, self.pos)[0]
         self.pos += 4
         try:
-            unpacked = struct.iter_unpack("=" + fmt_,
-                                          self.file[self.pos:self.pos +
-                                                    blockSize])
+            unpacked = struct.iter_unpack("=" + fmt_, 
+                                          self.file[self.pos:self.pos
+                                                    + blockSize])
             unpacked = [x for x in unpacked]
 
         except AttributeError:  # python 2 has no iter_unpack
@@ -40,12 +42,34 @@ class Reader(object):
                 offset += chunksize
             logger.info("%s: %d %d", fmt_, blockSize, len(unpacked))
             
-        values = [[bool(x[i]) if fmt[i] == "?" else x[i]
-                   for x in unpacked] for i in range(len(fmt))]
         self.pos += blockSize + 4
+
+        fmt_ = ""
+        for s in re.findall("[0-9]*.|[0-9]*\?", fmt):
+            if len(s) > 1 and s[-1] != "c":
+                fmt_ += int(s[:-1]) * s[-1]
+            else:
+                fmt_ += s
+        values = []
+        i = 0
+        for dtype in re.findall("\?|[0-9]*c?", fmt_)[:-1]:
+            if dtype == "":
+                values.append([u[i] for u in unpacked])
+                i += 1
+            elif dtype == "?":
+                values.append([bool(u[i]) for u in unpacked])
+                i += 1
+            elif dtype[-1] == "c":
+                charsize = int(dtype[:-1]) if dtype[:-1] != "" else 1
+                values.append(["".join([u[j].decode()
+                                        for j in range(i, i+charsize)])
+                              for u in unpacked])
+                i += charsize
+                
         if len(fmt) == 1:
             return values[0]
-        return values
+        else:
+            return values
 
 
 class Isa7(object):
@@ -138,7 +162,11 @@ class Isa7(object):
                 Element(self.ELEM_ISA_EL_VALID[e],
                         self.ELEM_ISA_ELEM_REC_EL_TYP[e],
                         self.ELEM_ISA_ELEM_REC_EL_SE_KEY[e]-1,
-                        vertices))
+                        vertices,
+                        (self.ELEM_ISA_ELEM_REC_EL_RELUC[e], 
+                         self.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
+                        (self.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
+                         self.ELEM_ISA_ELEM_REC_EL_MAG_2[e])))
 
         self.superelements = []
         for se in range(self.NUM_SPEL):
@@ -173,8 +201,17 @@ class Isa7(object):
                              elements,
                              nodechains,
                              self.SUPEL_ISA_SUPEL_REC_SE_COL[se],
-                             nc_keys))
-            
+                             nc_keys,
+                             self.SUPEL_ISA_SUPEL_REC_SE_MCV_TYP,
+                             self.SUPEL_ISA_SUPEL_REC_SE_COND_TYP,
+                             self.SUPEL_ISA_SUPEL_REC_SE_CONDUC,
+                             self.SUPEL_ISA_SUPEL_REC_SE_LENGHT,
+                             self.SUPEL_ISA_SUPEL_REC_SE_VEL_SYS,
+                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_1,
+                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_2,
+                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_RE,
+                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM))
+
         self.subregions = []
         for sr in range(self.NUM_SR):
             se_keys = []
@@ -206,6 +243,30 @@ class Isa7(object):
                           superelements,
                           nodechains))
             
+        self.windings = []
+        for wd in range(self.NUM_WB):
+            sr_keys = []
+            sr_ptr = self.WB_ISA_WB_SR_PNTR[wd]
+            
+            while sr_ptr > 0:
+                sr_keys.append(self.WB_SR_ISA_SR_KEY[sr_ptr-1])
+                sr_ptr = self.WB_SR_ISA_NXT_SR_PNTR[sr_ptr-1]
+            
+            subregions = []
+            for srk in sr_keys:
+                subregions.append(self.subregions[srk-1])
+                
+            self.windings.append(
+                Winding(self.WB_ISA_WB_VALID[wd],
+                        self.WB_ISA_WB_REC_WB_NAME[wd],
+                        subregions,
+                        self.WB_ISA_WB_REC_WB_TURN[wd],
+                        self.WB_ISA_WB_REC_WB_GCUR_RE[wd],
+                        self.WB_ISA_WB_REC_WB_GCUR_IM[wd],
+                        self.WB_ISA_WB_REC_WB_IMPDZ_RE[wd],
+                        self.WB_ISA_WB_REC_WB_IMPDZ_IM[wd],
+                        self.WB_ISA_WB_REC_WB_VOLT_RE[wd],
+                        self.WB_ISA_WB_REC_WB_VOLT_IM[wd]))
             
     def read(self, filename):
         reader = Reader(filename)
@@ -308,10 +369,38 @@ class Isa7(object):
          self.SR_ISA_SR_REC_SR_GCUR_RE,
          self.SR_ISA_SR_REC_SR_GCUR_IM,
          self.SR_ISA_SR_REC_SR_VOLT_RE,
-         self.SR_ISA_SR_REC_SR_VOLT_IM) = reader.next_block("?hhhihhhhfffff")
+         self.SR_ISA_SR_REC_SR_VOLT_IM) = reader.next_block("?hhh4chhhhfffff")
         
         (self.SR_SE_ISA_SE_KEY,
          self.SR_SE_ISA_NXT_SE_PNTR) = reader.next_block("hh")
+        
+        (self.WB_ISA_WB_VALID,
+         self.WB_ISA_WB_SR_PNTR,
+         self.WB_ISA_WB_REC_WB_COL,
+         self.WB_ISA_WB_REC_WB_NAME,
+         self.WB_TURN,
+         self.WB_ISA_WB_REC_WB_SR_NUM,
+         self.WB_ISA_WB_REC_WB_WND_KEY,
+         self.WB_ISA_WB_REC_WB_UNIT_RES,
+         self.WB_ISA_WB_REC_WB_GCUR_RE,
+         self.WB_ISA_WB_REC_WB_GCUR_IM,
+         self.WB_ISA_WB_REC_WB_VOLT_RE,
+         self.WB_ISA_WB_REC_WB_VOLT_IM,
+         self.WB_ISA_WB_REC_WB_IMPDZ_RE,
+         self.WB_ISA_WB_REC_WB_IMPDZ_IM) = reader.next_block("?hh4chhhfffffff")
+        
+        self.WB_ISA_WB_REC_WB_TURN = []
+        for wd in range(self.NUM_WB):
+            if self.WB_ISA_WB_REC_WB_UNIT_RES[wd] == 0:
+                self.WB_ISA_WB_REC_WB_TURN.append(
+                    self.WB_TURN[wd])
+            else:
+                self.WB_ISA_WB_REC_WB_TURN.append(
+                    self.WB_ISA_WB_REC_WB_UNIT_RES[wd])
+                self.WB_ISA_WB_REC_WB_UNIT_RES[wd] = 0
+                
+        (self.WB_SR_ISA_SR_KEY,
+         self.WB_SR_ISA_NXT_SR_PNTR) = reader.next_block("hh")
 
 
 class Point(object):
@@ -332,8 +421,8 @@ class Line(object):
 class Node(object):
     def __init__(self, valid, bndcnd, pernod, x, y, vpot_re, vpot_im):
         self.valid = valid
-        self.bndcnd = bndcnd,
-        self.pernod = pernod,
+        self.bndcnd = bndcnd
+        self.pernod = pernod
         self.x = x
         self.y = y
         self.xy = x, y
@@ -350,32 +439,41 @@ class NodeChain(object):
         self.nodes = (nodes[0], nodes[2]) if nodes[1] is None else (nodes[0], nodes[1], nodes[2])
     
     def reverse(self):
-        return NodeChain(self.valid, self.key * (-1),
-                         [self.node2, self.nodemid, self.node1])
+        return NodeChain(self.valid, self.key * (-1), [self.node2, self.nodemid, self.node1])
     
     
 class Element(object):
-    def __init__(self, valid, el_type, se_key, vertices):
+    def __init__(self, valid, el_type, se_key, vertices, reluc, mag):
         self.valid = valid
         self.el_type = el_type
         self.se_key = se_key
         self.vertices = vertices
+        self.reluc = reluc
+        self.mag = mag
         
         
 class SuperElement(object):
-    def __init__(self, valid, sr_key, elements, nodechains,
-                 color, nc_keys):
+    def __init__(self, valid, sr_key, elements, nodechains, color,
+                 nc_keys, mcvtype, condtype, conduc, length,
+                 velsys, velo_1, velo_2, curd_re, curd_im):
         self.valid = valid
         self.sr_key = sr_key
         self.elements = elements
         self.nodechains = nodechains
         self.color = color
         self.nc_keys = nc_keys
+        self.mcvtype = mcvtype
+        self.condtype = condtype
+        self.conduc = conduc
+        self.length = length
+        self.velsys = velsys
+        self.velo = velo_1, velo_2
+        self.curd = curd_re, curd_im
         
         
 class SubRegion(object):
-    def __init__(self, valid, sr_type, color, name, curdir,
-                 wb_key, superelements, nodechains):
+    def __init__(self, valid, sr_type, color, name, curdir, wb_key,
+                 superelements, nodechains):
         self.valid = valid
         self.sr_type = sr_type
         self.color = color
@@ -384,6 +482,18 @@ class SubRegion(object):
         self.wb_key = wb_key
         self.superelements = superelements
         self.nodechains = nodechains
+        
+        
+class Winding(object):
+    def __init__(self, valid, name, subregions, num_turns, cur_re, cur_im,
+                 flux_re, flux_im, volt_re, volt_im):
+        self.valid = valid
+        self.name = name
+        self.subregions = subregions
+        self.num_turns = num_turns
+        self.cur = cur_re, cur_im
+        self.flux = flux_re, flux_im
+        self.volt = volt_re, volt_im
 
         
 def read(filename):

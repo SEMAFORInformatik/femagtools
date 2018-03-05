@@ -238,12 +238,13 @@ class Circle(Shape):
         d = distance(self.center, p)
 
         if np.isclose(d, self.radius, rtol, atol):
-            # Wenn der Abstand d dem Radius entspricht, handelt es sich um
-            # eine Tangente und es gibt genau einen Schnittpunkt
-            if include_end:
-                return [p]
-            else:
-                return []
+            if line.is_point_inside(p, rtol, atol, include_end):
+                # Wenn der Abstand d dem Radius entspricht, handelt es sich um
+                # eine Tangente und es gibt genau einen Schnittpunkt
+                if include_end:
+                    return [p]
+                else:
+                    return []
         if self.radius < d:
             # d liegt ausserhalb des Kreises -> kein Schnittpunkt
             return []
@@ -257,13 +258,15 @@ class Circle(Shape):
         # Die Schnittpunkte p1 und p2 sind bestimmt. Nun muss noch sicher
         # gestellt werden, dass sie innerhalb des Start- und Endpunkts der
         # Linie liegen
-        if line.is_point_inside(p1, rtol, atol, include_end):
-            if line.is_point_inside(p2, rtol, atol, include_end):
+        p1_inside = line.is_point_inside(p1, rtol, atol, include_end)
+        p2_inside = line.is_point_inside(p2, rtol, atol, include_end)
+        if p1_inside:
+            if p2_inside:
                 return [p1, p2]
             else:
                 return[p1]
         else:
-            if line.is_point_inside(p2, rtol, atol, include_end):
+            if p2_inside:
                 return[p2]
             else:
                 return []

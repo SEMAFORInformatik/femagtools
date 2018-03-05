@@ -677,13 +677,13 @@ if __name__ == "__main__":
         with io.open(filename, encoding='latin1', errors='ignore') as f:
             bchresults.read(f.readlines())
 
-        if bchresults.type == 'Fast PM-Synchronous-Motor Simulation':
+        if bchresults.type.lower.find('pm-synchronous-motor simulation') >= 0:
             pmrelsim(bchresults, bchresults.filename)
-        elif bchresults.type == 'Fast cogging calculation OF FORCES AND FLUX':
+        elif bchresults.type.lower.find('cogging calculation'):
             cogging(bchresults, bchresults.filename)
-        elif bchresults.type == 'Fast LD-LQ-Identification':
+        elif bchresults.type.lower().find('ld-lq-identification') >= 0:
             ldlq(bchresults)
-        elif bchresults.type == 'Fast Psid-Psiq-Identification':
+        elif bchresults.type.lower().find('psid-psiq-identification') >= 0:
             psidq(bchresults)
         else:
             raise ValueError("BCH type {} not yet supported".format(

@@ -771,8 +771,8 @@ class Reader:
                 m.append([floatnan(x) for x in rec])
 
         m = np.array(m).T
-        ncols = len(set(m[1]))
-        iq = m[1]
+        ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        iq = np.linspace(np.min(m[1]), np.max(m[1]), ncols)
         if ncols > 1 and (iq[ncols-1] < iq[ncols-2] or
                           len(m[0]) % ncols != 0):
             ncols = ncols-1
@@ -802,8 +802,8 @@ class Reader:
                 m.append([floatnan(x) for x in rec])
 
         m = np.array(m).T
-        ncols = len(set(m[1]))
-        iq = m[1]
+        ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        iq = np.linspace(np.min(m[1]), np.max(m[1]), ncols)
         if ncols > 1 and (iq[ncols-1] < iq[ncols-2] or
                           len(m[0]) % ncols != 0):
             ncols = ncols-1

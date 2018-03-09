@@ -186,7 +186,8 @@ def force(title, pos, force):
     ax.set_title('{} / {}'.format(title, unit))
     ax.grid(True)
     ax.plot(pos, [scale*f for f in force])
-    ax.set_ylim(bottom=0)
+    if min(force) > 0:
+        ax.set_ylim(bottom=0)
 
 
 def winding_flux(pos, flux):
@@ -677,9 +678,10 @@ if __name__ == "__main__":
         with io.open(filename, encoding='latin1', errors='ignore') as f:
             bchresults.read(f.readlines())
 
-        if bchresults.type.lower.find('pm-synchronous-motor simulation') >= 0:
+        if bchresults.type.lower().find(
+                'pm-synchronous-motor simulation') >= 0:
             pmrelsim(bchresults, bchresults.filename)
-        elif bchresults.type.lower.find('cogging calculation'):
+        elif bchresults.type.lower().find('cogging calculation') >= 0:
             cogging(bchresults, bchresults.filename)
         elif bchresults.type.lower().find('ld-lq-identification') >= 0:
             ldlq(bchresults)

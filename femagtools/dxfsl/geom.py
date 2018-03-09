@@ -749,7 +749,6 @@ class Geometry(object):
             # Unerwartetes Ende des Rundgangs
             return None
 
-#        angles = [(alpha_angle(alpha ,alpha_line(p2, n)), n) for n in nbrs]
         angles = []
         for p in nbrs:
             e_dict = self.g.get_edge_data(p2, p)
@@ -764,10 +763,6 @@ class Geometry(object):
                 # we don't move more than 180 degrees
                 angles.append((alpha_angle(alpha, alphax), p))
 
-#        print("p={}, nbr: ".format(p2), end='')
-#        for a in angles:
-#            print("{}/".format(a), end='')
-#        print(" *")
         if len(angles) == 0:
             return None
 
@@ -781,33 +776,40 @@ class Geometry(object):
         area = []
         e = e_dict['object']
         x = e.get_point_number(start_p1)
+        trace = False
 
         if e_dict[x]:
             # Diese Area wurde schon abgelaufen.
-            # print("    *** bereits abgelaufen ({}) ***".format(x))
+            if trace:
+                print("    *** bereits abgelaufen ({}) ***".format(x))
             return None
         e_dict[x] = True  # footprint
         area.append(e)
+
+        if (isinstance(e, Circle) and not isinstance(e, Arc)):
+            if trace:
+                print("AREA WITH CIRCLE")
+            e_dict[1] = True  # footprint
+            e_dict[2] = True  # footprint
+            return area
+
         first_p = start_p1
         this_p = start_p2
 
         next_p = self.point_lefthand_side(first_p, this_p)
         if not next_p:
             # Unerwartetes Ende
-            # print("    *** Sackgasse ***")
+            if trace:
+                print("    *** Sackgasse ***")
             return None
-
-        # print("\nBEGIN get_new_area: start={}, next={}".
-        #       format(start_p1, start_p2))
 
         a = normalise_angle(alpha_points(first_p, this_p, next_p))
         alpha = a
-        # print("get_new_area: a={}, b={}, c={} => + {} = {}".
-        #       format(first_p, this_p, next_p, a, alpha))
 
         c = 0
         while not points_are_close(next_p, start_p1):
-            # print("next={}, start={}".format(next_p, start_p1))
+            if trace:
+                print("next={}, start={}".format(next_p, start_p1))
             c += 1
             if c > 1000:
                 print("FATAL: *** over 1000 elements in area ? ***")
@@ -817,8 +819,9 @@ class Geometry(object):
             e = e_dict['object']
             x = e.get_point_number(this_p)
             if e_dict[x]:
-                # print('     *** da waren wir schon:\n   {}\n     ***'.
-                #       format(e))
+                if trace:
+                    print('     *** da waren wir schon:\n   {}\n     ***'
+                          .format(e))
                 return None
             e_dict[x] = True  # footprint
             first_p = this_p
@@ -826,16 +829,16 @@ class Geometry(object):
             next_p = self.point_lefthand_side(first_p, this_p)
             if not next_p:
                 # Unerwartetes Ende
-                # print("    *** Sackgasse ***")
+                if trace:
+                    print("    *** Sackgasse ***")
                 return None
 
             a = normalise_angle(alpha_points(first_p, this_p, next_p))
             alpha += a
-            # print("get_new_area: a={}, b={}, c={} => + {} = {}".
-            #       format(first_p, this_p, next_p, a, alpha))
             area.append(e)
 
-        # print("END get_new_area\n")
+        if trace:
+            print("END get_new_area\n")
 
         e_dict = self.g.get_edge_data(this_p, next_p)
         e = e_dict['object']
@@ -844,13 +847,15 @@ class Geometry(object):
         area.append(e)
         a = normalise_angle(alpha_points(this_p, next_p, start_p2))
         alpha += a
-        # print("get_new_area: a={}, b={}, c={} => + {} = {}".
-        #       format(this_p, next_p, start_p2, a, alpha))
 
-        # print(">>> area found: alpha={}<<<\n".format(alpha))
         if alpha < 0.0:
             # Wir wollten nach links, aber es ging immer nach rechts!
+            if trace:
+                print("Wir wollten nach links, aber es ging immer nach rechts!")
             return None
+
+        if trace:
+            print("AREA WITH CIRCLE\n{}\n".format(area))
         return area
 
     def create_list_of_areas(self):

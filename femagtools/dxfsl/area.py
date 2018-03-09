@@ -16,7 +16,7 @@ from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle
-from .shape import Element, Shape, Line
+from .shape import Element, Shape, Line, Arc, Circle
 
 logger = logging.getLogger('femagtools.area')
 
@@ -218,7 +218,7 @@ class Area(object):
                           1e-03, sym_tolerance) and \
                np.isclose(round(self.alpha, 3),
                           round(a.alpha, 3),
-                          1e-02, 0.001):
+                          1e-02, 0.01):
                 return True
         else:
             if np.isclose(round(self.min_dist, 2),
@@ -227,6 +227,7 @@ class Area(object):
                           round(a.max_dist, 2)) and \
                np.isclose(round(self.alpha, 3),
                           round(a.alpha, 3), 1e-02, 0.001):
+                print(" - OK")
                 return True
         return False
 
@@ -404,7 +405,13 @@ class Area(object):
 
     def render_fill(self, renderer, alpha=1.0):
         color = self.color()
-        if color:
+        if not color:
+            return
+
+        if self.is_circle():
+            e = self.area[0]
+            renderer.fill_circle(e.center, e.radius, color, alpha)
+        else:
             nodes = [n for n in self.virtual_nodes()]
             x = [n[0] for n in nodes]
             y = [n[1] for n in nodes]
@@ -419,6 +426,27 @@ class Area(object):
                 g.remove_edge(e.node1(ndec), e.node2(ndec))
             except Exception:
                 continue
+
+    def is_circle(self):
+        e = self.area[0]
+        if len(self.area) == 1:
+            return isinstance(e, Circle) and not isinstance(e, Arc)
+
+        if isinstance(e, Arc):
+            c = e.center
+            r = e.radius
+            a = 0.0
+            for e in self.area:
+                if not isinstance(e, Arc):
+                    return False
+                if not points_are_close(c, e.center):
+                    return False
+                if not np.isclose(r, e.radius):
+                    return False
+                a += e.get_angle_of_arc()
+            return np.isclose(a, 2.0*np.pi)
+
+        return False
 
     def is_rectangle(self):
         lines = [[c, e.m(99999.0), e.length()]
@@ -473,6 +501,10 @@ class Area(object):
                                center, r_in, r_out):
         alpha = round(alpha, 6)
 
+        if self.is_circle():
+            self.type = 0  # air
+            return self.type
+
         if is_inner:
             close_to_ag = np.isclose(r_out, self.max_dist)
             close_to_opposition = np.isclose(r_in, self.min_dist)
@@ -518,6 +550,10 @@ class Area(object):
                               center, r_in, r_out):
         my_alpha = round(self.max_angle - self.min_angle, 6)
         alpha = round(alpha, 6)
+
+        if self.is_circle():
+            self.type = 0  # air
+            return self.type
 
         if is_inner:
             close_to_ag = np.isclose(r_out, self.max_dist)
@@ -614,8 +650,9 @@ class Area(object):
         return self.min_angle < a.min_angle
 
     def __str__(self):
-        return "Area\n distance: from {} to {}\n".\
+        return "Area\ndistance: from {} to {}\n".\
             format(round(self.min_dist, 4), round(self.max_dist, 4)) + \
             "alpha...: {}\n".format(self.alpha) + \
-            "angle...: from {} to {}\n".format(round(self.min_angle, 6),
-                                               round(self.max_angle, 6))
+            "angle...: from {} to {}\n".\
+            format(round(self.min_angle, 6), round(self.max_angle, 6)) + \
+            "delta...: {}".format(self.delta)

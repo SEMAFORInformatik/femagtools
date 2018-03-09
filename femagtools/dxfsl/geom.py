@@ -24,6 +24,7 @@ from .functions import distance, alpha_line, alpha_points, alpha_angle
 from .functions import point, points_are_close, is_point_inside_region
 from .functions import line_m, line_n
 from .functions import middle_point_of_line, middle_point_of_arc
+from .functions import middle_angle
 from .functions import normalise_angle, is_same_angle
 from .functions import part_of_circle, gcd
 
@@ -871,8 +872,8 @@ class Geometry(object):
                     return
             area_list.append(a)
 
-        if self.debug:
-            print("create new area list ", end='', flush=True)
+        logger.debug("create new area list")
+
         if nxversion == 1:
             nx.set_edge_attributes(self.g, 0, True)
             nx.set_edge_attributes(self.g, 1, False)
@@ -1084,11 +1085,17 @@ class Geometry(object):
                                       inner_circle.radius,
                                       outer_circle.radius,
                                       start_angle, end_angle):
-                new_elements.append(
-                    Arc(Element(center=e.center,
-                                radius=e.radius,
-                                start_angle=alpha_start*180/np.pi,
-                                end_angle=alpha_end*180/np.pi)))
+                alpha_middle = middle_angle(alpha_start, alpha_end)
+                arc1 = Arc(Element(center=e.center,
+                                   radius=e.radius,
+                                   start_angle=alpha_start*180/np.pi,
+                                   end_angle=alpha_middle*180/np.pi))
+                arc2 = Arc(Element(center=e.center,
+                                   radius=e.radius,
+                                   start_angle=alpha_middle*180/np.pi,
+                                   end_angle=alpha_end*180/np.pi))
+                new_elements.append(arc1)
+                new_elements.append(arc2)
 
             alpha_start = alpha_end
             p1 = p2
@@ -1098,9 +1105,17 @@ class Geometry(object):
         if is_point_inside_region(pm, center,
                                   inner_circle.radius, outer_circle.radius,
                                   start_angle, end_angle):
-            new_elements.append(Arc(Element(center=e.center, radius=e.radius,
-                                            start_angle=alpha_start*180/np.pi,
-                                            end_angle=alpha_end*180/np.pi)))
+            alpha_middle = middle_angle(alpha_start, alpha_end)
+            arc1 = Arc(Element(center=e.center,
+                               radius=e.radius,
+                               start_angle=alpha_start*180/np.pi,
+                               end_angle=alpha_middle*180/np.pi))
+            arc2 = Arc(Element(center=e.center,
+                               radius=e.radius,
+                               start_angle=alpha_middle*180/np.pi,
+                               end_angle=alpha_end*180/np.pi))
+            new_elements.append(arc1)
+            new_elements.append(arc2)
         return new_elements
 
     def copy_shape(self, center, radius,
@@ -1706,6 +1721,8 @@ class Geometry(object):
 
         if self.is_rotor():
             return self.search_rotor_subregions()
+
+        logger.warning("no stator or rotor assigned")
 
     def search_stator_subregions(self):
         for area in self.list_of_areas():

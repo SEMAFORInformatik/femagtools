@@ -77,6 +77,12 @@ class PlotRenderer(object):
     def fill(self, x, y, color, alpha):
         self.ax.fill(x, y, 'b', alpha=alpha, color=color, edgecolor='blue')
 
+    def fill_circle(self, center, radius, color, alpha):
+        circle = pl.Circle(center, radius, color=color, alpha=alpha)
+        self.ax.add_artist(circle)
+        circle = pl.Circle(center, radius, color='blue', fill=False)
+        self.ax.add_artist(circle)
+
     def render(self, geom, filename=None, **kwargs):
         draw_center = kwargs.get('draw_center', False)
         draw_hull = kwargs.get('draw_hull', False)
@@ -254,10 +260,21 @@ class PlotRenderer(object):
     def render_areas(self, geom, **kwargs):
         with_nodes = kwargs.get('with_nodes', False)
         single_view = kwargs.get('single_view', False)
+        title = kwargs.get('title', "")
+        show = kwargs.get('show', True)
+        rows = kwargs.get('rows', 1)
+        cols = kwargs.get('cols', 1)
+        num = kwargs.get('num', 1)
+
+        if show:
+            rows = 1
+            cols = 1
+            num = 1
 
         if not single_view:
-            fig = pl.figure()
-            self.ax = fig.add_subplot(111)
+            self.ax = self.figure().add_subplot(rows, cols, num)
+            if len(title) > 0:
+                self.ax.set_title(title, size=14)
 
         colors = ('red', 'green', 'blue', 'magenta',
                   'orange', 'grey', 'darkgreen')
@@ -285,7 +302,8 @@ class PlotRenderer(object):
 
         if not single_view:
             self.ax.axis('scaled', aspect='equal')
-            pl.show()
+            if show:
+                self.show_plot()
 
     def render_area(self, area):
         fig = pl.figure()

@@ -12,7 +12,7 @@ from __future__ import print_function
 import numpy as np
 import logging
 import sys
-from .shape import Element, Circle, Line
+from .shape import Element, Circle, Line, Shape
 from .functions import point, points_are_close
 from .functions import alpha_angle, normalise_angle, middle_angle
 from .functions import line_m, line_n, mirror_point
@@ -183,6 +183,7 @@ class Machine(object):
         geom2 = self.geom.copy_shape(self.center, self.radius,
                                      midangle, endangle,
                                      0.0, self.radius+9999)
+
         machine = Machine(geom1, self.center, self.radius,
                           startangle, midangle)
         machine.mirror_orig_geom = self.geom
@@ -413,7 +414,7 @@ class Machine(object):
         machine_mirror.clear_cut_lines()
         machine_mirror.repair_hull()
         machine_mirror.set_alfa_and_corners()
-        if machine_mirror.check_symmetry_graph(0.1, 0.1):
+        if machine_mirror.check_symmetry_graph(0.001, 0.05):
             return machine_mirror
         return None
 
@@ -424,6 +425,7 @@ class Machine(object):
             return self.part
 
     def check_symmetry_graph(self, rtol, atol):
+        # print("check_symmetry_graph")
         axis_p = point(self.center, self.radius, self.mirror_startangle)
         axis_m = line_m(self.center, axis_p)
         axis_n = line_n(self.center, axis_m)
@@ -435,16 +437,27 @@ class Machine(object):
                     return True
             return False
 
-        hit = 0
-        nodes = self.geom.g.nodes()
-        for n in nodes:
-            if is_node_available(n, self.mirror_geom.g.nodes()):
-                hit += 1
+        def get_hit_factor(nodes1, nodes2):
+            hit = 0
+            for n in nodes1:
+                if is_node_available(n, nodes2):
+                    hit += 1
+            return float(hit) / len(nodes1)
 
-        hit_factor = hit / len(nodes)
-        ok = hit_factor > 0.9
-#        print("Nodes = {}, Match={} => ok={}".format(len(nodes), hit, ok))
-        return ok
+        hit_factor1 = get_hit_factor(self.geom.g.nodes(),
+                                     self.mirror_geom.g.nodes())
+        if hit_factor1 < 0.9:
+            # print("hit_factor1 < 0.9: {}".format(hit_factor1))
+            return False  # not ok
+
+        hit_factor2 = get_hit_factor(self.mirror_geom.g.nodes(),
+                                     self.geom.g.nodes())
+        if hit_factor2 < hit_factor1:
+            # print("hit_factor2 < hit_factor1: {} < {}"
+            #       .format(hit_factor2, hit_factor1))
+            return False  # not ok
+        # print("symmetry ok")
+        return True
 
     def sync_with_counterpart(self, cp_machine):
         self.geom.sym_counterpart = cp_machine.get_symmetry_part()

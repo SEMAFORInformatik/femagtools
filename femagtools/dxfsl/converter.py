@@ -22,13 +22,13 @@ def usage(name):
           " [-h] [--help]")
 
 
-def write_fsl(machine, basename, inner=False, outer=False):
+def write_fsl_file(machine, basename, inner=False, outer=False):
     model = NewFslRenderer(basename)
     filename = basename + '_' + machine.geom.kind + '.fsl'
     model.render(machine.geom, filename, inner, outer)
 
 
-def write_main_fsl(machine, machine_inner, machine_outer, basename):
+def write_main_fsl_file(machine, machine_inner, machine_outer, basename):
     model = NewFslRenderer(basename)
     filename = basename + '.fsl'
     model.render_main(machine, machine_inner, machine_outer, filename)
@@ -39,19 +39,17 @@ def symmetry_search(machine,
                     kind,
                     symtol=0.0,
                     show_plots=True,
-                    write_fsl=False,
                     debug_mode=False,
                     rows=1,
                     cols=1,
                     num=1):
+    logger.info("symmetry search for %s", kind)
     machine.clear_cut_lines()
     if show_plots and debug_mode:
         plt.render_elements(machine.geom, Shape,
                             neighbors=True, title=kind)
 
     if not machine.find_symmetry(symtol):
-        if debug_mode:
-            print("no symmetry axis found")
         logger.info("{}: no symmetry axis found".format(kind))
         plt.add_emptyplot(rows, cols, num, 'no symmetry axis')
 
@@ -70,14 +68,22 @@ def symmetry_search(machine,
         machine_mirror = machine_slice.get_symmetry_mirror()
 
     if machine_mirror is None:
-        print("NO MIRROR")
+        logger.info("no mirror found")
         machine_ok = machine_slice
     else:
         if show_plots and debug_mode:
             plt.render_elements(machine_mirror.mirror_geom, Shape,
                                 title='Mirror of '+kind,
                                 rows=rows, cols=cols, num=num, show=True)
-        machine_ok = machine_mirror
+
+        logger.info("mirror found")
+        machine_mirr2 = machine_mirror.get_symmetry_mirror()
+        if machine_mirr2 is None:
+            logger.info("no second mirror found")
+            machine_ok = machine_mirror
+        else:
+            logger.info("second mirror found")
+            machine_ok = machine_mirr2
 
     machine_ok.complete_hull()
     machine_ok.create_auxiliary_lines()
@@ -97,6 +103,7 @@ def converter(dxfile,
               airgap2=0.0,
               view_only=False,
               show_plots=True,
+              write_fsl=False,
               debug_mode=False):
     layers = ()
 
@@ -118,7 +125,7 @@ def converter(dxfile,
     if show_plots:
         p.render_elements(basegeom, Shape,
                           title='Original',
-                          with_hull=True,
+                          with_hull=False,
                           rows=3, cols=2, num=1, show=debug_mode)
 
     if not machine_base.is_a_machine():
@@ -194,11 +201,13 @@ def converter(dxfile,
         machine_outer.search_subregions()
 
         if machine_inner.geom.area_close_to_endangle(2) > 0:
+            logger.info("undo mirror of %s", inner_name)
             machine_inner.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
             machine_inner.search_subregions()
 
         elif machine_outer.geom.area_close_to_endangle(2) > 0:
+            logger.info("undo mirror of %s", outer_name)
             machine_outer.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
             machine_outer.search_subregions()
@@ -215,10 +224,16 @@ def converter(dxfile,
                               fill_areas=True)
             p.show_plot()
 
+            # p.render_areas(machine_inner.geom)
+            # p.render_areas(machine_outer.geom)
+
         if write_fsl:
-            write_fsl(machine_inner, basename, True, False)
-            write_fsl(machine_outer, basename, False, True)
-            write_main_fsl(machine, machine_inner, machine_outer, basename)
+            write_fsl_file(machine_inner, basename, True, False)
+            write_fsl_file(machine_outer, basename, False, True)
+            write_main_fsl_file(machine,
+                                machine_inner,
+                                machine_outer,
+                                basename)
 
     else:
         # No airgap found
@@ -240,6 +255,6 @@ def converter(dxfile,
 
         if write_fsl:
             machine.search_subregions()
-            write_fsl(machine, basename)
+            write_fsl_file(machine, basename)
 
     logger.info("done")

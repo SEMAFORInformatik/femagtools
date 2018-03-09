@@ -13,7 +13,7 @@ from .functions import less_equal
 from .functions import distance, line_m, line_n
 from .functions import point, points_are_close, points_on_arc
 from .functions import alpha_line, alpha_angle, alpha_triangle
-from .functions import normalise_angle, min_angle
+from .functions import normalise_angle, min_angle, get_angle_of_arc
 from .functions import lines_intersect_point
 from .functions import is_angle_inside
 # from .geom import ndec
@@ -333,6 +333,9 @@ class Circle(Shape):
         assert(len(points) == 0)
         return []
 
+    def get_angle_of_arc(self):
+        return np.pi*2.0
+
     def __str__(self):
         return "Circle c={}, r={}".format(self.center, self.radius)
 
@@ -620,6 +623,9 @@ class Arc(Circle):
                                          self.endangle,
                                          parts=parts))
 
+    def get_angle_of_arc(self):
+        return get_angle_of_arc(self.startangle, self.endangle)
+
     def __str__(self):
         return "Arc c={}, r={} start={}, end={}, p1={}, p2={}".\
             format(self.center,
@@ -806,6 +812,9 @@ class Line(Shape):
             zum Rechnen der convex_hull() benötigt.
         """
         return (self.p1, self.p2)
+
+    def get_angle_of_arc(self):
+        return 0.0
 
     def __str__(self):
         return "Line p1={}, p2={}".format(self.p1, self.p2)

@@ -30,9 +30,6 @@ if __name__ == "__main__":
         description='Process DXF file and create a plot or FSL file.')
     argparser.add_argument('dxfile',
                            help='name of DXF file')
-    argparser.add_argument('-f', '--fsl',
-                           help='create fsl',
-                           action="store_true")
     argparser.add_argument('--inner',
                            help='name of inner element',
                            dest='inner',
@@ -73,6 +70,10 @@ if __name__ == "__main__":
     argparser.add_argument('-p', '--plot',
                            help='show plots',
                            dest='show_plots',
+                           action="store_true")
+    argparser.add_argument('-f', '--fsl',
+                           help='create fsl',
+                           dest='write_fsl',
                            action="store_true")
     argparser.add_argument('-v', '--view',
                            help='show a view only',
@@ -117,4 +118,5 @@ if __name__ == "__main__":
               airgap2=args.airgap2,
               view_only=args.view,
               show_plots=args.show_plots,
+              write_fsl=args.write_fsl,
               debug_mode=args.debug)

@@ -231,30 +231,35 @@ def mcv_hbj(mcv, log=True):
     MUE0 = 4e-7*np.pi
     ji = []
 
-    bh = [(bi, hi*1e-3)
-          for bi, hi in zip(mcv['curve'][0]['bi'],
-                            mcv['curve'][0]['hi'])]
-    try:
-        if mcv['ctype'] in (femagtools.mcv.MAGCRV,
-                            femagtools.mcv.ORIENT_CRV):
-            ji = [b-MUE0*h*1e3 for b, h in bh]
-    except:
-        pass
-    bi, hi = zip(*bh)
-
+    csiz = len(mcv['curve'])
     ax = pl.gca()
     ax.set_title(mcv['name'])
-    if log:
-        ax.semilogx(hi, bi, label='Induction')
-        if ji:
-            ax.semilogx(hi, ji, label='Polarisation')
-    else:
-        ax.plot(hi, bi, label='Induction')
-        if ji:
-            ax.plot(hi, ji, label='Polarisation')
+    for k, c in enumerate(mcv['curve']):
+        bh = [(bi, hi*1e-3)
+              for bi, hi in zip(c['bi'],
+                                c['hi'])]
+        try:
+            if csiz == 1 and mcv['ctype'] in (femagtools.mcv.MAGCRV,
+                                              femagtools.mcv.ORIENT_CRV):
+                ji = [b-MUE0*h*1e3 for b, h in bh]
+        except Exception:
+            pass
+        bi, hi = zip(*bh)
+
+        label = 'Induction'
+        if csiz > 1:
+            label = 'Induction ({0}°)'.format(mcv.mc1_angle[k])
+        if log:
+            ax.semilogx(hi, bi, label=label)
+            if ji:
+                ax.semilogx(hi, ji, label='Polarisation')
+        else:
+            ax.plot(hi, bi, label=label)
+            if ji:
+                ax.plot(hi, ji, label='Polarisation')
     ax.set_xlabel('H / kA/m')
     ax.set_ylabel('T')
-    if ji:
+    if ji or csiz > 1:
         ax.legend(loc='lower right')
     ax.grid()
 

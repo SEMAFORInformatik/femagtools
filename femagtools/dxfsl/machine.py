@@ -40,6 +40,7 @@ class Machine(object):
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
         self.geom.center = center
+        self.previous_machine = None
 
     def __str__(self):
         return "Machine\n" + \
@@ -194,19 +195,12 @@ class Machine(object):
         return machine
 
     def undo_mirror(self):
-        if self.is_mirrored():
-            self.endangle = self.mirror_endangle
-            self.mirror_orig_geom.min_radius = self.geom.min_radius
-            self.mirror_orig_geom.max_radius = self.geom.max_radius
-            self.mirror_orig_geom.kind = self.geom.kind
-            self.geom = self.mirror_orig_geom
-            self.mirror_orig_geom = None
-            self.mirror_geom = None
-            self.mirror_startangle = 0.0
-            self.mirror_endangle = 0.0
-            self.part = self.part_of_circle()
-            self.set_alfa_and_corners()
-            self.geom.create_list_of_areas()
+        assert(self.is_mirrored())
+        assert(self.previous_machine)
+        self.previous_machine.complete_hull()
+        self.previous_machine.create_auxiliary_lines()
+        self.previous_machine.set_kind(self.geom.kind)
+        return self.previous_machine
 
     def rotate_to(self, new_startangle):
         if np.isclose(new_startangle, self.startangle):
@@ -269,9 +263,9 @@ class Machine(object):
                         num_airgaps += 1
                         self.airgap_radius = gap_radius
                     else:
-                        logger.debug("DESASTER: No Airgap with radius {}".
+                        logger.debug("FATAL: No Airgap with radius {}".
                                      format(gap_radius))
-                        print("DESASTER: No Airgap with radius {}".
+                        print("FATAL: No Airgap with radius {}".
                               format(gap_radius))
                         self.geom.airgaps.append(circle)
                         return True  # bad exit
@@ -401,7 +395,7 @@ class Machine(object):
 
     def get_symmetry_mirror(self):
         if self.part == 1:
-            # ein ganzer Motor
+            # a complete machine
             startangle = 0.0
             endangle = 0.0
             midangle = np.pi
@@ -415,6 +409,7 @@ class Machine(object):
         machine_mirror.repair_hull()
         machine_mirror.set_alfa_and_corners()
         if machine_mirror.check_symmetry_graph(0.001, 0.05):
+            machine_mirror.previous_machine = self
             return machine_mirror
         return None
 
@@ -425,7 +420,6 @@ class Machine(object):
             return self.part
 
     def check_symmetry_graph(self, rtol, atol):
-        # print("check_symmetry_graph")
         axis_p = point(self.center, self.radius, self.mirror_startangle)
         axis_m = line_m(self.center, axis_p)
         axis_n = line_n(self.center, axis_m)
@@ -447,16 +441,12 @@ class Machine(object):
         hit_factor1 = get_hit_factor(self.geom.g.nodes(),
                                      self.mirror_geom.g.nodes())
         if hit_factor1 < 0.9:
-            # print("hit_factor1 < 0.9: {}".format(hit_factor1))
             return False  # not ok
 
         hit_factor2 = get_hit_factor(self.mirror_geom.g.nodes(),
                                      self.geom.g.nodes())
         if hit_factor2 < hit_factor1:
-            # print("hit_factor2 < hit_factor1: {} < {}"
-            #       .format(hit_factor2, hit_factor1))
             return False  # not ok
-        # print("symmetry ok")
         return True
 
     def sync_with_counterpart(self, cp_machine):
@@ -466,6 +456,5 @@ class Machine(object):
         cp_machine.geom.sym_part = cp_machine.get_symmetry_part()
 
     def search_subregions(self):
-        # print("search_subregions\n{}".format(self))
         self.geom.search_subregions()
         return

@@ -87,7 +87,6 @@ def symmetry_search(machine,
 
     machine_ok.complete_hull()
     machine_ok.create_auxiliary_lines()
-
     machine_ok.set_kind(kind)
     return machine_ok
 
@@ -202,13 +201,13 @@ def converter(dxfile,
 
         if machine_inner.geom.area_close_to_endangle(2) > 0:
             logger.info("undo mirror of %s", inner_name)
-            machine_inner.undo_mirror()
+            machine_inner = machine_inner.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
             machine_inner.search_subregions()
 
         elif machine_outer.geom.area_close_to_endangle(2) > 0:
             logger.info("undo mirror of %s", outer_name)
-            machine_outer.undo_mirror()
+            machine_outer = machine_outer.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
             machine_outer.search_subregions()
 

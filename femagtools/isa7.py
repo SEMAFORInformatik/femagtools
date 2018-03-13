@@ -429,9 +429,6 @@ class Isa7(object):
 
     def msh(self):
         """return gmsh list"""
-        def sr_key(e):
-            return self.superelements[e.se_key].sr_key
-
         it = itertools.count(1)
 
         msh = ["$MeshFormat",
@@ -439,11 +436,16 @@ class Isa7(object):
                "$EndMeshFormat"]
         
         msh.append("$PhysicalNames")
-        msh.append("{}".format(len(self.subregions)))
-        for sr in self.subregions:
-            k = 0 if sr.key < 0 else sr.key
-            msh.append("2 {} \"{}\"".format(k, sr.name))
+        physical_names = sorted(set([sr.name
+                                     for sr in self.subregions]))
+        msh.append("{}".format(len(physical_names)))
+        for k, n in enumerate(physical_names):
+            msh.append("2 {} \"{}\"".format(k+1, n))
         msh.append("$EndPhysicalNames")
+        
+        def sr_key(e):
+            return physical_names.index(
+                self.subregions[self.superelements[e.se_key].sr_key].name)
 
         msh.append("$Nodes")
         msh.append("{}".format(len(self.nodes)))

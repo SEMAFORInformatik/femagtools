@@ -2,7 +2,7 @@
 import logging
 import struct
 import sys
-import numpy as np
+import itertools
 import re
 from collections import Counter
 
@@ -28,7 +28,7 @@ class Reader(object):
         blockSize = struct.unpack_from("=i", self.file, self.pos)[0]
         self.pos += 4
         try:
-            unpacked = struct.iter_unpack("=" + fmt_, 
+            unpacked = struct.iter_unpack("=" + fmt_,
                                           self.file[self.pos:self.pos
                                                     + blockSize])
             unpacked = [x for x in unpacked]
@@ -38,7 +38,8 @@ class Reader(object):
             offset = self.pos
             unpacked = []
             for j in range(blockSize//chunksize):
-                unpacked.append(struct.unpack_from("=" + fmt_, self.file, offset))
+                unpacked.append(struct.unpack_from("=" + fmt_,
+                                                   self.file, offset))
                 offset += chunksize
             logger.info("%s: %d %d", fmt_, blockSize, len(unpacked))
             
@@ -74,21 +75,21 @@ class Reader(object):
 
 class Isa7(object):
         
-    color = {1: [1.0, 0.0, 0.0], 
-             2: [0.0, 1.0, 0.0], 
-             3: [1.0, 1.0, 0.0], 
-             4: [0.0, 0.5019607843137255, 1.0], 
-             5: [0.9803921568627451, 0.0, 1.0], 
-             6: [0.0, 1.0, 0.8235294117647058], 
-             7: [1.0, 1.0, 1.0], 
-             8: [0.0, 0.0, 0.0], 
-             9: [0.0, 0.0, 0.5882352941176471], 
-             10: [0.6666666666666666, 0.0, 0.0], 
-             11: [0.6666666666666666, 1.0, 0.0], 
-             12: [1.0, 0.6274509803921569, 0.0], 
-             13: [0.0, 0.0, 1.0], 
-             14: [0.6666666666666666, 0.0, 1.0], 
-             15: [0.0, 0.8235294117647058, 1.0], 
+    color = {1: [1.0, 0.0, 0.0],
+             2: [0.0, 1.0, 0.0],
+             3: [1.0, 1.0, 0.0],
+             4: [0.0, 0.5019607843137255, 1.0],
+             5: [0.9803921568627451, 0.0, 1.0],
+             6: [0.0, 1.0, 0.8235294117647058],
+             7: [1.0, 1.0, 1.0],
+             8: [0.0, 0.0, 0.0],
+             9: [0.0, 0.0, 0.5882352941176471],
+             10: [0.6666666666666666, 0.0, 0.0],
+             11: [0.6666666666666666, 1.0, 0.0],
+             12: [1.0, 0.6274509803921569, 0.0],
+             13: [0.0, 0.0, 1.0],
+             14: [0.6666666666666666, 0.0, 1.0],
+             15: [0.0, 0.8235294117647058, 1.0],
              16: [0.8274509803921568, 0.8274509803921568, 0.8274509803921568]}
     
     def __init__(self, filename):
@@ -120,6 +121,7 @@ class Isa7(object):
         for n in range(self.NUM_NOD):
             self.nodes.append(
                 Node(self.NODE_ISA_ND_VALID[n],
+                     n + 1,
                      self.NODE_ISA_NODE_REC_ND_BND_CND[n],
                      self.NODE_ISA_NODE_REC_ND_PER_NOD[n],
                      self.NODE_ISA_NODE_REC_ND_CO_1[n],
@@ -127,8 +129,8 @@ class Isa7(object):
                      self.NODE_ISA_NODE_REC_ND_VP_RE[n],
                      self.NODE_ISA_NODE_REC_ND_VP_IM[n]))
         
-        self.nodechains = []  
-        for nc in range(self.NUM_NDCH):  
+        self.nodechains = []
+        for nc in range(self.NUM_NDCH):
             nd1 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_1[nc]
             nd2 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_2[nc]
             ndm = self.NDCHN_ISA_NDCHN_REC_NC_NOD_MID[nc]
@@ -160,10 +162,11 @@ class Isa7(object):
 
             self.elements.append(
                 Element(self.ELEM_ISA_EL_VALID[e],
+                        e + 1,
                         self.ELEM_ISA_ELEM_REC_EL_TYP[e],
                         self.ELEM_ISA_ELEM_REC_EL_SE_KEY[e]-1,
                         vertices,
-                        (self.ELEM_ISA_ELEM_REC_EL_RELUC[e], 
+                        (self.ELEM_ISA_ELEM_REC_EL_RELUC[e],
                          self.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
                         (self.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
                          self.ELEM_ISA_ELEM_REC_EL_MAG_2[e])))
@@ -197,6 +200,7 @@ class Isa7(object):
             
             self.superelements.append(
                 SuperElement(self.SUPEL_ISA_SE_VALID[se],
+                             se + 1,
                              self.SUPEL_ISA_SUPEL_REC_SE_SR_KEY[se]-1,
                              elements,
                              nodechains,
@@ -229,12 +233,17 @@ class Isa7(object):
             nc_keys = []
             for se in superelements:
                 nc_keys.extend([abs(nc.key) for nc in se.nodechains])
-            nc_keys = [nck for nck, count in Counter(nc_keys).items() if count < 2]
+            nc_keys = [nck
+                       for nck, count in Counter(nc_keys).items()
+                       if count < 2]
             for se in superelements:
-                nodechains.extend([nc for nc in se.nodechains if abs(nc.key) in nc_keys])
+                nodechains.extend([nc
+                                   for nc in se.nodechains
+                                   if abs(nc.key) in nc_keys])
                 
             self.subregions.append(
                 SubRegion(self.SR_ISA_SR_VALID[sr],
+                          sr + 1,
                           self.SR_ISA_SR_REC_SR_TYP[sr],
                           self.SR_ISA_SR_REC_SR_COL[sr],
                           self.SR_ISA_SR_REC_SR_NAME[sr],
@@ -258,6 +267,7 @@ class Isa7(object):
                 
             self.windings.append(
                 Winding(self.WB_ISA_WB_VALID[wd],
+                        wd + 1,
                         self.WB_ISA_WB_REC_WB_NAME[wd],
                         subregions,
                         self.WB_ISA_WB_REC_WB_TURN[wd],
@@ -402,6 +412,80 @@ class Isa7(object):
         (self.WB_SR_ISA_SR_KEY,
          self.WB_SR_ISA_NXT_SR_PNTR) = reader.next_block("hh")
 
+    def msh(self):
+        """return gmsh list"""
+        def sr_key(e):
+            return self.superelements[e.se_key].sr_key
+
+        it = itertools.count(1)
+
+        msh = ["$MeshFormat",
+               "2.2 0 8",
+               "$EndMeshFormat"]
+        
+        msh.append("$PhysicalNames")
+        msh.append("{}".format(len(self.subregions)))
+        for sr in self.subregions:
+            k = 0 if sr.key < 0 else sr.key
+            msh.append("2 {} \"{}\"".format(k, sr.name))
+        msh.append("$EndPhysicalNames")
+
+        msh.append("$Nodes")
+        msh.append("{}".format(len(self.nodes)))
+        for n in self.nodes:
+            msh.append("{} {} {} 0".format(n.key, n.x, n.y))
+        msh.append("$EndNodes")
+
+        msh.append("$Elements")
+        msh.append("{}".format(len([v for e in self.elements
+                                    for v in e.vertices]) +
+                               len(self.elements)))
+        # 1-node points
+        #node_els = list(set([n for se in self.superelements
+        #                     for nc in se.nodechains
+        #                     for n in nc.nodes[:-1] ]))
+        #for n in node_els:
+        #    next_id = next(it)
+        #    msh += "{0} 15 2 0 {1} {1}\n".format(next_id, n.key)
+
+        # surfaces
+        for e in self.elements:
+            ev = e.vertices
+
+            # 2-node lines
+            for i, v in enumerate(ev):
+                msh.append("{} 1 2 0 {} {} {}".format(
+                    next(it),
+                    e.key,
+                    ev[i-1].key,
+                    ev[i].key))
+            
+            # 3-node triangles
+            if len(ev) == 3:
+                msh.append("{} 2 2 {} {} {} {} {}".format(
+                    next(it),
+                    sr_key(e) + 1,
+                    sr_key(e) + len(self.elements),
+                    ev[0].key,
+                    ev[1].key,
+                    ev[2].key))
+            
+            # 4-node quadrangles
+            elif len(ev) == 4:
+                msh.append("{} 3 2 {} {} {} {} {} {}".format(
+                    next(it),
+                    sr_key(e) + 1,
+                    sr_key(e) + len(self.elements),
+                    ev[0].key,
+                    ev[1].key,
+                    ev[2].key,
+                    ev[3].key))
+            else:
+                logger.warn("unsupported vertice len %d", len(ev))
+        msh.append("$EndElements")
+        
+        return msh
+
 
 class Point(object):
     def __init__(self, valid, x, y):
@@ -417,10 +501,16 @@ class Line(object):
         self.p1 = p1
         self.p2 = p2
         
-        
-class Node(object):
-    def __init__(self, valid, bndcnd, pernod, x, y, vpot_re, vpot_im):
+
+class BaseEntity(object):
+    def __init__(self, valid, key):
         self.valid = valid
+        self.key = key
+        
+
+class Node(BaseEntity):
+    def __init__(self, valid, key, bndcnd, pernod, x, y, vpot_re, vpot_im):
+        super(self.__class__, self).__init__(valid, key)
         self.bndcnd = bndcnd
         self.pernod = pernod
         self.x = x
@@ -429,22 +519,26 @@ class Node(object):
         self.vpot = vpot_re, vpot_im
         
 
-class NodeChain(object):
+class NodeChain(BaseEntity):
     def __init__(self, valid, key, nodes):
-        self.valid = valid
+        super(self.__class__, self).__init__(valid, key)
         self.key = key
         self.node1 = nodes[0]
-        self.nodemid = nodes[1]   
+        self.nodemid = nodes[1]
         self.node2 = nodes[2]
-        self.nodes = (nodes[0], nodes[2]) if nodes[1] is None else (nodes[0], nodes[1], nodes[2])
+        if nodes[1] is None:
+            self.nodes = (nodes[0], nodes[2])
+        else:
+            self.nodes = (nodes[0], nodes[1], nodes[2])
     
     def reverse(self):
-        return NodeChain(self.valid, self.key * (-1), [self.node2, self.nodemid, self.node1])
+        return NodeChain(self.valid, self.key * (-1),
+                         [self.node2, self.nodemid, self.node1])
     
     
-class Element(object):
-    def __init__(self, valid, el_type, se_key, vertices, reluc, mag):
-        self.valid = valid
+class Element(BaseEntity):
+    def __init__(self, valid, key, el_type, se_key, vertices, reluc, mag):
+        super(self.__class__, self).__init__(valid, key)
         self.el_type = el_type
         self.se_key = se_key
         self.vertices = vertices
@@ -452,11 +546,12 @@ class Element(object):
         self.mag = mag
         
         
-class SuperElement(object):
-    def __init__(self, valid, sr_key, elements, nodechains, color,
+class SuperElement(BaseEntity):
+    def __init__(self, valid, key, sr_key, elements, nodechains, color,
                  nc_keys, mcvtype, condtype, conduc, length,
                  velsys, velo_1, velo_2, curd_re, curd_im):
-        self.valid = valid
+        super(self.__class__, self).__init__(valid, key)
+        self.key = key
         self.sr_key = sr_key
         self.elements = elements
         self.nodechains = nodechains
@@ -471,10 +566,10 @@ class SuperElement(object):
         self.curd = curd_re, curd_im
         
         
-class SubRegion(object):
-    def __init__(self, valid, sr_type, color, name, curdir, wb_key,
+class SubRegion(BaseEntity):
+    def __init__(self, valid, key, sr_type, color, name, curdir, wb_key,
                  superelements, nodechains):
-        self.valid = valid
+        super(self.__class__, self).__init__(valid, key)
         self.sr_type = sr_type
         self.color = color
         self.name = name
@@ -484,10 +579,10 @@ class SubRegion(object):
         self.nodechains = nodechains
         
         
-class Winding(object):
-    def __init__(self, valid, name, subregions, num_turns, cur_re, cur_im,
+class Winding(BaseEntity):
+    def __init__(self, valid, key, name, subregions, num_turns, cur_re, cur_im,
                  flux_re, flux_im, volt_re, volt_im):
-        self.valid = valid
+        super(self.__class__, self).__init__(valid, key)
         self.name = name
         self.subregions = subregions
         self.num_turns = num_turns

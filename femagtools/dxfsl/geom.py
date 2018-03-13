@@ -80,62 +80,6 @@ def print_area(area):
 ndec = 6  # number of decimals to round to
 
 
-def find_corners(nodes, all=False):
-    """find corners of nodes"""
-    if nodes:
-        a = np.asarray(nodes).T
-        if all:
-            args = np.arctan2(a[1], a[0])
-            rads2 = np.sum(a**2, axis=0)
-
-            phimin, phimax = np.amin(args), np.amax(args)
-            r2min, r2max = np.amin(rads2), np.amax(rads2)
-
-            rindx = np.union1d(np.isclose(rads2, r2min, 1e-2).nonzero()[0],
-                               np.isclose(rads2, r2max, 1e-2).nonzero()[0])
-            phindx = np.union1d(np.isclose(args, phimin).nonzero()[0],
-                                np.isclose(args, phimax).nonzero()[0])
-            return np.asarray(nodes)[np.union1d(rindx, phindx)].tolist()
-        else:
-            # collect real corners only
-            # (TODO: there should be some simpler way)
-            corners = []
-            a = np.asarray(nodes)
-            minX, minY = np.amin(a, axis=0)
-            maxX, maxY = np.amax(a, axis=0)
-            x = a[np.isclose(a.T[0], minX).nonzero()[0]]
-            s = np.lexsort(x.T)
-            corners.append(x[s[0]])
-            if len(s) > 1:
-                corners.append(x[s[-1]])
-            x = a[np.isclose(a.T[0], maxX).nonzero()[0]]
-            s = np.lexsort(x.T)
-            corners.append(x[s[0]])
-            if len(s) > 1:
-                corners.append(x[s[-1]])
-
-            y = a[np.isclose(a.T[1], minY).nonzero()[0]]
-            s = np.lexsort((y.T[1], y.T[0]))
-            corners.append(y[s[0]])
-            if len(s) > 1:
-                corners.append(y[s[-1]])
-            y = a[np.isclose(a.T[1], maxY).nonzero()[0]]
-            s = np.lexsort((y.T[1], y.T[0]))
-            corners.append(y[s[0]])
-            if len(s) > 1:
-                corners.append(y[s[-1]])
-            return set([tuple(c) for c in corners])
-
-    return []
-
-
-def remove_corners(self, g):
-    """removes the corner nodes with their edges"""
-    corners = [n for n in find_corners(g.nodes()) if g.degree(n) < 3]
-    logger.debug("removing corners %s", corners)
-    g.remove_nodes_from(corners)
-
-
 def intersect_and_split(inp_elements, rtol, atol):
     logger.info("Load input elements ... ")
     out_elements = []
@@ -731,15 +675,8 @@ class Geometry(object):
 
         corners = self.get_corner_list(center, angle, rtol, atol)
         if len(corners) < 2:
-            # not enough corners
-            return ()
+            return ()  # not enough corners
         return (corners[0].point(), corners[len(corners)-1].point())
-
-    def remove_corners(self, g):
-        """removes the corner nodes with their edges"""
-        corners = [n for n in self.find_corners(g.nodes()) if g.degree(n) < 3]
-        logger.debug("removing corners %s", corners)
-        g.remove_nodes_from(corners)
 
     def point_lefthand_side(self, p1, p2):
         alpha = alpha_line(p2, p1)
@@ -747,8 +684,7 @@ class Geometry(object):
         nbrs = [n for n in self.g.neighbors(p2)
                 if not (points_are_close(n, p1) or points_are_close(n, p2))]
         if len(nbrs) == 0:
-            # Unerwartetes Ende des Rundgangs
-            return None
+            return None  # unexpected end
 
         angles = []
         for p in nbrs:
@@ -773,7 +709,7 @@ class Geometry(object):
     def get_new_area(self, start_p1, start_p2, solo):
         e_dict = self.g.get_edge_data(start_p1, start_p2)
         if not e_dict:
-            raise ValueError("    *** no dict ?? ***")
+            raise ValueError("Fatal: no edge-data found")
         area = []
         e = e_dict['object']
         x = e.get_point_number(start_p1)
@@ -863,7 +799,7 @@ class Geometry(object):
         """ return list of areas for each node and their neighbors
         """
         if len(self.area_list) > 0:
-            # Liste bereits vorhanden
+            # list already available
             return
 
         def append(area_list, a):
@@ -1185,17 +1121,12 @@ class Geometry(object):
 
     def find_symmetry(self, center, radius,
                       startangle, endangle, sym_tolerance):
-        # print("=== Find Symmetry ===")
         arealist = self.list_of_areas()
 
         if len(arealist) == 0:
             return False
 
         arealist.sort()
-#        for a in arealist:
-#            print(a)
-#            a.print_area()
-#        print("-----------------")
 
         def add(areas, a):
             for area in areas:
@@ -1213,22 +1144,16 @@ class Geometry(object):
             a.set_delta()
         arealist_match.sort()
 
-#        print(">>>>> AREAS >>>>>")
-#        for a in arealist_match:
-#            print(" - {}".format(a))
-#        print("<<<<< AREAS <<<<<")
-
         area = arealist_match[0]
         if area.delta == 0.0:
-            logger.info("#1: No symmetry-axis found")
+            logger.info("No symmetry-axis found (delta == 0.0)")
             return False
 
         sym = part_of_circle(0.0, area.delta, 1)
         if sym == 0.0:
-            logger.info("#2: No symmetry-axis found")
+            logger.info("No symmetry-axis found (sym = 0.0)")
             return False
         area.delta = 2*np.pi/sym
-#        print("Symetrie 1/{}".format(sym))
 
         for alpha in area.symmetry_lines(startangle, endangle):
             p = point(center, radius+5, alpha)

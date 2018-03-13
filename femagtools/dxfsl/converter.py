@@ -117,7 +117,9 @@ def converter(dxfile,
 
     p = PlotRenderer()
     if view_only:
-        p.render_elements(basegeom, Shape, neighbors=True)
+        p.render_elements(basegeom, Shape,
+                          neighbors=True,
+                          show=True)
         sys.exit(0)
 
     machine_base = basegeom.get_machine()

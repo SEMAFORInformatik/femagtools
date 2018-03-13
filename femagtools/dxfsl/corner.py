@@ -30,8 +30,9 @@ class Corner(object):
     def point(self):
         return self.__p
 
-    def is_equal(self, p):
-        return np.isclose(self.__p[0], p[0]) and np.isclose(self.__p[1], p[1])
+    def is_equal(self, p, rtol=1e-04, atol=1e-04):
+        return (np.isclose(self.__p[0], p[0], rtol=rtol, atol=atol) and
+                np.isclose(self.__p[1], p[1], rtol=rtol, atol=atol))
 
     def is_same_corner(self, c):
         return self.is_equal(c.__p)

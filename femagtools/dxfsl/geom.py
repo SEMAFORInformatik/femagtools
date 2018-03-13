@@ -573,19 +573,33 @@ class Geometry(object):
             # no hull without more than 1 corners
             return
 
-        for p1, p2 in [e for e in self.g.edges()]:
-            for c in corners:
-                if c.is_equal(p1):
-                    if not (points_are_close(center, p2, rtol, atol) or
-                            np.isclose(angle, alpha_line(center, p2),
-                                       rtol, atol)):
-                        c.set_keep_node()
-                elif c.is_equal(p2):
-                    if points_are_close(center, p1, rtol, atol) or \
-                       np.isclose(angle, alpha_line(center, p1), rtol, atol):
+        [c.set_keep_node() for c in corners if c.is_equal(center, rtol, atol)]
+        for p1, p2, data in [e for e in self.g.edges(data=True)]:
+            clist = [c for c in corners if c.is_equal(p1) or c.is_equal(p2)]
+            if clist:
+                if len(clist) == 1:
+                    clist[0].set_keep_node()
+                else:
+                    el = data['object']
+                    if isinstance(el, Line):
                         self.g.remove_edge(p1, p2)
                     else:
-                        c.set_keep_node()
+                        [corner.set_keep_node() for corner in clist]
+                        if isinstance(el, Arc):
+                            alpha_start = el.startangle
+                            alpha_end = el.endangle
+                            alpha_mid = middle_angle(alpha_start, alpha_end)
+                            self.g.remove_edge(p1, p2)
+                            a1 = Arc(Element(center=el.center,
+                                             radius=el.radius,
+                                             start_angle=alpha_start*180/np.pi,
+                                             end_angle=alpha_mid*180/np.pi))
+                            a2 = Arc(Element(center=el.center,
+                                             radius=el.radius,
+                                             start_angle=alpha_mid*180/np.pi,
+                                             end_angle=alpha_end*180/np.pi))
+                            self.g.add_edge(p1, a1.node2(ndec), object=a1)
+                            self.g.add_edge(a2.node1(ndec), p2, object=a2)
 
         for c in corners:
             if not c.keep_node():
@@ -595,10 +609,6 @@ class Geometry(object):
         # Liste neu.
         corners = [Corner(center, c)
                    for c in self.angle_nodes(center, angle, rtol, atol)]
-
-#        print("repair_hull_line: {}".format(angle))
-#        for c in corners:
-#            print(" - corner {}".format(c))
 
         if len(corners) > 1:
             corners.sort()

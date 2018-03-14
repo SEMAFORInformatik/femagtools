@@ -142,13 +142,13 @@ Folgende Parameter können beim Start gesetzt werden.
 \begin{itemize}
 \item Filename der einzulesenden DXF-Elemente
 \item {\bfseries{\LongArg{fsl}}}\\
-  erstellt Dateien mit FSL-Anweisungen (default)
+      erstellt Dateien mit FSL-Anweisungen (default)
                 
 \item {\bfseries{\LongArg{split}}}\\
 		prüft die eingelesenenen Elemente auf sich schneidende oder berührende Linien.
 		In diesen Fällen werden die betroffenen Elemente so aufgeteilt,
 		dass an allen Berührungs- und Schnittpunkten auch ein regulärer Knoten vorhanden ist. 
-                Diese Option kann notwendig sein, falls keine Symmetrien gefunden werden.
+       Diese Option kann notwendig sein, falls keine Symmetrien gefunden werden.
 		
 \item {\bfseries{\LongArg{view}}}\\
 		zeigt die Geometrie in einer Graphik an. Es findet keine weitere Bearbeitung statt.
@@ -159,10 +159,10 @@ Folgende Parameter können beim Start gesetzt werden.
 \item {\bfseries{\LongArg{airgap} Radius (float)}}\\
 		Wenn mehrere Luftspalt-Kandidaten vorhanden sind, wird die Verarbeitung abgebrochen und
 		die Kandidaten werden angezeigt. Mit diesem Parameter wird der innere Radius festgelegt.
-		Falls kein Luftspalt vorhanden ist, das Programm aber gleichwohl einen Luftspalt identifiziert,
-                kann die Luftspaltidentifikation mit einem negativen Wert unterbunden werden.
+		Falls kein Luftspalt vorhanden ist, das Programm aber gleichwohl einen Luftspalt
+		identifiziert, kann die Luftspaltidentifikation mit einem negativen Wert unterbunden werden.
 
-\item 	{\bfseries{\LongArg{airgap2} Radius (float)}}\\
+\item {\bfseries{\LongArg{airgap2} Radius (float)}}\\
 		Wenn im Luftspalt zusätzliche, unnötige Linien vorhanden sind, können diese mit der
 		Angabe \Slanted{airgap2} eliminiert werden. Alle Linien zwischen \Slanted{airgap} und
 		\Slanted{airgap2} werden damit entfernt.
@@ -186,4 +186,21 @@ Folgende Parameter können beim Start gesetzt werden.
 		Durch diese Option werden zusätzliche Informationen (z.B Plots) ausgegeben.
 \end{itemize}
 
+\section{Anmerkungen}
+Der Converter sucht geschlossene Regionen und versucht anhand von Regelmässigkeiten die
+Symmetrieachsen zu setzen.
+\begin{center}
+\includegraphics[width=0.45\linewidth]{BspStator}
+\end{center}
+Bei diesem Beispiel findet der Converter keine Regionen.
+Durch zusätzliche Linien kann das Resultat deutlich verbessert werden.
+
+Hier fehlt die Abtrennung des Bereichs für die Wicklungen. Durch das Einziehen eines
+Trennstrichs wird die Wicklung und der am Luftspalt (airgap) liegende leere Bereich
+(Luft) erkannt und der Converter findet die Symmetrie.
+\begin{center}
+\includegraphics[width=0.45\linewidth]{BspWindings}
+\end{center}
+Erkannte Wicklungen werden nicht durch eine Spiegelung halbiert. Ist das erwünscht,
+muss an der entsprechenden Stelle eine Trennlinie erstellt werden.
 \end{document}

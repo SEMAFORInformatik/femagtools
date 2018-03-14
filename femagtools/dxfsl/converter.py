@@ -77,13 +77,12 @@ def symmetry_search(machine,
                                 rows=rows, cols=cols, num=num, show=True)
 
         logger.info("mirror found")
-        machine_mirr2 = machine_mirror.get_symmetry_mirror()
-        if machine_mirr2 is None:
-            logger.info("no second mirror found")
-            machine_ok = machine_mirror
-        else:
-            logger.info("second mirror found")
-            machine_ok = machine_mirr2
+        machine_next_mirror = machine_mirror
+        while machine_next_mirror is not None:
+            machine_mirror = machine_next_mirror
+            machine_next_mirror = machine_mirror.get_symmetry_mirror()
+            logger.info("another mirror found")
+        machine_ok = machine_mirror
 
     machine_ok.complete_hull()
     machine_ok.create_auxiliary_lines()

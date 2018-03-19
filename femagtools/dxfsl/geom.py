@@ -510,6 +510,15 @@ class Geometry(object):
         for e in edges:
             self.remove_edge(e)
 
+    def add_line(self, n1, n2):
+        line = Line(Element(start=n1, end=n2))
+        add_or_join(self.g,
+                    line.node1(ndec),
+                    line.node2(ndec),
+                    line,
+                    self.rtol,
+                    self.atol)
+
     def elements(self, type):
         """return lists of objects"""
         return [e[2]['object'] for e in self.g.edges(data=True)

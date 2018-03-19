@@ -349,7 +349,7 @@ class ZmqFemag(BaseFemag):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
 
         Args:
-            fsl: FSL commands
+            fsl: string of FSL commands
 
         Return:
             response

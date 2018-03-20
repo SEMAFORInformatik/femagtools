@@ -8,6 +8,7 @@
 %\headheight=5cm
 \usepackage{babel}
 \usepackage{tabularx}
+\usepackage{graphicx}
 \usepackage{eurosym}
 \usepackage{booktabs}
 \usepackage{fontspec}
@@ -186,21 +187,23 @@ Folgende Parameter können beim Start gesetzt werden.
 		Durch diese Option werden zusätzliche Informationen (z.B Plots) ausgegeben.
 \end{itemize}
 
-\section{Anmerkungen}
+\section{Voraussetzungen}
 Der Converter sucht geschlossene Regionen und versucht anhand von Regelmässigkeiten die
 Symmetrieachsen zu setzen.
 \begin{center}
 \includegraphics[width=0.45\linewidth]{BspStator}
 \end{center}
 Bei diesem Beispiel findet der Converter keine Regionen.
-Durch zusätzliche Linien kann das Resultat deutlich verbessert werden.
+Durch zusätzliche Linien können Wicklungsbereiche und damit auch Symmetrieachsen
+gefunden werden.
 
-Hier fehlt die Abtrennung des Bereichs für die Wicklungen. Durch das Einziehen eines
-Trennstrichs wird die Wicklung und der am Luftspalt (airgap) liegende leere Bereich
-(Luft) erkannt und der Converter findet die Symmetrie.
+Beispiel: Durch das Einziehen einer Verbindung im Nutschlitz
+ wird die Wicklung und der am Luftspalt (airgap) liegende leere Bereich
+(Luft) erkannt und der Converter findet eine achsiale Symmetrieachse.
 \begin{center}
 \includegraphics[width=0.45\linewidth]{BspWindings}
 \end{center}
-Erkannte Wicklungen werden nicht durch eine Spiegelung halbiert. Ist das erwünscht,
+Die Wicklungsbereiche werden nicht automatisch durch eine Spiegelung halbiert. Ist das erwünscht,
 muss an der entsprechenden Stelle eine Trennlinie erstellt werden.
+Dadurch kann auch eine zweilagige Wicklung hineingelegt werden.
 \end{document}

@@ -26,8 +26,8 @@ def list_to_xml(tag, l):
     if not isinstance(tag, str):
         try:
             tag = str(tag)
-        except:
-            print("bchxml.list_to_xml():  Can not convert tag to str!")
+        except Exception as e:
+            print("bchxml.list_to_xml():  Can not convert tag {} to str!".format(tag))
             pass
 
     elem = el.Element(re.sub(r'^(\d+)$', r'w\1', tag))
@@ -52,8 +52,8 @@ def dict_to_xml(tag, d):
     if not isinstance(tag, str):
         try:
             tag = str(tag)
-        except:
-            print("bchxml.dict_to_xml():  Can not convert tag to str!")
+        except Exception as e:
+            print("bchxml.dict_to_xml():  Can not convert tag {} to str!".format(tag))
             pass
 
     elem = el.Element(re.sub(r'^(\d+)$', r'w\1', tag))
@@ -69,11 +69,11 @@ def dict_to_xml(tag, d):
                 elem.append(child)
     return elem
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     if len(sys.argv) != 2:
         usage()
-        
+
     filename = sys.argv[1]
     bchresults = Reader()
     with io.open(filename, encoding='latin1', errors='ignore') as f:

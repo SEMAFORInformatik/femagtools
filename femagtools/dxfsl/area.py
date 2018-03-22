@@ -455,19 +455,24 @@ class Area(object):
         lines.sort()
 
         line_count = 1
+        m_first = 0.0
         m_prev = 999.999999
         c_prev = -99
         for c, m, l in lines:
             if c_prev >= 0:
-                if np.isclose(m_prev, m):
+                if np.isclose(m_prev, m, atol=0.001):
                     if c_prev+1 != c:
                         # Gleiche Steigung, aber keine Verlängerung
                         line_count += 1
                 else:
                     line_count += 1
-
+            else:
+                m_first = m
             m_prev = m
             c_prev = c
+
+        if np.isclose(m_prev, m_first, atol=0.001):
+            line_count -= 1
 
         return line_count == 4
 
@@ -595,7 +600,6 @@ class Area(object):
             if self.is_rectangle():
                 self.type = 4  # magnet embedded
                 self.phi = self.get_mag_orient_rectangle()
-                # self.phi = middle_angle(self.min_angle, self.max_angle) + 0.6
                 return self.type
 
         self.type = 1  # iron

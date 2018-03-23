@@ -345,7 +345,7 @@ class ZmqFemag(BaseFemag):
         logger.debug("femag is not running")
         return False
 
-    def send_fsl(self, fsl, callback=None, header='FSL'):
+    def send_fsl(self, fsl, callback=None, header='FSL', recvflags=None):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
 
         Args:
@@ -355,11 +355,13 @@ class ZmqFemag(BaseFemag):
             response
         """
         logger.debug("Send fsl with fsl: {}, callback: {}, header: {}".format(fsl, callback, header))
+        logger.info("Send fsl with  callback: {}, header: {}".format(fsl, callback, header))
         try:
             # Start the reader thread to get information about the next calculation
-            reader = FemagReadStream(self.__sub_socket(), callback)
-            reader.setDaemon(True)
-            reader.start()
+            if callback:
+                reader = FemagReadStream(self.__sub_socket(), callback)
+                reader.setDaemon(True)
+                reader.start()
 
             request_socket = self.__req_socket()
             request_socket.send_string(header, flags=zmq.SNDMORE)
@@ -370,7 +372,8 @@ class ZmqFemag(BaseFemag):
             logger.debug("send_fsl["+fsl+"] done")
 
             time.sleep(.5)  # Be sure all messages are arrived over zmq
-            reader.continue_loop = False
+            if callback:
+                reader.continue_loop = False
             return [s.decode() for s in response]
         except Exception as e:
             logger.error("send_fsl, for error: %s", str(e))
@@ -452,7 +455,10 @@ class ZmqFemag(BaseFemag):
         response = self.send_fsl(f)
 
         # send quit command
-        response = self.send_fsl('quit', header='CONTROL')
+        try:
+            response = self.send_fsl('quit', header='CONTROL', recvflags=zmq.NOBLOCK)
+        except Exception as e:
+            logger.debug("Femag Quit zmq message: %s", e)
 
         logger.debug("Sent QUIT to femag")
         # if query, send a answer

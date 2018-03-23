@@ -12,7 +12,7 @@ from __future__ import print_function
 import numpy as np
 import logging
 import sys
-from .shape import Element, Circle, Line
+from .shape import Element, Circle, Line, Shape
 from .functions import point, points_are_close
 from .functions import alpha_angle, normalise_angle, middle_angle
 from .functions import line_m, line_n, mirror_point
@@ -40,6 +40,7 @@ class Machine(object):
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
         self.geom.center = center
+        self.previous_machine = None
 
     def __str__(self):
         return "Machine\n" + \
@@ -183,6 +184,7 @@ class Machine(object):
         geom2 = self.geom.copy_shape(self.center, self.radius,
                                      midangle, endangle,
                                      0.0, self.radius+9999)
+
         machine = Machine(geom1, self.center, self.radius,
                           startangle, midangle)
         machine.mirror_orig_geom = self.geom
@@ -193,19 +195,12 @@ class Machine(object):
         return machine
 
     def undo_mirror(self):
-        if self.is_mirrored():
-            self.endangle = self.mirror_endangle
-            self.mirror_orig_geom.min_radius = self.geom.min_radius
-            self.mirror_orig_geom.max_radius = self.geom.max_radius
-            self.mirror_orig_geom.kind = self.geom.kind
-            self.geom = self.mirror_orig_geom
-            self.mirror_orig_geom = None
-            self.mirror_geom = None
-            self.mirror_startangle = 0.0
-            self.mirror_endangle = 0.0
-            self.part = self.part_of_circle()
-            self.set_alfa_and_corners()
-            self.geom.create_list_of_areas()
+        assert(self.is_mirrored())
+        assert(self.previous_machine)
+        self.previous_machine.complete_hull()
+        self.previous_machine.create_auxiliary_lines()
+        self.previous_machine.set_kind(self.geom.kind)
+        return self.previous_machine
 
     def rotate_to(self, new_startangle):
         if np.isclose(new_startangle, self.startangle):
@@ -217,7 +212,7 @@ class Machine(object):
             self.startangle = new_startangle
             self.endangle += angle
 
-    def airgap(self, correct_airgap=0.0, correct_airgap2=0.0, atol=0.05):
+    def airgap(self, correct_airgap=0.0, correct_airgap2=0.0, atol=0.1):
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
 
@@ -268,11 +263,12 @@ class Machine(object):
                         num_airgaps += 1
                         self.airgap_radius = gap_radius
                     else:
-                        logger.debug("DESASTER: No Airgap with radius {}".
+                        logger.debug("FATAL: No Airgap with radius {}".
                                      format(gap_radius))
-                        print("DESASTER: No Airgap with radius {}".
+                        print("FATAL: No Airgap with radius {}".
                               format(gap_radius))
-                        sys.exit(1)
+                        self.geom.airgaps.append(circle)
+                        return True  # bad exit
 
                 if correct_airgap2 > 0.0 and \
                    within_interval(correct_airgap2, g[0], g[1], 0.0, 0.0):
@@ -287,10 +283,10 @@ class Machine(object):
                                      format(gap_radius))
                         print("DESASTER: No Airgap with radius {}".
                               format(gap_radius))
-                        sys.exit(1)
+                        return True  # bad exit
 
             if num_airgaps == 1:
-                return
+                return False  # ok
 
             if num_airgaps > 1:
                 airgaps = []
@@ -313,10 +309,11 @@ class Machine(object):
                     print("More than one airgap candidate found:")
                     for c in self.geom.airgaps:
                         print(" --- {}".format(c.radius))
-                        print("Use options --airgap/--airgap2 <float> to specify")
+                    print("Use options --airgap/--airgap2 <float> to specify")
                     sys.exit(1)
             else:
                 self.airgap_radius = 0.0
+        return False
 
     def has_airgap(self):
         return self.airgap_radius > 0.0
@@ -398,7 +395,7 @@ class Machine(object):
 
     def get_symmetry_mirror(self):
         if self.part == 1:
-            # ein ganzer Motor
+            # a complete machine
             startangle = 0.0
             endangle = 0.0
             midangle = np.pi
@@ -411,7 +408,8 @@ class Machine(object):
         machine_mirror.clear_cut_lines()
         machine_mirror.repair_hull()
         machine_mirror.set_alfa_and_corners()
-        if machine_mirror.check_symmetry_graph(0.1, 0.1):
+        if machine_mirror.check_symmetry_graph(0.001, 0.05):
+            machine_mirror.previous_machine = self
             return machine_mirror
         return None
 
@@ -433,16 +431,23 @@ class Machine(object):
                     return True
             return False
 
-        hit = 0
-        nodes = self.geom.g.nodes()
-        for n in nodes:
-            if is_node_available(n, self.mirror_geom.g.nodes()):
-                hit += 1
+        def get_hit_factor(nodes1, nodes2):
+            hit = 0
+            for n in nodes1:
+                if is_node_available(n, nodes2):
+                    hit += 1
+            return float(hit) / len(nodes1)
 
-        hit_factor = hit / len(nodes)
-        ok = hit_factor > 0.9
-#        print("Nodes = {}, Match={} => ok={}".format(len(nodes), hit, ok))
-        return ok
+        hit_factor1 = get_hit_factor(self.geom.g.nodes(),
+                                     self.mirror_geom.g.nodes())
+        if hit_factor1 < 0.9:
+            return False  # not ok
+
+        hit_factor2 = get_hit_factor(self.mirror_geom.g.nodes(),
+                                     self.geom.g.nodes())
+        if hit_factor2 < hit_factor1:
+            return False  # not ok
+        return True
 
     def sync_with_counterpart(self, cp_machine):
         self.geom.sym_counterpart = cp_machine.get_symmetry_part()
@@ -451,6 +456,5 @@ class Machine(object):
         cp_machine.geom.sym_part = cp_machine.get_symmetry_part()
 
     def search_subregions(self):
-        # print("search_subregions\n{}".format(self))
         self.geom.search_subregions()
         return

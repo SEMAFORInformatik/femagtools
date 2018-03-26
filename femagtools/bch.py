@@ -888,7 +888,7 @@ class Reader:
         l['speed'] = speed
         if self.ldq:
             self.ldq['losses'] = l
-        else:
+        elif self.psidq:
             self.psidq['losses'] = l
         
     def __read_machine_data(self, content):
@@ -1093,7 +1093,7 @@ class Reader:
         #                  6372.7	         0.0	      1930.2
         for line in content:
             rec = line.split()
-            if rec[0] != 'Area':
+            if rec and rec[0] != 'Area':
                 self.areas.append([floatnan(x) for x in rec])
 
     def __read_inertia(self, content):

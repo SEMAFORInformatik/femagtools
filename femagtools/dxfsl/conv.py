@@ -107,6 +107,10 @@ if __name__ == "__main__":
             else:
                 logger.info("Airgap is set to {}".format(args.airgap))
 
+    if not args.write_fsl:
+        if not args.show_plots:
+            args.write_fsl = True
+
     converter(args.dxfile,  # DXF-Filename
               rtol=args.rtol,    # relative pickdist toleranz
               atol=args.atol,    # absolute pickdist toleranz

@@ -135,14 +135,6 @@ def converter(dxfile,
         print("it's Not a Machine!!")
         sys.exit(1)
 
-    if not machine_base.is_full():
-        machine_base.repair_hull()
-        if show_plots and debug_mode:
-            p.render_elements(basegeom, Shape,
-                              title='Repaired Hull',
-                              with_corners=True,
-                              show=True)
-
     if machine_base.is_full() or \
        machine_base.is_half() or \
        machine_base.is_quarter():
@@ -167,7 +159,7 @@ def converter(dxfile,
 
     if machine.airgap(airgap, airgap2, symtol):
         p.render_elements(machine.geom, Shape,
-                          title='Search of Airgap failed',
+                          title='Search for airgap failed',
                           with_corners=False, show=True)
         sys.exit(1)
 
@@ -176,6 +168,7 @@ def converter(dxfile,
                           title='Original with nodes',
                           rows=3, cols=2, num=2, show=False)
 
+    machine.repair_hull()
     if machine.has_airgap():
         machine_inner = machine.copy(0.0, 2*np.pi, True, True)
         machine_inner = symmetry_search(machine_inner,

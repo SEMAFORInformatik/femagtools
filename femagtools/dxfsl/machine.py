@@ -249,72 +249,70 @@ class Machine(object):
             self.airgaps.append((lower_radius, upper_radius))
 
         if len(self.airgaps) > 0:
-            num_airgaps = 0
+            airgap_candidates = []
             for g in self.airgaps:
                 gap_radius = round((g[0]+g[1])/2.0, 6)
+                circle = Circle(Element(center=self.center,
+                                        radius=gap_radius))
+                ok, borders = self.geom.is_airgap(self.center,
+                                                  self.radius,
+                                                  self.startangle,
+                                                  self.endangle,
+                                                  circle, atol)
+                if not ok:
+                    logger.error("FATAL: No Airgap with radius {}".
+                                 format(gap_radius))
+                    print("FATAL: No Airgap with radius {}".
+                          format(gap_radius))
+                    self.geom.airgaps.append(circle)
+                    return True  # bad exit
 
-                if correct_airgap == 0.0 or \
-                   within_interval(correct_airgap, g[0], g[1], 0.0, 0.0):
-                    circle = Circle(Element(center=self.center,
-                                            radius=gap_radius))
-                    if self.geom.is_airgap(self.center, self.radius,
-                                           self.startangle,
-                                           self.endangle, circle, atol):
-                        self.geom.airgaps.append(circle)
-                        num_airgaps += 1
-                        self.airgap_radius = gap_radius
-                    else:
-                        logger.debug("FATAL: No Airgap with radius {}".
-                                     format(gap_radius))
-                        print("FATAL: No Airgap with radius {}".
-                              format(gap_radius))
-                        self.geom.airgaps.append(circle)
-                        return True  # bad exit
+                airgap_candidates.append((borders, circle))
+                self.geom.airgaps.append(circle)
 
-                if correct_airgap2 > 0.0 and \
-                   within_interval(correct_airgap2, g[0], g[1], 0.0, 0.0):
-                    circle = Circle(Element(center=self.center,
-                                            radius=gap_radius))
-                    if self.geom.is_airgap(self.center, self.radius,
-                                           self.startangle, self.endangle,
-                                           circle, atol):
-                        self.airgap2_radius = gap_radius
-                    else:
-                        logger.debug("DESASTER: No Airgap with radius {}".
-                                     format(gap_radius))
-                        print("DESASTER: No Airgap with radius {}".
-                              format(gap_radius))
-                        return True  # bad exit
+                if correct_airgap > 0.0:
+                    if within_interval(correct_airgap, g[0], g[1], 0.0, 0.0):
+                        self.airgap_radius = gap_radius  # ok
 
-            if num_airgaps == 1:
-                return False  # ok
+                if correct_airgap2 > 0.0:
+                    if within_interval(correct_airgap2, g[0], g[1], 0.0, 0.0):
+                        self.airgap2_radius = gap_radius  # ok
 
-            if num_airgaps > 1:
-                airgaps = []
-                for g in self.airgaps:
-                    lower_circles = self.geom.get_circles(self.center, g[0])
-                    upper_circles = self.geom.get_circles(self.center, g[1])
-                    sum_lower_angle = self.geom.alpha_of_circles(lower_circles,
-                                                                 self.center)
-                    sum_upper_angle = self.geom.alpha_of_circles(upper_circles,
-                                                                 self.center)
-                    if(sum_lower_angle / alpha > 0.75 and
-                       sum_upper_angle / alpha > 0.75):
-                        airgaps.append(g)
+        if correct_airgap > 0.0 and self.airgap_radius == 0.0:
+            logger.error("No airgap with radius {} found"
+                         .format(correct_airgap))
+            self.show_airgap_candidates(airgap_candidates)
+            return True  # bad exit
 
-                if len(airgaps) == 1:
-                    g = airgaps[0]
-                    self.airgap_radius = round((g[0]+g[1])/2.0, 6)
-                    self.geom.airgaps = airgaps
-                else:
-                    print("More than one airgap candidate found:")
-                    for c in self.geom.airgaps:
-                        print(" --- {}".format(c.radius))
-                    print("Use options --airgap/--airgap2 <float> to specify")
-                    sys.exit(1)
-            else:
-                self.airgap_radius = 0.0
-        return False
+        if correct_airgap2 > 0.0 and self.airgap2_radius == 0.0:
+            logger.error("No airgap2 with radius {} found"
+                         .format(correct_airgap2))
+            self.show_airgap_candidates(airgap_candidates)
+            return True  # bad exit
+
+        if len(self.airgaps) == 0:
+            return False  # no airgaps found
+
+        if self.airgap_radius > 0.0:
+            return False  # correct airgap set
+
+        gaps = [c for b, c in airgap_candidates if b == 0]
+        if len(gaps) == 1:  # one candidate without border intersection
+            self.airgap_radius = gaps[0].radius
+            return False  # ok
+
+        if len(airgap_candidates) == 1:  # one candidate found
+            self.airgap_radius = airgap_candidates[0][1].radius
+            return False  # ok
+
+        self.show_airgap_candidates(airgap_candidates)
+        sys.exit(1)
+
+    def show_airgap_candidates(self, airgap_candidates):
+        print("{} airgap candidate(s) found:".format(len(airgap_candidates)))
+        for b, c in airgap_candidates:
+            print(" --- {}".format(c.radius))
+        print("Use options --airgap/--airgap2 <float> to specify")
 
     def has_airgap(self):
         return self.airgap_radius > 0.0

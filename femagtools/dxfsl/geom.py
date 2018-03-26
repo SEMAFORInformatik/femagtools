@@ -1538,6 +1538,7 @@ class Geometry(object):
             Luftspalt befindet.
         """
         ok = True
+        borders = 0
         for e in self.elements(Shape):
             for p in e.intersect_circle(circle, 0.0, atol, True):
                 if not self.is_border_line(center,
@@ -1549,7 +1550,9 @@ class Geometry(object):
                     self.airgaps.append(Point(p))
                     self.airgaps.append(e)
                     ok = False
-        return ok
+                else:
+                    borders += 1
+        return (ok, borders)
 
     def is_border_line(self, center, startangle, endangle, e, atol):
         if isinstance(e, Line):

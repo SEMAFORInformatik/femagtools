@@ -24,6 +24,7 @@ from .functions import distance, alpha_line, alpha_points, alpha_angle
 from .functions import point, points_are_close, is_point_inside_region
 from .functions import line_m, line_n
 from .functions import middle_point_of_line, middle_point_of_arc
+from .functions import middle_angle
 from .functions import normalise_angle, is_same_angle
 from .functions import part_of_circle, gcd
 
@@ -79,69 +80,13 @@ def print_area(area):
 ndec = 6  # number of decimals to round to
 
 
-def find_corners(nodes, all=False):
-    """find corners of nodes"""
-    if nodes:
-        a = np.asarray(nodes).T
-        if all:
-            args = np.arctan2(a[1], a[0])
-            rads2 = np.sum(a**2, axis=0)
-
-            phimin, phimax = np.amin(args), np.amax(args)
-            r2min, r2max = np.amin(rads2), np.amax(rads2)
-
-            rindx = np.union1d(np.isclose(rads2, r2min, 1e-2).nonzero()[0],
-                               np.isclose(rads2, r2max, 1e-2).nonzero()[0])
-            phindx = np.union1d(np.isclose(args, phimin).nonzero()[0],
-                                np.isclose(args, phimax).nonzero()[0])
-            return np.asarray(nodes)[np.union1d(rindx, phindx)].tolist()
-        else:
-            # collect real corners only
-            # (TODO: there should be some simpler way)
-            corners = []
-            a = np.asarray(nodes)
-            minX, minY = np.amin(a, axis=0)
-            maxX, maxY = np.amax(a, axis=0)
-            x = a[np.isclose(a.T[0], minX).nonzero()[0]]
-            s = np.lexsort(x.T)
-            corners.append(x[s[0]])
-            if len(s) > 1:
-                corners.append(x[s[-1]])
-            x = a[np.isclose(a.T[0], maxX).nonzero()[0]]
-            s = np.lexsort(x.T)
-            corners.append(x[s[0]])
-            if len(s) > 1:
-                corners.append(x[s[-1]])
-
-            y = a[np.isclose(a.T[1], minY).nonzero()[0]]
-            s = np.lexsort((y.T[1], y.T[0]))
-            corners.append(y[s[0]])
-            if len(s) > 1:
-                corners.append(y[s[-1]])
-            y = a[np.isclose(a.T[1], maxY).nonzero()[0]]
-            s = np.lexsort((y.T[1], y.T[0]))
-            corners.append(y[s[0]])
-            if len(s) > 1:
-                corners.append(y[s[-1]])
-            return set([tuple(c) for c in corners])
-
-    return []
-
-
-def remove_corners(self, g):
-    """removes the corner nodes with their edges"""
-    corners = [n for n in find_corners(g.nodes()) if g.degree(n) < 3]
-    logger.debug("removing corners %s", corners)
-    g.remove_nodes_from(corners)
-
-
 def intersect_and_split(inp_elements, rtol, atol):
     logger.info("Load input elements ... ")
     out_elements = []
     for e in inp_elements:
         out_size = len(out_elements)
         intersect_and_split_element(e, out_elements, 0, out_size, rtol, atol)
-    print(" done")
+    logger.info(" ... loaded")
     return out_elements
 
 
@@ -301,7 +246,7 @@ def polylines(entity):
         i += 1
 
 
-def dxfshapes0(dxffile):
+def dxfshapes0(dxffile, layers=[]):
     """returns a collection of dxf entities (ezdxf)"""
     import ezdxf
     dwg = ezdxf.readfile(dxffile)
@@ -331,6 +276,7 @@ def dxfshapes0(dxffile):
 def dxfshapes(dxffile, layers=[]):
     """returns a collection of dxf entities (dxfgrabber)"""
     dwg = dxfgrabber.readfile(dxffile)
+    # print("Layers = {}".format(dwg.layers.names()))
     id = 0
     # $ACADVER: AC1006 = R10, AC1009 = R11 and R12, AC1012 = R13,
     #   AC1014 = R14 AC1015 = Release 2000/0i/2
@@ -545,6 +491,34 @@ class Geometry(object):
         """return the number of edges in graph"""
         return self.g.number_of_edges()
 
+    def get_node(self, p):
+        for n in self.g.nodes():
+            if points_are_close(p, n):
+                return n
+        return []
+
+    def get_edge(self, eg):
+        return [[e[0], e[1], e[2]['object']] for e in self.g.edges(data=True)
+                if e[2]['object'] is eg]
+
+    def remove_edge(self, edge):
+        e = self.get_edge(edge)
+        assert(len(e) == 1)
+        self.g.remove_edge(e[0][0], e[0][1])
+
+    def remove_edges(self, edges):
+        for e in edges:
+            self.remove_edge(e)
+
+    def add_line(self, n1, n2):
+        line = Line(Element(start=n1, end=n2))
+        add_or_join(self.g,
+                    line.node1(ndec),
+                    line.node2(ndec),
+                    line,
+                    self.rtol,
+                    self.atol)
+
     def elements(self, type):
         """return lists of objects"""
         return [e[2]['object'] for e in self.g.edges(data=True)
@@ -597,6 +571,12 @@ class Geometry(object):
             corners.sort()
         return corners
 
+    def start_min_corner(self, i):
+        return self.start_corners[0][i]
+
+    def start_max_corner(self, i):
+        return self.start_corners[-1][i]
+
     def repair_hull_line(self, center, angle):
         # We need to set our own tolerance range
         # to find the right points
@@ -608,19 +588,33 @@ class Geometry(object):
             # no hull without more than 1 corners
             return
 
-        for p1, p2 in [e for e in self.g.edges()]:
-            for c in corners:
-                if c.is_equal(p1):
-                    if not (points_are_close(center, p2, rtol, atol) or
-                            np.isclose(angle, alpha_line(center, p2),
-                                       rtol, atol)):
-                        c.set_keep_node()
-                elif c.is_equal(p2):
-                    if points_are_close(center, p1, rtol, atol) or \
-                       np.isclose(angle, alpha_line(center, p1), rtol, atol):
+        [c.set_keep_node() for c in corners if c.is_equal(center, rtol, atol)]
+        for p1, p2, data in [e for e in self.g.edges(data=True)]:
+            clist = [c for c in corners if c.is_equal(p1) or c.is_equal(p2)]
+            if clist:
+                if len(clist) == 1:
+                    clist[0].set_keep_node()
+                else:
+                    el = data['object']
+                    if isinstance(el, Line):
                         self.g.remove_edge(p1, p2)
                     else:
-                        c.set_keep_node()
+                        [corner.set_keep_node() for corner in clist]
+                        if isinstance(el, Arc):
+                            alpha_start = el.startangle
+                            alpha_end = el.endangle
+                            alpha_mid = middle_angle(alpha_start, alpha_end)
+                            self.g.remove_edge(p1, p2)
+                            a1 = Arc(Element(center=el.center,
+                                             radius=el.radius,
+                                             start_angle=alpha_start*180/np.pi,
+                                             end_angle=alpha_mid*180/np.pi))
+                            a2 = Arc(Element(center=el.center,
+                                             radius=el.radius,
+                                             start_angle=alpha_mid*180/np.pi,
+                                             end_angle=alpha_end*180/np.pi))
+                            self.g.add_edge(p1, a1.node2(ndec), object=a1)
+                            self.g.add_edge(a2.node1(ndec), p2, object=a2)
 
         for c in corners:
             if not c.keep_node():
@@ -630,10 +624,6 @@ class Geometry(object):
         # Liste neu.
         corners = [Corner(center, c)
                    for c in self.angle_nodes(center, angle, rtol, atol)]
-
-#        print("repair_hull_line: {}".format(angle))
-#        for c in corners:
-#            print(" - corner {}".format(c))
 
         if len(corners) > 1:
             corners.sort()
@@ -710,15 +700,8 @@ class Geometry(object):
 
         corners = self.get_corner_list(center, angle, rtol, atol)
         if len(corners) < 2:
-            # not enough corners
-            return ()
+            return ()  # not enough corners
         return (corners[0].point(), corners[len(corners)-1].point())
-
-    def remove_corners(self, g):
-        """removes the corner nodes with their edges"""
-        corners = [n for n in self.find_corners(g.nodes()) if g.degree(n) < 3]
-        logger.debug("removing corners %s", corners)
-        g.remove_nodes_from(corners)
 
     def point_lefthand_side(self, p1, p2):
         alpha = alpha_line(p2, p1)
@@ -726,10 +709,8 @@ class Geometry(object):
         nbrs = [n for n in self.g.neighbors(p2)
                 if not (points_are_close(n, p1) or points_are_close(n, p2))]
         if len(nbrs) == 0:
-            # Unerwartetes Ende des Rundgangs
-            return None
+            return None  # unexpected end
 
-#        angles = [(alpha_angle(alpha ,alpha_line(p2, n)), n) for n in nbrs]
         angles = []
         for p in nbrs:
             e_dict = self.g.get_edge_data(p2, p)
@@ -744,10 +725,6 @@ class Geometry(object):
                 # we don't move more than 180 degrees
                 angles.append((alpha_angle(alpha, alphax), p))
 
-#        print("p={}, nbr: ".format(p2), end='')
-#        for a in angles:
-#            print("{}/".format(a), end='')
-#        print(" *")
         if len(angles) == 0:
             return None
 
@@ -757,37 +734,44 @@ class Geometry(object):
     def get_new_area(self, start_p1, start_p2, solo):
         e_dict = self.g.get_edge_data(start_p1, start_p2)
         if not e_dict:
-            raise ValueError("    *** no dict ?? ***")
+            raise ValueError("Fatal: no edge-data found")
         area = []
         e = e_dict['object']
         x = e.get_point_number(start_p1)
+        trace = False
 
         if e_dict[x]:
             # Diese Area wurde schon abgelaufen.
-            # print("    *** bereits abgelaufen ({}) ***".format(x))
+            if trace:
+                print("    *** bereits abgelaufen ({}) ***".format(x))
             return None
         e_dict[x] = True  # footprint
         area.append(e)
+
+        if (isinstance(e, Circle) and not isinstance(e, Arc)):
+            if trace:
+                print("AREA WITH CIRCLE")
+            e_dict[1] = True  # footprint
+            e_dict[2] = True  # footprint
+            return area
+
         first_p = start_p1
         this_p = start_p2
 
         next_p = self.point_lefthand_side(first_p, this_p)
         if not next_p:
             # Unerwartetes Ende
-            # print("    *** Sackgasse ***")
+            if trace:
+                print("    *** Sackgasse ***")
             return None
-
-        # print("\nBEGIN get_new_area: start={}, next={}".
-        #       format(start_p1, start_p2))
 
         a = normalise_angle(alpha_points(first_p, this_p, next_p))
         alpha = a
-        # print("get_new_area: a={}, b={}, c={} => + {} = {}".
-        #       format(first_p, this_p, next_p, a, alpha))
 
         c = 0
         while not points_are_close(next_p, start_p1):
-            # print("next={}, start={}".format(next_p, start_p1))
+            if trace:
+                print("next={}, start={}".format(next_p, start_p1))
             c += 1
             if c > 1000:
                 print("FATAL: *** over 1000 elements in area ? ***")
@@ -797,8 +781,9 @@ class Geometry(object):
             e = e_dict['object']
             x = e.get_point_number(this_p)
             if e_dict[x]:
-                # print('     *** da waren wir schon:\n   {}\n     ***'.
-                #       format(e))
+                if trace:
+                    print('     *** da waren wir schon:\n   {}\n     ***'
+                          .format(e))
                 return None
             e_dict[x] = True  # footprint
             first_p = this_p
@@ -806,16 +791,16 @@ class Geometry(object):
             next_p = self.point_lefthand_side(first_p, this_p)
             if not next_p:
                 # Unerwartetes Ende
-                # print("    *** Sackgasse ***")
+                if trace:
+                    print("    *** Sackgasse ***")
                 return None
 
             a = normalise_angle(alpha_points(first_p, this_p, next_p))
             alpha += a
-            # print("get_new_area: a={}, b={}, c={} => + {} = {}".
-            #       format(first_p, this_p, next_p, a, alpha))
             area.append(e)
 
-        # print("END get_new_area\n")
+        if trace:
+            print("END get_new_area\n")
 
         e_dict = self.g.get_edge_data(this_p, next_p)
         e = e_dict['object']
@@ -824,20 +809,22 @@ class Geometry(object):
         area.append(e)
         a = normalise_angle(alpha_points(this_p, next_p, start_p2))
         alpha += a
-        # print("get_new_area: a={}, b={}, c={} => + {} = {}".
-        #       format(this_p, next_p, start_p2, a, alpha))
 
-        # print(">>> area found: alpha={}<<<\n".format(alpha))
         if alpha < 0.0:
             # Wir wollten nach links, aber es ging immer nach rechts!
+            if trace:
+                print("Wir wollten nach links, aber es ging immer nach rechts!")
             return None
+
+        if trace:
+            print("AREA WITH CIRCLE\n{}\n".format(area))
         return area
 
     def create_list_of_areas(self):
         """ return list of areas for each node and their neighbors
         """
         if len(self.area_list) > 0:
-            # Liste bereits vorhanden
+            # list already available
             return
 
         def append(area_list, a):
@@ -846,8 +833,8 @@ class Geometry(object):
                     return
             area_list.append(a)
 
-        if self.debug:
-            print("create new area list ", end='', flush=True)
+        logger.debug("create new area list")
+
         if nxversion == 1:
             nx.set_edge_attributes(self.g, 0, True)
             nx.set_edge_attributes(self.g, 1, False)
@@ -1059,11 +1046,17 @@ class Geometry(object):
                                       inner_circle.radius,
                                       outer_circle.radius,
                                       start_angle, end_angle):
-                new_elements.append(
-                    Arc(Element(center=e.center,
-                                radius=e.radius,
-                                start_angle=alpha_start*180/np.pi,
-                                end_angle=alpha_end*180/np.pi)))
+                alpha_middle = middle_angle(alpha_start, alpha_end)
+                arc1 = Arc(Element(center=e.center,
+                                   radius=e.radius,
+                                   start_angle=alpha_start*180/np.pi,
+                                   end_angle=alpha_middle*180/np.pi))
+                arc2 = Arc(Element(center=e.center,
+                                   radius=e.radius,
+                                   start_angle=alpha_middle*180/np.pi,
+                                   end_angle=alpha_end*180/np.pi))
+                new_elements.append(arc1)
+                new_elements.append(arc2)
 
             alpha_start = alpha_end
             p1 = p2
@@ -1073,9 +1066,17 @@ class Geometry(object):
         if is_point_inside_region(pm, center,
                                   inner_circle.radius, outer_circle.radius,
                                   start_angle, end_angle):
-            new_elements.append(Arc(Element(center=e.center, radius=e.radius,
-                                            start_angle=alpha_start*180/np.pi,
-                                            end_angle=alpha_end*180/np.pi)))
+            alpha_middle = middle_angle(alpha_start, alpha_end)
+            arc1 = Arc(Element(center=e.center,
+                               radius=e.radius,
+                               start_angle=alpha_start*180/np.pi,
+                               end_angle=alpha_middle*180/np.pi))
+            arc2 = Arc(Element(center=e.center,
+                               radius=e.radius,
+                               start_angle=alpha_middle*180/np.pi,
+                               end_angle=alpha_end*180/np.pi))
+            new_elements.append(arc1)
+            new_elements.append(arc2)
         return new_elements
 
     def copy_shape(self, center, radius,
@@ -1145,17 +1146,12 @@ class Geometry(object):
 
     def find_symmetry(self, center, radius,
                       startangle, endangle, sym_tolerance):
-        # print("=== Find Symmetry ===")
         arealist = self.list_of_areas()
 
         if len(arealist) == 0:
             return False
 
         arealist.sort()
-#        for a in arealist:
-#            print(a)
-#            a.print_area()
-#        print("-----------------")
 
         def add(areas, a):
             for area in areas:
@@ -1173,22 +1169,16 @@ class Geometry(object):
             a.set_delta()
         arealist_match.sort()
 
-#        print(">>>>> AREAS >>>>>")
-#        for a in arealist_match:
-#            print(" - {}".format(a))
-#        print("<<<<< AREAS <<<<<")
-
         area = arealist_match[0]
         if area.delta == 0.0:
-            logger.info("#1: No symmetry-axis found")
+            logger.info("No symmetry-axis found (delta == 0.0)")
             return False
 
         sym = part_of_circle(0.0, area.delta, 1)
         if sym == 0.0:
-            logger.info("#2: No symmetry-axis found")
+            logger.info("No symmetry-axis found (sym = 0.0)")
             return False
         area.delta = 2*np.pi/sym
-#        print("Symetrie 1/{}".format(sym))
 
         for alpha in area.symmetry_lines(startangle, endangle):
             p = point(center, radius+5, alpha)
@@ -1305,6 +1295,44 @@ class Geometry(object):
             elif len(nbr_list) > 4:
                 renderer.point(n, 'ro', color='black')
 
+    def render_area_fill(self, renderer):
+        legend = {}
+        for area in self.list_of_areas():
+            if area.is_iron():
+                area.render_fill(renderer, 0.3)
+                if area.name() and area.name() not in legend:
+                    legend[area.name()] = area.render_legend(renderer, 0.3)
+
+        for area in self.list_of_areas():
+            if area.is_air():
+                area.render_fill(renderer, 1.0)
+
+        # magnet has no air inside
+        for area in self.list_of_areas():
+            if area.is_magnet():
+                area.render_fill(renderer)
+                if area.name() and area.name() not in legend:
+                    legend[area.name()] = area.render_legend(renderer, 1.0)
+
+        # winding has no air inside
+        for area in self.list_of_areas():
+            if area.is_winding():
+                area.render_fill(renderer)
+                if area.name() and area.name() not in legend:
+                    legend[area.name()] = area.render_legend(renderer, 1.0)
+
+        if legend:
+            return [h for (k, h) in legend.items()]
+        return []
+
+    def get_points_in_iron(self):
+        points = []
+        for area in self.list_of_areas():
+            p = area.get_point_inside(self)
+            if p:
+                points.append(p)
+        return points
+
     def check_hull(self, center, radius, x, y, rtol, atol):
         node_count = 0
         miss_count = 0
@@ -1336,12 +1364,14 @@ class Geometry(object):
             c = [mm[1]-r, mm[3]-r]
             logger.info("check for full machine")
             if self.check_hull(c, r, None, None, self.rtol, atol):
+                logger.info("  it is full")
                 return Machine(self, c, r, 0.0, 0.0)
 
             logger.info("check for quarter machine")
             r = width
             c = [mm[0], mm[2]]
             if self.check_hull(c, r, mm[0], mm[2], self.rtol, atol):
+                logger.info("  it is a quarter")
                 return Machine(self, c, r, 0.0, np.pi/2)
 
         elif np.isclose(width, height*2, self.rtol, self.atol):
@@ -1349,10 +1379,12 @@ class Geometry(object):
             c = [mm[1]-height, mm[2]]
             logger.info("check for half machine")
             if self.check_hull(c, r, None, mm[2], self.rtol, atol):
+                logger.info("  it is a half")
                 return Machine(self, c, r, 0.0, np.pi)
 
             c = [mm[1]-height, mm[3]]
             if self.check_hull(c, r, None, mm[3], self.rtol, atol):
+                logger.info("  it is a half")
                 return Machine(self, c, r, np.pi, 0.0)
 
         elif np.isclose(width*2, height, self.rtol, self.atol):
@@ -1361,16 +1393,19 @@ class Geometry(object):
             logger.info("check for half machine")
             c = [mm[1], mm[3]-width]
             if self.check_hull(c, r, mm[1], None, self.rtol, atol):
+                logger.info("  it is a half")
                 return Machine(self, c, r, np.pi/2.0, -np.pi/2.0)
 
             c = [mm[0], mm[3]-width]
             if self.check_hull(c, r, mm[0], None, self.rtol, atol):
+                logger.info("  it is a half")
                 return Machine(self, c, r, -np.pi/2.0, np.pi/2.0)
 
         machine = self.get_machine_part(mm)
         if machine:
             return machine
 
+        logger.info("The shape of the Machine is unexpected")
         return Machine(self, [0.0, 0.0], 0.0, 0.0, 0.0)
 
     def is_new_center(self, center_list, center, rtol, atol):
@@ -1503,24 +1538,31 @@ class Geometry(object):
             Luftspalt befindet.
         """
         ok = True
+        borders = 0
         for e in self.elements(Shape):
-            for p in e.intersect_circle(circle, 0.0, True):
-                alpha_p = alpha_line(center, p)
-                if not (np.isclose(alpha_p, startangle, 1e-3, atol) or
-                        np.isclose(alpha_p, endangle, 1e-3, atol)):
+            for p in e.intersect_circle(circle, 0.0, atol, True):
+                if not self.is_border_line(center,
+                                           startangle, endangle,
+                                           e, atol):
+                    print("BAD: Point {}".format(p))
+                    print("BAD: is_airgap: e = {}".format(e))
+                    print("BAD: is_airgap: c = {}".format(circle))
                     self.airgaps.append(Point(p))
+                    self.airgaps.append(e)
                     ok = False
-        return ok
+                else:
+                    borders += 1
+        return (ok, borders)
 
     def is_border_line(self, center, startangle, endangle, e, atol):
         if isinstance(e, Line):
             angle_p1 = alpha_line(center, e.p1)
             if np.isclose(startangle, angle_p1, 1e-3, atol):
                 angle_p2 = alpha_line(center, e.p2)
-                return np.isclose(startangle, angle_p2)
+                return np.isclose(startangle, angle_p2, 1e-3, atol)
             elif np.isclose(endangle, angle_p1, 1e-3, atol):
                 angle_p2 = alpha_line(center, e.p2)
-                return np.isclose(endangle, angle_p2)
+                return np.isclose(endangle, angle_p2, 1e-3, atol)
         return False
 
     def detect_airgaps(self, center, startangle, endangle, atol):
@@ -1532,6 +1574,7 @@ class Geometry(object):
         for e in self.elements(Shape):
             if not self.is_border_line(center, startangle, endangle, e, atol):
                 gaplist += [e.minmax_from_center(center)]
+
         gaplist.sort()
 
         airgaps = []
@@ -1549,6 +1592,38 @@ class Geometry(object):
             dist_max = max(dist_max, g[1])
 
         return airgaps
+
+    def get_circles(self, center, radius):
+        return [c for c in self.elements(Circle)
+                if points_are_close(center, c.center) and
+                np.isclose(radius, c.radius)]
+
+    def alpha_of_circles(self, circles, center):
+        angle = 0.0
+        for c in circles:
+            if isinstance(c, Arc):
+                alpha_c_p1 = alpha_line(center, c.p1)
+                alpha_c_p2 = alpha_line(center, c.p2)
+                angle += alpha_angle(alpha_c_p1, alpha_c_p2)
+            else:
+                angle = 2*np.pi
+        return angle
+
+    def delete_airgap_circle(self, center,
+                             lower_radius, radius, upper_radius,
+                             angle_tot):
+        lower_circles = self.get_circles(center, lower_radius)
+        angle_sum = self.alpha_of_circles(lower_circles, center)
+        if angle_sum / angle_tot < 0.75:
+            return False
+
+        upper_circles = self.get_circles(center, upper_radius)
+        angle_sum = self.alpha_of_circles(upper_circles, center)
+        if angle_sum / angle_tot < 0.75:
+            return False
+
+        self.remove_edges(self.get_circles(center, radius))
+        return True
 
     def create_auxiliary_lines(self, leftangle):
         for area in self.list_of_areas():
@@ -1599,6 +1674,8 @@ class Geometry(object):
 
         if self.is_rotor():
             return self.search_rotor_subregions()
+
+        logger.warning("no stator or rotor assigned")
 
     def search_stator_subregions(self):
         for area in self.list_of_areas():

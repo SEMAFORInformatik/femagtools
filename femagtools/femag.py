@@ -251,7 +251,8 @@ class ZmqFemag(BaseFemag):
         self.port = port
         self.request_socket = None
         self.subscriber_socket = None
-
+        self.proc = None
+        
     def __del__(self):
         if self.request_socket:
             self.request_socket.close()
@@ -270,10 +271,10 @@ class ZmqFemag(BaseFemag):
         return self.request_socket
 
     def __sub_socket(self):
-        """returns a new subscriber client"""
-        context = zmq.Context.instance()
+        """returns a subscriber client"""
         if self.subscriber_socket:
             return self.subscriber_socket
+        context = zmq.Context.instance()
         self.subscriber_socket = context.socket(zmq.SUB)
         self.subscriber_socket.connect(
             'tcp://{0}:{1}'.format(
@@ -349,17 +350,20 @@ class ZmqFemag(BaseFemag):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
 
         Args:
-            fsl: FSL commands
+            fsl: string of FSL commands
 
         Return:
             response
         """
-        logger.debug("Send fsl with fsl: {}, callback: {}, header: {}".format(fsl, callback, header))
+        logger.debug("Send fsl with fsl: {}, callback: {}, header: {}".format(
+            fsl, callback, header))
+
         try:
             # Start the reader thread to get information about the next calculation
-            reader = FemagReadStream(self.__sub_socket(), callback)
-            reader.setDaemon(True)
-            reader.start()
+            if callback:
+                reader = FemagReadStream(self.__sub_socket(), callback)
+                reader.setDaemon(True)
+                reader.start()
 
             request_socket = self.__req_socket()
             request_socket.send_string(header, flags=zmq.SNDMORE)
@@ -370,11 +374,13 @@ class ZmqFemag(BaseFemag):
             logger.debug("send_fsl["+fsl+"] done")
 
             time.sleep(.5)  # Be sure all messages are arrived over zmq
-            reader.continue_loop = False
+            if callback:
+                reader.continue_loop = False
             return [s.decode() for s in response]
         except Exception as e:
-            logger.error("send_fsl, for error: %s", str(e))
-        return ['{"status":"error"}']
+            logger.exception("send_fsl")
+            msg = str(e)
+        return ['{"status":"error", "message":"'+msg+'"}', '{}']
 
     def run(self, options=['-b'], restart=False, procId=None):  # noqa: C901
         """invokes FEMAG in current workdir and returns pid
@@ -399,7 +405,9 @@ class ZmqFemag(BaseFemag):
                         time.sleep(0.1)
                         if not self.__is_process_running(procId):
                             break
-                        logger.info("femag (pid: '{}') not stopped yet".format(procId))
+                        logger.info(
+                            "femag (pid: '{}') not stopped yet".format(
+                                procId))
                 logger.info("Stopped procId: %s", procId)
             else:
                 try:
@@ -421,7 +429,7 @@ class ZmqFemag(BaseFemag):
         errname = os.path.join(self.workdir, basename+'.err')
         with open(outname, 'w') as out, open(errname, 'w') as err:
             logger.info('invoking %s', ' '.join(args))
-            proc = subprocess.Popen(
+            self.proc = subprocess.Popen(
                 args,
                 stdout=out, stderr=err, cwd=self.workdir)
 
@@ -429,20 +437,24 @@ class ZmqFemag(BaseFemag):
         for t in range(200):
             time.sleep(0.1)
             if self.__is_running():
-                logger.info("femag (pid: '{}') is listening".format(proc.pid))
+                logger.info("femag (pid: '{}') is listening".format(
+                    self.proc.pid))
                 break
 
         # write femag.pid
-        logger.info("ready %s", proc.pid)
+        logger.info("ready %s", self.proc.pid)
         with open(os.path.join(self.workdir, 'femag.pid'), 'w') as pidfile:
-            pidfile.write("{}\n".format(proc.pid))
-        return proc.pid
+            pidfile.write("{}\n".format(self.proc.pid))
+        return self.proc.pid
 
     def quit(self, save_model=False):
         """terminates femag"""
 
         if not self.__is_running():
             logger.info("Femag already stopped")
+            if self.proc:
+                self.proc.wait()
+                self.proc = None
             return
 
         # send exit flags
@@ -452,9 +464,13 @@ class ZmqFemag(BaseFemag):
         response = self.send_fsl(f)
 
         # send quit command
-        response = self.send_fsl('quit', header='CONTROL')
+        try:
+            response = self.send_fsl('quit', header='CONTROL')
+#                                     recvflags=zmq.NOBLOCK)
+        except Exception as e:
+            logger.error("Femag Quit zmq message %s", e)
 
-        logger.debug("Sent QUIT to femag")
+        logger.info("Sent QUIT to femag %s", response)
         # if query, send a answer
         obj = json.loads(response[0])
         logger.debug("status: {}".format(obj['status']))
@@ -464,7 +480,12 @@ class ZmqFemag(BaseFemag):
 
             # Only send one msg
             request_socket = self.__req_socket()
-            response = request_socket.send_string('Ok' if save_model else 'Cancel')
+            response = request_socket.send_string(
+                'Ok' if save_model else 'Cancel')
+        
+        if self.proc:
+            self.proc.wait()
+            self.proc = None
         return response
 
     def __call__(self, pmMachine, operatingConditions):
@@ -486,14 +507,16 @@ class FemagReadStream(Thread):
     def dummy_callback(self, data):
         """This dummy method is used when no callback is defined.
         """
-        logger.warn("No callback defined, fallback to dummy\n >{}".format(data))
+        logger.warn(
+            "No callback defined, fallback to dummy\n >{}".format(data))
 
     def run(self):
         """Listen for messages from femag as long as the continue_loop is True
-        the sub_socket has a timeout to finish the loop and thread after the continue_loop
-        is set to False and no messages are arrived.
+        the sub_socket has a timeout to finish the loop and thread after
+        the continue_loop is set to False and no messages are arrived.
         """
-        logger.debug("Start thread with while condition: {}".format(self.continue_loop))
+        logger.debug(
+            "Start thread with while condition: {}".format(self.continue_loop))
         while self.continue_loop:
             try:
                 response = self.sub_socket.recv_multipart()

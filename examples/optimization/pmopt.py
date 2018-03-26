@@ -110,6 +110,7 @@ machine = dict(
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
+logger = logging.getLogger('pmopt')
 engine = femagtools.condor.Engine()
 
 userdir = os.path.expanduser('~')

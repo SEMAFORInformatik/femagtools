@@ -83,7 +83,7 @@ def create(bch, r1, ls, lfe=1, wdg=1):
     m = 3
     if isinstance(bch, Reader):
         p = bch.machine['p']
-        if bch.type == 'Fast Psid-Psiq-Identification':
+        if bch.type.lower().find('psid-psiq-identification') >= 0:
             id = np.array(bch.psidq['id'])/wdg
             iq = np.array(bch.psidq['iq'])/wdg
             psid = wdg*lfe*np.array(bch.psidq['psid'])
@@ -91,7 +91,7 @@ def create(bch, r1, ls, lfe=1, wdg=1):
             return PmRelMachinePsidq(m, p, psid, psiq, r1*lfe*wdg**2,
                                      id, iq, ls*wdg**2)
 
-        if bch.type == 'Fast LD-LQ-Identification':
+        if bch.type.lower().find('ld-lq-identification') >= 0:
             beta = bch.ldq['beta']
             i1 = np.array(bch.ldq['i1'])/wdg
             psid = wdg*lfe*np.array(bch.ldq['psid'])

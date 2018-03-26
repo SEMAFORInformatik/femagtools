@@ -44,7 +44,7 @@ setup(
     install_requires=['numpy', 'scipy', 'mako', 'six',
                       'dxfgrabber', 'networkx'],
 #   dxfsl:                   'ezdxf', 
-    packages=['femagtools', 'femagtools.moo'],
+    packages=['femagtools', 'femagtools.moo', 'femagtools.dxfsl'],
     package_data={'femagtools': ['templates/*.mako']},
     license=license,
     name='femagtools',

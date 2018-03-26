@@ -204,8 +204,8 @@ def mirror_point(p, L_p, L_m, L_n):
 
 
 def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
-    return np.isclose(p1[0], p2[0], rtol, atol) and \
-           np.isclose(p1[1], p2[1], rtol, atol)
+    return (np.isclose(p1[0], p2[0], rtol, atol) and
+            np.isclose(p1[1], p2[1], rtol, atol))
 
 
 def within_interval(x, v1, v2, rtol=1e-3, atol=1e-8):
@@ -230,8 +230,8 @@ def normalise_angle(alpha):
 def is_same_angle(angle1, angle2):
     """ returns true if angles are equal
     """
-    return np.isclose(np.cos(angle1), np.cos(angle2)) and \
-        np.isclose(np.sin(angle1), np.sin(angle2))
+    return (np.isclose(np.cos(angle1), np.cos(angle2)) and
+            np.isclose(np.sin(angle1), np.sin(angle2)))
 
 
 def part_of_circle(startangle, endangle, pos=3):
@@ -314,30 +314,36 @@ def is_point_inside_region(p, center,
                                        startangle, endangle)
 
 
-def angles_on_arc(startangle, endangle):
-    circle = np.isclose(startangle, endangle)
-    if circle:
-        endangle += 2.0*np.pi
-    elif greater_equal(startangle, 0.0):
-        if endangle < startangle:
-            endangle += 2.0*np.pi
-    else:
-        if less_equal(endangle, startangle):
-            startangle += 2.0*np.pi
+def get_angle_of_arc(startangle, endangle):
+    if np.isclose(startangle, endangle):
+        return 2.0*np.pi  # is a circle
 
-    alpha = endangle - startangle
+    start = normalise_angle(startangle)
+    end = normalise_angle(endangle)
 
-    num = int(alpha/(np.pi/8))
+    if less(start, 0.0):
+        start += 2.0*np.pi
+    while less(end, start):
+        end += 2.0*np.pi
+
+    if np.isclose(start, end):
+        return 2.0*np.pi  # is a circle
+    return end - start
+
+
+def angles_on_arc(startangle, endangle, parts=8):
+    alpha = get_angle_of_arc(startangle, endangle)
+    num = max(int(alpha/(np.pi/parts)), 1)
 
     for x in range(0, num):
-        yield x/num*alpha + startangle
-    if not circle:
+        yield float(x)/num*alpha + startangle
+    if less(alpha, 2.0*np.pi):
         yield alpha + startangle
 
 
-def points_on_arc(center, radius, startangle, endangle):
+def points_on_arc(center, radius, startangle, endangle, parts=8):
     start = normalise_angle(startangle)
     end = normalise_angle(endangle)
-    for alpha in angles_on_arc(start, end):
+    for alpha in angles_on_arc(start, end, parts=parts):
         yield (center[0] + radius * np.cos(alpha),
                center[1] + radius * np.sin(alpha))

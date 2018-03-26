@@ -192,7 +192,6 @@ class Reader:
             if title == 'Function':
                 title = s[0].split(':')[1].strip()
             logger.debug("'%s': %d", title, len(s[1:]))
-
             # Check if we are finished with the fourier analysis part(s)
             if title != 'Fourier Analysis':
                 self._fft = None
@@ -771,8 +770,8 @@ class Reader:
                 m.append([floatnan(x) for x in rec])
 
         m = np.array(m).T
-        ncols = len(set(m[1]))
-        iq = m[1]
+        ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        iq = np.linspace(np.min(m[1]), np.max(m[1]), ncols)
         if ncols > 1 and (iq[ncols-1] < iq[ncols-2] or
                           len(m[0]) % ncols != 0):
             ncols = ncols-1
@@ -802,8 +801,8 @@ class Reader:
                 m.append([floatnan(x) for x in rec])
 
         m = np.array(m).T
-        ncols = len(set(m[1]))
-        iq = m[1]
+        ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        iq = np.linspace(np.min(m[1]), np.max(m[1]), ncols)
         if ncols > 1 and (iq[ncols-1] < iq[ncols-2] or
                           len(m[0]) % ncols != 0):
             ncols = ncols-1
@@ -873,26 +872,24 @@ class Reader:
         if not m:
             return
         m = np.array(m).T
-        try:
-            ncols = len(set(m[1]))
-            nrows = len(m[2])//ncols
-            if ncols * nrows % len(m[3]) != 0:
-                if ncols > nrows:
-                    ncols = ncols-1
-                else:
-                    nrows = nrows-1
 
-            l = {k: np.reshape(v,
-                               (nrows, ncols)).T[::-1].tolist()
-                 for k, v in zip(('styoke', 'stteeth', 'rotor', 'magnet'),
-                                 m[2:])}
-            l['speed'] = speed
-            if self.ldq:
-                self.ldq['losses'] = l
+        ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        nrows = len(m[2])//ncols
+        if ncols * nrows % len(m[3]) != 0:
+            if ncols > nrows:
+                ncols = ncols-1
             else:
-                self.psidq['losses'] = l
-        except:
-            pass
+                nrows = nrows-1
+
+        l = {k: np.reshape(v,
+                           (nrows, ncols)).T[::-1].tolist()
+             for k, v in zip(('styoke', 'stteeth', 'rotor', 'magnet'),
+                             m[2:])}
+        l['speed'] = speed
+        if self.ldq:
+            self.ldq['losses'] = l
+        elif self.psidq:
+            self.psidq['losses'] = l
         
     def __read_machine_data(self, content):
         "read machine data section"
@@ -1096,7 +1093,7 @@ class Reader:
         #                  6372.7	         0.0	      1930.2
         for line in content:
             rec = line.split()
-            if rec[0] != 'Area':
+            if rec and rec[0] != 'Area':
                 self.areas.append([floatnan(x) for x in rec])
 
     def __read_inertia(self, content):

@@ -12,7 +12,7 @@ from __future__ import print_function
 import numpy as np
 import logging
 import sys
-from .shape import Element, Circle, Line
+from .shape import Element, Circle, Line, Shape
 from .functions import point, points_are_close
 from .functions import alpha_angle, normalise_angle, middle_angle
 from .functions import line_m, line_n, mirror_point
@@ -40,6 +40,7 @@ class Machine(object):
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
         self.geom.center = center
+        self.previous_machine = None
 
     def __str__(self):
         return "Machine\n" + \
@@ -183,6 +184,7 @@ class Machine(object):
         geom2 = self.geom.copy_shape(self.center, self.radius,
                                      midangle, endangle,
                                      0.0, self.radius+9999)
+
         machine = Machine(geom1, self.center, self.radius,
                           startangle, midangle)
         machine.mirror_orig_geom = self.geom
@@ -193,19 +195,13 @@ class Machine(object):
         return machine
 
     def undo_mirror(self):
-        if self.is_mirrored():
-            self.endangle = self.mirror_endangle
-            self.mirror_orig_geom.min_radius = self.geom.min_radius
-            self.mirror_orig_geom.max_radius = self.geom.max_radius
-            self.mirror_orig_geom.kind = self.geom.kind
-            self.geom = self.mirror_orig_geom
-            self.mirror_orig_geom = None
-            self.mirror_geom = None
-            self.mirror_startangle = 0.0
-            self.mirror_endangle = 0.0
-            self.part = self.part_of_circle()
-            self.set_alfa_and_corners()
-            self.geom.create_list_of_areas()
+        assert(self.is_mirrored())
+        assert(self.previous_machine)
+        self.previous_machine.set_minmax_radius()
+        # self.previous_machine.complete_hull()
+        self.previous_machine.create_auxiliary_lines()
+        self.previous_machine.set_kind(self.geom.kind)
+        return self.previous_machine
 
     def rotate_to(self, new_startangle):
         if np.isclose(new_startangle, self.startangle):
@@ -217,64 +213,106 @@ class Machine(object):
             self.startangle = new_startangle
             self.endangle += angle
 
-    def airgap(self, correct_airgap=0.0, correct_airgap2=0.0, atol=0.05):
+    def airgap(self, correct_airgap=0.0, correct_airgap2=0.0, atol=0.1):
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
 
         if np.isclose(self.radius, 0.0):
             return
 
-        self.airgaps = self.geom.detect_airgaps(self.center,
-                                                self.startangle,
-                                                self.endangle, atol)
+        self.airgaps = []
+        airgaps = self.geom.detect_airgaps(self.center,
+                                           self.startangle,
+                                           self.endangle, atol)
+
+        alpha = alpha_angle(self.startangle, self.endangle)
+
+        if len(airgaps) == 1:
+            self.airgaps = airgaps
+        elif len(airgaps) > 0:
+            lower_radius = -1.0
+            upper_radius = -1.0
+
+            for g in airgaps:
+                if np.isclose(g[0], upper_radius):
+                    if not self.geom.delete_airgap_circle(self.center,
+                                                          lower_radius,
+                                                          upper_radius,
+                                                          g[1],
+                                                          alpha):
+                        lower_radius = g[0]
+                else:
+                    if lower_radius > 0.0:
+                        self.airgaps.append((lower_radius, upper_radius))
+                    lower_radius = g[0]
+                upper_radius = g[1]
+            self.airgaps.append((lower_radius, upper_radius))
+
         if len(self.airgaps) > 0:
-            num_airgaps = 0
+            airgap_candidates = []
             for g in self.airgaps:
                 gap_radius = round((g[0]+g[1])/2.0, 6)
+                circle = Circle(Element(center=self.center,
+                                        radius=gap_radius))
+                ok, borders = self.geom.is_airgap(self.center,
+                                                  self.radius,
+                                                  self.startangle,
+                                                  self.endangle,
+                                                  circle, atol)
+                if not ok:
+                    logger.error("FATAL: No Airgap with radius {}".
+                                 format(gap_radius))
+                    print("FATAL: No Airgap with radius {}".
+                          format(gap_radius))
+                    self.geom.airgaps.append(circle)
+                    return True  # bad exit
 
-                if correct_airgap == 0.0 or \
-                   within_interval(correct_airgap, g[0], g[1], 0.0, 0.0):
-                    circle = Circle(Element(center=self.center,
-                                            radius=gap_radius))
-                    if self.geom.is_airgap(self.center, self.radius,
-                                           self.startangle,
-                                           self.endangle, circle, atol):
-                        self.geom.airgaps.append(circle)
-                        num_airgaps += 1
-                        self.airgap_radius = gap_radius
-                    else:
-                        logger.debug("DESASTER: No Airgap with radius {}".
-                                     format(gap_radius))
-                        print("DESASTER: No Airgap with radius {}".
-                              format(gap_radius))
-                        sys.exit(1)
+                airgap_candidates.append((borders, circle))
+                self.geom.airgaps.append(circle)
 
-                if correct_airgap2 > 0.0 and \
-                   within_interval(correct_airgap2, g[0], g[1], 0.0, 0.0):
-                    circle = Circle(Element(center=self.center,
-                                            radius=gap_radius))
-                    if self.geom.is_airgap(self.center, self.radius,
-                                           self.startangle, self.endangle,
-                                           circle, atol):
-                        self.airgap2_radius = gap_radius
-                    else:
-                        logger.debug("DESASTER: No Airgap with radius {}".
-                                     format(gap_radius))
-                        print("DESASTER: No Airgap with radius {}".
-                              format(gap_radius))
-                        sys.exit(1)
+                if correct_airgap > 0.0:
+                    if within_interval(correct_airgap, g[0], g[1], 0.0, 0.0):
+                        self.airgap_radius = gap_radius  # ok
 
-            if num_airgaps == 1:
-                return
+                if correct_airgap2 > 0.0:
+                    if within_interval(correct_airgap2, g[0], g[1], 0.0, 0.0):
+                        self.airgap2_radius = gap_radius  # ok
 
-            if num_airgaps > 1:
-                print("More than one airgap candidate found:")
-                for c in self.geom.airgaps:
-                    print(" --- {}".format(c.radius))
-                print("Use options --airgap/--airgap2 <float> to specify")
-                sys.exit(1)
-            else:
-                self.airgap_radius = 0.0
+        if correct_airgap > 0.0 and self.airgap_radius == 0.0:
+            logger.error("No airgap with radius {} found"
+                         .format(correct_airgap))
+            self.show_airgap_candidates(airgap_candidates)
+            return True  # bad exit
+
+        if correct_airgap2 > 0.0 and self.airgap2_radius == 0.0:
+            logger.error("No airgap2 with radius {} found"
+                         .format(correct_airgap2))
+            self.show_airgap_candidates(airgap_candidates)
+            return True  # bad exit
+
+        if len(self.airgaps) == 0:
+            return False  # no airgaps found
+
+        if self.airgap_radius > 0.0:
+            return False  # correct airgap set
+
+        gaps = [c for b, c in airgap_candidates if b == 0]
+        if len(gaps) == 1:  # one candidate without border intersection
+            self.airgap_radius = gaps[0].radius
+            return False  # ok
+
+        if len(airgap_candidates) == 1:  # one candidate found
+            self.airgap_radius = airgap_candidates[0][1].radius
+            return False  # ok
+
+        self.show_airgap_candidates(airgap_candidates)
+        sys.exit(1)
+
+    def show_airgap_candidates(self, airgap_candidates):
+        print("{} airgap candidate(s) found:".format(len(airgap_candidates)))
+        for b, c in airgap_candidates:
+            print(" --- {}".format(c.radius))
+        print("Use options --airgap/--airgap2 <float> to specify")
 
     def has_airgap(self):
         return self.airgap_radius > 0.0
@@ -289,6 +327,7 @@ class Machine(object):
         return part_of_circle(self.startangle, self.endangle, pos)
 
     def repair_hull(self):
+        logger.info('repair_hull')
         self.geom.repair_hull_line(self.center, self.startangle)
         self.geom.repair_hull_line(self.center, self.endangle)
 
@@ -298,7 +337,11 @@ class Machine(object):
             self.mirror_geom.repair_hull_line(self.center,
                                               self.mirror_endangle)
 
-    def complete_hull(self):
+    def set_minmax_radius(self):
+        self.geom.set_minmax_radius(self.center)
+
+    def complete_hull(self, is_inner, is_outer):
+        logger.info('complete_hull')
         start_corners = self.geom.complete_hull_line(self.center,
                                                      self.startangle)
         end_corners = self.geom.complete_hull_line(self.center,
@@ -356,7 +399,7 @@ class Machine(object):
 
     def get_symmetry_mirror(self):
         if self.part == 1:
-            # ein ganzer Motor
+            # a complete machine
             startangle = 0.0
             endangle = 0.0
             midangle = np.pi
@@ -369,7 +412,8 @@ class Machine(object):
         machine_mirror.clear_cut_lines()
         machine_mirror.repair_hull()
         machine_mirror.set_alfa_and_corners()
-        if machine_mirror.check_symmetry_graph(0.1, 0.1):
+        if machine_mirror.check_symmetry_graph(0.001, 0.05):
+            machine_mirror.previous_machine = self
             return machine_mirror
         return None
 
@@ -391,16 +435,23 @@ class Machine(object):
                     return True
             return False
 
-        hit = 0
-        nodes = self.geom.g.nodes()
-        for n in nodes:
-            if is_node_available(n, self.mirror_geom.g.nodes()):
-                hit += 1
+        def get_hit_factor(nodes1, nodes2):
+            hit = 0
+            for n in nodes1:
+                if is_node_available(n, nodes2):
+                    hit += 1
+            return float(hit) / len(nodes1)
 
-        hit_factor = hit / len(nodes)
-        ok = hit_factor > 0.9
-#        print("Nodes = {}, Match={} => ok={}".format(len(nodes), hit, ok))
-        return ok
+        hit_factor1 = get_hit_factor(self.geom.g.nodes(),
+                                     self.mirror_geom.g.nodes())
+        if hit_factor1 < 0.9:
+            return False  # not ok
+
+        hit_factor2 = get_hit_factor(self.mirror_geom.g.nodes(),
+                                     self.geom.g.nodes())
+        if hit_factor2 < hit_factor1:
+            return False  # not ok
+        return True
 
     def sync_with_counterpart(self, cp_machine):
         self.geom.sym_counterpart = cp_machine.get_symmetry_part()
@@ -409,6 +460,5 @@ class Machine(object):
         cp_machine.geom.sym_part = cp_machine.get_symmetry_part()
 
     def search_subregions(self):
-        # print("search_subregions\n{}".format(self))
         self.geom.search_subregions()
         return

@@ -13,7 +13,7 @@ from .functions import less_equal
 from .functions import distance, line_m, line_n
 from .functions import point, points_are_close, points_on_arc
 from .functions import alpha_line, alpha_angle, alpha_triangle
-from .functions import normalise_angle, min_angle
+from .functions import normalise_angle, min_angle, get_angle_of_arc
 from .functions import lines_intersect_point
 from .functions import is_angle_inside
 # from .geom import ndec
@@ -68,8 +68,12 @@ class Shape(object):
     def dy(self):
         return (self.p2[1]-self.p1[1])
 
-    def m(self):
-        return line_m(self.p1, self.p2)
+    def m(self, none_val=None):
+        m = line_m(self.p1, self.p2)
+        if m is None:
+            return none_val
+        else:
+            return m
 
     def n(self, m):
         return line_n(self.p1, m)
@@ -194,10 +198,13 @@ class Circle(Shape):
     def minmax_angle_dist_from_center(self, center, dist):
         return ()
 
-    def get_nodes(self):
+    def get_nodes(self, parts=8):
         """ returns a list of virtual nodes to create the convex hull
         """
-        return (p for p in points_on_arc(self.center, self.radius, 0.0, 0.0))
+        return (p for p in points_on_arc(self.center, self.radius,
+                                         0.0,  # startangle
+                                         0.0,  # endangle
+                                         parts=parts))
 
     def scale(self, factor):
         super(Circle, self).scale(factor)
@@ -231,12 +238,13 @@ class Circle(Shape):
         d = distance(self.center, p)
 
         if np.isclose(d, self.radius, rtol, atol):
-            # Wenn der Abstand d dem Radius entspricht, handelt es sich um
-            # eine Tangente und es gibt genau einen Schnittpunkt
-            if include_end:
-                return [p]
-            else:
-                return []
+            if line.is_point_inside(p, rtol, atol, include_end):
+                # Wenn der Abstand d dem Radius entspricht, handelt es sich um
+                # eine Tangente und es gibt genau einen Schnittpunkt
+                if include_end:
+                    return [p]
+                else:
+                    return []
         if self.radius < d:
             # d liegt ausserhalb des Kreises -> kein Schnittpunkt
             return []
@@ -250,13 +258,15 @@ class Circle(Shape):
         # Die Schnittpunkte p1 und p2 sind bestimmt. Nun muss noch sicher
         # gestellt werden, dass sie innerhalb des Start- und Endpunkts der
         # Linie liegen
-        if line.is_point_inside(p1, rtol, atol, include_end):
-            if line.is_point_inside(p2, rtol, atol, include_end):
+        p1_inside = line.is_point_inside(p1, rtol, atol, include_end)
+        p2_inside = line.is_point_inside(p2, rtol, atol, include_end)
+        if p1_inside:
+            if p2_inside:
                 return [p1, p2]
             else:
                 return[p1]
         else:
-            if line.is_point_inside(p2, rtol, atol, include_end):
+            if p2_inside:
                 return[p2]
             else:
                 return []
@@ -322,6 +332,9 @@ class Circle(Shape):
 
         assert(len(points) == 0)
         return []
+
+    def get_angle_of_arc(self):
+        return np.pi*2.0
 
     def __str__(self):
         return "Circle c={}, r={}".format(self.center, self.radius)
@@ -601,12 +614,17 @@ class Arc(Circle):
 
         return (alpha_min, alpha_max)
 
-    def get_nodes(self):
+    def get_nodes(self, parts=8):
         """ Die Funktion liefert eine Liste von virtuellen Nodes, welche man
             zum Rechnen der convex_hull() benötigt.
         """
         return (p for p in points_on_arc(self.center, self.radius,
-                                         self.startangle, self.endangle))
+                                         self.startangle,
+                                         self.endangle,
+                                         parts=parts))
+
+    def get_angle_of_arc(self):
+        return get_angle_of_arc(self.startangle, self.endangle)
 
     def __str__(self):
         return "Arc c={}, r={} start={}, end={}, p1={}, p2={}".\
@@ -789,11 +807,14 @@ class Line(Shape):
         else:
             return (alpha_p2, alpha_p1)
 
-    def get_nodes(self):
+    def get_nodes(self, parts=8):
         """ Die Funktion liefert eine Liste von virtuellen Nodes, welche man
             zum Rechnen der convex_hull() benötigt.
         """
         return (self.p1, self.p2)
+
+    def get_angle_of_arc(self):
+        return 0.0
 
     def __str__(self):
         return "Line p1={}, p2={}".format(self.p1, self.p2)

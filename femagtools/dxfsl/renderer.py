@@ -8,9 +8,10 @@
 
 """
 import numpy as np
-import matplotlib.pylab as pl
+import matplotlib.pyplot as pl
 import matplotlib.patches as pch
-import femagtools.dxfsl.geom as g
+from .shape import Shape
+from .geom import convex_hull
 import logging
 import io
 
@@ -29,10 +30,26 @@ class PlotRenderer(object):
 
     def figure(self):
         if self.fig is None:
-            self.fig = pl.figure(figsize=(9, 10), facecolor='lightblue')
-            pl.tight_layout()
-
+            self.fig = pl.figure(facecolor='lightblue',
+                                 figsize=(9, 10))
+            pl.tight_layout(h_pad=0.2, w_pad=0.2)
+            pl.subplots_adjust(bottom=0.05, top=0.95, hspace=0.25, wspace=0.15)
         return self.fig
+
+    def add_plot(self, rows=1, cols=1, num=1):
+        self.ax = self.figure().add_subplot(rows, cols,
+                                            num,
+                                            facecolor=self.background)
+        return self.ax
+
+    def add_emptyplot(self, rows=1, cols=1, num=1, title=''):
+        ax = self.add_plot(rows, cols, num)
+        ax.axis('off')
+        if title:
+            ax.set_title(title, size=14)
+
+    def new_legend_handle(self, color, alpha, text):
+        return pch.Patch(color=color, alpha=alpha, label=text)
 
     def show_plot(self):
         if self.fig is not None:
@@ -57,6 +74,15 @@ class PlotRenderer(object):
     def point(self, p, col, color='blue'):
         pl.plot([p[0]], [p[1]], col, color=color)
 
+    def fill(self, x, y, color, alpha):
+        self.ax.fill(x, y, 'b', alpha=alpha, color=color, edgecolor='blue')
+
+    def fill_circle(self, center, radius, color, alpha):
+        circle = pl.Circle(center, radius, color=color, alpha=alpha)
+        self.ax.add_artist(circle)
+        circle = pl.Circle(center, radius, color='blue', fill=False)
+        self.ax.add_artist(circle)
+
     def render(self, geom, filename=None, **kwargs):
         draw_center = kwargs.get('draw_center', False)
         draw_hull = kwargs.get('draw_hull', False)
@@ -66,7 +92,7 @@ class PlotRenderer(object):
         self.ax = fig.add_subplot(111)
 
         if draw_hull:
-            for h in g.convex_hull(geom.g.nodes()):
+            for h in convex_hull(geom.g.nodes()):
                 pl.plot([h[0]], [h[1]], 'ro')
 
         id = 0
@@ -122,10 +148,12 @@ class PlotRenderer(object):
         with_nodes = kwargs.get('with_nodes', False)
         with_hull = kwargs.get('with_hull', False)
         with_corners = kwargs.get('with_corners', False)
+        with_center = kwargs.get('with_center', False)
         single_view = kwargs.get('single_view', False)
         neighbors = kwargs.get('neighbors', False)
         draw_center = kwargs.get('draw_center', False)
         draw_inside = kwargs.get('draw_inside', False)
+        fill_areas = kwargs.get('fill_areas', False)
         title = kwargs.get('title', "")
         show = kwargs.get('show', True)
         rows = kwargs.get('rows', 1)
@@ -139,6 +167,8 @@ class PlotRenderer(object):
             num = 1
 
         mm = geom.minmax()
+        x_min, x_max = mm[0]-5, mm[1]+5
+        y_min, y_max = mm[2]-5, mm[3]+5
 
         if single_view:
             count = 0
@@ -147,24 +177,16 @@ class PlotRenderer(object):
                 if count == 0:
                     self.ax = self.figure().add_subplot(111)
                     self.ax.axis('scaled', aspect='equal')
-
+                    self.ax.set_xlim(x_min, x_max)
+                    self.ax.set_ylim(y_min, y_max)
                 e.render(self, 'blue', True)
 
                 count += 1
                 if count == 3:
-                    self.point((mm[0]-5, mm[2]-5), 'ro', color='red')
-                    self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
-                    self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
-                    self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
                     pl.show()
                     count = 0
 
             if count != 0:
-                self.point((mm[0]-5, mm[2]-5), 'ro', color='red')
-                self.point((mm[0]-5, mm[3]+5), 'ro', color='red')
-                self.point((mm[1]+5, mm[2]-5), 'ro', color='red')
-                self.point((mm[1]+5, mm[3]+5), 'ro', color='red')
-                self.ax.axis('scaled', aspect='equal')
                 self.show_plot()
             return
 
@@ -175,11 +197,8 @@ class PlotRenderer(object):
             self.ax.set_title(title, size=14)
         self.ax.grid(color='blue', linewidth=0.5)
 
-        for e in geom.elements(type):
-            e.render(self, 'blue', with_nodes)
-
         if with_hull:
-            for h in g.convex_hull(geom.virtual_nodes()):
+            for h in convex_hull(geom.virtual_nodes()):
                 pl.plot([h[0]], [h[1]], 'ro')
 
         if with_corners:
@@ -198,7 +217,22 @@ class PlotRenderer(object):
             for area in geom.list_of_areas():
                 p = area.get_point_inside(geom)
                 if p:
-                    pl.plot([p[0]], [p[1]], 'ro', color='yellow')
+                    pl.plot([p[0]], [p[1]], 'ro', color='magenta')
+
+        if fill_areas:
+            handles = geom.render_area_fill(self)
+            if handles:
+                legend = pl.legend(handles=handles, loc='best',
+                                   fancybox=True,
+                                   framealpha=1.0,
+                                   fontsize=8,
+                                   labelspacing=0.2)
+                frame = legend.get_frame()
+                frame.set_facecolor('white')
+                frame.set_edgecolor('blue')
+
+        for e in geom.elements(type):
+            e.render(self, 'blue', with_nodes)
 
         geom.render_cut_lines(self)
         geom.render_airgaps(self)
@@ -209,14 +243,16 @@ class PlotRenderer(object):
             for p in points:
                 self.point(p, 'ro', color='red')
 
-        if geom.center:
+        if with_center and geom.center:
             self.point(geom.center, 'ro', color='darkgreen')
+            x_min = min(x_min, geom.center[0]-5)
+            x_max = max(x_max, geom.center[0]+5)
+            y_min = min(y_min, geom.center[1]-5)
+            y_max = max(y_max, geom.center[1]+5)
 
-        self.point((mm[0]-5, mm[2]-5), 'ro', color=self.background)
-        self.point((mm[0]-5, mm[3]+5), 'ro', color=self.background)
-        self.point((mm[1]+5, mm[2]-5), 'ro', color=self.background)
-        self.point((mm[1]+5, mm[3]+5), 'ro', color=self.background)
         self.ax.axis('scaled', aspect='equal')
+        self.ax.set_xlim(x_min, x_max)
+        self.ax.set_ylim(y_min, y_max)
 
         if show:
             self.show_plot()
@@ -224,10 +260,21 @@ class PlotRenderer(object):
     def render_areas(self, geom, **kwargs):
         with_nodes = kwargs.get('with_nodes', False)
         single_view = kwargs.get('single_view', False)
+        title = kwargs.get('title', "")
+        show = kwargs.get('show', True)
+        rows = kwargs.get('rows', 1)
+        cols = kwargs.get('cols', 1)
+        num = kwargs.get('num', 1)
+
+        if show:
+            rows = 1
+            cols = 1
+            num = 1
 
         if not single_view:
-            fig = pl.figure()
-            self.ax = fig.add_subplot(111)
+            self.ax = self.figure().add_subplot(rows, cols, num)
+            if len(title) > 0:
+                self.ax.set_title(title, size=14)
 
         colors = ('red', 'green', 'blue', 'magenta',
                   'orange', 'grey', 'darkgreen')
@@ -255,7 +302,8 @@ class PlotRenderer(object):
 
         if not single_view:
             self.ax.axis('scaled', aspect='equal')
-            pl.show()
+            if show:
+                self.show_plot()
 
     def render_area(self, area):
         fig = pl.figure()
@@ -313,7 +361,7 @@ class DumpRenderer(object):
         for i, area in enumerate(geom.areas(incl_bnd)):
             self.content.append('-- {}'.format(i))
             for e in area:
-                if not e in handled:
+                if e not in handled:
                     e.render(self)
                     handled.add(e)
         self.content.append('--')
@@ -347,7 +395,7 @@ class NewFslRenderer(object):
               'agndst = 0.5',
               'new_model_force("{}","Test")',
               'blow_up_wind(0,0, {}, {})']
-    
+
     def __init__(self, name):
         self.model = name
         self.mirror_axis = None
@@ -406,12 +454,12 @@ class NewFslRenderer(object):
             # Abstand von airgap Richtung Nullpunkt
             el_sorted = [(geom.max_radius -
                           e.minmax_from_center((0.0, 0.0))[1], e)
-                         for e in geom.elements(g.Shape)]
+                         for e in geom.elements(Shape)]
         else:
             # Abstand von airgap Richtung Aussen
             el_sorted = [(e.minmax_from_center((0.0, 0.0))[0] -
                           geom.min_radius, e)
-                         for e in geom.elements(g.Shape)]
+                         for e in geom.elements(Shape)]
 
         el_sorted.sort()
         return el_sorted
@@ -425,7 +473,6 @@ class NewFslRenderer(object):
 
         ndt_list = [(0.25, 1.25), (0.5, 2), (0.75, 3.0), (1.1, 3.0)]
         dist = geom.max_radius - geom.min_radius
-
         el_sorted = self.sorted_elements(geom, inner)
 
         x = 0
@@ -434,7 +481,7 @@ class NewFslRenderer(object):
             if ndt_list[x][0] < d_percent:
                 self.content.append(u'\nndt({}*agndst)\n'.
                                     format(ndt_list[x][1]))
-                while ndt_list[x][0] < d_percent:
+                while x < 3 and ndt_list[x][0] < d_percent:
                     x += 1
 #            self.content.append(u'-- d={} / dist={} == {}'.
 #                                format(d, dist, d_percent))
@@ -466,7 +513,8 @@ class NewFslRenderer(object):
                     num_magnets += 1
                     self.content.append(u'm.xmag[{}], m.ymag[{}] = x0, y0'.
                                         format(num_magnets, num_magnets))
-
+                    self.content.append(u'm.mag_orient[{}] = {}'.
+                                        format(num_magnets, area.phi))
                 elif area.type > 0:
                     if area.type in subregions:
                         self.content.append(
@@ -527,7 +575,7 @@ class NewFslRenderer(object):
         self.content.append(
             u'  rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,m.{}_ncopies-1)'
             .format(geom.kind))
-        self.content.append(u'  end')
+        self.content.append(u'end')
 
         if self.fm_nlin:
             self.content.append(u'\nx0, y0 = {}, {}'. format(
@@ -561,8 +609,13 @@ class NewFslRenderer(object):
         self.content = []
         self.content.append(u'exit_on_error = false')
         self.content.append(u'exit_on_end = false')
-        self.content.append(u'verbosity = 2')
-        self.content.append(u'pickdist = 0.001\n')
+        self.content.append(u'verbosity = 2\n')
+
+        self.content.append(u'new_model_force("{}","Test")'.
+                            format(self.model))
+        self.content.append(u'global_unit(mm)')
+        self.content.append(u'pickdist(0.001)')
+        self.content.append(u'cosys(polar)\n')
 
         geom_inner = None
         geom_outer = None
@@ -571,8 +624,8 @@ class NewFslRenderer(object):
             geom_inner = m_inner.geom
             geom_outer = m_outer.geom
 
-            parts_inner = m_inner.get_symmetry_part()
-            parts_outer = m_outer.get_symmetry_part()
+            parts_inner = int(m_inner.get_symmetry_part())
+            parts_outer = int(m_outer.get_symmetry_part())
 
             if parts_inner > parts_outer:
                 num_slots = parts_inner
@@ -584,6 +637,7 @@ class NewFslRenderer(object):
                 npols_gen = int(geom_inner.get_symmetry_copies()+1)
             self.content.append(u'm.xmag = {}')
             self.content.append(u'm.ymag = {}')
+            self.content.append(u'm.mag_orient = {}')
             self.content.append(u'm.num_poles = {}'.format(num_poles))
             self.content.append(u'm.tot_num_slot = {}'.format(num_slots))
 
@@ -596,10 +650,14 @@ class NewFslRenderer(object):
         self.content.append(u'da2 = {}'.format(
             2*geom_inner.max_radius))
         self.content.append(u'ag = (da1 - da2)/2\n')
-        self.content.append(u'agndst = 0.75')
 
-        self.content.append(u'new_model_force("{}","Test")\n'.
-                            format(self.model))
+        if m_inner and m_outer:
+            self.content.append(u'm.tot_num_sl  = m.tot_num_slot')
+            self.content.append(u'm.fc_radius   = (da1+da2)/4')
+            self.content.append(u'm.fc_radius1  = m.fc_radius')
+            self.content.append(u'pre_models("basic_modpar")\n')
+
+        self.content.append(u'agndst = 0.75')
 
         if geom_inner:
             if parts_inner > parts_outer:
@@ -636,20 +694,33 @@ class NewFslRenderer(object):
 
         # Airgap
         txt = [u'-- airgap',
+               u'ndt(agndst)',
                u'r1 = da2/2 + ag/3',
                u'x1, y1 = pr2c(r1, alfa)',
                u'n = r1*alfa/agndst + 1',
                u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
                u'r2 = da2/2 + 2*ag/3',
                u'x2, y2 = pr2c(r2, alfa)',
-               u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
-               u'nc_line(da2/2, 0, r2, 0, 0)',
-               u'x3, y3 = pr2c(da2/2, alfa)',
+               u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n']
+        self.content.append(u'\n'.join(txt))
+        self.content.append(u'x1, y1 = {}, {}'
+                            .format(geom_inner.start_max_corner(0),
+                                    geom_inner.start_max_corner(1)))
+        self.content.append(u'nc_line(x1, y1, r1, 0.0, 0.0)\n')
+        self.content.append(u'x2, y2 = {}, {}'
+                            .format(geom_outer.start_min_corner(0),
+                                    geom_outer.start_min_corner(1)))
+        self.content.append(u'nc_line(r2, 0.0, x2, y2, 0.0)\n')
+
+        txt = [u'x3, y3 = pr2c(x1, alfa)',
+               u'x4, y4 = pr2c(r1, alfa)',
+               u'nc_line(x3, y3, x4, y4, 0, 0)\n',
+               u'x3, y3 = pr2c(x2, alfa)',
                u'x4, y4 = pr2c(r2, alfa)',
                u'nc_line(x3, y3, x4, y4, 0, 0)\n',
-               u'x0, y0 = pr2c(da2/2+ag/6, alfa/2)',
+               u'x0, y0 = pr2c(r1-ag/6, alfa/2)',
                u'create_mesh_se(x0, y0)',
-               u'x0, y0 = pr2c(da2/2+3*ag/6, alfa/2)',
+               u'x0, y0 = pr2c(r2+ag/6, alfa/2)',
                u'create_mesh_se(x0, y0)\n']
         self.content.append(u'\n'.join(txt))
 
@@ -671,11 +742,39 @@ class NewFslRenderer(object):
                u'  m.dq_offset       = 0',
                u'  if m.coil_exists == 1 and m.coil_mirrored then',
                u'    r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
-               u'    m.xcoil_2, m.ycoil_2 = pr2c(r, m.coil_alpha + phi)',
+               u'    m.xcoil_2, m.ycoil_2 = pr2c(r, m.coil_alpha*2.0 - phi)',
                u'  end\n',
                u'  pre_models("Gen_winding")',
                u'end\n']
         self.content.append(u'\n'.join(txt))
+
+        txt = [u'-- iron',
+               u'urr    = 1000',
+               u"mcvkey = 'dummy'"]
+        self.content.append(u'\n'.join(txt))
+        if geom_inner:
+            points = geom_inner.get_points_in_iron()
+            if points:
+                self.content.append(u'x0 = {} -- {}'
+                                    .format(points[0][0], geom_inner.kind))
+                self.content.append(u'y0 = {}'.format(points[0][1]))
+                self.content.append(u"if mcvkey ~= 'dummy' then")
+                self.content.append(u'  def_mat_fm_nlin(x0, y0, blue, mcvkey, 100)')
+                self.content.append(u'else')
+                self.content.append(u'  def_mat_fm(x0, y0, 1000.0, 100)')
+                self.content.append(u'end')
+        if geom_outer:
+            points = geom_outer.get_points_in_iron()
+            if points:
+                self.content.append(u'x0 = {} -- {}'
+                                    .format(points[0][0], geom_outer.kind))
+                self.content.append(u'y0 = {}'.format(points[0][1]))
+                self.content.append(u"if mcvkey ~= 'dummy' then")
+                self.content.append(u'  def_mat_fm_nlin(x0, y0, blue, mcvkey, 100)')
+                self.content.append(u'else')
+                self.content.append(u'  def_mat_fm(x0, y0, 1000.0, 100)')
+                self.content.append(u'end')
+        self.content.append(u'')
 
         txt = [u'-- pm magnets',
                u'if m.mag_exists > 0 then',
@@ -686,25 +785,27 @@ class NewFslRenderer(object):
                u'    for n=1, m.mag_exists do',
                u'      r, p = c2pr(m.xmag[n], m.ymag[n])',
                u'      phi = i*alfa+p',
-               u'      orient = phi*180/math.pi',
                u'      x0, y0 = pr2c(r, phi)',
+               u'      phi_orient = i*alfa+m.mag_orient[n]',
+               u'      orient = phi_orient*180/math.pi',
                u'      if ( i % 2 == 0 ) then',
                u'        def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
-               u'                   orient, m.parallel, 100)',
+               u'                   orient-180, m.parallel, 100)',
                u'      else',
                u'        def_mat_pm(x0, y0, green, m.remanenc, m.relperm,',
-               u'                   orient-180, m.parallel, 100)',
+               u'                   orient, m.parallel, 100)',
                u'      end',
                u'      if m.mag_mirrored then',
                u'        phi = (i+1)*alfa-p',
-               u'        orient = phi*180/math.pi',
                u'        x0, y0 = pr2c(r, phi)',
+               u'        phi_orient = (i+1)*alfa-m.mag_orient[n]',
+               u'        orient = phi_orient*180/math.pi',
                u'        if ( i % 2 == 0 ) then',
                u'          def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
-               u'                     orient, m.parallel, 100)',
+               u'                     orient-180, m.parallel, 100)',
                u'        else',
                u'          def_mat_pm(x0, y0, green, m.remanenc, m.relperm,',
-               u'                     orient-180, m.parallel, 100)',
+               u'                     orient, m.parallel, 100)',
                u'        end',
                u'      end',
                u'    end',

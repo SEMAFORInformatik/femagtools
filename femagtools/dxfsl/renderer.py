@@ -473,7 +473,6 @@ class NewFslRenderer(object):
 
         ndt_list = [(0.25, 1.25), (0.5, 2), (0.75, 3.0), (1.1, 3.0)]
         dist = geom.max_radius - geom.min_radius
-
         el_sorted = self.sorted_elements(geom, inner)
 
         x = 0
@@ -482,7 +481,7 @@ class NewFslRenderer(object):
             if ndt_list[x][0] < d_percent:
                 self.content.append(u'\nndt({}*agndst)\n'.
                                     format(ndt_list[x][1]))
-                while ndt_list[x][0] < d_percent:
+                while x < 3 and ndt_list[x][0] < d_percent:
                     x += 1
 #            self.content.append(u'-- d={} / dist={} == {}'.
 #                                format(d, dist, d_percent))
@@ -695,20 +694,33 @@ class NewFslRenderer(object):
 
         # Airgap
         txt = [u'-- airgap',
+               u'ndt(agndst)',
                u'r1 = da2/2 + ag/3',
                u'x1, y1 = pr2c(r1, alfa)',
                u'n = r1*alfa/agndst + 1',
                u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
                u'r2 = da2/2 + 2*ag/3',
                u'x2, y2 = pr2c(r2, alfa)',
-               u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
-               u'nc_line(da2/2, 0, r2, 0, 0)',
-               u'x3, y3 = pr2c(da2/2, alfa)',
+               u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n']
+        self.content.append(u'\n'.join(txt))
+        self.content.append(u'x1, y1 = {}, {}'
+                            .format(geom_inner.start_max_corner(0),
+                                    geom_inner.start_max_corner(1)))
+        self.content.append(u'nc_line(x1, y1, r1, 0.0, 0.0)\n')
+        self.content.append(u'x2, y2 = {}, {}'
+                            .format(geom_outer.start_min_corner(0),
+                                    geom_outer.start_min_corner(1)))
+        self.content.append(u'nc_line(r2, 0.0, x2, y2, 0.0)\n')
+
+        txt = [u'x3, y3 = pr2c(x1, alfa)',
+               u'x4, y4 = pr2c(r1, alfa)',
+               u'nc_line(x3, y3, x4, y4, 0, 0)\n',
+               u'x3, y3 = pr2c(x2, alfa)',
                u'x4, y4 = pr2c(r2, alfa)',
                u'nc_line(x3, y3, x4, y4, 0, 0)\n',
-               u'x0, y0 = pr2c(da2/2+ag/6, alfa/2)',
+               u'x0, y0 = pr2c(r1-ag/6, alfa/2)',
                u'create_mesh_se(x0, y0)',
-               u'x0, y0 = pr2c(da2/2+3*ag/6, alfa/2)',
+               u'x0, y0 = pr2c(r2+ag/6, alfa/2)',
                u'create_mesh_se(x0, y0)\n']
         self.content.append(u'\n'.join(txt))
 
@@ -730,7 +742,7 @@ class NewFslRenderer(object):
                u'  m.dq_offset       = 0',
                u'  if m.coil_exists == 1 and m.coil_mirrored then',
                u'    r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
-               u'    m.xcoil_2, m.ycoil_2 = pr2c(r, m.coil_alpha + phi)',
+               u'    m.xcoil_2, m.ycoil_2 = pr2c(r, m.coil_alpha*2.0 - phi)',
                u'  end\n',
                u'  pre_models("Gen_winding")',
                u'end\n']

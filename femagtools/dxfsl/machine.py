@@ -197,7 +197,8 @@ class Machine(object):
     def undo_mirror(self):
         assert(self.is_mirrored())
         assert(self.previous_machine)
-        self.previous_machine.complete_hull()
+        self.previous_machine.set_minmax_radius()
+        # self.previous_machine.complete_hull()
         self.previous_machine.create_auxiliary_lines()
         self.previous_machine.set_kind(self.geom.kind)
         return self.previous_machine
@@ -328,6 +329,7 @@ class Machine(object):
         return part_of_circle(self.startangle, self.endangle, pos)
 
     def repair_hull(self):
+        logger.info('repair_hull')
         self.geom.repair_hull_line(self.center, self.startangle)
         self.geom.repair_hull_line(self.center, self.endangle)
 
@@ -337,7 +339,11 @@ class Machine(object):
             self.mirror_geom.repair_hull_line(self.center,
                                               self.mirror_endangle)
 
-    def complete_hull(self):
+    def set_minmax_radius(self):
+        self.geom.set_minmax_radius(self.center)
+
+    def complete_hull(self, is_inner, is_outer):
+        logger.info('complete_hull')
         start_corners = self.geom.complete_hull_line(self.center,
                                                      self.startangle)
         end_corners = self.geom.complete_hull_line(self.center,

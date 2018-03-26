@@ -38,6 +38,8 @@ def symmetry_search(machine,
                     plt,  # plotter
                     kind,
                     symtol=0.0,
+                    is_inner=False,
+                    is_outer=False,
                     show_plots=True,
                     debug_mode=False,
                     rows=1,
@@ -84,7 +86,8 @@ def symmetry_search(machine,
             logger.info("another mirror found")
         machine_ok = machine_mirror
 
-    machine_ok.complete_hull()
+    machine_ok.set_minmax_radius()
+    # machine_ok.complete_hull(is_inner, is_outer)
     machine_ok.create_auxiliary_lines()
     machine_ok.set_kind(kind)
     return machine_ok
@@ -178,6 +181,7 @@ def converter(dxfile,
         machine_inner = symmetry_search(machine_inner,
                                         p,  # plot
                                         inner_name,
+                                        is_inner=True,
                                         symtol=symtol,
                                         show_plots=show_plots,
                                         rows=3,  # rows
@@ -189,6 +193,7 @@ def converter(dxfile,
         machine_outer = symmetry_search(machine_outer,
                                         p,  # plot
                                         outer_name,
+                                        is_outer=True,
                                         symtol=symtol,
                                         show_plots=show_plots,
                                         rows=3,  # rows

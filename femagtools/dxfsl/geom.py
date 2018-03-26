@@ -86,7 +86,7 @@ def intersect_and_split(inp_elements, rtol, atol):
     for e in inp_elements:
         out_size = len(out_elements)
         intersect_and_split_element(e, out_elements, 0, out_size, rtol, atol)
-    print(" done")
+    logger.info(" ... loaded")
     return out_elements
 
 
@@ -570,6 +570,12 @@ class Geometry(object):
         if len(corners) > 1:
             corners.sort()
         return corners
+
+    def start_min_corner(self, i):
+        return self.start_corners[0][i]
+
+    def start_max_corner(self, i):
+        return self.start_corners[-1][i]
 
     def repair_hull_line(self, center, angle):
         # We need to set our own tolerance range

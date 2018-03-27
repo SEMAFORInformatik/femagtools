@@ -510,6 +510,14 @@ class Area(object):
             alpha += np.pi
         return alpha + np.pi/2
 
+    def around_windings(self, areas):
+        for a in areas:
+            if a.is_winding():
+                if not self.is_identical(a):
+                    if self.is_inside(a):
+                        return True
+        return False
+
     def mark_stator_subregions(self, is_inner, mirrored, alpha,
                                center, r_in, r_out):
         alpha = round(alpha, 6)
@@ -544,6 +552,9 @@ class Area(object):
             if air_alpha / alpha < 0.2:
                 self.type = 0  # air
                 return self.type
+
+            if air_alpha / alpha < 0.5:
+                self.type = 9  # air or iron near windings?
             else:
                 self.type = 1  # iron
             return self.type
@@ -608,6 +619,10 @@ class Area(object):
             if self.is_rectangle():
                 self.type = 4  # magnet embedded
                 self.phi = self.get_mag_orient_rectangle()
+                return self.type
+
+            if not (self.close_to_startangle or self.close_to_endangle):
+                self.type = 0  # air
                 return self.type
 
         self.type = 1  # iron

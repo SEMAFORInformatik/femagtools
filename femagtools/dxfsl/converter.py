@@ -222,7 +222,9 @@ def converter(dxfile,
                               fill_areas=True)
             p.show_plot()
 
-            # p.render_areas(machine_inner.geom)
+            # p.render_areas(machine_inner.geom,
+            #                with_nodes=True,
+            #                single_view=True)
             # p.render_areas(machine_outer.geom)
 
         if write_fsl:

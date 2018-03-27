@@ -638,6 +638,8 @@ class NewFslRenderer(object):
             self.content.append(u'm.xmag = {}')
             self.content.append(u'm.ymag = {}')
             self.content.append(u'm.mag_orient = {}')
+            self.content.append(u'm.mag_exists = 0')
+            self.content.append(u'm.coil_exists = 0\n')
             self.content.append(u'm.num_poles = {}'.format(num_poles))
             self.content.append(u'm.tot_num_slot = {}'.format(num_slots))
 

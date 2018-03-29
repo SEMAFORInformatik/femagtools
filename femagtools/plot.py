@@ -186,7 +186,8 @@ def force(title, pos, force):
     ax.set_title('{} / {}'.format(title, unit))
     ax.grid(True)
     ax.plot(pos, [scale*f for f in force])
-    ax.set_ylim(bottom=0)
+    if min(force) > 0:
+        ax.set_ylim(bottom=0)
 
 
 def winding_flux(pos, flux):
@@ -230,30 +231,35 @@ def mcv_hbj(mcv, log=True):
     MUE0 = 4e-7*np.pi
     ji = []
 
-    bh = [(bi, hi*1e-3)
-          for bi, hi in zip(mcv['curve'][0]['bi'],
-                            mcv['curve'][0]['hi'])]
-    try:
-        if mcv['ctype'] in (femagtools.mcv.MAGCRV,
-                            femagtools.mcv.ORIENT_CRV):
-            ji = [b-MUE0*h*1e3 for b, h in bh]
-    except:
-        pass
-    bi, hi = zip(*bh)
-
+    csiz = len(mcv['curve'])
     ax = pl.gca()
     ax.set_title(mcv['name'])
-    if log:
-        ax.semilogx(hi, bi, label='Induction')
-        if ji:
-            ax.semilogx(hi, ji, label='Polarisation')
-    else:
-        ax.plot(hi, bi, label='Induction')
-        if ji:
-            ax.plot(hi, ji, label='Polarisation')
+    for k, c in enumerate(mcv['curve']):
+        bh = [(bi, hi*1e-3)
+              for bi, hi in zip(c['bi'],
+                                c['hi'])]
+        try:
+            if csiz == 1 and mcv['ctype'] in (femagtools.mcv.MAGCRV,
+                                              femagtools.mcv.ORIENT_CRV):
+                ji = [b-MUE0*h*1e3 for b, h in bh]
+        except Exception:
+            pass
+        bi, hi = zip(*bh)
+
+        label = 'Induction'
+        if csiz > 1:
+            label = 'Induction ({0}°)'.format(mcv.mc1_angle[k])
+        if log:
+            ax.semilogx(hi, bi, label=label)
+            if ji:
+                ax.semilogx(hi, ji, label='Polarisation')
+        else:
+            ax.plot(hi, bi, label=label)
+            if ji:
+                ax.plot(hi, ji, label='Polarisation')
     ax.set_xlabel('H / kA/m')
     ax.set_ylabel('T')
-    if ji:
+    if ji or csiz > 1:
         ax.legend(loc='lower right')
     ax.grid()
 
@@ -677,13 +683,14 @@ if __name__ == "__main__":
         with io.open(filename, encoding='latin1', errors='ignore') as f:
             bchresults.read(f.readlines())
 
-        if bchresults.type == 'Fast PM-Synchronous-Motor Simulation':
+        if bchresults.type.lower().find(
+                'pm-synchronous-motor simulation') >= 0:
             pmrelsim(bchresults, bchresults.filename)
-        elif bchresults.type == 'Fast cogging calculation OF FORCES AND FLUX':
+        elif bchresults.type.lower().find('cogging calculation') >= 0:
             cogging(bchresults, bchresults.filename)
-        elif bchresults.type == 'Fast LD-LQ-Identification':
+        elif bchresults.type.lower().find('ld-lq-identification') >= 0:
             ldlq(bchresults)
-        elif bchresults.type == 'Fast Psid-Psiq-Identification':
+        elif bchresults.type.lower().find('psid-psiq-identification') >= 0:
             psidq(bchresults)
         else:
             raise ValueError("BCH type {} not yet supported".format(

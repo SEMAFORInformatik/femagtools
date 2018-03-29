@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
     femagtools.isa7
-    ~~~~~~~~~~~~~~~
 
-    Read FEMAG I7/ISA7 model files
-
+    Read FEMAG I7/ISA7 model file
+    ~~~~~~~~~~~~~~~~
 """
 import logging
 import struct
 import sys
+import itertools
 import re
 from collections import Counter
 
@@ -81,8 +81,12 @@ class Reader(object):
 
 
 class Isa7(object):
-    """ The ISA7 Object """
+    """ The ISA7 Femag model
 
+    Arguments:
+        filename: name of I7/ISA7 file to be read
+    """
+    
     color = {1: [1.0, 0.0, 0.0],
              2: [0.0, 1.0, 0.0],
              3: [1.0, 1.0, 0.0],
@@ -101,7 +105,7 @@ class Isa7(object):
              16: [0.8274509803921568, 0.8274509803921568, 0.8274509803921568]}
 
     def __init__(self, filename):
-        self.read(filename)
+        self.__read(filename)
 
         self.points = []
         for p in range(self.NUM_PNT):
@@ -244,9 +248,10 @@ class Isa7(object):
             nc_keys = [nck for nck, count
                        in Counter(nc_keys).items() if count < 2]
             for se in superelements:
-                nodechains.extend(
-                    [nc for nc in se.nodechains if abs(nc.key) in nc_keys])
-
+                nodechains.extend([nc
+                                   for nc in se.nodechains
+                                   if abs(nc.key) in nc_keys])
+                
             self.subregions.append(
                 SubRegion(self.SR_ISA_SR_VALID[sr],
                           sr + 1,
@@ -284,7 +289,7 @@ class Isa7(object):
                         self.WB_ISA_WB_REC_WB_VOLT_RE[wd],
                         self.WB_ISA_WB_REC_WB_VOLT_IM[wd]))
 
-    def read(self, filename):
+    def __read(self, filename):
         reader = Reader(filename)
 
         (self.NUM_PNT, self.PNT_PTR, self.PNT_HIDX,
@@ -420,6 +425,82 @@ class Isa7(object):
         (self.WB_SR_ISA_SR_KEY,
          self.WB_SR_ISA_NXT_SR_PNTR) = reader.next_block("hh")
 
+    def msh(self):
+        """return gmsh list"""
+        it = itertools.count(1)
+
+        msh = ["$MeshFormat",
+               "2.2 0 8",
+               "$EndMeshFormat"]
+        
+        msh.append("$PhysicalNames")
+        physical_names = sorted(set([sr.name
+                                     for sr in self.subregions]))
+        msh.append("{}".format(len(physical_names)))
+        for k, n in enumerate(physical_names):
+            msh.append("2 {} \"{}\"".format(k+1, n))
+        msh.append("$EndPhysicalNames")
+        
+        def sr_key(e):
+            return physical_names.index(
+                self.subregions[self.superelements[e.se_key].sr_key].name)
+
+        msh.append("$Nodes")
+        msh.append("{}".format(len(self.nodes)))
+        for n in self.nodes:
+            msh.append("{} {} {} 0".format(n.key, n.x, n.y))
+        msh.append("$EndNodes")
+
+        msh.append("$Elements")
+        msh.append("{}".format(len([v for e in self.elements
+                                    for v in e.vertices]) +
+                               len(self.elements)))
+        # 1-node points
+        #node_els = list(set([n for se in self.superelements
+        #                     for nc in se.nodechains
+        #                     for n in nc.nodes[:-1] ]))
+        #for n in node_els:
+        #    next_id = next(it)
+        #    msh += "{0} 15 2 0 {1} {1}\n".format(next_id, n.key)
+
+        # surfaces
+        for e in self.elements:
+            ev = e.vertices
+
+            # 2-node lines
+            for i, v in enumerate(ev):
+                msh.append("{} 1 2 0 {} {} {}".format(
+                    next(it),
+                    e.key,
+                    ev[i-1].key,
+                    ev[i].key))
+            
+            # 3-node triangles
+            if len(ev) == 3:
+                msh.append("{} 2 2 {} {} {} {} {}".format(
+                    next(it),
+                    sr_key(e) + 1,
+                    sr_key(e) + len(self.elements),
+                    ev[0].key,
+                    ev[1].key,
+                    ev[2].key))
+            
+            # 4-node quadrangles
+            elif len(ev) == 4:
+                msh.append("{} 3 2 {} {} {} {} {} {}".format(
+                    next(it),
+                    sr_key(e) + 1,
+                    sr_key(e) + len(self.elements),
+                    ev[0].key,
+                    ev[1].key,
+                    ev[2].key,
+                    ev[3].key))
+#            else:
+#                logger.warn("unsupported vertice len %d", len(ev))
+        msh.append("$EndElements")
+        
+        return msh
+
 
 class Point(object):
     def __init__(self, valid, x, y):
@@ -436,10 +517,15 @@ class Line(object):
         self.p2 = p2
 
 
-class Node(object):
-    def __init__(self, valid, key, bndcnd, pernod, x, y, vpot_re, vpot_im):
+class BaseEntity(object):
+    def __init__(self, valid, key):
         self.valid = valid
         self.key = key
+        
+
+class Node(BaseEntity):
+    def __init__(self, valid, key, bndcnd, pernod, x, y, vpot_re, vpot_im):
+        super(self.__class__, self).__init__(valid, key)
         self.bndcnd = bndcnd
         self.pernod = pernod
         self.x = x
@@ -448,41 +534,38 @@ class Node(object):
         self.vpot = vpot_re, vpot_im
 
 
-class NodeChain(object):
+class NodeChain(BaseEntity):
     def __init__(self, valid, key, nodes):
-        self.valid = valid
+        super(self.__class__, self).__init__(valid, key)
         self.key = key
         self.node1 = nodes[0]
         self.nodemid = nodes[1]
         self.node2 = nodes[2]
-        self.nodes = (nodes[0], nodes[2]) if nodes[1] is None else (
-                      nodes[0], nodes[1], nodes[2])
-
+        if nodes[1] is None:
+            self.nodes = (nodes[0], nodes[2])
+        else:
+            self.nodes = (nodes[0], nodes[1], nodes[2])
+    
     def reverse(self):
-        """
-        Return a copy of the NodeChain with reversed start and end points.
-        """
-        return NodeChain(self.valid,
-                         self.key * (-1),
+        return NodeChain(self.valid, self.key * (-1),
                          [self.node2, self.nodemid, self.node1])
-
-
-class Element(object):
+    
+    
+class Element(BaseEntity):
     def __init__(self, valid, key, el_type, se_key, vertices, reluc, mag):
-        self.valid = valid
-        self.key = key
+        super(self.__class__, self).__init__(valid, key)
         self.el_type = el_type
         self.se_key = se_key
         self.vertices = vertices
         self.reluc = reluc
         self.mag = mag
-
-
-class SuperElement(object):
+        
+        
+class SuperElement(BaseEntity):
     def __init__(self, valid, key, sr_key, elements, nodechains, color,
                  nc_keys, mcvtype, condtype, conduc, length,
                  velsys, velo_1, velo_2, curd_re, curd_im):
-        self.valid = valid
+        super(self.__class__, self).__init__(valid, key)
         self.key = key
         self.sr_key = sr_key
         self.elements = elements
@@ -496,13 +579,12 @@ class SuperElement(object):
         self.velsys = velsys
         self.velo = velo_1, velo_2
         self.curd = curd_re, curd_im
-
-
-class SubRegion(object):
+        
+        
+class SubRegion(BaseEntity):
     def __init__(self, valid, key, sr_type, color, name, curdir, wb_key,
                  superelements, nodechains):
-        self.valid = valid
-        self.key = key
+        super(self.__class__, self).__init__(valid, key)
         self.sr_type = sr_type
         self.color = color
         self.name = name
@@ -510,13 +592,12 @@ class SubRegion(object):
         self.wb_key = wb_key
         self.superelements = superelements
         self.nodechains = nodechains
-
-
-class Winding(object):
+        
+        
+class Winding(BaseEntity):
     def __init__(self, valid, key, name, subregions, num_turns, cur_re, cur_im,
                  flux_re, flux_im, volt_re, volt_im):
-        self.valid = valid
-        self.key = key
+        super(self.__class__, self).__init__(valid, key)
         self.name = name
         self.subregions = subregions
         self.num_turns = num_turns

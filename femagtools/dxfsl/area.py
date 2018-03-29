@@ -16,7 +16,7 @@ from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle
-from .shape import Element, Shape, Line
+from .shape import Element, Shape, Line, Arc, Circle
 
 logger = logging.getLogger('femagtools.area')
 
@@ -218,7 +218,7 @@ class Area(object):
                           1e-03, sym_tolerance) and \
                np.isclose(round(self.alpha, 3),
                           round(a.alpha, 3),
-                          1e-02, 0.001):
+                          1e-02, 0.01):
                 return True
         else:
             if np.isclose(round(self.min_dist, 2),
@@ -227,6 +227,7 @@ class Area(object):
                           round(a.max_dist, 2)) and \
                np.isclose(round(self.alpha, 3),
                           round(a.alpha, 3), 1e-02, 0.001):
+                print(" - OK")
                 return True
         return False
 
@@ -377,22 +378,33 @@ class Area(object):
 
         assert(len(points) > 1)
 
-        points_sorted = []
-        for p in points:
-            points_sorted.append((p[0], p))
-        points_sorted.sort()
-        p1 = points_sorted[0][1]  # Startpoint
+        my_points_sorted = [(p[0], p) for p in points]
+        my_points_sorted.sort()
+        my_p1 = my_points_sorted[0][1]   # Startpoint
+        my_p2 = my_points_sorted[-1][1]  # Endpoint
 
-        points_sorted = []
+        all_points_sorted = []
         for e in geom.elements(Shape):
             points = e.intersect_line(line, geom.rtol, geom.atol, True)
             for p in points:
-                if p[0] > p1[0]:
-                    points_sorted.append((p[0], p))
-        points_sorted.sort()
+                if greater(p[0], my_p1[0], rtol=1e-8):
+                    if less(p[0], my_p2[0], rtol=1e-8):
+                        all_points_sorted.append((p[0], p))
 
-        p2 = points_sorted[0][1]
-        return ((p1[0]+p2[0])/2, y)
+        if len(all_points_sorted) == 0:
+            p_inside = ((my_p1[0]+my_p2[0])/2, y)
+            return p_inside
+
+        all_points_sorted.sort()
+        all_p1 = all_points_sorted[0][1]
+        all_p2 = all_points_sorted[-1][1]
+        d1 = all_p1[0] - my_p1[0]
+        d2 = my_p2[0] - all_p2[0]
+        if d1 > d2:
+            p_inside = ((my_p1[0]+all_p1[0])/2, y)
+        else:
+            p_inside = ((my_p2[0]+all_p2[0])/2, y)
+        return p_inside
 
     def render(self, renderer, color='black', with_nodes=False):
         for e in self.area:
@@ -401,7 +413,13 @@ class Area(object):
 
     def render_fill(self, renderer, alpha=1.0):
         color = self.color()
-        if color:
+        if not color:
+            return
+
+        if self.is_circle():
+            e = self.area[0]
+            renderer.fill_circle(e.center, e.radius, color, alpha)
+        else:
             nodes = [n for n in self.virtual_nodes()]
             x = [n[0] for n in nodes]
             y = [n[1] for n in nodes]
@@ -417,6 +435,27 @@ class Area(object):
             except Exception:
                 continue
 
+    def is_circle(self):
+        e = self.area[0]
+        if len(self.area) == 1:
+            return isinstance(e, Circle) and not isinstance(e, Arc)
+
+        if isinstance(e, Arc):
+            c = e.center
+            r = e.radius
+            a = 0.0
+            for e in self.area:
+                if not isinstance(e, Arc):
+                    return False
+                if not points_are_close(c, e.center):
+                    return False
+                if not np.isclose(r, e.radius):
+                    return False
+                a += e.get_angle_of_arc()
+            return np.isclose(a, 2.0*np.pi)
+
+        return False
+
     def is_rectangle(self):
         lines = [[c, e.m(99999.0), e.length()]
                  for c, e in enumerate(self.area)
@@ -424,19 +463,24 @@ class Area(object):
         lines.sort()
 
         line_count = 1
+        m_first = 0.0
         m_prev = 999.999999
         c_prev = -99
         for c, m, l in lines:
             if c_prev >= 0:
-                if np.isclose(m_prev, m):
+                if np.isclose(m_prev, m, atol=0.001):
                     if c_prev+1 != c:
                         # Gleiche Steigung, aber keine Verlängerung
                         line_count += 1
                 else:
                     line_count += 1
-
+            else:
+                m_first = m
             m_prev = m
             c_prev = c
+
+        if np.isclose(m_prev, m_first, atol=0.001):
+            line_count -= 1
 
         return line_count == 4
 
@@ -466,9 +510,21 @@ class Area(object):
             alpha += np.pi
         return alpha + np.pi/2
 
+    def around_windings(self, areas):
+        for a in areas:
+            if a.is_winding():
+                if not self.is_identical(a):
+                    if self.is_inside(a):
+                        return True
+        return False
+
     def mark_stator_subregions(self, is_inner, mirrored, alpha,
                                center, r_in, r_out):
         alpha = round(alpha, 6)
+
+        if self.is_circle():
+            self.type = 0  # air
+            return self.type
 
         if is_inner:
             close_to_ag = np.isclose(r_out, self.max_dist)
@@ -496,6 +552,9 @@ class Area(object):
             if air_alpha / alpha < 0.2:
                 self.type = 0  # air
                 return self.type
+
+            if air_alpha / alpha < 0.5:
+                self.type = 9  # air or iron near windings?
             else:
                 self.type = 1  # iron
             return self.type
@@ -515,6 +574,10 @@ class Area(object):
                               center, r_in, r_out):
         my_alpha = round(self.max_angle - self.min_angle, 6)
         alpha = round(alpha, 6)
+
+        if self.is_circle():
+            self.type = 0  # air
+            return self.type
 
         if is_inner:
             close_to_ag = np.isclose(r_out, self.max_dist)
@@ -556,7 +619,10 @@ class Area(object):
             if self.is_rectangle():
                 self.type = 4  # magnet embedded
                 self.phi = self.get_mag_orient_rectangle()
-                # self.phi = middle_angle(self.min_angle, self.max_angle) + 0.6
+                return self.type
+
+            if not (self.close_to_startangle or self.close_to_endangle):
+                self.type = 0  # air
                 return self.type
 
         self.type = 1  # iron
@@ -611,8 +677,9 @@ class Area(object):
         return self.min_angle < a.min_angle
 
     def __str__(self):
-        return "Area\n distance: from {} to {}\n".\
+        return "Area\ndistance: from {} to {}\n".\
             format(round(self.min_dist, 4), round(self.max_dist, 4)) + \
             "alpha...: {}\n".format(self.alpha) + \
-            "angle...: from {} to {}\n".format(round(self.min_angle, 6),
-                                               round(self.max_angle, 6))
+            "angle...: from {} to {}\n".\
+            format(round(self.min_angle, 6), round(self.max_angle, 6)) + \
+            "delta...: {}".format(self.delta)

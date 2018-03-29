@@ -314,24 +314,30 @@ def is_point_inside_region(p, center,
                                        startangle, endangle)
 
 
+def get_angle_of_arc(startangle, endangle):
+    if np.isclose(startangle, endangle):
+        return 2.0*np.pi  # is a circle
+
+    start = normalise_angle(startangle)
+    end = normalise_angle(endangle)
+
+    if less(start, 0.0):
+        start += 2.0*np.pi
+    while less(end, start):
+        end += 2.0*np.pi
+
+    if np.isclose(start, end):
+        return 2.0*np.pi  # is a circle
+    return end - start
+
+
 def angles_on_arc(startangle, endangle, parts=8):
-    circle = np.isclose(startangle, endangle)
-    if circle:
-        endangle += 2.0*np.pi
-    elif greater_equal(startangle, 0.0):
-        if endangle < startangle:
-            endangle += 2.0*np.pi
-    else:
-        if less_equal(endangle, startangle):
-            startangle += 2.0*np.pi
-
-    alpha = endangle - startangle
-
+    alpha = get_angle_of_arc(startangle, endangle)
     num = max(int(alpha/(np.pi/parts)), 1)
 
     for x in range(0, num):
-        yield x/num*alpha + startangle
-    if not circle:
+        yield float(x)/num*alpha + startangle
+    if less(alpha, 2.0*np.pi):
         yield alpha + startangle
 
 

@@ -182,11 +182,11 @@ class Mcv(object):
             if vlist[i] != 0.:
                 break
         return list(vlist[:i+1])
-
-    def __getitem__(self, index):
-        if index == 'ctype':  # for compatibility purposes
+    
+    def __getitem__(self, key):
+        if key == 'ctype':  # for compatibility purposes
             return self.mc1_type
-        return self.__getattribute__(index)
+        return getattr(self, key)
 
 
 class Writer(Mcv):
@@ -195,27 +195,26 @@ class Writer(Mcv):
         if data:
             self.setData(data)
 
-    def __setattr__(self, name, val):
+    def __setattr__(self, key, val):
         try:
-            self.__dict__[name] = val
-        except:  # file format unknown
-            logger.debug("setAttr Exception, name: %s, value: %s", name, val)
+            self.__dict__[key] = val
+        except Exception:  # file format unknown
+            logger.debug("setAttr Exception, name: %s, value: %s", key, val)
 
     def setData(self, data):
         wtrans = {transl[k]: k
                   for k in transl if not isinstance(transl[k], list)}
         for k in wtrans:
-            if wtrans[k] in data:
+            if wtrans[k] in data.keys():
                 self.__setattr__(k, data[wtrans[k]])
-        self.curve = [dict(bi=c['bi'], hi=c['hi'])
-                      for c in data['curve']]
+        self.curve = data['curve']
         try:
             self.mc1_angle = [c['angle'] for c in data['curve']]
-        except:
+        except Exception:
             pass
         try:
             self.losses = data['losses']
-        except:
+        except Exception:
             pass
         return
 
@@ -223,7 +222,7 @@ class Writer(Mcv):
         if isinstance(d, string_types) or isinstance(d, bytes):
             try:
                 s = bytes(d).decode('utf-8').encode('latin1')
-            except:
+            except Exception:
                 s = d.encode('latin1')
             return len(s)
         elif isinstance(d, int) or isinstance(d, float):
@@ -245,7 +244,7 @@ class Writer(Mcv):
         if isinstance(d, string_types):
             try:
                 s = bytes(d).decode('utf-8').encode('latin1')
-            except:
+            except Exception:
                 s = d.encode('latin1')
             self.fp.write(s)
         elif isinstance(d, int):
@@ -691,10 +690,9 @@ class Reader(Mcv):
         try:
             if self.losses:
                 result['losses'] = self.losses
-        except:
+        except Exception:
             pass
-        if (self.ORIENTED_VERSION_MC_CURVE or
-            self.PARAMETER_PM_CURVE):
+        if (self.ORIENTED_VERSION_MC_CURVE or self.PARAMETER_PM_CURVE):
             for i in range(len(self.curve)):
                 result['curve'][i]['angle'] = self.mc1_angle[i]
             
@@ -718,16 +716,25 @@ class MagnetizingCurve(object):
 
         elif isinstance(mcvpar, dict):
             logger.info("MagnetizingCurve is dict")
-            if 'id' in mcvpar:
+            try:
                 self.mcv[str(mcvpar['id'])] = mcvpar
                 return
-            if 'name' in mcvpar:
+            except Exception:
+                pass
+            try:
                 self.mcv[mcvpar['name']] = mcvpar
                 return
+            except Exception:
+                pass
+            
             self.mcv['0'] = mcvpar
-
-        # Do not use unicode in PYTHON 3 as all strings are sequences of Unicode
-        elif isinstance(mcvpar, string_types) or isinstance(mcvpar, unicode):
+            return
+        
+        elif isinstance(mcvpar, Reader):
+            self.mcv[mcvpar['name']] = mcvpar.get_results()
+            return
+            
+        elif isinstance(mcvpar, string_types):
             self.mcdirectory = os.path.abspath(mcvpar)
             logger.info("MC Dir %s", self.mcdirectory)
         else:
@@ -1011,6 +1018,7 @@ def read(filename):
     mcv.readMcv(filename)
     return mcv
 
+
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         filename = sys.argv[1]
@@ -1019,6 +1027,4 @@ if __name__ == "__main__":
 
     mcv = read(filename)
     json.dump(mcv.get_results(), sys.stdout)
-    #print(mcv.get_results()
-    #mcv.recalc()
-    #mcv.writefile(mcvdata['name'], '.','cat')
+

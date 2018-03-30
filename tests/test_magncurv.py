@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-import unittest
+import pytest
 import femagtools.mcv
 import os
+import sys
+import tempfile
+import shutil
 
 
 mcvPars =[dict(
@@ -34,28 +37,28 @@ mcvPars =[dict(
 ]
 
 
-class MagnetizingCurveTest(unittest.TestCase):
+def test_findById():
+    mcv = femagtools.mcv.MagnetizingCurve(mcvPars)
+    result = mcv.find('TKS_NO_20')
+    expected = mcvPars[0]['name']
+    assert result == expected
 
-    def test_findById(self):
-        mcv = femagtools.mcv.MagnetizingCurve(mcvPars)
-        result = mcv.find('TKS_NO_20')
-        expected = mcvPars[0]['name']
-        self.assertEqual(result, expected)
 
-    def test_writeFile(self):
-        testPath = os.path.split(__file__)[0]
-        if not testPath:
-            testPath = '.'
-        mcvwriter = os.path.abspath(os.path.join(testPath, 'mcvwriter'))
-        mcv = femagtools.mcv.MagnetizingCurve(mcvPars)
-        result = mcv.writefile('TKS_NO_20', '.', mcvwriter)
-        self.assertEqual(result.split('.')[0], mcvPars[0]['name'])
-        out = []
-        with open('dummy.mc') as f:
-            out = f.readlines()
+def test_writeFile():
+    testPath = os.path.split(__file__)[0]
+    if not testPath:
+        testPath = '.'
+    dir = tempfile.mkdtemp()
+    mcv = femagtools.mcv.MagnetizingCurve(mcvPars)
+    result = mcv.writefile('TKS_NO_20', dir)
+    assert result == mcvPars[0]['name']
+
+    ext = '.MC' if sys.platform == 'win32' else '.MCV'
+    mcv = femagtools.mcv.read(os.path.join(dir, result + ext))
             
-        self.assertEqual(len(out), 37)
-        os.remove('dummy.mc')
+    assert pytest.approx(
+        mcvPars[0]['curve'][0]['bi']) == mcv.get_results()['curve'][0]['bi']
+    assert pytest.approx(
+        mcvPars[0]['curve'][0]['hi']) == mcv.get_results()['curve'][0]['hi']
 
-if __name__ == '__main__':
-    unittest.main()
+    shutil.rmtree(dir)

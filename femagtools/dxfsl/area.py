@@ -378,25 +378,33 @@ class Area(object):
 
         assert(len(points) > 1)
 
-        points_sorted = []
-        for p in points:
-            points_sorted.append((p[0], p))
-        points_sorted.sort()
-        p1 = points_sorted[0][1]  # Startpoint
+        my_points_sorted = [(p[0], p) for p in points]
+        my_points_sorted.sort()
+        my_p1 = my_points_sorted[0][1]   # Startpoint
+        my_p2 = my_points_sorted[-1][1]  # Endpoint
 
-        points_sorted = []
+        all_points_sorted = []
         for e in geom.elements(Shape):
             points = e.intersect_line(line, geom.rtol, geom.atol, True)
             for p in points:
-                if greater(p[0], p1[0]):
-                    points_sorted.append((p[0], p))
-        points_sorted.sort()
-        if not points_sorted:
-            logger.warning("get_point_inside: No point found")
-            return None
+                if greater(p[0], my_p1[0], rtol=1e-8):
+                    if less(p[0], my_p2[0], rtol=1e-8):
+                        all_points_sorted.append((p[0], p))
 
-        p2 = points_sorted[0][1]
-        return ((p1[0]+p2[0])/2, y)
+        if len(all_points_sorted) == 0:
+            p_inside = ((my_p1[0]+my_p2[0])/2, y)
+            return p_inside
+
+        all_points_sorted.sort()
+        all_p1 = all_points_sorted[0][1]
+        all_p2 = all_points_sorted[-1][1]
+        d1 = all_p1[0] - my_p1[0]
+        d2 = my_p2[0] - all_p2[0]
+        if d1 > d2:
+            p_inside = ((my_p1[0]+all_p1[0])/2, y)
+        else:
+            p_inside = ((my_p2[0]+all_p2[0])/2, y)
+        return p_inside
 
     def render(self, renderer, color='black', with_nodes=False):
         for e in self.area:
@@ -502,6 +510,14 @@ class Area(object):
             alpha += np.pi
         return alpha + np.pi/2
 
+    def around_windings(self, areas):
+        for a in areas:
+            if a.is_winding():
+                if not self.is_identical(a):
+                    if self.is_inside(a):
+                        return True
+        return False
+
     def mark_stator_subregions(self, is_inner, mirrored, alpha,
                                center, r_in, r_out):
         alpha = round(alpha, 6)
@@ -536,6 +552,9 @@ class Area(object):
             if air_alpha / alpha < 0.2:
                 self.type = 0  # air
                 return self.type
+
+            if air_alpha / alpha < 0.5:
+                self.type = 9  # air or iron near windings?
             else:
                 self.type = 1  # iron
             return self.type
@@ -600,6 +619,10 @@ class Area(object):
             if self.is_rectangle():
                 self.type = 4  # magnet embedded
                 self.phi = self.get_mag_orient_rectangle()
+                return self.type
+
+            if not (self.close_to_startangle or self.close_to_endangle):
+                self.type = 0  # air
                 return self.type
 
         self.type = 1  # iron

@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """
     femagtools.isa7
-    ~~~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~
 
-    Read FEMAG modelfile
-
-
+    Read FEMAG I7/ISA7 model files
 """
 import logging
 import struct
@@ -77,13 +75,29 @@ class Reader(object):
                 values.append([u[i] for u in unpacked])
 
         if len(fmt) == 1:
-            return values[0]
+            if len(values[0]) == 1:
+                return values[0][0]
+            else:
+                return values[0]
         else:
             return values
 
+    def skip_block(self, skips=1):
+        """
+        Proceed to the next block without reading any data.
+
+        Arguments:
+            skips: number of blocks to be skipped
+        """
+        while skips > 0:
+            blockSize = struct.unpack_from("=i", self.file, self.pos)[0]
+            self.pos += 4 + blockSize + 4
+            skips -= 1
+
 
 class Isa7(object):
-    """ The ISA7 Femag model
+    """
+    The ISA7 Femag model
 
     Arguments:
         filename: name of I7/ISA7 file to be read
@@ -427,25 +441,88 @@ class Isa7(object):
         (self.WB_SR_ISA_SR_KEY,
          self.WB_SR_ISA_NXT_SR_PNTR) = reader.next_block("hh")
 
+#        reader.skip_block(31)
+
+#        self.FC_RADIUS = reader.next_block("f")
+#        print("fc_radius: ", self.FC_RADIUS)
+
     def msh(self):
         """return gmsh list"""
+        
         it = itertools.count(1)
+
+        boundary_conditions = ["v potential 0",
+                               "v potential const",
+                               "periodic +",
+                               "periodic -",
+                               "infinite boundary",
+                               "no condition"]
+
+        physical_names = sorted(set([sr.name
+                                     for sr in self.subregions] +
+                                    ["Winding {}".format(w.key)
+                                     for w in self.windings] +
+                                    boundary_conditions))
+        
+        def physical_name(e):
+            sr = self.subregions[self.superelements[e.se_key].sr_key]
+            if sr.wb_key != -1:
+                return physical_names.index(
+                    "Winding {}".format(self.windings[sr.wb_key].key))
+            else:
+                return physical_names.index(sr.name)
+
+        def bc_physical_name(cnd, per):
+            if cnd == 0:
+                bc = boundary_conditions[5]
+            elif cnd == 1:
+                bc = boundary_conditions[0]
+            elif cnd == 2:
+                bc = boundary_conditions[1]
+            elif cnd == 3 or cnd == 6:
+                bc = boundary_conditions[3]
+            elif cnd == 4 or cnd == 5:
+                bc = boundary_conditions[2]
+            elif cnd == 8 or cnd == 9:
+                bc = boundary_conditions[0]
+            return physical_names.index(bc)
+        
+        nodechain_links = {}
+        for nc in self.nodechains:
+            try:
+                nodechain_links[nc.node1].extend(nc.nodes)
+            except KeyError:
+                nodechain_links[nc.node1] = list(nc.nodes)
+            try:
+                nodechain_links[nc.node2].extend(nc.nodes)
+            except KeyError:
+                nodechain_links[nc.node2] = list(nc.nodes)
+            if nc.nodemid is not None:
+                try:
+                    nodechain_links[nc.nodemid].extend(nc.nodes)
+                except KeyError:
+                    nodechain_links[nc.nodemid] = list(nc.nodes)
+
+        problem = []
+
+        def line_on_boundary(n1, n2):
+            if n1.on_boundary() and n2.on_boundary():
+                if n1 in nodechain_links.keys():
+                    return n2 in nodechain_links[n1]
+                else:
+                    return False
+            else:
+                return False
 
         msh = ["$MeshFormat",
                "2.2 0 8",
                "$EndMeshFormat"]
-        
+
         msh.append("$PhysicalNames")
-        physical_names = sorted(set([sr.name
-                                     for sr in self.subregions]))
         msh.append("{}".format(len(physical_names)))
         for k, n in enumerate(physical_names):
             msh.append("2 {} \"{}\"".format(k+1, n))
         msh.append("$EndPhysicalNames")
-        
-        def sr_key(e):
-            return physical_names.index(
-                self.subregions[self.superelements[e.se_key].sr_key].name)
 
         msh.append("$Nodes")
         msh.append("{}".format(len(self.nodes)))
@@ -454,9 +531,16 @@ class Isa7(object):
         msh.append("$EndNodes")
 
         msh.append("$Elements")
-        msh.append("{}".format(len([v for e in self.elements
-                                    for v in e.vertices]) +
-                               len(self.elements)))
+        msh.append("{}".format(
+            #all vertices
+            len([v for e in self.elements
+                   for v in e.vertices])
+            #vertices on boundary
+            + len([n for n in self.nodes
+                   if n.on_boundary() and \
+                      n in nodechain_links.keys()])
+            + len(self.elements)))
+
         # 1-node points
         #node_els = list(set([n for se in self.superelements
         #                     for nc in se.nodechains
@@ -476,31 +560,39 @@ class Isa7(object):
                     e.key,
                     ev[i-1].key,
                     ev[i].key))
-            
+                if line_on_boundary(v, ev[i-1]):
+                    msh.append("{} 1 2 {} {} {} {}".format(
+                        next(it),
+                        bc_physical_name(v.bndcnd, v.pernod) + 1,
+                        e.key,
+                        ev[i-1].key,
+                        ev[i].key))
+
             # 3-node triangles
             if len(ev) == 3:
                 msh.append("{} 2 2 {} {} {} {} {}".format(
                     next(it),
-                    sr_key(e) + 1,
-                    sr_key(e) + len(self.elements),
+                    physical_name(e) + 1,
+                    physical_name(e) + len(self.elements),
                     ev[0].key,
                     ev[1].key,
                     ev[2].key))
-            
+
             # 4-node quadrangles
             elif len(ev) == 4:
                 msh.append("{} 3 2 {} {} {} {} {} {}".format(
                     next(it),
-                    sr_key(e) + 1,
-                    sr_key(e) + len(self.elements),
+                    physical_name(e) + 1,
+                    physical_name(e) + len(self.elements),
                     ev[0].key,
                     ev[1].key,
                     ev[2].key,
                     ev[3].key))
-#            else:
-#                logger.warn("unsupported vertice len %d", len(ev))
+    #            else:
+    #                logger.warn("unsupported vertice len %d", len(ev))
         msh.append("$EndElements")
-        
+
+        print(problem)
         return msh
 
 
@@ -523,7 +615,7 @@ class BaseEntity(object):
     def __init__(self, valid, key):
         self.valid = valid
         self.key = key
-        
+
 
 class Node(BaseEntity):
     def __init__(self, valid, key, bndcnd, pernod, x, y, vpot_re, vpot_im):
@@ -534,12 +626,14 @@ class Node(BaseEntity):
         self.y = y
         self.xy = x, y
         self.vpot = vpot_re, vpot_im
-        
+
+    def on_boundary(self):
+        return self.bndcnd != 0 or self.pernod != 0
+
 
 class NodeChain(BaseEntity):
     def __init__(self, valid, key, nodes):
         super(self.__class__, self).__init__(valid, key)
-        self.key = key
         self.node1 = nodes[0]
         self.nodemid = nodes[1]
         self.node2 = nodes[2]
@@ -568,7 +662,6 @@ class SuperElement(BaseEntity):
                  nc_keys, mcvtype, condtype, conduc, length,
                  velsys, velo_1, velo_2, curd_re, curd_im):
         super(self.__class__, self).__init__(valid, key)
-        self.key = key
         self.sr_key = sr_key
         self.elements = elements
         self.nodechains = nodechains
@@ -607,15 +700,20 @@ class Winding(BaseEntity):
         self.flux = flux_re, flux_im
         self.volt = volt_re, volt_im
 
-        
+
 def read(filename):
-    """Read ISA7 file and return ISA7 object."""
+    """
+    Read ISA7 file and return ISA7 object.
+
+    Arguments:
+        filename: name of I7/ISA7 file to be read
+    """
     isa = Isa7(filename)
     return isa
 
 
 if __name__ == "__main__":
-    
+
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
     if len(sys.argv) == 2:
@@ -624,4 +722,3 @@ if __name__ == "__main__":
         filename = sys.stdin.readline().strip()
 
     isa = read(filename)
-    

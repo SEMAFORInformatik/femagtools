@@ -278,7 +278,8 @@ class Writer(Mcv):
         if fillfac:
             alpha = fillfac/self.mc1_fillfac
             for c in self.curve:
-                c['bi'] = alpha*c['bi'] + MUE0*(1. - alpha)*c['hi']
+                c['bi'] = [alpha*b + MUE0*(1. - alpha)*h
+                           for b, h in zip(c['bi'], c['hi'])]
             self.mc1_fillfac = fillfac
             
         self.mc1_curves = len(self.curve)

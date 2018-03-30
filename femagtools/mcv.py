@@ -779,6 +779,10 @@ class MagnetizingCurve(object):
         if len(self.mcv) == 1 and '0' in self.mcv:
             self.mcv['0']['name'] = name
             return self.mcv['0']
+        try:
+            return self.mcv[name]
+        except Exception:
+            pass
         return None
 
     def recalc(self):
@@ -860,13 +864,14 @@ class MagnetizingCurve(object):
         Arguments:
           name: key of mcv dict (name or id)
           directory: destination directory (must be writable)
-          fillfac: new fill factor (curves will be recalulated if not None or 0)
+          fillfac: new fill factor (curves will be recalulated
+                if not None or 0)
         returns filename if found else None"""
         ext = '.MC' if sys.platform == 'win32' else '.MCV'
         mcv = self.find_by_name(name)
-        bname = self._fix_name(mcv['name'], fillfac)
-        filename = ''.join((bname, ext))
         if not mcv:
+            bname = name
+            filename = ''.join((name, ext))
             try:
                 import shutil
                 logger.info("Copy file %s", filename)
@@ -879,6 +884,8 @@ class MagnetizingCurve(object):
                 logger.error("MCV %s not found", str(filename))
             return None
 
+        bname = self._fix_name(mcv['name'], fillfac)
+        filename = ''.join((bname, ext))
         writer = Writer(mcv)
         writer.writeMcv(os.path.join(directory, filename), fillfac=fillfac)
         return bname

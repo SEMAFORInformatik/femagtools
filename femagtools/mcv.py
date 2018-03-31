@@ -281,6 +281,7 @@ class Writer(Mcv):
                 c['bi'] = [alpha*b + MUE0*(1. - alpha)*h
                            for b, h in zip(c['bi'], c['hi'])]
             self.mc1_fillfac = fillfac
+            self.mc1_recalc = 1
             
         self.mc1_curves = len(self.curve)
         self.mc1_ni = [min(len(c['hi']),

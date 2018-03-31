@@ -65,8 +65,8 @@ def test_writeFile_fillfac():
     testPath = os.path.split(__file__)[0]
     mcv = femagtools.mcv.read(os.path.join(testPath, 'data/TKS_NO_20.MCV'))
     dir = tempfile.mkdtemp()
-    mcv = femagtools.mcv.MagnetizingCurve(mcvPars)
-    result = mcv.writefile('TKS_NO_20', dir, fillfac=0.5)
+    m = femagtools.mcv.MagnetizingCurve(mcv)
+    result = m.writefile('TKS_NO_20', dir, fillfac=0.5)
     assert result == mcvPars[0]['name'] + '-50'
     
     bi = [0.0, 0.04908391088247299, 0.09705951809883118,

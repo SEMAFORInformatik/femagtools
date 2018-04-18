@@ -679,6 +679,8 @@ class NewFslRenderer(object):
                 u'm.{}_ncopies = {}'.format(
                     geom_outer.kind, ncopies))
 
+        self.content.append(u'blow_up_wind(0, 0, 10, 10)')
+
         if geom_inner:
             self.content.append(
                 u'dofile("{}_{}.fsl")'.format(

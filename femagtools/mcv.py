@@ -9,7 +9,7 @@
 
 """
 import json
-import subprocess
+import functools
 import sys
 import logging
 import os.path
@@ -273,8 +273,16 @@ class Writer(Mcv):
             # must be float?
             self.fp.write(struct.pack('f', d))
 
-    def _prepare(self):
+    def _prepare(self, fillfac):
         """prepare output format (internal use only)"""
+        if fillfac:
+            alpha = fillfac/self.mc1_fillfac
+            for c in self.curve:
+                c['bi'] = [alpha*b + MUE0*(1. - alpha)*h
+                           for b, h in zip(c['bi'], c['hi'])]
+            self.mc1_fillfac = fillfac
+            self.mc1_recalc = 1
+            
         self.mc1_curves = len(self.curve)
         self.mc1_ni = [min(len(c['hi']),
                            len(c['bi']))
@@ -286,8 +294,8 @@ class Writer(Mcv):
         self.mc1_mi = [len(c['a'])
                        for c in self.curve]
         
-    def writeBinaryFile(self):
-        self._prepare()
+    def writeBinaryFile(self, fillfac=None):
+        self._prepare(fillfac)
         # write line, version_mc_curve
         self.writeBlock(self.version_mc_curve)
 
@@ -397,7 +405,7 @@ class Writer(Mcv):
         except:
             pass
             
-    def writeMcv(self, filename):
+    def writeMcv(self, filename, fillfac=None):
         # windows needs this strip to remove '\r'
         filename = filename.strip()
         self.name = os.path.splitext(filename)[0]
@@ -411,7 +419,7 @@ class Writer(Mcv):
             self.fp = open(filename, "wb")
         logger.info("Write File %s, binary format %d", filename, binary)
 
-        self.writeBinaryFile()
+        self.writeBinaryFile(fillfac)
         self.fp.close()
 
 
@@ -773,6 +781,10 @@ class MagnetizingCurve(object):
         if len(self.mcv) == 1 and '0' in self.mcv:
             self.mcv['0']['name'] = name
             return self.mcv['0']
+        try:
+            return self.mcv[name]
+        except Exception:
+            pass
         return None
 
     def recalc(self):
@@ -837,13 +849,30 @@ class MagnetizingCurve(object):
 
             curve['a'].append(1.0)
             curve['b'].append(MUE0*curve['hi'][-1]-curve['bi'][-1])
-            
-    def writefile(self, name, directory='.', writeproc=''):
+
+    def _fix_name(self, name, fillfac):
+        """return os compatible mcv name including fillfac"""
+        repls = {' ': '_', '(': '_', ')': '_', ',': '_'}
+        if fillfac:
+            return "{0}-{1:d}".format(
+                functools.reduce(lambda a, kv: a.replace(*kv),
+                                 repls.items(), name),
+                int(100*fillfac))
+        return functools.reduce(lambda a, kv: a.replace(*kv),
+                                repls.items(), name)
+        
+    def writefile(self, name, directory='.', fillfac=None):
         """find magnetic curve by name or id and write binary file
+        Arguments:
+          name: key of mcv dict (name or id)
+          directory: destination directory (must be writable)
+          fillfac: new fill factor (curves will be recalulated
+                if not None or 0)
         returns filename if found else None"""
         ext = '.MC' if sys.platform == 'win32' else '.MCV'
         mcv = self.find_by_name(name)
         if not mcv:
+            bname = name
             filename = ''.join((name, ext))
             try:
                 import shutil
@@ -853,146 +882,15 @@ class MagnetizingCurve(object):
                 return filename
             except shutil.SameFileError:
                 return filename
-            except:
+            except Exception:
                 logger.error("MCV %s not found", str(filename))
             return None
 
-        filename = ''.join((mcv['name'], ext))
-        if writeproc:
-            self._writefile(mcv, directory, filename, writeproc)
-        else:
-            writer = Writer(mcv)
-            writer.writeMcv(os.path.join(directory, filename))
-        return filename
-
-    def _writefile(self, mcv, directory, filename, writeproc):
-        try:
-            logger.info("create %s", str(filename))
-            proc = subprocess.Popen([writeproc],
-                                    cwd=directory,
-                                    stdin=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    bufsize=1)
-
-            inparams = ["&INPARAM"]
-            for k in mcv.keys():
-                if k == 'name':
-                    inparams.append("filename='{}'".format(filename))
-                elif k == 'desc':
-                    inparams.append("mc1_title='{}'".format(mcv['desc']))
-                elif k == 'curve':
-                    inparams.append('mc1_curves={}'.format(len(mcv[k])))
-                    for c in mcv['curve']:
-                        for n in c.keys():
-                            if n not in transl:
-                                continue
-                            inparams.append("{}=".format(transl[n]))
-                            if type(c[n]) is list:
-                                inparams.append(
-                                    ','.join(map(str, c[n])))
-                            else:
-                                inparams.append(str(c[n]))
-
-                    if 'energy' in mcv['curve'][0] and len(mcv['curve'][0]['energy']) > 0:
-                        inparams.append("mc1_energy=")
-                        inparams.append(','.join(map(str, mcv['curve'][0]['energy'])))
-
-                elif k == 'losses':
-                    # find start index
-                    bstart = 0
-                    for a in mcv[k]['pfe']:
-                        for i in range(len(a)):
-                            if a[i]:
-                                if i > bstart:
-                                    bstart = i
-                                break
-                    inparams.append('N_freq={}'.format(len(mcv[k]['f'])))
-                    inparams.append('N_J_ind={}'.format(len(mcv[k]['B'])-bstart))
-                    inparams.append("frequency=")
-                    inparams.append(",".join(map(str, mcv[k]['f'])))
-                    inparams.append("induction=")
-                    inparams.append(",".join(map(str, mcv[k]['B'][bstart:])))
-                    inparams.append("losses=")
-                    pfeT = []
-#                    flen=10
-#                    blen=20
-                    cw = mcv[k]['cw']
-                    alfa = mcv[k]['alfa']
-                    beta = mcv[k]['beta']
-                    fo  = mcv[k]['fo']
-                    Bo = mcv[k]['Bo']
-
-                    pfe = []
-                    lower = 0
-                    # must replace all None by approx losses
-                    for i in range(len(mcv['losses']['f'])):
-                        f = mcv['losses']['f'][i]
-                        if f > 0:
-                            pfei = [p[i] if i < len(p) else None
-                                    for p in mcv['losses']['pfe']]
-                            m, n = findNotNone(pfei)
-                            if m > lower:
-                                lower = m
-                            if m <= n:
-                                y = [np.log10(p) for p in pfei[m:n+1]]
-                                x = [np.log10(b/Bo)
-                                     for b in mcv['losses']['B'][m:n+1]]
-                                A = np.vstack([x, np.ones(len(x))]).T
-                                beta, cw = np.linalg.lstsq(A, y)[0]
-                                for j in range(n+1, len(pfei)):
-                                    pfei[j] = 10**cw*(
-                                        mcv['losses']['B'][j]/Bo)**beta
-
-                                pfe.append(pfei)
-                    pfe += [[0] * M_LOSS_INDUCT] * (
-                        M_LOSS_FREQ - len(mcv['losses']['f']))
-
-                    for r in pfe:
-                        a=list(r[lower:]) + [0]*(M_LOSS_INDUCT-len(r[lower:]))
-                        #must copy last and cut "None" (null)
-                        for i in range(len(a)-1,0,-1):
-                            if a[i]>0: break
-                            if a[i-1]>0:
-                                a[i]=a[i-1]
-                                break
-                        pfeT+=a
-                        
-                    inparams.append(','.join(map(str, pfeT)))
-                    inparams.append("cw_m={}".format(mcv[k]['cw']))
-                    inparams.append("alfa_m={}".format(mcv[k]['alfa']))
-                    inparams.append("beta_m={}".format(mcv[k]['beta']))
-                    inparams.append("base_freq={}".format(mcv[k]['fo']))
-                    inparams.append("base_induct={}".format(mcv[k]['Bo']))
-                    logger.info("has losses N_freq %d, N_J_ind %d",
-                                len(mcv[k]['f']), len(mcv[k]['B']))
-
-                    inparams.append("loss_values_data=T")
-                elif k not in transl:
-                    continue
-                else:
-                    inparams.append("{}=".format(transl[k]))
-                    if type(mcv[k]) is list:
-                        inparams.append(','.join(map(str, mcv[k])))
-                    else:
-                        inparams.append("{}".format(mcv[k]))
-
-            inparams.append("/\n")
-            proc.stdin.write(bytes('\n'.join(inparams).encode('latin-1')))
-            proc.stdin.close()
-        except OSError as e:
-            logger.error("PATH {}\n CWD {}\n Prog {}\n{}\n".format(
-                os.environ['PATH'], directory, writeproc, str(e)))
-            e.args += writeproc
-            raise e
-        except IOError as e:
-            logger.error("{} {}\n".format(mcv['name'], str(e)))
-            return None
-        except KeyError as e:
-            logger.error("{} key {} not found\n".format(mcv['name'], str(e)))
-            return None
-
-        for l in proc.stderr:
-            logger.error(l)
+        bname = self._fix_name(mcv['name'], fillfac)
+        filename = ''.join((bname, ext))
+        writer = Writer(mcv)
+        writer.writeMcv(os.path.join(directory, filename), fillfac=fillfac)
+        return bname
             
     def fitLossCoeffs(self):
         for m in self.mcv:

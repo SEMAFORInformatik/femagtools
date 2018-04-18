@@ -1686,6 +1686,14 @@ class Geometry(object):
                                         self.min_radius,
                                         self.max_radius)
 
+        # air or iron near windings?
+        air_areas = [a for a in self.list_of_areas() if a.type == 9]
+        for a in air_areas:
+            if a.around_windings(self.list_of_areas()):
+                a.type = 0  # air
+            else:
+                a.type = 1  # iron
+
     def search_rotor_subregions(self):
         types = {}
         for area in self.list_of_areas():

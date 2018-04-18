@@ -39,6 +39,79 @@ Convert a BCH file to XML by command line::
 
 This command creates the file TEST_002.xml
 
+Read I7/ISA7 File
++++++++++++++++++
+Read an ISA7 File::
+
+  >>> isa = isa7.read('foo.ISA7')
+
+Print Node coordinates::
+  
+  >>> n = isa.nodes[0]
+  >>> print(n.x)
+  (0.03380740433931351)
+  >>> print(n.y)
+  (0.009058667346835136)
+  >>> print(n.xy)
+  (0.03380740433931351, 0.009058667346835136)
+
+Get an Element by key::
+
+  >>> el = isa.elements[0]
+
+Inspect Element properties::
+  
+  >>> el.mag
+  (0.8485281467437744, 0.8485281467437744)
+  >>> el.reluc
+  (0.9523810148239136, 0.9523810148239136)
+
+Get Node coordinates of Element::
+  
+  >>> el_coords = [v.xy for v in el.vertices]
+  >>> print(el_coords)
+  [(0.036389999091625214, 1.142020034095026e-09),
+  (0.03499503806233406, 0.0005893968627788126),
+  (0.03500000014901161, 0.0)]
+
+Get a SuperElement by Element::
+  
+  >>> spel = isa.superelements[el.se_key]
+  >>> el in spel.elements
+  True
+
+Plot SuperElements::
+
+  from femagtools import isa7
+  import matplotlib.pyplot as plt
+  from matplotlib.patches import Polygon
+  from matplotlib.lines import Line2D
+
+  fig = plt.figure()
+  ax = fig.add_subplot(111, aspect='equal')
+  isa = isa7.read("PM_130_L4.ISA7")
+
+  for se in isa.superelements:
+      color = isa.color[se.color]
+      se_nodes = [n for nc in se.nodechains for n in nc.nodes]
+
+      #face
+      xy = [n.xy for n in se_nodes]
+      ax.add_patch(Polygon(xy, color=color, lw=0))
+
+      #outline
+      x = [n.x for n in se_nodes]
+      y = [n.y for n in se_nodes]
+      ax.add_line(Line2D(x, y, color="k", lw=0.5, solid_capstyle="round"))
+
+  ax.autoscale(enable=True)
+  plt.axis('off')
+  plt.show()
+
+
+.. image:: img/plot.png
+   :height: 240pt
+  
 Create FSL and/or invoke FEMAG with Model Parameters
 ++++++++++++++++++++++++++++++++++++++++++++++++++++
 Create a FE model from the templates stator1 and magnetSector::

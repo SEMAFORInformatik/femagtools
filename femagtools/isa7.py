@@ -10,6 +10,7 @@ import struct
 import sys
 import itertools
 import re
+import numpy as np
 from collections import Counter
 
 logger = logging.getLogger('femagtools.isa7')
@@ -75,10 +76,7 @@ class Reader(object):
                 values.append([u[i] for u in unpacked])
 
         if len(fmt) == 1:
-            if len(values[0]) == 1:
-                return values[0][0]
-            else:
-                return values[0]
+            return values[0]
         else:
             return values
 
@@ -441,52 +439,67 @@ class Isa7(object):
         (self.WB_SR_ISA_SR_KEY,
          self.WB_SR_ISA_NXT_SR_PNTR) = reader.next_block("hh")
 
-#        reader.skip_block(31)
+        reader.skip_block(21)
 
-#        self.FC_RADIUS = reader.next_block("f")
-#        print("fc_radius: ", self.FC_RADIUS)
+        self.ANZAHL_TG = reader.next_block("iii")[1][0]
+
+        reader.skip_block(7)
+        reader.skip_block(self.ANZAHL_TG + 1)
+        reader.skip_block(1)
+
+        self.FC_RADIUS = reader.next_block("f")[0]
 
     def msh(self):
         """return gmsh list"""
-        
         it = itertools.count(1)
 
-        boundary_conditions = ["v potential 0",
-                               "v potential const",
-                               "periodic +",
-                               "periodic -",
-                               "infinite boundary",
-                               "no condition"]
+        airgap_center_elements = []
+        for e in self.elements:
+            outside = [np.sqrt(v.x**2 + v.y**2) > self.FC_RADIUS
+                       for v in e.vertices]
+            if any(outside) and not all(outside):
+                airgap_center_elements.append(e)
 
-        physical_names = sorted(set([sr.name
-                                     for sr in self.subregions] +
-                                    ["Winding {}".format(w.key)
-                                     for w in self.windings] +
-                                    boundary_conditions))
-        
-        def physical_name(e):
-            sr = self.subregions[self.superelements[e.se_key].sr_key]
-            if sr.wb_key != -1:
-                return physical_names.index(
-                    "Winding {}".format(self.windings[sr.wb_key].key))
-            else:
-                return physical_names.index(sr.name)
+        airgap_center_vertices = [v for e in airgap_center_elements
+                                    for v in e.vertices]
 
-        def bc_physical_name(cnd, per):
-            if cnd == 0:
-                bc = boundary_conditions[5]
-            elif cnd == 1:
-                bc = boundary_conditions[0]
-            elif cnd == 2:
-                bc = boundary_conditions[1]
-            elif cnd == 3 or cnd == 6:
-                bc = boundary_conditions[3]
-            elif cnd == 4 or cnd == 5:
-                bc = boundary_conditions[2]
-            elif cnd == 8 or cnd == 9:
-                bc = boundary_conditions[0]
-            return physical_names.index(bc)
-        
+        airgap_rotor_elements = []
+        airgap_stator_elements = []
+        for e in self.elements:
+            if e in airgap_center_elements:
+                continue
+            for v in e.vertices:
+                if v not in airgap_center_vertices:
+                    continue
+                if np.sqrt(v.x**2 + v.y**2) > self.FC_RADIUS:
+                    airgap_stator_elements.append(e)
+                    break
+                else:
+                    airgap_rotor_elements.append(e)
+                    break
+                
+        airgap_elements = airgap_center_elements \
+                          + airgap_rotor_elements \
+                          + airgap_stator_elements
+
+        def lines_on_airgap(elements):
+            lines = []
+            for e in elements:
+                ev = e.vertices
+                for i, v in enumerate(ev):
+                    v2 = ev[i-1]
+                    if v not in airgap_center_vertices and \
+                       np.isclose(np.sqrt(v.x**2 + v.y**2),
+                                  np.sqrt(v2.x**2 + v2.y**2)):
+                        lines.append((v, v2))
+            return lines
+
+        ag1 = lines_on_airgap(airgap_stator_elements)
+        ag2 = lines_on_airgap(airgap_rotor_elements)
+
+        #logger.info("{} {}".format([(l[0].key, l[1].key) for l in ag1],
+        #                           [(l[0].key, l[1].key) for l in ag2]))
+
         nodechain_links = {}
         for nc in self.nodechains:
             try:
@@ -503,7 +516,60 @@ class Isa7(object):
                 except KeyError:
                     nodechain_links[nc.nodemid] = list(nc.nodes)
 
-        problem = []
+        physical_lines = ["v potential 0",
+                          "v potential const",
+                          "periodic +",
+                          "periodic -",
+                          "infinite boundary",
+                          "no condition",
+                          "Airgap Stator",
+                          "Airgap Rotor"]
+
+        physical_surfaces = sorted(set([sr.name
+                                        for sr in self.subregions]
+                                       + ["Winding {}".format(w.key)
+                                          for w in self.windings]
+                                       + ["Air"]))
+
+        def physical_line(n1, n2):
+            if (n1, n2) in ag1 or (n2, n1) in ag1:
+                return 7  # airgap stator
+            if (n1, n2) in ag2 or (n2, n1) in ag2:
+                return 8  # airgap rotor
+            if n1.bndcnd == n2.bndcnd:
+                return boundary_condition(n1)
+            if boundary_condition(n1) == 1:
+                return boundary_condition(n2)
+            return boundary_condition(n1)
+        
+        def boundary_condition(node):
+            if node.bndcnd == 0:
+                return 6  # no condition
+            if node.bndcnd == 1:
+                return 1  # vpot 0
+            if node.bndcnd == 2:
+                return 2  # vpot const
+            if node.bndcnd == 3 or node.bndcnd == 6:
+                return 4  # periodic -
+            if node.bndcnd == 4 or node.bndcnd == 5:
+                return 3  # periodic +
+            if node.bndcnd == 8 or node.bndcnd == 9:
+                return 1  # vpot 0
+            
+        def physical_surface(e):
+            sr_key = self.superelements[e.se_key].sr_key
+            if sr_key == -1:
+                return (physical_surfaces.index("Air")
+                        + len(physical_lines) + 1)
+            
+            sr = self.subregions[self.superelements[e.se_key].sr_key]
+            if sr.wb_key != -1:
+                return (len(physical_lines) + 1
+                        + physical_surfaces.index(
+                    "Winding {}".format(self.windings[sr.wb_key].key)))
+
+            return (physical_surfaces.index(sr.name)
+                    + len(physical_lines) + 1)
 
         def line_on_boundary(n1, n2):
             if n1.on_boundary() and n2.on_boundary():
@@ -512,16 +578,23 @@ class Isa7(object):
                 else:
                     return False
             else:
-                return False
-
+                b = (n1, n2) in ag1 or (n1, n2) in ag2 or \
+                    (n2, n1) in ag1 or (n2, n1) in ag2
+                #logger.info("{} {} {}".format(n1.key, n2.key, b))
+                return b
+            
         msh = ["$MeshFormat",
                "2.2 0 8",
                "$EndMeshFormat"]
 
         msh.append("$PhysicalNames")
-        msh.append("{}".format(len(physical_names)))
-        for k, n in enumerate(physical_names):
-            msh.append("2 {} \"{}\"".format(k+1, n))
+        msh.append("{}".format(len(physical_lines)
+                               + len(physical_surfaces)))
+        for i, n in enumerate(physical_lines):
+            msh.append("1 {} \"{}\"".format(i+1, n))
+        for i, n in enumerate(physical_surfaces):
+            msh.append("2 {} \"{}\"".format(i + 1 + len(physical_lines),
+                                             n))
         msh.append("$EndPhysicalNames")
 
         msh.append("$Nodes")
@@ -531,49 +604,42 @@ class Isa7(object):
         msh.append("$EndNodes")
 
         msh.append("$Elements")
-        msh.append("{}".format(
-            #all vertices
-            len([v for e in self.elements
-                   for v in e.vertices])
-            #vertices on boundary
-            + len([n for n in self.nodes
-                   if n.on_boundary() and \
-                      n in nodechain_links.keys()])
-            + len(self.elements)))
-
-        # 1-node points
-        #node_els = list(set([n for se in self.superelements
-        #                     for nc in se.nodechains
-        #                     for n in nc.nodes[:-1] ]))
-        #for n in node_els:
-        #    next_id = next(it)
-        #    msh += "{0} 15 2 0 {1} {1}\n".format(next_id, n.key)
+        non_airgap_els = [e for e in self.elements
+                          if e not in airgap_elements]
+        msh.append("{}".format(len(non_airgap_els)
+#            # all vertices
+#            len([v for e in non_airgap_els
+#                   for v in e.vertices])
+#            # vertices on boundary
+                               + len([n for n in self.nodes
+                                      if n.on_boundary() and \
+                                      n in nodechain_links.keys()])
+                               + len(ag1) + len(ag2) - 6))
 
         # surfaces
         for e in self.elements:
+            if e in airgap_elements:
+                continue
             ev = e.vertices
 
             # 2-node lines
             for i, v in enumerate(ev):
-                msh.append("{} 1 2 0 {} {} {}".format(
-                    next(it),
-                    e.key,
-                    ev[i-1].key,
-                    ev[i].key))
-                if line_on_boundary(v, ev[i-1]):
+                v1 = v
+                v2 = ev[i-1]
+                if line_on_boundary(v1, v2):
                     msh.append("{} 1 2 {} {} {} {}".format(
                         next(it),
-                        bc_physical_name(v.bndcnd, v.pernod) + 1,
-                        e.key,
-                        ev[i-1].key,
-                        ev[i].key))
+                        physical_line(v1, v2),
+                        physical_line(v1, v2),
+                        v2.key,
+                        v1.key))
 
             # 3-node triangles
             if len(ev) == 3:
                 msh.append("{} 2 2 {} {} {} {} {}".format(
                     next(it),
-                    physical_name(e) + 1,
-                    physical_name(e) + len(self.elements),
+                    physical_surface(e),
+                    physical_surface(e) + len(self.nodes),
                     ev[0].key,
                     ev[1].key,
                     ev[2].key))
@@ -582,8 +648,8 @@ class Isa7(object):
             elif len(ev) == 4:
                 msh.append("{} 3 2 {} {} {} {} {} {}".format(
                     next(it),
-                    physical_name(e) + 1,
-                    physical_name(e) + len(self.elements),
+                    physical_surface(e),
+                    physical_surface(e) + len(self.nodes),
                     ev[0].key,
                     ev[1].key,
                     ev[2].key,
@@ -592,7 +658,6 @@ class Isa7(object):
     #                logger.warn("unsupported vertice len %d", len(ev))
         msh.append("$EndElements")
 
-        print(problem)
         return msh
 
 

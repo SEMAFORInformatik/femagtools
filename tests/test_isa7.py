@@ -85,7 +85,7 @@ def test_superelements(isa):
 
 
 def test_msh(isa):
-    assert len(isa.msh()) == 6808
+    assert len(isa.msh()) == 1871
 
 
 @pytest.fixture

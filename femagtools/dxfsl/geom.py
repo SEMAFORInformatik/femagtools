@@ -246,6 +246,14 @@ def polylines(entity):
         i += 1
 
 
+def spline(entity):
+    p_prev = None
+    for p in entity.control_points:
+        if p_prev:
+            yield Line(Element(start=p_prev, end=p))
+        p_prev = p
+
+
 def dxfshapes0(dxffile, layers=[]):
     """returns a collection of dxf entities (ezdxf)"""
     import ezdxf
@@ -270,6 +278,11 @@ def dxfshapes0(dxffile, layers=[]):
         elif e.dxftype() == 'POLYLINE':
             for p in polylines(e):
                 yield p
+        elif e.dxftype == 'SPLINE':
+            for l in spline(e):
+                yield l
+        else:
+            logger.info("Id %d4: unknown type %s", id, e.dxftype)
         id += 1
 
 
@@ -298,6 +311,11 @@ def dxfshapes(dxffile, layers=[]):
             elif e.dxftype == 'POLYLINE':
                 for p in polylines(e):
                     yield p
+            elif e.dxftype == 'SPLINE':
+                for l in spline(e):
+                    yield l
+            else:
+                logger.info("Id %d4: unknown type %s", id, e.dxftype)
             id += 1
 
 

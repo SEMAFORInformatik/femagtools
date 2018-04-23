@@ -585,6 +585,8 @@ class Geometry(object):
         # Linie als Corner-Objekte.
         corners = [Corner(center, c)
                    for c in self.angle_nodes(center, angle, rtol, atol)]
+        if len(corners) == 1:
+            corners.append(Corner(center, tuple(center)))
         if len(corners) > 1:
             corners.sort()
         return corners
@@ -604,6 +606,8 @@ class Geometry(object):
         corners = self.get_corner_list(center, angle, rtol, atol)
         if len(corners) < 2:
             # no hull without more than 1 corners
+            logger.info('repair_hull_line: only {} corners'.
+                        format(len(corners)))
             return
 
         [c.set_keep_node() for c in corners if c.is_equal(center, rtol, atol)]
@@ -640,8 +644,7 @@ class Geometry(object):
 
         # Weil uns unnötige Corners abhanden gekommen sind, bilden wir die
         # Liste neu.
-        corners = [Corner(center, c)
-                   for c in self.angle_nodes(center, angle, rtol, atol)]
+        corners = self.get_corner_list(center, angle, rtol, atol)
 
         if len(corners) > 1:
             corners.sort()

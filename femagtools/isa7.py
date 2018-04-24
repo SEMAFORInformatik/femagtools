@@ -451,7 +451,7 @@ class Isa7(object):
 
     def msh(self):
         """return gmsh list"""
-        it = itertools.count(1)
+        el_number = itertools.count(1)
 
         airgap_center_elements = []
         for e in self.elements:
@@ -461,7 +461,7 @@ class Isa7(object):
                 airgap_center_elements.append(e)
 
         airgap_center_vertices = [v for e in airgap_center_elements
-                                    for v in e.vertices]
+                                  for v in e.vertices]
 
         airgap_rotor_elements = []
         airgap_stator_elements = []
@@ -477,28 +477,18 @@ class Isa7(object):
                 else:
                     airgap_rotor_elements.append(e)
                     break
-                
-        airgap_elements = airgap_center_elements \
-                          + airgap_rotor_elements \
-                          + airgap_stator_elements
 
-        def lines_on_airgap(elements):
-            lines = []
-            for e in elements:
-                ev = e.vertices
-                for i, v in enumerate(ev):
-                    v2 = ev[i-1]
-                    if v not in airgap_center_vertices and \
-                       np.isclose(np.sqrt(v.x**2 + v.y**2),
-                                  np.sqrt(v2.x**2 + v2.y**2)):
-                        lines.append((v, v2))
-            return lines
+        airgap_stator_vertices = [v for e in airgap_stator_elements
+                                  for v in e.vertices]
 
-        ag1 = lines_on_airgap(airgap_stator_elements)
-        ag2 = lines_on_airgap(airgap_rotor_elements)
-
-        #logger.info("{} {}".format([(l[0].key, l[1].key) for l in ag1],
-        #                           [(l[0].key, l[1].key) for l in ag2]))
+        airgap_lines = []
+        for e in airgap_center_elements:
+            ev = e.vertices
+            for i, v1 in enumerate(ev):
+                v2 = ev[i-1]
+                if v1 in airgap_stator_vertices and \
+                   v2 in airgap_stator_vertices:
+                    airgap_lines.append((v1, v2))
 
         nodechain_links = {}
         for nc in self.nodechains:
@@ -522,20 +512,19 @@ class Isa7(object):
                           "periodic -",
                           "infinite boundary",
                           "no condition",
-                          "Airgap Stator",
-                          "Airgap Rotor"]
+                          "Airgap"]
 
         physical_surfaces = sorted(set([sr.name
                                         for sr in self.subregions]
                                        + ["Winding {}".format(w.key)
                                           for w in self.windings]
-                                       + ["Air"]))
+                                       + ["Air",
+                                          "Airgap Rotor",
+                                          "Airgap Stator"]))
 
         def physical_line(n1, n2):
-            if (n1, n2) in ag1 or (n2, n1) in ag1:
-                return 7  # airgap stator
-            if (n1, n2) in ag2 or (n2, n1) in ag2:
-                return 8  # airgap rotor
+            if (n1, n2) in airgap_lines or (n2, n1) in airgap_lines:
+                return 7  # airgap
             if n1.bndcnd == n2.bndcnd:
                 return boundary_condition(n1)
             if boundary_condition(n1) == 1:
@@ -557,6 +546,14 @@ class Isa7(object):
                 return 1  # vpot 0
             
         def physical_surface(e):
+            if e in airgap_rotor_elements or e in airgap_center_elements:
+                return (physical_surfaces.index("Airgap Rotor")
+                        + len(physical_lines) + 1)
+
+            if e in airgap_stator_elements:
+                return (physical_surfaces.index("Airgap Stator")
+                        + len(physical_lines) + 1)
+            
             sr_key = self.superelements[e.se_key].sr_key
             if sr_key == -1:
                 return (physical_surfaces.index("Air")
@@ -578,11 +575,8 @@ class Isa7(object):
                 else:
                     return False
             else:
-                b = (n1, n2) in ag1 or (n1, n2) in ag2 or \
-                    (n2, n1) in ag1 or (n2, n1) in ag2
-                #logger.info("{} {} {}".format(n1.key, n2.key, b))
-                return b
-            
+                return (n1, n2) in airgap_lines or (n1, n2) in airgap_lines
+
         msh = ["$MeshFormat",
                "2.2 0 8",
                "$EndMeshFormat"]
@@ -593,8 +587,7 @@ class Isa7(object):
         for i, n in enumerate(physical_lines):
             msh.append("1 {} \"{}\"".format(i+1, n))
         for i, n in enumerate(physical_surfaces):
-            msh.append("2 {} \"{}\"".format(i + 1 + len(physical_lines),
-                                             n))
+            msh.append("2 {} \"{}\"".format(i + 1 + len(physical_lines), n))
         msh.append("$EndPhysicalNames")
 
         msh.append("$Nodes")
@@ -604,22 +597,13 @@ class Isa7(object):
         msh.append("$EndNodes")
 
         msh.append("$Elements")
-        non_airgap_els = [e for e in self.elements
-                          if e not in airgap_elements]
-        msh.append("{}".format(len(non_airgap_els)
-#            # all vertices
-#            len([v for e in non_airgap_els
-#                   for v in e.vertices])
-#            # vertices on boundary
+        msh.append("{}".format(len(self.elements)
+                               # vertices on boundary
                                + len([n for n in self.nodes
-                                      if n.on_boundary() and \
+                                      if n.on_boundary() and
                                       n in nodechain_links.keys()])
-                               + len(ag1) + len(ag2) - 6))
-
-        # surfaces
+                               + len(airgap_lines)))
         for e in self.elements:
-            if e in airgap_elements:
-                continue
             ev = e.vertices
 
             # 2-node lines
@@ -627,37 +611,77 @@ class Isa7(object):
                 v1 = v
                 v2 = ev[i-1]
                 if line_on_boundary(v1, v2):
-                    msh.append("{} 1 2 {} {} {} {}".format(
-                        next(it),
+                    msh.append(" ".join(map(str, [
+                        next(el_number),
+                        1,
+                        2,
                         physical_line(v1, v2),
                         physical_line(v1, v2),
                         v2.key,
-                        v1.key))
+                        v1.key])))
 
             # 3-node triangles
             if len(ev) == 3:
-                msh.append("{} 2 2 {} {} {} {} {}".format(
-                    next(it),
+                msh.append(" ".join(map(str, [
+                    next(el_number),
+                    2,
+                    2,
                     physical_surface(e),
                     physical_surface(e) + len(self.nodes),
                     ev[0].key,
                     ev[1].key,
-                    ev[2].key))
+                    ev[2].key])))
 
             # 4-node quadrangles
             elif len(ev) == 4:
-                msh.append("{} 3 2 {} {} {} {} {} {}".format(
-                    next(it),
+                msh.append(" ".join(map(str, [
+                    next(el_number),
+                    3,
+                    2,
                     physical_surface(e),
                     physical_surface(e) + len(self.nodes),
                     ev[0].key,
                     ev[1].key,
                     ev[2].key,
-                    ev[3].key))
-    #            else:
-    #                logger.warn("unsupported vertice len %d", len(ev))
+                    ev[3].key])))
+                
+            # 6-node second order triangles
+            elif len(ev) == 6:
+                msh.append(" ".join(map(str, [
+                    next(el_number),
+                    9,
+                    2,
+                    physical_surface(e),
+                    physical_surface(e) + len(self.nodes),
+                    ev[0].key,
+                    ev[1].key,
+                    ev[2].key,
+                    ev[3].key,
+                    ev[4].key,
+                    ev[5].key])))
+                
+            # 8-node second order quadrangles
+            elif len(ev) == 8:
+                msh.append(" ".join(map(str, [
+                    next(el_number),
+                    16,
+                    2,
+                    physical_surface(e),
+                    physical_surface(e) + len(self.nodes),
+                    ev[0].key,
+                    ev[1].key,
+                    ev[2].key,
+                    ev[3].key,
+                    ev[4].key,
+                    ev[5].key,
+                    ev[6].key,
+                    ev[7].key])))
+                
+            else:
+                logger.warn("element {0} has an unsupported \
+                             number of nodes ({1})".format(e.key, len(ev)))
+                
         msh.append("$EndElements")
-
         return msh
 
 
@@ -706,12 +730,12 @@ class NodeChain(BaseEntity):
             self.nodes = (nodes[0], nodes[2])
         else:
             self.nodes = (nodes[0], nodes[1], nodes[2])
-    
+
     def reverse(self):
         return NodeChain(self.valid, self.key * (-1),
                          [self.node2, self.nodemid, self.node1])
-    
-    
+
+
 class Element(BaseEntity):
     def __init__(self, valid, key, el_type, se_key, vertices, reluc, mag):
         super(self.__class__, self).__init__(valid, key)
@@ -720,8 +744,8 @@ class Element(BaseEntity):
         self.vertices = vertices
         self.reluc = reluc
         self.mag = mag
-        
-        
+
+
 class SuperElement(BaseEntity):
     def __init__(self, valid, key, sr_key, elements, nodechains, color,
                  nc_keys, mcvtype, condtype, conduc, length,
@@ -739,8 +763,8 @@ class SuperElement(BaseEntity):
         self.velsys = velsys
         self.velo = velo_1, velo_2
         self.curd = curd_re, curd_im
-        
-        
+
+
 class SubRegion(BaseEntity):
     def __init__(self, valid, key, sr_type, color, name, curdir, wb_key,
                  superelements, nodechains):
@@ -752,8 +776,8 @@ class SubRegion(BaseEntity):
         self.wb_key = wb_key
         self.superelements = superelements
         self.nodechains = nodechains
-        
-        
+
+
 class Winding(BaseEntity):
     def __init__(self, valid, key, name, subregions, num_turns, cur_re, cur_im,
                  flux_re, flux_im, volt_re, volt_im):

@@ -260,24 +260,30 @@ class Area(object):
             # wird zum Schluss sowieso versucht.
             return
 
-        a_prev = self
-        delta = {}
+        sorted_areas = []
+        sorted_areas.append((self.min_angle, self))
         for a in self.equal_areas:
-            d = round(alpha_angle(a_prev.min_angle, a.min_angle), 2)
+            sorted_areas.append((a.min_angle, a))
+        sorted_areas.sort()
+
+        delta = {}
+        prev_angle = sorted_areas[0][0]
+        for angle, area in sorted_areas[1:]:
+            d = round(alpha_angle(prev_angle, angle), 2)
             if d in delta:
                 delta[d] += 1
             else:
                 delta[d] = 1
-            a_prev = a
+            prev_angle = angle
 
         delta_sorted = list([v, k] for (k, v) in delta.items())
 
         if len(delta_sorted) == 1:
             # simple case: all have the same angle
-            self.delta = alpha_angle(self.min_angle,
-                                     self.equal_areas[0].min_angle)
-            self.start = middle_angle(self.max_angle,
-                                      self.equal_areas[0].min_angle)
+            self.delta = alpha_angle(sorted_areas[0][1].min_angle,
+                                     sorted_areas[1][1].min_angle)
+            self.start = middle_angle(sorted_areas[0][1].max_angle,
+                                      sorted_areas[1][1].min_angle)
             self.sym_type = 3
             self.symmetry = part_of_circle(0.0, self.delta, 1)
             return
@@ -298,37 +304,35 @@ class Area(object):
         percent = delta_sorted[0][0] / (len(self.equal_areas)+1)
         if percent > 0.75:
             # lets assume we only have on angle
-            self.delta = alpha_angle(self.min_angle,
-                                     self.equal_areas[0].min_angle)
-            self.start = middle_angle(self.max_angle,
-                                      self.equal_areas[0].min_angle)
+            self.delta = alpha_angle(sorted_areas[0][1].min_angle,
+                                     sorted_areas[1][1].min_angle)
+            self.start = middle_angle(sorted_areas[0][1].max_angle,
+                                      sorted_areas[1][1].min_angle)
             self.sym_type = 2
             self.symmetry = part_of_circle(0.0, self.delta, 1)
             return
 
         # Lets hope the distances are changing
-        self.delta = alpha_angle(self.min_angle, self.equal_areas[1].min_angle)
+        self.delta = alpha_angle(sorted_areas[0][1].min_angle,
+                                 sorted_areas[2][1].min_angle)
         self.sym_type = 1
         self.symmetry = part_of_circle(0.0, self.delta, 1)
-
-        delta_1 = alpha_angle(self.min_angle,
-                              self.equal_areas[0].min_angle)
-        delta_2 = alpha_angle(self.equal_areas[0].min_angle,
-                              self.equal_areas[1].min_angle)
+        delta_1 = alpha_angle(sorted_areas[0][1].min_angle,
+                              sorted_areas[1][1].min_angle)
+        delta_2 = alpha_angle(sorted_areas[1][1].min_angle,
+                              sorted_areas[2][1].min_angle)
 
         if np.isclose(delta_1, delta_2):
             # Hm. the distances are not changing
             self.delta = 0.0
             return
 
-#        print(" = delta_1={}, delta_2={}".format(delta_1, delta_2))
-
         if delta_1 < delta_2:
-            self.start = middle_angle(self.equal_areas[0].max_angle,
-                                      self.equal_areas[1].min_angle)
+            self.start = middle_angle(sorted_areas[1][1].max_angle,
+                                      sorted_areas[2][1].min_angle)
         else:
-            self.start = middle_angle(self.max_angle,
-                                      self.equal_areas[0].min_angle)
+            self.start = middle_angle(sorted_areas[0][1].max_angle,
+                                      sorted_areas[1][1].min_angle)
 
     def symmetry_lines(self, startangle, endangle):
         if less_equal(endangle, startangle):

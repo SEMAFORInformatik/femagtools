@@ -642,8 +642,7 @@ class Geometry(object):
             if not c.keep_node():
                 self.g.remove_node(c.point())
 
-        # Weil uns unnötige Corners abhanden gekommen sind, bilden wir die
-        # Liste neu.
+        # Rebuild Corner-list after correction
         corners = self.get_corner_list(center, angle, rtol, atol)
 
         if len(corners) > 1:
@@ -1167,8 +1166,10 @@ class Geometry(object):
 
     def find_symmetry(self, center, radius,
                       startangle, endangle, sym_tolerance):
+        logger.info("find symmetry")
         arealist = self.list_of_areas()
 
+        logger.info("  {} areas available".format(len(arealist)))
         if len(arealist) == 0:
             return False
 

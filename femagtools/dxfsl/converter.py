@@ -61,6 +61,7 @@ def symmetry_search(machine,
         if show_plots:
             plt.render_elements(machine.geom, Shape,
                                 title=kind+' (symmetrylines)',
+                                draw_inside=True,
                                 rows=rows, cols=cols, num=num, show=False)
         machine_slice = machine.get_symmetry_slice()
         if machine_slice is None:

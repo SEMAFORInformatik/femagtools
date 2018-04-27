@@ -27,6 +27,7 @@ from .functions import middle_point_of_line, middle_point_of_arc
 from .functions import middle_angle
 from .functions import normalise_angle, is_same_angle
 from .functions import part_of_circle, gcd
+import io
 
 logger = logging.getLogger('femagtools.geom')
 
@@ -125,7 +126,10 @@ def add_or_join(g, n1, n2, entity, rtol, atol):
     n1, n2: nodes
     entity
     """
-    g.add_edge(n1, n2, object=entity)
+    if n1 == n2:
+        logger.debug("Tiny element with same node on both sides %s", n1)
+    else:
+        g.add_edge(n1, n2, object=entity)
 
 
 def get_nodes_of_paths(g, c):
@@ -247,11 +251,15 @@ def polylines(entity):
 
 
 def spline(entity):
-    p_prev = None
-    for p in entity.control_points:
-        if p_prev:
-            yield Line(Element(start=p_prev, end=p))
-        p_prev = p
+    if False:
+        yield Line(Element(start=entity.control_points[0],
+                           end=entity.control_points[-1]))
+    else:
+        p_prev = None
+        for p in entity.control_points:
+            if p_prev:
+                yield Line(Element(start=p_prev, end=p))
+            p_prev = p
 
 
 def dxfshapes0(dxffile, layers=[]):
@@ -1313,7 +1321,7 @@ class Geometry(object):
             elif len(nbr_list) == 3:
                 renderer.point(n, 'ro', color='red')
             elif len(nbr_list) == 4:
-                renderer.point(n, 'ro', color='magenta')
+                renderer.point(n, 'ro', color='blue')
             elif len(nbr_list) > 4:
                 renderer.point(n, 'ro', color='black')
 
@@ -1750,3 +1758,18 @@ class Geometry(object):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))
         for n in self.g.nodes():
             print(n)
+
+    def write_nodes(self, filename):
+        nodes = []
+        for n in self.g.nodes():
+            nodes.append(n)
+        nodes.sort()
+
+        content = []
+        for n in nodes:
+            content.append(u"{}".format(n))
+            for nbr in self.g.neighbors(n):
+                content.append(u" --> {}".format(nbr))
+                
+        with io.open(filename, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(content))

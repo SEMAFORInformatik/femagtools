@@ -8,6 +8,7 @@
 
 """
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as pl
 import matplotlib.patches as pch
 from .shape import Shape
@@ -16,6 +17,7 @@ import logging
 import io
 
 logger = logging.getLogger(__name__)
+matplotlibversion = int(matplotlib.__version__.split('.')[0])
 
 
 #############################
@@ -32,7 +34,8 @@ class PlotRenderer(object):
         if self.fig is None:
             self.fig = pl.figure(facecolor='lightblue',
                                  figsize=(9, 10))
-            pl.tight_layout(h_pad=0.2, w_pad=0.2)
+            if matplotlibversion > 1:
+                pl.tight_layout(h_pad=0.2, w_pad=0.2)
             pl.subplots_adjust(bottom=0.05, top=0.95, hspace=0.25, wspace=0.15)
         return self.fig
 

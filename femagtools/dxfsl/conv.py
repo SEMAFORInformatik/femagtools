@@ -10,6 +10,8 @@ from femagtools.dxfsl.converter import converter
 import argparse
 import logging
 import logging.config
+import networkx as nx
+import matplotlib
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +89,22 @@ if __name__ == "__main__":
                            help='print debug information',
                            dest='debug',
                            action="store_true")
+    argparser.add_argument('--version',
+                           help='show version of some packages',
+                           dest='version',
+                           action="store_true")
 
     args = argparser.parse_args()
+
     if args.debug:
         loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel,
                         format='%(asctime)s %(message)s')
+
+    if args.version:
+        logger.info("networkx version: %s", nx.__version__)
+        logger.info("matplotlib version: %s", matplotlib.__version__)
+
     if args.airgap > 0.0:
         if args.debug:
             if args.airgap2 > 0.0:

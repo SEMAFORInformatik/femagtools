@@ -377,9 +377,6 @@ class Arc(Circle):
             else:
                 self.endangle -= 2*np.pi
 
-        logger.debug("%f -- %f (C %f, %f R %f)",
-                     self.startangle, self.endangle,
-                     self.center[0], self.center[1], self.radius)
         self.p1 = (self.center[0] + e.radius*np.cos(self.startangle),
                    self.center[1] + e.radius*np.sin(self.startangle))
         self.p2 = (self.center[0] + e.radius*np.cos(self.endangle),
@@ -765,9 +762,6 @@ class Line(Shape):
     def is_point_inside(self, point, rtol, atol, include_end=False):
         """ returns True if point is between start and end point
         """
-        logger.debug("Arc::is_point_inside: %s in (%s, %s)",
-                     point, self.p1, self.p2)
-
         if points_are_close(point, self.p1, rtol, atol):
             return include_end
         if points_are_close(point, self.p2, rtol, atol):

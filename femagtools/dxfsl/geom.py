@@ -393,7 +393,6 @@ class Geometry(object):
             if e:
                 e.id = i
                 n = self.find_nodes(e.start(), e.end())
-                logger.debug("%d %s", i, n)
                 try:
                     add_or_join(self.g, n[0], n[1], e, self.rtol, self.atol)
                 except Exception as ex:
@@ -766,19 +765,15 @@ class Geometry(object):
         area = []
         e = e_dict['object']
         x = e.get_point_number(start_p1)
-        trace = False
 
         if e_dict[x]:
-            # Diese Area wurde schon abgelaufen.
-            if trace:
-                print("    *** bereits abgelaufen ({}) ***".format(x))
+            logger.debug("*** area already tracked ({}) ***".format(x))
             return None
         e_dict[x] = True  # footprint
         area.append(e)
 
         if (isinstance(e, Circle) and not isinstance(e, Arc)):
-            if trace:
-                print("AREA WITH CIRCLE")
+            logger.debug("*** area is a circle ***")
             e_dict[1] = True  # footprint
             e_dict[2] = True  # footprint
             return area
@@ -788,9 +783,7 @@ class Geometry(object):
 
         next_p = self.point_lefthand_side(first_p, this_p)
         if not next_p:
-            # Unerwartetes Ende
-            if trace:
-                print("    *** Sackgasse ***")
+            logger.debug("*** dead end ***")
             return None
 
         a = normalise_angle(alpha_points(first_p, this_p, next_p))
@@ -798,37 +791,30 @@ class Geometry(object):
 
         c = 0
         while not points_are_close(next_p, start_p1):
-            if trace:
-                print("next={}, start={}".format(next_p, start_p1))
             c += 1
             if c > 1000:
-                print("FATAL: *** over 1000 elements in area ? ***")
+                logger.info("FATAL: *** over 1000 elements in area ? ***")
                 print_area(area)
                 sys.exit(1)
             e_dict = self.g.get_edge_data(this_p, next_p)
             e = e_dict['object']
             x = e.get_point_number(this_p)
             if e_dict[x]:
-                if trace:
-                    print('     *** da waren wir schon:\n   {}\n     ***'
-                          .format(e))
+                logger.debug('*** path already tracked ***')
                 return None
             e_dict[x] = True  # footprint
             first_p = this_p
             this_p = next_p
             next_p = self.point_lefthand_side(first_p, this_p)
             if not next_p:
-                # Unerwartetes Ende
-                if trace:
-                    print("    *** Sackgasse ***")
+                logger.debug("*** dead end ***")
                 return None
 
             a = normalise_angle(alpha_points(first_p, this_p, next_p))
             alpha += a
             area.append(e)
 
-        if trace:
-            print("END get_new_area\n")
+        logger.debug("END OF get_new_area")
 
         e_dict = self.g.get_edge_data(this_p, next_p)
         e = e_dict['object']
@@ -839,13 +825,10 @@ class Geometry(object):
         alpha += a
 
         if alpha < 0.0:
-            # Wir wollten nach links, aber es ging immer nach rechts!
-            if trace:
-                print("Wir wollten nach links, aber es ging immer nach rechts!")
+            logger.debug("*** turn left expected, but it turned right ***")
             return None
-
-        if trace:
-            print("AREA WITH CIRCLE\n{}\n".format(area))
+        
+        logger.debug("*** area is a circle ***")
         return area
 
     def create_list_of_areas(self):
@@ -1479,7 +1462,7 @@ class Geometry(object):
         for h in convex_hull(self.virtual_nodes()):
             angle = alpha_line(center, [round(h[0], 4), round(h[1], 4)])
             if angle < 0.0:
-                logger.debug("Seltsamer Punkt {}".format(h))
+                logger.debug("strange point {}".format(h))
             startangle = min(startangle, angle)
             endangle = max(endangle, angle)
 
@@ -1574,9 +1557,7 @@ class Geometry(object):
                 if not self.is_border_line(center,
                                            startangle, endangle,
                                            e, atol):
-                    print("BAD: Point {}".format(p))
-                    print("BAD: is_airgap: e = {}".format(e))
-                    print("BAD: is_airgap: c = {}".format(circle))
+                    logger.info("BAD: Point {}".format(p))
                     self.airgaps.append(Point(p))
                     self.airgaps.append(e)
                     ok = False

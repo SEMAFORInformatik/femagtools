@@ -220,6 +220,9 @@ class Machine(object):
         if np.isclose(self.radius, 0.0):
             return
 
+        if correct_airgap < 0:
+            return False  # no airgap
+
         self.airgaps = []
         airgaps = self.geom.detect_airgaps(self.center,
                                            self.startangle,

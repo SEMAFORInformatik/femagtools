@@ -8,6 +8,7 @@
 
 """
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as pl
 import matplotlib.patches as pch
 from .shape import Shape
@@ -26,6 +27,7 @@ class PlotRenderer(object):
     def __init__(self):
         self.fig = None
         self.background = '#eeeeee'
+        logger.info("matplotlib version: %s", matplotlib.__version__)
         pass
 
     def figure(self):

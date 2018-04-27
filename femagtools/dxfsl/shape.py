@@ -181,6 +181,9 @@ class Circle(Shape):
     def minmax_angle_from_center(self, center):
         d = distance(center, self.center)
         r = self.radius
+        if r >= d:
+            return (0.0, 0.0)
+
         r2 = np.sqrt(d**2 - r**2)
         circ = Circle(Element(center=center, radius=r2))
         points = self.intersect_circle(circ)

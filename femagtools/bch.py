@@ -11,7 +11,6 @@
 import sys
 import numpy as np
 import re
-import codecs
 import logging
 import logging.config
 
@@ -771,7 +770,7 @@ class Reader:
 
         m = np.array(m).T
         ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
-        iq = np.linspace(np.min(m[1]), np.max(m[1]), ncols)
+        iq = np.reshape(m[1], (-1, ncols))[0]
         if ncols > 1 and (iq[ncols-1] < iq[ncols-2] or
                           len(m[0]) % ncols != 0):
             ncols = ncols-1

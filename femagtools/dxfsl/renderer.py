@@ -663,7 +663,8 @@ class NewFslRenderer(object):
             self.content.append(u'm.fc_radius1  = m.fc_radius')
             self.content.append(u'pre_models("basic_modpar")\n')
 
-        self.content.append(u'agndst = 0.75')
+        self.content.append(
+            u'agndst = math.pi*m.fc_radius*m.npols_gen/m.num_poles/90')
 
         if geom_inner:
             if parts_inner > parts_outer:

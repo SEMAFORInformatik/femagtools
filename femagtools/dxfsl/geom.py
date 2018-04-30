@@ -250,19 +250,41 @@ def polylines(entity):
         i += 1
 
 
-def spline(entity):
+def spline(entity, min_dist=0.001):
     if False:
         yield Line(Element(start=entity.control_points[0],
                            end=entity.control_points[-1]))
-    else:
+        return
+
+    if False:
         p_prev = None
         for p in entity.control_points:
             if p_prev:
                 yield Line(Element(start=p_prev, end=p))
             p_prev = p
+        return
+
+    points_between = entity.control_points[1:-1]
+    p1 = entity.control_points[0]
+    pe = entity.control_points[-1]
+    for p2 in points_between:
+        dist_12 = distance(p1, p2)
+        dist_2e = distance(p2, pe)
+        if dist_2e < min_dist:
+            logger.debug("SPLINE: ignor small end-distance {}".format(dist_2e))
+            yield Line(Element(start=p1, end=pe))
+            return
+
+        if dist_12 > min_dist:
+            yield Line(Element(start=p1, end=p2))
+            p1 = p2
+        else:
+            logger.debug("SPLINE: ignor small distance {}".format(dist_12))
+
+    yield Line(Element(start=p1, end=pe))
 
 
-def dxfshapes0(dxffile, layers=[]):
+def dxfshapes0(dxffile, spline_mindist=0.01, layers=[]):
     """returns a collection of dxf entities (ezdxf)"""
     import ezdxf
     dwg = ezdxf.readfile(dxffile)
@@ -287,14 +309,14 @@ def dxfshapes0(dxffile, layers=[]):
             for p in polylines(e):
                 yield p
         elif e.dxftype == 'SPLINE':
-            for l in spline(e):
+            for l in spline(e, min_dist=spline_mindist):
                 yield l
         else:
             logger.info("Id %d4: unknown type %s", id, e.dxftype)
         id += 1
 
 
-def dxfshapes(dxffile, layers=[]):
+def dxfshapes(dxffile, spline_mindist=0.01, layers=[]):
     """returns a collection of dxf entities (dxfgrabber)"""
     dwg = dxfgrabber.readfile(dxffile)
     # print("Layers = {}".format(dwg.layers.names()))
@@ -320,7 +342,7 @@ def dxfshapes(dxffile, layers=[]):
                 for p in polylines(e):
                     yield p
             elif e.dxftype == 'SPLINE':
-                for l in spline(e):
+                for l in spline(e, min_dist=spline_mindist):
                     yield l
             else:
                 logger.info("Id %d4: unknown type %s", id, e.dxftype)
@@ -358,8 +380,12 @@ def single_path(edges):
 
 class Geometry(object):
     """collection of connected shapes"""
-    def __init__(self, elements=[], rtol=1e-03,
-                 atol=1e-03, split=False, debug=False):
+    def __init__(self, elements=[],
+                 rtol=1e-03,
+                 atol=1e-03,
+                 spline_mindist=0.001,
+                 split=False,
+                 debug=False):
         self._name = ''
         self.kind = ''
         self.mirror_corners = []

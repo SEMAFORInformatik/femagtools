@@ -6,6 +6,7 @@
 # Date: 2016/01/24
 #
 
+import femagtools
 from femagtools.dxfsl.converter import converter
 import argparse
 import logging
@@ -55,6 +56,11 @@ if __name__ == "__main__":
                            dest='sym_tolerance',
                            type=float,
                            default=0.001)
+    argparser.add_argument('--mindist',
+                           help='minimal distance of spline control-points',
+                           dest='spline_mindist',
+                           type=float,
+                           default=0.01)
     argparser.add_argument('--rtol',
                            help='relative tolerance (pickdist)',
                            dest='rtol',
@@ -102,6 +108,7 @@ if __name__ == "__main__":
                         format='%(asctime)s %(message)s')
 
     if args.version:
+        logger.info("femagtools version: %s", femagtools.__version__)
         logger.info("networkx version: %s", nx.__version__)
         logger.info("matplotlib version: %s", matplotlib.__version__)
 
@@ -127,6 +134,7 @@ if __name__ == "__main__":
               rtol=args.rtol,    # relative pickdist toleranz
               atol=args.atol,    # absolute pickdist toleranz
               symtol=args.sym_tolerance,
+              spline_mindist=args.spline_mindist,
               split=args.split,
               inner_name=args.inner,
               outer_name=args.outer,

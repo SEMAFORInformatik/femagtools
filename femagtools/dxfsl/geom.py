@@ -128,7 +128,7 @@ def add_or_join(geom, n1, n2, entity, rtol, atol):
     entity
     """
     if n1 == n2:
-        logger.debug("Tiny element with same node on both sides %s", n1)
+        logger.debug("Tiny element with same node on both sides ignored: %s", n1)
     else:
         geom.add_edge(n1, n2, entity)
 
@@ -285,7 +285,7 @@ def spline(entity, min_dist=0.001):
     yield Line(Element(start=p1, end=pe))
 
 
-def dxfshapes0(dxffile, spline_mindist=0.01, layers=[]):
+def dxfshapes0(dxffile, mindist=0.01, layers=[]):
     """returns a collection of dxf entities (ezdxf)"""
     import ezdxf
     dwg = ezdxf.readfile(dxffile)
@@ -310,14 +310,14 @@ def dxfshapes0(dxffile, spline_mindist=0.01, layers=[]):
             for p in polylines(e):
                 yield p
         elif e.dxftype == 'SPLINE':
-            for l in spline(e, min_dist=spline_mindist):
+            for l in spline(e, min_dist=mindist):
                 yield l
         else:
             logger.info("Id %d4: unknown type %s", id, e.dxftype)
         id += 1
 
 
-def dxfshapes(dxffile, spline_mindist=0.01, layers=[]):
+def dxfshapes(dxffile, mindist=0.01, layers=[]):
     """returns a collection of dxf entities (dxfgrabber)"""
     dwg = dxfgrabber.readfile(dxffile)
     # print("Layers = {}".format(dwg.layers.names()))
@@ -343,7 +343,7 @@ def dxfshapes(dxffile, spline_mindist=0.01, layers=[]):
                 for p in polylines(e):
                     yield p
             elif e.dxftype == 'SPLINE':
-                for l in spline(e, min_dist=spline_mindist):
+                for l in spline(e, min_dist=mindist):
                     yield l
             else:
                 logger.info("Id %d4: unknown type %s", id, e.dxftype)
@@ -384,7 +384,6 @@ class Geometry(object):
     def __init__(self, elements=[],
                  rtol=1e-03,
                  atol=1e-03,
-                 spline_mindist=0.001,
                  split=False,
                  debug=False):
         self._name = ''
@@ -1718,7 +1717,8 @@ class Geometry(object):
         if not isinstance(n12_el, Line):
             return False
 
-        logger.info("tiny line deleted")
+        logger.debug("tiny line from {} to {} deleted"
+                     .format(n0, n2))
         self.g.remove_edge(n0, n1)
         self.g.remove_edge(n1, n2)
         dict12['deleted'] = True
@@ -1727,13 +1727,16 @@ class Geometry(object):
         self.add_edge(n0, n2, line)
         return True
 
-    def delete_tiny_elements(self):
-        if geom_mindist == 0.0:
+    def delete_tiny_elements(self, mindist):
+        if mindist == 0.0:
             return
 
         edges = [edge for edge in self.g.edges(data=True)
-                 if distance(edge[0], edge[1]) < geom_mindist]
-
+                 if distance(edge[0], edge[1]) < mindist]
+        if len(edges) > 0:
+            logger.info("mindist={}: {} tiny elements found"
+                        .format(mindist, len(edges)))
+        deleted = 0
         for edge in edges:
             if edge[2].get('deleted', False):
                 continue
@@ -1746,12 +1749,16 @@ class Geometry(object):
             if len(nbrs_n1) == 1:
                 if self._delete_a_tiny_element(edge[1], edge[0],
                                                edge[2], nbrs_n1[0]):
+                    deleted += 1
                     continue
 
             if len(nbrs_n2) == 1:
                 if self._delete_a_tiny_element(edge[0], edge[1],
                                                edge[2], nbrs_n2[0]):
+                    deleted += 1
                     continue
+
+        logger.info("{} tiny elements deleted".format(deleted))
         return
 
     def search_subregions(self):

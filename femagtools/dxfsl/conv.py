@@ -59,7 +59,7 @@ if __name__ == "__main__":
                            default=0.001)
     argparser.add_argument('--mindist',
                            help='minimal distance of spline control-points',
-                           dest='spline_mindist',
+                           dest='mindist',
                            type=float,
                            default=0.01)
     argparser.add_argument('--rtol',
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         logger.info("networkx version: %s", nx.__version__)
         logger.info("matplotlib version: %s", matplotlib.__version__)
         sys.exit(0)
-        
+
     if args.airgap > 0.0:
         if args.debug:
             if args.airgap2 > 0.0:
@@ -136,7 +136,7 @@ if __name__ == "__main__":
               rtol=args.rtol,    # relative pickdist toleranz
               atol=args.atol,    # absolute pickdist toleranz
               symtol=args.sym_tolerance,
-              spline_mindist=args.spline_mindist,
+              mindist=args.mindist,
               split=args.split,
               inner_name=args.inner,
               outer_name=args.outer,

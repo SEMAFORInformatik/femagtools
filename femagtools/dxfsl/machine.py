@@ -465,5 +465,5 @@ class Machine(object):
     def search_subregions(self):
         self.geom.search_subregions()
 
-    def delete_tiny_elements(self):
-        self.geom.delete_tiny_elements()
+    def delete_tiny_elements(self, mindist):
+        self.geom.delete_tiny_elements(mindist)

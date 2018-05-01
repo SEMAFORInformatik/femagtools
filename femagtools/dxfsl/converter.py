@@ -97,7 +97,7 @@ def symmetry_search(machine,
 def converter(dxfile,
               rtol=1e-03,
               atol=1e-03,
-              spline_mindist=0.01,
+              mindist=0.01,
               symtol=0.001,
               split=False,
               inner_name='inner',
@@ -114,11 +114,10 @@ def converter(dxfile,
     logger.info("start reading %s", basename)
 
     basegeom = Geometry(dxfshapes(dxfile,
-                                  spline_mindist=spline_mindist,
+                                  mindist=mindist,
                                   layers=layers),
                         rtol=rtol,
                         atol=atol,
-                        spline_mindist=spline_mindist,
                         split=split)
     logger.info("total elements %s", len(basegeom.g.edges()))
 
@@ -215,8 +214,8 @@ def converter(dxfile,
             machine_inner.sync_with_counterpart(machine_outer)
             machine_outer.search_subregions()
 
-        machine_inner.delete_tiny_elements()
-        machine_outer.delete_tiny_elements()
+        machine_inner.delete_tiny_elements(mindist)
+        machine_outer.delete_tiny_elements(mindist)
 
         if show_plots:
             p.render_elements(machine_inner.geom, Shape,

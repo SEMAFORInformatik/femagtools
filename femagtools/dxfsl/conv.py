@@ -61,7 +61,7 @@ if __name__ == "__main__":
                            help='minimal distance of spline control-points',
                            dest='mindist',
                            type=float,
-                           default=0.01)
+                           default=0.0)
     argparser.add_argument('--rtol',
                            help='relative tolerance (pickdist)',
                            dest='rtol',

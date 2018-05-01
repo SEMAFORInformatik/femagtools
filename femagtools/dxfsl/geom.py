@@ -38,6 +38,7 @@ logger = logging.getLogger('femagtools.geom')
 
 
 nxversion = int(nx.__version__.split('.')[0])
+geom_mindist = 0.0
 
 
 def print_circle(ax, circle, color='darkblue', fill=False):
@@ -120,16 +121,16 @@ def add_or_split(el, x, out_elements, rtol, atol):
     return []
 
 
-def add_or_join(g, n1, n2, entity, rtol, atol):
+def add_or_join(geom, n1, n2, entity, rtol, atol):
     """ adds a new entity to graph or joins entity with existing
-    g: graph
+    geom: Geometry
     n1, n2: nodes
     entity
     """
     if n1 == n2:
         logger.debug("Tiny element with same node on both sides %s", n1)
     else:
-        g.add_edge(n1, n2, object=entity)
+        geom.add_edge(n1, n2, entity)
 
 
 def get_nodes_of_paths(g, c):
@@ -420,7 +421,7 @@ class Geometry(object):
                 e.id = i
                 n = self.find_nodes(e.start(), e.end())
                 try:
-                    add_or_join(self.g, n[0], n[1], e, self.rtol, self.atol)
+                    add_or_join(self, n[0], n[1], e, self.rtol, self.atol)
                 except Exception as ex:
                     logger.warn("EXCEPTION %s", ex)
                     if e:  # must be a circle
@@ -548,6 +549,9 @@ class Geometry(object):
                 return n
         return []
 
+    def add_edge(self, n1, n2, entity):
+        self.g.add_edge(n1, n2, object=entity)
+
     def get_edge(self, eg):
         return [[e[0], e[1], e[2]['object']] for e in self.g.edges(data=True)
                 if e[2]['object'] is eg]
@@ -563,7 +567,7 @@ class Geometry(object):
 
     def add_line(self, n1, n2):
         line = Line(Element(start=n1, end=n2))
-        add_or_join(self.g,
+        add_or_join(self,
                     line.node1(ndec),
                     line.node2(ndec),
                     line,
@@ -668,8 +672,8 @@ class Geometry(object):
                                              radius=el.radius,
                                              start_angle=alpha_mid*180/np.pi,
                                              end_angle=alpha_end*180/np.pi))
-                            self.g.add_edge(p1, a1.node2(ndec), object=a1)
-                            self.g.add_edge(a2.node1(ndec), p2, object=a2)
+                            self.add_edge(p1, a1.node2(ndec), a1)
+                            self.add_edge(a2.node1(ndec), p2, a2)
 
         for c in corners:
             if not c.keep_node():
@@ -683,7 +687,7 @@ class Geometry(object):
             p1 = corners[0].point()
             for c in corners[1:]:
                 p2 = c.point()
-                self.g.add_edge(p1, p2, object=Line(Element(start=p1, end=p2)))
+                self.add_edge(p1, p2, Line(Element(start=p1, end=p2)))
                 p1 = p2
 
     def set_minmax_radius(self, center):
@@ -708,14 +712,14 @@ class Geometry(object):
             c_min.is_new_point = True
             p1 = c_min.point()
             p2 = c_first.point()
-            self.g.add_edge(p1, p2, object=Line(Element(start=p1, end=p2)))
+            self.add_edge(p1, p2, Line(Element(start=p1, end=p2)))
 
         c_last = corners[len(corners)-1]
         if not c_max.is_same_corner(c_last):
             c_max.is_new_point = True
             p2 = c_max.point()
             p1 = c_last.point()
-            self.g.add_edge(p1, p2, object=Line(Element(start=p1, end=p2)))
+            self.add_edge(p1, p2, Line(Element(start=p1, end=p2)))
 
         return (c_min, c_max)
 
@@ -730,7 +734,7 @@ class Geometry(object):
             nodes_sorted.sort()
             p = nodes_sorted[0][1]
             angle_p = alpha_line(center, p)
-            self.g.add_edge(start_p, p, object=Arc(
+            self.add_edge(start_p, p, Arc(
                 Element(center=center, radius=radius,
                         start_angle=startangle*180/np.pi,
                         end_angle=angle_p*180/np.pi)))
@@ -742,7 +746,7 @@ class Geometry(object):
             inx = len(nodes_sorted)-1
             p = nodes_sorted[inx][1]
             angle_p = alpha_line(center, p)
-            self.g.add_edge(p, end_p, object=Arc(
+            self.add_edge(p, end_p, Arc(
                 Element(center=center, radius=radius,
                         start_angle=angle_p*180/np.pi,
                         end_angle=endangle*180/np.pi)))
@@ -1692,7 +1696,7 @@ class Geometry(object):
                 p = point_list[0][1]
                 new_p = (round(p[0], ndec), round(p[1], ndec))
                 line = Line(Element(start=the_area_p, end=new_p))
-                add_or_join(self.g, the_area_p, new_p, line,
+                add_or_join(self, the_area_p, new_p, line,
                             self.rtol, self.atol)
 
     def is_rotor(self):
@@ -1704,6 +1708,51 @@ class Geometry(object):
         if self.sym_counterpart:
             return self.sym_part > self.sym_counterpart
         return False
+
+    def _delete_a_tiny_element(self, n0, n1, dict01, n2):
+        dict12 = self.g.get_edge_data(n1, n2)
+        if dict12.get('deleted', False):
+            return False
+
+        n12_el = dict12['object']
+        if not isinstance(n12_el, Line):
+            return False
+
+        logger.info("tiny line deleted")
+        self.g.remove_edge(n0, n1)
+        self.g.remove_edge(n1, n2)
+        dict12['deleted'] = True
+        dict01['deleted'] = True
+        line = Line(Element(start=n0, end=n2))
+        self.add_edge(n0, n2, line)
+        return True
+
+    def delete_tiny_elements(self):
+        if geom_mindist == 0.0:
+            return
+
+        edges = [edge for edge in self.g.edges(data=True)
+                 if distance(edge[0], edge[1]) < geom_mindist]
+
+        for edge in edges:
+            if edge[2].get('deleted', False):
+                continue
+
+            nbrs_n1 = [nbr for nbr in self.g.neighbors(edge[0])
+                       if nbr is not edge[1]]
+            nbrs_n2 = [nbr for nbr in self.g.neighbors(edge[1])
+                       if nbr is not edge[0]]
+
+            if len(nbrs_n1) == 1:
+                if self._delete_a_tiny_element(edge[1], edge[0],
+                                               edge[2], nbrs_n1[0]):
+                    continue
+
+            if len(nbrs_n2) == 1:
+                if self._delete_a_tiny_element(edge[0], edge[1],
+                                               edge[2], nbrs_n2[0]):
+                    continue
+        return
 
     def search_subregions(self):
         if self.is_stator():
@@ -1777,6 +1826,6 @@ class Geometry(object):
             content.append(u"{}".format(n))
             for nbr in self.g.neighbors(n):
                 content.append(u" --> {}".format(nbr))
-                
+
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(content))

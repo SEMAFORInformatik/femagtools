@@ -215,6 +215,9 @@ def converter(dxfile,
             machine_inner.sync_with_counterpart(machine_outer)
             machine_outer.search_subregions()
 
+        machine_inner.delete_tiny_elements()
+        machine_outer.delete_tiny_elements()
+
         if show_plots:
             p.render_elements(machine_inner.geom, Shape,
                               draw_inside=True, title=inner_name,

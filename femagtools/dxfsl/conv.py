@@ -6,6 +6,7 @@
 # Date: 2016/01/24
 #
 
+import sys
 import femagtools
 from femagtools.dxfsl.converter import converter
 import argparse
@@ -111,7 +112,8 @@ if __name__ == "__main__":
         logger.info("femagtools version: %s", femagtools.__version__)
         logger.info("networkx version: %s", nx.__version__)
         logger.info("matplotlib version: %s", matplotlib.__version__)
-
+        sys.exit(0)
+        
     if args.airgap > 0.0:
         if args.debug:
             if args.airgap2 > 0.0:

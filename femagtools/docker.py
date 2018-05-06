@@ -21,6 +21,20 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def get_port_binding():
+    """returns list with dict(HostIp, HostPort) of all
+    running femag containers:
+      [{'HostPort': '25555', 'HostIp': '0.0.0.0'}, 
+       {'HostPort': '15555', 'HostIp': '0.0.0.0'}, 
+       {'HostPort': '5555', 'HostIp': '0.0.0.0'}]
+    """
+    import docker
+    client = docker.from_env()
+    return [c.attrs['NetworkSettings']['Ports']['5555/tcp'][0]
+            for c in client.containers.list(
+                    filters={'label': 'org.label-schema.name=profemag/femag'})]
+
+
 def publish_receive(message):
     """handle messages from femag publisher"""
     topic, content = message  # "femag_log" + text
@@ -38,7 +52,7 @@ class AsyncFemag(threading.Thread):
         self.queue = queue
         self.container = femagtools.femag.ZmqFemag(
             workdir,
-            port)
+            port, host)
         
     def run(self):
         while True:
@@ -86,11 +100,14 @@ class Engine(object):
             job (:class:`Job`)
         """
         self.queue = Queue()
+        hp = get_port_binding()
+        logger.info("Port Bindings: %s", hp)
+        ports = [int(h['HostPort']) for h in hp]
         self.async_femags = [AsyncFemag(self.queue,
-                                        os.path.join(workdir, str(h)),
-                                        self.femag_port + h*10000,
+                                        workdir,
+                                        p,
                                         'localhost')
-                             for h in range(self.num_workers)]
+                             for p in ports]
         
         self.job = femagtools.job.Job(workdir)
         return self.job

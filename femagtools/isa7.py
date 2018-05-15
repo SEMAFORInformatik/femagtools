@@ -516,11 +516,14 @@ class Isa7(object):
 
         physical_surfaces = sorted(set([sr.name
                                         for sr in self.subregions]
-                                       + ["Winding {}".format(w.key)
-                                          for w in self.windings]
+                                       + ["Winding {} {}".format(w.key, pol)
+                                          for w in self.windings
+                                          for pol in ("+", "-")]
                                        + ["Air",
                                           "Airgap Rotor",
-                                          "Airgap Stator"]))
+                                          "Airgap Stator",
+                                          "PM1", "PM2",
+                                          "PM3", "PM4"]))
 
         def physical_line(n1, n2):
             if (n1, n2) in airgap_lines or (n2, n1) in airgap_lines:
@@ -546,27 +549,37 @@ class Isa7(object):
                 return 1  # vpot 0
             
         def physical_surface(e):
+
+            def surface_id(name):
+                return physical_surfaces.index(name) + len(physical_lines) + 1
+            
+            if any(e.mag):
+                if e.mag[0] > 0:
+                    if e.mag[1] > 0:
+                        return surface_id("PM1")
+                    return surface_id("PM2")
+                if e.mag[1] > 0:
+                    return surface_id("PM3")
+                return surface_id("PM4")
+            
             if e in airgap_rotor_elements or e in airgap_center_elements:
-                return (physical_surfaces.index("Airgap Rotor")
-                        + len(physical_lines) + 1)
+                return surface_id("Airgap Rotor")
 
             if e in airgap_stator_elements:
-                return (physical_surfaces.index("Airgap Stator")
-                        + len(physical_lines) + 1)
+                return surface_id("Airgap Stator")
             
             sr_key = self.superelements[e.se_key].sr_key
             if sr_key == -1:
-                return (physical_surfaces.index("Air")
-                        + len(physical_lines) + 1)
-            
-            sr = self.subregions[self.superelements[e.se_key].sr_key]
-            if sr.wb_key != -1:
-                return (len(physical_lines) + 1
-                        + physical_surfaces.index(
-                    "Winding {}".format(self.windings[sr.wb_key].key)))
+                return surface_id("Air")
 
-            return (physical_surfaces.index(sr.name)
-                    + len(physical_lines) + 1)
+            sr = self.subregions[sr_key]
+            if sr.wb_key != -1:
+                wb = self.subregions[sr.wb_key]
+                if sr.curdir > 0:
+                    return surface_id("Winding {} -".format(wb.key)) 
+                return surface_id("Winding {} +".format(wb.key))
+            
+            return surface_id(sr.name)
 
         def line_on_boundary(n1, n2):
             if n1.on_boundary() and n2.on_boundary():
@@ -603,6 +616,7 @@ class Isa7(object):
                                       if n.on_boundary() and
                                       n in nodechain_links.keys()])
                                + len(airgap_lines)))
+        
         for e in self.elements:
             ev = e.vertices
 

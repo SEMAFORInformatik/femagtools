@@ -42,6 +42,14 @@ if __name__ == "__main__":
                            help='name of outer element',
                            dest='outer',
                            default='outer')
+    argparser.add_argument('--rotor',
+                           help='rotor without airgap in/out',
+                           dest='rotor',
+                           default='')
+    argparser.add_argument('--stator',
+                           help='stator without airgap in/out',
+                           dest='stator',
+                           default='')
     argparser.add_argument('-a', '--airgap',
                            help='correct airgap',
                            dest='airgap',
@@ -115,18 +123,28 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if args.airgap > 0.0:
-        if args.debug:
-            if args.airgap2 > 0.0:
-                print("Airgap is set from {} to {}".
-                      format(args.airgap, args.airgap2))
-            else:
-                print("Airgap is set to {}".format(args.airgap))
+        if args.airgap2 > 0.0:
+            logger.info("Airgap is set from {} to {}".
+                        format(args.airgap, args.airgap2))
         else:
-            if args.airgap2 > 0.0:
-                logger.info("Airgap is set from {} to {}".
-                            format(args.airgap, args.airgap2))
-            else:
-                logger.info("Airgap is set to {}".format(args.airgap))
+            logger.info("Airgap is set to {}".format(args.airgap))
+
+    part = ()
+    if args.stator:
+        if args.rotor:
+            logger.error("Stator or Rotor expected")
+            sys.exit(1)
+        part = ('stator', args.stator)
+    elif args.rotor:
+        part = ('rotor', args.rotor)
+    if part:
+        if args.airgap:
+            logger.info('airgap in stator or rotor not possible')
+            sys.exit(1)
+        args.airgap = -1  # no airgap
+        if part[1] not in ('in', 'out'):
+            logger.info('{} has to be defined in/out'.format(part[0]))
+            sys.exit(1)
 
     if not args.write_fsl:
         if not args.show_plots:
@@ -140,6 +158,7 @@ if __name__ == "__main__":
               split=args.split,
               inner_name=args.inner,
               outer_name=args.outer,
+              part=part,
               airgap=args.airgap,
               airgap2=args.airgap2,
               view_only=args.view,

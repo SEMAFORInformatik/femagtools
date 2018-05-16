@@ -214,13 +214,16 @@ class Machine(object):
             self.endangle += angle
 
     def airgap(self, correct_airgap=0.0, correct_airgap2=0.0, atol=0.1):
+        logger.debug('locking for airgap')
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
 
         if np.isclose(self.radius, 0.0):
+            logger.debug('no radius')
             return
 
         if correct_airgap < 0:
+            logger.debug('no airgap')
             return False  # no airgap
 
         self.airgaps = []
@@ -295,6 +298,7 @@ class Machine(object):
             return True  # bad exit
 
         if len(self.airgaps) == 0:
+            logger.debug('No airgap found')
             return False  # no airgaps found
 
         if self.airgap_radius > 0.0:

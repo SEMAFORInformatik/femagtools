@@ -285,6 +285,49 @@ def spline(entity, min_dist=0.001):
     yield Line(Element(start=p1, end=pe))
 
 
+def insert_block(insert_entity, block, min_dist=0.001):
+    logger.info('Insert {} entities from block {}'
+                .format(len(block), insert_entity.name))
+
+    logger.debug('Insert = {}'.format(insert_entity.insert))
+    logger.debug('Rotation = {}'.format(insert_entity.rotation))
+    logger.debug('Scale = {}'.format(insert_entity.scale))
+    logger.debug('Rows = {}'.format(insert_entity.row_count))
+    logger.debug('Cols = {}'.format(insert_entity.col_count))
+    logger.debug('Row spacing = {}'.format(insert_entity.row_spacing))
+    logger.debug('Col spacing = {}'.format(insert_entity.col_spacing))
+
+    if(insert_entity.row_count > 1 or
+       insert_entity.col_count > 1 or
+       insert_entity.row_spacing > 0 or
+       insert_entity.col_spacing > 0):
+        logger.info('Multi Block references in Insert not supported')
+        return
+
+    if insert_entity.rotation != 0.0:
+        logger.info('Block Insert with rotation not supported')
+        return
+
+    for e in block:
+        if e.dxftype == 'ARC':
+            yield Arc(e)
+        elif e.dxftype == 'CIRCLE':
+            logger.debug("Circle %s, Radius %f", e.center[:2], e.radius)
+            yield Circle(e)
+        elif e.dxftype == 'LINE':
+            yield Line(e)
+        elif e.dxftype == 'POLYLINE':
+            for p in polylines(e):
+                yield p
+        elif e.dxftype == 'SPLINE':
+            for l in spline(e, min_dist=min_dist):
+                yield l
+        elif e.dxftype == 'INSERT':
+            logger.info("Nested Insert of Blocks not supported")
+        else:
+            logger.info("Id %d4: unknown type %s", id, e.dxftype)
+
+
 def dxfshapes0(dxffile, mindist=0.01, layers=[]):
     """returns a collection of dxf entities (ezdxf)"""
     import ezdxf
@@ -302,14 +345,14 @@ def dxfshapes0(dxffile, mindist=0.01, layers=[]):
         if e.dxftype() == 'ARC':
             yield Arc(e.dxf)
         elif e.dxftype() == 'CIRCLE':
-            logger.info("C %s, R %f", e.center[:2], e.radius)
+            logger.debug("Circle %s, Radius %f", e.center[:2], e.radius)
             yield Circle(e.dxf)
         elif e.dxftype() == 'LINE':
             yield Line(e.dxf)
         elif e.dxftype() == 'POLYLINE':
             for p in polylines(e):
                 yield p
-        elif e.dxftype == 'SPLINE':
+        elif e.dxftype() == 'SPLINE':
             for l in spline(e, min_dist=mindist):
                 yield l
         else:
@@ -335,7 +378,7 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
             if e.dxftype == 'ARC':
                 yield Arc(e)
             elif e.dxftype == 'CIRCLE':
-                logger.info("C %s, R %f", e.center[:2], e.radius)
+                logger.debug("Circle %s, Radius %f", e.center[:2], e.radius)
                 yield Circle(e)
             elif e.dxftype == 'LINE':
                 yield Line(e)
@@ -344,6 +387,10 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                     yield p
             elif e.dxftype == 'SPLINE':
                 for l in spline(e, min_dist=mindist):
+                    yield l
+            elif e.dxftype == 'INSERT':
+                block = dwg.blocks[e.name]
+                for l in insert_block(e, block, min_dist=mindist):
                     yield l
             else:
                 logger.info("Id %d4: unknown type %s", id, e.dxftype)
@@ -622,6 +669,7 @@ class Geometry(object):
         corners = [Corner(center, c)
                    for c in self.angle_nodes(center, angle, rtol, atol)]
         if len(corners) == 1:
+            logger.debug('the center is a corner')
             corners.append(Corner(center, tuple(center)))
         if len(corners) > 1:
             corners.sort()

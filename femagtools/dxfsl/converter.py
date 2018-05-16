@@ -136,7 +136,7 @@ def converter(dxfile,
                           rows=3, cols=2, num=1, show=debug_mode)
 
     if not machine_base.is_a_machine():
-        print("it's Not a Machine!!")
+        logger.info("it's Not a Machine!!")
         sys.exit(1)
 
     if machine_base.is_full() or \
@@ -151,7 +151,7 @@ def converter(dxfile,
         machine = machine_base.full_copy()
 
     if machine.part_of_circle() == 0:
-        print("No arc segment found")
+        logger.info("No arc segment found")
         sys.exit(1)
 
     machine.clear_cut_lines()

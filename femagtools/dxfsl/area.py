@@ -553,6 +553,7 @@ class Area(object):
         if close_to_ag:  # close to airgap
             mm = self.minmax_angle_dist_from_center(center, airgap_radius)
             air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
+
             if air_alpha / alpha < 0.2:
                 self.type = 0  # air
                 return self.type

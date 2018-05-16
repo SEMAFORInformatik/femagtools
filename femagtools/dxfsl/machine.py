@@ -484,6 +484,9 @@ class Machine(object):
 
         def get_hit_factor(nodes1, nodes2):
             hit = 0
+            if not nodes1:
+                return 0.0
+
             for n in nodes1:
                 if is_node_available(n, nodes2):
                     hit += 1

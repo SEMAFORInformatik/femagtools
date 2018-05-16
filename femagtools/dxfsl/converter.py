@@ -102,6 +102,7 @@ def converter(dxfile,
               split=False,
               inner_name='inner',
               outer_name='outer',
+              part=(),
               airgap=0.0,
               airgap2=0.0,
               view_only=False,
@@ -254,6 +255,11 @@ def converter(dxfile,
                                   rows=3,  # rows
                                   cols=2,  # cols
                                   num=3)   # start num
+        if part:
+            if part[0] == 'stator':
+                machine.geom.search_stator_subregions(part[1])
+            else:
+                machine.geom.search_rotor_subregions(part[1])
 
         if show_plots:
             p.render_elements(machine.geom, Shape,
@@ -263,7 +269,6 @@ def converter(dxfile,
             p.show_plot()
 
         if write_fsl:
-            machine.search_subregions()
             write_fsl_file(machine, basename)
 
     logger.info("done")

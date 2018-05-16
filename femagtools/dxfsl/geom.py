@@ -1818,9 +1818,15 @@ class Geometry(object):
 
         logger.warning("no stator or rotor assigned")
 
-    def search_stator_subregions(self):
+    def search_stator_subregions(self, place=''):
+        is_inner = self.is_inner
+        if place == 'in':
+            is_inner = True
+        elif place == 'out':
+            is_inner = False
+
         for area in self.list_of_areas():
-            area.mark_stator_subregions(self.is_inner,
+            area.mark_stator_subregions(is_inner,
                                         self.is_mirrored(),
                                         self.alfa,
                                         self.center,
@@ -1835,10 +1841,16 @@ class Geometry(object):
             else:
                 a.type = 1  # iron
 
-    def search_rotor_subregions(self):
+    def search_rotor_subregions(self, place=''):
+        is_inner = self.is_inner
+        if place == 'in':
+            is_inner = True
+        elif place == 'out':
+            is_inner = False
+
         types = {}
         for area in self.list_of_areas():
-            t = area.mark_rotor_subregions(self.is_inner,
+            t = area.mark_rotor_subregions(is_inner,
                                            self.is_mirrored(),
                                            self.alfa,
                                            self.center,

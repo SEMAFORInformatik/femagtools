@@ -904,7 +904,7 @@ class Geometry(object):
         if alpha < 0.0:
             logger.debug("*** turn left expected, but it turned right ***")
             return None
-        
+
         logger.debug("*** area is a circle ***")
         return area
 
@@ -1653,6 +1653,20 @@ class Geometry(object):
                 return np.isclose(endangle, angle_p2, 1e-3, atol)
         return False
 
+    def get_gaplist(self, center):
+        gaplist = []
+        for e in self.elements(Shape):
+            gaplist += [e.minmax_from_center(center)]
+        gaplist.sort()
+
+        airgaps = []
+        dist_max = 0.0
+        for g in gaplist:
+            if not less_equal(g[0], dist_max):
+                airgaps.append((dist_max, g[0]))
+            dist_max = max(dist_max, g[1])
+        return airgaps
+
     def detect_airgaps(self, center, startangle, endangle, atol):
         """ Die Funktion sucht Luftspalt-Kandidaten und liefert eine Liste
             von Möglichkeiten mit jeweils einem minimalen und einem maximalen
@@ -1685,6 +1699,14 @@ class Geometry(object):
         return [c for c in self.elements(Circle)
                 if points_are_close(center, c.center) and
                 np.isclose(radius, c.radius)]
+
+    def delete_circle(self, center, radius):
+        for c in self.elements(Circle):
+            if points_are_close(center, c.center):
+                if np.isclose(radius, c.radius):
+                    logger.info("Center circle removed")
+                    self.remove_edge(c)
+                    return
 
     def alpha_of_circles(self, circles, center):
         angle = 0.0

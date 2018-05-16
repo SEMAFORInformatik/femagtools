@@ -354,8 +354,27 @@ class Machine(object):
     def part_of_circle(self, pos=3):
         return part_of_circle(self.startangle, self.endangle, pos)
 
+    def delete_center_circle(self):
+        gaps = self.geom.get_gaplist(self.center)
+        if len(gaps) < 2:
+            return
+
+        first_gap = gaps[0][1]
+        second_gap = gaps[1][0]
+        if first_gap != second_gap:
+            return
+
+        first_dist = gaps[0][1]
+        second_dist = gaps[1][1] - gaps[1][0]
+        if first_dist < 1.0:
+            if second_dist / first_dist > 10.0:
+                self.geom.delete_circle((0.0, 0.0), first_dist)
+
     def repair_hull(self):
         logger.info('repair_hull')
+        if self.is_full() and not self.has_airgap():
+            self.delete_center_circle()
+
         self.geom.repair_hull_line(self.center, self.startangle)
         self.geom.repair_hull_line(self.center, self.endangle)
 

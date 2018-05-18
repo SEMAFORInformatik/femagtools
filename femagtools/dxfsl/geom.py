@@ -297,15 +297,23 @@ def insert_block(insert_entity, block, min_dist=0.001):
     logger.debug('Row spacing = {}'.format(insert_entity.row_spacing))
     logger.debug('Col spacing = {}'.format(insert_entity.col_spacing))
 
+    if insert_entity.insert != (0.0, 0.0, 0.0):
+        logger.error('Different Location in Insert not supported')
+        return
+
+    if insert_entity.scale != (1.0, 1.0, 1.0):
+        logger.error('Block scaling in Insert not supported')
+        return
+
     if(insert_entity.row_count > 1 or
        insert_entity.col_count > 1 or
        insert_entity.row_spacing > 0 or
        insert_entity.col_spacing > 0):
-        logger.info('Multi Block references in Insert not supported')
+        logger.error('Multi Block references in Insert not supported')
         return
 
     if insert_entity.rotation != 0.0:
-        logger.info('Block Insert with rotation not supported')
+        logger.error('Block Insert with rotation not supported')
         return
 
     for e in block:
@@ -323,9 +331,9 @@ def insert_block(insert_entity, block, min_dist=0.001):
             for l in spline(e, min_dist=min_dist):
                 yield l
         elif e.dxftype == 'INSERT':
-            logger.info("Nested Insert of Blocks not supported")
+            logger.warn("Nested Insert of Blocks not supported")
         else:
-            logger.info("Id %d4: unknown type %s", id, e.dxftype)
+            logger.warn("Id %d4: unknown type %s", id, e.dxftype)
 
 
 def dxfshapes0(dxffile, mindist=0.01, layers=[]):
@@ -1644,6 +1652,9 @@ class Geometry(object):
 
     def is_border_line(self, center, startangle, endangle, e, atol):
         if isinstance(e, Line):
+            if np.isclose(startangle, endangle):
+                return False  # full
+    
             angle_p1 = alpha_line(center, e.p1)
             if np.isclose(startangle, angle_p1, 1e-3, atol):
                 angle_p2 = alpha_line(center, e.p2)
@@ -1683,7 +1694,7 @@ class Geometry(object):
         dist_max = 0.0
 
         min_radius = gaplist[0][0]
-        max_radius = gaplist[len(gaplist)-1][1]
+        max_radius = gaplist[len(gaplist)-1][1] + 10.0
         dist_max = min_radius
 
         for g in gaplist:
@@ -1692,6 +1703,9 @@ class Geometry(object):
                         np.isclose(g[0], max_radius, 1e-2, 1.0)):
                     airgaps.append((dist_max, g[0]))
             dist_max = max(dist_max, g[1])
+
+        if gaplist[-1][0] > dist_max:
+            airgaps.append(dist_max, gaplist[-1][0])
 
         return airgaps
 
@@ -1855,11 +1869,20 @@ class Geometry(object):
                                         self.min_radius,
                                         self.max_radius)
 
+        # windings close to endangle?
+        wdg_areas = [a for a in self.list_of_areas()
+                     if a.type == 2 and a.close_to_endangle]
+
         # air or iron near windings?
         air_areas = [a for a in self.list_of_areas() if a.type == 9]
         for a in air_areas:
             if a.around_windings(self.list_of_areas()):
                 a.type = 0  # air
+            elif a.close_to_endangle:
+                if wdg_areas:
+                    a.type = 0  # air
+                else:
+                    a.type = 1  # iron
             else:
                 a.type = 1  # iron
 

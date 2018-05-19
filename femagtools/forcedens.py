@@ -107,10 +107,10 @@ class ForceDensity(object):
 
         self.positions.append(d)
 
-    def read_file(self, filename):
+    def read(self, filename):
         with open(filename) as f:
             for s in _readSections(f.readlines()):
-                print('Section %s' % s[0:2])
+                logger.debug('Section %s' % s[0:2])
                 if s[0].startswith('FEMAG'):
                     self.__read_version(s)
                 elif s[0].startswith('Project'):
@@ -147,7 +147,12 @@ class ForceDensity(object):
 #        return getattr(self, k)
 
 
-def read(workdir='.'):
+def read(filename):
+    f = ForceDensity()
+    f.read(filename)
+    return f
+
+def readall(workdir='.'):
     """collect all recent PLT files
     returns list of ForceDensity objects
     """
@@ -161,7 +166,7 @@ def read(workdir='.'):
         if m and lastserie == m.groups()[1]:
             model, i, k = m.groups()
             fdens = ForceDensity()
-            fdens.read_file(p)
+            fdens.read(p)
             logging.info("%s: %s", p, fdens.title)
             if model in plt:
                 plt[model].append(fdens)

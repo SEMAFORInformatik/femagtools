@@ -1252,10 +1252,11 @@ class Geometry(object):
         arealist.sort()
 
         def add(areas, a):
-            for area in areas:
-                if area.is_equal(a, sym_tolerance):
-                    area.increment(a)
-                    return
+            if not a.is_circle():
+                for area in areas:
+                    if area.is_equal(a, sym_tolerance):
+                        area.increment(a)
+                        return
             areas.append(a)
 
         arealist_match = []
@@ -1654,7 +1655,7 @@ class Geometry(object):
         if isinstance(e, Line):
             if np.isclose(startangle, endangle):
                 return False  # full
-    
+
             angle_p1 = alpha_line(center, e.p1)
             if np.isclose(startangle, angle_p1, 1e-3, atol):
                 angle_p2 = alpha_line(center, e.p2)

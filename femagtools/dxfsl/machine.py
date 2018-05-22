@@ -375,6 +375,9 @@ class Machine(object):
         if self.is_full() and not self.has_airgap():
             self.delete_center_circle()
 
+        if self.startangle == self.endangle:
+            return
+
         self.geom.repair_hull_line(self.center, self.startangle)
         self.geom.repair_hull_line(self.center, self.endangle)
 

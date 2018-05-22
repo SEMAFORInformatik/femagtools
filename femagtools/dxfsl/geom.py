@@ -844,6 +844,8 @@ class Geometry(object):
         return angles[len(angles)-1][1]
 
     def get_new_area(self, start_p1, start_p2, solo):
+        logger.debug('==> start of get_new_area({}, {})'
+                     .format(start_p1, start_p2))
         e_dict = self.g.get_edge_data(start_p1, start_p2)
         if not e_dict:
             raise ValueError("Fatal: no edge-data found")
@@ -852,13 +854,13 @@ class Geometry(object):
         x = e.get_point_number(start_p1)
 
         if e_dict[x]:
-            logger.debug("*** area already tracked ({}) ***".format(x))
+            logger.debug("<== area already tracked ({}) ***".format(x))
             return None
         e_dict[x] = True  # footprint
         area.append(e)
 
         if (isinstance(e, Circle) and not isinstance(e, Arc)):
-            logger.debug("*** area is a circle ***")
+            logger.debug("<== area is a circle ***")
             e_dict[1] = True  # footprint
             e_dict[2] = True  # footprint
             return area
@@ -868,14 +870,18 @@ class Geometry(object):
 
         next_p = self.point_lefthand_side(first_p, this_p)
         if not next_p:
-            logger.debug("*** dead end ***")
+            logger.debug("<== dead end ({}, {})"
+                         .format(first_p, this_p))
             return None
 
         a = normalise_angle(alpha_points(first_p, this_p, next_p))
         alpha = a
 
+        afternext_p = ()
         c = 0
-        while not points_are_close(next_p, start_p1):
+        while not (points_are_close(next_p, start_p1) and
+                   points_are_close(afternext_p, start_p2)):
+            logger.debug('  Next {}'.format(next_p))
             c += 1
             if c > 1000:
                 logger.info("FATAL: *** over 1000 elements in area ? ***")
@@ -885,21 +891,23 @@ class Geometry(object):
             e = e_dict['object']
             x = e.get_point_number(this_p)
             if e_dict[x]:
-                logger.debug('*** path already tracked ***')
+                logger.debug('<== path already tracked ***')
                 return None
             e_dict[x] = True  # footprint
             first_p = this_p
             this_p = next_p
             next_p = self.point_lefthand_side(first_p, this_p)
             if not next_p:
-                logger.debug("*** dead end ***")
+                logger.debug("<== dead end ({},{})"
+                             .format(first_p, this_p))
                 return None
 
             a = normalise_angle(alpha_points(first_p, this_p, next_p))
             alpha += a
             area.append(e)
+            afternext_p = self.point_lefthand_side(this_p, next_p)
 
-        logger.debug("END OF get_new_area")
+        logger.debug("  END OF get_new_area")
 
         e_dict = self.g.get_edge_data(this_p, next_p)
         e = e_dict['object']
@@ -910,10 +918,11 @@ class Geometry(object):
         alpha += a
 
         if alpha < 0.0:
-            logger.debug("*** turn left expected, but it turned right ***")
+            logger.debug("<== turn left expected, but it turned right ({})"
+                         .format(alpha))
             return None
 
-        logger.debug("*** area is a circle ***")
+        logger.debug("<== area found !! ")
         return area
 
     def create_list_of_areas(self):

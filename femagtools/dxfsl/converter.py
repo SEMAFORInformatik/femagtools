@@ -102,6 +102,7 @@ def converter(dxfile,
               split=False,
               inner_name='inner',
               outer_name='outer',
+              part=(),
               airgap=0.0,
               airgap2=0.0,
               view_only=False,
@@ -136,7 +137,7 @@ def converter(dxfile,
                           rows=3, cols=2, num=1, show=debug_mode)
 
     if not machine_base.is_a_machine():
-        print("it's Not a Machine!!")
+        logger.info("it's Not a Machine!!")
         sys.exit(1)
 
     if machine_base.is_full() or \
@@ -151,7 +152,7 @@ def converter(dxfile,
         machine = machine_base.full_copy()
 
     if machine.part_of_circle() == 0:
-        print("No arc segment found")
+        logger.info("No arc segment found")
         sys.exit(1)
 
     machine.clear_cut_lines()
@@ -254,6 +255,11 @@ def converter(dxfile,
                                   rows=3,  # rows
                                   cols=2,  # cols
                                   num=3)   # start num
+        if part:
+            if part[0] == 'stator':
+                machine.geom.search_stator_subregions(part[1])
+            else:
+                machine.geom.search_rotor_subregions(part[1])
 
         if show_plots:
             p.render_elements(machine.geom, Shape,
@@ -263,7 +269,6 @@ def converter(dxfile,
             p.show_plot()
 
         if write_fsl:
-            machine.search_subregions()
             write_fsl_file(machine, basename)
 
     logger.info("done")

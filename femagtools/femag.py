@@ -249,12 +249,16 @@ class ZmqFemag(BaseFemag):
         self.request_socket = None
         self.subscriber_socket = None
         self.proc = None
-        
+        self.reader = None
+
     def __del__(self):
         if self.request_socket:
             self.request_socket.close()
         if self.subscriber_socket:
             self.subscriber_socket.close()
+        if self.reader:
+            self.reader.continue_loop = False
+        logger.info("Destructor ZmqFemag")
 
     def __req_socket(self):
         """returns a new request client"""
@@ -358,9 +362,9 @@ class ZmqFemag(BaseFemag):
         try:
             # Start the reader thread to get information about the next calculation
             if callback:
-                reader = FemagReadStream(self.__sub_socket(), callback)
-                reader.setDaemon(True)
-                reader.start()
+                self.reader = FemagReadStream(self.__sub_socket(), callback)
+                self.reader.setDaemon(True)
+                self.reader.start()
 
             request_socket = self.__req_socket()
             request_socket.send_string(header, flags=zmq.SNDMORE)
@@ -372,7 +376,7 @@ class ZmqFemag(BaseFemag):
 
             time.sleep(.5)  # Be sure all messages are arrived over zmq
             if callback:
-                reader.continue_loop = False
+                self.reader.continue_loop = False
             return [s.decode() for s in response]
         except Exception as e:
             logger.exception("send_fsl")
@@ -484,6 +488,11 @@ class ZmqFemag(BaseFemag):
             self.proc.wait()
             self.proc = None
         return response
+
+    def stopStreamReader(self):
+        if self.reader:
+            logger.debug("stop stream reader")
+            self.reader.continue_loop = False
 
     def __call__(self, pmMachine, operatingConditions):
         """setup fsl file, run calculation and return BCH results"""

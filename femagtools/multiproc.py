@@ -43,12 +43,15 @@ def run_femag(cmd, workdir, fslfile):
                                     stdout=out,
                                     stderr=err,
                                     cwd=workdir)
-        except OSError:
-            logger.error("Command {} not found in path".format(cmd))
-            raise
 
-        # wait
-        proc.wait()
+            # wait
+            proc.wait()
+
+            logger.info("Finished pid: %d return %d", proc.pid, proc.returncode)
+            return proc.returncode
+        except OSError as e:
+            logger.error("Starting process failed: %s, Command: %s", e, cmd)
+            raise
 
     logger.info("Finished pid: %d return %d", proc.pid, proc.returncode)
     return proc.returncode
@@ -93,13 +96,13 @@ class Engine:
         Return:
             length of started tasks
         """
-        pool = multiprocessing.Pool(self.process_count)
-        self.tasks = [pool.apply_async(run_femag,
-                                       args=(self.cmd,
-                                             t.directory,
-                                             t.fsl_file))
+        self.pool = multiprocessing.Pool(self.process_count)
+        self.tasks = [self.pool.apply_async(run_femag,
+                                            args=(self.cmd,
+                                                  t.directory,
+                                                  t.fsl_file))
                       for t in self.job.tasks]
-        pool.close()  # used to free resources after calculations have finished. thomas.maier/OSWALD
+        self.pool.close()  # used to free resources after calculations have finished. thomas.maier/OSWALD
         return len(self.tasks)
 
     def join(self):
@@ -115,3 +118,7 @@ class Engine:
             status.append(t.status)
 
         return status
+
+    def terminate(self):
+        logger.info("terminate Engine")
+        self.pool.terminate()

@@ -449,8 +449,13 @@ class Isa7(object):
 
         self.FC_RADIUS = reader.next_block("f")[0]
 
-    def msh(self):
-        """return gmsh list"""
+    def to_gmsh(self, fileformat="geo"):
+        """
+        Convert model to gmsh file
+        
+        Arguments:
+            fileformat: ['geo' | 'msh']
+        """
         el_number = itertools.count(1)
 
         airgap_center_elements = []
@@ -588,115 +593,156 @@ class Isa7(object):
                 else:
                     return False
             else:
-                return (n1, n2) in airgap_lines or (n1, n2) in airgap_lines
+                return (n1, n2) in airgap_lines or (n2, n1) in airgap_lines
 
-        msh = ["$MeshFormat",
-               "2.2 0 8",
-               "$EndMeshFormat"]
+        def get_msh():
+            msh = ["$MeshFormat",
+                   "2.2 0 8",
+                   "$EndMeshFormat"]
 
-        msh.append("$PhysicalNames")
-        msh.append("{}".format(len(physical_lines)
-                               + len(physical_surfaces)))
-        for i, n in enumerate(physical_lines):
-            msh.append("1 {} \"{}\"".format(i+1, n))
-        for i, n in enumerate(physical_surfaces):
-            msh.append("2 {} \"{}\"".format(i + 1 + len(physical_lines), n))
-        msh.append("$EndPhysicalNames")
+            msh.append("$PhysicalNames")
+            msh.append("{}".format(len(physical_lines)
+                                   + len(physical_surfaces)))
+            for i, n in enumerate(physical_lines):
+                msh.append("1 {} \"{}\"".format(i+1, n))
+            for i, n in enumerate(physical_surfaces):
+                msh.append("2 {} \"{}\"".format(i + 1 + len(physical_lines), n))
+            msh.append("$EndPhysicalNames")
 
-        msh.append("$Nodes")
-        msh.append("{}".format(len(self.nodes)))
-        for n in self.nodes:
-            msh.append("{} {} {} 0".format(n.key, n.x, n.y))
-        msh.append("$EndNodes")
+            msh.append("$Nodes")
+            msh.append("{}".format(len(self.nodes)))
+            for n in self.nodes:
+                msh.append("{} {} {} 0".format(n.key, n.x, n.y))
+            msh.append("$EndNodes")
 
-        msh.append("$Elements")
-        msh.append("{}".format(len(self.elements)
-                               # vertices on boundary
-                               + len([n for n in self.nodes
-                                      if n.on_boundary() and
-                                      n in nodechain_links.keys()])
-                               + len(airgap_lines)))
-        
-        for e in self.elements:
-            ev = e.vertices
+            msh.append("$Elements")
+            msh.append("{}".format(len(self.elements)
+                                   # vertices on boundary
+                                   + len([n for n in self.nodes
+                                          if n.on_boundary() and
+                                          n in nodechain_links.keys()])
+                                   + len(airgap_lines)))
 
-            # 2-node lines
-            for i, v in enumerate(ev):
-                v1 = v
-                v2 = ev[i-1]
-                if line_on_boundary(v1, v2):
+            for e in self.elements:
+                ev = e.vertices
+
+                # 2-node lines
+                for i, v in enumerate(ev):
+                    v1 = v
+                    v2 = ev[i-1]
+                    if line_on_boundary(v1, v2):
+                        msh.append(" ".join(map(str, [
+                            next(el_number),
+                            1,
+                            2,
+                            physical_line(v1, v2),
+                            physical_line(v1, v2),
+                            v2.key,
+                            v1.key])))
+
+                # 3-node triangles
+                if len(ev) == 3:
                     msh.append(" ".join(map(str, [
                         next(el_number),
-                        1,
                         2,
-                        physical_line(v1, v2),
-                        physical_line(v1, v2),
-                        v2.key,
-                        v1.key])))
+                        2,
+                        physical_surface(e),
+                        physical_surface(e) + len(self.nodes),
+                        ev[0].key,
+                        ev[1].key,
+                        ev[2].key])))
 
-            # 3-node triangles
-            if len(ev) == 3:
-                msh.append(" ".join(map(str, [
-                    next(el_number),
-                    2,
-                    2,
-                    physical_surface(e),
-                    physical_surface(e) + len(self.nodes),
-                    ev[0].key,
-                    ev[1].key,
-                    ev[2].key])))
+                # 4-node quadrangles
+                elif len(ev) == 4:
+                    msh.append(" ".join(map(str, [
+                        next(el_number),
+                        3,
+                        2,
+                        physical_surface(e),
+                        physical_surface(e) + len(self.nodes),
+                        ev[0].key,
+                        ev[1].key,
+                        ev[2].key,
+                        ev[3].key])))
 
-            # 4-node quadrangles
-            elif len(ev) == 4:
-                msh.append(" ".join(map(str, [
-                    next(el_number),
-                    3,
-                    2,
-                    physical_surface(e),
-                    physical_surface(e) + len(self.nodes),
-                    ev[0].key,
-                    ev[1].key,
-                    ev[2].key,
-                    ev[3].key])))
-                
-            # 6-node second order triangles
-            elif len(ev) == 6:
-                msh.append(" ".join(map(str, [
-                    next(el_number),
-                    9,
-                    2,
-                    physical_surface(e),
-                    physical_surface(e) + len(self.nodes),
-                    ev[0].key,
-                    ev[1].key,
-                    ev[2].key,
-                    ev[3].key,
-                    ev[4].key,
-                    ev[5].key])))
-                
-            # 8-node second order quadrangles
-            elif len(ev) == 8:
-                msh.append(" ".join(map(str, [
-                    next(el_number),
-                    16,
-                    2,
-                    physical_surface(e),
-                    physical_surface(e) + len(self.nodes),
-                    ev[0].key,
-                    ev[1].key,
-                    ev[2].key,
-                    ev[3].key,
-                    ev[4].key,
-                    ev[5].key,
-                    ev[6].key,
-                    ev[7].key])))
-                
-            else:
-                logger.warn("element {0} has an unsupported \
-                             number of nodes ({1})".format(e.key, len(ev)))
-                
-        msh.append("$EndElements")
-        return msh
+                # 6-node second order triangles
+                elif len(ev) == 6:
+                    msh.append(" ".join(map(str, [
+                        next(el_number),
+                        9,
+                        2,
+                        physical_surface(e),
+                        physical_surface(e) + len(self.nodes),
+                        ev[0].key,
+                        ev[1].key,
+                        ev[2].key,
+                        ev[3].key,
+                        ev[4].key,
+                        ev[5].key])))
+
+                # 8-node second order quadrangles
+                elif len(ev) == 8:
+                    msh.append(" ".join(map(str, [
+                        next(el_number),
+                        16,
+                        2,
+                        physical_surface(e),
+                        physical_surface(e) + len(self.nodes),
+                        ev[0].key,
+                        ev[1].key,
+                        ev[2].key,
+                        ev[3].key,
+                        ev[4].key,
+                        ev[5].key,
+                        ev[6].key,
+                        ev[7].key])))
+
+                else:
+                    logger.warn("element {0} has an unsupported \
+                                 number of nodes ({1})".format(e.key, len(ev)))
+
+            msh.append("$EndElements")
+            return msh
+
+
+        def get_geo():
+            geo = []
+            nc_nodes = set([n for nc in self.nodechains for n in nc.nodes])
+
+            for n in self.nodes:
+                if n in nc_nodes:
+                    geo.append("Point({}) = {{{}, {}, {}}};".format(n.key, n.x, n.y, 0))
+                    
+            used = []
+            for nc in self.nodechains:
+                geo.append("Line({}) = {{{}}};".format(
+                        nc.key, ", ".join([str(n.key) for n in nc.nodes])))
+                n1, n2 = nc.nodes[0], nc.nodes[1]
+                if line_on_boundary(n1, n2):
+                    name = physical_lines[physical_line(n1, n2) - 1]
+                    if name in used:
+                        geo.append("Physical Line('{}') += {{ {} }};".format(name, nc.key))
+                    else:
+                        geo.append("Physical Line('{}') = {{ {} }};".format(name, nc.key))
+                        used.append(name)
+
+            used = []
+            for se in self.superelements:
+                geo.append("Line Loop({}) = {{{}}};".format(
+                    se.key, ", ".join([str(nc.key) for nc in se.nodechains])))
+                geo.append("Plane Surface({0}) = {{{0}}};".format(se.key))
+                name = physical_surfaces[physical_surface(se.elements[0]) - len(physical_lines) - 1]
+                if name in used:
+                    geo.append("Physical Surface('{}') += {{ {} }};".format(name, se.key))
+                else:
+                    geo.append("Physical Surface('{}') = {{ {} }};".format(name, se.key))
+                    used.append(name)
+            return geo
+
+        if fileformat == "msh":
+            return get_msh()
+        elif fileformat == "geo":
+            return get_geo()
 
 
 class Point(object):
@@ -815,6 +861,25 @@ def read(filename):
     return isa
 
 
+def convert(infile, outfile):
+    """
+    Convert I7/ISA7 file to msh or geo format
+
+    Arguments:
+        infile: name of I7/ISA7 file to be converted
+        outfile: name of converted file
+    """
+    import os
+    isa = Isa7(infile)
+    fileformat = os.path.splitext(outfile)[-1].lower()
+    
+    with open(outfile, 'w') as f:
+        if fileformat == '.geo':
+            f.write('\n'.join(isa.to_gmsh("geo")))
+        elif fileformat == '.msh':
+            f.write('\n'.join(isa.to_gmsh("msh")))
+
+            
 if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO,

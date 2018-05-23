@@ -11,7 +11,6 @@
 from __future__ import print_function
 import numpy as np
 import logging
-import sys
 from .shape import Element, Circle, Line, Shape
 from .functions import point, points_are_close
 from .functions import alpha_angle, normalise_angle, middle_angle
@@ -288,7 +287,7 @@ class Machine(object):
         if correct_airgap > 0.0 and self.airgap_radius == 0.0:
             logger.error("No airgap with radius {} found"
                          .format(correct_airgap))
-            self.show_airgap_candidates(airgap_candidates)
+            self.show_airgap_candidates(airgap_candidates, False)
             return True  # bad exit
 
         if correct_airgap2 > 0.0 and self.airgap2_radius == 0.0:

@@ -251,6 +251,24 @@ def polylines(entity):
         i += 1
 
 
+def lw_polyline(entity):
+    """returns a collection of bulged vertices
+    http://www.afralisp.net/archive/lisp/Bulges1.htm
+    """
+    if isinstance(entity.points, list):
+        points = [(p[0], p[1]) for p in entity.points]
+    else:
+        points = [(p[0], p[1]) for p in entity.points()]
+
+    if points:
+        p1 = points[0]
+        for p2 in points[1:]:
+            yield Line(Element(start=p1, end=p2))
+            p1 = p2
+    if entity.is_closed:
+        yield Line(Element(start=p1, end=points[0]))
+
+
 def spline(entity, min_dist=0.001):
     if False:
         yield Line(Element(start=entity.control_points[0],
@@ -327,13 +345,17 @@ def insert_block(insert_entity, block, min_dist=0.001):
         elif e.dxftype == 'POLYLINE':
             for p in polylines(e):
                 yield p
+        elif e.dxftype == 'LWPOLYLINE':
+            for p in lw_polyline(e):
+                yield p
         elif e.dxftype == 'SPLINE':
             for l in spline(e, min_dist=min_dist):
                 yield l
         elif e.dxftype == 'INSERT':
             logger.warn("Nested Insert of Blocks not supported")
         else:
-            logger.warn("Id %d4: unknown type %s", id, e.dxftype)
+            logger.warn("unknown type %s in block %s",
+                        e.dxftype, insert_entity.name)
 
 
 def dxfshapes0(dxffile, mindist=0.01, layers=[]):
@@ -392,6 +414,9 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 yield Line(e)
             elif e.dxftype == 'POLYLINE':
                 for p in polylines(e):
+                    yield p
+            elif e.dxftype == 'LWPOLYLINE':
+                for p in lw_polyline(e):
                     yield p
             elif e.dxftype == 'SPLINE':
                 for l in spline(e, min_dist=mindist):

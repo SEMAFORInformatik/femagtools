@@ -204,6 +204,9 @@ def mirror_point(p, L_p, L_m, L_n):
 
 
 def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
+    if not (p1 and p2):
+        return False
+
     return (np.isclose(p1[0], p2[0], rtol, atol) and
             np.isclose(p1[1], p2[1], rtol, atol))
 

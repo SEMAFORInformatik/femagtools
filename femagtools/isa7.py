@@ -878,8 +878,11 @@ def convert(infile, outfile):
             f.write('\n'.join(isa.to_gmsh("geo")))
         elif fileformat == '.msh':
             f.write('\n'.join(isa.to_gmsh("msh")))
+        else:
+            raise ValueError("Unkown File format for converion: {}".format(
+                fileformat))
 
-            
+
 if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO,

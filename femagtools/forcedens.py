@@ -10,6 +10,7 @@
 import os
 import re
 import glob
+import numpy as np
 import logging
 
 logger = logging.getLogger('femagtools.forcedens')
@@ -94,7 +95,8 @@ class ForceDensity(object):
         d = dict(position=float(num_pat.findall(content[0])[-1]),
                  unit=unit_pat.findall(content[0].split()[1])[0])
         cols = content[2].split()
-        labels = cols[::2]
+        labels = cols[::2] # either X, FN, FT, B_N, B_T
+                           # or X FX FY B_X B_Y
         d['column_units'] = {k: u for k, u in zip(labels,
                                                   [unit_pat.findall(u)[0]
                                                    for u in cols[1::2]])}
@@ -143,14 +145,12 @@ class ForceDensity(object):
                               for k, v in self.items()])
         return "{}"
 
-#    def __getattr__(self, k):
-#        return getattr(self, k)
-
 
 def read(filename):
     f = ForceDensity()
     f.read(filename)
     return f
+
 
 def readall(workdir='.'):
     """collect all recent PLT files
@@ -174,3 +174,40 @@ def readall(workdir='.'):
                 plt[model] = [fdens]
     return plt
 
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as pl
+    import sys
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
+    else:
+        filename = sys.stdin.readline().strip()
+
+    fdens = read(filename)
+    
+    pl.title('{}, Rotor position {}'.format(
+        fdens.title, fdens.positions[0]['position']))
+    pl.plot(fdens.positions[0]['X'], [1e-3*ft
+                                      for ft in fdens.positions[0]['FT']],
+            label='F tang')
+    pl.plot(fdens.positions[0]['X'], [1e-3*ft
+                                      for ft in fdens.positions[0]['FN']],
+            label='F norm')
+    pl.legend()
+    pl.show()
+
+    import scipy.fftpack
+    from matplotlib.colors import LogNorm
+
+    fdn = scipy.fftpack.fft2(
+        1e-6*np.array([p['FN']
+                       for p in fdens.positions]))
+    # Show the results
+    N = len(fdens.positions[0]['FN'])
+    pl.figure()
+    pl.imshow(np.abs(fdn)/N, norm=LogNorm())
+    pl.xlabel('M harmonics')
+    pl.ylabel('N harmonics')
+    pl.colorbar()
+    pl.title('Force density N/mm2')
+    pl.show()

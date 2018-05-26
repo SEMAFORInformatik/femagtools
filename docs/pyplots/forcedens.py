@@ -6,6 +6,8 @@ import matplotlib.pylab as pl
 fdens = femagtools.forcedens.read('example.PLT1')
 
 f, (ax1, ax2) = pl.subplots(2, sharex=True)
+ax1.set_title('{}, Rotor position {}'.format(
+    fdens.title, fdens.positions[0]['position']))
 ax1.plot(fdens.positions[0]['X'], [1e-3*ft
                                    for ft in fdens.positions[0]['FT']],
          label='F tang')

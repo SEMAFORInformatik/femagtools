@@ -23,18 +23,21 @@ Positions
 list of dictionaries for each position
 
 =========  =======================================================
-X          position
-FN         normal component of force
-FT         tangential component of force
-Radius     radius
-B_N        normal component of flux density
-B_T        tangential component of flux density
+position   rotor position
+X          list of angles
+FN         list of normal component of force
+FT         list tangential component of force
+Radius     list of radius
+B_N        list normal component of flux density
+B_T        list tangential component of flux density
 =========  =======================================================
 
   Example::
     
    fdens = ForceDensity()
    fdens.read('example.PLT0')
+   pl.title('{}, Rotor Position {}'.format(
+            fdens.title, fdens.positions[0]['position']))
    pl.plot(fdens.positions[0]['X'], fdens.positions[0]['FT'])
 
 .. plot:: pyplots/forcedens.py

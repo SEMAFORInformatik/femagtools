@@ -86,8 +86,8 @@ class Engine(object):
 
        execute Femag-Simulations with docker
     """
-    def __init__(self, nworkers=3):
-        self.num_workers = nworkers
+    def __init__(self, hosts=[]):
+        self.hosts = hosts
         self.femag_port = int(os.environ.get('FEMAG_PORT', 5555))
 
     def create_job(self, workdir):
@@ -99,15 +99,14 @@ class Engine(object):
         Return:
             job (:class:`Job`)
         """
+        if not self.hosts:
+            raise ValueError("empty host list")
         self.queue = Queue()
-        hp = get_port_binding()
-        logger.info("Port Bindings: %s", hp)
-        ports = [int(h['HostPort']) for h in hp]
         self.async_femags = [AsyncFemag(self.queue,
                                         workdir,
-                                        p,
-                                        'localhost')
-                             for p in ports]
+                                        self.femag_port,
+                                        h)
+                             for h in self.hosts]
         
         self.job = femagtools.job.Job(workdir)
         return self.job

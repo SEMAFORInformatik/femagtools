@@ -83,7 +83,7 @@ With the cloud init file you can define the command to be excuted after the inst
 
 The special entry *{{ENV}}* indicates the femagtools module to put all the configuration options as environment variables. Additionally it adds the bucket name as *BUCKET_NAME* environment to download the files from the correct Bucket.
 
-.. note:: The files are for one calculation transferd as in a tar.gz file
+.. note:: The files for each calculation are transferred in a tar.gz file
 Example::
  
  #!/bin/bash

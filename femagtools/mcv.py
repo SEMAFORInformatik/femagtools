@@ -868,7 +868,9 @@ class MagnetizingCurve(object):
           directory: destination directory (must be writable)
           fillfac: new fill factor (curves will be recalulated
                 if not None or 0)
-        returns filename if found else None"""
+
+        returns filename if found else None
+        """
         ext = '.MC' if sys.platform == 'win32' else '.MCV'
         mcv = self.find_by_name(name)
         if not mcv:

@@ -646,7 +646,9 @@ def felosses(losses, coeffs, title='', log=True):
       coeffs: list with steinmetz (cw, alpha, beta) or
               jordan (cw, alpha, ch, beta, gamma) coeffs
       title: title string
-      log: log scale for x and y axes if True"""
+      log: log scale for x and y axes if True
+
+    """
     import femagtools.losscoeffs as lc
     ax = pl.gca()
 

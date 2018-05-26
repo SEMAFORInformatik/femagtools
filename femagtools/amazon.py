@@ -1,6 +1,6 @@
 """
     femagtools.amazon
-    ~~~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~
 
     Running FEMAG on Amazon Cloud EC2
 

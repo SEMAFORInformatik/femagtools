@@ -87,8 +87,13 @@ def test_superelements(isa):
 def test_msh(isa):
     assert len(isa.to_gmsh("msh")) == 2706
 
+    
 def test_geo(isa):
     assert len(isa.to_gmsh("geo")) == 361
+
+    
+def test_geo_extrude(isa):
+    assert len(isa.to_gmsh("geo", 0.01)) == 424
 
 
 @pytest.fixture

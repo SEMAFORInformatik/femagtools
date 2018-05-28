@@ -449,12 +449,13 @@ class Isa7(object):
 
         self.FC_RADIUS = reader.next_block("f")[0]
 
-    def to_gmsh(self, fileformat="geo"):
+    def to_gmsh(self, fileformat="geo", extrude=0):
         """
         Convert model to gmsh file
         
         Arguments:
             fileformat: ['geo' | 'msh']
+            extrude: extrude surfaces using a translation along the z-axis
         """
         el_number = itertools.count(1)
 
@@ -704,45 +705,78 @@ class Isa7(object):
             msh.append("$EndElements")
             return msh
 
-
         def get_geo():
             geo = []
             nc_nodes = set([n for nc in self.nodechains for n in nc.nodes])
 
             for n in self.nodes:
                 if n in nc_nodes:
-                    geo.append("Point({}) = {{{}, {}, {}}};".format(n.key, n.x, n.y, 0))
+                    geo.append("Point({}) = {{{}, {}, {}}};".format(
+                        n.key, n.x, n.y, 0))
                     
-            used = []
             for nc in self.nodechains:
                 geo.append("Line({}) = {{{}}};".format(
                         nc.key, ", ".join([str(n.key) for n in nc.nodes])))
+            used = []
+            for nc in self.nodechains:
                 n1, n2 = nc.nodes[0], nc.nodes[1]
                 if line_on_boundary(n1, n2):
-                    name = physical_lines[physical_line(n1, n2) - 1]
+                    id_ = physical_line(n1, n2)
+                    name = physical_lines[id_ - 1]
+                    if extrude:
+                        geo.append("extrusion[] = Extrude {{0, 0, {}}} {{ Line{{{}}}; }};".format(
+                            extrude, nc.key))
                     if name in used:
-                        geo.append("Physical Line('{}') += {{ {} }};".format(name, nc.key))
+                        if extrude:
+                            geo.append("Physical Surface('{}', {}) += extrusion[1];".format(
+                                name, id_))
+                        else:
+                            geo.append("Physical Line('{}', {}) += {{{}}};".format(
+                                name, id_, nc.key))
                     else:
-                        geo.append("Physical Line('{}') = {{ {} }};".format(name, nc.key))
+                        if extrude:
+                            geo.append("Physical Surface('{}', {}) = extrusion[1];".format(
+                                name, id_, nc.key))
+                        else:
+                            geo.append("Physical Line('{}', {}) = {{{}}};".format(
+                                name, id_, nc.key))
                         used.append(name)
 
-            used = []
             for se in self.superelements:
                 geo.append("Line Loop({}) = {{{}}};".format(
                     se.key, ", ".join([str(nc.key) for nc in se.nodechains])))
                 geo.append("Plane Surface({0}) = {{{0}}};".format(se.key))
-                name = physical_surfaces[physical_surface(se.elements[0]) - len(physical_lines) - 1]
+            used = []
+            for se in self.superelements:
+                id_ = physical_surface(se.elements[0]) - len(physical_lines)
+                name = physical_surfaces[id_ - 1]
+                if extrude:
+                    geo.append("extrusion[] = Extrude {{0, 0, {}}} {{ Surface{{{}}}; }};".format(
+                        extrude, se.key))
                 if name in used:
-                    geo.append("Physical Surface('{}') += {{ {} }};".format(name, se.key))
+                    if extrude:
+                        geo.append("Physical Volume('{}', {}) += extrusion[1];".format(
+                            name, id_, se.key))
+                    else:
+                        geo.append("Physical Surface('{}', {}) += {{{}}};".format(
+                            name, id_, se.key))
                 else:
-                    geo.append("Physical Surface('{}') = {{ {} }};".format(name, se.key))
+                    if extrude:
+                        geo.append("Physical Volume('{}', {}) = extrusion[1];".format(
+                            name, id_, se.key))
+                    else:
+                        geo.append("Physical Surface('{}', {}) = {{{}}};".format(
+                            name, id_, se.key))
                     used.append(name)
             return geo
-
+        
         if fileformat == "msh":
+            if extrude:
+                raise ValueError("extrusion is only available for file format 'geo'")
             return get_msh()
         elif fileformat == "geo":
             return get_geo()
+        raise ValueError("Invalid file format '{}'".format(fileformat))
 
 
 class Point(object):
@@ -861,13 +895,14 @@ def read(filename):
     return isa
 
 
-def convert(infile, outfile):
+def convert(infile, outfile, extrude=0):
     """
     Convert I7/ISA7 file to msh or geo format
 
     Arguments:
         infile: name of I7/ISA7 file to be converted
         outfile: name of converted file
+        extrude: extrude surfaces using a translation along the z-axis
     """
     import os
     isa = Isa7(infile)
@@ -875,11 +910,11 @@ def convert(infile, outfile):
     
     with open(outfile, 'w') as f:
         if fileformat == '.geo':
-            f.write('\n'.join(isa.to_gmsh("geo")))
+            f.write('\n'.join(isa.to_gmsh("geo", extrude)))
         elif fileformat == '.msh':
-            f.write('\n'.join(isa.to_gmsh("msh")))
+            f.write('\n'.join(isa.to_gmsh("msh", extrude)))
         else:
-            raise ValueError("Unkown File format for converion: {}".format(
+            raise ValueError("Unkown File format for conversion: {}".format(
                 fileformat))
 
 

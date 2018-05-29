@@ -187,31 +187,6 @@ class Engine(object):
         logger.info('submit cluster %s', self.clusterId)
         return self.clusterId
 
-    def dumpData(self, workdir, parameters):
-        # write clusterId file
-        clusterIdFile = open(os.path.join(workdir, 'cluster.json'), 'w')
-        cluster = {}
-        for a in parameters:
-            cluster[a] = parameters[a]
-        cluster['clusterId'] = self.clusterId
-        cluster['batchCalc_parameter'] = cluster['optimize']
-        json.dump(cluster, clusterIdFile)
-        clusterIdFile.close()
-        
-    def dumpData2(self, femag, opt, pmMachine, operatingConditions):
-        # write clusterId file
-        clusterIdFile = open(os.path.join(femag.workdir, self.d), 'w')
-        cluster = {}
-#        cluster['version'] = femag.getVersion()
-        cluster['operatingConditions'] = operatingConditions
-        cluster['pmMotor'] = pmMachine
-        cluster['optimize'] = opt
-#        cluster['magnetizingCurves'] = femag.magnetizingCurves
-#        cluster['magnets'] = femag.magnets
-        cluster['clusterId'] = self.clusterId
-        json.dump(cluster, clusterIdFile)
-        clusterIdFile.close()
-
     def join(self):
         """wait for all tasks to be terminated and return status"""
         ret = []

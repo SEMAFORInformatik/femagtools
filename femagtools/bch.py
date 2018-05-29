@@ -756,7 +756,18 @@ class Reader:
                         torque_fft['b'].append(0.0)
             if torque_fft['order']:
                 self.torque_fft.append(torque_fft)
-             
+
+    def __removeTrailingZero(self, idList):
+        '''if id list is inhomogeneous, remove a trailing '0'
+        e.g. : idList[-450, -350, -250, -150, -50, 0]
+               idList[-500, -400, -300, -200, -100, 0, 0]
+        '''
+        if idList[-1] == 0 and len(idList) > 2 and \
+           int(idList[-1] - idList[0]) / (len(idList)-1) != \
+           int(idList[-2] - idList[0]) / (len(idList)-2):
+            idList = idList[:-1]
+        return idList
+
     def __read_psidq(self, content):
         "read psid-psiq section"
         for i, l in enumerate(content):
@@ -770,12 +781,15 @@ class Reader:
 
         m = np.array(m).T
         ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:  # simple correction
+            ncols = 2
         iq = np.reshape(m[1], (-1, ncols))[0]
         if ncols > 1 and (iq[ncols-1] < iq[ncols-2] or
                           len(m[0]) % ncols != 0):
             ncols = ncols-1
 
         id = np.reshape(m[0], (-1, ncols)).T[0]
+        id = self.__removeTrailingZero(id)
         nrows = len(id)
         if nrows > 1 and id[nrows-1] < id[nrows-2]:
             nrows = nrows-1
@@ -801,6 +815,8 @@ class Reader:
 
         m = np.array(m).T
         ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:  # simple correction
+            ncols = 2
         iq = np.linspace(np.min(m[1]), np.max(m[1]), ncols)
         if ncols > 1 and (iq[ncols-1] < iq[ncols-2] or
                           len(m[0]) % ncols != 0):
@@ -873,6 +889,8 @@ class Reader:
         m = np.array(m).T
 
         ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:  # simple correction
+            ncols = 2
         nrows = len(m[2])//ncols
         if ncols * nrows % len(m[3]) != 0:
             if ncols > nrows:

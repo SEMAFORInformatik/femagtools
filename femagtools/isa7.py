@@ -449,13 +449,15 @@ class Isa7(object):
 
         self.FC_RADIUS = reader.next_block("f")[0]
 
-    def to_gmsh(self, fileformat="geo", extrude=0):
+    def to_gmsh(self, fileformat="geo", extrude=0, layers=0, recombine=False):
         """
         Convert model to gmsh file
         
         Arguments:
             fileformat: ['geo' | 'msh']
             extrude: extrude surfaces using a translation along the z-axis
+            layers:
+            recombine:
         """
         el_number = itertools.count(1)
 
@@ -525,7 +527,8 @@ class Isa7(object):
                                        + ["Winding {} {}".format(w.key, pol)
                                           for w in self.windings
                                           for pol in ("+", "-")]
-                                       + ["Air",
+                                       + ["Air Rotor",
+                                          "Air Stator",
                                           "Airgap Rotor",
                                           "Airgap Stator",
                                           "PM1", "PM2",
@@ -576,7 +579,10 @@ class Isa7(object):
             
             sr_key = self.superelements[e.se_key].sr_key
             if sr_key == -1:
-                return surface_id("Air")
+                v = e.vertices[0]
+                if np.sqrt(v.x**2 + v.y**2) > self.FC_RADIUS:
+                    return surface_id("Air Stator")
+                return surface_id("Air Rotor")
 
             sr = self.subregions[sr_key]
             if sr.wb_key != -1:
@@ -717,58 +723,71 @@ class Isa7(object):
             for nc in self.nodechains:
                 geo.append("Line({}) = {{{}}};".format(
                         nc.key, ", ".join([str(n.key) for n in nc.nodes])))
-            used = []
+            used = set()
             for nc in self.nodechains:
                 n1, n2 = nc.nodes[0], nc.nodes[1]
                 if line_on_boundary(n1, n2):
                     id_ = physical_line(n1, n2)
                     name = physical_lines[id_ - 1]
                     if extrude:
-                        geo.append("extrusion[] = Extrude {{0, 0, {}}} {{ Line{{{}}}; }};".format(
-                            extrude, nc.key))
-                    if name in used:
-                        if extrude:
-                            geo.append("Physical Surface('{}', {}) += extrusion[1];".format(
-                                name, id_))
-                        else:
-                            geo.append("Physical Line('{}', {}) += {{{}}};".format(
-                                name, id_, nc.key))
+                        geo.append(
+                            "extrusion[] = Extrude {{0, 0, {}}} {{ Line{{{}}}; {}{}}};".format(
+                                extrude,
+                                nc.key,
+                                "Layers{{{}}}; ".format(layers) if layers else "",
+                                "Recombine; " if recombine else ""))
+                        
+                        geo.append("Physical Surface('{}', {}) {} extrusion[1];".format(
+                            name,
+                            id_,
+                            "+=" if name in used else "="))
                     else:
-                        if extrude:
-                            geo.append("Physical Surface('{}', {}) = extrusion[1];".format(
-                                name, id_, nc.key))
-                        else:
-                            geo.append("Physical Line('{}', {}) = {{{}}};".format(
-                                name, id_, nc.key))
-                        used.append(name)
+                        geo.append("Physical Line('{}', {}) {} {{{}}};".format(
+                            name,
+                            id_,
+                            "+=" if name in used else "=",
+                            nc.key))
+                    used.add(name)
 
             for se in self.superelements:
                 geo.append("Line Loop({}) = {{{}}};".format(
-                    se.key, ", ".join([str(nc.key) for nc in se.nodechains])))
+                    se.key,
+                    ", ".join([str(nc.key) for nc in se.nodechains])))
                 geo.append("Plane Surface({0}) = {{{0}}};".format(se.key))
-            used = []
+                geo.append("Physical Surface('base', {}) {} {{{}}};".format(
+                    len(physical_lines) + 1,
+                    "=" if se.key == 1 else "+=",
+                    se.key))
+            used = set()
             for se in self.superelements:
                 id_ = physical_surface(se.elements[0]) - len(physical_lines)
                 name = physical_surfaces[id_ - 1]
                 if extrude:
-                    geo.append("extrusion[] = Extrude {{0, 0, {}}} {{ Surface{{{}}}; }};".format(
-                        extrude, se.key))
-                if name in used:
-                    if extrude:
-                        geo.append("Physical Volume('{}', {}) += extrusion[1];".format(
-                            name, id_, se.key))
-                    else:
-                        geo.append("Physical Surface('{}', {}) += {{{}}};".format(
-                            name, id_, se.key))
+                    geo.append(
+                        "extrusion[] = Extrude {{0, 0, {}}} {{ Surface{{{}}}; {}{}}};".format(
+                            extrude,
+                            se.key,
+                            "Layers{{{}}}; ".format(layers) if layers else "",
+                            "Recombine; " if recombine else ""))
+                    
+                    geo.append("Physical Surface('top', {}) {} extrusion[0];".format(
+                        len(physical_lines) + 2,
+                        "=" if se.key == 1 else "+="))
+                    
+                    geo.append("Physical Volume('{}', {}) {} extrusion[1];".format(
+                        name,
+                        id_,
+                        "+=" if name in used else "="))
                 else:
-                    if extrude:
-                        geo.append("Physical Volume('{}', {}) = extrusion[1];".format(
-                            name, id_, se.key))
-                    else:
-                        geo.append("Physical Surface('{}', {}) = {{{}}};".format(
-                            name, id_, se.key))
-                    used.append(name)
+                    geo.append("Physical Surface('{}', {}) += {{{}}};".format(
+                        name,
+                        id_,
+                        se.key))
+                used.add(name)
             return geo
+
+        if not self.FC_RADIUS:
+            logger.warn("airgap radius is not set in source file")
         
         if fileformat == "msh":
             if extrude:

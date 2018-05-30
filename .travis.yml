@@ -39,6 +39,7 @@ notifications:
 
 deploy:
   provider: pypi
+  skip_existing: true
   user: "$PYPI_USERNAME"
   password: "$PYPI_PASSWORD"
   distributions: "sdist bdist_wheel"

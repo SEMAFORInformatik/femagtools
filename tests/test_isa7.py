@@ -89,7 +89,7 @@ def test_msh(isa):
 
     
 def test_geo(isa):
-    assert len(isa.to_gmsh("geo")) == 364
+    assert len(isa.to_gmsh("geo")) == 361
 
     
 def test_geo_extrude(isa):

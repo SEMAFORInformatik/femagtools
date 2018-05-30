@@ -754,10 +754,6 @@ class Isa7(object):
                     se.key,
                     ", ".join([str(nc.key) for nc in se.nodechains])))
                 geo.append("Plane Surface({0}) = {{{0}}};".format(se.key))
-                geo.append("Physical Surface('base', {}) {} {{{}}};".format(
-                    len(physical_lines) + 1,
-                    "=" if se.key == 1 else "+=",
-                    se.key))
             used = set()
             for se in self.superelements:
                 id_ = physical_surface(se.elements[0]) - len(physical_lines)
@@ -770,6 +766,11 @@ class Isa7(object):
                             "Layers{{{}}}; ".format(layers) if layers else "",
                             "Recombine; " if recombine else ""))
                     
+                    geo.append("Physical Surface('base', {}) {} {{{}}};".format(
+                        len(physical_lines) + 1,
+                        "=" if se.key == 1 else "+=",
+                        se.key))
+                    
                     geo.append("Physical Surface('top', {}) {} extrusion[0];".format(
                         len(physical_lines) + 2,
                         "=" if se.key == 1 else "+="))
@@ -779,9 +780,10 @@ class Isa7(object):
                         id_,
                         "+=" if name in used else "="))
                 else:
-                    geo.append("Physical Surface('{}', {}) += {{{}}};".format(
+                    geo.append("Physical Surface('{}', {}) {} {{{}}};".format(
                         name,
                         id_,
+                        "+=" if name in used else "=",
                         se.key))
                 used.add(name)
             return geo

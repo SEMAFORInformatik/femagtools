@@ -2,31 +2,27 @@
 m.rotor_rad      = da2/2
 m.yoke_rad       = dy2/2
 
-m.magn_height     =    ${model.get(['magnet','magnetIronV', 'magn_height'])*1e3}
-m.magn_width      =    ${model.get(['magnet','magnetIronV', 'magn_width'])*1e3}
-m.magn_angle      =    ${model.get(['magnet','magnetIronV', 'magn_angle'])}
-m.magn_num        =    ${model.get(['magnet','magnetIronV', 'magn_num'])}
-m.iron_hs         =    ${model.get(['magnet','magnetIronV', 'iron_hs'])*1e3}
-m.iron_height     =    ${model.get(['magnet','magnetIronV', 'iron_height'])*1e3}
-m.iron_shape      =    ${model.get(['magnet','magnetIronV', 'iron_shape'])*1e3}
-m.air_triangle    =    ${model.get(['magnet','magnetIronV', 'air_triangle'])}
-m.gap_ma_iron     =    ${model.get(['magnet','magnetIronV', 'gap_ma_iron'])*1e3}
-% if model.get(['magnet','magnetIronV', 'magn_rem']):
-m.magn_rem        =    ${model.get(['magnet','magnetIronV', 'magn_rem'])}
-% else:
-m.magn_rem        =    ${model.get('remanenc', 1.2)}
-%endif
-m.shaft_rad       =     ${model.get(['magnet','magnetIronV', 'condshaft_r'])*1e3}
+m.magn_height     =    ${model['magn_height']*1e3}
+m.magn_width      =    ${model['magn_width']*1e3}
+m.magn_angle      =    ${model['magn_angle']}
+m.magn_num        =    ${model['magn_num']}
+m.iron_hs         =    ${model['iron_hs']*1e3}
+m.iron_height     =    ${model['iron_height']*1e3}
+m.iron_shape      =    ${model['iron_shape']*1e3}
+m.air_triangle    =    ${model['air_triangle']}
+m.gap_ma_iron     =    ${model['gap_ma_iron']*1e3}
+m.magn_rem        =    ${model.get('magn_rem', 'm.remanenc')}
+m.shaft_rad       =     ${model['condshaft_r']*1e3}
 
 m.zeroangl        =     0.0
 
 m.mcvkey_yoke     =   mcvkey_yoke
 
-m.nodedist        =   ${model.magnet.get('nodedist',1)}
+m.nodedist        =   ${model.get('nodedist',1)}
 
  pre_models("Magnet Iron V")
 
-%if model.get_mcvkey_magnet():
+%if model.get('mcvkey_magnet', ''):
 alpha = math.pi/m.num_poles/2
 
 beta = {}

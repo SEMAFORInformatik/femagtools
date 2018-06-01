@@ -4,28 +4,28 @@ m.rotor_rad      = da2/2
 m.yoke_rad       = dy2/2
 
 
-m.magn_height     =    ${model.get(['magnet','magnetSector', 'magn_height'])*1e3}
-m.magn_width      =    ${model.get(['magnet','magnetSector', 'magn_width_pct'])*100}
-m.condshaft_r     =    ${model.get(['magnet','magnetSector', 'condshaft_r'])*1e3}
-m.magn_num        =    ${model.get(['magnet','magnetSector', 'magn_num'])}
-m.magn_perm       =    ${model.get(['magnet','magnetSector', 'magn_rfe'])*1e3}
-m.magn_l          =    ${model.get(['magnet','magnetSector', 'magn_len'])*100}
-m.magn_ori        =    ${model.get(['magnet','magnetSector', 'magn_ori'])}
-m.magn_type       =    ${model.get(['magnet','magnetSector', 'magn_type'])}
-m.magn_shape      =    ${model.get(['magnet','magnetSector', 'magn_shape'])*1e3}
-m.br_height       =    ${model.get(['magnet','magnetSector', 'bridge_height'])*1e3}
-m.br_width        =    ${model.get(['magnet','magnetSector', 'bridge_width'])*1e3}
+m.magn_height     =    ${model['magn_height']*1e3}
+m.magn_width      =    ${model['magn_width_pct']*100}
+m.condshaft_r     =    ${model['condshaft_r']*1e3}
+m.magn_num        =    ${model['magn_num']}
+m.magn_perm       =    ${model['magn_rfe']*1e3}
+m.magn_l          =    ${model['magn_len']*100}
+m.magn_ori        =    ${model['magn_ori']}
+m.magn_type       =    ${model['magn_type']}
+m.magn_shape      =    ${model['magn_shape']*1e3}
+m.br_height       =    ${model['bridge_height']*1e3}
+m.br_width        =    ${model['bridge_width']*1e3}
 
 m.zeroangl        =     0.0
 m.cond_shaft      =     0.000
 m.mcvkey_yoke     =     mcvkey_yoke
 m.mcvkey_mshaft   =     mcvkey_shaft
 
-m.nodedist        =   ${model.magnet.get('nodedist',1)}
+m.nodedist        =   ${model.get('nodedist',1)}
 
  pre_models("Magnet-Sector")
 
-%if model.get_mcvkey_magnet():
+%if model.get('mcvkey_magnet', ''):
 gamma = 0
 for i = 0, m.npols_gen-1 do
     alfa = (2*i+1)*180/m.num_poles

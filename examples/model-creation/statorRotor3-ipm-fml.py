@@ -29,13 +29,12 @@ machine = dict(
     ),
     magnet=dict(
         mcvkey_yoke="M270-35A",
-        magnetFsl=dict(
+        ipmfml=dict(
             magn_height=0.004,
             magn_width=0.042,
             gap_ma_iron=0.009,
             gap_air_iron=0.0015,
-            gamma=49,
-            content_template="ipm-fml.fsl")
+            gamma=49)
     ),
     windings=dict(
         num_phases=3,

@@ -24,7 +24,7 @@ class Builder:
     def __init__(self):
         self.lookup = mako.lookup.TemplateLookup(
             directories=[os.path.join(os.path.dirname(__file__), 'templates'),
-                         os.path.join(os.getcwd(), 'templates')],
+                         os.path.join(os.getcwd(), '.')],
             disable_unicode=False, input_encoding='utf-8',
             output_encoding='utf-8',
             default_filters=['decode.utf8'])
@@ -40,6 +40,7 @@ class Builder:
                    model.magnet.get('mcvkey_shaft', 'dummy'))]
         try:
             if 'magnetFsl' in model.magnet:
+                #  obsolete
                 if 'parameter' in model.magnet['magnetFsl']:
                     return mcv + self.render_template(
                         model.magnet['magnetFsl']['content_template'],
@@ -57,7 +58,10 @@ class Builder:
                     model.magnet['magnetFsl'])
 
             templ = model.magnettype()
-            return mcv + self.__render(model, templ)
+            magmodel = model.magnet.copy()
+            magmodel.update(model.magnet[templ])
+            magmodel['mcvkey_magnet'] = model.get_mcvkey_magnet()
+            return mcv + self.__render(magmodel, templ)
         except AttributeError:
             pass  # no magnet
         return []

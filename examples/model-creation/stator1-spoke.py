@@ -23,12 +23,11 @@ machine = dict(
     
     magnet=dict(
         mcvkey_yoke="dummy",
-        magnetFsl=dict(
+        spokefml=dict(
             magn_height=0.008,
             shaft_diam=0.01,
             slot_width=0.004,
-            magn_width=0.024,
-            content_template="spokefml.fsl"
+            magn_width=0.024
         )
     ),
     

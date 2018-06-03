@@ -880,16 +880,20 @@ class Reader:
         m = []
         speed = float(content[0].split()[-1])/60.
         logger.info('losses for speed %f', speed)
+        nl = 4
         for l in content[4:]:
             rec = l.split('\t')
             if len(rec) == 6:
                 m.append([floatnan(x) for x in rec])
+            elif rec[0].startswith('P fe'):
+                break
+            nl += 1
         if not m:
             return
         m = np.array(m).T
 
         ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
-        if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:  # simple correction
+        if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:
             ncols = 2
         nrows = len(m[2])//ncols
         if ncols * nrows % len(m[3]) != 0:
@@ -898,15 +902,30 @@ class Reader:
             else:
                 nrows = nrows-1
 
-        l = {k: np.reshape(v,
-                           (nrows, ncols)).T[::-1].tolist()
-             for k, v in zip(('styoke', 'stteeth', 'rotor', 'magnet'),
-                             m[2:])}
-        l['speed'] = speed
+        ls = {k: np.reshape(v,
+                            (nrows, ncols)).T[::-1].tolist()
+              for k, v in zip(('styoke', 'stteeth', 'rotor', 'magnet'),
+                              m[2:])}
+        m = []
+        for l in content[nl+3:]:
+            rec = l.split('\t')
+            if len(rec) == 8:
+                m.append([floatnan(x) for x in rec])
+            elif not rec and m:
+                break
+        if m:
+            m = np.array(m).T
+            ls.update({k: np.reshape(v,
+                                     (nrows, ncols)).T[::-1].tolist()
+                       for k, v in zip(('styoke_hyst', 'styoke_eddy',
+                                        'stteeth_hyst', 'stteeth_eddy',
+                                        'rotor_hyst', 'rotor_eddy'),
+                                       m[2:])})
+        ls['speed'] = speed
         if self.ldq:
-            self.ldq['losses'] = l
+            self.ldq['losses'] = ls
         elif self.psidq:
-            self.psidq['losses'] = l
+            self.psidq['losses'] = ls
         
     def __read_machine_data(self, content):
         "read machine data section"
@@ -1349,6 +1368,7 @@ def read(filename):
     with io.open(filename, encoding='latin1', errors='ignore') as f:
         bchresults.read(f.readlines())
     return bchresults
+
 
 if __name__ == "__main__":
     import json

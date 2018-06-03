@@ -167,32 +167,33 @@ class BchReaderTest(unittest.TestCase):
     def test_read_psidq(self):
         bch = self.read_bch('psidpsiq.BATCH')
 
-        self.assertEqual(len(bch.torque_fft), 5)
+        self.assertEqual(len(bch.torque_fft), 10)
         self.assertTrue('order' in bch.torque_fft[0])
         self.assertTrue('torque' in bch.torque_fft[0])
-        self.assertEqual(len(bch.torque_fft[0]['torque']), 6)
-        self.assertEqual(bch.torque_fft[0]['order'], [36, 48, 60, 72, 76, 84])
+        self.assertEqual(len(bch.torque_fft[0]['torque']), 7)
+        self.assertEqual(bch.torque_fft[0]['order'],
+                         [0, 4, 8, 12, 16, 20, 24])
 
         self.assertEqual(sorted(bch.flux.keys()), ['1', '2', '3'])
-        self.assertEqual(len(bch.flux['1']), 5)
+        self.assertEqual(len(bch.flux['1']), 10)
         self.assertTrue('flux_k' in bch.flux['1'][0])
-        self.assertEqual(len(bch.flux['1'][0]['flux_k']), 46)
+        self.assertEqual(len(bch.flux['1'][0]['flux_k']), 16)
 
-        self.assertEqual(len(bch.torque), 5)
-        self.assertEqual(len(bch.torque[-1]['torque']), 46)
+        self.assertEqual(len(bch.torque), 10)
+        self.assertEqual(len(bch.torque[-1]['torque']), 16)
 
         self.assertEqual(len(bch.psidq), 7)
         self.assertEqual(len(bch.psidq_ldq), 6)
-        self.assertEqual(len(bch.psidq['psid']), 4)
-        self.assertEqual(len(bch.psidq_ldq['ld']), 4)
+        self.assertEqual(len(bch.psidq['psid']), 3)
+        self.assertEqual(len(bch.psidq_ldq['ld']), 3)
         
-        self.assertEqual(len(bch.psidq['losses']), 5)
-        self.assertEqual(len(bch.psidq['losses']['styoke']), 4)
+        self.assertEqual(len(bch.psidq['losses']), 11)
+        self.assertEqual(len(bch.psidq['losses']['styoke']), 3)
         self.assertTrue('id' in bch.airgapInduction)
         self.assertEqual(bch.airgapInduction['id'],
-                         [-210.0, -140.0, -70.0, 0.0])
-        self.assertEqual(len(bch.airgapInduction['Ba']), 4)
-        self.assertEqual(len(bch.airgapInduction['Bm'][0]), 4)
+                         [-200.0, -100.0, 0.0])
+        self.assertEqual(len(bch.airgapInduction['Ba']), 3)
+        self.assertEqual(len(bch.airgapInduction['Bm'][0]), 3)
 
     def test_read_ldq(self):
         bch = self.read_bch('ldq.BATCH')

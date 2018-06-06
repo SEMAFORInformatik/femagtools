@@ -72,6 +72,8 @@ class Model(object):
         """        
         try:
             if isinstance(name, str):
+                if r:
+                    return getattr(self, name, r)
                 return getattr(self, name)
             if r and type(r) == dict:
                 for k in name:

@@ -72,7 +72,7 @@ class Model(object):
         """        
         try:
             if isinstance(name, str):
-                if r:
+                if r is not None:
                     return getattr(self, name, r)
                 return getattr(self, name)
             if r and type(r) == dict:

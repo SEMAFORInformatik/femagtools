@@ -7,6 +7,7 @@
 
 """
 import os
+import shutil
 import json
 import logging
 import threading
@@ -50,6 +51,7 @@ class AsyncFemag(threading.Thread):
     def __init__(self, queue, workdir, port, host):
         threading.Thread.__init__(self)
         self.queue = queue
+        self.workdir = workdir
         self.container = femagtools.femag.ZmqFemag(
             workdir,
             port, host)
@@ -64,6 +66,15 @@ class AsyncFemag(threading.Thread):
             fslcmds = ['save_model(close)',
                        "chdir('{}')".format(
                            os.path.split(task.directory)[-1])]
+
+
+            # cleanup
+            shutil.rmtree(os.getcwd())
+
+            for tf in task.transfer_files:
+                src = os.path.join(task.directory, tf)
+                shutil.copy(src, self.workdir)
+                
             with open(fslfile) as f:
                 fslcmds += f.readlines()
             r = [json.loads(s)

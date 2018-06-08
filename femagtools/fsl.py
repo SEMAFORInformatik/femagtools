@@ -111,7 +111,7 @@ class Builder:
                 self.__render(model, 'gen_winding') + \
                 self.create_magnet(model, magnetMat) + \
                 self.create_magnet_model(model) + \
-                self.create_airgap_lines(model) + \
+                self.mesh_airgap(model) + \
                 self.create_permanent_magnets(model) + \
                 self.create_connect_models(model) + \
                 magndata
@@ -160,17 +160,17 @@ class Builder:
     def create_colorgrad(self, model):
             return self.__render(model, 'colorgrad')
 
-    def create_airgap_lines(self, model):
+    def mesh_airgap(self, model):
         if self.fsl_stator and self.fsl_magnet:
-            return self.__render(model, 'airgaplines')
+            return self.__render(model, 'mesh-airgap')
         else:
-            return ''
+            return []
 
     def create_permanent_magnets(self, model):
         if self.fsl_stator and self.fsl_magnet:
             return self.__render(model, 'permanentmagnets')
         else:
-            return ''
+            return []
 
     def create(self, model, fea, magnets=None):
         "create model and analysis function"

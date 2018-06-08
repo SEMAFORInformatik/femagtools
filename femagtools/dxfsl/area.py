@@ -94,11 +94,15 @@ class Area(object):
 
     def name(self):
         if self.type == 1:
-            return 'iron'
+            return 'Iron'
         if self.type == 2:
             return 'windings'
         if self.type == 3 or self.type == 4:
             return 'magnet'
+        if self.type == 5:
+            return 'StJo'
+        if self.type == 6:
+            return 'StZa'
         return ''
 
     def color(self):
@@ -108,9 +112,22 @@ class Area(object):
             return 'green'
         if self.type == 3 or self.type == 4:
             return 'red'
+        if self.type == 5:
+            return 'blue'
+        if self.type == 6:
+            return 'darkblue'
         return 'white'
 
     def is_iron(self):
+        return self.type == 1 or self.type == 5 or self.type == 6
+
+    def is_stator_iron_yoke(self):
+        return self.type == 5
+
+    def is_stator_iron_shaft(self):
+        return self.type == 6
+
+    def is_rotor_iron(self):
         return self.type == 1
 
     def is_winding(self):
@@ -542,12 +559,12 @@ class Area(object):
         self.close_to_startangle = np.isclose(self.min_angle, 0.0)
         self.close_to_endangle = np.isclose(self.max_angle, alpha)
 
-        if self.close_to_startangle and self.close_to_endangle:
-            self.type = 1  # iron
+        if close_to_opposition:
+            self.type = 5  # iron yoke (Joch)
             return self.type
 
-        if close_to_opposition:
-            self.type = 1  # iron
+        if self.close_to_startangle and self.close_to_endangle:
+            self.type = 5  # iron yoke (Joch)
             return self.type
 
         if close_to_ag:  # close to airgap
@@ -561,7 +578,7 @@ class Area(object):
             if air_alpha / alpha < 0.5:
                 self.type = 9  # air or iron near windings?
             else:
-                self.type = 1  # iron
+                self.type = 6  # iron shaft (Zahn)
             return self.type
 
         if self.min_angle > 0.001:

@@ -2,6 +2,13 @@
   pickdist(0.001)
   cosys(polar)
 
+tmp = {}
+tmp.xmag = {}
+tmp.ymag = {}
+tmp.mag_orient = {}
+tmp.mag_exists = 0
+tmp.coil_exists = 0
+
 <%include file="fe-contr.mako" />
 
 % if hasattr(model, 'airgap'):

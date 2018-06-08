@@ -14,8 +14,13 @@ m.win_asym        =   1.0 -- sym
 m.curr_inp        =   0.0 -- const
 m.dq_offset       =   0
 
- pre_models("Gen_winding")
- pre_models("gen_pocfile") 
+if tmp.coil_exists == 1 and tmp.coil_mirrored then
+  r, phi = c2pr(m.xcoil_1, m.ycoil_1)
+  m.xcoil_2, m.ycoil_2 = pr2c(r, tmp.coil_alpha*2.0 - phi)
+end
+
+pre_models("Gen_winding")
+pre_models("gen_pocfile") 
 % else:
 color={green, yellow, magenta,lightgrey,darkred,skyblue,violet}
 wkey={0,0,0,0,0,0}

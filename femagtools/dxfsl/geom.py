@@ -1817,6 +1817,14 @@ class Geometry(object):
                 add_or_join(self, the_area_p, new_p, line,
                             self.rtol, self.atol)
 
+    def set_rotor(self):
+        self.sym_counterpart = 1
+        self.sym_part = 0
+
+    def set_stator(self):
+        self.sym_counterpart = 1
+        self.sym_part = 2
+
     def is_rotor(self):
         if self.sym_counterpart:
             return self.sym_part < self.sym_counterpart
@@ -1826,6 +1834,13 @@ class Geometry(object):
         if self.sym_counterpart:
             return self.sym_part > self.sym_counterpart
         return False
+
+    def num_variable(self):
+        if self.is_stator():
+            return 'm.num_sl_gen'
+        if self.is_rotor():
+            return 'm.npols_gen'
+        return 'm.{}_ncopies'.format(self.kind)
 
     def _delete_a_tiny_element(self, n0, n1, dict01, n2):
         dict12 = self.g.get_edge_data(n1, n2)
@@ -1917,9 +1932,9 @@ class Geometry(object):
                 if wdg_areas:
                     a.type = 0  # air
                 else:
-                    a.type = 1  # iron
+                    a.type = 6  # iron shaft (Zahn)
             else:
-                a.type = 1  # iron
+                a.type = 6  # iron shaft (Zahn)
 
     def search_rotor_subregions(self, place=''):
         is_inner = self.is_inner

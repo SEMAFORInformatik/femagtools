@@ -25,7 +25,7 @@ def usage(name):
 def write_fsl_file(machine, basename, inner=False, outer=False):
     model = NewFslRenderer(basename)
     filename = basename + '_' + machine.geom.kind + '.fsl'
-    model.render(machine.geom, filename, inner, outer)
+    model.render(machine, filename, inner, outer)
 
 
 def write_main_fsl_file(machine, machine_inner, machine_outer, basename):
@@ -247,9 +247,21 @@ def converter(dxfile,
 
     else:
         # No airgap found
+        name = "No_Airgap"
+        inner = False
+        outer = False
+        
+        if part:
+            if part[1] == 'in':
+                name = inner_name
+                inner = True
+            else:
+                name = outer_name
+                outer = True
+
         machine = symmetry_search(machine,
                                   p,  # plot
-                                  "No_Airgap",
+                                  name,
                                   symtol=symtol,
                                   show_plots=show_plots,
                                   rows=3,  # rows
@@ -257,18 +269,20 @@ def converter(dxfile,
                                   num=3)   # start num
         if part:
             if part[0] == 'stator':
+                machine.geom.set_stator()
                 machine.geom.search_stator_subregions(part[1])
             else:
+                machine.geom.set_rotor()
                 machine.geom.search_rotor_subregions(part[1])
 
         if show_plots:
             p.render_elements(machine.geom, Shape,
-                              draw_inside=True, title='no airgap',
+                              draw_inside=True, title=name,
                               rows=3, cols=2, num=5, show=False,
                               fill_areas=True)
             p.show_plot()
 
         if write_fsl:
-            write_fsl_file(machine, basename)
+            write_fsl_file(machine, basename, inner, outer)
 
     logger.info("done")

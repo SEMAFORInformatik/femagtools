@@ -12,6 +12,7 @@ import mako
 import mako.lookup
 import os
 import re
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +29,24 @@ class Builder:
             disable_unicode=False, input_encoding='utf-8',
             output_encoding='utf-8',
             default_filters=['decode.utf8'])
-    
+
+        self.fsl_stator = False
+        self.fsl_magnet = False
+
     def create_stator_model(self, model):
+        mcv = ["mcvkey_yoke = '{}'"
+               .format(model.stator.get('mcvkey_yoke', 'dummy')),
+               "mcvkey_shaft = '{}'"
+               .format(model.stator.get('mcvkey_shaft', 'dummy'))]
+
         templ = model.statortype()
-        return self.__render(model, templ)
-    
+        return mcv + self.__render(model, templ, stator=True)
+
     def create_magnet_model(self, model):
-        mcv = ["mcvkey_yoke='{}'".format(
-            model.magnet.get('mcvkey_yoke', 'dummy')),
-               "mcvkey_shaft='{}'".format(
-                   model.magnet.get('mcvkey_shaft', 'dummy'))]
+        mcv = ["mcvkey_yoke = '{}'"
+               .format(model.magnet.get('mcvkey_yoke', 'dummy')),
+               "mcvkey_shaft = '{}'"
+               .format(model.magnet.get('mcvkey_shaft', 'dummy'))]
         try:
             if 'magnetFsl' in model.magnet:
                 #  obsolete
@@ -61,7 +70,7 @@ class Builder:
             magmodel = model.magnet.copy()
             magmodel.update(model.magnet[templ])
             magmodel['mcvkey_magnet'] = model.get_mcvkey_magnet()
-            return mcv + self.__render(magmodel, templ)
+            return mcv + self.__render(magmodel, templ, magnet=True)
         except AttributeError:
             pass  # no magnet
         return []
@@ -71,7 +80,7 @@ class Builder:
         if model.get('move_action') == 0:
             return ['pre_models("connect_models")']
         return []
-    
+
     def create_open(self, model):
         return self.__render(model, 'open') + \
             self.__render(model, 'basic_modpar')
@@ -81,7 +90,7 @@ class Builder:
 
     def create_new_model(self, model):
         return self.__render(model, 'new_model')
-    
+
     def create_model(self, model, magnets=None):
         magnetMat = None
         magndata = ['']
@@ -92,7 +101,7 @@ class Builder:
                     model.magnet['material']))
             if not magnetMat.get('mcvkey', 0):
                 magndata = ['pre_models("Magnet-data")', '']
-        
+
         if model.is_complete():
             return self.create_new_model(model) + \
                 self.__render(model.windings, 'cu_losses') + \
@@ -102,16 +111,18 @@ class Builder:
                 self.__render(model, 'gen_winding') + \
                 self.create_magnet(model, magnetMat) + \
                 self.create_magnet_model(model) + \
+                self.create_airgap_lines(model) + \
+                self.create_permanent_magnets(model) + \
                 self.create_connect_models(model) + \
                 magndata
         return self.open_model(model, magnets)
 
     def open_model(self, model, magnets=None):
         return self.create_open(model)
-    
+
     def load_model(self, model, magnets=None):
         return self.__render(model, 'open')
-    
+
     def create_magnet(self, model, magnetMat):
         try:
             if magnetMat:
@@ -126,7 +137,7 @@ class Builder:
 
     def create_common(self, model):
         return self.__render(model, 'common')
-    
+
     def create_analysis(self, model):
         airgap_induc = (self.create_airgap_induc()
                         if model.get('airgap_induc', 0) else [])
@@ -142,12 +153,24 @@ class Builder:
                 airgap_induc +
                 self.__render(model, 'plots') +
                 ['save_model(cont)'])
-            
+
     def create_airgap_induc(self):
             return self.__render(dict(), 'airgapinduc')
-        
+
     def create_colorgrad(self, model):
             return self.__render(model, 'colorgrad')
+
+    def create_airgap_lines(self, model):
+        if self.fsl_stator and self.fsl_magnet:
+            return self.__render(model, 'airgaplines')
+        else:
+            return ''
+
+    def create_permanent_magnets(self, model):
+        if self.fsl_stator and self.fsl_magnet:
+            return self.__render(model, 'permanentmagnets')
+        else:
+            return ''
 
     def create(self, model, fea, magnets=None):
         "create model and analysis function"
@@ -174,9 +197,23 @@ class Builder:
                 self.create_analysis(fea)
         return self.open_model(model, magnets) + \
             self.create_analysis(fea)
-        
-    def __render(self, model, templ):
-        template = self.lookup.get_template(templ+".mako")
+
+    def __render(self, model, templ, stator=False, magnet=False):
+        try:
+            template = self.lookup.get_template(templ+".mako")
+            logger.info('use template {}.mako'.format(templ))
+        except:
+            try:
+                template = self.lookup.get_template(templ+".fsl")
+                logger.info('use FSL {}.fsl'.format(templ))
+                if stator:
+                    self.fsl_stator = True
+                if magnet:
+                    self.fsl_magnet = True
+            except:
+                logger.error('File {}.fsl not found'.format(templ))
+                sys.exit(1)
+
         return template.render_unicode(model=model).split('\n')
 
     def render_template(self, content_template, parameters):
@@ -189,7 +226,7 @@ class Builder:
                 par=obj).split('\n')
         return template.render_unicode(
             model=parameters).split('\n')
-    
+
     def read(self, fslfile):
         """extracts parameters from content and creates template"""
         parpat = re.compile(
@@ -223,4 +260,3 @@ class Builder:
             type='fsl',
             content_template='\n'.join(content_template),
             parameter=parameter)
-

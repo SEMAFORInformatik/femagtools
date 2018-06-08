@@ -57,6 +57,7 @@ class AsyncFemag(threading.Thread):
             port, host)
         
     def run(self):
+        """execute femag fsl task in task directory"""
         while True:
             task = self.queue.get()
             if task is None:
@@ -65,15 +66,7 @@ class AsyncFemag(threading.Thread):
             logger.info('Docker task %s %s', task.id, task.fsl_file)
             fslcmds = ['save_model(close)',
                        "chdir('{}')".format(
-                           os.path.split(task.directory)[-1])]
-
-
-            # cleanup
-            shutil.rmtree(os.getcwd())
-
-            for tf in task.transfer_files:
-                src = os.path.join(task.directory, tf)
-                shutil.copy(src, self.workdir)
+                           '/'.join(task.directory.split('/')[:-2]))]
                 
             with open(fslfile) as f:
                 fslcmds += f.readlines()

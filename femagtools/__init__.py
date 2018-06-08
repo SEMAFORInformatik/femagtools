@@ -8,7 +8,7 @@
 
 
 """
-napshot_title__ = 'femagtools'
+__title__ = 'femagtools'
 __version__ = '0.5-snapshot'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'

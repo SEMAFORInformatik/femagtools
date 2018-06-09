@@ -11,7 +11,7 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
   locally (single and multi-core), remote (ZMQ), HT Condor, Cloud (Amazon AWS, Google Cloud)
 * read BCH/BATCH, I7/ISA7, PLT files
 * read and write MCV files (magnetizing curves)
-* create FSL files from model and calculation templates and/or user specific FSL
+* create FSL files from model and calculation templates and/or user specific FSL or from DXF
 * create a variety of plots
 * calculate machine characteristics by using analytic machine models
 * execute parameter studies and multi-objective optimization

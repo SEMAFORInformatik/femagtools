@@ -10,9 +10,10 @@ Magnet geometries not covered by the built in models can be specified by fsl cod
 The procedure is as follows:
 
 1. Create a diagram of the geometry and decide about the parameters to be used.
-2. Create a fsl template file with the chosen parameters as placeholders
+2. Create a fsl mako template file with the chosen parameters as placeholders
       using the `Mako <http://www.makotemplates.org>`_ syntax with ${}.
-3. Include this filename in the magnet model within the section magnetFsl and set the parameter values.
+3. Include this filename in the magnet model within the section using the basename of the mako file
+   and set the parameter values.
 
 The following values are defined globally and can be referenced in the template:
 
@@ -32,7 +33,7 @@ da2             Diameter of rotor           m
 dy2             Diameter of rotor yoke      m
 ==============  =========================== =======
 
-Example FSL Template file spoke.fsl using 4 parameters::
+Example FSL Template file spoke.mako using 4 parameters::
 
   -- Model parameters
 
@@ -68,12 +69,11 @@ Magnet definition in Python file with included fsl file and the parameter defini
   ..
   magnet=dict(
       mcvkey_yoke="dummy",
-      magnetFsl=dict(
+      spoke=dict(
           magn_height=0.008,
           shaft_diam=0.01,
           slot_width=0.004,
-          magn_width=0.024,
-          content_template="spoke.fsl"
+          magn_width=0.024
       )
    ..
 
@@ -83,4 +83,6 @@ The resulting model:
 	    
 .. note::
 
+   Starting with Release 0.4.9 the syntax has changed but backward compatibility is fully supported.
+   
    the complete example can be found in `stator1-spoke.py <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/stator1-spoke.py>`_ and `spokefml.fsl <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/spokefml.fsl>`_ in the example directory on github.

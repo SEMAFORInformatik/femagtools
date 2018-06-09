@@ -1,7 +1,7 @@
 
 # Introduction to Femagtools
 
-[logo]: https://github.com/SEMAFORInformatik/femagtools/raw/master/doc/img/femagtools.png
+![logo](https://github.com/SEMAFORInformatik/femagtools/raw/master/doc/img/femagtools.png)
 
 [![Build Status](https://travis-ci.org/SEMAFORInformatik/femagtools.svg?branch=master)]
 (https://travis-ci.org/SEMAFORInformatik/femagtools)
@@ -30,7 +30,7 @@ The package provides following modules:
 
 * __mcv__, __tks__, __jhb__, __losscoeffs__: handling magnetizing curves and iron losses
 * __erg__, __bch__: read ERG, BCH/BATCH files created by FEMAG
-* __model__: create machine and calculation models
+* __model__, __fsl__: create machine and calculation models
 * __femag__: manage the FEMAG calculation
 * __airgap__: read airgap induction file created by a previous calculation
 * __machine__: analytical machine models

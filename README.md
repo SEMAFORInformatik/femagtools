@@ -1,7 +1,7 @@
 
 # Introduction to Femagtools
 
-![logo](https://github.com/SEMAFORInformatik/femagtools/raw/master/doc/img/femagtools.png)
+![logo](https://github.com/SEMAFORInformatik/femagtools/raw/master/docs/img/femagtools.png)
 
 [![Build Status](https://travis-ci.org/SEMAFORInformatik/femagtools.svg?branch=master)]
 (https://travis-ci.org/SEMAFORInformatik/femagtools)

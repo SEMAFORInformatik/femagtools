@@ -402,3 +402,23 @@ Losses
                   'hyst': (8.135, 7.774, 7.76, 2.578, 3.067, 1.606, 0.776),
                   'order': (1, 3, 5, 7, 9, 11, 13)}}
      }
+
+
+Demag
+=====
+
+ List of dictionaries with demagnetization information
+
+  ================  ========================================== =============
+  Attribute          Description                               Unit
+  ================  ========================================== =============
+  displ              rotor position                            °
+  current            winding current (RMS)                     A
+  beta               angle I Up                                °
+  current_1          current winding 1 (RMS)                   A
+  current_2          current winding 2 (RMS)                   A
+  current_3          current winding 3 (RMS)                   A
+  H_max              maximum field strength                    kA/m
+  H_av               average field strength                    kA/m
+  area               area with H > Hx                          %
+  ================  ========================================== =============

@@ -115,13 +115,12 @@ class Reader:
         self.dqPar = {}
         self.ldq = {}
         self.losses = []
-        self.demag = {}
+        self.demag = []
         self.weights = []
         self.weight = {}
         self.characteristics = {}
         self.areas = []
         self.current_angles = []
-        self.demagnetization = {}
         self.dispatch = {
             'General Machine Data': Reader.__read_general_machine_data,
             'Weigths': Reader.__read_weights,
@@ -351,18 +350,19 @@ class Reader:
         return l
 
     def __read_demagnetization(self, content):
-        keys = ('displ', 'current_1', 'current_2', 'current_3',
-                'h_max', 'h_av', 'area')
+        keys = [('displ', 'current_1', 'current_2', 'current_3',
+                 'H_max', 'H_av', 'area'),
+                ('displ', 'current', 'beta',
+                 'H_max', 'H_av', 'area')]
         
         for l in content:
             rec = self._numPattern.findall(l)
-            if len(rec) == 7:
-                for r, k in zip(rec, keys):
-                    if k in self.demag:
-                        self.demag[k].append(floatnan(r.strip()))
-                    else:
-                        self.demag[k] = [floatnan(r.strip())]
+            if len(rec) == 7 or len(rec) == 6:
+                i = 0 if len(rec) == 7 else 1
+                self.demag.append(
+                    {k: floatnan(r) for r, k in zip(rec, keys[i])})
             else:
+                d = dict()
                 for v in [["Limit Hc value", "lim_hc"],
                           ["Max. Magnetization", "br_max"],
                           ["Min. Magnetization", "br_min"],
@@ -370,8 +370,10 @@ class Reader:
                     if l.find(v[0]) > -1:
                         rec = self._numPattern.findall(l)
                         if len(rec) > 0:
-                            self.demag[v[1]] = floatnan(rec[-1])
-
+                            d[v[1]] = floatnan(rec[-1])
+                if d:
+                    self.demag.append(d)
+                
     def __read_short_circuit(self, content):
         "read short circuit section"
         if content[2].startswith('Time'):

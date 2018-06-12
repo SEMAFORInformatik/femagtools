@@ -13,8 +13,6 @@ import numpy as np
 import networkx as nx
 import logging
 import sys
-import matplotlib.pylab as pl
-import matplotlib.patches as pch
 from .corner import Corner
 from .area import Area
 from .shape import Element, Shape, Circle, Arc, Line, Point
@@ -32,45 +30,32 @@ import io
 logger = logging.getLogger('femagtools.geom')
 
 
-#############################
-#         Debug Plot        #
-#############################
-
-
 nxversion = int(nx.__version__.split('.')[0])
 geom_mindist = 0.0
 
 
-def print_circle(ax, circle, color='darkblue', fill=False):
-    ax.add_patch(pch.Circle(circle.center,
-                            circle.radius, fideall=fill, color=color))
-
-
-def print_arc(ax, arc, color='darkblue'):
-    ax.add_patch(pch.Arc(arc.center, 2*arc.radius, 2*arc.radius,
-                         angle=0,
-                         theta1=arc.startangle*180/np.pi,
-                         theta2=arc.endangle*180/np.pi,
-                         color=color))
-
-
-def print_line(ax, line, color='red'):
-    ax.add_line(pl.Line2D((line.p1[0], line.p2[0]),
-                          (line.p1[1], line.p2[1]),
-                          color=color))
-
-
-def print_area(area):
+def plot_area(area):
+    """plot area for debug purposes"""
+    import matplotlib.pylab as pl
+    import matplotlib.patches as pch
     fig = pl.figure()
     ax = fig.add_subplot(111)
 
     for e in area:
         if isinstance(e, Line):
-            print_line(ax, e)
+            ax.add_line(pl.Line2D((e.p1[0], e.p2[0]),
+                                  (e.p1[1], e.p2[1]),
+                                  color='red'))
         elif isinstance(e, Arc):
-            print_arc(ax, e)
+            ax.add_patch(pch.Arc(e.center, 2*e.radius, 2*e.radius,
+                                 angle=0,
+                                 theta1=e.startangle*180/np.pi,
+                                 theta2=e.endangle*180/np.pi,
+                                 color='darkblue'))
         elif isinstance(e, Circle):
-            print_circle(ax, e)
+            ax.add_patch(pch.Circle(e.center,
+                                    e.radius,
+                                    fill=False, color='darkblue'))
 
     ax.axis('scaled', aspect='equal')
     pl.show()
@@ -910,7 +895,7 @@ class Geometry(object):
             c += 1
             if c > 1000:
                 logger.info("FATAL: *** over 1000 elements in area ? ***")
-                print_area(area)
+                plot_area(area)
                 sys.exit(1)
             e_dict = self.g.get_edge_data(this_p, next_p)
             e = e_dict['object']

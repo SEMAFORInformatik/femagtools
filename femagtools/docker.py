@@ -63,10 +63,11 @@ class AsyncFemag(threading.Thread):
             if task is None:
                 break
             fslfile = os.path.join(task.directory, task.fsl_file)
-            logger.info('Docker task %s %s', task.id, task.fsl_file)
+            workdir = '/'.join(task.directory.split('/')[-2:])
+            logger.info('Docker task %s %s workdir %s',
+                        task.id, task.fsl_file, workdir)
             fslcmds = ['save_model(close)',
-                       "chdir('{}')".format(
-                           '/'.join(task.directory.split('/')[:-2]))]
+                       "chdir('{}')".format(workdir)]
                 
             with open(fslfile) as f:
                 fslcmds += f.readlines()

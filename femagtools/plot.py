@@ -674,8 +674,51 @@ def felosses(losses, coeffs, title='', log=True):
     ax.set_xlabel("Induction [T]")
     #pl.ylabel("Pfe [W/kg]")
     ax.legend()
-    ax.grid(True)
+    ax.grid(True) 
+
+
+def spel(isa):
+    """plot super elements of I7/ISA7 model
+    Args:
+      isa: Isa7 object
+    """
+    from matplotlib.patches import Polygon
+    ax = pl.gca()
+    ax.set_aspect('equal')
+    for se in isa.superelements:
+        ax.add_patch(Polygon([n.xy
+                              for nc in se.nodechains
+                              for n in nc.nodes],
+                             color=isa.color[se.color], lw=0))
+
+    ax.autoscale(enable=True)
+    #ax.axis('off')
+
+
+def mesh(isa):
+    """plot mesh of I7/ISA7 model
+    Args:
+      isa: Isa7 object
+    """
+    from matplotlib.lines import Line2D
+    ax = pl.gca()
+    ax.set_aspect('equal')
+    for el in isa.elements:
+        pts = [list(i) for i in zip(*[v.xy for v in el.vertices])]
+        ax.add_line(Line2D(pts[0], pts[1], color='b', ls='-', lw=0.25))
+
+    #for nc in isa.nodechains:
+    #    pts = [list(i) for i in zip(*[(n.x, n.y) for n in nc.nodes])]
+    #    ax.add_line(Line2D(pts[0], pts[1], color="b", ls="-", lw=0.25, 
+    #                       marker=".", ms="2", mec="None"))
     
+    #for nc in isa.nodechains:
+    #    if nc.nodemid is not None:
+    #        plt.plot(*nc.nodemid.xy, "rx")
+    
+    ax.autoscale(enable=True, axis='both')
+
+   
 if __name__ == "__main__":
     import io
     import sys

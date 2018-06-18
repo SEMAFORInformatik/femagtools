@@ -677,7 +677,7 @@ def felosses(losses, coeffs, title='', log=True):
     ax.grid(True) 
 
 
-def spel(isa):
+def spel(isa, with_axis=False):
     """plot super elements of I7/ISA7 model
     Args:
       isa: Isa7 object
@@ -692,10 +692,11 @@ def spel(isa):
                              color=isa.color[se.color], lw=0))
 
     ax.autoscale(enable=True)
-    #ax.axis('off')
+    if not with_axis:
+        ax.axis('off')
 
 
-def mesh(isa):
+def mesh(isa, with_axis=False):
     """plot mesh of I7/ISA7 model
     Args:
       isa: Isa7 object
@@ -716,7 +717,9 @@ def mesh(isa):
     #    if nc.nodemid is not None:
     #        plt.plot(*nc.nodemid.xy, "rx")
     
-    ax.autoscale(enable=True, axis='both')
+    ax.autoscale(enable=True)
+    if not with_axis:
+        ax.axis('off')
 
    
 if __name__ == "__main__":

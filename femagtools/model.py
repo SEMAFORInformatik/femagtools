@@ -34,10 +34,10 @@ class Model(object):
         if isinstance(parameters, dict):
             for k in parameters.keys():
                 setattr(self, k, parameters[k])
-            
+
     def set_value(self, name, value, p=None):
         """set value of parameter identified by name
-        
+
         Args:
             name: name of parameter
             value: value to be assigned to parameter
@@ -45,7 +45,7 @@ class Model(object):
         if isinstance(name, str):
             setattr(self, name, value)
             return
-        
+
         if len(name) > 1:
             k = name[0]
             if hasattr(self, k):
@@ -60,7 +60,7 @@ class Model(object):
             p[name[0]] = value
             return
         setattr(self, name[0], value)
-        
+
     def get(self, name, r=None):
         """return value of key name
 
@@ -69,7 +69,7 @@ class Model(object):
 
         Return:
             value of parameter identified by key
-        """        
+        """
         try:
             if isinstance(name, str):
                 if r is not None:
@@ -87,7 +87,7 @@ class Model(object):
         except KeyError as e:
             logger.error(e)
             raise MCerror(e)
-     
+
     def __str__(self):
         "return string format of this object"
         return repr(self.__dict__)
@@ -99,9 +99,9 @@ class Model(object):
 
 class MachineModel(Model):
     """represents a machine model for a FE analysis
-    
+
     Args:
-        parameters: string or dict containing the model parameters. For example:
+      parameters: string or dict containing the model parameters. For example:
     ::
 
         {'lfe': 0.1,
@@ -119,7 +119,7 @@ class MachineModel(Model):
         }
         }
 
-        if parameters is string it is interpreted as the model name. 
+        if parameters is string it is interpreted as the model name.
     """
     def __init__(self, parameters):
         super(self.__class__, self).__init__(parameters)
@@ -165,13 +165,13 @@ class MachineModel(Model):
 
     def set_mcvkey_magnet(self, mcvkey):
         self.mcvkey_magnet = mcvkey
-        
+
     def get_mcvkey_magnet(self):
         try:
             return self.mcvkey_magnet
         except:
             return ''
-        
+
     def set_magcurves(self, magcurves, magnetmat={}):
         """set and return real names of magnetizing curve material
 
@@ -200,7 +200,7 @@ class MachineModel(Model):
                                          self.stator['mcvkey_yoke'])
                 except KeyError:
                     pass
-                
+
             if 'magnet' in self.__dict__:
                 try:
                     if self.magnet['mcvkey_yoke'] != 'dummy':
@@ -229,7 +229,7 @@ class MachineModel(Model):
                                          self.magnet['mcvkey_shaft'])
                 except KeyError:
                     pass
-                
+
         if magnetmat and 'magnet' in self.__dict__:
             try:
                 magnet = magnetmat.find(self.magnet['material'])
@@ -255,14 +255,14 @@ class MachineModel(Model):
             raise MCerror("MC pars missing: {}".format(
                 ', '.join(set(missing))))
         return set(names)
-    
+
     def statortype(self):
         """return type of stator slot"""
         for k in self.stator:
             if isinstance(self.stator[k], dict):
                 return k
         raise MCerror("Missing stator slot model in {}".format(self.stator))
-    
+
     def magnettype(self):
         """return type of magnet slot"""
         for k in self.magnet:
@@ -278,7 +278,13 @@ class MachineModel(Model):
             return True
         except:
             return False
-        
+
+    def is_dxffile(self):
+        if 'dxffile' in self.__dict__:
+            if isinstance(self.dxffile, dict):
+                return True
+        return False
+
 
 class FeaModel(Model):
     def __init__(self, parameters):

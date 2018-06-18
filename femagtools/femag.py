@@ -252,13 +252,9 @@ class ZmqFemag(BaseFemag):
         self.reader = None
 
     def __del__(self):
-        if self.request_socket:
-            self.request_socket.close()
-        if self.subscriber_socket:
-            self.subscriber_socket.close()
         if self.reader:
             self.reader.continue_loop = False
-        logger.info("Destructor ZmqFemag")
+        logger.debug("Destructor ZmqFemag")
 
     def __req_socket(self):
         """returns a new request client"""

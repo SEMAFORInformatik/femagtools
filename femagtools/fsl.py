@@ -13,6 +13,7 @@ import mako.lookup
 import os
 import re
 import sys
+from femagtools.dxfsl.converter import converter
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +40,29 @@ class Builder:
                "mcvkey_shaft = '{}'"
                .format(model.stator.get('mcvkey_shaft', 'dummy'))]
 
+        return mcv + self.render_stator(model)
+
+    def render_stator(self, model):
         templ = model.statortype()
-        return mcv + self.__render(model, templ, stator=True)
+        fslcode = self.__render(model, templ, stator=True)
+        if fslcode:
+            return fslcode
+
+        if not os.path.isfile(templ + '.dxf'):
+            logger.error('File {}.fsl or .dxf not found'.format(templ))
+            sys.exit(1)
+
+        params = {}
+        params['split'] = model.stator[templ].get('split', False)
+        params['show_plots'] = model.stator[templ].get('plot', False)
+        params['write_fsl'] = True
+        params['airgap'] = -1.0
+        params['part'] = ('stator', model.stator[templ].get('position'))
+        params['inner_name'] = 'tmp'
+        params['outer_name'] = 'tmp'
+        conv = converter(templ + '.dxf', **params)
+        self.fsl_stator = True
+        return self.__render(model, conv['filename'], stator=True)
 
     def create_magnet_model(self, model):
         mcv = ["mcvkey_yoke = '{}'"
@@ -70,10 +92,31 @@ class Builder:
             magmodel = model.magnet.copy()
             magmodel.update(model.magnet[templ])
             magmodel['mcvkey_magnet'] = model.get_mcvkey_magnet()
-            return mcv + self.__render(magmodel, templ, magnet=True)
+            return mcv + self.render_rotor(magmodel, templ)
         except AttributeError:
             pass  # no magnet
         return []
+
+    def render_rotor(self, magmodel, templ):
+        fslcode = self.__render(magmodel, templ, magnet=True)
+        if fslcode:
+            return fslcode
+
+        if not os.path.isfile(templ + '.dxf'):
+            logger.error('File {}.fsl or .dxf not found'.format(templ))
+            sys.exit(1)
+
+        params = {}
+        params['split'] = magmodel[templ].get('split', False)
+        params['show_plots'] = magmodel[templ].get('plot', False)
+        params['write_fsl'] = True
+        params['airgap'] = -1.0
+        params['part'] = ('rotor', magmodel[templ].get('position'))
+        params['inner_name'] = 'tmp'
+        params['outer_name'] = 'tmp'
+        conv = converter(templ + '.dxf', **params)
+        self.fsl_magnet = True
+        return self.__render(magmodel, conv['filename'], magnet=True)
 
     def create_connect_models(self, model):
         """return connect_model if rotating machine"""
@@ -90,6 +133,70 @@ class Builder:
 
     def create_new_model(self, model):
         return self.__render(model, 'new_model')
+
+    def create_cu_losses(self, model):
+        return self.__render(model.windings, 'cu_losses')
+
+    def create_gen_winding(self, model):
+        return self.__render(model, 'gen_winding')
+
+    def create_model_with_dxf(self, model, magnets, magnetMat):
+        dxfname = model.dxffile.get('name', None)
+        if not dxfname:
+            logger.error('Name of dxf-file expected')
+            sys.exit(1)
+
+        if dxfname.split('.')[-1] not in ('dxf'):
+            dxfname += '.dxf'
+        if not os.path.isfile(dxfname):
+            logger.error('File {} not found'.format(dxfname))
+            sys.exit(1)
+
+        params = {}
+        params['split'] = model.dxffile.get('split', False)
+        params['show_plots'] = model.dxffile.get('plot', False)
+        params['write_fsl'] = True
+        params['airgap'] = model.dxffile.get('airgap', -1.0)
+        params['inner_name'] = 'inner_tmp'
+        params['outer_name'] = 'outer_tmp'
+
+        conv = converter(dxfname, **params)
+
+        model.set_value('poles', conv.get('num_poles'))
+        model.set_value('outer_diam', conv.get('dy1') * 1e-3)
+        model.set_value('bore_diam', conv.get('da1') * 1e-3)
+        model.set_value('inner_diam', conv.get('dy2') * 1e-3)
+        model.set_value('airgap', (conv.get('da1') - conv.get('da2'))/2/1e3)
+
+        stator = getattr(model, 'stator', None)
+        if stator is None:
+            setattr(model, 'stator', {})
+        model.stator['num_slots'] = conv.get('tot_num_slot')
+        model.stator['num_slots_gen'] = conv.get('num_sl_gen')
+        filename = conv.get('filename_stator', None)
+        if not filename:
+            logger.error('Filename of stator not found')
+            sys.exit(1)
+        model.stator[filename.split('.')[0]] = {}
+
+        rotor = getattr(model, 'magnet', None)
+        if rotor is None:
+            setattr(model, 'magnet', {})
+        filename = conv.get('filename_rotor', None)
+        if not filename:
+            logger.error('Filename of rotor not found')
+            sys.exit(1)
+        model.magnet[filename.split('.')[0]] = {}
+
+        return self.create_new_model(model) + \
+            self.create_cu_losses(model) + \
+            self.create_stator_model(model) + \
+            self.create_gen_winding(model) + \
+            self.create_magnet(model, magnetMat) + \
+            self.create_magnet_model(model) + \
+            self.mesh_airgap(model) + \
+            self.create_permanent_magnets(model) + \
+            self.create_connect_models(model)
 
     def create_model(self, model, magnets=None):
         magnetMat = None
@@ -115,6 +222,11 @@ class Builder:
                 self.create_permanent_magnets(model) + \
                 self.create_connect_models(model) + \
                 magndata
+
+        if model.is_dxffile():
+            return self.create_model_with_dxf(model, magnets, magnetMat) + \
+                magndata
+
         return self.open_model(model, magnets)
 
     def open_model(self, model, magnets=None):
@@ -199,6 +311,15 @@ class Builder:
             self.create_analysis(fea)
 
     def __render(self, model, templ, stator=False, magnet=False):
+        if templ.split('.')[-1] in ('fsl', 'mako'):
+            try:
+                template = self.lookup.get_template(templ)
+                logger.info('use file {}'.format(templ))
+                return template.render_unicode(model=model).split('\n')
+            except:
+                logger.error('File {} not found'.format(templ))
+                sys.exit(1)
+
         try:
             template = self.lookup.get_template(templ+".mako")
             logger.info('use template {}.mako'.format(templ))
@@ -211,8 +332,10 @@ class Builder:
                 if magnet:
                     self.fsl_magnet = True
             except:
-                logger.error('File {}.fsl not found'.format(templ))
-                sys.exit(1)
+                if not (stator or magnet):
+                    logger.error('File {}.fsl not found'.format(templ))
+                    sys.exit(1)
+                return []
 
         return template.render_unicode(model=model).split('\n')
 

@@ -26,12 +26,14 @@ def write_fsl_file(machine, basename, inner=False, outer=False):
     model = NewFslRenderer(basename)
     filename = basename + '_' + machine.geom.kind + '.fsl'
     model.render(machine, filename, inner, outer)
+    return filename
 
 
 def write_main_fsl_file(machine, machine_inner, machine_outer, basename):
     model = NewFslRenderer(basename)
     filename = basename + '.fsl'
     model.render_main(machine, machine_inner, machine_outer, filename)
+    return filename
 
 
 def symmetry_search(machine,
@@ -110,9 +112,18 @@ def converter(dxfile,
               write_fsl=False,
               debug_mode=False):
     layers = ()
+    conv = {}
 
     basename = os.path.basename(dxfile).split('.')[0]
     logger.info("start reading %s", basename)
+
+    if part:
+        if part[0] not in ('rotor', 'stator'):
+            logger.error('FATAL: Parameter rotor or stator expected')
+            sys.exit(1)
+        if part[1] not in ('in', 'out'):
+            logger.error('"{}" has to be defined in/out'.format(part[0]))
+            sys.exit(1)
 
     basegeom = Geometry(dxfshapes(dxfile,
                                   mindist=mindist,
@@ -238,19 +249,35 @@ def converter(dxfile,
             # p.render_areas(machine_outer.geom)
 
         if write_fsl:
-            write_fsl_file(machine_inner, basename, True, False)
-            write_fsl_file(machine_outer, basename, False, True)
-            write_main_fsl_file(machine,
-                                machine_inner,
-                                machine_outer,
-                                basename)
+            inner_filename = write_fsl_file(machine_inner,
+                                            basename,
+                                            True,
+                                            False)
+            outer_filename = write_fsl_file(machine_outer,
+                                            basename,
+                                            False,
+                                            True)
+
+            if machine_inner.geom.is_rotor():
+                conv['filename_rotor'] = inner_filename
+                conv['filename_stator'] = outer_filename
+            else:
+                conv['filename_stator'] = inner_filename
+                conv['filename_rotor'] = outer_filename
+
+            conv['main_filename'] = write_main_fsl_file(machine,
+                                                        machine_inner,
+                                                        machine_outer,
+                                                        basename)
+            conv.update(create_femag_parameters(machine_inner,
+                                                machine_outer))
 
     else:
         # No airgap found
         name = "No_Airgap"
         inner = False
         outer = False
-        
+
         if part:
             if part[1] == 'in':
                 name = inner_name
@@ -283,6 +310,38 @@ def converter(dxfile,
             p.show_plot()
 
         if write_fsl:
-            write_fsl_file(machine, basename, inner, outer)
+            conv['filename'] = write_fsl_file(machine, basename, inner, outer)
 
     logger.info("done")
+    return conv
+
+
+def create_femag_parameters(m_inner, m_outer):
+    if not (m_inner and m_outer):
+        return {}
+
+    params = {}
+    geom_inner = m_inner.geom
+    geom_outer = m_outer.geom
+
+    parts_inner = int(m_inner.get_symmetry_part())
+    parts_outer = int(m_outer.get_symmetry_part())
+
+    if parts_inner > parts_outer:
+        num_slots = parts_inner
+        num_poles = parts_outer
+        num_sl_gen = int(geom_inner.get_symmetry_copies()+1)
+    else:
+        num_slots = parts_outer
+        num_poles = parts_inner
+        num_sl_gen = int(geom_outer.get_symmetry_copies()+1)
+
+    params['tot_num_slot'] = num_slots
+    params['num_sl_gen'] = num_sl_gen
+    params['num_poles'] = num_poles
+
+    params['dy1'] = 2*geom_outer.max_radius
+    params['da1'] = 2*geom_outer.min_radius
+    params['da2'] = 2*geom_inner.max_radius
+    params['dy2'] = 2*geom_inner.min_radius
+    return params

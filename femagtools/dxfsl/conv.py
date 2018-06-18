@@ -12,8 +12,6 @@ from femagtools.dxfsl.converter import converter
 import argparse
 import logging
 import logging.config
-import networkx as nx
-import matplotlib
 
 logger = logging.getLogger(__name__)
 
@@ -118,8 +116,16 @@ if __name__ == "__main__":
 
     if args.version:
         logger.info("femagtools version: %s", femagtools.__version__)
-        logger.info("networkx version: %s", nx.__version__)
-        logger.info("matplotlib version: %s", matplotlib.__version__)
+        try:
+            import networkx as nx
+            logger.info("networkx version: %s", nx.__version__)
+        except:
+            logger.info("networkx version: <networkx not available>")
+        try:
+            import xmatplotlib
+            logger.info("matplotlib version: %s", xmatplotlib.__version__)
+        except:
+            logger.info("matplotlib version: <matplotlib not available>")
         sys.exit(0)
 
     if args.airgap > 0.0:

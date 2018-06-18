@@ -9,7 +9,8 @@ import sys
 import os
 from femagtools.dxfsl.geom import Geometry, dxfshapes
 from femagtools.dxfsl.shape import Shape
-from femagtools.dxfsl.renderer import FslRenderer, PlotRenderer
+from femagtools.dxfsl.fslrenderer import FslRenderer
+from femagtools.dxfsl.plotrenderer import PlotRenderer
 import logging
 import logging.config
 import numpy as np
@@ -55,7 +56,8 @@ def symmetry_search(machine,
 
     if not machine.find_symmetry(symtol):
         logger.info("{}: no symmetry axis found".format(kind))
-        plt.add_emptyplot(rows, cols, num, 'no symmetry axis')
+        if show_plots:
+            plt.add_emptyplot(rows, cols, num, 'no symmetry axis')
 
         machine_mirror = machine.get_symmetry_mirror()
         machine_slice = machine

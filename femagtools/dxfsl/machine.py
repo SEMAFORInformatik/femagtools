@@ -177,12 +177,22 @@ class Machine(object):
         return clone.get_machine()
 
     def copy_mirror(self, startangle, midangle, endangle):
-        geom1 = self.geom.copy_shape(self.center, self.radius,
-                                     startangle, midangle,
-                                     0.0, self.radius+9999)
-        geom2 = self.geom.copy_shape(self.center, self.radius,
-                                     midangle, endangle,
-                                     0.0, self.radius+9999)
+        geom1 = self.geom.copy_shape(self.center,
+                                     self.radius,
+                                     startangle,
+                                     midangle,
+                                     0.0,
+                                     self.radius+9999,
+                                     rtol=1e-08,
+                                     atol=1e-08)
+        geom2 = self.geom.copy_shape(self.center,
+                                     self.radius,
+                                     midangle,
+                                     endangle,
+                                     0.0,
+                                     self.radius+9999,
+                                     rtol=1e-08,
+                                     atol=1e-08)
 
         machine = Machine(geom1, self.center, self.radius,
                           startangle, midangle)

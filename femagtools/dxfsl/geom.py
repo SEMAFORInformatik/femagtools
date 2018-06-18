@@ -304,8 +304,10 @@ def insert_block(insert_entity, block, min_dist=0.001):
         logger.error('Different Location in Insert not supported')
         return
 
-    if insert_entity.scale != (1.0, 1.0, 1.0):
+    if not (insert_entity.scale == (1.0, 1.0, 1.0) or
+            insert_entity.scale == (1.0, 1.0, 0.0)):
         logger.error('Block scaling in Insert not supported')
+        logger.error('  scale = {}'.format(insert_entity.scale))
         return
 
     if(insert_entity.row_count > 1 or
@@ -700,6 +702,7 @@ class Geometry(object):
         return self.start_corners[-1][i]
 
     def repair_hull_line(self, center, angle):
+        logger.debug('repair_hull_line({}, {})'.format(center, angle))
         # We need to set our own tolerance range
         # to find the right points
         rtol = 1e-4
@@ -982,39 +985,42 @@ class Geometry(object):
             area.remove_edges(self.g, ndec)
 
     def copy_line(self, center, radius, start_angle, end_angle,
-                  start_line, end_line, inner_circle, outer_circle, e):
+                  start_line, end_line, inner_circle, outer_circle, e,
+                  rtol=1e-04,
+                  atol=1e-04):
         """ Die Funktion kopiert die Teile einer Linie, welche sich in der
             durch die Parameter definierten Teilkreisfläche befinden.
         """
         assert(isinstance(e, Line))
         if is_same_angle(start_angle, end_angle):
             points = inner_circle.intersect_line(e,
-                                                 self.rtol,
-                                                 self.atol,
+                                                 rtol,
+                                                 atol,
                                                  False) + \
                      outer_circle.intersect_line(e,
-                                                 self.rtol,
-                                                 self.atol,
+                                                 rtol,
+                                                 atol,
                                                  False) + \
                      [e.p2]
         else:
-            points = e.intersect_line(start_line,
-                                      self.rtol,
-                                      self.atol,
-                                      False) + \
-                     e.intersect_line(end_line,
-                                      self.rtol,
-                                      self.atol,
-                                      False) + \
-                     inner_circle.intersect_line(e,
-                                                 self.rtol,
-                                                 self.atol,
-                                                 False) + \
-                     outer_circle.intersect_line(e,
-                                                 self.rtol,
-                                                 self.atol,
-                                                 False) + \
-                     [e.p2]
+            points_start = e.intersect_line(start_line,
+                                            rtol,
+                                            atol,
+                                            False)
+            points_end = e.intersect_line(end_line,
+                                          rtol,
+                                          atol,
+                                          False)
+            points_inner = inner_circle.intersect_line(e,
+                                                       rtol,
+                                                       atol,
+                                                       False)
+            points_outer = outer_circle.intersect_line(e,
+                                                       rtol,
+                                                       atol,
+                                                       False)
+            points = points_start + points_end + \
+                points_inner + points_outer + [e.p2]
 
         new_elements = []
         sorted_points = []
@@ -1037,40 +1043,42 @@ class Geometry(object):
         return new_elements
 
     def copy_arc(self, center, radius, start_angle, end_angle,
-                 start_line, end_line, inner_circle, outer_circle, e):
-
+                 start_line, end_line, inner_circle, outer_circle, e,
+                 rtol=1e-04,
+                 atol=1e-04):
         """ Die Funktion kopiert die Teile eines Kreissegments, welche sich in der
             durch die Parameter definierten Teilkreisfläche befinden.
         """
         assert(isinstance(e, Arc))
         if is_same_angle(start_angle, end_angle):
             points = inner_circle.intersect_arc(e,
-                                                self.rtol,
-                                                self.atol,
+                                                rtol,
+                                                atol,
                                                 False) + \
                      outer_circle.intersect_arc(e,
-                                                self.rtol,
-                                                self.atol,
+                                                rtol,
+                                                atol,
                                                 False) + \
                      [e.p2]
         else:
-            points = e.intersect_line(start_line,
-                                      self.rtol,
-                                      self.atol,
-                                      False) + \
-                     e.intersect_line(end_line,
-                                      self.rtol,
-                                      self.atol,
-                                      False) + \
-                     inner_circle.intersect_arc(e,
-                                                self.rtol,
-                                                self.atol,
-                                                False) + \
-                     outer_circle.intersect_arc(e,
-                                                self.rtol,
-                                                self.atol,
-                                                False) + \
-                     [e.p2]
+            points_start = e.intersect_line(start_line,
+                                            rtol,
+                                            atol,
+                                            False)
+            points_end = e.intersect_line(end_line,
+                                          rtol,
+                                          atol,
+                                          False)
+            points_inner = inner_circle.intersect_arc(e,
+                                                      rtol,
+                                                      atol,
+                                                      False)
+            points_outer = outer_circle.intersect_arc(e,
+                                                      rtol,
+                                                      atol,
+                                                      False)
+            points = points_start + points_end + \
+                points_inner + points_outer + [e.p2]
 
         new_elements = []
         sorted_points = []
@@ -1104,34 +1112,36 @@ class Geometry(object):
         return new_elements
 
     def copy_circle(self, center, radius, start_angle, end_angle,
-                    start_line, end_line, inner_circle, outer_circle, e):
+                    start_line, end_line, inner_circle, outer_circle, e,
+                    rtol=1e-04,
+                    atol=1e-04):
         """ Die Funktion kopiert die Teile eines Kreises, welche sich in der
             durch die Parameter definierten Teilkreisfläche befinden.
         """
         assert(isinstance(e, Circle))
         if is_same_angle(start_angle, end_angle):
             points = inner_circle.intersect_circle(e,
-                                                   self.rtol,
-                                                   self.atol,
+                                                   rtol,
+                                                   atol,
                                                    False) + \
                      outer_circle.intersect_circle(e,
-                                                   self.rtol,
-                                                   self.atol,
+                                                   rtol,
+                                                   atol,
                                                    False)
         else:
             points = e.intersect_line(start_line,
-                                      self.rtol,
-                                      self.atol) + \
+                                      rtol,
+                                      atol) + \
                      e.intersect_line(end_line,
-                                      self.rtol,
-                                      self.atol) + \
+                                      rtol,
+                                      atol) + \
                      inner_circle.intersect_circle(e,
-                                                   self.rtol,
-                                                   self.atol,
+                                                   rtol,
+                                                   atol,
                                                    False) + \
                      outer_circle.intersect_circle(e,
-                                                   self.rtol,
-                                                   self.atol,
+                                                   rtol,
+                                                   atol,
                                                    False)
 
         new_elements = []
@@ -1194,13 +1204,25 @@ class Geometry(object):
             new_elements.append(arc2)
         return new_elements
 
-    def copy_shape(self, center, radius,
-                   startangle, endangle,
-                   inner_radius, outer_radius,
-                   split=False):
+    def copy_shape(self,
+                   center,
+                   radius,
+                   startangle,
+                   endangle,
+                   inner_radius,
+                   outer_radius,
+                   split=False,
+                   rtol=0.0,
+                   atol=0.0):
         """ Die Funktion kopiert die Teile von Shape-Objekten, welche sich in
             der durch die Parameter definierten Teilkreisfläche befinden.
         """
+        logger.debug('copy_shape({}, {})'.format(startangle, endangle))
+        if not rtol:
+            rtol = self.rtol
+        if not atol:
+            atol = self.atol
+
         if is_same_angle(startangle, endangle):
             start_line = Line(
                 Element(start=center,
@@ -1234,21 +1256,28 @@ class Geometry(object):
                 new_elements += self.copy_line(
                     center, radius, startangle, endangle,
                     start_line, end_line,
-                    inner_circle, outer_circle, e)
+                    inner_circle, outer_circle, e,
+                    rtol=rtol,
+                    atol=atol)
 
             elif isinstance(e, Arc):
                 new_elements += self.copy_arc(
                     center, radius, startangle, endangle,
                     start_line, end_line,
-                    inner_circle, outer_circle, e)
+                    inner_circle, outer_circle, e,
+                    rtol=rtol,
+                    atol=atol)
 
             elif isinstance(e, Circle):
                 new_elements += self.copy_circle(
                     center, radius, startangle, endangle,
                     start_line, end_line,
-                    inner_circle, outer_circle, e)
+                    inner_circle, outer_circle, e,
+                    rtol=rtol,
+                    atol=atol)
 
         if split:
+            logger.debug('new Geometry with split')
             return Geometry(new_elements, 0.05, 0.1, split=split)
         else:
             return Geometry(new_elements, self.rtol, self.atol)

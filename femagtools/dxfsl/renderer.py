@@ -381,10 +381,10 @@ class DumpRenderer(object):
 
 
 #############################
-#       NewFslRenderer      #
+#        FslRenderer        #
 #############################
 
-class NewFslRenderer(object):
+class FslRenderer(object):
     """a model that can created by FSL"""
     header = ['exit_on_error = false',
               'exit_on_end = false',

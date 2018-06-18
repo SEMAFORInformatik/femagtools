@@ -9,7 +9,7 @@ import sys
 import os
 from femagtools.dxfsl.geom import Geometry, dxfshapes
 from femagtools.dxfsl.shape import Shape
-from femagtools.dxfsl.renderer import NewFslRenderer, PlotRenderer
+from femagtools.dxfsl.renderer import FslRenderer, PlotRenderer
 import logging
 import logging.config
 import numpy as np
@@ -23,14 +23,14 @@ def usage(name):
 
 
 def write_fsl_file(machine, basename, inner=False, outer=False):
-    model = NewFslRenderer(basename)
+    model = FslRenderer(basename)
     filename = basename + '_' + machine.geom.kind + '.fsl'
     model.render(machine, filename, inner, outer)
     return filename
 
 
 def write_main_fsl_file(machine, machine_inner, machine_outer, basename):
-    model = NewFslRenderer(basename)
+    model = FslRenderer(basename)
     filename = basename + '.fsl'
     model.render_main(machine, machine_inner, machine_outer, filename)
     return filename

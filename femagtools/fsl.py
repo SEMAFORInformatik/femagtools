@@ -156,7 +156,7 @@ class Builder:
         params['split'] = model.dxffile.get('split', False)
         params['show_plots'] = model.dxffile.get('plot', False)
         params['write_fsl'] = True
-        params['airgap'] = model.dxffile.get('airgap', -1.0)
+        params['airgap'] = model.dxffile.get('airgap', 0.0)
         params['inner_name'] = 'inner_tmp'
         params['outer_name'] = 'outer_tmp'
 

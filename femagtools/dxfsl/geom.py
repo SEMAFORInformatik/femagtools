@@ -1097,7 +1097,7 @@ class Geometry(object):
         alpha_start = alpha_line(e.center, e.p1)
         for x, p2 in sorted_points:
             alpha_end = alpha_line(e.center, p2)
-            pm = middle_point_of_arc(e.center, e.radius, p1, p2)
+            pm = middle_point_of_arc(e.center, e.radius, p1, p2, rtol=rtol)
             if is_point_inside_region(pm, center,
                                       inner_circle.radius, outer_circle.radius,
                                       start_angle, end_angle):
@@ -1166,7 +1166,7 @@ class Geometry(object):
         alpha_start = alpha_line(e.center, p1)
         for x, p2 in sorted_points:
             alpha_end = alpha_line(e.center, p2)
-            pm = middle_point_of_arc(e.center, e.radius, p1, p2)
+            pm = middle_point_of_arc(e.center, e.radius, p1, p2, rtol=rtol)
             if is_point_inside_region(pm, center,
                                       inner_circle.radius,
                                       outer_circle.radius,
@@ -1187,7 +1187,7 @@ class Geometry(object):
             p1 = p2
 
         alpha_end = alpha_line(e.center, px)
-        pm = middle_point_of_arc(e.center, e.radius, p1, px)
+        pm = middle_point_of_arc(e.center, e.radius, p1, px, rtol=rtol)
         if is_point_inside_region(pm, center,
                                   inner_circle.radius, outer_circle.radius,
                                   start_angle, end_angle):

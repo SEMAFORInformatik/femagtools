@@ -11,7 +11,7 @@ import sys
 import itertools
 import re
 import numpy as np
-from collections import Counter
+from collections import Counter, defaultdict
 
 logger = logging.getLogger('femagtools.isa7')
 
@@ -498,21 +498,12 @@ class Isa7(object):
                    v2 in airgap_stator_vertices:
                     airgap_lines.append((v1, v2))
 
-        nodechain_links = {}
+        nodechain_links = defaultdict(lambda: [])
         for nc in self.nodechains:
-            try:
-                nodechain_links[nc.node1].extend(nc.nodes)
-            except KeyError:
-                nodechain_links[nc.node1] = list(nc.nodes)
-            try:
-                nodechain_links[nc.node2].extend(nc.nodes)
-            except KeyError:
-                nodechain_links[nc.node2] = list(nc.nodes)
+            nodechain_links[nc.node1].extend(nc.nodes)
+            nodechain_links[nc.node2].extend(nc.nodes)
             if nc.nodemid is not None:
-                try:
-                    nodechain_links[nc.nodemid].extend(nc.nodes)
-                except KeyError:
-                    nodechain_links[nc.nodemid] = list(nc.nodes)
+                nodechain_links[nc.nodemid].extend(nc.nodes)
 
         physical_lines = ["v potential 0",
                           "v potential const",

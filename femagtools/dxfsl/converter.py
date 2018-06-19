@@ -30,10 +30,10 @@ def write_fsl_file(machine, basename, inner=False, outer=False):
     return filename
 
 
-def write_main_fsl_file(machine, machine_inner, machine_outer, basename):
+def write_main_fsl_file(machine, machine_inner, machine_outer, params, basename):
     model = FslRenderer(basename)
     filename = basename + '.fsl'
-    model.render_main(machine, machine_inner, machine_outer, filename)
+    model.render_main(machine, machine_inner, machine_outer, params, filename)
     return filename
 
 
@@ -267,13 +267,15 @@ def converter(dxfile,
                 conv['filename_stator'] = inner_filename
                 conv['filename_rotor'] = outer_filename
 
+            params = create_femag_parameters(machine_inner,
+                                             machine_outer)
+
             conv['main_filename'] = write_main_fsl_file(machine,
                                                         machine_inner,
                                                         machine_outer,
+                                                        params,
                                                         basename)
-            conv.update(create_femag_parameters(machine_inner,
-                                                machine_outer))
-
+            conv.update(params)
     else:
         # No airgap found
         name = "No_Airgap"
@@ -333,10 +335,14 @@ def create_femag_parameters(m_inner, m_outer):
         num_slots = parts_inner
         num_poles = parts_outer
         num_sl_gen = int(geom_inner.get_symmetry_copies()+1)
+        alfa_slot = geom_inner.get_alfa()
+        alfa_pole = geom_outer.get_alfa()
     else:
         num_slots = parts_outer
         num_poles = parts_inner
         num_sl_gen = int(geom_outer.get_symmetry_copies()+1)
+        alfa_slot = geom_outer.get_alfa()
+        alfa_pole = geom_inner.get_alfa()
 
     params['tot_num_slot'] = num_slots
     params['num_sl_gen'] = num_sl_gen
@@ -346,4 +352,9 @@ def create_femag_parameters(m_inner, m_outer):
     params['da1'] = 2*geom_outer.min_radius
     params['da2'] = 2*geom_inner.max_radius
     params['dy2'] = 2*geom_inner.min_radius
+
+    params['alfa_slot'] = alfa_slot
+    params['alfa_pole'] = alfa_pole
+    assert(np.isclose(alfa_slot * num_slots,
+                      alfa_pole * num_poles))
     return params

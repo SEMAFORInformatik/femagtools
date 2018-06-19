@@ -306,9 +306,16 @@ class FslRenderer(object):
         with io.open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.content))
 
-    def render_main(self, motor, m_inner, m_outer,
-                    filename, with_header=False):
+    def render_main(self,
+                    motor,
+                    m_inner,
+                    m_outer,
+                    params,
+                    filename):
         '''create main file'''
+        if not (m_inner and m_outer):
+            logger.warning("ERROR: Rotor or Stator missing")
+            return
 
         self.content = []
         self.content.append(u'exit_on_error = false')
@@ -321,77 +328,54 @@ class FslRenderer(object):
         self.content.append(u'pickdist(0.001)')
         self.content.append(u'cosys(polar)\n')
 
-        geom_inner = None
-        geom_outer = None
+        geom_inner = m_inner.geom
+        geom_outer = m_outer.geom
 
-        if m_inner and m_outer:
-            geom_inner = m_inner.geom
-            geom_outer = m_outer.geom
+        self.content.append(u'tmp = {}')
+        self.content.append(u'tmp.xmag = {}')
+        self.content.append(u'tmp.ymag = {}')
+        self.content.append(u'tmp.mag_orient = {}')
+        self.content.append(u'tmp.mag_exists = 0')
+        self.content.append(u'tmp.coil_exists = 0\n')
 
-            parts_inner = int(m_inner.get_symmetry_part())
-            parts_outer = int(m_outer.get_symmetry_part())
+        self.content.append(u'dy1 = {}'.format(params.get('dy1', 0.0)))
+        self.content.append(u'da1 = {}'.format(params.get('da1', 0.0)))
+        self.content.append(u'dy2 = {}'.format(params.get('dy2', 0.0)))
+        self.content.append(u'da2 = {}'.format(params.get('da2', 0.0)))
+        self.content.append(u'ag  = (da1 - da2)/2\n')
 
-            if parts_inner > parts_outer:
-                num_slots = parts_inner
-                num_poles = parts_outer
-                npols_gen = int(geom_outer.get_symmetry_copies()+1)
-                num_sl_gen = int(geom_inner.get_symmetry_copies()+1)
-            else:
-                num_slots = parts_outer
-                num_poles = parts_inner
-                npols_gen = int(geom_inner.get_symmetry_copies()+1)
-                num_sl_gen = int(geom_outer.get_symmetry_copies()+1)
+        self.content.append(u'm.tot_num_slot   = {}'
+                            .format(params.get('tot_num_slot', 0)))
+        self.content.append(u'm.num_sl_gen     = {}'
+                            .format(params.get('num_sl_gen', 0)))
+        self.content.append(u'm.num_poles      = {}'
+                            .format(params.get('num_poles', 0)))
+        self.content.append(u'm.num_pol_pair   = m.num_poles/2')
+        self.content.append(u'm.num_slots      = m.num_sl_gen')
+        self.content.append(u'm.npols_gen      = m.num_poles * m.num_sl_gen / m.tot_num_slot')
+        self.content.append(u'm.tot_num_sl     = m.tot_num_slot')
+        self.content.append(u'm.fc_radius      = (da1+da2)/4')
+        self.content.append(u'm.fc_radius1     = m.fc_radius')
+        self.content.append(u'm.arm_length     = 1.0')
+        self.content.append(u'pre_models("basic_modpar")\n')
 
-            self.content.append(u'tmp = {}')
-            self.content.append(u'tmp.xmag = {}')
-            self.content.append(u'tmp.ymag = {}')
-            self.content.append(u'tmp.mag_orient = {}')
-            self.content.append(u'tmp.mag_exists = 0')
-            self.content.append(u'tmp.coil_exists = 0\n')
-
-            self.content.append(u'm.tot_num_slot = {}'.format(num_slots))
-            self.content.append(u'm.num_sl_gen   = {}'.format(num_sl_gen))
-            self.content.append(u'm.num_poles    = {}'.format(num_poles))
-            self.content.append(u'm.npols_gen    = {}'.format(npols_gen))
-            self.content.append(u'm.num_slots    = m.num_sl_gen')
-
-        self.content.append(u'da1 = {}'.format(
-            2*geom_outer.min_radius))
-        self.content.append(u'da2 = {}'.format(
-            2*geom_inner.max_radius))
-        self.content.append(u'ag = (da1 - da2)/2\n')
-
-        if m_inner and m_outer:
-            self.content.append(u'm.tot_num_sl  = m.tot_num_slot')
-            self.content.append(u'm.fc_radius   = (da1+da2)/4')
-            self.content.append(u'm.fc_radius1  = m.fc_radius')
-            self.content.append(u'pre_models("basic_modpar")\n')
-
-        self.content.append(
-            u'agndst = math.pi*m.fc_radius*m.npols_gen/m.num_poles/90')
+        self.content.append(u'm.airgap         = 2*ag/3')
+        self.content.append(u'm.nodedist       = 1.0')
+        self.content.append(u'agndst           = math.pi*(da1 + da2)/2/360')
 
         self.content.append(u'blow_up_wind(0, 0, 10, 10)\n')
 
-        if geom_inner:
-            self.content.append(u"mcvkey_yoke = 'dummy'")
-            self.content.append(u"mcvkey_shaft = 'dummy'")
-            self.content.append(u"ur = 1000.0")
-            self.content.append(
-                u'dofile("{}_{}.fsl")\n'.format(
-                    self.model, geom_inner.kind))
-        if geom_outer:
-            self.content.append(u"mcvkey_yoke = 'dummy'")
-            self.content.append(u"mcvkey_shaft = 'dummy'")
-            self.content.append(u"ur = 1000.0")
-            self.content.append(
-                u'dofile("{}_{}.fsl")\n'.format(
-                    self.model, geom_outer.kind))
+        self.content.append(u"mcvkey_yoke = 'dummy'")
+        self.content.append(u"mcvkey_shaft = 'dummy'")
+        self.content.append(u"ur = 1000.0")
+        self.content.append(u'dofile("{}_{}.fsl")\n'
+                            .format(self.model, geom_inner.kind))
 
-        alfa = geom_inner.get_alfa() * (geom_inner.get_symmetry_copies()+1)
-        alfa2 = geom_outer.get_alfa() * (geom_outer.get_symmetry_copies()+1)
-        assert(np.isclose(alfa, alfa2))
-
-        self.content.append(u'alfa = {}\n'.format(alfa))
+        self.content.append(u"mcvkey_yoke = 'dummy'")
+        self.content.append(u"mcvkey_shaft = 'dummy'")
+        self.content.append(u"ur = 1000.0")
+        self.content.append(u'dofile("{}_{}.fsl")\n'
+                            .format(self.model, geom_outer.kind))
 
         # Airgap
         txt = [u'-- airgap',
@@ -402,18 +386,18 @@ class FslRenderer(object):
                u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
                u'r2 = da2/2 + 2*ag/3',
                u'x2, y2 = pr2c(r2, alfa)',
-               u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n']
-        self.content.append(u'\n'.join(txt))
-        self.content.append(u'x1, y1 = {}, {}'
-                            .format(geom_inner.start_max_corner(0),
-                                    geom_inner.start_max_corner(1)))
-        self.content.append(u'nc_line(x1, y1, r1, 0.0, 0.0)\n')
-        self.content.append(u'x2, y2 = {}, {}'
-                            .format(geom_outer.start_min_corner(0),
-                                    geom_outer.start_min_corner(1)))
-        self.content.append(u'nc_line(r2, 0.0, x2, y2, 0.0)\n')
-
-        txt = [u'x3, y3 = pr2c(x1, alfa)',
+               u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
+               u'if tmp.inner_max_corner_x == nil then',
+               u'  tmp.inner_max_corner_x = da2/2',
+               u'end',
+               u'x1, y1 = tmp.inner_max_corner_x, 0.0',
+               u'nc_line(x1, y1, r1, 0.0, 0.0)\n',
+               u'if tmp.outer_min_corner_x == nil then',
+               u'  tmp.outer_min_corner_x = da1/2',
+               u'end',
+               u'x2, y2 = tmp.outer_min_corner_x, 0.0',
+               u'nc_line(r2, 0.0, x2, y2, 0.0)\n',
+               u'x3, y3 = pr2c(x1, alfa)',
                u'x4, y4 = pr2c(r1, alfa)',
                u'nc_line(x3, y3, x4, y4, 0, 0)\n',
                u'x3, y3 = pr2c(x2, alfa)',

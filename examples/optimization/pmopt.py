@@ -6,8 +6,14 @@ import sys
 import os
 import json
 import femagtools.opt
-import femagtools.condor
 import logging
+
+from femagtools.multiproc import Engine
+# instead you can use on of the following
+#
+#from femagtools.condor import Engine
+# from femagtools.amazon import Engine
+# from femagtools.google import Engine
 
 opt = {
     "objective_vars": [
@@ -111,7 +117,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
 logger = logging.getLogger('pmopt')
-engine = femagtools.condor.Engine()
+engine = Engine()
 
 userdir = os.path.expanduser('~')
 workdir = os.path.join(userdir, 'opti')

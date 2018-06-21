@@ -355,6 +355,7 @@ class Reader:
                 ('displ', 'current', 'beta',
                  'H_max', 'H_av', 'area')]
         
+        demag = dict()
         for l in content:
             rec = self._numPattern.findall(l)
             if len(rec) == 7 or len(rec) == 6:
@@ -362,7 +363,6 @@ class Reader:
                 self.demag.append(
                     {k: floatnan(r) for r, k in zip(rec, keys[i])})
             else:
-                d = dict()
                 for v in [["Limit Hc value", "lim_hc"],
                           ["Max. Magnetization", "br_max"],
                           ["Min. Magnetization", "br_min"],
@@ -370,9 +370,9 @@ class Reader:
                     if l.find(v[0]) > -1:
                         rec = self._numPattern.findall(l)
                         if len(rec) > 0:
-                            d[v[1]] = floatnan(rec[-1])
-                if d:
-                    self.demag.append(d)
+                            demag[v[1]] = floatnan(rec[-1])
+        if demag:
+            self.demag.append(demag)
                 
     def __read_short_circuit(self, content):
         "read short circuit section"

@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 def mesh(x, y):
-    """return the combined vectors x and y"""
+    """return the combined vectors x and y
+    """
     size = np.asarray(x).size, np.asarray(y).size
     return (np.repeat(x, size[1]),
             np.tile(y, size[0]))
@@ -22,8 +23,9 @@ def K(d):
     (Inverse Park Transformation) T-1 * dq
     arguments:
       d: rotation angle
-      
-    returns transformation matrix"""
+
+    returns transformation matrix
+    """
     return np.array((
         (-np.cos(d), np.sin(d)),
         (-np.cos(d-2*np.pi/3), np.sin(d-2*np.pi/3)),
@@ -35,8 +37,9 @@ def T(d):
     (Park Transformation) T * abc
     arguments:
       d: rotation angle
-      
-    returns transformation matrix"""
+
+    returns transformation matrix
+    """
     return np.array((
         (-np.cos(d), -np.cos(d-2*np.pi/3), -np.cos(d+2*np.pi/3)),
         (np.sin(d), np.sin(d-2*np.pi/3), np.sin(d+2*np.pi/3))))/3*2
@@ -62,13 +65,13 @@ def betai1(iq, id):
     """return beta and amplitude of dq currents"""
     return (np.arctan2(id, iq),
             la.norm((id, iq), axis=0)/np.sqrt(2.0))
-    
+
 
 def iqd(beta, i1):
     """return qd currents of beta and amplitude"""
     return np.sqrt(2.0)*i1*np.array([np.cos(beta),
                                      np.sin(beta)])
-    
+
 
 def create(bch, r1, ls, lfe=1, wdg=1):
     """create PmRelMachine from BCH
@@ -282,14 +285,15 @@ class PmRelMachine(object):
     def characteristics(self, T, n, u1max, nsamples=36):
         """calculate torque speed characteristics.
         return dict with list values of
-               id, iq, n, T, ud, uq, u1, i1,
-               beta, gamma, phi, cosphi, pmech, n_type
-        
+        id, iq, n, T, ud, uq, u1, i1,
+        beta, gamma, phi, cosphi, pmech, n_type
+
         Keyword arguments:
         T -- the maximum torque or the list of torque values in Nm
         n -- the maximum speed or the list of speed values in 1/s
         u1max -- the maximum voltage in V rms
-        nsamples -- (optional) number of speed samples"""
+        nsamples -- (optional) number of speed samples
+        """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[], losses=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
         if np.isscalar(T):

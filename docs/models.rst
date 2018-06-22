@@ -105,8 +105,8 @@ statorBG
 
 .. _stator_slots_fsl:
    
-User defined Slots in FSL
-^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Slots with FSL
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Example:**
 
@@ -125,8 +125,8 @@ The slot has no parameters::
   
 .. _stator_slots_dxf:
       
-User defined Slots in DXF
-^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Slots with DXF
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Example:**
 
@@ -339,8 +339,8 @@ magnetFC2       yoke_height,
 
 .. _rotor_slots_fsl:
 		 
-User defined Slots in FSL
-^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Slots with FSL
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Example**
 
@@ -359,8 +359,8 @@ The slot has no parameters::
 
 .. _rotor_slots_dxf:
       
-User defined Slots in DXF
-^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Slots with DXF
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Example**
 

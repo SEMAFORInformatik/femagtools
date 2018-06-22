@@ -22,9 +22,8 @@ def pfe_steinmetz(f, B, cw, fw, fb, fo, Bo):
 
 def fitsteinmetz(f, B, losses, Bo, fo):
     """fit coeffs of
-        losses(f,B)=cw*(f/fo)**alfa*(B/Bo)**beta
-       returns (cw, alfa, beta)
-
+    losses(f,B)=cw*(f/fo)**alfa*(B/Bo)**beta
+    returns (cw, alfa, beta)
     """
     z = []
     for i, fx in enumerate(f):
@@ -50,7 +49,7 @@ def fitsteinmetz(f, B, losses, Bo, fo):
 
 def fitjordan(f, B, losses, Bo, fo):
     """fit coeffs of
-      losses(f,B)=(cw*(f/fo)**alpha + ch*(f/fo)**beta)*(B/Bo)**gamma
+    losses(f,B)=(cw*(f/fo)**alpha + ch*(f/fo)**beta)*(B/Bo)**gamma
     returns (cw, alpha, ch, beta, gamma)
     """
     z = []

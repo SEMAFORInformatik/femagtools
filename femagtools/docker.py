@@ -48,10 +48,11 @@ def publish_receive(message):
 
 
 class AsyncFemag(threading.Thread):
-    def __init__(self, queue, workdir, port, host):
+    def __init__(self, queue, workdir, port, host, stoponend):
         threading.Thread.__init__(self)
         self.queue = queue
         self.workdir = workdir
+        self.stoponend = stoponend
         self.container = femagtools.femag.ZmqFemag(
             workdir,
             port, host)
@@ -83,6 +84,9 @@ class AsyncFemag(threading.Thread):
             except:
                 task.status = 'X'
             logger.info("Finished %s", r)
+            if self.stoponend:
+                self.container.quit()
+                # lets hope that docker will always restart this container
             self.queue.task_done()
         
     
@@ -91,9 +95,14 @@ class Engine(object):
     """The Docker Engine
 
        execute Femag-Simulations with docker
+
+       Args:
+         hosts (list of str): list of container names
+         stoponend (bool): stop container after each task (experimental)
     """
-    def __init__(self, hosts=[]):
+    def __init__(self, hosts=[], stoponend=True):
         self.hosts = hosts
+        self.stoponend = stoponend
         self.femag_port = int(os.environ.get('FEMAG_PORT', 5555))
 
     def create_job(self, workdir):
@@ -111,7 +120,8 @@ class Engine(object):
         self.async_femags = [AsyncFemag(self.queue,
                                         workdir,
                                         self.femag_port,
-                                        h)
+                                        h,
+                                        self.stoponend)
                              for h in self.hosts]
         
         self.job = femagtools.job.Job(workdir)

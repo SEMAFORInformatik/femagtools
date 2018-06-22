@@ -3,10 +3,10 @@
  Parameter Variation with Femag
  """
 import os
-#from femagtools.multiproc import Engine
+from femagtools.multiproc import Engine
 # instead you can use on of the following
 #
-from femagtools.condor import Engine
+#from femagtools.condor import Engine
 # from femagtools.amazon import Engine
 # from femagtools.google import Engine
 #

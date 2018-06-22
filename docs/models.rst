@@ -8,18 +8,19 @@ Machine
 
 Machines have a set of basic parameters, a stator, a magnet and a winding:
 
-==============  =============================  ======
-Parameter        Description                   Unit
-==============  =============================  ======
+==============  ================================  ======
+Parameter        Description                      Unit
+==============  ================================  ======
 name             Name of machine
-lfe              Lenght of iron                 m
+lfe              Lenght of iron                    m
 poles            Number of poles
-outer_diam       Outer diameter (yoke side)     m
-bore_diam        Bore diameter  (airgap side)   m
-inner_diam       Inner diameter (yoke)          m
-airgap           airgap width                   m
-external_rotor   True, False                    False
-==============  =============================  ======
+outer_diam       Outer diameter (yoke side)        m
+bore_diam        Bore diameter  (airgap side)      m
+inner_diam       Inner diameter (yoke)             m
+airgap           airgap width                      m
+external_rotor   True, False                       False
+dxffile          (see :ref:`Machine with dxf`)
+==============  ================================  ======
 
 Stator
 ------
@@ -38,13 +39,14 @@ nodedist         Factor for node distance      1.0
 
 .. note::
 
-   if no value for num_slots_gen is given its value is calculated from the the number of slots Q and pole pairs p. (version added 0.0.16)
+   if no value for num_slots_gen is given its value is calculated from
+   the the number of slots Q and pole pairs p. (version added 0.0.16)
 
 Slots
 ^^^^^
-============    ==============  
+============    ===========================================
 Name             Parameter      
-============    ==============  
+============    ===========================================
 stator1  
                  slot_rf1,
                  tip_rh1,
@@ -91,12 +93,69 @@ statorBG
                  middle_line, 
                  tooth_width,
 		 tip_rad,
-                 slottooth
-============    ==============  
+		 slottooth
+<filename>
+                 (see :ref:`stator_slots_fsl`
+                 or :ref:`stator_slots_dxf`)
+============    ===========================================
 
 .. note::
 
    All units are metric units.
+
+.. _stator_slots_fsl:
+   
+User defined Slots in FSL
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Example:**
+
+A file with the name *mystator.fsl* has to be available.
+The slot has no parameters::
+
+  machine = dict(
+      name="Motor",
+      ...
+      stator=dict(
+          mcvkey_yoke='dummy',
+	  mcvkey_shaft="dummy",
+	  mystator=dict()
+      ),
+      ...
+  
+.. _stator_slots_dxf:
+      
+User defined Slots in DXF
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Example:**
+
+A file with the name *mystator.dxf* has to be available.
+Femagtools calls the converter to generate a FSL-File.
+All parameters of a slot are for the converter::
+
+  machine = dict(
+      name="Motor",
+      ...
+      stator=dict(
+          mcvkey_yoke='dummy',
+	  mcvkey_shaft="dummy",
+	  mystator=dict(
+	      position='out',
+              split=True
+	  )
+      ),
+      ...
+      
+==========   ============================  =======
+Parameters   Description                   Default
+==========   ============================  =======
+position     'in' or 'out'                 
+split        splits the lines at           False
+             intersection-points
+plot         the converter shows the plot  False
+	     of the integrated object
+==========   ============================  =======
 
 Windings
 --------
@@ -135,9 +194,9 @@ nodedist         Factor for node distance         1.0
 Slots
 ^^^^^
 
-============    ==============
+============    ===========================================
 Name             Parameter      
-============    ==============
+============    ===========================================
 magnetSector    magn_num,
                 magn_width_pct,
                 magn_height,
@@ -226,9 +285,11 @@ magnetFC2       yoke_height,
 		iron_shape,
 		iron_hp,
 		magn_num
-============    ==============
+<filename>      (see :ref:`rotor_slots_fsl`
+                or :ref:`rotor_slots_dxf`)
+============    ===========================================
 
-Example::
+**Example**::
   
   machine = dict(
      name="PM 130 L4",
@@ -275,7 +336,61 @@ Example::
            coil_span=3.0,
            num_layers=1)
   )
-  
+
+.. _rotor_slots_fsl:
+		 
+User defined Slots in FSL
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Example**
+
+A file with the name *myrotor.fsl* has to be available.
+The slot has no parameters::
+
+  machine = dict(
+      name="Motor",
+      ...
+      magnet=dict(
+          mcvkey_yoke='dummy',
+	  mcvkey_shaft="dummy",
+	  myrotor=dict()
+      ),
+      ...
+
+.. _rotor_slots_dxf:
+      
+User defined Slots in DXF
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Example**
+
+A file with the name *myrotor.dxf* has to be available.
+Femagtools calls the converter to generate a FSL-File.
+All parameters of a slot are for the converter::
+
+  machine = dict(
+      name="Motor",
+      ...
+      magnet=dict(
+          mcvkey_yoke='dummy',
+	  mcvkey_shaft="dummy",
+	  myrotor=dict(
+	      position='in',
+              split=True
+	  )
+      ),
+      ...
+      
+==========   ============================  =======
+Parameters   Description                   Default
+==========   ============================  =======
+position     'in' or 'out'                 
+split        splits the lines at           False
+             intersection-points
+plot         the converter shows the plot  False
+	     of the integrated object
+==========   ============================  =======
+
 Magnetizing Curve
 =================
 
@@ -283,28 +398,28 @@ The MagnetizingCurve is a container of magnetizing curves (eg. lamination or PM 
 
 Each magnetizing curve is described by the following properties
 
-================  ================================ ======== =======
-Attribute          Description                     Unit     Default
-================  ================================ ======== =======
-   name           Identifier of this curve
-   ctype          Type of curve                             1
-   desc           Description
-   curve          List of dictionaries with
-                  bi (list of induction values)    T,
-                  hi (List of field strength       A/m,
-		  values) and angle which can      deg
-                  be missing in case of 1 curve
-   ch             hysteresis loss factor                    0
-   cw             eddy current loss factor                  0
-   ch_freq        hysteresis exponent                       0
-   cw_freq        eddy-current exponent                     0
-   b_coeff        induction loss exponent                   0
-   Bo             reference induction              T        1.5
-   fo             reference frequency              Hz       50
-   fillfac        iron fill factor                          1
-   bsat           saturation induction             T        2.15
-   rho            specific weight                  kg/dm3   7.65
-================  ================================ ======== =======
+=========  ================================ ======== =======
+Attribute  Description                      Unit     Default
+=========  ================================ ======== =======
+name       Identifier of this curve
+ctype      Type of curve                             1
+desc       Description
+curve      List of dictionaries with
+           bi (list of induction values)    T,
+           hi (List of field strength       A/m,
+           values) and angle which can      deg
+           be missing in case of 1 curve
+ch         hysteresis loss factor                    0
+cw         eddy current loss factor                  0
+ch_freq    hysteresis exponent                       0
+cw_freq    eddy-current exponent                     0
+b_coeff    induction loss exponent                   0
+Bo         reference induction              T        1.5
+fo         reference frequency              Hz       50
+fillfac    iron fill factor                          1
+bsat       saturation induction             T        2.15
+rho        specific weight                  kg/dm3   7.65
+=========  ================================ ======== =======
 
 The loss factors and exponents are used in the Jordan loss calculation formula:
 
@@ -367,9 +482,9 @@ Magnet Material
 list of dict objects each having a unique name (or id) and a set of parameters
 that describe the magnet properties.
 
-==============   ============================== ==========  ============
+==============   ============================== ==========  ========
 Parameter         Description                   Default      Unit
-==============   ============================== ==========  ============
+==============   ============================== ==========  ========
 name              Name of magnet material
 mcvkey            name of nonlinear B(H) curve
 orient            Magnetizing orientation       mpolaniso
@@ -383,7 +498,7 @@ magntemp          Magnet Temperature             20         °C
 magncond          Electr. Conductivity           625000      S/m    
 magnwidth         Magnet width                    0.0       m     
 magnlength        Magnet length in z direction   0.0        m      
-==============   ============================== ==========  ============
+==============   ============================== ==========  ========
 
 .. note::
 
@@ -619,3 +734,28 @@ For older versions the minimal data is::
           mcvkey_yoke="dummy"
       )
   )
+
+  
+Machine with dxf
+================
+
+**Example**::
+   
+   machine = dict(
+      name="Motor",
+      lfe=0.001,
+
+      dxffile=dict(
+         name='motor',
+      ),
+      stator=dict(
+         mcvkey_yoke='dummy',
+	 mcvkey_shaft="dummy"
+      ),
+      magnet=dict(
+         mcvkey_yoke="dummy",
+	 mcvkey_shaft="dummy"
+      ),
+      ...
+
+..

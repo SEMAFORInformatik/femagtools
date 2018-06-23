@@ -17,6 +17,7 @@ import femagtools.model
 import femagtools.fsl
 import femagtools.condor
 import femagtools.moproblem
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ class Grid(object):
                                       magnetizingCurves=magnetizingCurves,
                                       magnets=magnets)
         self.stop = False  # rudimentary: gives the ability to stop a running parameter variation. thomas.maier/OSWALD
+        self.reportdir=''
         """
         the "owner" of the Grid have to take care to terminate all running xfemag64 or wfemagw64
         processes after setting stop to True
@@ -74,6 +76,18 @@ class Grid(object):
         thomas.maier/OSWALD
         """
 
+    def set_report_directory(self, dirname):
+        """saves the result files (BCH/BATCH) of every calculation 
+        into this directory. Throws ValueError if directory is not empty or 
+        FileNotFoundError if it does not exist.
+        Args:
+          dirname: name of report directory
+        """
+        if os.listdir(dirname):
+            raise ValueError("directory {} is not empty".format(dirname))
+        self.reportdir = dirname
+
+        
     def setup_model(self, builder, model):
         """builds model in current workdir and returns its filenames"""
         # get and write mag curves
@@ -136,6 +150,7 @@ class Grid(object):
         par_range = create_parameter_range(domain)
         f = []
         p = 1
+        calcid = 0
         logger.debug(par_range)
 
         if immutable_model:
@@ -146,18 +161,25 @@ class Grid(object):
         # split x value (par_range) array in handy chunks:
         for population in baskets(par_range, opt['population_size']):
             if self.stop:  # try to return the results so far. thomas.maier/OSWALD
-                logger.info('stopping grid execution... returning results so far...')
+                logger.info(
+                    'stopping grid execution... returning results so far...')
                 try:
-                    shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
-                    logger.debug("BEFORE: f shape %s --> %s", np.shape(np.array(f).T), shape)
-                    complete = int(reduce((lambda x, y: x * y), [len(z) for z in domain]))
-                    logger.debug("need {} in total".format(complete))
-                    remaining = complete - int(np.shape(np.array(f).T)[1])
+                    shape = [len(objective_vars)] + [len(d)
+                                                     for d in reversed(domain)]
+                    logger.debug("BEFORE: f shape %s --> %s",
+                                 np.shape(np.array(f).T), shape)
+                    completed = int(reduce((lambda x, y: x * y),
+                                           [len(z) for z in domain]))
+                    logger.debug("need {} in total".format(completed))
+                    remaining = completed - int(np.shape(np.array(f).T)[1])
                     values = int(np.shape(np.array(f).T)[0])
-                    logger.debug("going to append {} None values".format(remaining))
+                    logger.debug("going to append {} None values".format(
+                        remaining))
                     f += remaining * [values * [np.nan]]
-                    shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
-                    logger.debug("AFTER: f shape %s --> %s", np.shape(np.array(f).T), shape)
+                    shape = [len(objective_vars)] + [len(d)
+                                                     for d in reversed(domain)]
+                    logger.debug("AFTER: f shape %s --> %s",
+                                 np.shape(np.array(f).T), shape)
                     objectives = np.reshape(np.array(f).T, shape)
                     r = dict(f=objectives.tolist(),
                              x=domain)
@@ -197,12 +219,23 @@ class Grid(object):
             status = engine.submit()
             logger.info('Started %s', status)
             if bchMapper and isinstance(engine, femagtools.condor.Engine):
-                 return {}  # BatchCalc Mode
+                return {}  # BatchCalc Mode
             status = engine.join()
 
             for t in job.tasks:
                 if t.status == 'C':
                     r = t.get_results()
+                    # save result file if requested:
+                    if self.reportdir:
+                        repdir = os.path.join(self.reportdir,
+                                              str(calcid))
+                        os.makedirs(repdir)
+                        try:
+                            shutil.copy(glob.glob(os.path.join(
+                                t.directory, r.filename)+'.B*CH')[0], repdir)
+                        except FileNotFoundError:
+                            pass
+                        calcid += 1
                     if bchMapper:  # Mode => collectBchData
                         self.addBchMapperData(bchMapper(r))
                     if isinstance(r, dict) and 'error' in r:
@@ -220,6 +253,9 @@ class Grid(object):
         shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
         logger.info("f shape %s --> %s", np.shape(np.array(f).T), shape)
         objectives = np.reshape(np.array(f).T, shape)
+        if self.reportdir:
+            self._write_report(decision_vars, objective_vars,
+                               objectives, domain)
         return dict(f=objectives.tolist(),
                     x=domain)
 
@@ -228,3 +264,26 @@ class Grid(object):
 
     def getBchMapperData(self):
         return self.bchmapper_data
+
+    def _write_report(self, decision_vars, objective_vars, objectives, domain):
+        with open(os.path.join(self.reportdir, 'grid-report.csv'), 'w') as f:
+            f.write(';'.join([d['label']
+                              for d in decision_vars] +
+                              [o['label']
+                               for o in objective_vars] + ['Directory']))
+            f.write('\n')
+            f.write(';'.join([d['name']
+                              for d in decision_vars] +
+                              [o['name']
+                               for o in objective_vars]))
+            f.write('\n')
+            # print values in table format
+            calcid = 0
+            x = create_parameter_range(domain)
+            y = np.reshape(objectives, (np.shape(objectives)[0],
+                                        np.shape(x)[0])).T
+            for l in np.hstack((x, y)):
+                f.write(';'.join(['{}'.format(z) for z in l] +
+                                 [str(calcid)]))
+                f.write('\n')
+                calcid += 1

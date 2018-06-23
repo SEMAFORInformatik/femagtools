@@ -140,8 +140,18 @@ if __name__ == '__main__':
                                   magnetizingCurves=magnetizingCurve,
                                   magnets=magnetMat)
 
+    # keep the BCH/BATCH files of each run 
+    repdir = os.path.join(workdir, 'report')
+    try:
+        os.makedirs(repdir)
+    except OSError:
+        pass
+    parvar.set_report_directory(repdir)
+
+    # start calculation 
     results = parvar(parvardef, machine, operatingConditions, engine)
 
+    # print results
     x = femagtools.grid.create_parameter_range(results['x'])
     f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0])).T
 

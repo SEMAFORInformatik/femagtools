@@ -84,28 +84,12 @@ Plot SuperElements::
 
   from femagtools import isa7
   import matplotlib.pyplot as plt
-  from matplotlib.patches import Polygon
-  from matplotlib.lines import Line2D
+  from femagtools import plot
 
+  isa = isa7.read("PM_130_L4.ISA7")
   fig = plt.figure()
   ax = fig.add_subplot(111, aspect='equal')
-  isa = isa7.read("PM_130_L4.ISA7")
-
-  for se in isa.superelements:
-      color = isa.color[se.color]
-      se_nodes = [n for nc in se.nodechains for n in nc.nodes]
-
-      #face
-      xy = [n.xy for n in se_nodes]
-      ax.add_patch(Polygon(xy, color=color, lw=0))
-
-      #outline
-      x = [n.x for n in se_nodes]
-      y = [n.y for n in se_nodes]
-      ax.add_line(Line2D(x, y, color="k", lw=0.5, solid_capstyle="round"))
-
-  ax.autoscale(enable=True)
-  plt.axis('off')
+  plot.spels(isa)
   plt.show()
 
 

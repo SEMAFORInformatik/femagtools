@@ -22,6 +22,23 @@ import shutil
 logger = logging.getLogger(__name__)
 
 
+def get_report(decision_vars, objective_vars, objectives, domain):
+    """returns a combined list of objective and design values
+    with header"""
+    x = create_parameter_range(domain)
+    y = np.reshape(np.asarray(objectives),
+                   (np.shape(objectives)[0], np.shape(x)[0])).T
+    c = np.arange(x.shape[0]).reshape(x.shape[0], 1)
+    return [[d['label'] for d in decision_vars] +
+                      [o['label']
+                       for o in objective_vars] + ['Directory'],
+            [d['name'] for d in decision_vars] +
+                      [o['name']
+                       for o in objective_vars]] + [
+                               z[:-1].tolist() + [int(z[-1])]
+                               for z in np.hstack((x, y, c))]
+
+
 def baskets(items, basketsize=10):
     """generates balanced baskets from iterable, contiguous items"""
     num_items = len(items)
@@ -267,23 +284,8 @@ class Grid(object):
 
     def _write_report(self, decision_vars, objective_vars, objectives, domain):
         with open(os.path.join(self.reportdir, 'grid-report.csv'), 'w') as f:
-            f.write(';'.join([d['label']
-                              for d in decision_vars] +
-                              [o['label']
-                               for o in objective_vars] + ['Directory']))
-            f.write('\n')
-            f.write(';'.join([d['name']
-                              for d in decision_vars] +
-                              [o['name']
-                               for o in objective_vars]))
-            f.write('\n')
-            # print values in table format
-            calcid = 0
-            x = create_parameter_range(domain)
-            y = np.reshape(objectives, (np.shape(objectives)[0],
-                                        np.shape(x)[0])).T
-            for l in np.hstack((x, y)):
-                f.write(';'.join(['{}'.format(z) for z in l] +
-                                 [str(calcid)]))
+            for line in get_report(decision_vars, objective_vars,
+                                   objectives, domain):
+                f.write(';'.join([str(v) for v in line]))
                 f.write('\n')
-                calcid += 1
+                

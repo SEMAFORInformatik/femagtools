@@ -739,7 +739,7 @@ For older versions the minimal data is::
 Machine with dxf
 ================
 
-**Example**::
+**Example with one dxf**::
    
    machine = dict(
       name="Motor",
@@ -758,4 +758,38 @@ Machine with dxf
       ),
       ...
 
-..
+.. note::
+    machine: The Parameters *poles*, *outer_diam*, *bore_diam* and *airgap* will be set automatically
+
+.. note::
+    magnet: The Parameters *num_slots* and *num_slots_gen* will be set automatically
+
+**Example with two dxf for stator and rotor**::
+
+   machine = dict(
+      name="Motor",
+      lfe=0.001,
+
+      stator=dict(
+          mcvkey_yoke='dummy',
+	  mcvkey_shaft="dummy",
+  	  mystator=dict(
+	      position='out',
+              split=True
+	 )
+      ),
+      magnet=dict(
+          mcvkey_yoke="dummy",
+	  mcvkey_shaft="dummy",
+	  myrotor=dict(
+              position='in',
+              split=True
+	  )  
+      ),
+      ...
+
+.. note::
+    machine: The Parameters *poles*, *outer_diam*, *bore_diam* and *airgap* will be set automatically
+
+.. note::
+    magnet: The Parameters *num_slots* and *num_slots_gen* will be set automatically

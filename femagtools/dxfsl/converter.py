@@ -23,14 +23,21 @@ def usage(name):
           " [-h] [--help]")
 
 
-def write_fsl_file(machine, basename, inner=False, outer=False):
+def write_fsl_file(machine,
+                   basename,
+                   inner=False,
+                   outer=False):
     model = FslRenderer(basename)
     filename = basename + '_' + machine.geom.kind + '.fsl'
     model.render(machine, filename, inner, outer)
     return filename
 
 
-def write_main_fsl_file(machine, machine_inner, machine_outer, params, basename):
+def write_main_fsl_file(machine,
+                        machine_inner,
+                        machine_outer,
+                        params,
+                        basename):
     model = FslRenderer(basename)
     filename = basename + '.fsl'
     model.render_main(machine, machine_inner, machine_outer, params, filename)
@@ -281,6 +288,7 @@ def converter(dxfile,
         name = "No_Airgap"
         inner = False
         outer = False
+        params = None
 
         if part:
             if part[1] == 'in':
@@ -302,10 +310,13 @@ def converter(dxfile,
             if part[0] == 'stator':
                 machine.geom.set_stator()
                 machine.geom.search_stator_subregions(part[1])
+                params = create_femag_parameters_stator(machine,
+                                                        part[1])
             else:
                 machine.geom.set_rotor()
                 machine.geom.search_rotor_subregions(part[1])
-
+                params = create_femag_parameters_rotor(machine,
+                                                       part[1])
         if show_plots:
             p.render_elements(machine.geom, Shape,
                               draw_inside=True, title=name,
@@ -315,6 +326,8 @@ def converter(dxfile,
 
         if write_fsl:
             conv['filename'] = write_fsl_file(machine, basename, inner, outer)
+            if params:
+                conv.update(params)
 
     logger.info("done")
     return conv
@@ -357,4 +370,30 @@ def create_femag_parameters(m_inner, m_outer):
     params['alfa_pole'] = alfa_pole
     assert(np.isclose(alfa_slot * num_slots,
                       alfa_pole * num_poles))
+    return params
+
+
+def create_femag_parameters_stator(motor, position):
+    params = {}
+    num_slots = motor.get_symmetry_part()
+    params['tot_num_slot'] = num_slots
+    if position == 'in':
+        params['da2'] = 2*motor.geom.max_radius
+        params['dy2'] = 2*motor.geom.min_radius
+    else:
+        params['dy1'] = 2*motor.geom.max_radius
+        params['da1'] = 2*motor.geom.min_radius
+    return params
+
+
+def create_femag_parameters_rotor(motor, position):
+    params = {}
+    num_poles = motor.get_symmetry_part()
+    params['num_poles'] = num_poles
+    if position == 'in':
+        params['da2'] = 2*motor.geom.max_radius
+        params['dy2'] = 2*motor.geom.min_radius
+    else:
+        params['dy1'] = 2*motor.geom.max_radius
+        params['da1'] = 2*motor.geom.min_radius
     return params

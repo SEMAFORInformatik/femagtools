@@ -42,7 +42,7 @@ setup(
     author_email='tar@semafor.ch',
     version=version,
     install_requires=['numpy', 'scipy', 'mako', 'six',
-                      'dxfgrabber', 'networkx'],
+                      'dxfgrabber', 'networkx', 'meshio'],
 #   dxfsl:                   'ezdxf', 
     packages=['femagtools', 'femagtools.moo', 'femagtools.dxfsl'],
     package_data={'femagtools': ['templates/*.mako']},

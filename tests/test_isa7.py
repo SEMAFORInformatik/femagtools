@@ -83,19 +83,7 @@ def test_superelements(isa):
         assert type(nc) == isa7.NodeChain
         assert nc.key == se.nc_keys[se.nodechains.index(nc)]
 
-
-def test_msh(isa):
-    assert len(isa.to_gmsh("msh")) == 2707
-
-    
-def test_geo(isa):
-    assert len(isa.to_gmsh("geo")) == 361
-
-    
-def test_geo_extrude(isa):
-    assert len(isa.to_gmsh("geo", 0.01)) == 430
-
-
+        
 @pytest.fixture
 def disp_stat():
     filename = 'tests/data/test_disp_stat.ISA7'

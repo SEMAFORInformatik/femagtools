@@ -163,6 +163,20 @@ class MachineModel(Model):
             except:
                 pass
 
+    def set_num_slots_gen(self):
+        if 'num_slots_gen' not in self.stator:
+            try:
+                m = self.windings['num_phases']
+            except:
+                m = 1
+
+            try:
+                self.stator['num_slots_gen'] = (m*self.stator['num_slots'] /
+                                                gcd(self.stator['num_slots'],
+                                                    m*self.poles))
+            except:
+                pass
+
     def set_mcvkey_magnet(self, mcvkey):
         self.mcvkey_magnet = mcvkey
 

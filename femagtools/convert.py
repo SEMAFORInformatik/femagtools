@@ -151,6 +151,66 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
         else:
             return (n1, n2) in airgap_lines or (n2, n1) in airgap_lines
 
+    def induction(e):
+        if e.el_type == 1:
+            y31 = ev[2].y - ev[0].y
+            y21 = ev[1].y - ev[0].y
+            x13 = ev[0].x - ev[2].x
+            x21 = ev[1].x - ev[0].x
+            a21 = ev[1].vpot[0] - ev[0].vpot[0]
+            a31 = ev[2].vpot[0] - ev[0].vpot[0]
+            #a23 = ev[2].vpot[0] - ev[1].vpot[0]
+            length = isa.superelements[e.se_key].length
+            delta = length * (y31 * x21 + y21 * x13)
+            
+            b1 = (x13 * a21 + x21 * a31) / delta
+            b2 = (-y31 * a21 + y21 * a31) / delta
+            
+        elif e.el_type == 2:
+            y31 = ev[2].y - ev[0].y
+            y21 = ev[1].y - ev[0].y
+            x13 = ev[0].x - ev[2].x
+            x21 = ev[1].x - ev[0].x
+            a21 = ev[1].vpot[0] - ev[0].vpot[0]
+            a31 = ev[2].vpot[0] - ev[0].vpot[0]
+            length = isa.superelements[e.se_key].length
+            delta = length * (y31 * x21 + y21 * x13)
+            b1_a = (x13 * a21 + x21 * a31) / delta
+            b2_a = (y21 * a31 - y31 * a21) / delta
+
+            y31 = ev[0].y - ev[2].y
+            y21 = ev[3].y - ev[2].y
+            x13 = ev[2].x - ev[0].x
+            x21 = ev[3].x - ev[2].x
+            a24 = ev[3].vpot[0] - ev[2].vpot[0]
+            a34 = ev[0].vpot[0] - ev[2].vpot[0]
+            #a41 = ev[3].vpot[0] - ev[0].vpot[0] 
+            delta = length * (y31 * x21 + y21 * x13)
+            b1_b = (x13 * a24 + x21 * a34) / delta
+            b2_b = (y21 * a34 - y31 * a24) / delta
+
+            b1 = (b1_a + b1_b) / 2
+            b2 = (b2_a + b2_b) / 2
+            
+        return b1, b2
+
+    def demagnetization(e):
+        if abs(e.mag[0]) > 1e-5 or abs(e.mag[1]) > 1e-5:
+            magn = np.sqrt(e.mag[0]**2 + e.mag[1]**2)
+            alfa = np.arctan2(e.mag[1], e.mag[0])
+            b1, b2 = induction(e)
+            bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
+            hpol = bpol - magn
+            if hpol < 0:
+                reluc = 795774.7 * abs(e.reluc[0]) / 1000
+                return abs(hpol * reluc)
+        return 0
+
+    def permeability(e):
+        if e.reluc[0] < 1:
+            return 1 / e.reluc[0]
+        return 0
+
     points = [[n.x, n.y, 0] for n in isa.nodes]
     vpot = [n.vpot[0] for n in isa.nodes]
     
@@ -159,29 +219,40 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
     triangles = []
     triangle_physical_ids = []
     triangle_geometrical_ids = []
+    triangle_b = []
+    triangle_h = []
+    triangle_perm = []
     quads = []
     quad_physical_ids = []
     quad_geometrical_ids = []
+    quad_b = []
+    quad_h = []
+    quad_perm = []
     for e in isa.elements:
-        for i, v in enumerate(e.vertices):
-            v1, v2 = v, e.vertices[i-1]
+        ev = e.vertices
+        for i, v in enumerate(ev):
+            v1, v2 = v, ev[i-1]
             if line_on_boundary(v1, v2):
                 lines.append([v1.key - 1, v2.key - 1])
                 line_ids.append(physical_line(v1, v2))
                 
-        if len(e.vertices) == 3:
-            triangles.append([n.key - 1 for n in e.vertices])
+        if len(ev) == 3:
+            triangles.append([n.key - 1 for n in ev])
             triangle_physical_ids.append(physical_surface(e))
-            triangle_geometrical_ids.append(physical_surface(e)
-                                            + len(isa.nodes))
+            triangle_geometrical_ids.append(e.key)
+            triangle_b.append(induction(e))
+            triangle_h.append(demagnetization(e))
+            triangle_perm.append(permeability(e))
             
-        elif len(e.vertices) == 4:
-            quads.append([n.key - 1 for n in e.vertices])
+        elif len(ev) == 4:
+            quads.append([n.key - 1 for n in ev])
             quad_physical_ids.append(physical_surface(e))
-            quad_geometrical_ids.append(physical_surface(e)
-                                        + len(isa.nodes))
+            quad_geometrical_ids.append(e.key)
+            quad_b.append(induction(e))
+            quad_h.append(demagnetization(e))
+            quad_perm.append(permeability(e))
 
-            
+
     if target_format == "msh":
         points = np.array(points)
 
@@ -194,15 +265,24 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
         cell_data = {
             "line": {
                 "gmsh:geometrical": np.array(line_ids),
-                "gmsh:physical": np.array(line_ids)
+                "gmsh:physical": np.array(line_ids),
+                "b": np.array([(0, 0, 0) for l in lines]),
+                "h": np.array([0 for l in lines]),
+                "Rel. Permeability": np.array([0 for l in lines]),
             },
             "triangle": {
                 "gmsh:geometrical": np.array(triangle_geometrical_ids),
-                "gmsh:physical": np.array(triangle_physical_ids)
+                "gmsh:physical": np.array(triangle_physical_ids),
+                "b": np.array([b + (0,) for b in triangle_b]),
+                "h": np.array(triangle_h),
+                "Rel. Permeability": np.array(triangle_perm),
             },
             "quad": {
                 "gmsh:geometrical": np.array(quad_geometrical_ids),
-                "gmsh:physical": np.array(quad_physical_ids)
+                "gmsh:physical": np.array(quad_physical_ids),
+                "b": np.array([b + (0,) for b in quad_b]),
+                "h": np.array(quad_h),
+                "Rel. Permeability": np.array(quad_perm),
             }
         }
 
@@ -220,7 +300,7 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
                                   field_data,
                                   "gmsh-ascii")
 
-        
+
     if target_format == "geo":
         geo = []
         nc_nodes = set([n for nc in isa.nodechains for n in nc.nodes])
@@ -301,6 +381,12 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
             f.write("\n".join(geo))
 
     if target_format == "vtu":
+
+        assert len(points) == len(vpot)
+        assert len(lines) == len(line_ids)
+        assert len(triangles) == len(triangle_physical_ids) == len(triangle_geometrical_ids) == len(triangle_b) == len(triangle_h) == len(triangle_perm)
+        assert len(quads) == len(quad_physical_ids) == len(quad_geometrical_ids) == len(quad_b) == len(quad_h) == len(quad_perm)
+
         points = np.array(points)
 
         cells = {"line": np.array(lines),
@@ -312,15 +398,24 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
         cell_data = {
             "line": {
                 "GeometryIds": np.array(line_ids),
-                "PhysicalIds": np.array(line_ids)
+                "PhysicalIds": np.array(line_ids),
+                "b": np.array([(0, 0) for l in lines]),
+                "h": np.array([0 for l in lines]),
+                "Rel. Permeability": np.array([0 for l in lines]),
             },
             "triangle": {
                 "GeometryIds": np.array(triangle_geometrical_ids),
-                "PhysicalIds": np.array(triangle_physical_ids)
+                "PhysicalIds": np.array(triangle_physical_ids),
+                "b": np.array(triangle_b),
+                "h": np.array(triangle_h),
+                "Rel. Permeability": np.array(triangle_perm),
             },
             "quad": {
                 "GeometryIds": np.array(quad_geometrical_ids),
-                "PhysicalIds": np.array(quad_physical_ids)
+                "PhysicalIds": np.array(quad_physical_ids),
+                "b": np.array(quad_b),
+                "h": np.array(quad_h),
+                "Rel. Permeability": np.array(quad_perm),
             }
         }
 
@@ -333,11 +428,12 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
         meshio.write_points_cells(filename,
                                   points,
                                   cells,
-                                  point_data,
-                                  cell_data,
-                                  field_data,
-                                  "vtu-binary")
-    
+                                  point_data=point_data,
+                                  cell_data=cell_data,
+                                  field_data=None,#field_data,
+                                  file_format="vtu-binary")
+
+
 def to_msh(source, filename, infile_type=None):
     """
     Convert a femag model to msh format.

@@ -13,19 +13,22 @@ def test_msh(tmpdir):
     convert.to_msh(isa, msh2)
 
     with open(msh) as f:
-        assert len(f.readlines()) == 8082
+        file1 = f.read()
     with open(msh2) as f:
-        assert len(f.readlines()) == 8082
+        file2 = f.read()
+    assert file1 == file2
 
-    mesh = meshio.read(msh)
-    mesh2 = meshio.read(msh2)
-    for m in mesh, mesh2:
-        assert len(m.points) == 2340
-        assert len(m.point_data["potential"]) == 2340
-        assert len(m.cells["triangle"]) == 1522
-        assert len(m.cells["quad"]) == 1506
-        assert len(m.field_data.keys()) == 28
-
+    m = meshio.read(msh)
+    assert len(m.points) == 2340
+    assert len(m.point_data["potential"]) == len(m.points)
+    assert len(m.cells["triangle"]) == 1522
+    assert len(m.cells["quad"]) == 1506
+    assert len(m.field_data.keys()) == 28
+    num_cells = sum(map(len, m.cells.values()))
+    for data in m.cell_data["triangle"]:
+        len_data = sum([len(m.cell_data[ctype][data])
+                        for ctype in m.cell_data])
+        assert len_data == num_cells
 
 def test_vtu(tmpdir):
     vtu = str(tmpdir.join("magnsec.vtu"))
@@ -37,17 +40,21 @@ def test_vtu(tmpdir):
     convert.to_vtu(isa, vtu2)
 
     with open(vtu) as f:
-        assert len(f.readlines()) == 22
+        file1 = f.read()
     with open(vtu2) as f:
-        assert len(f.readlines()) == 22
-
-    mesh = meshio.read(vtu)
-    mesh2 = meshio.read(vtu2)
-    for m in mesh, mesh2:
-        assert len(m.points) == 2340
-        assert len(m.point_data["potential"]) == 2340
-        assert len(m.cells["triangle"]) == 1522
-        assert len(m.cells["quad"]) == 1506
+        file2 = f.read()
+    assert file1 == file2
+        
+    m = meshio.read(vtu)
+    assert len(m.points) == 2340
+    assert len(m.point_data["potential"]) == len(m.points)
+    assert len(m.cells["triangle"]) == 1522
+    assert len(m.cells["quad"]) == 1506
+    num_cells = sum(map(len, m.cells.values()))
+    for data in m.cell_data["triangle"]:
+        len_data = sum([len(m.cell_data[ctype][data])
+                        for ctype in m.cell_data])
+        assert len_data == num_cells
 
 
 def test_geo(tmpdir):

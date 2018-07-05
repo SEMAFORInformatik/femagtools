@@ -232,15 +232,15 @@ class Isa7(object):
                              nodechains,
                              self.SUPEL_ISA_SUPEL_REC_SE_COL[se],
                              nc_keys,
-                             self.SUPEL_ISA_SUPEL_REC_SE_MCV_TYP,
-                             self.SUPEL_ISA_SUPEL_REC_SE_COND_TYP,
-                             self.SUPEL_ISA_SUPEL_REC_SE_CONDUC,
-                             self.SUPEL_ISA_SUPEL_REC_SE_LENGHT,
-                             self.SUPEL_ISA_SUPEL_REC_SE_VEL_SYS,
-                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_1,
-                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_2,
-                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_RE,
-                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM))
+                             self.SUPEL_ISA_SUPEL_REC_SE_MCV_TYP[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_COND_TYP[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_CONDUC[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_LENGHT[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_VEL_SYS[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_1[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_2[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_RE[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se]))
 
         self.subregions = []
         for sr in range(self.NUM_SR):

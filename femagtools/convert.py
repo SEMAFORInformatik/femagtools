@@ -211,9 +211,12 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
             return 1 / e.reluc[0]
         return 0
 
+    def losses(e):
+        return isa.ELEM_ISA_ELEM_REC_LOSS_DENS[e.key-1] * 1e-6
+
     points = [[n.x, n.y, 0] for n in isa.nodes]
     vpot = [n.vpot[0] for n in isa.nodes]
-    
+
     lines = []
     line_ids = []
     triangles = []
@@ -222,12 +225,14 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
     triangle_b = []
     triangle_h = []
     triangle_perm = []
+    triangle_losses = []
     quads = []
     quad_physical_ids = []
     quad_geometrical_ids = []
     quad_b = []
     quad_h = []
     quad_perm = []
+    quad_losses = []
     for e in isa.elements:
         ev = e.vertices
         for i, v in enumerate(ev):
@@ -235,7 +240,7 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
             if line_on_boundary(v1, v2):
                 lines.append([v1.key - 1, v2.key - 1])
                 line_ids.append(physical_line(v1, v2))
-                
+
         if len(ev) == 3:
             triangles.append([n.key - 1 for n in ev])
             triangle_physical_ids.append(physical_surface(e))
@@ -243,7 +248,8 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
             triangle_b.append(induction(e))
             triangle_h.append(demagnetization(e))
             triangle_perm.append(permeability(e))
-            
+            triangle_losses.append(losses(e))
+
         elif len(ev) == 4:
             quads.append([n.key - 1 for n in ev])
             quad_physical_ids.append(physical_surface(e))
@@ -251,6 +257,7 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
             quad_b.append(induction(e))
             quad_h.append(demagnetization(e))
             quad_perm.append(permeability(e))
+            quad_losses.append(losses(e))
 
 
     if target_format == "msh":
@@ -269,6 +276,7 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
                 "b": np.array([(0, 0, 0) for l in lines]),
                 "h": np.array([0 for l in lines]),
                 "Rel. Permeability": np.array([0 for l in lines]),
+                "Losses": np.array([0 for l in lines]),
             },
             "triangle": {
                 "gmsh:geometrical": np.array(triangle_geometrical_ids),
@@ -276,6 +284,7 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
                 "b": np.array([b + (0,) for b in triangle_b]),
                 "h": np.array(triangle_h),
                 "Rel. Permeability": np.array(triangle_perm),
+                "Losses": np.array(triangle_losses),
             },
             "quad": {
                 "gmsh:geometrical": np.array(quad_geometrical_ids),
@@ -283,6 +292,7 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
                 "b": np.array([b + (0,) for b in quad_b]),
                 "h": np.array(quad_h),
                 "Rel. Permeability": np.array(quad_perm),
+                "Losses": np.array(quad_losses),
             }
         }
 
@@ -400,22 +410,25 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
                 "GeometryIds": np.array(line_ids),
                 "PhysicalIds": np.array(line_ids),
                 "b": np.array([(0, 0) for l in lines]),
-                "h": np.array([0 for l in lines]),
+                "Demagnetization": np.array([0 for l in lines]),
                 "Rel. Permeability": np.array([0 for l in lines]),
+                "Losses": np.array([0 for l in lines]),
             },
             "triangle": {
                 "GeometryIds": np.array(triangle_geometrical_ids),
                 "PhysicalIds": np.array(triangle_physical_ids),
                 "b": np.array(triangle_b),
-                "h": np.array(triangle_h),
+                "Demagnetization": np.array(triangle_h),
                 "Rel. Permeability": np.array(triangle_perm),
+                "Losses": np.array(triangle_losses),
             },
             "quad": {
                 "GeometryIds": np.array(quad_geometrical_ids),
                 "PhysicalIds": np.array(quad_physical_ids),
                 "b": np.array(quad_b),
-                "h": np.array(quad_h),
+                "Demagnetization": np.array(quad_h),
                 "Rel. Permeability": np.array(quad_perm),
+                "Losses": np.array(quad_losses),
             }
         }
 
@@ -430,7 +443,7 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
                                   cells,
                                   point_data=point_data,
                                   cell_data=cell_data,
-                                  field_data=None,#field_data,
+                                  field_data=field_data,
                                   file_format="vtu-binary")
 
 

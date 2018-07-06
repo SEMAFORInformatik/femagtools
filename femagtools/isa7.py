@@ -441,15 +441,109 @@ class Isa7(object):
 
         reader.skip_block(21)
 
-        self.ANZAHL_TG = reader.next_block("iii")[1][0]
+        ANZAHL_TG = reader.next_block("i")[1]
 
         reader.skip_block(7)
-        reader.skip_block(self.ANZAHL_TG + 1)
+        reader.skip_block(ANZAHL_TG + 1)
         reader.skip_block(1)
 
         self.FC_RADIUS = reader.next_block("f")[0]
 
-        
+        reader.skip_block(9)
+        FC_NUM_CUR_ID, FC_NUM_BETA_ID = reader.next_block("i")[0:2]
+        if FC_NUM_CUR_ID > 16:
+            FC_NUM_CUR_ID = 16
+
+        reader.skip_block(3)
+        reader.skip_block(FC_NUM_CUR_ID * 2)
+        reader.skip_block(1 + 10 * 5 + 3 + 1 * 5 + 14)
+
+        NUM_FE_EVAL_MOVE_STEP = reader.next_block("i")[0]
+        if NUM_FE_EVAL_MOVE_STEP < 0:
+            NUM_FE_EVAL_MOVE_STEP = 0
+
+        if NUM_FE_EVAL_MOVE_STEP > 1:
+            reader.skip_block()
+            reader.skip_block((NUM_FE_EVAL_MOVE_STEP + 1) * 2)
+
+        FC_NUM_MOVE_CALC_LOAD_PMS, FC_NUM_FLX = reader.next_block("i")[0:2]
+
+        if FC_NUM_MOVE_CALC_LOAD_PMS > 1:
+            reader.skip_block(4)
+            reader.skip_block(3 * FC_NUM_FLX)
+            reader.skip_block()
+
+        FC_NUM_MOVE_NOLOAD_PMS = reader.next_block("i")[0]
+
+        if FC_NUM_MOVE_NOLOAD_PMS > 1:
+            reader.skip_block(4)
+            reader.skip_block(2 * FC_NUM_FLX)
+            reader.skip_block()
+
+        if NUM_FE_EVAL_MOVE_STEP > 1:
+            reader.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
+
+        reader.skip_block(2)
+        reader.skip_block(2 * 5)
+        reader.skip_block(15)
+        reader.skip_block(3 * 30 * 30)
+        reader.skip_block(3)
+        reader.skip_block(30 * 30)
+        reader.skip_block(21)
+        reader.skip_block(30 * 30)
+        reader.skip_block(30 * 30)
+        reader.skip_block(1 * 20)
+        reader.skip_block(10)
+
+        FC_NUM_MOVE_LOSSES = reader.next_block("i")[0]
+
+        if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
+            reader.skip_block(2 * (NUM_FE_EVAL_MOVE_STEP + 1))
+            reader.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
+
+        reader.skip_block(74)
+
+        ANZ_FORCE_AREAS = reader.next_block("i")[0]
+
+        if ANZ_FORCE_AREAS > 3:
+            ANZ_FORCE_AREAS = 3
+
+        reader.skip_block()
+        reader.skip_block(2 * ANZ_FORCE_AREAS)
+        reader.skip_block(14)
+        reader.skip_block(2 * 3 + 6 * 100 * 3)
+        reader.skip_block(30)
+        reader.skip_block(11 * 4)
+        reader.skip_block()
+        reader.skip_block(1 * 4)
+        reader.skip_block(8)
+        reader.skip_block(3 * 20 + 2 * 20 * 20)
+        reader.skip_block(14)
+
+        if (FC_NUM_MOVE_LOSSES > 2 and NUM_FE_EVAL_MOVE_STEP > 1
+           and FC_NUM_BETA_ID > 2):
+            reader.skip_block(2 * NUM_FE_EVAL_MOVE_STEP + 1)
+            reader.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
+            reader.skip_block()
+            reader.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
+
+        reader.skip_block()
+        reader.skip_block(2 * 3)
+        reader.skip_block(3)
+        reader.skip_block(10 * 100)
+        reader.skip_block(1 * 100)
+        reader.skip_block()
+        reader.skip_block(1 * 4)
+        reader.skip_block(2 * 2)
+        reader.skip_block()
+        reader.skip_block(2 * 4)
+        reader.skip_block(3)
+        reader.skip_block(1 * 64)
+        reader.skip_block(6)
+
+        self.ELEM_ISA_ELEM_REC_LOSS_DENS = reader.next_block("f")
+
+
 class Point(object):
     def __init__(self, valid, x, y):
         self.valid = valid

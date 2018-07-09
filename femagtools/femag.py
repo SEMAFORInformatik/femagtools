@@ -343,11 +343,12 @@ class ZmqFemag(BaseFemag):
         logger.debug("femag is not running")
         return False
 
-    def send_fsl(self, fsl, callback=None, header='FSL'):
+    def send_fsl(self, fsl, callback=None, header='FSL', timeout=None):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
 
         Args:
             fsl: string of FSL commands
+            timeout: The timeout (in milliseconds) to wait for a response
 
         Return:
             response
@@ -367,17 +368,29 @@ class ZmqFemag(BaseFemag):
             logger.debug("Sent header")
             request_socket.send_string(fsl)
             logger.debug("Sent fsl wait for response")
-            response = request_socket.recv_multipart()
-            logger.debug("send_fsl["+fsl+"] done")
 
-            time.sleep(.5)  # Be sure all messages are arrived over zmq
-            if callback:
-                self.reader.continue_loop = False
-            return [s.decode() for s in response]
+            if timeout:
+                request_socket.setsockopt(zmq.RCVTIMEO, timeout)
+                request_socket.setsockopt(zmq.LINGER, 0)
+            else:
+                request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
+                request_socket.setsockopt(zmq.LINGER, 30000)  # default value
+            try:
+                response = request_socket.recv_multipart()
+                time.sleep(.5)  # Be sure all messages are arrived over zmq
+                if callback:
+                    self.reader.continue_loop = False
+                return [s.decode() for s in response]
+            except zmq.error.Again as e:
+                logger.info("Again [%s], timeout: %d", str(e), timeout)
+                return ['{"status":"error", "message":"Femag is not running"}', '{}']
         except Exception as e:
             logger.exception("send_fsl")
+            logger.error("send_fsl: %s", str(e))
+            if timeout:  # only first call raises zmq.error.Again
+                return ['{"status":"error", "message":"Femag is not running"}', '{}']
             msg = str(e)
-        return ['{"status":"error", "message":"'+msg+'"}', '{}']
+            return ['{"status":"error", "message":"'+msg+'"}', '{}']
 
     def run(self, options=['-b'], restart=False, procId=None):  # noqa: C901
         """invokes FEMAG in current workdir and returns pid

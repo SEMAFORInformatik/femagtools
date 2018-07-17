@@ -359,6 +359,7 @@ class ZmqFemag(BaseFemag):
         try:
             # Start the reader thread to get information about the next calculation
             if callback:
+                self.stopStreamReader()
                 self.reader = FemagReadStream(self.__sub_socket(), callback)
                 self.reader.setDaemon(True)
                 self.reader.start()
@@ -502,6 +503,7 @@ class ZmqFemag(BaseFemag):
         if self.reader:
             logger.debug("stop stream reader")
             self.reader.continue_loop = False
+            self.reader.join()
 
     def __call__(self, pmMachine, operatingConditions):
         """setup fsl file, run calculation and return BCH results"""

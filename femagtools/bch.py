@@ -613,7 +613,7 @@ class Reader:
         "read and append airgapInduction section"
         import scipy.integrate as si
 
-        logger.info('read airgapInduction')
+        logger.debug('read airgapInduction')
         i1beta = False  # format is either i1/beta or id/iq
         if 'i1' in self.ldq and 'beta' in self.ldq:
             i1 = self.ldq['i1']

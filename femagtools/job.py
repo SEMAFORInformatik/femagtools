@@ -121,14 +121,8 @@ class Job(object):
 
     def cleanup(self):
         """removes all task directories of previous run"""
-        try:
-            os.makedirs(self.basedir)
-        except OSError as e:
-            if not os.path.isdir(self.basedir):
-                e.args += self.basedir
-                raise e
-            return  # nothing else to do here
         for task in self.tasks:
+            logger.info("rm %s", task.directory)
             shutil.rmtree(task.directory, ignore_errors=True)
         self.tasks = []
 

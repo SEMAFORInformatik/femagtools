@@ -35,7 +35,7 @@ with io.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    description='Femag Tools: a Python API for FEMAG',
+    description='Python API for FEMAG',
     long_description=long_description,
     author=author,
     url='https://github.com/SEMAFORInformatik/femagtools',

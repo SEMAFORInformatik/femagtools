@@ -370,26 +370,20 @@ class Builder:
                 template = self.lookup.get_template(templ)
                 logger.info('use file {}'.format(templ))
                 return template.render_unicode(model=model).split('\n')
-            except:
+            except mako.exceptions.TopLevelLookupException as ex:
                 logger.error('File {} not found'.format(templ))
                 sys.exit(1)
 
         try:
             template = self.lookup.get_template(templ+".mako")
             logger.info('use template {}.mako'.format(templ))
-        except:
-            try:
-                template = self.lookup.get_template(templ+".fsl")
-                logger.info('use FSL {}.fsl'.format(templ))
-                if stator:
-                    self.fsl_stator = True
-                if magnet:
-                    self.fsl_magnet = True
-            except:
-                if not (stator or magnet):
-                    logger.error('File {}.fsl not found'.format(templ))
-                    sys.exit(1)
-                return []
+        except mako.exceptions.TopLevelLookupException as ex:
+            template = self.lookup.get_template(templ+".fsl")
+            logger.info('use FSL {}.fsl'.format(templ))
+            if stator:
+                self.fsl_stator = True
+            if magnet:
+                self.fsl_magnet = True
 
         return template.render_unicode(model=model).split('\n')
 

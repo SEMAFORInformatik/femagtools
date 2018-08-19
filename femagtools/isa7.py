@@ -8,10 +8,7 @@
 import logging
 import struct
 import sys
-import itertools
 import re
-import numpy as np
-from collections import Counter, defaultdict
 
 logger = logging.getLogger('femagtools.isa7')
 

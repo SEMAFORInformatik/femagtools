@@ -14,7 +14,8 @@ from collections import defaultdict
 logger = logging.getLogger('femagtools.convert')
 
 
-def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False):
+def _from_isa(isa, filename, target_format,
+              extrude=0, layers=0, recombine=False):
 
     if not isa.FC_RADIUS:
         logger.warn("airgap radius is not set in source file")
@@ -151,69 +152,6 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
         else:
             return (n1, n2) in airgap_lines or (n2, n1) in airgap_lines
 
-    def induction(e):
-        if e.el_type == 1:
-            y31 = ev[2].y - ev[0].y
-            y21 = ev[1].y - ev[0].y
-            x13 = ev[0].x - ev[2].x
-            x21 = ev[1].x - ev[0].x
-            a21 = ev[1].vpot[0] - ev[0].vpot[0]
-            a31 = ev[2].vpot[0] - ev[0].vpot[0]
-            #a23 = ev[2].vpot[0] - ev[1].vpot[0]
-            length = isa.superelements[e.se_key].length
-            delta = length * (y31 * x21 + y21 * x13)
-            
-            b1 = (x13 * a21 + x21 * a31) / delta
-            b2 = (-y31 * a21 + y21 * a31) / delta
-            
-        elif e.el_type == 2:
-            y31 = ev[2].y - ev[0].y
-            y21 = ev[1].y - ev[0].y
-            x13 = ev[0].x - ev[2].x
-            x21 = ev[1].x - ev[0].x
-            a21 = ev[1].vpot[0] - ev[0].vpot[0]
-            a31 = ev[2].vpot[0] - ev[0].vpot[0]
-            length = isa.superelements[e.se_key].length
-            delta = length * (y31 * x21 + y21 * x13)
-            b1_a = (x13 * a21 + x21 * a31) / delta
-            b2_a = (y21 * a31 - y31 * a21) / delta
-
-            y31 = ev[0].y - ev[2].y
-            y21 = ev[3].y - ev[2].y
-            x13 = ev[2].x - ev[0].x
-            x21 = ev[3].x - ev[2].x
-            a24 = ev[3].vpot[0] - ev[2].vpot[0]
-            a34 = ev[0].vpot[0] - ev[2].vpot[0]
-            #a41 = ev[3].vpot[0] - ev[0].vpot[0] 
-            delta = length * (y31 * x21 + y21 * x13)
-            b1_b = (x13 * a24 + x21 * a34) / delta
-            b2_b = (y21 * a34 - y31 * a24) / delta
-
-            b1 = (b1_a + b1_b) / 2
-            b2 = (b2_a + b2_b) / 2
-            
-        return b1, b2
-
-    def demagnetization(e):
-        if abs(e.mag[0]) > 1e-5 or abs(e.mag[1]) > 1e-5:
-            magn = np.sqrt(e.mag[0]**2 + e.mag[1]**2)
-            alfa = np.arctan2(e.mag[1], e.mag[0])
-            b1, b2 = induction(e)
-            bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
-            hpol = bpol - magn
-            if hpol < 0:
-                reluc = 795774.7 * abs(e.reluc[0]) / 1000
-                return abs(hpol * reluc)
-        return 0
-
-    def permeability(e):
-        if e.reluc[0] < 1:
-            return 1 / e.reluc[0]
-        return 0
-
-    def losses(e):
-        return isa.ELEM_ISA_ELEM_REC_LOSS_DENS[e.key-1] * 1e-6
-
     points = [[n.x, n.y, 0] for n in isa.nodes]
     vpot = [n.vpot[0] for n in isa.nodes]
 
@@ -245,20 +183,19 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
             triangles.append([n.key - 1 for n in ev])
             triangle_physical_ids.append(physical_surface(e))
             triangle_geometrical_ids.append(e.key)
-            triangle_b.append(induction(e))
-            triangle_h.append(demagnetization(e))
-            triangle_perm.append(permeability(e))
-            triangle_losses.append(losses(e))
+            triangle_b.append(e.induction())
+            triangle_h.append(e.demagnetization())
+            triangle_perm.append(e.permeability())
+            triangle_losses.append(e.loss_density)
 
         elif len(ev) == 4:
             quads.append([n.key - 1 for n in ev])
             quad_physical_ids.append(physical_surface(e))
             quad_geometrical_ids.append(e.key)
-            quad_b.append(induction(e))
-            quad_h.append(demagnetization(e))
-            quad_perm.append(permeability(e))
-            quad_losses.append(losses(e))
-
+            quad_b.append(e.induction())
+            quad_h.append(e.demagnetization())
+            quad_perm.append(e.permeability())
+            quad_losses.append(e.loss_density)
 
     if target_format == "msh":
         points = np.array(points)
@@ -309,7 +246,6 @@ def _from_isa(isa, filename, target_format, extrude=0, layers=0, recombine=False
                                   cell_data,
                                   field_data,
                                   "gmsh-ascii")
-
 
     if target_format == "geo":
         geo = []
@@ -485,7 +421,8 @@ def to_geo(source, filename, extrude=0, layers=0,
         filename: name of converted file
         extrude: extrude surfaces using a translation along the z-axis
         layers: number of layers to create when extruding
-        recombine: when extruding, recombine triangles into quadrangles and tetraedra into to prisms, hexahedra or pyramids
+        recombine: when extruding, recombine triangles into quadrangles and 
+                 tetraedra into to prisms, hexahedra or pyramids
         infile_type: format of source file
     """
     if isinstance(source, isa7.Isa7):

@@ -9,6 +9,8 @@ import logging
 import struct
 import sys
 import re
+import numpy as np
+from collections import Counter
 
 logger = logging.getLogger('femagtools.isa7')
 
@@ -116,6 +118,7 @@ class Isa7(object):
              16: [0.8274509803921568, 0.8274509803921568, 0.8274509803921568]}
 
     def __init__(self, filename):
+        logger.info("read %s", filename)
         self.__read(filename)
 
         self.points = []
@@ -192,7 +195,9 @@ class Isa7(object):
                         (self.ELEM_ISA_ELEM_REC_EL_RELUC[e],
                          self.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
                         (self.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
-                         self.ELEM_ISA_ELEM_REC_EL_MAG_2[e])))
+                         self.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
+                        self.ELEM_ISA_ELEM_REC_LOSS_DENS[e] * 1e-6)
+            )
 
         self.superelements = []
         for se in range(self.NUM_SPEL):
@@ -262,7 +267,7 @@ class Isa7(object):
                 nodechains.extend([nc
                                    for nc in se.nodechains
                                    if abs(nc.key) in nc_keys])
-                
+
             self.subregions.append(
                 SubRegion(self.SR_ISA_SR_VALID[sr],
                           sr + 1,
@@ -299,6 +304,10 @@ class Isa7(object):
                         self.WB_ISA_WB_REC_WB_IMPDZ_IM[wd],
                         self.WB_ISA_WB_REC_WB_VOLT_RE[wd],
                         self.WB_ISA_WB_REC_WB_VOLT_IM[wd]))
+        logger.info("Total nodes %d elements %d superelements %d subregions %d",
+                    len(self.nodes), len(self.elements),
+                    len(self.superelements),
+                    len(self.subregions))
 
     def __read(self, filename):
         reader = Reader(filename)
@@ -593,13 +602,106 @@ class NodeChain(BaseEntity):
 
 
 class Element(BaseEntity):
-    def __init__(self, valid, key, el_type, se_key, vertices, reluc, mag):
+    def __init__(self, valid, key, el_type,
+                 se_key, vertices, reluc, mag, loss_density):
         super(self.__class__, self).__init__(valid, key)
         self.el_type = el_type
         self.se_key = se_key
         self.vertices = vertices
         self.reluc = reluc
         self.mag = mag
+        self.loss_density = loss_density
+        if el_type == 1:    # Linear triangle
+            self.area = ((vertices[2].x - vertices[1].x) *
+                         (vertices[0].y - vertices[1].y) -
+                         (vertices[2].y - vertices[1].y) *
+                         (vertices[0].x - vertices[1].x))/2
+        elif el_type == 2:  # Linear rectangle
+            self.area = ((vertices[2].x - vertices[1].x) *
+                         (vertices[0].y - vertices[1].y) -
+                         (vertices[2].y - vertices[1].y) *
+                         (vertices[0].x - vertices[1].x) +
+                         (vertices[3].x - vertices[2].x) *
+                         (vertices[0].y - vertices[2].y) -
+                         (vertices[3].y - vertices[2].y) *
+                         (vertices[0].x - vertices[2].x))/2
+        elif el_type == 3:  # Square triangle
+            self.area = ((vertices[4].x - vertices[2].x) *
+                         (vertices[0].y - vertices[2].y) -
+                         (vertices[4].y - vertices[1].y) *
+                         (vertices[0].x - vertices[2].x))/2
+        elif el_type == 4:   # Square rectangle
+            self.area = ((vertices[4].x - vertices[2].x) *
+                         (vertices[0].y - vertices[2].y) -
+                         (vertices[4].y - vertices[2].y) *
+                         (vertices[0].x - vertices[2].x) +
+                         (vertices[6].x - vertices[4].x) *
+                         (vertices[0].y - vertices[4].y) -
+                         (vertices[6].y - vertices[4].y) *
+                         (vertices[0].x - vertices[4].x))/2
+
+    def induction(self):
+        """return induction components of this element"""
+        ev = self.vertices
+        if self.el_type == 1:
+            y31 = ev[2].y - ev[0].y
+            y21 = ev[1].y - ev[0].y
+            x13 = ev[0].x - ev[2].x
+            x21 = ev[1].x - ev[0].x
+            a21 = ev[1].vpot[0] - ev[0].vpot[0]
+            a31 = ev[2].vpot[0] - ev[0].vpot[0]
+            delta = self.se_length * (y31 * x21 + y21 * x13)
+
+            return ((x13 * a21 + x21 * a31) / delta,
+                    (-y31 * a21 + y21 * a31) / delta)
+
+        elif self.el_type == 2:
+            y31 = ev[2].y - ev[0].y
+            y21 = ev[1].y - ev[0].y
+            x13 = ev[0].x - ev[2].x
+            x21 = ev[1].x - ev[0].x
+            a21 = ev[1].vpot[0] - ev[0].vpot[0]
+            a31 = ev[2].vpot[0] - ev[0].vpot[0]
+            delta = self.se_length * (y31 * x21 + y21 * x13)
+            b1_a = (x13 * a21 + x21 * a31) / delta
+            b2_a = (y21 * a31 - y31 * a21) / delta
+
+            y31 = ev[0].y - ev[2].y
+            y21 = ev[3].y - ev[2].y
+            x13 = ev[2].x - ev[0].x
+            x21 = ev[3].x - ev[2].x
+            a24 = ev[3].vpot[0] - ev[2].vpot[0]
+            a34 = ev[0].vpot[0] - ev[2].vpot[0]
+            delta = self.se_length * (y31 * x21 + y21 * x13)
+            b1_b = (x13 * a24 + x21 * a34) / delta
+            b2_b = (y21 * a34 - y31 * a24) / delta
+
+            return ((b1_a + b1_b) / 2,
+                    (b2_a + b2_b) / 2)
+
+        return (0, 0)
+
+    def demagnetization(self):
+        """return demagnetization of this element"""
+        if abs(self.mag[0]) > 1e-5 or abs(self.mag[1]) > 1e-5:
+            magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)
+            alfa = np.arctan2(self.mag[1], self.mag[0])
+            b1, b2 = self.induction()
+            bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
+            hpol = bpol - magn
+            if hpol < 0:
+                reluc = abs(self.reluc[0]) / (4*np.pi*1e-7 * 1000)
+                return abs(hpol * reluc)
+        return 0
+
+    def permeability(self):
+        """return permeability of this element"""
+        if self.reluc[0] < 1:
+            return 1 / self.reluc[0]
+        return 0
+
+    def loss_density(self):
+        return self.loss_density
 
 
 class SuperElement(BaseEntity):
@@ -609,6 +711,8 @@ class SuperElement(BaseEntity):
         super(self.__class__, self).__init__(valid, key)
         self.sr_key = sr_key
         self.elements = elements
+        for e in elements:
+            e.se_length = length
         self.nodechains = nodechains
         self.color = color
         self.nc_keys = nc_keys

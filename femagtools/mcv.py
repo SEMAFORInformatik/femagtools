@@ -850,10 +850,12 @@ class MagnetizingCurve(object):
             curve['a'].append(1.0)
             curve['b'].append(MUE0*curve['hi'][-1]-curve['bi'][-1])
 
-    def _fix_name(self, name, fillfac):
+    def fix_name(self, name, fillfac):
         """return os compatible mcv name including fillfac"""
+        if not self.find_by_name(name):
+            return name  # do nothing (this must be a name of an existing file)
         repls = {' ': '_', '(': '_', ')': '_', ',': '_'}
-        if fillfac:
+        if fillfac and fillfac < 1.0:
             return "{0}-{1:d}".format(
                 functools.reduce(lambda a, kv: a.replace(*kv),
                                  repls.items(), name),
@@ -888,7 +890,7 @@ class MagnetizingCurve(object):
                 logger.error("MCV %s not found", str(filename))
             return None
 
-        bname = self._fix_name(mcv['name'], fillfac)
+        bname = self.fix_name(mcv['name'], fillfac)
         filename = ''.join((bname, ext))
         writer = Writer(mcv)
         writer.writeMcv(os.path.join(directory, filename), fillfac=fillfac)

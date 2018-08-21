@@ -71,7 +71,7 @@ class BaseFemag(object):
             list of extracted mc names (:obj:`list`)
         """
         dest = dir if dir else self.workdir
-        return [self.magnetizingCurves.writefile(m, dest)
+        return [self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
                 for m in model.set_magcurves(
                         self.magnetizingCurves, self.magnets)]
 

@@ -278,26 +278,26 @@ class FslBuilderTest(unittest.TestCase):
 
     def test_run_models(self):
         feapars['calculationMode'] = "cogg_calc"
-        fsl = self.builder.create_analysis(feapars)
+        fsl = self.builder.create_analysis(feapars, [], 0)
         self.assertEqual(len(fsl), 25)
 
         feapars['calculationMode'] = "pm_sym_fast"
-        fsl = self.builder.create_analysis(feapars)
+        fsl = self.builder.create_analysis(feapars, {}, 0)
         self.assertEqual(len(fsl), 67)
 
         feapars['calculationMode'] = "mult_cal_fast"
-        fsl = self.builder.create_analysis(feapars)
+        fsl = self.builder.create_analysis(feapars, {}, 0)
         self.assertEqual(len(fsl), 49)
 
         feapars['calculationMode'] = "torq_calc"
-        fsl = self.builder.create_analysis(feapars)
+        fsl = self.builder.create_analysis(feapars, {}, 0)
         self.assertEqual(len(fsl), 41)
         
     def test_create_plots(self):
         pars = copy.deepcopy(feapars)
         pars['calculationMode'] = "pm_sym_fast"
         pars['plots'] = ['field_lines', 'Babs']
-        fsl = self.builder.create_analysis(pars)
+        fsl = self.builder.create_analysis(pars, {}, 0)
         field_lines = re.findall('field_lines\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         self.assertEqual(int(field_lines[0].split(',')[-1]), 20)
@@ -309,7 +309,7 @@ class FslBuilderTest(unittest.TestCase):
         self.assertEqual(max, 0)
         
         pars['plots'] = [('field_lines', 10), ('Babs', 0.0, 2.0)]
-        fsl = self.builder.create_analysis(pars)
+        fsl = self.builder.create_analysis(pars, {}, 0)
         field_lines = re.findall('field_lines\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         self.assertEqual(int(field_lines[0].split(',')[-1]), 10)

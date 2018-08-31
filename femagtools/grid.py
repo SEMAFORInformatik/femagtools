@@ -17,6 +17,7 @@ import femagtools.model
 import femagtools.fsl
 import femagtools.condor
 import femagtools.moproblem
+import femagtools.getset
 import shutil
 
 logger = logging.getLogger(__name__)
@@ -30,13 +31,13 @@ def get_report(decision_vars, objective_vars, objectives, domain):
                    (np.shape(objectives)[0], np.shape(x)[0])).T
     c = np.arange(x.shape[0]).reshape(x.shape[0], 1)
     return [[d['label'] for d in decision_vars] +
-                      [o['label']
-                       for o in objective_vars] + ['Directory'],
+            [o['label']
+             for o in objective_vars] + ['Directory'],
             [d['name'] for d in decision_vars] +
-                      [o['name']
-                       for o in objective_vars]] + [
-                               z[:-1].tolist() + [int(z[-1])]
-                               for z in np.hstack((x, y, c))]
+            [o['name']
+             for o in objective_vars]] + [
+                     z[:-1].tolist() + [int(z[-1])]
+                     for z in np.hstack((x, y, c))]
 
 
 def baskets(items, basketsize=10):
@@ -73,7 +74,9 @@ def create_parameter_range(domain):
 class Grid(object):
     """Parameter variation calculation"""
     def __init__(self, workdir,
-                 magnetizingCurves=None, magnets=None):
+                 magnetizingCurves=None, magnets=None, result_func=None): # tasktype='Task'):
+        #self.tasktype = tasktype
+        self.result_func = result_func
         self.femag = femagtools.Femag(workdir,
                                       magnetizingCurves=magnetizingCurves,
                                       magnets=magnets)
@@ -113,8 +116,7 @@ class Grid(object):
         filename = 'femag.fsl'
         logger.info("setup model in %s", self.femag.workdir)
         with open(os.path.join(self.femag.workdir, filename), 'w') as f:
-            f.write('\n'.join(builder.create_model(model,
-                                                   self.femag.magnets) +
+            f.write('\n'.join(builder.create_model(model) +
                               ['save_model(close)']))
 
         self.femag.run(filename, options=['-b'])
@@ -208,15 +210,18 @@ class Grid(object):
             logger.info('........ %d / %d', p, len(par_range)//len(population))
             job.cleanup()
             for k, x in enumerate(population):
-                task = job.add_task()
+                task = job.add_task(self.result_func)
                 if immutable_model:
                     prob.prepare(x, fea)
                     for m in modelfiles:
                         task.add_file(m)
-                    task.add_file('femag.fsl',
-                                  builder.create_open(model) +
-                                  builder.create_common(model) +
-                                  builder.create_analysis(fea))
+                    task.add_file(
+                        'femag.fsl',
+                        builder.create_open(model) +
+                        builder.create_common(model) +
+                        builder.create_analysis(fea,
+                                                self.femag.magnets,
+                                                model.magnet.get('material', 0)))
                 else:
                     try:
                         prob.prepare(x, model)
@@ -228,10 +233,12 @@ class Grid(object):
                             task.directory):
                         task.add_file(mc)
 
-                    task.add_file('femag.fsl',
-                                  builder.create_model(model,
-                                                       self.femag.magnets) +
-                                  builder.create_analysis(fea))
+                    task.add_file(
+                        'femag.fsl',
+                        builder.create_model(model) +
+                        builder.create_analysis(fea,
+                                                self.femag.magnets,
+                                                model.magnet.get('material', 0)))
 
             status = engine.submit()
             logger.info('Started %s', status)
@@ -255,13 +262,21 @@ class Grid(object):
                         calcid += 1
                     if bchMapper:  # Mode => collectBchData
                         self.addBchMapperData(bchMapper(r))
+                        
                     if isinstance(r, dict) and 'error' in r:
                         logger.warn("job %d failed: %s", k, r['error'])
                         f.append([float('nan')]*len(objective_vars))
                     else:
-                        prob.setResult(bchMapper(r)) if bchMapper else prob.setResult(r)
+                        if bchMapper:
+                            prob.setResult(bchMapper(r))
+                        elif isinstance(r, dict):
+                            prob.setResult(femagtools.getset.GetterSetter(r))
+                        else:
+                            prob.setResult(r)
+                    f.append(prob.objfun([]))
+                else:
+                    f.append([float('nan')]*len(objective_vars))
 
-                        f.append(prob.objfun([]))
             p += 1
 
         logger.info('...... DONE')
@@ -269,13 +284,17 @@ class Grid(object):
 
         shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
         logger.info("f shape %s --> %s", np.shape(np.array(f).T), shape)
-        objectives = np.reshape(np.array(f).T, shape)
-        if self.reportdir:
-            self._write_report(decision_vars, objective_vars,
-                               objectives, domain)
-        return dict(f=objectives.tolist(),
-                    x=domain)
-
+        try:
+            objectives = np.reshape(np.array(f).T, shape)
+            if self.reportdir:
+                self._write_report(decision_vars, objective_vars,
+                                   objectives, domain)
+            return dict(f=objectives.tolist(),
+                        x=domain)
+        except ValueError as v:
+            logger.error(v)
+            return {}
+        
     def addBchMapperData(self, bchData):
         self.bchmapper_data.append(bchData)
 

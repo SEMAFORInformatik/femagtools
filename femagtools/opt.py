@@ -11,6 +11,7 @@
 import femagtools
 import femagtools.fsl
 import femagtools.moproblem
+import femagtools.getset
 from .moo.algorithm import Nsga2
 from .moo.population import Population
 
@@ -47,7 +48,9 @@ def log_pop(pop, ngen):
 
 
 class Optimizer(object):
-    def __init__(self, workdir, magnetizingCurves, magnetMat):
+    def __init__(self, workdir, magnetizingCurves, magnetMat, result_func=None): #tasktype='Task'):
+        #self.tasktype = tasktype
+        self.result_func = result_func
         self.femag = femagtools.Femag(workdir,
                                       magnetizingCurves=magnetizingCurves,
                                       magnets=magnetMat)
@@ -56,7 +59,7 @@ class Optimizer(object):
         self.job.cleanup()
 
         for k, i in enumerate(pop.individuals):
-            task = self.job.add_task()
+            task = self.job.add_task(self.result_func)
             pop.problem.prepare(i.cur_x, self.model)
             for mc in self.femag.copy_magnetizing_curves(self.model,
                                                          task.directory):
@@ -74,7 +77,10 @@ class Optimizer(object):
                 if isinstance(r, dict) and 'error' in r:
                     logger.warn("Task %s failed: %s", t.id, r['error'])
                 else:
-                    pop.problem.setResult(r)
+                    if isinstance(r, dict):
+                        pop.problem.setResult(femagtools.getset.GetterSetter(r))
+                    else:
+                        pop.problem.setResult(r)
 
                     i.cur_f = pop.problem.objfun([])
             else:

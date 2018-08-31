@@ -11,6 +11,7 @@
 import json
 import functools
 import sys
+import copy
 import logging
 import os.path
 import struct
@@ -275,9 +276,10 @@ class Writer(Mcv):
 
     def _prepare(self, fillfac):
         """prepare output format (internal use only)"""
+        curve = copy.deepcopy(self.curve)
         if fillfac:
             alpha = fillfac/self.mc1_fillfac
-            for c in self.curve:
+            for c in curve:
                 c['bi'] = [alpha*b + MUE0*(1. - alpha)*h
                            for b, h in zip(c['bi'], c['hi'])]
             self.mc1_fillfac = fillfac
@@ -288,14 +290,15 @@ class Writer(Mcv):
                            len(c['bi']))
                        for c in self.curve if 'hi' in c]
         self.mc1_db2 = [(c['bi'][-1]**2 - c['bi'][0]**2)/n
-                        for c, n in zip(self.curve, self.mc1_mi)]
-        for db2, c in zip(self.mc1_db2, self.curve):
+                        for c, n in zip(curve, self.mc1_mi)]
+        for db2, c in zip(self.mc1_db2, curve):
             c.update(approx(db2, c))
         self.mc1_mi = [len(c['a'])
-                       for c in self.curve]
+                       for c in curve]
+        return curve
         
     def writeBinaryFile(self, fillfac=None):
-        self._prepare(fillfac)
+        curve = self._prepare(fillfac)
         # write line, version_mc_curve
         self.writeBlock(self.version_mc_curve)
 
@@ -330,8 +333,8 @@ class Writer(Mcv):
         for K in range(0, self.mc1_curves):
 
             # hi, bi
-            lb = self.curve[K].get('bi', [])
-            lh = self.curve[K].get('hi', [])
+            lb = curve[K].get('bi', [])
+            lh = curve[K].get('hi', [])
             self.writeBlock(zip(*[
                 [float(lb[j]) if j < len(lb) else 0.
                  for j in range(self.MC1_NIMAX)],
@@ -339,8 +342,8 @@ class Writer(Mcv):
                  for j in range(self.MC1_NIMAX)]]))
 
             # bi2, nuer
-            lb = self.curve[K]['bi2']
-            ln = self.curve[K]['nuer']
+            lb = curve[K]['bi2']
+            ln = curve[K]['nuer']
             self.writeBlock(zip(*[
                 [float(lb[j]) if j < len(lb) else 0.
                  for j in range(self.MC1_NIMAX)],
@@ -348,8 +351,8 @@ class Writer(Mcv):
                  for j in range(self.MC1_NIMAX)]]))
 
             # a, b, c, d
-            la = self.curve[K].get('a', [0.]*self.MC1_NIMAX)
-            lb = self.curve[K].get('b', [0.]*self.MC1_NIMAX)
+            la = curve[K].get('a', [0.]*self.MC1_NIMAX)
+            lb = curve[K].get('b', [0.]*self.MC1_NIMAX)
             self.writeBlock(zip(*[
                 [float(la[j]) if j < len(la) else 0.
                  for j in range(self.MC1_NIMAX)],
@@ -850,7 +853,7 @@ class MagnetizingCurve(object):
             curve['a'].append(1.0)
             curve['b'].append(MUE0*curve['hi'][-1]-curve['bi'][-1])
 
-    def fix_name(self, name, fillfac):
+    def fix_name(self, name, fillfac=1.0):
         """return os compatible mcv name including fillfac"""
         if not self.find_by_name(name):
             return name  # do nothing (this must be a name of an existing file)
@@ -894,7 +897,7 @@ class MagnetizingCurve(object):
         filename = ''.join((bname, ext))
         writer = Writer(mcv)
         writer.writeMcv(os.path.join(directory, filename), fillfac=fillfac)
-        return bname
+        return filename
             
     def fitLossCoeffs(self):
         for m in self.mcv:

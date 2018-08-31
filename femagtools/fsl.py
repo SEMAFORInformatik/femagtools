@@ -188,7 +188,7 @@ class Builder:
     def create_gen_winding(self, model):
         return self.__render(model, 'gen_winding')
 
-    def create_model_with_dxf(self, model, magnets, magnetMat):
+    def create_model_with_dxf(self, model):
         dxfname = model.dxffile.get('name', None)
         if not dxfname:
             logger.error('Name of dxf-file expected')
@@ -240,23 +240,13 @@ class Builder:
             self.create_cu_losses(model) + \
             self.create_stator_model(model) + \
             self.create_gen_winding(model) + \
-            self.create_magnet(model, magnetMat) + \
+            self.create_magnet(model) + \
             self.create_magnet_model(model) + \
             self.mesh_airgap(model) + \
             self.create_permanent_magnets(model) + \
             self.create_connect_models(model)
 
-    def create_model(self, model, magnets=None):
-        magnetMat = None
-        magndata = ['']
-        if magnets and 'material' in model.magnet:
-            magnetMat = magnets.find(model.magnet['material'])
-            if not magnetMat:
-                raise FslBuilderError('magnet material {} not found'.format(
-                    model.magnet['material']))
-            if not magnetMat.get('mcvkey', 0):
-                magndata = ['pre_models("Magnet-data")', '']
-
+    def create_model(self, model):
         if model.is_complete():
             self.prepare_stator_dxf2fsl(model)
             self.prepare_rotor_dxf2fsl(model)
@@ -270,26 +260,24 @@ class Builder:
                 ['post_models("nodedistance", "ndst" )',
                  'agndst=ndst[1]*1e3'] + \
                 self.__render(model, 'gen_winding') + \
-                self.create_magnet(model, magnetMat) + \
+                self.create_magnet(model) + \
                 self.create_magnet_model(model) + \
                 self.mesh_airgap(model) + \
                 self.create_permanent_magnets(model) + \
-                self.create_connect_models(model) + \
-                magndata
+                self.create_connect_models(model)
 
         if model.is_dxffile():
-            return self.create_model_with_dxf(model, magnets, magnetMat) + \
-                magndata
+            return self.create_model_with_dxf(model)
 
-        return self.open_model(model, magnets)
+        return self.open_model(model)
 
-    def open_model(self, model, magnets=None):
+    def open_model(self, model):
         return self.create_open(model)
 
-    def load_model(self, model, magnets=None):
+    def load_model(self, model):
         return self.__render(model, 'open')
 
-    def create_magnet(self, model, magnetMat):
+    def create_magnet(self, model, magnetMat=None):
         try:
             if magnetMat:
                 if 'mcvkey' in magnetMat:
@@ -304,7 +292,20 @@ class Builder:
     def create_common(self, model):
         return self.__render(model, 'common')
 
-    def create_analysis(self, model):
+    def create_analysis(self, model, magnets, magnet_material):
+        magnetMat = None
+        magndata = []
+        if magnets and magnet_material:
+            magnetMat = magnets.find(magnet_material)
+            if not magnetMat:
+                raise FslBuilderError('magnet material {} not found'.format(
+                    model.magnet['material']))
+            try:
+                magnetMat['magntemp'] = model.magn_temp
+            except AttributeError:
+                pass
+            magndata = self.create_magnet(model, magnetMat)
+
         airgap_induc = (self.create_airgap_induc()
                         if model.get('airgap_induc', 0) else [])
         if model.get('calculationMode') in ('cogg_calc',
@@ -314,7 +315,9 @@ class Builder:
                                             'psd_psq_fast'):
             return (self.__render(model, model.get('calculationMode')) +
                     airgap_induc)
+        
         return (self.__render(model, 'cu_losses') +
+                magndata +
                 self.__render(model, model.get('calculationMode')) +
                 airgap_induc +
                 self.__render(model, 'plots') +
@@ -358,11 +361,14 @@ class Builder:
             fea.update(model.windings)
         except:
             pass
+        
         if model.is_complete():
-            return self.create_model(model, magnets) + \
-                self.create_analysis(fea)
-        return self.open_model(model, magnets) + \
-            self.create_analysis(fea)
+            return self.create_model(model) + \
+                self.create_analysis(fea, magnets,
+                                     model.magnet.get('material', 0))
+        return self.open_model(model) + \
+            self.create_analysis(fea, magnets,
+                                 model.magnet.get('material', 0))
 
     def __render(self, model, templ, stator=False, magnet=False):
         if templ.split('.')[-1] in ('fsl', 'mako'):

@@ -245,7 +245,7 @@ def _from_isa(isa, filename, target_format,
                                   point_data,
                                   cell_data,
                                   field_data,
-                                  "gmsh-ascii")
+                                  "gmsh4-ascii")
 
     if target_format == "geo":
         geo = []

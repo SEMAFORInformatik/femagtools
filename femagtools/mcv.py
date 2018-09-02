@@ -389,9 +389,9 @@ class Writer(Mcv):
             
             for f, p in zip(self.losses['f'], self.losses['pfe']):
                 if f:
-                    pl = [px if px else lc.steinmetz(f, b, cw, alpha, beta,
-                                                     self.losses['fo'],
-                                                     self.losses['Bo'])
+                    pl = [px if px else lc.pfe_steinmetz(f, b, cw, alpha, beta,
+                                                        self.losses['fo'],
+                                                        self.losses['Bo'])
                           for px, b in zip(p, self.losses['B'])]
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - nind))
@@ -405,9 +405,9 @@ class Writer(Mcv):
                              self.losses['fo']])
             self.writeBlock([1])
             logger.info('Losses n freq %d n ind %d', nfreq, nind)
-        except:
-            pass
-            
+        except Exception as e:
+            logger.error(e, exc_info=True)
+
     def writeMcv(self, filename, fillfac=None):
         # windows needs this strip to remove '\r'
         filename = filename.strip()

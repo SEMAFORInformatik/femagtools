@@ -25,15 +25,15 @@ Bo = 1.5
 numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)')
 
 
-def readlist(f):
+def readlist(section):
     x = []
-    while True:
-        l = f.readline().strip()
+    for l in section:
         if not l:
-            return list(zip(*x))
+            break
         vals = [float(n) for n in numPattern.findall(l.replace(',', '.'))]
         if vals:
             x.append(vals)
+    return list(zip(*x))
 
 
 class Reader(object):
@@ -57,18 +57,14 @@ class Reader(object):
         self.cw_freq = None
         self.b_coeff = None
         self.rho = 7.6
-        self.losses = dict(f=[], B=[], pfe=[])
+        self.losses = dict(f=[], B=[])
+        pfe = []
 
         with codecs.open(filename, encoding='utf-8', errors='ignore') as f:
-            while True:
-                l = f.readline().strip()
-                if not l:
-                    if not self.losses['B']:
-                        self.losses = dict()
-                    break
-                
+            content = [l.strip() for l in f.readlines()]
+            for i, l in enumerate(content):
                 if l.startswith('H(A/m)	B(T)') or l.startswith('H[A/m]	B[T]'):
-                    h, b, j = readlist(f)
+                    h, b, j = readlist(content[i+1:])
                     self.curve[0]['hi'] = h
                     self.curve[0]['bi'] = b
                     
@@ -84,19 +80,19 @@ class Reader(object):
                 elif l.startswith('f='):
                     fref = numPattern.findall(l.replace(',', '.'))
                     fxref = float(fref[0])
-                    b, p = readlist(f)
+                    b, p = readlist(content[i+2:])
                     self.losses['f'].append(fxref)
                     self.losses['B'].append(b)
-                    self.losses['pfe'].append(p)
-                    
+                    pfe.append(p)
+
         logger.info("%s Bmax %3.2f", filename, max(self.curve[0]['bi']))
 
-        if self.losses and not np.isscalar(self.losses['B'][0]):
+        if pfe and not np.isscalar(self.losses['B'][0]):
             import scipy.interpolate as ip
             z = lc.fitjordan(
                 self.losses['f'],
                 self.losses['B'],
-                self.losses['pfe'],
+                pfe,
                 self.Bo,
                 self.fo)
             logger.info("Jordan loss coeffs %s", z)
@@ -109,10 +105,10 @@ class Reader(object):
             z = lc.fitsteinmetz(
                 self.losses['f'],
                 self.losses['B'],
-                self.losses['pfe'],
+                pfe,
                 self.Bo,
                 self.fo)
-            logger.info("Steinmeth loss coeffs %s", z)
+            logger.info("Steinmetz loss coeffs %s", z)
             
             self.losses['cw'] = z[0]
             self.losses['cw_freq'] = z[1]
@@ -121,17 +117,15 @@ class Reader(object):
             self.losses['fo'] = self.fo
             
             # must normalize pfe matrix:
-            bmin = max(list(zip(*(self.losses['B'])))[0])
-            bmax = max([bx[-1] for bx in self.losses['B']])
-            Bv = np.arange(np.ceil(10*bmin)/10.0,
-                           (np.floor(10*bmax)+1)/10.0, 0.1)
+            bmin = np.ceil(10*max([min(b) for b in self.losses['B']]))/10.0
+            bmax = np.ceil(10*max([max(b) for b in self.losses['B']]))/10.0
+            Bv = np.arange(bmin, bmax + 0.1, 0.1)
             m = []
             for i, b in enumerate(self.losses['B']):
-                pfunc = ip.interp1d(b, self.losses['pfe'][i], kind='cubic')
-                bx = [x for x in Bv if x < b[-1]]
-                m.append(pfunc(bx).tolist() + (len(Bv)-len(bx))*[None])
+                pfunc = ip.interp1d(b, pfe[i], kind='cubic')
+                m.append(pfunc(b).tolist() + (len(Bv)-len(b))*[None])
             self.losses['B'] = Bv.tolist()
-            self.losses['pfe'] = list(zip(*m))
+            self.losses['pfe'] = list(m)
 
     def __getitem__(self, index):
         return self.__getattribute__(index)

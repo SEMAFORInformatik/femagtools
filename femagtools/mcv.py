@@ -377,6 +377,9 @@ class Writer(Mcv):
                          float(self.mc1_fe_spez_weigth),
                          float(self.mc1_fe_sat_magnetization)])
 
+        if not hasattr(self, 'losses'):
+            return
+        
         try:
             nfreq = len([1 for x in self.losses['f'] if x > 0])
             nind = len(self.losses['B'])
@@ -390,8 +393,8 @@ class Writer(Mcv):
             for f, p in zip(self.losses['f'], self.losses['pfe']):
                 if f:
                     pl = [px if px else lc.pfe_steinmetz(f, b, cw, alpha, beta,
-                                                        self.losses['fo'],
-                                                        self.losses['Bo'])
+                                                         self.losses['fo'],
+                                                         self.losses['Bo'])
                           for px, b in zip(p, self.losses['B'])]
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - nind))

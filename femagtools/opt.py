@@ -156,8 +156,14 @@ class Optimizer(object):
                          for s, v in zip(objective_vars,
                                          self.pop.compute_worst())]
         results['dist'] = self.pop.compute_norm_dist()
-        results['objective'] = [o['desc'] for o in objective_vars]
-        results['decision'] = [d['desc'] for d in decision_vars]
+        
+        def label(d):
+            for n in ('desc', 'label', 'name'):
+                if n in d:
+                    return d
+            return '<?>'
+        results['objective'] = [label(o) for o in objective_vars]
+        results['decision'] = [label(d) for d in decision_vars]
         return results
     
     #print("\nChampion: {}\n".format(pop.champion['f']))

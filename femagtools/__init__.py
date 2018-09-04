@@ -9,7 +9,7 @@
 
 """
 __title__ = 'femagtools'
-__version__ = '0.5.5-snapshot'
+__version__ = '0.6'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2016 SEMAFOR Informatik & Energie AG'
@@ -18,7 +18,7 @@ from .bch import Reader
 from .model import MachineModel
 from .fsl import Builder
 from .magnet import Magnet
-from .femag import Femag
+from .femag import Femag, ZmqFemag
 
 
 def read_bchfile(filename):

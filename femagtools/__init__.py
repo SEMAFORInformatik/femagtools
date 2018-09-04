@@ -18,7 +18,7 @@ from .bch import Reader
 from .model import MachineModel
 from .fsl import Builder
 from .magnet import Magnet
-from .femag import Femag, ZmqFemag
+from .femag import Femag
 
 
 def read_bchfile(filename):

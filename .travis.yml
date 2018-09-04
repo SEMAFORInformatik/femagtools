@@ -18,6 +18,8 @@ install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
+  - conda config --add channels conda-forge
+  - conda config --add channels kayarre
   # Useful for debugging any issues with conda
   - conda info -a
 

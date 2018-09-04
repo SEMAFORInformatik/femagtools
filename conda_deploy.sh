@@ -5,7 +5,7 @@ cd /tmp
 
 echo "Create skeleton.."
 conda skeleton pypi femagtools
-
+export VERSION=`date +%Y.%m.%d`
 echo "Build package.."
 dest_file=$(conda build femagtools --output)
 dest_dir=$(dirname $dest_file)

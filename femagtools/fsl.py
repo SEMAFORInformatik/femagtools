@@ -299,7 +299,7 @@ class Builder:
             magnetMat = magnets.find(magnet_material)
             if not magnetMat:
                 raise FslBuilderError('magnet material {} not found'.format(
-                    model.magnet['material']))
+                    magnet_material))
             try:
                 magnetMat['magntemp'] = model.magn_temp
             except AttributeError:

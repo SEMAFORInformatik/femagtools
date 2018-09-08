@@ -6,7 +6,6 @@
     Covert FEMAG files to various unstructured grid file formats
 """
 import logging
-import meshio
 import numpy as np
 from femagtools import isa7
 from collections import defaultdict
@@ -198,6 +197,7 @@ def _from_isa(isa, filename, target_format,
             quad_losses.append(e.loss_density)
 
     if target_format == "msh":
+        import meshio
         points = np.array(points)
 
         cells = {"line": np.array(lines),
@@ -248,6 +248,7 @@ def _from_isa(isa, filename, target_format,
                                   "gmsh4-ascii")
 
     if target_format == "geo":
+        import meshio
         geo = []
         nc_nodes = set([n for nc in isa.nodechains for n in nc.nodes])
 
@@ -327,7 +328,7 @@ def _from_isa(isa, filename, target_format,
             f.write("\n".join(geo))
 
     if target_format == "vtu":
-
+        import meshio
         assert len(points) == len(vpot)
         assert len(lines) == len(line_ids)
         assert len(triangles) == len(triangle_physical_ids) == len(triangle_geometrical_ids) == len(triangle_b) == len(triangle_h) == len(triangle_perm)

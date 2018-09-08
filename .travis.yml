@@ -1,52 +1,31 @@
 language: python
 python:
-  # We don't actually use the Travis Python, but this keeps it organized.
-  - "2.7"
-  - "3.5"
-  - "3.6"
+- '2.7'
+- '3.5'
+- '3.6'
 install:
-  - sudo apt-get update
-  # We do this conditionally because it saves us some downloading if the
-  # version is the same.
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    fi
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  - conda config --add channels conda-forge
-  - conda config --add channels kayarre
-  # Useful for debugging any issues with conda
-  - conda info -a
-
-  # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib six boto3 pytest mock nose
-  - source activate test-environment
-  - python setup.py install
-
+- if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
+  -O miniconda.sh; else wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  -O miniconda.sh; fi
+- bash miniconda.sh -b -p $HOME/miniconda
+- export PATH="$HOME/miniconda/bin:$PATH"
+- hash -r
+- conda config --set always_yes yes --set changeps1 no
+- conda update -q conda
 script: pytest tests/
-
 notifications:
   email:
     recipients:
-      - tanner@semafor.ch
-      - holm@semafor.ch
-      - amsler@semafor.ch
+    - tanner@semafor.ch
+    - holm@semafor.ch
+    - amsler@semafor.ch
     on_success: change
     on_failure: always
-
 deploy:
   provider: pypi
-  skip_existing: true
-  user: "$PYPI_USERNAME"
-  password: "$PYPI_PASSWORD"
-  distributions: "sdist bdist_wheel"
-  on:
-    tags: true
+  user: ronaldtanner
+  password:
+        secure: r765YNoi43+d7E3xuHJDwKSIvrF3Evx2kIXk6/JWtMq1zNnZrfiO5ViKuiXYMh6v7opnjH/TpMJOBZgZRvoisy09URxlqtMblFJ1daR1K0I2WTTPuoLGZ4/DbWg0leupYZ2r9ELmpy7AvYbc8ZJFP8CgM506ID803pcunD6LKjDu9joG8mOWmqwZG4XKVPNgqLm6PrrcE78Ffns2bcpZQRAX7oeToA4nv4EPxwsYepI2pvrdAoM4hRmh8roj82nu+oCDPNLf5/98nQI9aygRKbcQn//tjxFnCxubQB92HIVavDRw3XAdt0mF5ABFrge2mH/H7x2J0LTrmwfJ1tTtB/k8kf2+mg//5q3F+K7N4OiOfkm4wfGlW/WxLAPn6vCfKvyB0uu/qBkdVUlAwpr2VYNuQ2YKLwPH4Vz/mbcuPLEAR5odKkuwuhnqY+OxWHtWTnVEKBiOAMO3VIsP0SMJ0TcEAmv4vb6smdhwdvmrHCDPWxqjpU6YdyO/ktmvJkpuMTGRxYGHillNyIQMTzrhjLbrTUOl2nZ6rLMbYXfSWGx6XPpqhQOrXdwpkCCoJUdvIN25vtpiDKsQMA6ed+FJ9v1jRB8KsiissNSPJry9zx/kSyO0i/3OMz7OjjN7/0jm1vu93sIx4SR/FyNv9Pbu3AJWp+kI5EyK+ooByWzQswc=
 
-after_deploy:
-  - ./conda_deploy.sh
+after_success:
+  - test $TRAVIS_BRANCH = "master" && conda install conda-build && conda install anaconda-client && bash conda/conda_upload.sh

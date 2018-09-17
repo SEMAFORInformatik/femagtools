@@ -41,9 +41,10 @@ setup(
     url='https://github.com/SEMAFORInformatik/femagtools',
     author_email='tar@semafor.ch',
     version=version,
+    platforms="any",
     install_requires=['numpy', 'scipy', 'mako', 'six',
-                      'dxfgrabber', 'networkx', 'meshio', 'lxml'],
-#   dxfsl:                   'ezdxf', 
+                      'dxfgrabber', 'networkx'],
+    extras_require={"meshio": ["meshio", "lxml"]},
     packages=['femagtools', 'femagtools.moo', 'femagtools.dxfsl'],
     package_data={'femagtools': ['templates/*.mako']},
     license=license,
@@ -58,4 +59,3 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Topic :: Scientific/Engineering']
 )
-

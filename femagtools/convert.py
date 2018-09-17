@@ -181,7 +181,7 @@ def _from_isa(isa, filename, target_format,
         if len(ev) == 3:
             triangles.append([n.key - 1 for n in ev])
             triangle_physical_ids.append(physical_surface(e))
-            triangle_geometrical_ids.append(e.key)
+            triangle_geometrical_ids.append(e.se_key)
             triangle_b.append(e.induction())
             triangle_h.append(e.demagnetization())
             triangle_perm.append(e.permeability())
@@ -190,7 +190,7 @@ def _from_isa(isa, filename, target_format,
         elif len(ev) == 4:
             quads.append([n.key - 1 for n in ev])
             quad_physical_ids.append(physical_surface(e))
-            quad_geometrical_ids.append(e.key)
+            quad_geometrical_ids.append(e.se_key)
             quad_b.append(e.induction())
             quad_h.append(e.demagnetization())
             quad_perm.append(e.permeability())

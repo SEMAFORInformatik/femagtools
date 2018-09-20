@@ -2,10 +2,15 @@
 PKG_NAME=femagtools
 USER=semafor
 
-OS=linux-64
 mkdir ~/conda-bld
 conda config --set anaconda_upload no
 export CONDA_BLD_PATH=~/conda-bld
-export VERSION=`date +%Y.%m.%d`
-conda build .
-anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USER -l nightly $CONDA_BLD_PATH/$OS/$PKG_NAME-`date +%Y.%m.%d`-0.tar.bz2 --force
+for v in 2.7 3.5 3.6
+do
+  conda-build --python $v .
+done
+conda convert --platform all
+for os in linux-64 linux-32 osx-64 win-32 linux-aarch64 linux-armv6l linux-armv7l linux-ppc64le
+do
+    anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USER $CONDA_BLD_PATH/$os/*
+done

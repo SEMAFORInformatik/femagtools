@@ -29,8 +29,8 @@ def _from_isa(isa, filename, target_format,
     airgap_center_vertices = [v for e in airgap_center_elements
                               for v in e.vertices]
 
-    airgap_rotor_elements = []
-    airgap_stator_elements = []
+    airgap_inner_elements = []
+    airgap_outer_elements = []
     for e in isa.elements:
         if e in airgap_center_elements:
             continue
@@ -38,13 +38,13 @@ def _from_isa(isa, filename, target_format,
             if v not in airgap_center_vertices:
                 continue
             if np.sqrt(v.x**2 + v.y**2) > isa.FC_RADIUS:
-                airgap_stator_elements.append(e)
+                airgap_outer_elements.append(e)
                 break
             else:
-                airgap_rotor_elements.append(e)
+                airgap_inner_elements.append(e)
                 break
 
-    airgap_stator_vertices = [v for e in airgap_stator_elements
+    airgap_outer_vertices = [v for e in airgap_outer_elements
                               for v in e.vertices]
 
     airgap_lines = []
@@ -52,8 +52,8 @@ def _from_isa(isa, filename, target_format,
         ev = e.vertices
         for i, v1 in enumerate(ev):
             v2 = ev[i-1]
-            if v1 in airgap_stator_vertices and \
-               v2 in airgap_stator_vertices:
+            if v1 in airgap_outer_vertices and \
+               v2 in airgap_outer_vertices:
                 airgap_lines.append((v1, v2))
 
     nodechain_links = defaultdict(list)
@@ -76,10 +76,10 @@ def _from_isa(isa, filename, target_format,
                                    + ["Winding_{}_{}".format(w.key, pol)
                                       for w in isa.windings
                                       for pol in ("+", "-")]
-                                   + ["Air_Rotor",
-                                      "Air_Stator",
-                                      "Airgap_Rotor",
-                                      "Airgap_Stator",
+                                   + ["Air_Inner",
+                                      "Air_Outer",
+                                      "Airgap_Inner",
+                                      "Airgap_Outer",
                                       "PM1", "PM2",
                                       "PM3", "PM4"]))
 
@@ -120,18 +120,18 @@ def _from_isa(isa, filename, target_format,
                 return surface_id("PM3")
             return surface_id("PM4")
 
-        if e in airgap_rotor_elements or e in airgap_center_elements:
-            return surface_id("Airgap_Rotor")
+        if e in airgap_inner_elements or e in airgap_center_elements:
+            return surface_id("Airgap_Inner")
 
-        if e in airgap_stator_elements:
-            return surface_id("Airgap_Stator")
+        if e in airgap_outer_elements:
+            return surface_id("Airgap_Outer")
 
         sr_key = isa.superelements[e.se_key].sr_key
         if sr_key == -1:
             v = e.vertices[0]
             if np.sqrt(v.x**2 + v.y**2) > isa.FC_RADIUS:
-                return surface_id("Air_Stator")
-            return surface_id("Air_Rotor")
+                return surface_id("Air_Outer")
+            return surface_id("Air_Inner")
 
         sr = isa.subregions[sr_key]
         if sr.wb_key != -1:
@@ -245,7 +245,7 @@ def _from_isa(isa, filename, target_format,
                                   point_data,
                                   cell_data,
                                   field_data,
-                                  "gmsh4-ascii")
+                                  "gmsh2-ascii")
 
     if target_format == "geo":
         import meshio

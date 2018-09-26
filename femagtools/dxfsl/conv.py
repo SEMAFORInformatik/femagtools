@@ -86,6 +86,10 @@ if __name__ == "__main__":
                            help='show plots',
                            dest='show_plots',
                            action="store_true")
+    argparser.add_argument('--areas',
+                           help='show all areas',
+                           dest='show_areas',
+                           action="store_true")
     argparser.add_argument('-f', '--fsl',
                            help='create fsl',
                            dest='write_fsl',
@@ -153,7 +157,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
     if not args.write_fsl:
-        if not args.show_plots:
+        if not (args.show_plots or args.show_areas or args.view):
             args.write_fsl = True
 
     converter(args.dxfile,  # DXF-Filename
@@ -169,5 +173,6 @@ if __name__ == "__main__":
               airgap2=args.airgap2,
               view_only=args.view,
               show_plots=args.show_plots,
+              show_areas=args.show_areas,
               write_fsl=args.write_fsl,
               debug_mode=args.debug)

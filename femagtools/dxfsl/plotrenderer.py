@@ -270,7 +270,7 @@ class PlotRenderer(object):
     def render_areas(self, geom, **kwargs):
         with_nodes = kwargs.get('with_nodes', False)
         single_view = kwargs.get('single_view', False)
-        title = kwargs.get('title', "")
+        title = kwargs.get('title', "geometry")
         show = kwargs.get('show', True)
         rows = kwargs.get('rows', 1)
         cols = kwargs.get('cols', 1)
@@ -290,7 +290,10 @@ class PlotRenderer(object):
                   'orange', 'grey', 'darkgreen')
 
         c = -1
+        a = len(geom.list_of_areas())
+        n = 0
         for area in geom.list_of_areas():
+            n += 1
             if area.number_of_elements() > 1:
                 c += 1
                 if c >= len(colors):
@@ -308,6 +311,8 @@ class PlotRenderer(object):
 
                 if single_view:
                     self.ax.axis('scaled', aspect='equal')
+                    mytitle = "Area {} of {} in {}".format(n, a, title)
+                    self.ax.set_title(mytitle, size=14)
                     pl.show()
 
         if not single_view:

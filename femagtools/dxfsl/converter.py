@@ -118,6 +118,7 @@ def converter(dxfile,
               airgap2=0.0,
               view_only=False,
               show_plots=True,
+              show_areas=False,
               write_fsl=False,
               debug_mode=False):
     layers = ()
@@ -147,6 +148,10 @@ def converter(dxfile,
         p.render_elements(basegeom, Shape,
                           neighbors=True,
                           show=True)
+
+        if write_fsl:
+            model = FslRenderer(basename)
+            model.render_raw(basegeom)
         sys.exit(0)
 
     machine_base = basegeom.get_machine()
@@ -252,10 +257,15 @@ def converter(dxfile,
                               fill_areas=True)
             p.show_plot()
 
-            # p.render_areas(machine_inner.geom,
-            #                with_nodes=True,
-            #                single_view=True)
-            # p.render_areas(machine_outer.geom)
+        if show_areas:
+            p.render_areas(machine_inner.geom,
+                           title=inner_name,
+                           with_nodes=True,
+                           single_view=True)
+            p.render_areas(machine_outer.geom,
+                           title=outer_name,
+                           with_nodes=True,
+                           single_view=True)
 
         if write_fsl:
             inner_filename = write_fsl_file(machine_inner,
@@ -317,12 +327,19 @@ def converter(dxfile,
                 machine.geom.search_rotor_subregions(part[1])
                 params = create_femag_parameters_rotor(machine,
                                                        part[1])
+
         if show_plots:
             p.render_elements(machine.geom, Shape,
                               draw_inside=True, title=name,
                               rows=3, cols=2, num=5, show=False,
                               fill_areas=True)
             p.show_plot()
+
+        if show_areas:
+            p.render_areas(machine.geom,
+                           title=name,
+                           with_nodes=True,
+                           single_view=True)
 
         if write_fsl:
             conv['filename'] = write_fsl_file(machine, basename, inner, outer)

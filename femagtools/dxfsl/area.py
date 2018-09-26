@@ -427,7 +427,11 @@ class Area(object):
             p_inside = ((my_p2[0]+all_p2[0])/2, y)
         return p_inside
 
-    def render(self, renderer, color='black', with_nodes=False):
+    def render(self, renderer, color='black', with_nodes=False, fill=True):
+        if fill:
+            if self.render_fill(renderer):
+                color = 'black'
+
         for e in self.area:
             e.render(renderer, color, with_nodes)
         return
@@ -435,7 +439,7 @@ class Area(object):
     def render_fill(self, renderer, alpha=1.0):
         color = self.color()
         if not color:
-            return
+            return False
 
         if self.is_circle():
             e = self.area[0]
@@ -445,6 +449,7 @@ class Area(object):
             x = [n[0] for n in nodes]
             y = [n[1] for n in nodes]
             renderer.fill(x, y, color, alpha)
+        return True
 
     def render_legend(self, renderer, alpha=1.0):
         return renderer.new_legend_handle(self.color(), alpha, self.name())
@@ -487,23 +492,37 @@ class Area(object):
         m_first = 0.0
         m_prev = 999.999999
         c_prev = -99
+        m_all = []
         for c, m, l in lines:
             if c_prev >= 0:
                 if np.isclose(m_prev, m, atol=0.001):
                     if c_prev+1 != c:
                         # Gleiche Steigung, aber keine Verlängerung
                         line_count += 1
+                        m_all.append(m_prev)
                 else:
                     line_count += 1
+                    m_all.append(m_prev)
             else:
                 m_first = m
+
             m_prev = m
             c_prev = c
+
+        m_all.append(m_prev)
 
         if np.isclose(m_prev, m_first, atol=0.001):
             line_count -= 1
 
-        return line_count == 4
+        if line_count == 4:
+            logger.debug("is_rectangle: m={}".format(m_all))
+            if not np.isclose(m_all[0], m_all[2], atol=0.001):
+                return False
+            if not np.isclose(m_all[1], m_all[3], atol=0.001):
+                return False
+            return True
+
+        return False
 
     def get_mag_orient_rectangle(self):
         lines = [[e.m(99999.0), e.length(), alpha_line(e.p1, e.p2)]
@@ -594,11 +613,14 @@ class Area(object):
 
     def mark_rotor_subregions(self, is_inner, mirrored, alpha,
                               center, r_in, r_out):
+        logger.debug("mark_rotor_subregions")
+
         my_alpha = round(self.max_angle - self.min_angle, 6)
         alpha = round(alpha, 6)
 
         if self.is_circle():
             self.type = 0  # air
+            logger.debug(">>> air is a circle")
             return self.type
 
         if is_inner:
@@ -615,6 +637,7 @@ class Area(object):
 
         if close_to_opposition:
             self.type = 1  # iron
+            logger.debug(">>> iron close to opposition")
             return self.type
 
         if close_to_ag:
@@ -622,6 +645,7 @@ class Area(object):
             air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
             if air_alpha / alpha < 0.2:
                 self.type = 0  # air
+                logger.debug(">>> air close to airgap")
                 return self.type
 
             if air_alpha / alpha > 0.6:
@@ -633,28 +657,37 @@ class Area(object):
                         self.phi = self.max_angle
                 else:
                     self.phi = middle_angle(self.min_angle, self.max_angle)
+                logger.debug(">>> magnet close to airgap")
             else:
                 self.type = 1  # iron
+                logger.debug(">>> iron close to airgap")
             return self.type
 
-        if my_alpha / alpha > 0.5:
+        # if my_alpha / alpha > 0.5: # old style (26.9.2018)
+        if True:
             if self.is_rectangle():
                 self.type = 4  # magnet embedded
+                logger.debug(">>> magnet embedded")
                 self.phi = self.get_mag_orient_rectangle()
                 return self.type
 
             if not (self.close_to_startangle or self.close_to_endangle):
                 self.type = 0  # air
+                logger.debug(">>> air somewhere")
                 return self.type
 
         self.type = 1  # iron
         if self.min_angle > 0.001:
-            if my_alpha / alpha < 0.4:
+            # if my_alpha / alpha < 0.4: # old style (26.9.2018)
+            if True:
                 if self.max_angle < alpha - 0.001:
                     self.type = 0  # air
                 elif mirrored:
                     self.type = 0  # air
+                logger.debug(">>> air ??")
+                return self.type
 
+        logger.debug(">>> iron remains")
         return self.type
 
     def print_area(self):

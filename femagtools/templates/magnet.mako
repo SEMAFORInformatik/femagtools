@@ -14,3 +14,5 @@
  m.magnwidth      =    ${model.get('magnwidth', 0.0)*1e3}
  m.magnlength     =    ${model.get('magnlength', 0.0)*1e3}
  %endif
+
+pre_models("Magnet-data")

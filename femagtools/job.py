@@ -16,13 +16,36 @@ import femagtools.bch
 import femagtools.config as cfg
 import logging
 import uuid
+import importlib
 
 logger = logging.getLogger(__name__)
 
 
+class TaskFactory:
+    factories = {}
+
+    def addFactory(typename, taskFactory):
+        TaskFactory.factories.put[typename] = taskFactory
+    addFactory = staticmethod(addFactory)
+
+    def createTask(typename, taskid, dir, result_func):
+        if typename not in TaskFactory.factories:
+            try:
+                TaskFactory.factories[typename] = \
+                    eval(typename + '.Factory()')
+            except NameError:
+                modname, classname = typename.split('.')
+                mod = importlib.import_module(modname)
+                TaskFactory.factories[typename] = getattr(mod,
+                                                          classname).Factory()
+        return TaskFactory.factories[typename].create(taskid, dir, result_func)
+    createTask = staticmethod(createTask)
+
+
 class Task(object):
     """represents a single execution unit that may include data files"""
-    def __init__(self, id, directory):
+    def __init__(self, id, directory, result_func=None):
+        self.result_func = result_func
         self.directory = directory
         try:
             os.makedirs(self.directory)
@@ -58,7 +81,10 @@ class Task(object):
             f.writelines('\n'.join(content))
 
     def get_results(self):
-        """returns result of most recent BCH file"""
+        """returns result of most recent BCH file (or project specific results if result_func is set)"""
+        if self.result_func:
+            return self.result_func(self)
+        
         result = femagtools.bch.Reader()
         # read latest bch file if any
         bchfile_list = sorted(glob.glob(os.path.join(
@@ -79,6 +105,9 @@ class Task(object):
         return isinstance(other, type(self)) and \
             self.directory == other.directory
 
+    class Factory:
+        def create(self, id, dir, result_func): return Task(id, dir, result_func)
+        
 
 class CloudTask(Task):
     def __init__(self, id, directory):
@@ -108,6 +137,9 @@ class CloudTask(Task):
         info.size = len(content)
         data = io.BytesIO(str.encode(content))
         self.tar_file.addfile(info, data)
+        
+        class Factory:
+            def create(self, id, dir, result_func): return CloudTask(id, dir, result_func)
 
 
 class Job(object):
@@ -121,25 +153,20 @@ class Job(object):
 
     def cleanup(self):
         """removes all task directories of previous run"""
-        try:
-            os.makedirs(self.basedir)
-        except OSError as e:
-            if not os.path.isdir(self.basedir):
-                e.args += self.basedir
-                raise e
-            return  # nothing else to do here
         for task in self.tasks:
+            logger.info("rm %s", task.directory)
             shutil.rmtree(task.directory, ignore_errors=True)
         self.tasks = []
 
-    def add_task(self):
+    def add_task(self, result_func=None):
         "adds a new task to this job"
         taskid = "{}-{}".format(str(uuid.uuid4()), len(self.tasks))
         dir = os.path.join(self.basedir,
                            '{}{:d}'.format(self.runDirPrefix,
                                            len(self.tasks)))
-        self.tasks.append(Task(taskid, dir))
-        return self.tasks[-1]
+        t = TaskFactory.createTask('Task', taskid, dir, result_func)
+        self.tasks.append(t)
+        return t
     
     def setExitStatus(self, taskid, status):
         "set exit status of task"
@@ -199,11 +226,12 @@ class CloudJob(Job):
     def __init__(self, basedir):
         super(self.__class__, self).__init__(basedir)
 
-    def add_task(self):
-        "adds a new :py:class:`AmazonTask` to this job"
+    def add_task(self, result_func=None):
+        "adds a new :py:class:`CloudTask` to this job"
         taskid = "{}-{}".format(str(uuid.uuid4()), len(self.tasks))
         dir = os.path.join(self.basedir,
                            '{}{:d}'.format(self.runDirPrefix,
                                            len(self.tasks)))
-        self.tasks.append(CloudTask(taskid, dir))
-        return self.tasks[-1]
+        t = TaskFactory.createTask('CloudTask', taskid, dir, result_func)
+        self.tasks.append(t)
+        return t

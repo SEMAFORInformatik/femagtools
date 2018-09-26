@@ -10,40 +10,36 @@
 import numpy as np
 from .geom import convex_hull
 import logging
-
-logger = logging.getLogger(__name__)
-
-matplotlibversion = "no matplotlib"
-matplotlibrelease = "no matplotlib"
-
 try:
     import matplotlib
     import matplotlib.pyplot as pl
     import matplotlib.patches as pch
 
-    matplotlibversion = int(matplotlib.__version__.split('.')[0])
-    matplotlibrelease = int(matplotlib.__version__.split('.')[1])
-except:
-    logger.error("X not found")
+    matplotlibversion = (int(matplotlib.__version__.split('.')[0]) +
+                         int(matplotlib.__version__.split('.')[1])/10)
+except ModuleNotFoundError:
+    matplotlibversion = 0  # no matplotlib
 
+logger = logging.getLogger(__name__)
 
-#############################
-#       PlotRenderer        #
-#############################
 
 class PlotRenderer(object):
+    """renders geom with matplotlib"""
     def __init__(self):
         self.fig = None
         self.background = '#eeeeee'
+        if matplotlibversion == 0:
+            import matplotlib   # throws exception
         pass
 
     def figure(self):
         if self.fig is None:
             self.fig = pl.figure(facecolor='lightblue',
                                  figsize=(9, 10))
-            if matplotlibversion == 2 and matplotlibrelease > 0:
+            if matplotlibversion > 2:
                 pl.tight_layout(h_pad=0.2, w_pad=0.2)
-            pl.subplots_adjust(bottom=0.05, top=0.95, hspace=0.25, wspace=0.15)
+            pl.subplots_adjust(bottom=0.05, top=0.95,
+                               hspace=0.25, wspace=0.15)
         return self.fig
 
     def add_plot(self, rows=1, cols=1, num=1):

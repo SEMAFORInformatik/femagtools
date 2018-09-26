@@ -46,12 +46,12 @@ def test_findById():
 
 def test_writeFile():
     dir = tempfile.mkdtemp()
+    ext = '.MC' if sys.platform == 'win32' else '.MCV'
     mcv = femagtools.mcv.MagnetizingCurve(mcvPars)
     result = mcv.writefile('TKS_NO_20', dir)
-    assert result == mcvPars[0]['name']
+    assert result == mcvPars[0]['name'] + ext
 
-    ext = '.MC' if sys.platform == 'win32' else '.MCV'
-    mcv = femagtools.mcv.read(os.path.join(dir, result + ext))
+    mcv = femagtools.mcv.read(os.path.join(dir, result))
             
     assert pytest.approx(
         mcvPars[0]['curve'][0]['bi']) == mcv.get_results()['curve'][0]['bi']
@@ -62,12 +62,13 @@ def test_writeFile():
 
 
 def test_writeFile_fillfac():
+    ext = '.MC' if sys.platform == 'win32' else '.MCV'
     testPath = os.path.split(__file__)[0]
     mcv = femagtools.mcv.read(os.path.join(testPath, 'data/TKS_NO_20.MCV'))
     dir = tempfile.mkdtemp()
     m = femagtools.mcv.MagnetizingCurve(mcv)
     result = m.writefile('TKS_NO_20', dir, fillfac=0.5)
-    assert result == mcvPars[0]['name'] + '-50'
+    assert result == mcvPars[0]['name'] + '-50' + ext
     
     bi = [0.0, 0.04908391088247299, 0.09705951809883118,
           0.14508341252803802, 0.1947421133518219,
@@ -82,8 +83,7 @@ def test_writeFile_fillfac():
           1.0011695623397827, 1.0120362043380737,
           1.0208477973937988]
 
-    ext = '.MC' if sys.platform == 'win32' else '.MCV'
-    filename = os.path.join(dir, result + ext)
+    filename = os.path.join(dir, result)
     mcv = femagtools.mcv.read(filename)
     
     assert pytest.approx(bi) == mcv.get_results()['curve'][0]['bi']

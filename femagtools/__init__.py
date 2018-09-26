@@ -9,7 +9,7 @@
 
 """
 __title__ = 'femagtools'
-__version__ = '0.5.3-snapshot'
+__version__ = '0.6.7-snapshot'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2016 SEMAFOR Informatik & Energie AG'
@@ -48,5 +48,5 @@ def create_fsl(machine,
         magnets = Magnet(magnetmat)
     if operatingconditions:
             return builder.create(model, operatingconditions, magnets)
-    return builder.create_model(model, magnets) + ['save_model(cont)']
+    return builder.create_model(model) + ['save_model(cont)']
     

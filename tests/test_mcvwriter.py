@@ -3,8 +3,7 @@
 import unittest
 import os
 import femagtools.mcv
-import logging
-import logging.config
+import numpy as np
 
 
 class McvWriterTest(unittest.TestCase):
@@ -87,8 +86,8 @@ class McvWriterTest(unittest.TestCase):
             self.assertAlmostEqual(reader.curve[0][attr],
                                    reader2.curve[0][attr], 3)
         for attr in ['f', 'B']:
-            self.assertAlmostEqual(reader.losses[attr],
-                                   reader2.losses[attr], 3)
+            np.testing.assert_almost_equal(reader.losses[attr],
+                                           reader2.losses[attr], 5)
 
 if __name__ == '__main__':
     unittest.main()

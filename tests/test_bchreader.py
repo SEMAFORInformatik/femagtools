@@ -257,5 +257,13 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(bch.losses[-1]['stajo'], 4425.106)
         self.assertEqual(bch.losses[-1]['staza'], 7504.659)
     
+    def test_read_pmsim_demag(self):
+        bch = self.read_bch('PMREL-4p-skewed.BATCH')
+
+        self.assertEqual(len(bch.demag), 9)
+        self.assertEqual([-370.92, -2241.79, -2236.31],
+                         [d['H_max'] for d in bch.demag if d['segment'] == 3])
+
+
 if __name__ == '__main__':
     unittest.main()

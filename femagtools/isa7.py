@@ -8,10 +8,9 @@
 import logging
 import struct
 import sys
-import itertools
 import re
 import numpy as np
-from collections import Counter, defaultdict
+from collections import Counter
 
 logger = logging.getLogger('femagtools.isa7')
 
@@ -119,6 +118,7 @@ class Isa7(object):
              16: [0.8274509803921568, 0.8274509803921568, 0.8274509803921568]}
 
     def __init__(self, filename):
+        logger.info("read %s", filename)
         self.__read(filename)
 
         self.points = []
@@ -195,7 +195,9 @@ class Isa7(object):
                         (self.ELEM_ISA_ELEM_REC_EL_RELUC[e],
                          self.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
                         (self.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
-                         self.ELEM_ISA_ELEM_REC_EL_MAG_2[e])))
+                         self.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
+                        self.ELEM_ISA_ELEM_REC_LOSS_DENS[e] * 1e-6)
+            )
 
         self.superelements = []
         for se in range(self.NUM_SPEL):
@@ -232,15 +234,15 @@ class Isa7(object):
                              nodechains,
                              self.SUPEL_ISA_SUPEL_REC_SE_COL[se],
                              nc_keys,
-                             self.SUPEL_ISA_SUPEL_REC_SE_MCV_TYP,
-                             self.SUPEL_ISA_SUPEL_REC_SE_COND_TYP,
-                             self.SUPEL_ISA_SUPEL_REC_SE_CONDUC,
-                             self.SUPEL_ISA_SUPEL_REC_SE_LENGHT,
-                             self.SUPEL_ISA_SUPEL_REC_SE_VEL_SYS,
-                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_1,
-                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_2,
-                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_RE,
-                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM))
+                             self.SUPEL_ISA_SUPEL_REC_SE_MCV_TYP[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_COND_TYP[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_CONDUC[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_LENGHT[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_VEL_SYS[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_1[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_2[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_RE[se],
+                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se]))
 
         self.subregions = []
         for sr in range(self.NUM_SR):
@@ -265,7 +267,7 @@ class Isa7(object):
                 nodechains.extend([nc
                                    for nc in se.nodechains
                                    if abs(nc.key) in nc_keys])
-                
+
             self.subregions.append(
                 SubRegion(self.SR_ISA_SR_VALID[sr],
                           sr + 1,
@@ -302,6 +304,10 @@ class Isa7(object):
                         self.WB_ISA_WB_REC_WB_IMPDZ_IM[wd],
                         self.WB_ISA_WB_REC_WB_VOLT_RE[wd],
                         self.WB_ISA_WB_REC_WB_VOLT_IM[wd]))
+        logger.info("Total nodes %d elements %d superelements %d subregions %d",
+                    len(self.nodes), len(self.elements),
+                    len(self.superelements),
+                    len(self.subregions))
 
     def __read(self, filename):
         reader = Reader(filename)
@@ -441,354 +447,107 @@ class Isa7(object):
 
         reader.skip_block(21)
 
-        self.ANZAHL_TG = reader.next_block("iii")[1][0]
+        ANZAHL_TG = reader.next_block("i")[1]
 
         reader.skip_block(7)
-        reader.skip_block(self.ANZAHL_TG + 1)
+        reader.skip_block(ANZAHL_TG + 1)
         reader.skip_block(1)
 
         self.FC_RADIUS = reader.next_block("f")[0]
 
-    def to_gmsh(self, fileformat="geo", extrude=0, layers=0, recombine=False):
-        """
-        Convert model to gmsh file
-        
-        Arguments:
-            fileformat: ['geo' | 'msh']
-            extrude: extrude surfaces using a translation along the z-axis
-            layers:
-            recombine:
-        """
-        el_number = itertools.count(1)
+        reader.skip_block(9)
+        FC_NUM_CUR_ID, FC_NUM_BETA_ID = reader.next_block("i")[0:2]
+        if FC_NUM_CUR_ID > 16:
+            FC_NUM_CUR_ID = 16
 
-        airgap_center_elements = []
-        for e in self.elements:
-            outside = [np.sqrt(v.x**2 + v.y**2) > self.FC_RADIUS
-                       for v in e.vertices]
-            if any(outside) and not all(outside):
-                airgap_center_elements.append(e)
+        reader.skip_block(3)
+        reader.skip_block(FC_NUM_CUR_ID * 2)
+        reader.skip_block(1 + 10 * 5 + 3 + 1 * 5 + 14)
 
-        airgap_center_vertices = [v for e in airgap_center_elements
-                                  for v in e.vertices]
+        NUM_FE_EVAL_MOVE_STEP = reader.next_block("i")[0]
+        if NUM_FE_EVAL_MOVE_STEP < 0:
+            NUM_FE_EVAL_MOVE_STEP = 0
 
-        airgap_rotor_elements = []
-        airgap_stator_elements = []
-        for e in self.elements:
-            if e in airgap_center_elements:
-                continue
-            for v in e.vertices:
-                if v not in airgap_center_vertices:
-                    continue
-                if np.sqrt(v.x**2 + v.y**2) > self.FC_RADIUS:
-                    airgap_stator_elements.append(e)
-                    break
-                else:
-                    airgap_rotor_elements.append(e)
-                    break
+        if NUM_FE_EVAL_MOVE_STEP > 1:
+            reader.skip_block()
+            reader.skip_block((NUM_FE_EVAL_MOVE_STEP + 1) * 2)
 
-        airgap_stator_vertices = [v for e in airgap_stator_elements
-                                  for v in e.vertices]
+        FC_NUM_MOVE_CALC_LOAD_PMS, FC_NUM_FLX = reader.next_block("i")[0:2]
 
-        airgap_lines = []
-        for e in airgap_center_elements:
-            ev = e.vertices
-            for i, v1 in enumerate(ev):
-                v2 = ev[i-1]
-                if v1 in airgap_stator_vertices and \
-                   v2 in airgap_stator_vertices:
-                    airgap_lines.append((v1, v2))
+        if FC_NUM_MOVE_CALC_LOAD_PMS > 1:
+            reader.skip_block(4)
+            reader.skip_block(3 * FC_NUM_FLX)
+            reader.skip_block()
 
-        nodechain_links = defaultdict(lambda: [])
-        for nc in self.nodechains:
-            nodechain_links[nc.node1].extend(nc.nodes)
-            nodechain_links[nc.node2].extend(nc.nodes)
-            if nc.nodemid is not None:
-                nodechain_links[nc.nodemid].extend(nc.nodes)
+        FC_NUM_MOVE_NOLOAD_PMS = reader.next_block("i")[0]
 
-        physical_lines = ["v potential 0",
-                          "v potential const",
-                          "periodic +",
-                          "periodic -",
-                          "infinite boundary",
-                          "no condition",
-                          "Airgap"]
+        if FC_NUM_MOVE_NOLOAD_PMS > 1:
+            reader.skip_block(4)
+            reader.skip_block(2 * FC_NUM_FLX)
+            reader.skip_block()
 
-        physical_surfaces = sorted(set([sr.name
-                                        for sr in self.subregions]
-                                       + ["Winding {} {}".format(w.key, pol)
-                                          for w in self.windings
-                                          for pol in ("+", "-")]
-                                       + ["Air Rotor",
-                                          "Air Stator",
-                                          "Airgap Rotor",
-                                          "Airgap Stator",
-                                          "PM1", "PM2",
-                                          "PM3", "PM4"]))
+        if NUM_FE_EVAL_MOVE_STEP > 1:
+            reader.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
 
-        def physical_line(n1, n2):
-            if (n1, n2) in airgap_lines or (n2, n1) in airgap_lines:
-                return 7  # airgap
-            if n1.bndcnd == n2.bndcnd:
-                return boundary_condition(n1)
-            if boundary_condition(n1) == 1:
-                return boundary_condition(n2)
-            return boundary_condition(n1)
-        
-        def boundary_condition(node):
-            if node.bndcnd == 0:
-                return 6  # no condition
-            if node.bndcnd == 1:
-                return 1  # vpot 0
-            if node.bndcnd == 2:
-                return 2  # vpot const
-            if node.bndcnd == 3 or node.bndcnd == 6:
-                return 4  # periodic -
-            if node.bndcnd == 4 or node.bndcnd == 5:
-                return 3  # periodic +
-            if node.bndcnd == 8 or node.bndcnd == 9:
-                return 1  # vpot 0
-            
-        def physical_surface(e):
+        reader.skip_block(2)
+        reader.skip_block(2 * 5)
+        reader.skip_block(15)
+        reader.skip_block(3 * 30 * 30)
+        reader.skip_block(3)
+        reader.skip_block(30 * 30)
+        reader.skip_block(21)
+        reader.skip_block(30 * 30)
+        reader.skip_block(30 * 30)
+        reader.skip_block(1 * 20)
+        reader.skip_block(10)
 
-            def surface_id(name):
-                return physical_surfaces.index(name) + len(physical_lines) + 1
-            
-            if any(e.mag):
-                if e.mag[0] > 0:
-                    if e.mag[1] > 0:
-                        return surface_id("PM1")
-                    return surface_id("PM2")
-                if e.mag[1] > 0:
-                    return surface_id("PM3")
-                return surface_id("PM4")
-            
-            if e in airgap_rotor_elements or e in airgap_center_elements:
-                return surface_id("Airgap Rotor")
+        FC_NUM_MOVE_LOSSES = reader.next_block("i")[0]
 
-            if e in airgap_stator_elements:
-                return surface_id("Airgap Stator")
-            
-            sr_key = self.superelements[e.se_key].sr_key
-            if sr_key == -1:
-                v = e.vertices[0]
-                if np.sqrt(v.x**2 + v.y**2) > self.FC_RADIUS:
-                    return surface_id("Air Stator")
-                return surface_id("Air Rotor")
+        if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
+            reader.skip_block(2 * (NUM_FE_EVAL_MOVE_STEP + 1))
+            reader.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
 
-            sr = self.subregions[sr_key]
-            if sr.wb_key != -1:
-                wb = self.subregions[sr.wb_key]
-                if sr.curdir > 0:
-                    return surface_id("Winding {} -".format(wb.key)) 
-                return surface_id("Winding {} +".format(wb.key))
-            
-            return surface_id(sr.name)
+        reader.skip_block(74)
 
-        def line_on_boundary(n1, n2):
-            if n1.on_boundary() and n2.on_boundary():
-                if n1 in nodechain_links.keys():
-                    return n2 in nodechain_links[n1]
-                else:
-                    return False
-            else:
-                return (n1, n2) in airgap_lines or (n2, n1) in airgap_lines
+        ANZ_FORCE_AREAS = reader.next_block("i")[0]
 
-        def get_msh():
-            msh = ["$MeshFormat",
-                   "2.2 0 8",
-                   "$EndMeshFormat"]
+        if ANZ_FORCE_AREAS > 3:
+            ANZ_FORCE_AREAS = 3
 
-            msh.append("$PhysicalNames")
-            msh.append("{}".format(len(physical_lines)
-                                   + len(physical_surfaces)))
-            for i, n in enumerate(physical_lines):
-                msh.append("1 {} \"{}\"".format(i+1, n))
-            for i, n in enumerate(physical_surfaces):
-                msh.append("2 {} \"{}\"".format(i + 1 + len(physical_lines), n))
-            msh.append("$EndPhysicalNames")
+        reader.skip_block()
+        reader.skip_block(2 * ANZ_FORCE_AREAS)
+        reader.skip_block(14)
+        reader.skip_block(2 * 3 + 6 * 100 * 3)
+        reader.skip_block(30)
+        reader.skip_block(11 * 4)
+        reader.skip_block()
+        reader.skip_block(1 * 4)
+        reader.skip_block(8)
+        reader.skip_block(3 * 20 + 2 * 20 * 20)
+        reader.skip_block(14)
 
-            msh.append("$Nodes")
-            msh.append("{}".format(len(self.nodes)))
-            for n in self.nodes:
-                msh.append("{} {} {} 0".format(n.key, n.x, n.y))
-            msh.append("$EndNodes")
+        if (FC_NUM_MOVE_LOSSES > 2 and NUM_FE_EVAL_MOVE_STEP > 1
+           and FC_NUM_BETA_ID > 2):
+            reader.skip_block(2 * NUM_FE_EVAL_MOVE_STEP + 1)
+            reader.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
+            reader.skip_block()
+            reader.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
 
-            msh.append("$Elements")
-            msh.append("{}".format(len(self.elements)
-                                   # vertices on boundary
-                                   + len([n for n in self.nodes
-                                          if n.on_boundary() and
-                                          n in nodechain_links.keys()])
-                                   + len(airgap_lines)))
+        reader.skip_block()
+        reader.skip_block(2 * 3)
+        reader.skip_block(3)
+        reader.skip_block(10 * 100)
+        reader.skip_block(1 * 100)
+        reader.skip_block()
+        reader.skip_block(1 * 4)
+        reader.skip_block(2 * 2)
+        reader.skip_block()
+        reader.skip_block(2 * 4)
+        reader.skip_block(3)
+        reader.skip_block(1 * 64)
+        reader.skip_block(6)
 
-            for e in self.elements:
-                ev = e.vertices
-
-                # 2-node lines
-                for i, v in enumerate(ev):
-                    v1 = v
-                    v2 = ev[i-1]
-                    if line_on_boundary(v1, v2):
-                        msh.append(" ".join(map(str, [
-                            next(el_number),
-                            1,
-                            2,
-                            physical_line(v1, v2),
-                            physical_line(v1, v2),
-                            v2.key,
-                            v1.key])))
-
-                # 3-node triangles
-                if len(ev) == 3:
-                    msh.append(" ".join(map(str, [
-                        next(el_number),
-                        2,
-                        2,
-                        physical_surface(e),
-                        physical_surface(e) + len(self.nodes),
-                        ev[0].key,
-                        ev[1].key,
-                        ev[2].key])))
-
-                # 4-node quadrangles
-                elif len(ev) == 4:
-                    msh.append(" ".join(map(str, [
-                        next(el_number),
-                        3,
-                        2,
-                        physical_surface(e),
-                        physical_surface(e) + len(self.nodes),
-                        ev[0].key,
-                        ev[1].key,
-                        ev[2].key,
-                        ev[3].key])))
-
-                # 6-node second order triangles
-                elif len(ev) == 6:
-                    msh.append(" ".join(map(str, [
-                        next(el_number),
-                        9,
-                        2,
-                        physical_surface(e),
-                        physical_surface(e) + len(self.nodes),
-                        ev[0].key,
-                        ev[1].key,
-                        ev[2].key,
-                        ev[3].key,
-                        ev[4].key,
-                        ev[5].key])))
-
-                # 8-node second order quadrangles
-                elif len(ev) == 8:
-                    msh.append(" ".join(map(str, [
-                        next(el_number),
-                        16,
-                        2,
-                        physical_surface(e),
-                        physical_surface(e) + len(self.nodes),
-                        ev[0].key,
-                        ev[1].key,
-                        ev[2].key,
-                        ev[3].key,
-                        ev[4].key,
-                        ev[5].key,
-                        ev[6].key,
-                        ev[7].key])))
-
-                else:
-                    logger.warn("element {0} has an unsupported \
-                                 number of nodes ({1})".format(e.key, len(ev)))
-
-            msh.append("$EndElements")
-            return msh
-
-        def get_geo():
-            geo = []
-            nc_nodes = set([n for nc in self.nodechains for n in nc.nodes])
-
-            for n in self.nodes:
-                if n in nc_nodes:
-                    geo.append("Point({}) = {{{}, {}, {}}};".format(
-                        n.key, n.x, n.y, 0))
-                    
-            for nc in self.nodechains:
-                geo.append("Line({}) = {{{}}};".format(
-                        nc.key, ", ".join([str(n.key) for n in nc.nodes])))
-            used = set()
-            for nc in self.nodechains:
-                n1, n2 = nc.nodes[0], nc.nodes[1]
-                if line_on_boundary(n1, n2):
-                    id_ = physical_line(n1, n2)
-                    name = physical_lines[id_ - 1]
-                    if extrude:
-                        geo.append(
-                            "extrusion[] = Extrude {{0, 0, {}}} {{ Line{{{}}}; {}{}}};".format(
-                                extrude,
-                                nc.key,
-                                "Layers{{{}}}; ".format(layers) if layers else "",
-                                "Recombine; " if recombine else ""))
-                        
-                        geo.append("Physical Surface('{}', {}) {} extrusion[1];".format(
-                            name,
-                            id_,
-                            "+=" if name in used else "="))
-                    else:
-                        geo.append("Physical Line('{}', {}) {} {{{}}};".format(
-                            name,
-                            id_,
-                            "+=" if name in used else "=",
-                            nc.key))
-                    used.add(name)
-
-            for se in self.superelements:
-                geo.append("Line Loop({}) = {{{}}};".format(
-                    se.key,
-                    ", ".join([str(nc.key) for nc in se.nodechains])))
-                geo.append("Plane Surface({0}) = {{{0}}};".format(se.key))
-            used = set()
-            for se in self.superelements:
-                id_ = physical_surface(se.elements[0]) - len(physical_lines)
-                name = physical_surfaces[id_ - 1]
-                if extrude:
-                    geo.append(
-                        "extrusion[] = Extrude {{0, 0, {}}} {{ Surface{{{}}}; {}{}}};".format(
-                            extrude,
-                            se.key,
-                            "Layers{{{}}}; ".format(layers) if layers else "",
-                            "Recombine; " if recombine else ""))
-                    
-                    geo.append("Physical Surface('base', {}) {} {{{}}};".format(
-                        len(physical_lines) + 1,
-                        "=" if se.key == 1 else "+=",
-                        se.key))
-                    
-                    geo.append("Physical Surface('top', {}) {} extrusion[0];".format(
-                        len(physical_lines) + 2,
-                        "=" if se.key == 1 else "+="))
-                    
-                    geo.append("Physical Volume('{}', {}) {} extrusion[1];".format(
-                        name,
-                        id_,
-                        "+=" if name in used else "="))
-                else:
-                    geo.append("Physical Surface('{}', {}) {} {{{}}};".format(
-                        name,
-                        id_,
-                        "+=" if name in used else "=",
-                        se.key))
-                used.add(name)
-            return geo
-
-        if not self.FC_RADIUS:
-            logger.warn("airgap radius is not set in source file")
-        
-        if fileformat == "msh":
-            if extrude:
-                raise ValueError("extrusion is only available for file format 'geo'")
-            return get_msh()
-        elif fileformat == "geo":
-            return get_geo()
-        raise ValueError("Invalid file format '{}'".format(fileformat))
+        self.ELEM_ISA_ELEM_REC_LOSS_DENS = reader.next_block("f")
 
 
 class Point(object):
@@ -843,13 +602,106 @@ class NodeChain(BaseEntity):
 
 
 class Element(BaseEntity):
-    def __init__(self, valid, key, el_type, se_key, vertices, reluc, mag):
+    def __init__(self, valid, key, el_type,
+                 se_key, vertices, reluc, mag, loss_density):
         super(self.__class__, self).__init__(valid, key)
         self.el_type = el_type
         self.se_key = se_key
         self.vertices = vertices
         self.reluc = reluc
         self.mag = mag
+        self.loss_density = loss_density
+        if el_type == 1:    # Linear triangle
+            self.area = ((vertices[2].x - vertices[1].x) *
+                         (vertices[0].y - vertices[1].y) -
+                         (vertices[2].y - vertices[1].y) *
+                         (vertices[0].x - vertices[1].x))/2
+        elif el_type == 2:  # Linear rectangle
+            self.area = ((vertices[2].x - vertices[1].x) *
+                         (vertices[0].y - vertices[1].y) -
+                         (vertices[2].y - vertices[1].y) *
+                         (vertices[0].x - vertices[1].x) +
+                         (vertices[3].x - vertices[2].x) *
+                         (vertices[0].y - vertices[2].y) -
+                         (vertices[3].y - vertices[2].y) *
+                         (vertices[0].x - vertices[2].x))/2
+        elif el_type == 3:  # Square triangle
+            self.area = ((vertices[4].x - vertices[2].x) *
+                         (vertices[0].y - vertices[2].y) -
+                         (vertices[4].y - vertices[1].y) *
+                         (vertices[0].x - vertices[2].x))/2
+        elif el_type == 4:   # Square rectangle
+            self.area = ((vertices[4].x - vertices[2].x) *
+                         (vertices[0].y - vertices[2].y) -
+                         (vertices[4].y - vertices[2].y) *
+                         (vertices[0].x - vertices[2].x) +
+                         (vertices[6].x - vertices[4].x) *
+                         (vertices[0].y - vertices[4].y) -
+                         (vertices[6].y - vertices[4].y) *
+                         (vertices[0].x - vertices[4].x))/2
+
+    def induction(self):
+        """return induction components of this element"""
+        ev = self.vertices
+        if self.el_type == 1:
+            y31 = ev[2].y - ev[0].y
+            y21 = ev[1].y - ev[0].y
+            x13 = ev[0].x - ev[2].x
+            x21 = ev[1].x - ev[0].x
+            a21 = ev[1].vpot[0] - ev[0].vpot[0]
+            a31 = ev[2].vpot[0] - ev[0].vpot[0]
+            delta = self.se_length * (y31 * x21 + y21 * x13)
+
+            return ((x13 * a21 + x21 * a31) / delta,
+                    (-y31 * a21 + y21 * a31) / delta)
+
+        elif self.el_type == 2:
+            y31 = ev[2].y - ev[0].y
+            y21 = ev[1].y - ev[0].y
+            x13 = ev[0].x - ev[2].x
+            x21 = ev[1].x - ev[0].x
+            a21 = ev[1].vpot[0] - ev[0].vpot[0]
+            a31 = ev[2].vpot[0] - ev[0].vpot[0]
+            delta = self.se_length * (y31 * x21 + y21 * x13)
+            b1_a = (x13 * a21 + x21 * a31) / delta
+            b2_a = (y21 * a31 - y31 * a21) / delta
+
+            y31 = ev[0].y - ev[2].y
+            y21 = ev[3].y - ev[2].y
+            x13 = ev[2].x - ev[0].x
+            x21 = ev[3].x - ev[2].x
+            a24 = ev[3].vpot[0] - ev[2].vpot[0]
+            a34 = ev[0].vpot[0] - ev[2].vpot[0]
+            delta = self.se_length * (y31 * x21 + y21 * x13)
+            b1_b = (x13 * a24 + x21 * a34) / delta
+            b2_b = (y21 * a34 - y31 * a24) / delta
+
+            return ((b1_a + b1_b) / 2,
+                    (b2_a + b2_b) / 2)
+
+        return (0, 0)
+
+    def demagnetization(self):
+        """return demagnetization of this element"""
+        if abs(self.mag[0]) > 1e-5 or abs(self.mag[1]) > 1e-5:
+            magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)
+            alfa = np.arctan2(self.mag[1], self.mag[0])
+            b1, b2 = self.induction()
+            bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
+            hpol = bpol - magn
+            if hpol < 0:
+                reluc = abs(self.reluc[0]) / (4*np.pi*1e-7 * 1000)
+                return abs(hpol * reluc)
+        return 0
+
+    def permeability(self):
+        """return permeability of this element"""
+        if self.reluc[0] < 1:
+            return 1 / self.reluc[0]
+        return 0
+
+    def loss_density(self):
+        return self.loss_density
 
 
 class SuperElement(BaseEntity):
@@ -859,6 +711,8 @@ class SuperElement(BaseEntity):
         super(self.__class__, self).__init__(valid, key)
         self.sr_key = sr_key
         self.elements = elements
+        for e in elements:
+            e.se_length = length
         self.nodechains = nodechains
         self.color = color
         self.nc_keys = nc_keys
@@ -905,29 +759,6 @@ def read(filename):
     """
     isa = Isa7(filename)
     return isa
-
-
-def convert(infile, outfile, extrude=0):
-    """
-    Convert I7/ISA7 file to msh or geo format
-
-    Arguments:
-        infile: name of I7/ISA7 file to be converted
-        outfile: name of converted file
-        extrude: extrude surfaces using a translation along the z-axis
-    """
-    import os
-    isa = Isa7(infile)
-    fileformat = os.path.splitext(outfile)[-1].lower()
-    
-    with open(outfile, 'w') as f:
-        if fileformat == '.geo':
-            f.write('\n'.join(isa.to_gmsh("geo", extrude)))
-        elif fileformat == '.msh':
-            f.write('\n'.join(isa.to_gmsh("msh", extrude)))
-        else:
-            raise ValueError("Unkown File format for conversion: {}".format(
-                fileformat))
 
 
 if __name__ == "__main__":

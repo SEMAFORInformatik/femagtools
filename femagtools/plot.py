@@ -175,7 +175,7 @@ def torque_fft(order, torque):
     ax.set_xlim(left=-bw/2)
 
 
-def force(title, pos, force):
+def force(title, pos, force, xlabel=''):
     """plot force vs position"""
     unit = 'N'
     scale = 1
@@ -186,8 +186,25 @@ def force(title, pos, force):
     ax.set_title('{} / {}'.format(title, unit))
     ax.grid(True)
     ax.plot(pos, [scale*f for f in force])
+    if xlabel:
+        ax.set_xlabel(xlabel)
     if min(force) > 0:
         ax.set_ylim(bottom=0)
+
+
+def force_fft(order, force):
+    """plot force harmonics"""
+    unit = 'N'
+    scale = 1
+    if min(force) < -9.9e3 or max(force) > 9.9e3:
+        scale = 1e-3
+        unit = 'kN'
+    ax = pl.gca()
+    ax.set_title('Force Harmonics / {}'.format(unit))
+    ax.grid(True)
+    bw = 2.5E-2*max(order)
+    ax.bar(order, [scale*t for t in force], width=bw, align='center')
+    ax.set_xlim(left=-bw/2)
 
 
 def winding_flux(pos, flux):
@@ -380,47 +397,64 @@ def pmrelsim(bch, title=''):
                           figsize=(10, 3*rows + htitle))
     if title:
         fig.suptitle(title, fontsize=16)
-    
-    pl.subplot(rows, cols, 1)
-    torque(bch.torque[-1]['angle'], bch.torque[-1]['torque'])
-    pl.subplot(rows, cols, 2)
-    torque_fft(bch.torque_fft[-1]['order'], bch.torque_fft[-1]['torque'])
-    pl.subplot(rows, cols, 3)
-    force('Force Fx',
-          bch.torque[-1]['angle'], bch.torque[-1]['force_x'])
-    pl.subplot(rows, cols, 4)
-    force('Force Fy',
-          bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
-    pl.subplot(rows, cols, 5)
+
+    row = 1
+    pl.subplot(rows, cols, row)
+    if bch.torque:
+        torque(bch.torque[-1]['angle'], bch.torque[-1]['torque'])
+        pl.subplot(rows, cols, row+1)
+        torque_fft(bch.torque_fft[-1]['order'], bch.torque_fft[-1]['torque'])
+        pl.subplot(rows, cols, row+2)
+        force('Force Fx',
+              bch.torque[-1]['angle'], bch.torque[-1]['force_x'])
+        pl.subplot(rows, cols, row+3)
+        force('Force Fy',
+              bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
+        row += 3
+    elif bch.linearForce:
+        force('Force x', bch.linearForce[-1]['displ'],
+              bch.linearForce[-1]['force_x'], 'Displ. / mm')
+        pl.subplot(rows, cols, row+1)
+        force_fft(bch.linearForce_fft[-2]['order'],
+                  bch.linearForce_fft[-2]['force'])
+        pl.subplot(rows, cols, row+2)
+        force('Force y', bch.linearForce[-1]['displ'],
+              bch.linearForce[-1]['force_y'], 'Displ. / mm')
+        pl.subplot(rows, cols, row+3)
+        force_fft(bch.linearForce_fft[-1]['order'],
+                  bch.linearForce_fft[-1]['force'])
+        row += 3
+        
+    pl.subplot(rows, cols, row+1)
     flux = [bch.flux[k][-1] for k in bch.flux]
     pos = [f['displ'] for f in flux]
     winding_flux(pos,
-                      (flux[0]['flux_k'],
-                       flux[1]['flux_k'],
-                       flux[2]['flux_k']))
-    pl.subplot(rows, cols, 6)
+                 (flux[0]['flux_k'],
+                  flux[1]['flux_k'],
+                  flux[2]['flux_k']))
+    pl.subplot(rows, cols, row+2)
     winding_current(pos,
-                         (flux[0]['current_k'],
-                          flux[1]['current_k'],
-                          flux[2]['current_k']))
-    pl.subplot(rows, cols, 7)
+                    (flux[0]['current_k'],
+                     flux[1]['current_k'],
+                     flux[2]['current_k']))
+    pl.subplot(rows, cols, row+3)
     voltage('Internal Voltage',
-                 bch.flux['1'][-1]['displ'],
-                 bch.flux['1'][-1]['voltage_dpsi'])
-    pl.subplot(rows, cols, 8)
+            bch.flux['1'][-1]['displ'],
+            bch.flux['1'][-1]['voltage_dpsi'])
+    pl.subplot(rows, cols, row+4)
     voltage_fft('Internal Voltage Harmonics',
-                     bch.flux_fft['1'][-1]['order'],
-                     bch.flux_fft['1'][-1]['voltage'])
-                              
+                bch.flux_fft['1'][-1]['order'],
+                bch.flux_fft['1'][-1]['voltage'])
+   
     if len(bch.flux['1']) > 1:
-        pl.subplot(rows, cols, 9)
+        pl.subplot(rows, cols, row+5)
         voltage('No Load Voltage',
-                     bch.flux['1'][0]['displ'],
-                     bch.flux['1'][0]['voltage_dpsi'])
-        pl.subplot(rows, cols, 10)
+                bch.flux['1'][0]['displ'],
+                bch.flux['1'][0]['voltage_dpsi'])
+        pl.subplot(rows, cols, row+6)
         voltage_fft('No Load Voltage Harmonics',
-                         bch.flux_fft['1'][0]['order'],
-                         bch.flux_fft['1'][0]['voltage'])
+                    bch.flux_fft['1'][0]['order'],
+                    bch.flux_fft['1'][0]['voltage'])
 
     fig.tight_layout(h_pad=3.5)
     if title:
@@ -436,22 +470,39 @@ def cogging(bch, title=''):
                           figsize=(10, 3*rows + htitle))
     if title:
         fig.suptitle(title, fontsize=16)
-    
-    pl.subplot(rows, cols, 1)
-    torque(bch.torque[0]['angle'], bch.torque[0]['torque'])
-    pl.subplot(rows, cols, 2)
-    torque_fft(bch.torque_fft[0]['order'], bch.torque_fft[0]['torque'])
-    pl.subplot(rows, cols, 3)
-    force('Force Fx',
-          bch.torque[0]['angle'], bch.torque[0]['force_x'])
-    pl.subplot(rows, cols, 4)
-    force('Force Fy',
-          bch.torque[0]['angle'], bch.torque[0]['force_y'])
-    pl.subplot(rows, cols, 5)
+        
+    row = 1
+    pl.subplot(rows, cols, row)
+    if bch.torque:
+        torque(bch.torque[0]['angle'], bch.torque[0]['torque'])
+        pl.subplot(rows, cols, row+1)
+        torque_fft(bch.torque_fft[0]['order'], bch.torque_fft[0]['torque'])
+        pl.subplot(rows, cols, row+2)
+        force('Force Fx',
+              bch.torque[0]['angle'], bch.torque[0]['force_x'])
+        pl.subplot(rows, cols, row+3)
+        force('Force Fy',
+              bch.torque[0]['angle'], bch.torque[0]['force_y'])
+        row += 3
+    elif bch.linearForce:
+        force('Force x', bch.linearForce[-1]['displ'],
+              bch.linearForce[-1]['force_x'], 'Displ. / mm')
+        pl.subplot(rows, cols, row+1)
+        force_fft(bch.linearForce_fft[-2]['order'],
+                  bch.linearForce_fft[-2]['force'])
+        pl.subplot(rows, cols, row+2)
+        force('Force y', bch.linearForce[-1]['displ'],
+              bch.linearForce[-1]['force_y'], 'Displ. / mm')
+        pl.subplot(rows, cols, row+3)
+        force_fft(bch.linearForce_fft[-1]['order'],
+                  bch.linearForce_fft[-1]['force'])
+        row += 3
+        
+    pl.subplot(rows, cols, row+1)
     voltage('Voltage',
             bch.flux['1'][0]['displ'],
             bch.flux['1'][0]['voltage_dpsi'])
-    pl.subplot(rows, cols, 6)
+    pl.subplot(rows, cols, row+2)
     voltage_fft('Voltage Harmonics',
                 bch.flux_fft['1'][0]['order'],
                 bch.flux_fft['1'][0]['voltage'])

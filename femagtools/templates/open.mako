@@ -1,4 +1,4 @@
-  exit_on_error=false
+  exit_on_error=true
   exit_on_end=false
   verbosity=2
 

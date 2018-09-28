@@ -188,7 +188,7 @@ class PmRelMachine(object):
         "iq at given frequency, voltage and id current"
         return so.fsolve(lambda iq:
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2),
-                         0)[0]
+                         self.io[0]/4)[0]
     
     def iqd_uqd(self, w1, uq, ud):
         "return iq, id current at given frequency, voltage"
@@ -559,16 +559,6 @@ class PmRelMachineLdq(PmRelMachine):
             return (psid, psiq)
 
         return (np.nan, np.nan)
-    
-    def psi0(self, iq, id):
-        """return psid, psiq of currents iq, id"""
-        beta, i1 = betai1(np.asarray(iq), np.asarray(id))
-        if self.psid:
-            return (self.psid(beta, i1), self.psiq(beta, i1))
-
-        psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
-        psiq = self.lq(beta, i1)*iq
-        return (psid, psiq)
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""

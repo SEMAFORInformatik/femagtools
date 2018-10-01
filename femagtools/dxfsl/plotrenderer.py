@@ -69,7 +69,7 @@ class PlotRenderer(object):
                                   theta2=endangle*180/np.pi,
                                   color=color))
 
-    def line(self, p1, p2, color='blue'):
+    def line(self, p1, p2, color='blue', e=None):
         self.ax.add_line(pl.Line2D((p1[0], p2[0]),
                                    (p1[1], p2[1]), color=color))
 
@@ -79,6 +79,9 @@ class PlotRenderer(object):
 
     def point(self, p, col, color='blue'):
         pl.plot([p[0]], [p[1]], col, color=color)
+
+    def text(self, p, txt):
+        pl.text(p[0], p[1], txt)
 
     def fill(self, x, y, color, alpha):
         self.ax.fill(x, y, 'b', alpha=alpha, color=color, edgecolor='blue')
@@ -160,6 +163,7 @@ class PlotRenderer(object):
         draw_center = kwargs.get('draw_center', False)
         draw_inside = kwargs.get('draw_inside', False)
         fill_areas = kwargs.get('fill_areas', False)
+        write_id = kwargs.get('write_id', False)
         title = kwargs.get('title', "")
         show = kwargs.get('show', True)
         rows = kwargs.get('rows', 1)
@@ -224,6 +228,8 @@ class PlotRenderer(object):
                 p = area.get_point_inside(geom)
                 if p:
                     pl.plot([p[0]], [p[1]], 'ro', color='magenta')
+                    if write_id:
+                        self.text(p, area.identifier())
 
         if fill_areas:
             handles = geom.render_area_fill(self)

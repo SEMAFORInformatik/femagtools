@@ -37,6 +37,26 @@ class Element(object):
 #############################
 
 class Shape(object):
+    def init_attributes(self, color, attr):
+        if color is not None:
+            self.my_color = color
+        if attr is not None:
+            if not hasattr(self, 'my_attrs'):
+                self.my_attrs = []
+            self.my_attrs.append(attr)
+
+    def set_attribute(self, attr):
+        if attr is None:
+            return
+        if not hasattr(self, 'my_attrs'):
+            self.my_attrs = []
+        self.my_attrs.append(attr)
+
+    def has_attribute(self, attr):
+        if hasattr(self, 'my_attrs'):
+            return attr in self.my_attrs
+        return False
+
     """an abstract geometry with 2 points"""
     def start(self):
         return self.p1
@@ -145,7 +165,8 @@ class Shape(object):
 
 class Circle(Shape):
     """a circle with center and radius"""
-    def __init__(self, e):
+    def __init__(self, e, color=None, attr=None):
+        self.init_attributes(color, attr)
         self.center = e.center[:2]
         self.radius = e.radius
         self.p1 = self.center[0]-self.radius, self.center[1]
@@ -365,8 +386,9 @@ class Circle(Shape):
 
 class Arc(Circle):
     """a counter clockwise segment of a circle with start and end point"""
-    def __init__(self, e):
+    def __init__(self, e, color=None, attr=None):
         super(self.__class__, self).__init__(e)
+        self.init_attributes(color, attr)
         self.startangle = e.start_angle/180*np.pi
         self.endangle = e.end_angle/180*np.pi
         if self.endangle < self.startangle:
@@ -657,15 +679,21 @@ class Arc(Circle):
 
 class Line(Shape):
     """straight connection between start and end point"""
-    def __init__(self, e):
+    def __init__(self, e, color=None, attr=None):
+        self.init_attributes(color, attr)
         self.p1 = e.start[0], e.start[1]
         self.p2 = e.end[0], e.end[1]
 
     def render(self, renderer, color='blue', with_nodes=False):
-        renderer.line(self.p1, self.p2, color)
+        tmp_color = color
+        if hasattr(self, 'my_color'):
+            if self.my_color is not None:
+                tmp_color = self.my_color
+
+        renderer.line(self.p1, self.p2, color=tmp_color, e=self)
         if with_nodes:
-            renderer.point(self.p1, 'ro', color)
-            renderer.point(self.p2, 'ro', color)
+            renderer.point(self.p1, 'ro', tmp_color)
+            renderer.point(self.p2, 'ro', tmp_color)
 
     def center_of_connection(self, ndec):
         x = (self.p1[0]+self.p2[0])/2

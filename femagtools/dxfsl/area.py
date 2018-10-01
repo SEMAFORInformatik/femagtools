@@ -25,6 +25,9 @@ logger = logging.getLogger('femagtools.area')
 #            Area           #
 #############################
 
+area_number = 0
+
+
 class Area(object):
     def __init__(self, area, center, sym_tolerance):
         self.area = area
@@ -47,6 +50,12 @@ class Area(object):
         self.symmetry = 0
         self.sym_tolerance = sym_tolerance
         self.calc_signature(center)
+        global area_number
+        area_number += 1
+        self.id = area_number
+
+    def identifier(self):
+        return "{}-{}".format(self.id, self.type)
 
     def number_of_elements(self):
         return len(self.area)
@@ -207,7 +216,20 @@ class Area(object):
             logger.warn("has_path() failed")
             return False
 
-    def get_most_left_point(self, center, radius, angle):
+    def get_lowest_gap_list(self, a, center, radius, rightangle, leftangle):
+        gap_list = []
+        for p1 in self.nodes():
+            for p2 in a.nodes():
+                d = distance(p1, p2)
+                gap_list.append((d, (p1, p2)))
+
+        d, p1, p2 = a.get_nearest_point(center, radius, rightangle)
+        gap_list.append((d, (p1, p2)))
+        d, p1, p2 = a.get_nearest_point(center, radius, leftangle)
+        gap_list.append((d, (p1, p2)))
+        return gap_list
+
+    def get_nearest_point(self, center, radius, angle):
         axis_p = point(center, radius, angle)
         axis_m = line_m(center, axis_p)
         axis_n = line_n(center, axis_m)
@@ -223,7 +245,9 @@ class Area(object):
                 the_area_p = n
                 the_axis_p = p
 
-        return (dist, the_axis_p, the_area_p)
+        return (dist,
+                (the_axis_p[0], the_axis_p[1]),
+                (the_area_p[0], the_area_p[1]))
 
     def is_equal(self, a, sym_tolerance):
         if sym_tolerance > 0.0:
@@ -688,6 +712,41 @@ class Area(object):
                 return self.type
 
         logger.debug(">>> iron remains")
+        return self.type
+
+    def mark_unknown_subregions(self, mirrored, alpha,
+                                center, r_in, r_out):
+        logger.debug("mark_unknown_subregions")
+
+        if self.is_circle():
+            self.type = 0  # air
+            logger.debug(">>> air is a circle")
+            return self.type
+
+        if self.is_rectangle():
+            self.type = 4  # magnet embedded
+            logger.debug(">>> magnet embedded")
+            self.phi = self.get_mag_orient_rectangle()
+            return self.type
+
+        close_to_max_radius = np.isclose(r_out, self.max_dist)
+        close_to_min_radius = np.isclose(r_in, self.min_dist)
+
+        if close_to_max_radius and close_to_min_radius:
+            self.type = 1  # iron
+            logger.debug(">>> iron close to min- and max-radius")
+            return self.type
+
+        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
+        self.close_to_endangle = np.isclose(self.max_angle, alpha)
+
+        if self.close_to_startangle and self.close_to_endangle:
+            self.type = 1  # iron
+            logger.debug(">>> iron close to start- and end-angle")
+            return self.type
+
+        self.type = 0  # air
+        logger.debug(">>> air remains")
         return self.type
 
     def print_area(self):

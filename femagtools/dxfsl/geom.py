@@ -17,7 +17,7 @@ from .corner import Corner
 from .area import Area
 from .shape import Element, Shape, Circle, Arc, Line, Point
 from .machine import Machine
-from .functions import less_equal
+from .functions import less_equal, less, greater
 from .functions import distance, alpha_line, alpha_points, alpha_angle
 from .functions import point, points_are_close, is_point_inside_region
 from .functions import line_m, line_n
@@ -1739,22 +1739,21 @@ class Geometry(object):
 
         gaplist.sort()
 
-        airgaps = []
-        dist_max = 0.0
+        self.min_radius = gaplist[0][0]
+        self.max_radius = gaplist[-1][1]
 
-        min_radius = gaplist[0][0]
-        max_radius = gaplist[len(gaplist)-1][1] + 10.0
-        dist_max = min_radius
+        airgaps = []
+        min_radius = self.min_radius + 1.0
+        cur_radius = gaplist[0][1]
+        max_radius = self.max_radius - 1.0
 
         for g in gaplist:
-            if not less_equal(g[0], dist_max):
-                if not (np.isclose(min_radius, dist_max, 1e-2, 1.0) or
-                        np.isclose(g[0], max_radius, 1e-2, 1.0)):
-                    airgaps.append((dist_max, g[0]))
-            dist_max = max(dist_max, g[1])
+            if greater(g[0], cur_radius) and \
+               greater(cur_radius, min_radius) and \
+               less(g[0], max_radius):
+                airgaps.append((cur_radius, g[0]))
 
-        if gaplist[-1][0] > dist_max:
-            airgaps.append(dist_max, gaplist[-1][0])
+            cur_radius = max(cur_radius, g[1])
 
         return airgaps
 
@@ -1798,38 +1797,67 @@ class Geometry(object):
         self.remove_edges(self.get_circles(center, radius))
         return True
 
-    def create_auxiliary_lines(self, leftangle):
+    def create_auxiliary_lines(self, rightangle, leftangle):
         for area in self.list_of_areas():
-            the_axis_p = None
-            the_area_p = None
-            dist = 99999.0
-            for a in self.area_list:
-                if area.is_inside(a):
-                    if not area.has_connection(self, a, ndec):
-                        d, axis_p, area_p = a.get_most_left_point(
-                            self.center, self.max_radius, leftangle)
-                        if d < dist:
-                            dist = d
-                            the_axis_p = axis_p
-                            the_area_p = area_p
+            logger.debug("create_auxiliary_lines for {}"
+                         .format(area.identifier()))
 
-            if the_axis_p:
-                point_list = []
-                line = Line(Element(start=the_axis_p, end=the_area_p))
-                for e in area.elements():
-                    points = e.intersect_line(line, self.rtol, self.atol, True)
-                    assert(len(points) < 2)
-                    for p in points:
-                        d = distance(p, the_area_p)
-                        point_list.append((d, p))
+            areas_inside = [a for a in self.area_list
+                            if area.is_inside(a)]
+            areas_border = {a.identifier(): a for a in areas_inside
+                            if area.has_connection(self, a, ndec)}
+            areas_notouch = {a.identifier(): a for a in areas_inside
+                             if not area.has_connection(self, a, ndec)}
 
-                point_list.sort()
-                assert(len(point_list) > 0)
-                p = point_list[0][1]
-                new_p = (round(p[0], ndec), round(p[1], ndec))
-                line = Line(Element(start=the_area_p, end=new_p))
-                add_or_join(self, the_area_p, new_p, line,
-                            self.rtol, self.atol)
+            for id, a in areas_notouch.items():
+                for id2, a2 in areas_border.items():
+                    if a.has_connection(self, a2, ndec):
+                        areas_border[id2] = a2
+                        break
+
+            for id, a in areas_border.items():
+                if id in areas_notouch:
+                    del areas_notouch[id]
+
+            notouch_list = []
+            for id, a in areas_notouch.items():
+                if not notouch_list:
+                    notouch_list.append({id: a})
+                else:
+                    touched = False
+                    for l in notouch_list:
+                        for id2, a2 in l.items():
+                            if a.has_connection(self, a2, ndec):
+                                l[id] = a
+                                touched = True
+                                break
+                        if touched:
+                            break
+                    if not touched:
+                        notouch_list.append({id: a})
+
+            for lst in notouch_list:
+                if lst:
+                    gap_list = []
+                    for id, a in lst.items():
+                        logger.debug(">> area {} not in touch"
+                                     .format(a.identifier()))
+                        gap_list += area.get_lowest_gap_list(a,
+                                                             self.center,
+                                                             self.max_radius,
+                                                             rightangle,
+                                                             leftangle)
+                    gap_list.sort()
+                    assert(len(gap_list) > 0)
+                    points = gap_list[0][1]
+
+                    logger.debug(">> auxiliary line from {} to {}"
+                                 .format(points[0], points[1]))
+                    line = Line(Element(start=points[0], end=points[1]),
+                                color='orange',
+                                attr='auxline')
+                    add_or_join(self, points[0], points[1], line,
+                                self.rtol, self.atol)
 
     def set_rotor(self):
         self.sym_counterpart = 1
@@ -1917,6 +1945,7 @@ class Geometry(object):
             return self.search_rotor_subregions()
 
         logger.warning("no stator or rotor assigned")
+        return self.search_unknown_subregions()
 
     def search_stator_subregions(self, place=''):
         is_inner = self.is_inner
@@ -1972,11 +2001,20 @@ class Geometry(object):
 
         if 4 in types:  # magnet rectangle
             if types[4] > 1:
-                logger.error("too much magnets in rotor")
+                logger.debug("{} magnets in rotor".format(types[4]))
 
             for area in self.list_of_areas():
                 if area.type == 3:
                     area.type = 1  # iron
+
+    def search_unknown_subregions(self):
+        for area in self.list_of_areas():
+            area.mark_unknown_subregions(self.is_mirrored(),
+                                         self.alfa,
+                                         self.center,
+                                         self.min_radius,
+                                         self.max_radius)
+        return
 
     def num_areas_of_type(self, type):
         return len([area for area in self.list_of_areas()

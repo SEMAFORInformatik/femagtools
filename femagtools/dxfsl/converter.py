@@ -327,11 +327,13 @@ def converter(dxfile,
                 machine.geom.search_rotor_subregions(part[1])
                 params = create_femag_parameters_rotor(machine,
                                                        part[1])
-
+        else:
+            machine.geom.search_subregions()
         if show_plots:
             p.render_elements(machine.geom, Shape,
                               draw_inside=True, title=name,
                               rows=3, cols=2, num=5, show=False,
+                              # with_nodes=True,
                               fill_areas=True)
             p.show_plot()
 

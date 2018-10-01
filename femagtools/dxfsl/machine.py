@@ -229,7 +229,7 @@ class Machine(object):
 
         if np.isclose(self.radius, 0.0):
             logger.debug('no radius')
-            return
+            return False
 
         if correct_airgap < 0:
             logger.debug('no airgap')
@@ -314,6 +314,7 @@ class Machine(object):
             return False  # correct airgap set
 
         gaps = [c for b, c, d in airgap_candidates if b == 0]
+
         if len(gaps) == 1:  # one candidate without border intersection
             self.airgap_radius = gaps[0].radius
             return False  # ok
@@ -335,6 +336,7 @@ class Machine(object):
                   .format(len(airgap_candidates)))
         dist = 999
         circle = None
+        pos_list = []
         for b, c, d in airgap_candidates:
             if get_one:
                 logger.info(" --- {}   (width={})".format(c.radius, d))
@@ -344,7 +346,19 @@ class Machine(object):
                 dist = d
                 circle = c
 
+            inner_pc = (c.radius - self.geom.min_radius) / \
+                       (self.geom.max_radius - self.geom.min_radius)
+            pos = np.abs(inner_pc * 100 - 50)
+            logger.debug("Abstand Mitte = {} %".format(pos))
+            if pos < 20:
+                pos_list.append([pos, d, c])
+
         if get_one:
+            if pos_list:
+                dist_list = [[d, c] for pos, d, c in pos_list]
+                dist_list.sort()
+                circle = dist_list[0][1]
+
             logger.info("airgap {} prefered".format(circle.radius))
             return circle.radius
 
@@ -421,7 +435,7 @@ class Machine(object):
         self.set_alfa_and_corners()
 
     def create_auxiliary_lines(self):
-        self.geom.create_auxiliary_lines(self.endangle)
+        self.geom.create_auxiliary_lines(self.startangle, self.endangle)
 
     def set_alfa_and_corners(self):
         self.geom.start_corners = self.geom.get_corner_nodes(self.center,

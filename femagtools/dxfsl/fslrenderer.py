@@ -79,14 +79,19 @@ class FslRenderer(object):
                 p1[0], p1[1], p2[0], p2[1],
                 center[0], center[1], num))
 
-    def line(self, p1, p2, color='blue'):
+    def line(self, p1, p2, color='blue', e=None):
         num = 0
-#        if self.nodedist > 0:
-#            l = la.norm(np.asarray(p1)-p2)
-#            num = int(l/self.nodedist + 1)
-        self.content.append(
-            u"nc_line({}, {}, {}, {}, {})".format(
-                p1[0], p1[1], p2[0], p2[1], num))
+        # if self.nodedist > 0:
+        #     l = la.norm(np.asarray(p1)-p2)
+        #     num = int(l/self.nodedist + 1)
+        if e is not None and e.has_attribute('auxline'):
+            self.content.append(
+                u"nc_line({}, {}, {}, {}, {}) -- auxiliary".format(
+                    p1[0], p1[1], p2[0], p2[1], num))
+        else:
+            self.content.append(
+                u"nc_line({}, {}, {}, {}, {})".format(
+                    p1[0], p1[1], p2[0], p2[1], num))
 
     def sorted_elements(self, geom, inner=False):
         if inner:

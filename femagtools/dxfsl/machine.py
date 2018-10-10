@@ -497,6 +497,7 @@ class Machine(object):
             return self.part
 
     def check_symmetry_graph(self, rtol, atol):
+        logger.debug("check_symmetry_graph")
         axis_p = point(self.center, self.radius, self.mirror_startangle)
         axis_m = line_m(self.center, axis_p)
         axis_n = line_n(self.center, axis_m)
@@ -520,12 +521,17 @@ class Machine(object):
 
         hit_factor1 = get_hit_factor(self.geom.g.nodes(),
                                      self.mirror_geom.g.nodes())
+        logger.debug("=> hit_factor1 = {}".format(hit_factor1))
         if hit_factor1 < 0.9:
             return False  # not ok
 
         hit_factor2 = get_hit_factor(self.mirror_geom.g.nodes(),
                                      self.geom.g.nodes())
-        if hit_factor2 < hit_factor1:
+        logger.debug("=> hit_factor2 = {}".format(hit_factor2))
+        if hit_factor2 < 0.9:
+            return False  # not ok
+
+        if hit_factor1 < 0.93 and hit_factor2 < 0.93:
             return False  # not ok
         return True
 

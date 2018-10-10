@@ -69,6 +69,7 @@ def symmetry_search(machine,
         machine_mirror = machine.get_symmetry_mirror()
         machine_slice = machine
     else:
+        logger.info("{}: symmetry axis found !!".format(kind))
         if show_plots:
             plt.render_elements(machine.geom, Shape,
                                 title=kind+' (symmetrylines)',
@@ -82,7 +83,7 @@ def symmetry_search(machine,
         machine_mirror = machine_slice.get_symmetry_mirror()
 
     if machine_mirror is None:
-        logger.info("no mirror found")
+        logger.info("=> no mirror found")
         machine_ok = machine_slice
     else:
         if show_plots and debug_mode:
@@ -90,12 +91,13 @@ def symmetry_search(machine,
                                 title='Mirror of '+kind,
                                 rows=rows, cols=cols, num=num, show=True)
 
-        logger.info("mirror found")
-        machine_next_mirror = machine_mirror
+        logger.info("=> mirror found")
+        machine_next_mirror = machine_mirror.get_symmetry_mirror()
         while machine_next_mirror is not None:
+            logger.info("=> another mirror found")
             machine_mirror = machine_next_mirror
             machine_next_mirror = machine_mirror.get_symmetry_mirror()
-            logger.info("another mirror found")
+
         machine_ok = machine_mirror
 
     machine_ok.set_minmax_radius()

@@ -211,6 +211,14 @@ def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
             np.isclose(p1[1], p2[1], rtol, atol))
 
 
+def point_in_region(p, x_min, x_max, y_min, y_max):
+    if p[0] < x_min or p[0] > x_max:
+        return False
+    if p[1] < y_min or p[1] > y_max:
+        return False
+    return True
+
+
 def within_interval(x, v1, v2, rtol=1e-3, atol=1e-8):
     """ returns true if x is in interval [v1, v2]
     """

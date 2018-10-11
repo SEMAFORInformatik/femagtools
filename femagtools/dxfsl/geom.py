@@ -622,6 +622,9 @@ class Geometry(object):
         return [[e[0], e[1], e[2]['object']] for e in self.g.edges(data=True)
                 if e[2]['object'] is eg]
 
+    def _remove_edge(self, n1, n2):
+        self.g.remove_edge(n1, n2)
+
     def remove_edge(self, edge):
         e = self.get_edge(edge)
         assert(len(e) == 1)
@@ -702,7 +705,6 @@ class Geometry(object):
         return self.start_corners[-1][i]
 
     def repair_hull_line(self, center, angle):
-        logger.debug('repair_hull_line({}, {})'.format(center, angle))
         # We need to set our own tolerance range
         # to find the right points
         rtol = 1e-4
@@ -717,31 +719,36 @@ class Geometry(object):
 
         [c.set_keep_node() for c in corners if c.is_equal(center, rtol, atol)]
         for p1, p2, data in [e for e in self.g.edges(data=True)]:
-            clist = [c for c in corners if c.is_equal(p1) or c.is_equal(p2)]
-            if clist:
-                if len(clist) == 1:
-                    clist[0].set_keep_node()
+            clist_p1 = [c for c in corners if c.is_equal(p1)]
+            clist_p2 = [c for c in corners if c.is_equal(p2)]
+            if clist_p1 and clist_p2:
+                # Both points are in the hull
+                el = data['object']
+                if isinstance(el, Line):
+                    self._remove_edge(p1, p2)
                 else:
-                    el = data['object']
-                    if isinstance(el, Line):
-                        self.g.remove_edge(p1, p2)
-                    else:
-                        [corner.set_keep_node() for corner in clist]
-                        if isinstance(el, Arc):
-                            alpha_start = el.startangle
-                            alpha_end = el.endangle
-                            alpha_mid = middle_angle(alpha_start, alpha_end)
-                            self.g.remove_edge(p1, p2)
-                            a1 = Arc(Element(center=el.center,
-                                             radius=el.radius,
-                                             start_angle=alpha_start*180/np.pi,
-                                             end_angle=alpha_mid*180/np.pi))
-                            a2 = Arc(Element(center=el.center,
-                                             radius=el.radius,
-                                             start_angle=alpha_mid*180/np.pi,
-                                             end_angle=alpha_end*180/np.pi))
-                            self.add_edge(p1, a1.node2(ndec), a1)
-                            self.add_edge(a2.node1(ndec), p2, a2)
+                    [corner.set_keep_node() for corner in clist_p1]
+                    [corner.set_keep_node() for corner in clist_p2]
+                    if isinstance(el, Arc):
+                        alpha_start = el.startangle
+                        alpha_end = el.endangle
+                        alpha_mid = middle_angle(alpha_start, alpha_end)
+                        self._remove_edge(p1, p2)
+                        a1 = Arc(Element(center=el.center,
+                                         radius=el.radius,
+                                         start_angle=alpha_start*180/np.pi,
+                                         end_angle=alpha_mid*180/np.pi))
+                        a2 = Arc(Element(center=el.center,
+                                         radius=el.radius,
+                                         start_angle=alpha_mid*180/np.pi,
+                                         end_angle=alpha_end*180/np.pi))
+                        self.add_edge(p1, a1.node2(ndec), a1)
+                        self.add_edge(a2.node1(ndec), p2, a2)
+            else:
+                if clist_p1:
+                    clist_p1[0].set_keep_node()
+                elif clist_p2:
+                    clist_p2[0].set_keep_node()
 
         for c in corners:
             if not c.keep_node():
@@ -1895,8 +1902,8 @@ class Geometry(object):
 
         logger.debug("tiny line from {} to {} deleted"
                      .format(n0, n2))
-        self.g.remove_edge(n0, n1)
-        self.g.remove_edge(n1, n2)
+        self._remove_edge(n0, n1)
+        self._remove_edge(n1, n2)
         dict12['deleted'] = True
         dict01['deleted'] = True
         line = Line(Element(start=n0, end=n2))

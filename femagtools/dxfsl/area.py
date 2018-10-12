@@ -122,9 +122,9 @@ class Area(object):
         if self.type == 3 or self.type == 4:
             return 'red'
         if self.type == 5:
-            return 'blue'
+            return 'cyan'
         if self.type == 6:
-            return 'darkblue'
+            return 'blue'
         return 'white'
 
     def is_iron(self):

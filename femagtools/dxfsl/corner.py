@@ -50,4 +50,4 @@ class Corner(object):
             return 0
 
     def __str__(self):
-        return "Corner: p={}".format(self.__p)
+        return "Corner: p={}, keep={}".format(self.__p, self.__keep)

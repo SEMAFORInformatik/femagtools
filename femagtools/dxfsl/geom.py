@@ -25,6 +25,7 @@ from .functions import middle_point_of_line, middle_point_of_arc
 from .functions import middle_angle
 from .functions import normalise_angle, is_same_angle
 from .functions import part_of_circle, gcd
+from .functions import point_in_region
 import io
 
 logger = logging.getLogger('femagtools.geom')
@@ -474,6 +475,7 @@ class Geometry(object):
         self.rtol = rtol
         self.atol = atol
         self.debug = debug
+        self.num_edges = 0
         i = 0
 
         def get_elements(elements, split):
@@ -493,6 +495,8 @@ class Geometry(object):
                     if e:  # must be a circle
                         self.g.add_node(e.center, object=e)
             i += 1
+
+        self.num_edges = self.number_of_edges()
 
     def shaft(self):
         """returns shaft diameter if any"""
@@ -719,8 +723,15 @@ class Geometry(object):
 
         [c.set_keep_node() for c in corners if c.is_equal(center, rtol, atol)]
         for p1, p2, data in [e for e in self.g.edges(data=True)]:
-            clist_p1 = [c for c in corners if c.is_equal(p1)]
-            clist_p2 = [c for c in corners if c.is_equal(p2)]
+            clist_p1 = [c for c in corners if c.is_equal(p1, 0.0, 1e-7)]
+            clist_p2 = [c for c in corners if c.is_equal(p2, 0.0, 1e-7)]
+            if len(clist_p1) > 1:
+                logger.warning("WARNING: {} corners and p1 close together"
+                               .format(len(clist_p1)))
+            if len(clist_p2) > 1:
+                logger.warning("WARNING: {} corners and p2 close together"
+                               .format(len(clist_p2)))
+
             if clist_p1 and clist_p2:
                 # Both points are in the hull
                 el = data['object']
@@ -745,14 +756,14 @@ class Geometry(object):
                         self.add_edge(p1, a1.node2(ndec), a1)
                         self.add_edge(a2.node1(ndec), p2, a2)
             else:
+                clist = []
                 if clist_p1:
-                    clist_p1[0].set_keep_node()
+                    clist = [c for c in clist_p1]
                 elif clist_p2:
-                    clist_p2[0].set_keep_node()
+                    clist = [c for c in clist_p2]
+                [corner.set_keep_node() for corner in clist]
 
-        for c in corners:
-            if not c.keep_node():
-                self.g.remove_node(c.point())
+        [self.g.remove_node(c.point()) for c in corners if not c.keep_node()]
 
         # Rebuild Corner-list after correction
         corners = self.get_corner_list(center, angle, rtol, atol)
@@ -903,8 +914,9 @@ class Geometry(object):
                    points_are_close(afternext_p, start_p2)):
             logger.debug('  Next {}'.format(next_p))
             c += 1
-            if c > 1000:
-                logger.info("FATAL: *** over 1000 elements in area ? ***")
+            if c > self.num_edges * 2:
+                logger.info("FATAL: *** over {} elements in area ? ***"
+                            .format(self.num_edges))
                 plot_area(area)
                 sys.exit(1)
             e_dict = self.g.get_edge_data(this_p, next_p)

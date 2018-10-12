@@ -419,9 +419,15 @@ class FslRenderer(object):
         # Windings
         txt = [u'-- Gen_winding',
                u'if tmp.coil_exists > 0 then',
-               u'  m.num_phases      = 3',
-               u'  m.num_layers      = 2',
-               u'  m.num_wires       = 1',
+               u'  m.num_phases      = 3']
+        self.content.append(u'\n'.join(txt))
+
+        num_layers = min(geom_inner.num_of_windings() +
+                         geom_outer.num_of_windings(),
+                         2)
+        self.content.append(u'  m.num_layers      = {}'
+                            .format(num_layers))
+        txt = [u'  m.num_wires       = 1',
                u'  m.coil_span       = 1',
                u'  m.current         = 0.0',
                u'  m.mat_type        = 1.0 -- rotating',

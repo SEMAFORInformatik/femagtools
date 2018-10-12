@@ -2039,6 +2039,9 @@ class Geometry(object):
         return len([area for area in self.list_of_areas()
                     if area.type == type])
 
+    def num_of_windings(self):
+        return self.num_areas_of_type(2)
+
     def area_close_to_endangle(self, type):
         return len([area for area in self.list_of_areas()
                     if area.type == type and area.close_to_endangle])

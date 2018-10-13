@@ -113,11 +113,6 @@ class FslRenderer(object):
 
         geom = machine.geom
         self.content = []
-        txt = [u'if agndst == nil or agndst == 0.0 then',
-               u'  agndst = math.pi*(da1 + da2)/2/360',
-               u'end',
-               u'ndt(agndst)\n']
-        self.content.append(u'\n'.join(txt))
 
         ndt_list = [(0.25, 1.25), (0.5, 2), (0.75, 3.0), (1.1, 3.0)]
         dist = geom.max_radius - geom.min_radius
@@ -366,7 +361,12 @@ class FslRenderer(object):
 
         self.content.append(u'm.airgap         = 2*ag/3')
         self.content.append(u'm.nodedist       = 1.0')
-        self.content.append(u'agndst           = math.pi*(da1 + da2)/2/360')
+        # set of useful node angles
+        dagset = [np.pi/45, np.pi/90, np.pi/180, np.pi/360, np.pi/720]
+        r = (params.get('da1', 0.0) + params.get('da2', 0.0))/4
+        ag = abs((params.get('da1', 0.0) - params.get('da2', 0.0)))/6
+        i = np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r)))
+        self.content.append(u'agndst           = {}'.format(dagset[i-1]*r))
 
         self.content.append(u'blow_up_wind(0, 0, 10, 10)\n')
 

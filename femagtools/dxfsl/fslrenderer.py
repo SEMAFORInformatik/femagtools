@@ -114,7 +114,7 @@ class FslRenderer(object):
         geom = machine.geom
         self.content = []
 
-        ndt_list = [(0.25, 1.25), (0.5, 2), (0.75, 3.0), (1.1, 3.0)]
+        ndt_list = [(0.25, 1.5), (0.5, 2), (0.75, 3.0), (1.1, 3.0)]
         dist = geom.max_radius - geom.min_radius
         el_sorted = self.sorted_elements(geom, inner)
 
@@ -124,7 +124,7 @@ class FslRenderer(object):
             if ndt_list[x][0] < d_percent:
                 self.content.append(u'\nndt({}*agndst)\n'.
                                     format(ndt_list[x][1]))
-                while x < 3 and ndt_list[x][0] < d_percent:
+                while len(ndt_list) and ndt_list[x][0] < d_percent:
                     x += 1
 #            self.content.append(u'-- d={} / dist={} == {}'.
 #                                format(d, dist, d_percent))
@@ -373,12 +373,13 @@ class FslRenderer(object):
         self.content.append(u"mcvkey_yoke = 'dummy'")
         self.content.append(u"mcvkey_shaft = 'dummy'")
         self.content.append(u"ur = 1000.0")
+        self.content.append(u"ndt(agndst)")
         self.content.append(u'dofile("{}_{}.fsl")\n'
                             .format(self.model, geom_inner.kind))
 
         self.content.append(u"mcvkey_yoke = 'dummy'")
         self.content.append(u"mcvkey_shaft = 'dummy'")
-        self.content.append(u"ur = 1000.0")
+        self.content.append(u"ndt(agndst)")
         self.content.append(u'dofile("{}_{}.fsl")\n'
                             .format(self.model, geom_outer.kind))
 
@@ -478,7 +479,8 @@ class FslRenderer(object):
                u'      end',
                u'    end',
                u'  end',
-               u'end']
+               u'end',
+               u'save_model(cont)']
         self.content.append(u'\n'.join(txt))
 
         with io.open(filename, 'w', encoding='utf-8') as f:

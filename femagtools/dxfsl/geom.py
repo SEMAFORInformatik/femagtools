@@ -1998,6 +1998,12 @@ class Geometry(object):
             else:
                 a.type = 6  # iron shaft (Zahn)
 
+        # yoke or shaft ?
+        iron_areas = [a for a in self.list_of_areas() if a.type == 5]
+        for a in iron_areas:
+            if a.around_windings(self.list_of_areas()):
+                a.type = 6  # iron shaft (Zahn)
+
     def search_rotor_subregions(self, place=''):
         is_inner = self.is_inner
         if place == 'in':

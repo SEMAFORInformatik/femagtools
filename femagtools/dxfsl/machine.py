@@ -13,7 +13,7 @@ import numpy as np
 import logging
 from .shape import Element, Circle, Line, Shape
 from .functions import point, points_are_close
-from .functions import alpha_angle, normalise_angle, middle_angle
+from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
 from .functions import line_m, line_n, mirror_point
 from .functions import within_interval, part_of_circle
 logger = logging.getLogger('femagtools.geom')
@@ -470,6 +470,33 @@ class Machine(object):
         machine_slice.set_alfa_and_corners()
         return machine_slice
 
+    def get_third_symmetry_mirror(self):
+        startangle = self.startangle
+        endangle = self.endangle
+        first_thirdangle = third_angle(self.startangle, self.endangle)
+        second_thirdangle = middle_angle(first_thirdangle, self.endangle)
+
+        machine_mirror_1 = self.copy_mirror(self.startangle,
+                                            first_thirdangle,
+                                            second_thirdangle)
+        machine_mirror_1.clear_cut_lines()
+        machine_mirror_1.repair_hull()
+        machine_mirror_1.set_alfa_and_corners()
+        if not machine_mirror_1.check_symmetry_graph(0.001, 0.05):
+            return None
+
+        machine_mirror_2 = self.copy_mirror(first_thirdangle,
+                                            second_thirdangle,
+                                            self.endangle)
+        machine_mirror_2.clear_cut_lines()
+        machine_mirror_2.repair_hull()
+        machine_mirror_2.set_alfa_and_corners()
+        if not machine_mirror_2.check_symmetry_graph(0.001, 0.05):
+            return None
+
+        machine_mirror_1.previous_machine = self
+        return machine_mirror_1
+
     def get_symmetry_mirror(self):
         if self.part == 1:
             # a complete machine
@@ -480,6 +507,10 @@ class Machine(object):
             startangle = self.startangle
             endangle = self.endangle
             midangle = middle_angle(self.startangle, self.endangle)
+            machine_mirror = self.get_third_symmetry_mirror()
+            if machine_mirror:
+                logger.debug("third symmetry found")
+                return machine_mirror
 
         machine_mirror = self.copy_mirror(startangle, midangle, endangle)
         machine_mirror.clear_cut_lines()

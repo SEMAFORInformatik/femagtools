@@ -170,6 +170,26 @@ def middle_angle(alpha1, alpha2):
     return (a1+a2)/2.0
 
 
+def third_angle(alpha1, alpha2):
+    a1 = normalise_angle(alpha1)
+    a2 = normalise_angle(alpha2)
+
+    if np.isclose(a1, a2):
+        return a1
+
+    if greater_equal(a1, 0.0):
+        if a2 < a1:
+            a2 += 2.0*np.pi
+    else:
+        if less_equal(a2, a1):
+            a1 += 2.0*np.pi
+
+    if np.isclose(a1, a2):
+        return copy.copy(a1)
+
+    return (a1+a2)/3.0
+
+
 def middle_point_of_line(p1, p2):
     return [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2]
 

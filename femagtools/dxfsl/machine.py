@@ -394,7 +394,7 @@ class Machine(object):
                 self.geom.delete_circle((0.0, 0.0), first_dist)
 
     def repair_hull(self):
-        logger.info('repair_hull')
+        logger.debug('repair_hull')
         if self.is_full() and not self.has_airgap():
             self.delete_center_circle()
 

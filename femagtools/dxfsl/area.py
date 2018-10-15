@@ -191,6 +191,13 @@ class Area(object):
             return False
         return True
 
+    def is_touching(self, area):
+        for n in self.nodes():
+            x = [p for p in area.nodes() if points_are_close(n, p)]
+            if x:
+                return True
+        return False
+
     def has_connection(self, geom, a, ndec):
         assert(self.area)
         assert(a.area)
@@ -579,6 +586,8 @@ class Area(object):
             if a.is_winding():
                 if not self.is_identical(a):
                     if self.is_inside(a):
+                        return True
+                    elif self.is_touching(a):
                         return True
         return False
 

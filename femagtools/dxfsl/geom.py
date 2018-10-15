@@ -1120,11 +1120,14 @@ class Geometry(object):
             if is_point_inside_region(pm, center,
                                       inner_circle.radius, outer_circle.radius,
                                       start_angle, end_angle):
-                new_elements.append(
-                    Arc(Element(center=e.center,
-                                radius=e.radius,
-                                start_angle=alpha_start*180/np.pi,
-                                end_angle=alpha_end*180/np.pi)))
+
+                if not (len(points) > 1 and
+                        points_are_close(p1, p2, 1e-3, 1e-3)):
+                    new_elements.append(
+                        Arc(Element(center=e.center,
+                                    radius=e.radius,
+                                    start_angle=alpha_start*180/np.pi,
+                                    end_angle=alpha_end*180/np.pi)))
 
             alpha_start = alpha_end
             p1 = p2

@@ -377,7 +377,7 @@ class Writer(Mcv):
                          float(self.mc1_fe_spez_weigth),
                          float(self.mc1_fe_sat_magnetization)])
 
-        if not hasattr(self, 'losses'):
+        if not hasattr(self, 'losses') or not self.losses:
             return
         
         try:
@@ -712,6 +712,9 @@ class Reader(Mcv):
             
         return result
 
+    def keys(self):
+        return [k for k in dir(self) if not k.startswith('_')]
+
 
 class MagnetizingCurve(object):
     def __init__(self, mcvpar):
@@ -764,12 +767,13 @@ class MagnetizingCurve(object):
             try:
                 ext = '.MC' if sys.platform == 'win32' else '.MCV'
                 filename = ''.join((id, ext))
-                logger.debug("search file %s in %s", filename,
+                logger.info("search file %s in %s", filename,
                              self.mcdirectory)
                 if os.access(os.path.join(self.mcdirectory,
                                           filename), os.R_OK):
                     return id
-            except:
+            except Exception as ex:
+                logger.warn(ex)
                 pass
         logger.debug("search by name %s", id)
         m = self.find_by_name(id)
@@ -859,7 +863,9 @@ class MagnetizingCurve(object):
     def fix_name(self, name, fillfac=1.0):
         """return os compatible mcv name including fillfac"""
         if not self.find_by_name(name):
-            return name  # do nothing (this must be a name of an existing file)
+            if fillfac and fillfac < 1.0:
+                return "{0}-{1:d}".format(name, int(100*fillfac))
+            return name
         repls = {' ': '_', '(': '_', ')': '_', ',': '_'}
         if fillfac and fillfac < 1.0:
             return "{0}-{1:d}".format(
@@ -868,7 +874,7 @@ class MagnetizingCurve(object):
                 int(100*fillfac))
         return functools.reduce(lambda a, kv: a.replace(*kv),
                                 repls.items(), name)
-        
+    
     def writefile(self, name, directory='.', fillfac=None):
         """find magnetic curve by name or id and write binary file
         Arguments:
@@ -884,24 +890,30 @@ class MagnetizingCurve(object):
         if not mcv:
             bname = name
             filename = ''.join((name, ext))
-            try:
-                import shutil
-                logger.info("Copy file %s", filename)
-                shutil.copy(os.path.join(self.mcdirectory,
-                                         filename), directory)
-                return filename
-            except shutil.SameFileError:
-                return filename
-            except Exception:
-                logger.error("MCV %s not found", str(filename))
-            return None
+            # check fillfac and readmcv
+            if not fillfac:
+                try:
+                    import shutil
+                    logger.info("Copy file %s", filename)
+                    shutil.copy(os.path.join(self.mcdirectory,
+                                             filename), directory)
+                    return filename
+                except shutil.SameFileError:
+                    return filename
+                except Exception:
+                    logger.error("MCV %s not found in directory %s",
+                                 str(filename), directory)
+                    return None
+            mcv = Reader()
+            mcv.readMcv(os.path.join(self.mcdirectory,
+                                     filename))
 
         bname = self.fix_name(mcv['name'], fillfac)
         filename = ''.join((bname, ext))
         writer = Writer(mcv)
         writer.writeMcv(os.path.join(directory, filename), fillfac=fillfac)
         return filename
-            
+
     def fitLossCoeffs(self):
         for m in self.mcv:
             if 'losses' not in self.mcv[m]:

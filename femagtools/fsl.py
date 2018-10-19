@@ -292,7 +292,7 @@ class Builder:
     def create_common(self, model):
         return self.__render(model, 'common')
 
-    def create_analysis(self, model, magnets, magnet_material):
+    def create_analysis(self, model, magnets=None, magnet_material=None):
         magnetMat = None
         magndata = []
         if magnets and magnet_material:
@@ -367,8 +367,7 @@ class Builder:
                 self.create_analysis(fea, magnets,
                                      model.magnet.get('material', 0))
         return self.open_model(model) + \
-            self.create_analysis(fea, magnets,
-                                 model.magnet.get('material', 0))
+            self.create_analysis(fea)
 
     def __render(self, model, templ, stator=False, magnet=False):
         if templ.split('.')[-1] in ('fsl', 'mako'):

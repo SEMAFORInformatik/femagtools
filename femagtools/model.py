@@ -201,26 +201,27 @@ class MachineModel(Model):
         missing = []
 
         mcv = 0
-        fillfac = self.stator.get('fillfac', 1.0)
-        if 'stator' in self.__dict__ and 'mcvkey_yoke_name' not in self.stator:
-            try:
-                if self.stator['mcvkey_yoke'] != 'dummy':
-                    if magcurves:
-                        mcv = magcurves.find(self.stator['mcvkey_yoke'])
-                    if mcv:
-                        logger.debug('stator mcv %s', mcv)
-                        self.stator['mcvkey_yoke'] = magcurves.fix_name(mcv, fillfac)
-                        names.append((mcv, fillfac))
-                        self.stator['mcvkey_yoke_name'] = mcv
-                    else:
-                        missing.append(self.stator['mcvkey_yoke'])
-                        logger.error('stator mcv %s not found',
-                                     self.stator['mcvkey_yoke'])
-            except KeyError:
-                pass
+        if 'stator' in self.__dict__:
+            if 'mcvkey_yoke_name' not in self.stator:
+                fillfac = self.stator.get('fillfac', 1.0)
+                try:
+                    if self.stator['mcvkey_yoke'] != 'dummy':
+                        if magcurves:
+                            mcv = magcurves.find(self.stator['mcvkey_yoke'])
+                        if mcv:
+                            logger.debug('stator mcv %s', mcv)
+                            self.stator['mcvkey_yoke'] = magcurves.fix_name(mcv, fillfac)
+                            names.append((mcv, fillfac))
+                            self.stator['mcvkey_yoke_name'] = mcv
+                        else:
+                            missing.append(self.stator['mcvkey_yoke'])
+                            logger.error('stator mcv %s not found',
+                                         self.stator['mcvkey_yoke'])
+                except KeyError:
+                    pass
 
-        elif 'mcvkey_yoke_name' in self.stator:
-            names.append((self.stator['mcvkey_yoke_name'], fillfac))
+            elif 'mcvkey_yoke_name' in self.stator:
+                names.append((self.stator['mcvkey_yoke_name'], fillfac))
 
         if 'magnet' in self.__dict__:
             fillfac = self.magnet.get('fillfac', 1.0)
@@ -297,14 +298,15 @@ class MachineModel(Model):
         for k in self.stator:
             if isinstance(self.stator[k], dict):
                 return k
-        raise MCerror("Missing stator slot model in {}".format(self.stator))
+        raise AttributeError("Missing stator slot model in {}".format(
+            self.stator))
 
     def magnettype(self):
         """return type of magnet slot"""
         for k in self.magnet:
             if k != 'material' and isinstance(self.magnet[k], dict):
                 return k
-        raise MCerror("Missing magnet model in {}".format(self.magnet))
+        raise AttributeError("Missing magnet model in {}".format(self.magnet))
 
     def is_complete(self):
         """check completeness of models"""
@@ -312,7 +314,7 @@ class MachineModel(Model):
             self.statortype()
             self.magnettype()
             return True
-        except MCerror:
+        except AttributeError:
             return False
 
     def is_dxffile(self):

@@ -283,7 +283,7 @@ class FslBuilderTest(unittest.TestCase):
 
         feapars['calculationMode'] = "pm_sym_fast"
         fsl = self.builder.create_analysis(feapars, {}, 0)
-        self.assertEqual(len(fsl), 67)
+        self.assertEqual(len(fsl), 51)
 
         feapars['calculationMode'] = "mult_cal_fast"
         fsl = self.builder.create_analysis(feapars, {}, 0)
@@ -291,7 +291,13 @@ class FslBuilderTest(unittest.TestCase):
 
         feapars['calculationMode'] = "torq_calc"
         fsl = self.builder.create_analysis(feapars, {}, 0)
-        self.assertEqual(len(fsl), 41)
+        self.assertEqual(len(fsl), 26)
+        
+    def test_run_existing_model(self):
+        model = femagtools.MachineModel('data/magnsec')
+        feapars['calculationMode'] = "cogg_calc"
+        fsl = self.builder.create(model, feapars)
+        self.assertEqual(len(fsl), 68)
         
     def test_create_plots(self):
         pars = copy.deepcopy(feapars)

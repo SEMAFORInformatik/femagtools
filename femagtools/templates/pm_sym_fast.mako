@@ -4,16 +4,16 @@
 % if model.get('wind_temp',0):
 set_dev_data("cond_temp", ${model.get('wind_temp')}, ${model.get('wind_temp')})
 % endif
-m.move_action     =    ${model.get('move_action')}
+m.move_action     =    ${model.get('move_action', 0)}
 % if  model.get('lfe',0):
 m.arm_length      =    ${model.get('lfe')*1e3}
 % endif
-% if model.get('move_action') == 0:
+% if model.get('move_action', 0) == 0:
 m.speed           =    ${model.get('speed')*60}
 m.skew_angle      =    ${model.get('skew_angle',0)}
-m.phi_start       =    0.0   
+m.phi_start       =    0.0
 m.range_phi       =    0.0
-m.fc_force_points   =  0.0 
+m.fc_force_points   =  0.0
 % else:
 m.speed_linear    =    ${model.get('speed')}
 m.skew_linear     =    ${model.get('skew_displ',0)}

@@ -5,7 +5,7 @@ m.num_layers      =  ${model.get(['windings','num_layers'])}
 m.num_wires       =  ${model.get(['windings','num_wires'])}
 m.coil_span       =  ${model.get(['windings','coil_span'])}
 
-% if model.get('move_action') == 0:
+% if model.get('move_action', 0) == 0:
 m.current         =   0.0
 m.mat_type        =   1.0 -- rotating 
 m.wind_type       =   1.0 -- winding & current

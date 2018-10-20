@@ -1,11 +1,11 @@
 --
 -- Torque/Force calculation
 --
-m.move_action     =    ${model.get('move_action')}
+m.move_action     =    ${model.get('move_action', 0)}
 % if 'lfe' in model:
 m.arm_length      =    ${model.get('lfe')*1e3}
 % endif
-% if model.get('move_action') == 0:
+% if model.get('move_action', 0) == 0:
 m.speed           =    ${model.get('speed')*60}
 m.skew_angle      =    ${model.get('skew_angle',0)}
 m.fc_radius2      =    0.0

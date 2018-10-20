@@ -9,7 +9,7 @@
 
 """
 __title__ = 'femagtools'
-__version__ = '0.7.1'
+__version__ = '0.7.2-snapshot'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2016 SEMAFOR Informatik & Energie AG'

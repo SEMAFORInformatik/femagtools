@@ -402,7 +402,7 @@ def to_msh(source, filename, infile_type=None):
         else:
             file_ext = source.split(".")[-1].lower()
 
-        if file_ext in ["isa7", "a7"]:
+        if file_ext in ["isa7", "i7"]:
             isa = isa7.read(source)
             _from_isa(isa, filename, "msh")
         else:
@@ -435,7 +435,7 @@ def to_geo(source, filename, extrude=0, layers=0,
         else:
             file_ext = source.split(".")[-1].lower()
         
-        if file_ext in ["isa7", "a7"]:
+        if file_ext in ["isa7", "i7"]:
             isa = isa7.read(source)
             _from_isa(isa, filename, "geo", extrude, layers, recombine)
         else:
@@ -463,7 +463,7 @@ def to_vtu(source, filename, infile_type=None):
         else:
             file_ext = source.split(".")[-1].lower()
 
-        if file_ext in ["isa7", "a7"]:
+        if file_ext in ["isa7", "i7"]:
             isa = isa7.read(source)
             _from_isa(isa, filename, "vtu")
         else:

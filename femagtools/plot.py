@@ -13,6 +13,8 @@ import matplotlib.cm as cm
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import scipy.interpolate as ip
+import logging
+import logging.config
 
 
 def _create_3d_axis():
@@ -772,8 +774,8 @@ def mesh(isa, with_axis=False):
     if not with_axis:
         ax.axis('off')
 
-   
-if __name__ == "__main__":
+
+def main():
     import io
     import sys
     from femagtools.bch import Reader
@@ -795,3 +797,10 @@ if __name__ == "__main__":
             raise ValueError("BCH type {} not yet supported".format(
                 bchresults.type))
         pl.show()
+
+
+if __name__ == "__main__":
+    logger = logging.getLogger("femagtools.plot")
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
+    main()

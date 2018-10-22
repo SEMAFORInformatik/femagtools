@@ -57,5 +57,9 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
-        'Topic :: Scientific/Engineering']
+        'Topic :: Scientific/Engineering'],
+    entry_points={"console_scripts": [
+        "femagtools-plot = femagtools.plot:main",
+        "femagtools-convert = femagtools.convert:main",
+        "femagtools-dxfsl = femagtools.dxfsl.conv:main"]}
 )

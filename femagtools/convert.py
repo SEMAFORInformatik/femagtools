@@ -13,6 +13,10 @@ from collections import defaultdict
 logger = logging.getLogger('femagtools.convert')
 
 
+output_filetypes = [
+    "msh", "geo", "vtu"]
+
+
 def _from_isa(isa, filename, target_format,
               extrude=0, layers=0, recombine=False):
 
@@ -471,3 +475,83 @@ def to_vtu(source, filename, infile_type=None):
                 "cannot convert files of format {} to .vtu".format(file_ext))
     else:
         raise ValueError("cannot convert {} to .vtu".format(source))
+
+
+def main(argv=None):
+    # Parse command line arguments.
+    parser = _get_parser()
+    args = parser.parse_args(argv)
+
+    if not args.output_format:
+        args.output_format = args.outfile.split('.')[-1]
+        
+    if args.output_format == 'msh':
+        to_msh(args.infile, args.outfile)
+    elif args.output_format == 'geo':
+        to_geo(args.infile, args.outfile,
+               extrude=args.extrude, layers=args.layers,
+               recombine=args.recombine)
+    elif args.output_format == 'vtu':
+        to_vtu(args.infile, args.outfile)
+    else:
+        raise ValueError(
+                "unsupported output format {}".format(args.output_format))
+    return
+
+
+def _get_parser():
+    """Parse input options."""
+    import argparse
+    import sys
+    from .__init__ import __version__
+    
+    parser = argparse.ArgumentParser(description=("Convert to mesh formats."))
+
+    parser.add_argument("infile", type=str, help="mesh file to be read from")
+
+    parser.add_argument(
+        "--output-format",
+        "-o",
+        type=str,
+        choices=output_filetypes,
+        help="output file format",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--extrude",
+        "-x",
+        type=float,
+        help="extrusion length",
+        default=None,
+    )
+    
+    parser.add_argument(
+        "--layers",
+        "-l",
+        type=int,
+        help="number of layers",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--recombine",
+        "-r",
+        action='store_true',
+        help="recombine")
+
+    parser.add_argument("outfile", type=str, help="mesh file to be written to")
+
+    parser.add_argument(
+        "--version",
+        "-v",
+        action="version",
+        version="%(prog)s {}, Python {}".format(__version__, sys.version),
+        help="display version information",
+    )
+
+    return parser
+
+
+if __name__ == "__main__":
+    main()

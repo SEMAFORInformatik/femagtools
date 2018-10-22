@@ -17,7 +17,7 @@ from .corner import Corner
 from .area import Area
 from .shape import Element, Shape, Circle, Arc, Line, Point
 from .machine import Machine
-from .functions import less_equal, less, greater
+from .functions import less_equal, less, greater, greater_equal
 from .functions import distance, alpha_line, alpha_points, alpha_angle
 from .functions import point, points_are_close, is_point_inside_region
 from .functions import line_m, line_n
@@ -1984,18 +1984,35 @@ class Geometry(object):
                                         self.min_radius,
                                         self.max_radius)
 
-        # windings close to endangle?
-        wdg_areas = [a for a in self.list_of_areas()
-                     if a.type == 2 and a.close_to_endangle]
+        windings = [a for a in self.list_of_areas()
+                    if a.type == 2]
+        wdg_min_angle = 99
+        wdg_max_angle = 0
+        wdg_min_dist = 99
+        wdg_max_dist = 0
+        for w in windings:
+            wdg_min_angle = min(wdg_min_angle, w.min_angle)
+            wdg_max_angle = max(wdg_max_angle, w.max_angle)
+            wdg_min_dist = min(wdg_min_dist, w.min_dist)
+            wdg_max_dist = max(wdg_max_dist, w.max_dist)
 
-        # air or iron near windings?
+        logger.debug("wdg_min_angle: {}".format(wdg_min_angle))
+        logger.debug("wdg_max_angle: {}".format(wdg_max_angle))
+        logger.debug("mirrored     : {}".format(self.is_mirrored()))
+
+        # air or iron near windings and near airgap ?
         air_areas = [a for a in self.list_of_areas() if a.type == 9]
         for a in air_areas:
-            if a.around_windings(self.list_of_areas()):
-                a.type = 0  # air
-            elif a.close_to_endangle:
-                if wdg_areas:
-                    a.type = 0  # air
+            if a.around_windings(windings):
+                logger.debug(" - air-angle min/max = {}/{}"
+                            .format(a.min_air_angle, a.max_air_angle))
+                if greater_equal(a.min_air_angle, wdg_min_angle):
+                    if a.close_to_endangle and self.is_mirrored():
+                        a.type = 0  # air
+                    elif less_equal(a.max_air_angle, wdg_max_angle):
+                        a.type = 0  # air
+                    else:
+                        a.type = 6  # iron shaft (Zahn)
                 else:
                     a.type = 6  # iron shaft (Zahn)
             else:
@@ -2004,8 +2021,15 @@ class Geometry(object):
         # yoke or shaft ?
         iron_areas = [a for a in self.list_of_areas() if a.type == 5]
         for a in iron_areas:
-            if a.around_windings(self.list_of_areas()):
-                a.type = 6  # iron shaft (Zahn)
+            if a.around_windings(windings):
+                if less(a.min_dist, wdg_max_dist):
+                    if less_equal(a.max_dist, wdg_max_dist):
+                        a.type = 6  # iron shaft (Zahn)
+                    else:
+                        dist_low = wdg_max_dist - a.min_dist
+                        dist_up = a.max_dist - wdg_max_dist
+                        if dist_low > dist_up:
+                            a.type = 6  # iron shaft (Zahn)
 
     def search_rotor_subregions(self, place=''):
         is_inner = self.is_inner

@@ -35,6 +35,8 @@ class Area(object):
         self.phi = 0.0
         self.min_angle = 0.0
         self.max_angle = 0.0
+        self.min_air_angle = 0.0
+        self.max_air_angle = 0.0
         self.close_to_startangle = False
         self.close_to_endangle = False
         self.min_dist = 99999.0
@@ -608,40 +610,56 @@ class Area(object):
             close_to_opposition = np.isclose(r_out, self.max_dist)
             airgap_radius = r_in
 
-        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
-        self.close_to_endangle = np.isclose(self.max_angle, alpha)
+        self.close_to_startangle = np.isclose(self.min_angle, 0.0,
+                                              1e-04, 1e-04)
+        self.close_to_endangle = np.isclose(self.max_angle, alpha,
+                                            1e-04, 1e-04)
+
+        logger.debug("\n***** mark_stator_subregions [{}] *****"
+                    .format(self.id))
+        logger.debug(" - close_to_ag        : {}".format(close_to_ag))
+        logger.debug(" - close_to_opposition: {}".format(close_to_opposition))
+        logger.debug(" - airgap_radius      : {}".format(airgap_radius))
+        logger.debug(" - close_to_startangle: {}".format(self.close_to_startangle))
+        logger.debug(" - close_to_endangle  : {}".format(self.close_to_endangle))
+        logger.debug(" - alpha              : {}".format(alpha))
+        logger.debug(" - min_angle          : {}".format(self.min_angle))
+        logger.debug(" - max_angle          : {}".format(self.max_angle))
 
         if close_to_opposition:
             self.type = 5  # iron yoke (Joch)
+            logger.debug("***** iron yoke #1\n")
             return self.type
 
         if self.close_to_startangle and self.close_to_endangle:
             self.type = 5  # iron yoke (Joch)
+            logger.debug("***** iron yoke #2\n")
             return self.type
 
         if close_to_ag:  # close to airgap
             mm = self.minmax_angle_dist_from_center(center, airgap_radius)
+            self.min_air_angle = mm[0]
+            self.max_air_angle = mm[1]
             air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
+            logger.debug(" - air_alpha          : {}".format(air_alpha))
 
-            if air_alpha / alpha < 0.2:
-                self.type = 0  # air
-                return self.type
-
-            if air_alpha / alpha < 0.5:
-                self.type = 9  # air or iron near windings?
-            else:
-                self.type = 6  # iron shaft (Zahn)
+            self.type = 9  # air or iron near windings and near airgap?
+            logger.debug("***** air or iron ??\n")
             return self.type
 
         if self.min_angle > 0.001:
             if self.max_angle < alpha - 0.001:
                 self.type = 2  # windings
+                logger.debug("***** windings #1\n")
             elif mirrored:
                 self.type = 2  # windings
+                logger.debug("***** windings #2\n")
             else:
                 self.type = 0  # air
+                logger.debug("***** air #2\n")
             return self.type
 
+        logger.debug("***** air #3\n")
         return 0
 
     def mark_rotor_subregions(self, is_inner, mirrored, alpha,

@@ -107,22 +107,22 @@ def symmetry_search(machine,
     return machine_ok
 
 
-def converter(dxfile,
-              rtol=1e-03,
-              atol=1e-03,
-              mindist=0.01,
-              symtol=0.001,
-              split=False,
-              inner_name='inner',
-              outer_name='outer',
-              part=(),
-              airgap=0.0,
-              airgap2=0.0,
-              view_only=False,
-              show_plots=True,
-              show_areas=False,
-              write_fsl=False,
-              debug_mode=False):
+def convert(dxfile,
+            rtol=1e-03,
+            atol=1e-03,
+            mindist=0.01,
+            symtol=0.001,
+            split=False,
+            inner_name='inner',
+            outer_name='outer',
+            part=(),
+            airgap=0.0,
+            airgap2=0.0,
+            view_only=False,
+            show_plots=True,
+            show_areas=False,
+            write_fsl=False,
+            debug_mode=False):
     layers = ()
     conv = {}
 

@@ -13,7 +13,7 @@ import mako.lookup
 import os
 import re
 import sys
-from femagtools.dxfsl.converter import converter
+from femagtools.dxfsl.converter import convert
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class Builder:
         params['part'] = ('stator', model.stator[templ].get('position'))
         params['inner_name'] = 'tmp'
         params['outer_name'] = 'tmp'
-        conv = converter(templ + '.dxf', **params)
+        conv = convert(templ + '.dxf', **params)
 
         model.stator['num_slots'] = conv.get('tot_num_slot')
         self.set_diameter_parameter(model, conv)
@@ -150,7 +150,7 @@ class Builder:
         params['part'] = ('rotor', model.magnet[templ].get('position'))
         params['inner_name'] = 'tmp'
         params['outer_name'] = 'tmp'
-        conv = converter(templ + '.dxf', **params)
+        conv = convert(templ + '.dxf', **params)
 
         model.set_value('poles', conv.get('num_poles'))
         self.set_diameter_parameter(model, conv)
@@ -208,7 +208,7 @@ class Builder:
         params['inner_name'] = 'inner_tmp'
         params['outer_name'] = 'outer_tmp'
 
-        conv = converter(dxfname, **params)
+        conv = convert(dxfname, **params)
 
         model.set_value('poles', conv.get('num_poles'))
         model.set_value('outer_diam', conv.get('dy1') * 1e-3)

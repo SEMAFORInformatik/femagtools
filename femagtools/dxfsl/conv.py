@@ -8,7 +8,7 @@
 
 import sys
 import femagtools
-from femagtools.dxfsl.converter import converter
+from femagtools.dxfsl.converter import convert
 import argparse
 import logging
 import logging.config
@@ -150,22 +150,22 @@ def main():
         if not (args.show_plots or args.show_areas or args.view):
             args.write_fsl = True
 
-    converter(args.dxfile,  # DXF-Filename
-              rtol=args.rtol,    # relative pickdist toleranz
-              atol=args.atol,    # absolute pickdist toleranz
-              symtol=args.sym_tolerance,
-              mindist=args.mindist,
-              split=args.split,
-              inner_name=args.inner,
-              outer_name=args.outer,
-              part=part,
-              airgap=args.airgap,
-              airgap2=args.airgap2,
-              view_only=args.view,
-              show_plots=args.show_plots,
-              show_areas=args.show_areas,
-              write_fsl=args.write_fsl,
-              debug_mode=args.debug)
+    convert(args.dxfile,  # DXF-Filename
+            rtol=args.rtol,    # relative pickdist toleranz
+            atol=args.atol,    # absolute pickdist toleranz
+            symtol=args.sym_tolerance,
+            mindist=args.mindist,
+            split=args.split,
+            inner_name=args.inner,
+            outer_name=args.outer,
+            part=part,
+            airgap=args.airgap,
+            airgap2=args.airgap2,
+            view_only=args.view,
+            show_plots=args.show_plots,
+            show_areas=args.show_areas,
+            write_fsl=args.write_fsl,
+            debug_mode=args.debug)
 
 
 if __name__ == "__main__":

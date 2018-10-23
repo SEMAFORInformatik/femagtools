@@ -361,14 +361,12 @@ class FslRenderer(object):
 
         self.content.append(u'm.airgap         = 2*ag/3')
         self.content.append(u'm.nodedist       = 1.0')
-        # set of useful node angles
-        dagset = [np.pi/45, np.pi/90, np.pi/180, np.pi/360, np.pi/720]
+        # set of useful node angles:  4°, 2°, 1.5°, 1°, 0.75°, 0.5°, 0.25°
+        dagset = [np.pi/45, np.pi/90, np.pi/120, np.pi/180, np.pi/240, np.pi/360, np.pi/720]
         r = (params.get('da1', 0.0) + params.get('da2', 0.0))/4
         ag = abs((params.get('da1', 0.0) - params.get('da2', 0.0)))/6
-        i = np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r)))
+        i = max(np.argmin(np.abs(np.array(dagset) - np.sqrt(2)*np.arctan2(ag, r))), 1)
         self.content.append(u'agndst           = {}'.format(dagset[i-1]*r))
-
-        self.content.append(u'blow_up_wind(0, 0, 10, 10)\n')
 
         self.content.append(u"mcvkey_yoke = 'dummy'")
         self.content.append(u"mcvkey_shaft = 'dummy'")
@@ -442,6 +440,7 @@ class FslRenderer(object):
                u'    m.xcoil_2, m.ycoil_2 = pr2c(r, tmp.coil_alpha*2.0 - phi)',
                u'  end\n',
                u'  pre_models("Gen_winding")',
+               u'  pre_models("gen_pocfile")',
                u'end\n']
         self.content.append(u'\n'.join(txt))
 

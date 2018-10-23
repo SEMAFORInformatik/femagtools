@@ -16,18 +16,7 @@ import logging.config
 logger = logging.getLogger(__name__)
 
 
-def usage(name):
-    print("Usage: ", name,
-          " [-h] [--help]")
-
-
-#############################
-#            Main           #
-#############################
-
-if __name__ == "__main__":
-    loglevel = logging.INFO
-
+def main():
     argparser = argparse.ArgumentParser(
         description='Process DXF file and create a plot or FSL file.')
     argparser.add_argument('dxfile',
@@ -113,6 +102,7 @@ if __name__ == "__main__":
 
     args = argparser.parse_args()
 
+    loglevel = logging.INFO
     if args.debug:
         loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel,
@@ -176,3 +166,9 @@ if __name__ == "__main__":
               show_areas=args.show_areas,
               write_fsl=args.write_fsl,
               debug_mode=args.debug)
+
+
+if __name__ == "__main__":
+    loglevel = logging.INFO
+
+    main()

@@ -28,14 +28,15 @@ class PlotRenderer(object):
     def __init__(self):
         self.fig = None
         self.background = '#eeeeee'
+#        self.background = facecolor='lightblue',
         if matplotlibversion == 0:
             import matplotlib   # throws exception
         pass
 
     def figure(self):
         if self.fig is None:
-            self.fig = pl.figure(facecolor='lightblue',
-                                 figsize=(9, 10))
+            self.fig = pl.figure(figsize=(9, 10))
+            #         facecolor='lightblue'
             if matplotlibversion > 2:
                 pl.tight_layout(h_pad=0.2, w_pad=0.2)
             pl.subplots_adjust(bottom=0.05, top=0.95,
@@ -44,8 +45,8 @@ class PlotRenderer(object):
 
     def add_plot(self, rows=1, cols=1, num=1):
         self.ax = self.figure().add_subplot(rows, cols,
-                                            num,
-                                            facecolor=self.background)
+                                            num)
+#                                            facecolor=self.background)
         return self.ax
 
     def add_emptyplot(self, rows=1, cols=1, num=1, title=''):
@@ -201,8 +202,8 @@ class PlotRenderer(object):
             return
 
         self.ax = self.figure().add_subplot(rows, cols,
-                                            num,
-                                            facecolor=self.background)
+                                            num)
+#                                            facecolor=self.background)
         if len(title) > 0:
             self.ax.set_title(title, size=14)
         self.ax.grid(color='blue', linewidth=0.5)

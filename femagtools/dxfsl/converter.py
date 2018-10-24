@@ -9,38 +9,29 @@ import sys
 import os
 from femagtools.dxfsl.geom import Geometry, dxfshapes
 from femagtools.dxfsl.shape import Shape
-from femagtools.dxfsl.fslrenderer import FslRenderer
+from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
 from femagtools.dxfsl.plotrenderer import PlotRenderer
 import logging
 import logging.config
 import numpy as np
+import io
 
 logger = logging.getLogger(__name__)
-
-
-def usage(name):
-    print("Usage: ", name,
-          " [-h] [--help]")
-
-
-def write_fsl_file(machine,
-                   basename,
-                   inner=False,
-                   outer=False):
-    model = FslRenderer(basename)
-    filename = basename + '_' + machine.geom.kind + '.fsl'
-    model.render(machine, filename, inner, outer)
-    return filename
 
 
 def write_main_fsl_file(machine,
                         machine_inner,
                         machine_outer,
-                        params,
+                        params, inner, outer,
                         basename):
-    model = FslRenderer(basename)
+    fslrenderer = FslRenderer(basename)
     filename = basename + '.fsl'
-    model.render_main(machine, machine_inner, machine_outer, params, filename)
+    fsl = fslrenderer.render_main(machine,
+                                  machine_inner, machine_outer,
+                                  inner, outer,
+                                  params)
+    with io.open(filename, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(fsl))
     return filename
 
 
@@ -119,9 +110,9 @@ def convert(dxfile,
             airgap=0.0,
             airgap2=0.0,
             view_only=False,
-            show_plots=True,
+            show_plots=False,
             show_areas=False,
-            write_fsl=False,
+            write_fsl=True,
             debug_mode=False):
     layers = ()
     conv = {}
@@ -132,11 +123,10 @@ def convert(dxfile,
     if part:
         if part[0] not in ('rotor', 'stator'):
             logger.error('FATAL: Parameter rotor or stator expected')
-            sys.exit(1)
+            return dict(error='unknown part {}'.format(part))
         if part[1] not in ('in', 'out'):
             logger.error('"{}" has to be defined in/out'.format(part[0]))
-            sys.exit(1)
-
+            return dict(error='unknown location {}'.format(part[1]))
     basegeom = Geometry(dxfshapes(dxfile,
                                   mindist=mindist,
                                   layers=layers),
@@ -150,11 +140,7 @@ def convert(dxfile,
         p.render_elements(basegeom, Shape,
                           neighbors=True,
                           show=True)
-
-        if write_fsl:
-            model = FslRenderer(basename)
-            model.render_raw(basegeom)
-        sys.exit(0)
+        return dict()
 
     machine_base = basegeom.get_machine()
     if show_plots:
@@ -164,8 +150,8 @@ def convert(dxfile,
                           rows=3, cols=2, num=1, show=debug_mode)
 
     if not machine_base.is_a_machine():
-        logger.info("it's Not a Machine!!")
-        sys.exit(1)
+        logger.warn("it's Not a Machine!!")
+        return dict(error='machine not detected')
 
     if machine_base.is_full() or \
        machine_base.is_half() or \
@@ -179,8 +165,8 @@ def convert(dxfile,
         machine = machine_base.full_copy()
 
     if machine.part_of_circle() == 0:
-        logger.info("No arc segment found")
-        sys.exit(1)
+        logger.warn("No arc segment found")
+        return dict(error='no arc segment found')
 
     machine.clear_cut_lines()
     machine.move_to_middle()
@@ -193,7 +179,7 @@ def convert(dxfile,
         p.render_elements(machine.geom, Shape,
                           title='Search for airgap failed',
                           with_corners=False, show=True)
-        sys.exit(1)
+        return dict(error='no airgap found')
 
     if show_plots:
         p.render_elements(basegeom, Shape, neighbors=True,
@@ -270,21 +256,16 @@ def convert(dxfile,
                            single_view=True)
 
         if write_fsl:
-            inner_filename = write_fsl_file(machine_inner,
-                                            basename,
-                                            True,
-                                            False)
-            outer_filename = write_fsl_file(machine_outer,
-                                            basename,
-                                            False,
-                                            True)
+            fslrenderer = FslRenderer(basename)
+            inner = fslrenderer.render(machine_inner, inner=True)
+            outer = fslrenderer.render(machine_outer, outer=True)
 
             if machine_inner.geom.is_rotor():
-                conv['filename_rotor'] = inner_filename
-                conv['filename_stator'] = outer_filename
+                conv['fsl_magnet'] = inner
+                conv['fsl_stator'] = outer
             else:
-                conv['filename_stator'] = inner_filename
-                conv['filename_rotor'] = outer_filename
+                conv['fsl_magnet'] = inner
+                conv['fsl_rotor'] = outer
 
             params = create_femag_parameters(machine_inner,
                                              machine_outer)
@@ -293,10 +274,11 @@ def convert(dxfile,
                                                         machine_inner,
                                                         machine_outer,
                                                         params,
+                                                        inner, outer,
                                                         basename)
             conv.update(params)
     else:
-        # No airgap found
+        # No airgap found. This must be an inner or outer part
         name = "No_Airgap"
         inner = False
         outer = False
@@ -346,7 +328,8 @@ def convert(dxfile,
                            single_view=True)
 
         if write_fsl:
-            conv['filename'] = write_fsl_file(machine, basename, inner, outer)
+            fslrenderer = FslRenderer(basename)
+            conv['fsl_{}'.part[0]] = fslrenderer.render(machine, inner, outer)
             if params:
                 conv.update(params)
 
@@ -386,6 +369,7 @@ def create_femag_parameters(m_inner, m_outer):
     params['da1'] = 2*geom_outer.min_radius
     params['da2'] = 2*geom_inner.max_radius
     params['dy2'] = 2*geom_inner.min_radius
+    params['agndst'] = agndst(params['da1'], params['da2'])
 
     params['alfa_slot'] = alfa_slot
     params['alfa_pole'] = alfa_pole

@@ -10,30 +10,22 @@
 import numpy as np
 from .shape import Shape
 import logging
-import io
-
+from .. import __version__
 logger = logging.getLogger(__name__)
 
 
-#############################
-#        FslRenderer        #
-#############################
+def agndst(da1, da2):
+    """return agndst"""
+    # set of useful node angles:  4°, 2°, 1.5°, 1°, 0.75°, 0.5°, 0.25°
+    dagset = [np.pi/45, np.pi/90, np.pi/120, np.pi/180, np.pi/240, np.pi/360, np.pi/720]
+    r = (da1 + da2)/4
+    ag = abs(da1 - da2)/6
+    i = max(np.argmin(np.abs(np.array(dagset) - np.sqrt(2)*np.arctan2(ag, r))), 1)
+    return dagset[i-1]*r
+
 
 class FslRenderer(object):
     """a model that can created by FSL"""
-    header = ['exit_on_error = false',
-              'exit_on_end = false',
-              'verbosity = 2',
-              'pickdist = {}',
-              'fm_nlin_colour=blue',
-              'fm_nlin_color=fm_nlin_colour',
-              'fm_nlin_mcvfile="M470P65A-AM-50Hz-96"',
-              'fm_nlin_mcvfile_shft="ST52-3"',
-              'fm_nlin_rlen = 100',
-              'shaft_mat=1',
-              'agndst = 0.5',
-              'new_model_force("{}","Test")',
-              'blow_up_wind(0,0, {}, {})']
 
     def __init__(self, name):
         self.model = name
@@ -108,8 +100,8 @@ class FslRenderer(object):
         el_sorted.sort()
         return el_sorted
 
-    def render(self, machine, filename, inner=False, outer=False):
-        '''create file with nodechains'''
+    def render(self, machine, inner=False, outer=False):
+        '''create fsl statements with nodechains'''
 
         geom = machine.geom
         self.content = []
@@ -256,7 +248,7 @@ class FslRenderer(object):
                 geom.mirror_corners[0][0],   # min x2
                 geom.mirror_corners[0][1]))  # min y2
 
-        # Winkel nach allfälligem Spiegeln
+        # angle after mirroring
         self.content.append(u'alfa = {}\n'.format(geom.get_alfa()))
 
         self.content.append(u'-- rotate')
@@ -302,185 +294,148 @@ class FslRenderer(object):
                    u'end']
             self.content.append(u'\n'.join(mat))
 
-        # f.write(u"\nadapt_window()\n")
-        with io.open(filename, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(self.content))
+        if num_magnets:
+            self.content += [
+                u'-- pm magnets',
+                u'if tmp.mag_exists > 0 then',
+                u'  alfa = tmp.mag_alpha',
+                u'  m.remanenc = 1.15',
+                u'  m.relperm  = 1.05',
+                u'  for i=0, m.npols_gen-1 do',
+                u'    for n=1, tmp.mag_exists do',
+                u'      r, p = c2pr(tmp.xmag[n], tmp.ymag[n])',
+                u'      phi = i*alfa+p',
+                u'      x0, y0 = pr2c(r, phi)',
+                u'      phi_orient = i*alfa+tmp.mag_orient[n]',
+                u'      orient = phi_orient*180/math.pi',
+                u'      if ( i % 2 == 0 ) then',
+                u'        def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
+                u'                   orient-180, m.parallel, 100)',
+                u'      else',
+                u'        def_mat_pm(x0, y0, green, m.remanenc, m.relperm,',
+                u'                   orient, m.parallel, 100)',
+                u'      end',
+                u'      if tmp.mag_mirrored then',
+                u'        phi = (i+1)*alfa-p',
+                u'        x0, y0 = pr2c(r, phi)',
+                u'        phi_orient = (i+1)*alfa-tmp.mag_orient[n]',
+                u'        orient = phi_orient*180/math.pi',
+                u'        if ( i % 2 == 0 ) then',
+                u'          def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
+                u'                     orient-180, m.parallel, 100)',
+                u'        else',
+                u'          def_mat_pm(x0, y0, green, m.remanenc, m.relperm,',
+                u'                     orient, m.parallel, 100)',
+                u'        end',
+                u'      end',
+                u'    end',
+                u'  end',
+                u'end']
+
+        return self.content
 
     def render_main(self,
                     motor,
-                    m_inner,
-                    m_outer,
-                    params,
-                    filename):
-        '''create main file'''
+                    m_inner, m_outer,
+                    inner, outer,
+                    params):
+        '''create fsl statements for main file'''
         if not (m_inner and m_outer):
             logger.warning("ERROR: Rotor or Stator missing")
-            return
+            return []
 
-        self.content = []
-        self.content.append(u'exit_on_error = false')
-        self.content.append(u'exit_on_end = false')
-        self.content.append(u'verbosity = 2\n')
-
-        self.content.append(u'new_model_force("{}","Test")'.
-                            format(self.model))
-        self.content.append(u'global_unit(mm)')
-        self.content.append(u'pickdist(0.001)')
-        self.content.append(u'cosys(polar)\n')
-
-        geom_inner = m_inner.geom
-        geom_outer = m_outer.geom
-
-        self.content.append(u'tmp = {}')
-        self.content.append(u'tmp.xmag = {}')
-        self.content.append(u'tmp.ymag = {}')
-        self.content.append(u'tmp.mag_orient = {}')
-        self.content.append(u'tmp.mag_exists = 0')
-        self.content.append(u'tmp.coil_exists = 0\n')
-
-        self.content.append(u'dy1 = {}'.format(params.get('dy1', 0.0)))
-        self.content.append(u'da1 = {}'.format(params.get('da1', 0.0)))
-        self.content.append(u'dy2 = {}'.format(params.get('dy2', 0.0)))
-        self.content.append(u'da2 = {}'.format(params.get('da2', 0.0)))
-        self.content.append(u'ag  = (da1 - da2)/2\n')
-
-        self.content.append(u'm.tot_num_slot   = {}'
-                            .format(params.get('tot_num_slot', 0)))
-        self.content.append(u'm.num_sl_gen     = {}'
-                            .format(params.get('num_sl_gen', 0)))
-        self.content.append(u'm.num_poles      = {}'
-                            .format(params.get('num_poles', 0)))
-        self.content.append(u'm.num_pol_pair   = m.num_poles/2')
-        self.content.append(u'm.num_slots      = m.num_sl_gen')
-        self.content.append(u'm.npols_gen      = m.num_poles * m.num_sl_gen / m.tot_num_slot')
-        self.content.append(u'm.tot_num_sl     = m.tot_num_slot')
-        self.content.append(u'm.fc_radius      = (da1+da2)/4')
-        self.content.append(u'm.fc_radius1     = m.fc_radius')
-        self.content.append(u'm.arm_length     = 1.0')
-        self.content.append(u'pre_models("basic_modpar")\n')
-
-        self.content.append(u'm.airgap         = 2*ag/3')
-        self.content.append(u'm.nodedist       = 1.0')
-        # set of useful node angles:  4°, 2°, 1.5°, 1°, 0.75°, 0.5°, 0.25°
-        dagset = [np.pi/45, np.pi/90, np.pi/120, np.pi/180, np.pi/240, np.pi/360, np.pi/720]
-        r = (params.get('da1', 0.0) + params.get('da2', 0.0))/4
-        ag = abs((params.get('da1', 0.0) - params.get('da2', 0.0)))/6
-        i = max(np.argmin(np.abs(np.array(dagset) - np.sqrt(2)*np.arctan2(ag, r))), 1)
-        self.content.append(u'agndst           = {}'.format(dagset[i-1]*r))
-
-        self.content.append(u"mcvkey_yoke = 'dummy'")
-        self.content.append(u"mcvkey_shaft = 'dummy'")
-        self.content.append(u"ur = 1000.0")
-        self.content.append(u"ndt(agndst)")
-        self.content.append(u'dofile("{}_{}.fsl")\n'
-                            .format(self.model, geom_inner.kind))
-
-        self.content.append(u"mcvkey_yoke = 'dummy'")
-        self.content.append(u"mcvkey_shaft = 'dummy'")
-        self.content.append(u"ndt(agndst)")
-        self.content.append(u'dofile("{}_{}.fsl")\n'
-                            .format(self.model, geom_outer.kind))
-
-        # Airgap
-        txt = [u'-- airgap',
-               u'ndt(agndst)',
-               u'r1 = da2/2 + ag/3',
-               u'x1, y1 = pr2c(r1, alfa)',
-               u'n = r1*alfa/agndst + 1',
-               u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
-               u'r2 = da2/2 + 2*ag/3',
-               u'x2, y2 = pr2c(r2, alfa)',
-               u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
-               u'if tmp.inner_max_corner_x == nil then',
-               u'  tmp.inner_max_corner_x = da2/2',
-               u'end',
-               u'x1, y1 = tmp.inner_max_corner_x, 0.0',
-               u'nc_line(x1, y1, r1, 0.0, 0.0)\n',
-               u'if tmp.outer_min_corner_x == nil then',
-               u'  tmp.outer_min_corner_x = da1/2',
-               u'end',
-               u'x2, y2 = tmp.outer_min_corner_x, 0.0',
-               u'nc_line(r2, 0.0, x2, y2, 0.0)\n',
-               u'x3, y3 = pr2c(x1, alfa)',
-               u'x4, y4 = pr2c(r1, alfa)',
-               u'nc_line(x3, y3, x4, y4, 0, 0)\n',
-               u'x3, y3 = pr2c(x2, alfa)',
-               u'x4, y4 = pr2c(r2, alfa)',
-               u'nc_line(x3, y3, x4, y4, 0, 0)\n',
-               u'x0, y0 = pr2c(r1-ag/6, alfa/2)',
-               u'create_mesh_se(x0, y0)',
-               u'x0, y0 = pr2c(r2+ag/6, alfa/2)',
-               u'create_mesh_se(x0, y0)\n']
-        self.content.append(u'\n'.join(txt))
-
-        self.content.append(u'connect_models()\n')
-
-        # Windings
-        txt = [u'-- Gen_winding',
-               u'if tmp.coil_exists > 0 then',
-               u'  m.num_phases      = 3']
-        self.content.append(u'\n'.join(txt))
-
-        num_layers = min(geom_inner.num_of_windings() +
-                         geom_outer.num_of_windings(),
+        num_layers = min(m_inner.geom.num_of_windings() +
+                         m_outer.geom.num_of_windings(),
                          2)
-        self.content.append(u'  m.num_layers      = {}'
-                            .format(num_layers))
-        txt = [u'  m.num_wires       = 1',
-               u'  m.coil_span       = 1',
-               u'  m.current         = 0.0',
-               u'  m.mat_type        = 1.0 -- rotating',
-               u'  m.wind_type       = 1.0 -- winding & current',
-               u'  m.win_asym        = 1.0 -- sym',
-               u'  m.wdg_location    = 1.0 -- stator',
-               u'  m.curr_inp        = 0.0 -- const',
-               u'  m.dq_offset       = 0',
-               u'  if tmp.coil_exists == 1 and tmp.coil_mirrored then',
-               u'    r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
-               u'    m.xcoil_2, m.ycoil_2 = pr2c(r, tmp.coil_alpha*2.0 - phi)',
-               u'  end\n',
-               u'  pre_models("Gen_winding")',
-               u'  pre_models("gen_pocfile")',
-               u'end\n']
-        self.content.append(u'\n'.join(txt))
-
-        txt = [u'-- pm magnets',
-               u'if tmp.mag_exists > 0 then',
-               u'  alfa = tmp.mag_alpha',
-               u'  m.remanenc = 1.15',
-               u'  m.relperm  = 1.05',
-               u'  for i=0, m.npols_gen-1 do',
-               u'    for n=1, tmp.mag_exists do',
-               u'      r, p = c2pr(tmp.xmag[n], tmp.ymag[n])',
-               u'      phi = i*alfa+p',
-               u'      x0, y0 = pr2c(r, phi)',
-               u'      phi_orient = i*alfa+tmp.mag_orient[n]',
-               u'      orient = phi_orient*180/math.pi',
-               u'      if ( i % 2 == 0 ) then',
-               u'        def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
-               u'                   orient-180, m.parallel, 100)',
-               u'      else',
-               u'        def_mat_pm(x0, y0, green, m.remanenc, m.relperm,',
-               u'                   orient, m.parallel, 100)',
-               u'      end',
-               u'      if tmp.mag_mirrored then',
-               u'        phi = (i+1)*alfa-p',
-               u'        x0, y0 = pr2c(r, phi)',
-               u'        phi_orient = (i+1)*alfa-tmp.mag_orient[n]',
-               u'        orient = phi_orient*180/math.pi',
-               u'        if ( i % 2 == 0 ) then',
-               u'          def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
-               u'                     orient-180, m.parallel, 100)',
-               u'        else',
-               u'          def_mat_pm(x0, y0, green, m.remanenc, m.relperm,',
-               u'                     orient, m.parallel, 100)',
-               u'        end',
-               u'      end',
-               u'    end',
-               u'  end',
-               u'end',
-               u'save_model(cont)']
-        self.content.append(u'\n'.join(txt))
-
-        with io.open(filename, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(self.content))
+        return [
+            u'-- generated from DXF by femagtools {}'.format(__version__),
+            u'exit_on_error = false',
+            u'exit_on_end = false',
+            u'verbosity = 2\n',
+            u'new_model_force("{}","Test")'.format(self.model),
+            u'global_unit(mm)',
+            u'pickdist(0.001)',
+            u'cosys(polar)\n',
+            u'tmp = {}',
+            u'tmp.xmag = {}',
+            u'tmp.ymag = {}',
+            u'tmp.mag_orient = {}',
+            u'tmp.mag_exists = 0',
+            u'tmp.coil_exists = 0\n',
+            u'dy1 = {}'.format(params.get('dy1', 0.0)),
+            u'da1 = {}'.format(params.get('da1', 0.0)),
+            u'dy2 = {}'.format(params.get('dy2', 0.0)),
+            u'da2 = {}'.format(params.get('da2', 0.0)),
+            u'ag  = (da1 - da2)/2\n',
+            u'm.tot_num_slot   = {}'.format(params.get('tot_num_slot', 0)),
+            u'm.num_sl_gen     = {}'.format(params.get('num_sl_gen', 0)),
+            u'm.num_poles      = {}'.format(params.get('num_poles', 0)),
+            u'm.num_pol_pair   = m.num_poles/2',
+            u'm.num_slots      = m.num_sl_gen',
+            u'm.npols_gen      = m.num_poles * m.num_sl_gen / m.tot_num_slot',
+            u'm.tot_num_sl     = m.tot_num_slot',
+            u'm.fc_radius      = (da1+da2)/4',
+            u'm.fc_radius1     = m.fc_radius',
+            u'm.arm_length     = 1.0',
+            u'pre_models("basic_modpar")\n',
+            u'm.airgap         = 2*ag/3',
+            u'm.nodedist       = 1.0',
+            u'agndst           = {}'.format(params.get('agndst', 0.1)),
+            u"mcvkey_yoke = 'dummy'",
+            u"mcvkey_shaft = 'dummy'",
+            u"ur = 1000.0",
+            u"ndt(agndst)"] + outer + [
+                "mcvkey_yoke = 'dummy'",
+                u"mcvkey_shaft = 'dummy'",
+                u"ndt(agndst)"] + inner + [
+                    u'-- airgap',
+                    u'ndt(agndst)',
+                    u'r1 = da2/2 + ag/3',
+                    u'x1, y1 = pr2c(r1, alfa)',
+                    u'n = r1*alfa/agndst + 1',
+                    u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
+                    u'r2 = da2/2 + 2*ag/3',
+                    u'x2, y2 = pr2c(r2, alfa)',
+                    u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
+                    u'if tmp.inner_max_corner_x == nil then',
+                    u'  tmp.inner_max_corner_x = da2/2',
+                    u'end',
+                    u'x1, y1 = tmp.inner_max_corner_x, 0.0',
+                    u'nc_line(x1, y1, r1, 0.0, 0.0)\n',
+                    u'if tmp.outer_min_corner_x == nil then',
+                    u'  tmp.outer_min_corner_x = da1/2',
+                    u'end',
+                    u'x2, y2 = tmp.outer_min_corner_x, 0.0',
+                    u'nc_line(r2, 0.0, x2, y2, 0.0)\n',
+                    u'x3, y3 = pr2c(x1, alfa)',
+                    u'x4, y4 = pr2c(r1, alfa)',
+                    u'nc_line(x3, y3, x4, y4, 0, 0)\n',
+                    u'x3, y3 = pr2c(x2, alfa)',
+                    u'x4, y4 = pr2c(r2, alfa)',
+                    u'nc_line(x3, y3, x4, y4, 0, 0)\n',
+                    u'x0, y0 = pr2c(r1-ag/6, alfa/2)',
+                    u'create_mesh_se(x0, y0)',
+                    u'x0, y0 = pr2c(r2+ag/6, alfa/2)',
+                    u'create_mesh_se(x0, y0)\n',
+                    u'connect_models()\n',
+                    u'-- Gen_winding',
+                    u'if tmp.coil_exists > 0 then',
+                    u'  m.num_phases      = 3',
+                    u'  m.num_layers      = {}'.format(num_layers),
+                    u'  m.num_wires       = 1',
+                    u'  m.coil_span       = 1',
+                    u'  m.current         = 0.0',
+                    u'  m.mat_type        = 1.0 -- rotating',
+                    u'  m.wind_type       = 1.0 -- winding & current',
+                    u'  m.win_asym        = 1.0 -- sym',
+                    u'  m.wdg_location    = 1.0 -- stator',
+                    u'  m.curr_inp        = 0.0 -- const',
+                    u'  m.dq_offset       = 0',
+                    u'  if tmp.coil_exists == 1 and tmp.coil_mirrored then',
+                    u'    r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
+                    u'    m.xcoil_2, m.ycoil_2 = pr2c(r, tmp.coil_alpha*2.0 - phi)',
+                    u'  end\n',
+                    u'  pre_models("Gen_winding")',
+                    u'  pre_models("gen_pocfile")',
+                    u'end\n',
+                    u'save_model(cont)\n']

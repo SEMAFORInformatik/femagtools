@@ -372,6 +372,12 @@ def angles_on_arc(startangle, endangle, parts=8):
         yield alpha + startangle
 
 
+def point_on_arc(center, radius, angle):
+    alpha = normalise_angle(angle)
+    return (center[0] + radius * np.cos(alpha),
+            center[1] + radius * np.sin(alpha))
+
+
 def points_on_arc(center, radius, startangle, endangle, parts=8):
     start = normalise_angle(startangle)
     end = normalise_angle(endangle)

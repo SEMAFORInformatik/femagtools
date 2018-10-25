@@ -7,7 +7,7 @@
 #
 import sys
 import os
-from femagtools.dxfsl.geom import Geometry, dxfshapes
+from femagtools.dxfsl.geom import Geometry, dxfshapes, femshapes
 from femagtools.dxfsl.shape import Shape
 from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
 from femagtools.dxfsl.plotrenderer import PlotRenderer
@@ -127,12 +127,19 @@ def convert(dxfile,
         if part[1] not in ('in', 'out'):
             logger.error('"{}" has to be defined in/out'.format(part[0]))
             return dict(error='unknown location {}'.format(part[1]))
-    basegeom = Geometry(dxfshapes(dxfile,
-                                  mindist=mindist,
-                                  layers=layers),
-                        rtol=rtol,
-                        atol=atol,
-                        split=split)
+
+    if dxfile.split('.')[-1] == 'fem':
+        basegeom = Geometry(femshapes(dxfile),
+                            rtol=rtol,
+                            atol=atol,
+                            split=split)
+    else:
+        basegeom = Geometry(dxfshapes(dxfile,
+                                      mindist=mindist,
+                                      layers=layers),
+                            rtol=rtol,
+                            atol=atol,
+                            split=split)
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = PlotRenderer()

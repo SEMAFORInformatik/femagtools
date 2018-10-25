@@ -136,7 +136,11 @@ class Builder:
         magmodel.update(model.magnet[templ])
         magmodel['mcvkey_magnet'] = model.get_mcvkey_magnet()
         if templ == 'dxf':
-            return mcv + ['ndt(agndst)'] + model.magnet['dxf']['fsl']
+            return mcv + [
+                u'xmag = {}',
+                u'ymag = {}',
+                u'mag_orient = {}',
+                u'ndt(agndst)'] + model.magnet['dxf']['fsl']
             
         return mcv + self.render_rotor(magmodel, templ)
 

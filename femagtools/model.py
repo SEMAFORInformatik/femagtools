@@ -310,6 +310,8 @@ class MachineModel(Model):
 
     def is_complete(self):
         """check completeness of models"""
+        if self.is_dxffile():
+            return True
         try:
             self.statortype()
             self.magnettype()

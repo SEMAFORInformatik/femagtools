@@ -5,7 +5,6 @@
 # Author: Ronald Tanner
 # Date: 2016/01/24
 #
-import sys
 import os
 from femagtools.dxfsl.geom import Geometry, dxfshapes, femshapes
 from femagtools.dxfsl.shape import Shape
@@ -14,25 +13,8 @@ from femagtools.dxfsl.plotrenderer import PlotRenderer
 import logging
 import logging.config
 import numpy as np
-import io
 
 logger = logging.getLogger(__name__)
-
-
-def write_main_fsl_file(machine,
-                        machine_inner,
-                        machine_outer,
-                        params, inner, outer,
-                        basename):
-    fslrenderer = FslRenderer(basename)
-    filename = basename + '.fsl'
-    fsl = fslrenderer.render_main(machine,
-                                  machine_inner, machine_outer,
-                                  inner, outer,
-                                  params)
-    with io.open(filename, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(fsl))
-    return filename
 
 
 def symmetry_search(machine,
@@ -277,13 +259,12 @@ def convert(dxfile,
             params = create_femag_parameters(machine_inner,
                                              machine_outer)
 
-            conv['main_filename'] = write_main_fsl_file(machine,
-                                                        machine_inner,
-                                                        machine_outer,
-                                                        params,
-                                                        inner, outer,
-                                                        basename)
             conv.update(params)
+            conv['fsl'] = fslrenderer.render_main(
+                machine,
+                machine_inner, machine_outer,
+                inner, outer,
+                params)
     else:
         # No airgap found. This must be an inner or outer part
         name = "No_Airgap"
@@ -336,10 +317,10 @@ def convert(dxfile,
 
         if write_fsl:
             fslrenderer = FslRenderer(basename)
-            conv['fsl_{}'.part[0]] = fslrenderer.render(machine, inner, outer)
+            conv['fsl'] = fslrenderer.render(machine, inner, outer)
             if params:
                 conv.update(params)
-
+            
     logger.info("done")
     return conv
 

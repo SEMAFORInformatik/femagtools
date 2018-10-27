@@ -102,7 +102,7 @@ class FslRenderer(object):
 
     def render(self, machine, inner=False, outer=False):
         '''create fsl statements with nodechains'''
-
+        machine.set_alfa_and_corners()
         geom = machine.geom
         self.content = []
 

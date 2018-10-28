@@ -557,6 +557,138 @@ class Area(object):
 
         return False
 
+    def is_mag_rectangle(self):
+        lines_ceml = [[c, e, e.m(99999.0), e.length()]
+                      for c, e in enumerate(self.area)]
+        # if isinstance(e, Line)]
+        if len(lines_ceml) < 4:
+            return False
+
+        logger.debug("=== BEGIN OF is_mag_rectangle() [{} lines]"
+                     .format(len(lines_ceml)))
+
+        c_prev = lines_ceml[0][0]
+        a_prev = 999
+        p = None
+
+        e0 = lines_ceml[0][1]
+        e0_p1 = e0.p1
+        e0_p2 = e0.p2
+        l_prev = lines_ceml[0][3]
+        m_prev = lines_ceml[0][2]
+
+        e1 = lines_ceml[1][1]
+        e1_p1 = e1.p1
+        e1_p2 = e1.p2
+
+        if points_are_close(e0_p2, e1_p1) or \
+           points_are_close(e0_p2, e1_p2):
+            a_prev = alpha_line(e0_p1, e0_p2)
+            p = e0_p2
+        else:
+            if points_are_close(e0_p1, e1_p1) or \
+               points_are_close(e0_p1, e1_p2):
+                a_prev = alpha_line(e0_p2, e0_p1)
+                p = e0_p1
+            else:
+                logger.error("ERROR: is_mag_rectangle(): points are not close together")
+                logger.error("       e0 p1={}, p2={}".format(e0_p1, e0_p2))
+                logger.error("       e1 p1={}, p2={}".format(e1_p1, e1_p2))
+                return False
+
+        def alpha_current(p, e):
+            if points_are_close(p, e.p1):
+                return e.p2, alpha_line(e.p1, e.p2)
+            if points_are_close(p, e.p2):
+                return e.p1, alpha_line(e.p2, e.p1)
+            logger.error("ERROR: is_mag_rectangle(): points are not close together")
+            logger.error("       p={}, p1={}, p2={}".format(p, e.p1, e.p2))
+            return None, None
+
+        lines_clam = []
+        for c, e, m, l in lines_ceml[1:]:
+            p, a_curr = alpha_current(p, e)
+            if not p:
+                return False
+
+            if np.isclose(a_prev, a_curr, atol=0.001):
+                # Gleicher Winkel
+                # assert(np.isclose(m_prev, m, atol=0.001))
+                if c_prev+1 != c:
+                    logger.debug(" - ok, aber keine Verlängerung")
+                    # ..., aber keine Verlängerung
+                    lines_clam.append([c_prev, l_prev, a_prev, m])
+                    l_prev = e.length()
+                else:
+                    # ... und Verlängerung
+                    l_prev += e.length()
+                    logger.debug(" - ok, Verlängerung")
+            else:
+                # Anderer Winkel
+                logger.debug(" - diff, angle {} and {} not equal "
+                             .format(a_prev, a_curr))
+                lines_clam.append([c_prev, l_prev, a_prev, m_prev])
+                l_prev = e.length()
+
+            a_prev = a_curr
+            m_prev = m
+            c_prev = c
+
+        lines_clam.append([c_prev, l_prev, a_prev, m_prev])
+        if np.isclose(lines_clam[0][2], lines_clam[-1][2], atol=0.001):
+            # Gleicher Winkel am Anfang und am Ende
+            lines_clam[0][1] += lines_clam[-1][1]  # length
+            del lines_clam[-1]
+            logger.debug(" > last entry deleted")
+
+        if len(lines_clam) < 4:
+            logger.debug("=== END OF is_magnet_rectangle(): NO RECTANGLE #1")
+            return False
+
+        lines_lmc = [[l, m, c] for c, l, a, m in lines_clam]
+        lines_lmc.sort(reverse=True)
+
+        if not np.isclose(lines_lmc[0][1], lines_lmc[1][1], atol=0.001):
+            # Die Steigungen der zwei längsten Linien müssen gleich sein
+            logger.debug("=== END OF is_mag_rectangle(): NO RECTANGLE #2")
+            return False
+
+        def excursion_to_same_direction(clam):
+            if len(clam) < 4:
+                return False
+
+            alpha = alpha_angle(clam[0][2], clam[1][2])
+            clockwise = not alpha < np.pi
+
+            angle_prev = clam[1][2]
+            for c, l, angle_curr, m in clam[2:]:
+                alpha = alpha_angle(angle_prev, angle_curr)
+                if clockwise:
+                    if alpha < np.pi:
+                        return False
+                else:
+                    if alpha > np.pi:
+                        return False
+                angle_prev = angle_curr
+            return True  # end of all_lines_with_same_direction()
+
+        lines_cm = [[c, m] for l, m, c in lines_lmc[0:4]]
+        lines_cm.sort()
+
+        if np.isclose(lines_cm[0][1], lines_cm[2][1], atol=0.001):
+            ok = excursion_to_same_direction(lines_clam)
+            logger.debug("=== END OF is_magnet_rectangle(): OK = {} #1"
+                         .format(ok))
+            return ok
+        if np.isclose(lines_cm[1][1], lines_cm[3][1], atol=0.001):
+            ok = excursion_to_same_direction(lines_clam)
+            logger.debug("=== END OF is_magnet_rectangle(): OK = {} #2"
+                         .format(ok))
+            return ok
+
+        logger.debug("=== END OF is_magnet_rectangle(): NO RECTANGLE #3")
+        return False
+
     def get_mag_orient_rectangle(self):
         lines = [[e.m(99999.0), e.length(), alpha_line(e.p1, e.p2)]
                  for e in self.area
@@ -616,7 +748,7 @@ class Area(object):
                                             1e-04, 1e-04)
 
         logger.debug("\n***** mark_stator_subregions [{}] *****"
-                    .format(self.id))
+                     .format(self.id))
         logger.debug(" - close_to_ag        : {}".format(close_to_ag))
         logger.debug(" - close_to_opposition: {}".format(close_to_opposition))
         logger.debug(" - airgap_radius      : {}".format(airgap_radius))
@@ -666,7 +798,6 @@ class Area(object):
                               center, r_in, r_out):
         logger.debug("mark_rotor_subregions")
 
-        my_alpha = round(self.max_angle - self.min_angle, 6)
         alpha = round(alpha, 6)
 
         if self.is_circle():
@@ -686,9 +817,20 @@ class Area(object):
         self.close_to_startangle = np.isclose(self.min_angle, 0.0)
         self.close_to_endangle = np.isclose(self.max_angle, alpha)
 
+        logger.debug("\n***** mark_rotor_subregions [{}] *****"
+                     .format(self.id))
+        logger.debug(" - close_to_ag        : {}".format(close_to_ag))
+        logger.debug(" - close_to_opposition: {}".format(close_to_opposition))
+        logger.debug(" - airgap_radius      : {}".format(airgap_radius))
+        logger.debug(" - close_to_startangle: {}".format(self.close_to_startangle))
+        logger.debug(" - close_to_endangle  : {}".format(self.close_to_endangle))
+        logger.debug(" - alpha              : {}".format(alpha))
+        logger.debug(" - min_angle          : {}".format(self.min_angle))
+        logger.debug(" - max_angle          : {}".format(self.max_angle))
+
         if close_to_opposition:
             self.type = 1  # iron
-            logger.debug(">>> iron close to opposition")
+            logger.debug("***** iron (close to opposition)\n")
             return self.type
 
         if close_to_ag:
@@ -696,7 +838,7 @@ class Area(object):
             air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
             if air_alpha / alpha < 0.2:
                 self.type = 0  # air
-                logger.debug(">>> air close to airgap")
+                logger.debug("***** air #1 (close to airgap)\n")
                 return self.type
 
             if air_alpha / alpha > 0.6:
@@ -708,37 +850,33 @@ class Area(object):
                         self.phi = self.max_angle
                 else:
                     self.phi = middle_angle(self.min_angle, self.max_angle)
-                logger.debug(">>> magnet close to airgap")
+                logger.debug("***** magnet (close to airgap)\n")
             else:
                 self.type = 1  # iron
-                logger.debug(">>> iron close to airgap")
+                logger.debug("***** iron (close to airgap)\n")
             return self.type
 
-        # if my_alpha / alpha > 0.5: # old style (26.9.2018)
-        if True:
-            if self.is_rectangle():
-                self.type = 4  # magnet embedded
-                logger.debug(">>> magnet embedded")
-                self.phi = self.get_mag_orient_rectangle()
-                return self.type
+        if self.is_mag_rectangle():
+            self.type = 4  # magnet embedded
+            logger.debug("***** magnet (embedded)\n")
+            self.phi = self.get_mag_orient_rectangle()
+            return self.type
 
-            if not (self.close_to_startangle or self.close_to_endangle):
-                self.type = 0  # air
-                logger.debug(">>> air somewhere")
-                return self.type
+        if not (self.close_to_startangle or self.close_to_endangle):
+            self.type = 0  # air
+            logger.debug("***** air (somewhere)\n")
+            return self.type
 
         self.type = 1  # iron
         if self.min_angle > 0.001:
-            # if my_alpha / alpha < 0.4: # old style (26.9.2018)
-            if True:
-                if self.max_angle < alpha - 0.001:
-                    self.type = 0  # air
-                elif mirrored:
-                    self.type = 0  # air
-                logger.debug(">>> air ??")
-                return self.type
+            if self.max_angle < alpha - 0.001:
+                self.type = 0  # air
+            elif mirrored:
+                self.type = 0  # air
+            logger.debug("***** air ??\n")
+            return self.type
 
-        logger.debug(">>> iron remains")
+        logger.debug("***** iron (remains)\n")
         return self.type
 
     def mark_unknown_subregions(self, mirrored, alpha,
@@ -750,7 +888,7 @@ class Area(object):
             logger.debug(">>> air is a circle")
             return self.type
 
-        if self.is_rectangle():
+        if self.is_magnet_rectangle():
             self.type = 4  # magnet embedded
             logger.debug(">>> magnet embedded")
             self.phi = self.get_mag_orient_rectangle()

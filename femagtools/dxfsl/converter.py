@@ -28,21 +28,23 @@ def symmetry_search(machine,
                     rows=1,
                     cols=1,
                     num=1):
-    logger.info("symmetry search for %s", kind)
+    logger.info(" ")
+    logger.info("*** Begin of symmetry search for %s ***", kind)
+
     machine.clear_cut_lines()
     if show_plots and debug_mode:
         plt.render_elements(machine.geom, Shape,
                             neighbors=True, title=kind)
 
     if not machine.find_symmetry(symtol):
-        logger.info("{}: no symmetry axis found".format(kind))
+        logger.info(" - {}: no symmetry axis found".format(kind))
         if show_plots:
             plt.add_emptyplot(rows, cols, num, 'no symmetry axis')
 
         machine_mirror = machine.get_symmetry_mirror()
         machine_slice = machine
     else:
-        logger.info("{}: symmetry axis found !!".format(kind))
+        logger.info(" - {}: symmetry axis found !!".format(kind))
         if show_plots:
             plt.render_elements(machine.geom, Shape,
                                 title=kind+' (symmetrylines)',
@@ -51,12 +53,18 @@ def symmetry_search(machine,
         machine_slice = machine.get_symmetry_slice()
         if machine_slice is None:
             machine.kind = kind
+            logger.info(" - no slice extracted ?!?")
+            logger.info("*** End of symmetry search for %s ***", kind)
             return machine
 
         machine_mirror = machine_slice.get_symmetry_mirror()
 
     if machine_mirror is None:
-        logger.info("=> no mirror found")
+        logger.info(" - no mirror found")
+        if not machine_slice.is_startangle_zero():
+            machine_slice.rotate_to(0.0)
+            machine_slice.set_alfa_and_corners()
+
         machine_ok = machine_slice
     else:
         if show_plots and debug_mode:
@@ -64,10 +72,10 @@ def symmetry_search(machine,
                                 title='Mirror of '+kind,
                                 rows=rows, cols=cols, num=num, show=True)
 
-        logger.info("=> mirror found")
+        logger.info(" - mirror found")
         machine_next_mirror = machine_mirror.get_symmetry_mirror()
         while machine_next_mirror is not None:
-            logger.info("=> another mirror found")
+            logger.info(" - another mirror found")
             machine_mirror = machine_next_mirror
             machine_next_mirror = machine_mirror.get_symmetry_mirror()
 
@@ -77,6 +85,8 @@ def symmetry_search(machine,
     # machine_ok.complete_hull(is_inner, is_outer)
     machine_ok.create_auxiliary_lines()
     machine_ok.set_kind(kind)
+
+    logger.info("*** End of symmetry search for %s ***", kind)
     return machine_ok
 
 
@@ -144,7 +154,8 @@ def convert(dxfile,
 
     if machine_base.is_full() or \
        machine_base.is_half() or \
-       machine_base.is_quarter():
+       machine_base.is_quarter() or \
+       machine_base.part > 2:
         # create a copy for further processing
         machine = machine_base.full_copy()
     else:

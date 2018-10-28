@@ -90,6 +90,9 @@ class Machine(object):
         return self.radius > 0.0 and \
                np.isclose(alpha_angle(self.startangle, self.endangle), np.pi/2)
 
+    def is_startangle_zero(self):
+        return np.isclose(self.startangle, 0.0)
+
     def move_to_middle(self):
         if not self.is_in_middle():
             if self.radius > 0.0:
@@ -208,6 +211,7 @@ class Machine(object):
         assert(self.previous_machine)
         self.previous_machine.set_minmax_radius()
         # self.previous_machine.complete_hull()
+        self.set_alfa_and_corners()
         self.previous_machine.create_auxiliary_lines()
         self.previous_machine.set_kind(self.geom.kind)
         return self.previous_machine
@@ -471,8 +475,6 @@ class Machine(object):
         return machine_slice
 
     def get_third_symmetry_mirror(self):
-        startangle = self.startangle
-        endangle = self.endangle
         first_thirdangle = third_angle(self.startangle, self.endangle)
         second_thirdangle = middle_angle(first_thirdangle, self.endangle)
 
@@ -518,6 +520,8 @@ class Machine(object):
         machine_mirror.set_alfa_and_corners()
         if machine_mirror.check_symmetry_graph(0.001, 0.05):
             machine_mirror.previous_machine = self
+            machine_mirror.rotate_to(0.0)
+            machine_mirror.set_alfa_and_corners()
             return machine_mirror
         return None
 

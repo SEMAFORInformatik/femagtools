@@ -89,25 +89,35 @@ def main():
                            dest='view',
                            action="store_true")
     argparser.add_argument('-d', '--debug',
-                           help='print debug information',
+                           help='print debug information in logfile',
                            dest='debug',
                            action="store_true")
     argparser.add_argument('-l', '--log',
-                           help='print debug information',
+                           help='print information in logfile',
                            dest='debug',
                            action="store_true")
     argparser.add_argument('--version',
                            help='show version of some packages',
                            dest='version',
                            action="store_true")
+    argparser.add_argument('--debugger',
+                           help='print debug information in logfile',
+                           dest='debugger',
+                           action="store_true")
 
     args = argparser.parse_args()
 
+    logfilename = None
     loglevel = logging.INFO
     if args.debug:
         loglevel = logging.DEBUG
+        logfilename = 'debugger.log'
+        print("see log-messages in {}".format(logfilename))
+
     logging.basicConfig(level=loglevel,
-                        format='%(asctime)s %(message)s')
+                        format='%(asctime)s %(message)s',
+                        filename=logfilename,
+                        filemode='w')
 
     if args.version:
         logger.info("femagtools version: %s", femagtools.__version__)
@@ -125,8 +135,8 @@ def main():
 
     if args.airgap > 0.0:
         if args.airgap2 > 0.0:
-            logger.info("Airgap is set from {} to {}".
-                        format(args.airgap, args.airgap2))
+            logger.info("Airgap is set from {} to {}"
+                        .format(args.airgap, args.airgap2))
         else:
             logger.info("Airgap is set to {}".format(args.airgap))
 
@@ -166,12 +176,11 @@ def main():
                   show_plots=args.show_plots,
                   show_areas=args.show_areas,
                   write_fsl=args.write_fsl,
-                  debug_mode=args.debug)
+                  debug_mode=args.debugger)
 
     basename = os.path.basename(args.dxfile).split('.')[0]
     with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
             f.write('\n'.join(res['fsl']))
-
 
 if __name__ == "__main__":
     loglevel = logging.INFO

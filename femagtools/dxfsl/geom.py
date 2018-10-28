@@ -290,8 +290,8 @@ def spline(entity, min_dist=0.001):
 
 
 def insert_block(insert_entity, block, min_dist=0.001):
-    logger.info('Insert {} entities from block {}'
-                .format(len(block), insert_entity.name))
+    logger.debug('Insert {} entities from block {}'
+                 .format(len(block), insert_entity.name))
 
     logger.debug('Insert = {}'.format(insert_entity.insert))
     logger.debug('Rotation = {}'.format(insert_entity.rotation))
@@ -374,7 +374,7 @@ def dxfshapes0(dxffile, mindist=0.01, layers=[]):
             for l in spline(e, min_dist=mindist):
                 yield l
         else:
-            logger.info("Id %d4: unknown type %s", id, e.dxftype)
+            logger.warning("Id %d4: unknown type %s", id, e.dxftype)
         id += 1
 
 
@@ -414,7 +414,7 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 for l in insert_block(e, block, min_dist=mindist):
                     yield l
             else:
-                logger.info("Id %d4: unknown type %s", id, e.dxftype)
+                logger.warning("Id %d4: unknown type %s", id, e.dxftype)
             id += 1
 
 
@@ -434,6 +434,9 @@ def read_fem_lines(f, num):
         i2 = int(p[1])
         p1 = fem_points[i1]
         p2 = fem_points[i2]
+        if points_are_close(p1, p2):
+            logger.warning("FEMM: Line with points close together")
+            logger.warning("      p1 = {}, p2 = {}".format(p1, p2))
         yield Line(Element(start=p1, end=p2))
 
 
@@ -445,6 +448,9 @@ def read_fem_arcs(f, num):
         alpha = float(p[2])
         p1 = fem_points[i1]
         p2 = fem_points[i2]
+        if points_are_close(p1, p2):
+            logger.warning("FEMM: Arc with points close together")
+            logger.warning("      p1 = {}, p2 = {}".format(p1, p2))
         for e in get_fem_arc(p1, p2, alpha):
             yield e
 
@@ -686,6 +692,10 @@ class Geometry(object):
         return []
 
     def add_edge(self, n1, n2, entity):
+        if points_are_close(n1, n2):
+            logger.debug("WARNING in add_edge(): Points ar close together")
+            logger.debug("        p1 = {}, p2 = {}".format(n1, n2))
+
         self.g.add_edge(n1, n2, object=entity)
 
     def get_edge(self, eg):
@@ -780,11 +790,13 @@ class Geometry(object):
         rtol = 1e-4
         atol = 1e-4
 
+        logger.debug("repair_hull_line(center={}, angle={})"
+                     .format(center, angle))
         corners = self.get_corner_list(center, angle, rtol, atol)
         if len(corners) < 2:
             # no hull without more than 1 corners
-            logger.info('repair_hull_line: only {} corners'.
-                        format(len(corners)))
+            logger.debug('repair_hull_line: only {} corners: EXIT'
+                         .format(len(corners)))
             return
 
         [c.set_keep_node() for c in corners if c.is_equal(center, rtol, atol)]
@@ -792,11 +804,13 @@ class Geometry(object):
             clist_p1 = [c for c in corners if c.is_equal(p1, 0.0, 1e-7)]
             clist_p2 = [c for c in corners if c.is_equal(p2, 0.0, 1e-7)]
             if len(clist_p1) > 1:
-                logger.warning("WARNING: {} corners and p1 close together"
+                logger.warning("WARNING in repair_hull_line(): {} corners and p1 close together"
                                .format(len(clist_p1)))
+                logger.warning("        p1 = {}, p2 = {}".format(p1, p2))
             if len(clist_p2) > 1:
-                logger.warning("WARNING: {} corners and p2 close together"
+                logger.warning("WARNING in repair_hull_line(): {} corners and p2 close together"
                                .format(len(clist_p2)))
+                logger.warning("        p2 = {}, p1 = {}".format(p2, p1))
 
             if clist_p1 and clist_p2:
                 # Both points are in the hull
@@ -841,6 +855,7 @@ class Geometry(object):
                 p2 = c.point()
                 self.add_edge(p1, p2, Line(Element(start=p1, end=p2)))
                 p1 = p2
+        logger.debug('repair_hull_line: EXIT')
 
     def set_minmax_radius(self, center):
         self.min_radius = 99999.0
@@ -981,8 +996,8 @@ class Geometry(object):
             logger.debug('  Next {}'.format(next_p))
             c += 1
             if c > self.num_edges * 2:
-                logger.info("FATAL: *** over {} elements in area ? ***"
-                            .format(self.num_edges))
+                logger.error("FATAL: *** over {} elements in area ? ***"
+                             .format(self.num_edges))
                 plot_area(area)
                 sys.exit(1)
             e_dict = self.g.get_edge_data(this_p, next_p)
@@ -1594,19 +1609,21 @@ class Geometry(object):
         r = 0.0
         atol = 3.0
 
+        logger.debug("*** Begin of get_machine() ***")
+
         if np.isclose(height, width, self.rtol, self.atol):
             r = width/2
             c = [mm[1]-r, mm[3]-r]
             logger.info("check for full machine")
             if self.check_hull(c, r, None, None, self.rtol, atol):
-                logger.info("  it is full")
+                logger.info(" - it is full")
                 return Machine(self, c, r, 0.0, 0.0)
 
             logger.info("check for quarter machine")
             r = width
             c = [mm[0], mm[2]]
             if self.check_hull(c, r, mm[0], mm[2], self.rtol, atol):
-                logger.info("  it is a quarter")
+                logger.info(" - it is a quarter")
                 return Machine(self, c, r, 0.0, np.pi/2)
 
         elif np.isclose(width, height*2, self.rtol, self.atol):
@@ -1614,12 +1631,12 @@ class Geometry(object):
             c = [mm[1]-height, mm[2]]
             logger.info("check for half machine")
             if self.check_hull(c, r, None, mm[2], self.rtol, atol):
-                logger.info("  it is a half")
+                logger.info(" - it is a half")
                 return Machine(self, c, r, 0.0, np.pi)
 
             c = [mm[1]-height, mm[3]]
             if self.check_hull(c, r, None, mm[3], self.rtol, atol):
-                logger.info("  it is a half")
+                logger.info(" - it is a half")
                 return Machine(self, c, r, np.pi, 0.0)
 
         elif np.isclose(width*2, height, self.rtol, self.atol):
@@ -1628,16 +1645,18 @@ class Geometry(object):
             logger.info("check for half machine")
             c = [mm[1], mm[3]-width]
             if self.check_hull(c, r, mm[1], None, self.rtol, atol):
-                logger.info("  it is a half")
+                logger.info(" - it is a half")
                 return Machine(self, c, r, np.pi/2.0, -np.pi/2.0)
 
             c = [mm[0], mm[3]-width]
             if self.check_hull(c, r, mm[0], None, self.rtol, atol):
-                logger.info("  it is a half")
+                logger.info(" - it is a half")
                 return Machine(self, c, r, -np.pi/2.0, np.pi/2.0)
 
         machine = self.get_machine_part(mm)
         if machine:
+            logger.info(" - it is 1/{} of a machine"
+                        .format(machine.part))
             return machine
 
         logger.info("The shape of the Machine is unexpected")
@@ -1651,6 +1670,8 @@ class Geometry(object):
         return True
 
     def get_machine_part(self, mm):
+        logger.debug("*** Begin of get_machine_part() ***")
+
         center_list = []
         for e in self.elements(Arc):
             center = [round(e.center[0], 3), round(e.center[1], 3)]
@@ -1674,7 +1695,7 @@ class Geometry(object):
             # x(min) und y(min)
             center = [round(mm[0], 4), round(mm[2], 4)]
 
-        logger.debug("Center is {}".format(center))
+        logger.debug(" - Center is {}".format(center))
 
         min_radius = 99999
         max_radius = 0
@@ -1682,11 +1703,14 @@ class Geometry(object):
         endangle = -999.0
 
         for h in convex_hull(self.virtual_nodes()):
-            angle = alpha_line(center, [round(h[0], 4), round(h[1], 4)])
-            if angle < 0.0:
-                logger.debug("strange point {}".format(h))
-            startangle = min(startangle, angle)
-            endangle = max(endangle, angle)
+            if not points_are_close(center, h):
+                angle = alpha_line(center, [round(h[0], 4), round(h[1], 4)])
+                if angle < 0.0:
+                    logger.debug(" - strange point {}".format(h))
+                    logger.debug(" - hull-node {} ==> angle = {}"
+                                 .format(h, angle))
+                startangle = min(startangle, angle)
+                endangle = max(endangle, angle)
 
             dist = distance(center, h)
             min_radius = min(min_radius, dist)
@@ -1700,12 +1724,32 @@ class Geometry(object):
         min_r = min(center_left, center_right, center_up, center_down)
         max_r = max(center_left, center_right, center_up, center_down)
 
+        logger.debug(" - startangle: %f12", startangle)
+        logger.debug(" - endangle  : %f12", endangle)
+        x = part_of_circle(startangle, endangle)
+        logger.debug(" - slice     : 1/%d", x)
+
+        logger.debug(" - center left : %f12", center_left)
+        logger.debug(" - center right: %f12", center_right)
+        logger.debug(" - center down : %f12", center_down)
+        logger.debug(" - center up   : %f12", center_up)
+
+        if x > 0:
+            # it looks pretty good
+            logger.debug(" - slice is 1/%d: EXIT", x)
+            M = Machine(self,
+                        [round(center[0], 8), round(center[1], 8)],
+                        max_radius, startangle, endangle)
+            logger.debug("*** End of get_machine_part(): ok ***")
+            return M
+
         if less_equal(center_left, 0.0) or less_equal(center_right, 0.0) or \
            less_equal(center_up, 0.0) or less_equal(center_down, 0.0):
             if not np.isclose(center_left, center_right):
                 x = part_of_circle(startangle, endangle)
 
                 if x > 2:
+                    logger.debug(" - slice is 1/%d: EXIT", x)
                     return Machine(self,
                                    [round(center[0], 8), round(center[1], 8)],
                                    max_radius, startangle, endangle)
@@ -1779,7 +1823,7 @@ class Geometry(object):
                 if not self.is_border_line(center,
                                            startangle, endangle,
                                            e, atol):
-                    logger.info("BAD: Point {}".format(p))
+                    logger.warning("BAD: Point {}".format(p))
                     self.airgaps.append(Point(p))
                     self.airgaps.append(e)
                     ok = False
@@ -1792,11 +1836,24 @@ class Geometry(object):
             if np.isclose(startangle, endangle):
                 return False  # full
 
+            if points_are_close(center, e.p1):
+                angle_p2 = alpha_line(center, e.p2)
+                if np.isclose(startangle, angle_p2, 1e-3, atol):
+                    return True
+                return np.isclose(endangle, angle_p2, 1e-3, atol)
+
+            if points_are_close(center, e.p2):
+                angle_p1 = alpha_line(center, e.p1)
+                if np.isclose(startangle, angle_p1, 1e-3, atol):
+                    return True
+                return np.isclose(endangle, angle_p1, 1e-3, atol)
+
             angle_p1 = alpha_line(center, e.p1)
             if np.isclose(startangle, angle_p1, 1e-3, atol):
                 angle_p2 = alpha_line(center, e.p2)
                 return np.isclose(startangle, angle_p2, 1e-3, atol)
-            elif np.isclose(endangle, angle_p1, 1e-3, atol):
+
+            if np.isclose(endangle, angle_p1, 1e-3, atol):
                 angle_p2 = alpha_line(center, e.p2)
                 return np.isclose(endangle, angle_p2, 1e-3, atol)
         return False
@@ -1820,6 +1877,7 @@ class Geometry(object):
             von Möglichkeiten mit jeweils einem minimalen und einem maximalen
             Radius als Begrenzung des Luftspalts.
         """
+
         gaplist = []
         for e in self.elements(Shape):
             if not self.is_border_line(center, startangle, endangle, e, atol):
@@ -1870,16 +1928,18 @@ class Geometry(object):
         return angle
 
     def delete_airgap_circle(self, center,
-                             lower_radius, radius, upper_radius,
+                             lower_radius,
+                             radius,
+                             upper_radius,
                              angle_tot):
         lower_circles = self.get_circles(center, lower_radius)
         angle_sum = self.alpha_of_circles(lower_circles, center)
-        if angle_sum / angle_tot < 0.75:
+        if angle_sum / angle_tot < 0.5:
             return False
 
         upper_circles = self.get_circles(center, upper_radius)
         angle_sum = self.alpha_of_circles(upper_circles, center)
-        if angle_sum / angle_tot < 0.75:
+        if angle_sum / angle_tot < 0.5:
             return False
 
         self.remove_edges(self.get_circles(center, radius))

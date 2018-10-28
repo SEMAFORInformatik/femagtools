@@ -44,38 +44,34 @@ class Builder:
 
     def prepare_stator(self, model):
         templ = model.statortype()
-        if not os.path.isfile(templ + '.dxf'):
+        if templ != 'dxffile':
             return
-        if os.path.isfile(templ + '.fsl'):
-            return  # ok (fsl already available)
 
-        logger.info("Conv stator from %s\n", templ + '.dxf')
+        logger.info("Conv stator from %s",
+                    model.stator['dxffile']['name'])
         params = {}
         params['split'] = model.stator[templ].get('split', False)
         params['show_plots'] = model.stator[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
         params['part'] = ('stator', model.stator[templ].get('position'))
-        conv = convert(templ + '.dxf', **params)
+        conv = convert(model.stator['dxffile']['name'], **params)
 
         model.stator['num_slots'] = conv.get('tot_num_slot')
         self.set_diameter_parameter(model, conv)
+        if model.get('dy1'):
+            model.set_value('outer_diam', model.get('dy1'))
+            model.set_value('bore_diam', model.get('da1'))
+
         self.fsl_stator = True
         del model.stator[templ]
 
     def set_diameter_parameter(self, model, conv):
-        dy1 = conv.get('dy1', None)
-        da1 = conv.get('da1', None)
-        dy2 = conv.get('dy2', None)
-        da2 = conv.get('da2', None)
-        if dy1:
-            model.set_value('dy1', dy1)
-        if da1:
-            model.set_value('da1', da1)
-        if da2:
-            model.set_value('da2', da2)
-        if dy2:
-            model.set_value('dy2', dy2)
+        for v in ('dy1', 'da1', 'da2', 'dy2'):
+            try:
+                model.set_value(v, conv[v])
+            except KeyError:
+                pass
 
     def prepare_diameter(self, model):
         dy1 = model.get('dy1', 0.0)
@@ -102,7 +98,7 @@ class Builder:
         if fslcode:
             return fslcode
 
-        logger.error('File {}.fsl not found'.format(templ))
+        logger.error('File {}.mako not found'.format(templ))
         return []
 
     def create_magnet_model(self, model):
@@ -144,10 +140,8 @@ class Builder:
 
     def prepare_rotor(self, model):
         templ = model.magnettype()
-        if not os.path.isfile(templ + '.dxf'):
+        if templ != 'dxffile':
             return
-        if os.path.isfile(templ + '.fsl'):
-            return  # ok (fsl already available)
 
         params = {}
         params['split'] = model.magnet[templ].get('split', False)
@@ -155,11 +149,17 @@ class Builder:
         params['write_fsl'] = True
         params['airgap'] = -1.0
         params['part'] = ('rotor', model.magnet[templ].get('position'))
-        logger.info("Conv rotor from %s\n", templ + '.dxf')
-        conv = convert(templ + '.dxf', **params)
-
+        logger.info("Conv rotor from %s", templ + '.dxf')
+        conv = convert(model.magnet[templ]['name'], **params)
+        assert conv.get('num_poles')
         model.set_value('poles', conv.get('num_poles'))
         self.set_diameter_parameter(model, conv)
+        if model.get('da2'):
+            logger.info('da2 %f',  model.get('da2')/1e3)
+            ag = (model.get('bore_diam') - model.get('da2')/1e3)/2
+            model.set_value('airgap', ag)
+            
+        model.magnet['dxf'] = dict(fsl=conv['fsl'])
         self.fsl_magnet = True
         del model.magnet[templ]
 

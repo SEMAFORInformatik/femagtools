@@ -559,8 +559,8 @@ class Area(object):
 
     def is_mag_rectangle(self):
         lines_ceml = [[c, e, e.m(99999.0), e.length()]
-                      for c, e in enumerate(self.area)
-                      if isinstance(e, Line)]
+                      for c, e in enumerate(self.area)]
+        # if isinstance(e, Line)]
         if len(lines_ceml) < 4:
             return False
 
@@ -592,6 +592,8 @@ class Area(object):
                 p = e0_p1
             else:
                 logger.error("ERROR: is_mag_rectangle(): points are not close together")
+                logger.error("       e0 p1={}, p2={}".format(e0_p1, e0_p2))
+                logger.error("       e1 p1={}, p2={}".format(e1_p1, e1_p2))
                 return False
 
         def alpha_current(p, e):
@@ -600,11 +602,14 @@ class Area(object):
             if points_are_close(p, e.p2):
                 return e.p1, alpha_line(e.p2, e.p1)
             logger.error("ERROR: is_mag_rectangle(): points are not close together")
+            logger.error("       p={}, p1={}, p2={}".format(p, e.p1, e.p2))
             return None, None
 
         lines_clam = []
         for c, e, m, l in lines_ceml[1:]:
             p, a_curr = alpha_current(p, e)
+            if not p:
+                return False
 
             if np.isclose(a_prev, a_curr, atol=0.001):
                 # Gleicher Winkel
@@ -621,7 +626,7 @@ class Area(object):
             else:
                 # Anderer Winkel
                 logger.debug(" - diff, angle {} and {} not equal "
-                            .format(a_prev, a_curr))
+                             .format(a_prev, a_curr))
                 lines_clam.append([c_prev, l_prev, a_prev, m_prev])
                 l_prev = e.length()
 

@@ -102,7 +102,7 @@ class FslRenderer(object):
 
     def render(self, machine, inner=False, outer=False):
         '''create fsl statements with nodechains'''
-
+        machine.set_alfa_and_corners()
         geom = machine.geom
         self.content = []
 
@@ -140,14 +140,14 @@ class FslRenderer(object):
         self.content.append(u'\n')
 
         if inner:
-            self.content.append(u'tmp.inner_max_corner_x = {}'
+            self.content.append(u'inner_max_corner_x = {}'
                                 .format(geom.start_max_corner(0)))
-            self.content.append(u'tmp.inner_max_corner_y = {}'
+            self.content.append(u'inner_max_corner_y = {}'
                                 .format(geom.start_max_corner(1)))
         if outer:
-            self.content.append(u'tmp.outer_min_corner_x = {}'
+            self.content.append(u'outer_min_corner_x = {}'
                                 .format(geom.start_min_corner(0)))
-            self.content.append(u'tmp.outer_min_corner_y = {}'
+            self.content.append(u'outer_min_corner_y = {}'
                                 .format(geom.start_min_corner(1)))
         self.content.append(u'\n')
 
@@ -176,9 +176,9 @@ class FslRenderer(object):
                     if area.type not in subregions:
                         subregions[area.type] = 1
                     num_magnets += 1
-                    self.content.append(u'tmp.xmag[{}], tmp.ymag[{}] = x0, y0'.
+                    self.content.append(u'xmag[{}], ymag[{}] = x0, y0'.
                                         format(num_magnets, num_magnets))
-                    self.content.append(u'tmp.mag_orient[{}] = {}'.
+                    self.content.append(u'mag_orient[{}] = {}'.
                                         format(num_magnets, area.phi))
                 elif area.type > 0:
                     if area.type in subregions:
@@ -221,23 +221,20 @@ class FslRenderer(object):
         self.content.append(u'\n'.join(txt))
 
         if num_windings > 0:
-            self.content.append(u'tmp.coil_exists   = {}'.
-                                format(num_windings))
             if geom.is_mirrored():
-                self.content.append(u'tmp.coil_mirrored = true')
-            else:
-                self.content.append(u'tmp.coil_mirrored = false')
-            self.content.append(u'tmp.coil_alpha    = {}'.format(geom.alfa))
+                self.content += [
+                    u'    r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
+                    u'    m.xcoil_2, m.ycoil_2 = pr2c(r, {}*2.0 - phi)'.format(geom.alfa)]
             self.content.append(u'm.wdg_location  = 1.0 -- stator\n')
 
         if num_magnets > 0:
-            self.content.append(u'tmp.mag_exists   = {}'.
+            self.content.append(u'mag_exists   = {}'.
                                 format(num_magnets))
             if geom.is_mirrored():
-                self.content.append(u'tmp.mag_mirrored = true')
+                self.content.append(u'mag_mirrored = true')
             else:
-                self.content.append(u'tmp.mag_mirrored = false')
-            self.content.append(u'tmp.mag_alpha    = {}\n'
+                self.content.append(u'mag_mirrored = false')
+            self.content.append(u'mag_alpha    = {}\n'
                                 .format(geom.get_alfa()))
 
         if geom.is_mirrored():
@@ -297,16 +294,16 @@ class FslRenderer(object):
         if num_magnets:
             self.content += [
                 u'-- pm magnets',
-                u'if tmp.mag_exists > 0 then',
-                u'  alfa = tmp.mag_alpha',
+                u'if mag_exists > 0 then',
+                u'  alfa = mag_alpha',
                 u'  m.remanenc = 1.15',
                 u'  m.relperm  = 1.05',
                 u'  for i=0, m.npols_gen-1 do',
-                u'    for n=1, tmp.mag_exists do',
-                u'      r, p = c2pr(tmp.xmag[n], tmp.ymag[n])',
+                u'    for n=1, mag_exists do',
+                u'      r, p = c2pr(xmag[n], ymag[n])',
                 u'      phi = i*alfa+p',
                 u'      x0, y0 = pr2c(r, phi)',
-                u'      phi_orient = i*alfa+tmp.mag_orient[n]',
+                u'      phi_orient = i*alfa+mag_orient[n]',
                 u'      orient = phi_orient*180/math.pi',
                 u'      if ( i % 2 == 0 ) then',
                 u'        def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
@@ -315,10 +312,10 @@ class FslRenderer(object):
                 u'        def_mat_pm(x0, y0, green, m.remanenc, m.relperm,',
                 u'                   orient, m.parallel, 100)',
                 u'      end',
-                u'      if tmp.mag_mirrored then',
+                u'      if mag_mirrored then',
                 u'        phi = (i+1)*alfa-p',
                 u'        x0, y0 = pr2c(r, phi)',
-                u'        phi_orient = (i+1)*alfa-tmp.mag_orient[n]',
+                u'        phi_orient = (i+1)*alfa-mag_orient[n]',
                 u'        orient = phi_orient*180/math.pi',
                 u'        if ( i % 2 == 0 ) then',
                 u'          def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
@@ -357,11 +354,10 @@ class FslRenderer(object):
             u'pickdist(0.001)',
             u'cosys(polar)\n',
             u'tmp = {}',
-            u'tmp.xmag = {}',
-            u'tmp.ymag = {}',
-            u'tmp.mag_orient = {}',
-            u'tmp.mag_exists = 0',
-            u'tmp.coil_exists = 0\n',
+            u'xmag = {}',
+            u'ymag = {}',
+            u'mag_orient = {}',
+            u'mag_exists = 0',
             u'dy1 = {}'.format(params.get('dy1', 0.0)),
             u'da1 = {}'.format(params.get('da1', 0.0)),
             u'dy2 = {}'.format(params.get('dy2', 0.0)),
@@ -397,15 +393,15 @@ class FslRenderer(object):
                     u'r2 = da2/2 + 2*ag/3',
                     u'x2, y2 = pr2c(r2, alfa)',
                     u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
-                    u'if tmp.inner_max_corner_x == nil then',
-                    u'  tmp.inner_max_corner_x = da2/2',
+                    u'if inner_max_corner_x == nil then',
+                    u'  inner_max_corner_x = da2/2',
                     u'end',
-                    u'x1, y1 = tmp.inner_max_corner_x, 0.0',
+                    u'x1, y1 = inner_max_corner_x, 0.0',
                     u'nc_line(x1, y1, r1, 0.0, 0.0)\n',
-                    u'if tmp.outer_min_corner_x == nil then',
-                    u'  tmp.outer_min_corner_x = da1/2',
+                    u'if outer_min_corner_x == nil then',
+                    u'  outer_min_corner_x = da1/2',
                     u'end',
-                    u'x2, y2 = tmp.outer_min_corner_x, 0.0',
+                    u'x2, y2 = outer_min_corner_x, 0.0',
                     u'nc_line(r2, 0.0, x2, y2, 0.0)\n',
                     u'x3, y3 = pr2c(x1, alfa)',
                     u'x4, y4 = pr2c(r1, alfa)',
@@ -419,7 +415,7 @@ class FslRenderer(object):
                     u'create_mesh_se(x0, y0)\n',
                     u'connect_models()\n',
                     u'-- Gen_winding',
-                    u'if tmp.coil_exists > 0 then',
+                    u'if m.xcoil_1 ~= nil then',
                     u'  m.num_phases      = 3',
                     u'  m.num_layers      = {}'.format(num_layers),
                     u'  m.num_wires       = 1',
@@ -431,10 +427,6 @@ class FslRenderer(object):
                     u'  m.wdg_location    = 1.0 -- stator',
                     u'  m.curr_inp        = 0.0 -- const',
                     u'  m.dq_offset       = 0',
-                    u'  if tmp.coil_exists == 1 and tmp.coil_mirrored then',
-                    u'    r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
-                    u'    m.xcoil_2, m.ycoil_2 = pr2c(r, tmp.coil_alpha*2.0 - phi)',
-                    u'  end\n',
                     u'  pre_models("Gen_winding")',
                     u'  pre_models("gen_pocfile")',
                     u'end\n',

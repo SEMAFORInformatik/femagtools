@@ -5,8 +5,9 @@
 # Author: Ronald Tanner
 # Date: 2016/01/24
 #
-
 import sys
+import os
+import io
 import femagtools
 from femagtools.dxfsl.converter import convert
 import argparse
@@ -160,22 +161,27 @@ def main():
         if not (args.show_plots or args.show_areas or args.view):
             args.write_fsl = True
 
-    convert(args.dxfile,  # DXF-Filename
-            rtol=args.rtol,    # relative pickdist toleranz
-            atol=args.atol,    # absolute pickdist toleranz
-            symtol=args.sym_tolerance,
-            mindist=args.mindist,
-            split=args.split,
-            inner_name=args.inner,
-            outer_name=args.outer,
-            part=part,
-            airgap=args.airgap,
-            airgap2=args.airgap2,
-            view_only=args.view,
-            show_plots=args.show_plots,
-            show_areas=args.show_areas,
-            write_fsl=args.write_fsl,
-            debug_mode=args.debugger)
+    res = convert(args.dxfile,  # DXF-Filename
+                  rtol=args.rtol,    # relative pickdist toleranz
+                  atol=args.atol,    # absolute pickdist toleranz
+                  symtol=args.sym_tolerance,
+                  mindist=args.mindist,
+                  split=args.split,
+                  inner_name=args.inner,
+                  outer_name=args.outer,
+                  part=part,
+                  airgap=args.airgap,
+                  airgap2=args.airgap2,
+                  view_only=args.view,
+                  show_plots=args.show_plots,
+                  show_areas=args.show_areas,
+                  write_fsl=args.write_fsl,
+                  debug_mode=args.debugger)
+
+    if args.write_fsl:
+        basename = os.path.basename(args.dxfile).split('.')[0]
+        with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
+            f.write('\n'.join(res['fsl']))
 
 
 if __name__ == "__main__":

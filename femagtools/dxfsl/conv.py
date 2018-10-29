@@ -178,9 +178,11 @@ def main():
                   write_fsl=args.write_fsl,
                   debug_mode=args.debugger)
 
-    basename = os.path.basename(args.dxfile).split('.')[0]
-    with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
+    if args.write_fsl:
+        basename = os.path.basename(args.dxfile).split('.')[0]
+        with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
             f.write('\n'.join(res['fsl']))
+
 
 if __name__ == "__main__":
     loglevel = logging.INFO

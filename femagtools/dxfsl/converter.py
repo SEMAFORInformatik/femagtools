@@ -138,18 +138,23 @@ def convert(dxfile,
             logger.error('"{}" has to be defined in/out'.format(part[0]))
             return dict(error='unknown location {}'.format(part[1]))
 
-    if dxfile.split('.')[-1] == 'fem':
-        basegeom = Geometry(femshapes(dxfile),
-                            rtol=rtol,
-                            atol=atol,
-                            split=split)
-    else:
-        basegeom = Geometry(dxfshapes(dxfile,
-                                      mindist=mindist,
-                                      layers=layers),
-                            rtol=rtol,
-                            atol=atol,
-                            split=split)
+    try:
+        if dxfile.split('.')[-1] == 'fem':
+            basegeom = Geometry(femshapes(dxfile),
+                                rtol=rtol,
+                                atol=atol,
+                                split=split)
+        else:
+            basegeom = Geometry(dxfshapes(dxfile,
+                                          mindist=mindist,
+                                          layers=layers),
+                                rtol=rtol,
+                                atol=atol,
+                                split=split)
+    except FileNotFoundError as ex:
+        logger.error(ex)
+        return dict()
+
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = PlotRenderer()

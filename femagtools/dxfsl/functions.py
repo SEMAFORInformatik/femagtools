@@ -286,7 +286,7 @@ def part_of_circle(startangle, endangle, pos=3):
         x = float(0.0)
     logger.debug("part_of_circle: {}".format(x))
     if x.is_integer():
-        return x
+        return int(x)
     return 0
 
 

@@ -454,6 +454,12 @@ class Machine(object):
     def is_mirrored(self):
         return self.mirror_geom is not None
 
+    def num_of_layers(self):
+        w = self.geom.num_of_windings()
+        if w > 0 and self.is_mirrored():
+            return w*2
+        return w
+
     def find_symmetry(self, sym_tolerance):
         if self.radius <= 0.0:
             return False

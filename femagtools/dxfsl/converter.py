@@ -157,17 +157,12 @@ def convert(dxfile,
         logger.warn("it's Not a Machine!!")
         return dict(error='machine not detected')
 
-    if machine_base.is_full() or \
-       machine_base.is_half() or \
-       machine_base.is_quarter() or \
-       machine_base.part > 2:
-        # create a copy for further processing
-        machine = machine_base.full_copy()
-    else:
+    if not (machine_base.part > 0):
         # machine shape is unclear
         machine_base.set_center(0.0, 0.0)
         machine_base.set_radius(9999999)
-        machine = machine_base.full_copy()
+
+    machine = machine_base
 
     if machine.part_of_circle() == 0:
         logger.warn("No arc segment found")

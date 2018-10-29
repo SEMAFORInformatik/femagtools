@@ -295,15 +295,14 @@ class FslRenderer(object):
             self.content += [
                 u'-- pm magnets',
                 u'if mag_exists > 0 then',
-                u'  alfa = mag_alpha',
                 u'  m.remanenc = 1.15',
                 u'  m.relperm  = 1.05',
                 u'  for i=0, m.npols_gen-1 do',
                 u'    for n=1, mag_exists do',
                 u'      r, p = c2pr(xmag[n], ymag[n])',
-                u'      phi = i*alfa+p',
+                u'      phi = i*mag_alpha+p',
                 u'      x0, y0 = pr2c(r, phi)',
-                u'      phi_orient = i*alfa+mag_orient[n]',
+                u'      phi_orient = i*mag_alpha+mag_orient[n]',
                 u'      orient = phi_orient*180/math.pi',
                 u'      if ( i % 2 == 0 ) then',
                 u'        def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
@@ -313,9 +312,9 @@ class FslRenderer(object):
                 u'                   orient, m.parallel, 100)',
                 u'      end',
                 u'      if mag_mirrored then',
-                u'        phi = (i+1)*alfa-p',
+                u'        phi = (i+1)*mag_alpha-p',
                 u'        x0, y0 = pr2c(r, phi)',
-                u'        phi_orient = (i+1)*alfa-mag_orient[n]',
+                u'        phi_orient = (i+1)*mag_alpha-mag_orient[n]',
                 u'        orient = phi_orient*180/math.pi',
                 u'        if ( i % 2 == 0 ) then',
                 u'          def_mat_pm(x0, y0, red, m.remanenc, m.relperm,',
@@ -341,8 +340,8 @@ class FslRenderer(object):
             logger.warning("ERROR: Rotor or Stator missing")
             return []
 
-        num_layers = min(m_inner.geom.num_of_windings() +
-                         m_outer.geom.num_of_windings(),
+        num_layers = min(m_inner.num_of_layers() +
+                         m_outer.num_of_layers(),
                          2)
         return [
             u'-- generated from DXF by femagtools {}'.format(__version__),

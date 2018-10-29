@@ -642,7 +642,7 @@ class Area(object):
             logger.debug(" > last entry deleted")
 
         if len(lines_clam) < 4:
-            logger.debug("=== END OF is_magnet_rectangle(): NO RECTANGLE #1")
+            logger.debug("=== END OF is_mag_rectangle(): NO RECTANGLE #1")
             return False
 
         lines_lmc = [[l, m, c] for c, l, a, m in lines_clam]
@@ -677,16 +677,16 @@ class Area(object):
 
         if np.isclose(lines_cm[0][1], lines_cm[2][1], atol=0.001):
             ok = excursion_to_same_direction(lines_clam)
-            logger.debug("=== END OF is_magnet_rectangle(): OK = {} #1"
+            logger.debug("=== END OF is_mag_rectangle(): OK = {} #1"
                          .format(ok))
             return ok
         if np.isclose(lines_cm[1][1], lines_cm[3][1], atol=0.001):
             ok = excursion_to_same_direction(lines_clam)
-            logger.debug("=== END OF is_magnet_rectangle(): OK = {} #2"
+            logger.debug("=== END OF is_mag_rectangle(): OK = {} #2"
                          .format(ok))
             return ok
 
-        logger.debug("=== END OF is_magnet_rectangle(): NO RECTANGLE #3")
+        logger.debug("=== END OF is_mag_rectangle(): NO RECTANGLE #3")
         return False
 
     def get_mag_orient_rectangle(self):
@@ -888,7 +888,7 @@ class Area(object):
             logger.debug(">>> air is a circle")
             return self.type
 
-        if self.is_magnet_rectangle():
+        if self.is_mag_rectangle():
             self.type = 4  # magnet embedded
             logger.debug(">>> magnet embedded")
             self.phi = self.get_mag_orient_rectangle()

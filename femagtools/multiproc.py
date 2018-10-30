@@ -13,6 +13,7 @@ import multiprocessing
 import subprocess
 import os
 import logging
+import psutil
 from .job import Job
 import femagtools.config as cfg
 try:
@@ -43,9 +44,13 @@ def run_femag(cmd, workdir, fslfile):
                                     stdout=out,
                                     stderr=err,
                                     cwd=workdir)
+            # write pid file
+            with open(os.path.join(workdir, 'femag.pid'), 'w') as pidfile:
+                pidfile.write("{}\n".format(proc.pid))
 
             # wait
             proc.wait()
+            os.remove(os.path.join(workdir, 'femag.pid'))
 
             logger.info("Finished pid: %d return %d", proc.pid, proc.returncode)
             return proc.returncode
@@ -121,4 +126,18 @@ class Engine:
 
     def terminate(self):
         logger.info("terminate Engine")
+        # terminate pool
         self.pool.terminate()
+        self.pool.close()
+        # stop all running processes
+        for t in self.job.tasks:
+            try:
+                logger.debug("terminate Engine in dir: %s", t.directory)
+                with open(os.path.join(t.directory,
+                                       'femag.pid'), 'r') as pidfile:
+                    procId = int(pidfile.readline())
+                    p = psutil.Process(procId)
+                    p.terminate()
+                    p.wait()
+            except Exception as e:
+                pass  # ignore

@@ -124,12 +124,12 @@ def main():
         try:
             import networkx as nx
             logger.info("networkx version: %s", nx.__version__)
-        except:
+        except ModuleNotFoundError:
             logger.info("networkx version: <networkx not available>")
         try:
-            import xmatplotlib
-            logger.info("matplotlib version: %s", xmatplotlib.__version__)
-        except:
+            import matplotlib
+            logger.info("matplotlib version: %s", matplotlib.__version__)
+        except ModuleNotFoundError:
             logger.info("matplotlib version: <matplotlib not available>")
         sys.exit(0)
 

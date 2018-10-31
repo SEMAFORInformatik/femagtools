@@ -8,13 +8,17 @@
 
 
 """
-import matplotlib.pyplot as pl
-import matplotlib.cm as cm
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
 import scipy.interpolate as ip
 import logging
 import logging.config
+try:
+    import matplotlib.pyplot as pl
+    import matplotlib.cm as cm
+    from mpl_toolkits.mplot3d import Axes3D
+    matplotlibversion = matplotlib.__version__
+except ModuleNotFoundError:
+    matplotlibversion = 0
 
 
 def _create_3d_axis():
@@ -778,25 +782,34 @@ def mesh(isa, with_axis=False):
 def main():
     import io
     import sys
+    import argparse    
     from femagtools.bch import Reader
-    for filename in sys.argv[1:]:
-        bchresults = Reader()
-        with io.open(filename, encoding='latin1', errors='ignore') as f:
-            bchresults.read(f.readlines())
+    
+    argparser = argparse.ArgumentParser(
+        description='Read BCH/BATCH file and create a plot')
+    argparser.add_argument('filename',
+                           help='name of BCH/BATCH file')
+    args = argparser.parse_args()
+    if not matplotlibversion:
+        sys.exit(0)
+        
+    bchresults = Reader()
+    with io.open(args.filename, encoding='latin1', errors='ignore') as f:
+        bchresults.read(f.readlines())
 
-        if bchresults.type.lower().find(
-                'pm-synchronous-motor simulation') >= 0:
-            pmrelsim(bchresults, bchresults.filename)
-        elif bchresults.type.lower().find('cogging calculation') >= 0:
-            cogging(bchresults, bchresults.filename)
-        elif bchresults.type.lower().find('ld-lq-identification') >= 0:
-            ldlq(bchresults)
-        elif bchresults.type.lower().find('psid-psiq-identification') >= 0:
-            psidq(bchresults)
-        else:
-            raise ValueError("BCH type {} not yet supported".format(
-                bchresults.type))
-        pl.show()
+    if bchresults.type.lower().find(
+            'pm-synchronous-motor simulation') >= 0:
+        pmrelsim(bchresults, bchresults.filename)
+    elif bchresults.type.lower().find('cogging calculation') >= 0:
+        cogging(bchresults, bchresults.filename)
+    elif bchresults.type.lower().find('ld-lq-identification') >= 0:
+        ldlq(bchresults)
+    elif bchresults.type.lower().find('psid-psiq-identification') >= 0:
+        psidq(bchresults)
+    else:
+        raise ValueError("BCH type {} not yet supported".format(
+            bchresults.type))
+    pl.show()
 
 
 if __name__ == "__main__":

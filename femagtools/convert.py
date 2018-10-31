@@ -3,7 +3,7 @@
     femagtools.convert
     ~~~~~~~~~~~~~~~~~~
 
-    Covert FEMAG files to various unstructured grid file formats
+    Convert FEMAG files to various unstructured grid file formats
 """
 import logging
 import numpy as np

@@ -13,6 +13,7 @@ import scipy.interpolate as ip
 import logging
 import logging.config
 try:
+    import matplotlib
     import matplotlib.pyplot as pl
     import matplotlib.cm as cm
     from mpl_toolkits.mplot3d import Axes3D
@@ -783,14 +784,24 @@ def main():
     import io
     import sys
     import argparse    
+    from .__init__ import __version__
     from femagtools.bch import Reader
     
     argparser = argparse.ArgumentParser(
         description='Read BCH/BATCH file and create a plot')
     argparser.add_argument('filename',
                            help='name of BCH/BATCH file')
+    argparser.add_argument(
+        "--version",
+        "-v",
+        action="version",
+        version="%(prog)s {}, Python {}".format(__version__, sys.version),
+        help="display version information",
+    )
     args = argparser.parse_args()
     if not matplotlibversion:
+        sys.exit(0)
+    if not args.filename:
         sys.exit(0)
         
     bchresults = Reader()

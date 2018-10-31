@@ -18,7 +18,7 @@ try:
     import matplotlib.cm as cm
     from mpl_toolkits.mplot3d import Axes3D
     matplotlibversion = matplotlib.__version__
-except ModuleNotFoundError:
+except ImportError:   # ModuleNotFoundError:
     matplotlibversion = 0
 
 

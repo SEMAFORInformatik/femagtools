@@ -17,7 +17,7 @@ try:
 
     matplotlibversion = (int(matplotlib.__version__.split('.')[0]) +
                          int(matplotlib.__version__.split('.')[1])/10)
-except ModuleNotFoundError:
+except ImportError:  # ModuleNotFoundError:
     matplotlibversion = 0  # no matplotlib
 
 logger = logging.getLogger(__name__)

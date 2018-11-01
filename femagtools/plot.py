@@ -309,11 +309,12 @@ def mtpa(pmrel, i1max, title='', projection=''):
 
     iqmax, idmax = pmrel.iqdmax(i1max)
     iqmin, idmin = pmrel.iqdmin(i1max)
-    
+
     if projection == '3d':
         nsamples = 50
     else:
-        iqmin = 0.1*iqmax
+        if iqmin == 0:
+            iqmin = 0.1*iqmax
     id = np.linspace(idmin, idmax, nsamples)
     iq = np.linspace(iqmin, iqmax, nsamples)
 

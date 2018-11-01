@@ -637,23 +637,22 @@ class PmRelMachinePsidq(PmRelMachine):
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""
-        if np.min(self.idrange) < 0 and np.max(self.idrange) <= 0:
+        if self.idrange[0] < 0 and self.idrange[1] <= 0:
             idmin = -np.sqrt(2)*i1
         else:
             idmin = 0
-        if np.min(self.idrange) <= idmin:
-            iqmin = 0
-            if np.min(self.iqrange) <= iqmin:
+        if self.idrange[0] <= idmin/np.sqrt(2):
+            iqmin = -np.sqrt(2)*i1
+            if self.iqrange[0] <= iqmin:
                 return (iqmin, idmin)
-            return np.min(self.iqrange), idmin
+            return self.iqrange[0], idmin
 
-        i1max = np.sqrt(2)*i1
-        beta = np.arccos(self.iqrange[0]/i1max)
+        beta = np.arccos(self.iqrange[0]/i1/np.sqrt(2))
         iqmin = np.sqrt(2)*i1*np.sin(beta)
-        if np.min(self.iqrange) <= iqmin:
+        if self.iqrange[0] <= iqmin:
             return (iqmin, idmin)
 
-        return np.min(self.iqrange), np.min(self.idrange)
+        return self.iqrange[0], self.idrange[0]
 
     def iqdmax(self, i1):
         """max iq, max id for given current"""

@@ -70,7 +70,7 @@ class Reader(object):
             if dtype == "?":
                 values.append([bool(u[i]) for u in unpacked])
             elif "s" in dtype:
-                values.append([u[i].decode() for u in unpacked])
+                values.append([u[i].decode('latin-1') for u in unpacked])
             else:
                 values.append([u[i] for u in unpacked])
 
@@ -143,9 +143,7 @@ class Isa7(object):
                 self.lines.append(
                     Line(self.LINE_ISA_LN_VALID, point1, point2))
 
-        self.nodes = []
-        for n in range(self.NUM_NOD):
-            self.nodes.append(
+        self.nodes = [
                 Node(self.NODE_ISA_ND_VALID[n],
                      n + 1,
                      self.NODE_ISA_NODE_REC_ND_BND_CND[n],
@@ -153,28 +151,32 @@ class Isa7(object):
                      self.NODE_ISA_NODE_REC_ND_CO_1[n],
                      self.NODE_ISA_NODE_REC_ND_CO_2[n],
                      self.NODE_ISA_NODE_REC_ND_VP_RE[n],
-                     self.NODE_ISA_NODE_REC_ND_VP_IM[n]))
+                     self.NODE_ISA_NODE_REC_ND_VP_IM[n])
+            for n in range(self.NUM_NOD)]
 
         self.nodechains = []
         for nc in range(self.NUM_NDCH):
             nd1 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_1[nc]
             nd2 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_2[nc]
             ndm = self.NDCHN_ISA_NDCHN_REC_NC_NOD_MID[nc]
+            try:
+                node1 = self.nodes[abs(nd1) - 1]
+                nodem = self.nodes[ndm - 1]
+                node2 = self.nodes[abs(nd2) - 1]
 
-            node1 = self.nodes[abs(nd1) - 1]
-            nodem = self.nodes[ndm - 1]
-            node2 = self.nodes[abs(nd2) - 1]
+                if nd1 < 0 or nd2 < 0:
+                    nodes = node1, nodem, node2
+                elif ndm > 0:
+                    nodes = node1, nodem, node2
+                else:
+                    nodes = node1, None, node2
 
-            if nd1 < 0 or nd2 < 0:
-                nodes = node1, nodem, node2
-            elif ndm > 0:
-                nodes = node1, nodem, node2
-            else:
-                nodes = node1, None, node2
-
-            self.nodechains.append(
-                NodeChain(self.NDCHN_ISA_NC_VALID, nc + 1, nodes))
-
+                self.nodechains.append(
+                    NodeChain(self.NDCHN_ISA_NC_VALID, nc + 1, nodes))
+            except IndexError as ex:
+                logger.warn('IndexError in nodes')
+                raise  # preserve the stack trace
+                    
         self.elements = []
         for e in range(self.NUM_ELE):
             ndkeys = []

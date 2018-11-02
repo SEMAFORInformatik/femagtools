@@ -239,9 +239,22 @@ class PmRelMachine(object):
             (iq, id),
             full_output=True)
         if ier != 1:
-            return self.mtpv(w1, u1max, betai1(iq, id)[1], maxtorque=torque > 0)
+            return self.mtpv(w1, u1max, betai1(iq, id)[1],
+                             maxtorque=torque > 0)
         return iq, id, self.torque_iqd(iq, id)
-    
+
+    def iqd_torque_imax_umax(self, torque, n, umax):
+        """return iq, id, torque for constant torque or field weakening"""
+        iq, id = self.iqd_torque(torque)
+        w1 = 2*np.pi*n*self.p
+        # Constant torque range
+        if np.linalg.norm(self.uqd(w1, iq, id)) <= umax*np.sqrt(2):
+                return (iq, id, torque)
+        # Field weaking range
+        imax = betai1(iq, id)[1]
+        iq, id = self.iqd_imax_umax(imax, w1, umax, maxtorque=torque > 0)
+        return iq, id, self.torque_iqd(iq, id)
+
     def iqd_imax_umax(self, i1max, w1, u1max, maxtorque=True):
         """return d-q current at stator frequency and max voltage
         and max current (for motor operation if maxtorque else generator operation)"""

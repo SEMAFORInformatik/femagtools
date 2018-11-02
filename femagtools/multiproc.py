@@ -13,7 +13,6 @@ import multiprocessing
 import subprocess
 import os
 import logging
-import psutil
 from .job import Job
 import femagtools.config as cfg
 try:
@@ -125,6 +124,7 @@ class Engine:
         return status
 
     def terminate(self):
+        import psutil
         logger.info("terminate Engine")
         # terminate pool
         self.pool.terminate()

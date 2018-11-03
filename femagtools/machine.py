@@ -259,14 +259,13 @@ class PmRelMachine(object):
         """return d-q current at stator frequency and max voltage
         and max current (for motor operation if maxtorque else generator operation)"""
 
-        beta0 = -0.8*np.pi/2 if maxtorque else -1.2*np.pi/2
+        beta0 = -0.7*np.pi/2 if maxtorque else -1.4*np.pi/2
     
         beta, info, ier, mesg = so.fsolve(
             lambda b: la.norm(
                 self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
             beta0,
             full_output=True)
-        
         if ier == 1:
             return iqd(beta[0], i1max)
 
@@ -390,6 +389,7 @@ class PmRelMachine(object):
                     r['iq'].append(iq)
                     r['n'].append(nx)
                     r['T'].append(tq)
+            logger.info("(3) nmax %f", max(r['n'])*60)
             
         else:
             for t, nx in zip(T, n):

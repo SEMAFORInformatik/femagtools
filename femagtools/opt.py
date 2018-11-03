@@ -111,6 +111,8 @@ class Optimizer(object):
         self.fea['pocfilename'] = (self.model.get('name') +
                                    '_' + str(self.model.get('poles')) +
                                    'p.poc')
+        self.fea['phi_start'] = 0.0
+        self.fea['range_phi'] = 720/self.model.get('poles')
         self.pop = Population(problem, population_size)
         
         algo = Nsga2()

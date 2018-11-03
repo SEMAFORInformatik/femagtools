@@ -358,6 +358,8 @@ class Builder:
             fea['pocfilename'] = (model.get('name') +
                                   '_' + str(model.get('poles')) +
                                   'p.poc')
+            fea['phi_start'] = 0.0
+            fea['range_phi'] = 720/model.get('poles')
             return fslmodel + self.create_analysis(fea, magnets,
                                                    model.magnet.get('material', 0))
         logger.info("create open model and simulation")

@@ -9,8 +9,8 @@ m.arm_length      =    ${model.get('lfe')*1e3}
 m.speed           =    ${model.get('speed')*60}
 m.skew_angle      =    ${model.get('skew_angle',0)}
 m.fc_radius2      =    0.0
-m.phi_start       =    0.0   
-m.range_phi       =    0.0
+m.phi_start       =    ${model.get('phi_start', 0)}
+m.range_phi       =    ${model.get('range_phi', 0)}
 m.nu_force_pat    =    0.0
 % else:
 m.speed_linear    =    ${model.get('speed')}

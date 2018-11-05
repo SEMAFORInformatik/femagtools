@@ -15,12 +15,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def read(filename):
+def read(filename, taup):
     """read dat file with columns (phi, Br, Bphi)
     returns samples, values, amplitude and phase of base harmonic
 
     Args:
-      filename: the ame of the file to be processed
+      filename: the name of the file to be processed
+      taup: angle of a effective pole pair (urwicklung) in degrees
     """
     bag = np.loadtxt(filename).T
     if len(bag) < 3:
@@ -28,11 +29,15 @@ def read(filename):
         return(dict())
 
     phi = bag[0]
+    nsamples=len(phi)
     br = bag[1]
     phisteps = [phi[i+1] - phi[i] for i in range(len(phi)-1)]
     dphi = sum(phisteps)/len(phisteps)
-    freq = np.fft.fftfreq(len(br), d=dphi)
 
+    if round(phi[-1]/taup) < 1:
+        br = np.append(br, -1*br)
+        
+    freq = np.fft.fftfreq(len(br), d=dphi)
     # compute FFT from induction
     Y = 2*np.fft.rfft(br)/len(br)
     
@@ -40,11 +45,6 @@ def read(filename):
     i = np.argmax(abs(Y))
     logger.debug("Len %d max phi %f max amp %f",
                  len(phi), phi[-1], abs(Y[i]))
-    if i == 0 or abs((br[-1] - br[0])/(np.max(br) - np.min(br))) > 1e-2:
-        br = np.append(br, -1*br)
-        Y = 2*np.fft.rfft(br)/len(br)
-        freq = np.fft.fftfreq(len(br), d=dphi)
-        i = np.argmax(abs(Y))
 
     if freq[i] > 0:
         logger.info("%s: Period %f max phi %f B amp %f",
@@ -57,9 +57,9 @@ def read(filename):
 
     return dict(Bamp=a,
                 phi0=x0,
-                pos=phi,
-                B=br.tolist(),
-                B_fft=(a*np.cos(x+x0)).tolist())
+                pos=phi[:nsamples],
+                B=br.tolist()[:nsamples],
+                B_fft=(a*np.cos(x+x0)[:nsamples]).tolist())
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,

@@ -1,8 +1,8 @@
 """
-    femagtools.fsl
-    ~~~~~~~~~~~~~~
+    femagtools.ntib
+    ~~~~~~~~~~~~~~~
 
-    Creating FSL Scripts
+    NTIB / LOS files handling
 
 
 
@@ -28,8 +28,8 @@ def create(speed, current, beta, r1=0, m=3):
 def toFloat(s, fac=1.0):
     try:
         return float(s)*fac
-    except:
-        return None
+    except ValueError:
+        return float('nan')
 
 
 def read_los(filename):
@@ -47,11 +47,10 @@ def read_los(filename):
     with open(filename) as f:
         started = False
         for l in f:
-            l = l.strip()
             if not started and l.startswith('[1/min]   '):
                 started = True
             elif started:
-                r = l.split()
+                r = l.strip().split()
                 if len(r) > 7:
                     result['speed'].append(toFloat(r[0], 1./60))
                     result['torque'].append(toFloat(r[1]))
@@ -77,7 +76,7 @@ def read_los(filename):
                                                               'rotfe',
                                                               'magnet',
                                                               'winding')]))
-                    except:
+                    except KeyError:
                         result['total'].append(None)
     logger.info("%s num rows %d", filename, len(result['total']))
     return result

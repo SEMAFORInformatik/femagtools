@@ -93,7 +93,7 @@ def __phasor_plot(up, idq, uxdq):
     ax.text(1.15*i1d, 0.72*i1q, r'$I_1$', fontsize=18)
 
     xmin, xmax = (min(0, uxd, i1d), max(0, i1d, uxd))
-    ymin, ymax = (min(0, i1q, 1-uxq), max(1, i1q))
+    ymin, ymax = (min(0, i1q, 1-uxq), max(1, i1q, 1+uxq))
 
     ax.set_xlim([xmin-0.1, xmax+0.1])
     ax.set_ylim([ymin-0.1, ymax+0.1])

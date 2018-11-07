@@ -759,12 +759,16 @@ def read(filename):
     Arguments:
         filename: name of I7/ISA7 file to be read
     """
+    import os
+    ext = os.path.splitext(filename)[-1]
+    if not ext:
+        ext = '.I7' if sys.platform == 'win32' else '.ISA7'
+        filename += ext
     isa = Isa7(filename)
     return isa
 
 
 if __name__ == "__main__":
-
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
     if len(sys.argv) == 2:

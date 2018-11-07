@@ -89,30 +89,33 @@ class Reader(object):
 
         if pfe and not np.isscalar(self.losses['B'][0]):
             import scipy.interpolate as ip
+            colsize = max([len(p) for p in pfe])
+            losses = np.array([list(p) + [0]*(colsize-len(p)) for p in pfe]).T
             z = lc.fitjordan(
                 self.losses['f'],
                 self.losses['B'],
-                pfe,
+                losses,
                 self.Bo,
                 self.fo)
             logger.info("Jordan loss coeffs %s", z)
-            self.ch = z[2]
-            self.ch_freq = z[3]
-            self.cw = z[0]
-            self.cw_freq = z[1]
+            self.ch = z[0]
+            self.ch_freq = z[1]
+            self.cw = z[2]
+            self.cw_freq = z[3]
             self.b_coeff = z[4]
-            
+
             z = lc.fitsteinmetz(
                 self.losses['f'],
                 self.losses['B'],
-                pfe,
+                losses,
                 self.Bo,
                 self.fo)
             logger.info("Steinmetz loss coeffs %s", z)
-            
+
             self.losses['cw'] = z[0]
             self.losses['cw_freq'] = z[1]
             self.losses['b_coeff'] = z[2]
+            
             self.losses['Bo'] = self.Bo
             self.losses['fo'] = self.fo
             
@@ -123,7 +126,8 @@ class Reader(object):
             m = []
             for i, b in enumerate(self.losses['B']):
                 pfunc = ip.interp1d(b, pfe[i], kind='cubic')
-                m.append(pfunc(b).tolist() + (len(Bv)-len(b))*[None])
+                n = len([x for x in Bv if x < b[-1]])
+                m.append([pfunc(x) for x in Bv[:n]] + [None]*(len(Bv-n)))
             self.losses['B'] = Bv.tolist()
             self.losses['pfe'] = list(m)
 
@@ -154,8 +158,8 @@ def read(filename):
     tks = Reader(filename)
     return tks.getValues()
 
+
 if __name__ == "__main__":
-    
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
     if len(sys.argv) == 2:
@@ -169,13 +173,16 @@ if __name__ == "__main__":
         import femagtools.plot
         import numpy as np
         cw = tks.cw
-        alpha = tks.cw_freq
+        beta = tks.cw_freq
         ch = tks.ch
-        beta = tks.ch_freq
+        alpha = tks.ch_freq
         gamma = tks.b_coeff
 
         femagtools.plot.felosses(tks.losses,
-                                 (cw, alpha, ch, beta, gamma),
+                                 (ch, alpha, cw, beta, gamma),
+#                                 (tks.losses['cw'],
+#                                  tks.losses['cw_freq'],
+#                                  tks.losses['b_coeff']),
                                  title=filename, log=False)
         pl.show()
         

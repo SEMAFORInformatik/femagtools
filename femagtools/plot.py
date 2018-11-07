@@ -717,7 +717,7 @@ def felosses(losses, coeffs, title='', log=True):
                        1.1*0.9*np.max(losses['B']))
                                   
     for i, f in enumerate(losses['f']):
-        pfe = [p for p in np.array(losses['pfe']).T[i] if p]
+        pfe = [p for p in np.array(losses['pfe'])[i] if p]
         if f > 0:
             if len(coeffs) == 5:
                 ax.plot(B, lc.pfe_jordan(f, B, *coeffs, fo=fo, Bo=Bo))

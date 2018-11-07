@@ -25,18 +25,19 @@ def fitsteinmetz(f, B, losses, Bo, fo):
     losses(f,B)=cw*(f/fo)**alfa*(B/Bo)**beta
     returns (cw, alfa, beta)
     """
+    pfe = np.asarray(losses).T
     z = []
     for i, fx in enumerate(f):
         if fx:
             if isinstance(B[0], float):
                 z += [(fx, bx, y)
-                      for bx, y in zip(B, np.array(losses).T[i])
+                      for bx, y in zip(B, pfe[i])
                       if isinstance(y, float)]
             else:
                 z += [(fx, bx, y)
-                      for bx, y in zip(B[i], np.array(losses).T[i])
+                      for bx, y in zip(B[i], pfe[i])
                       if y]
-                
+
     fbx = np.array(z).T[0:2]
     y = np.array(z).T[2]
 
@@ -49,24 +50,25 @@ def fitsteinmetz(f, B, losses, Bo, fo):
 
 def fitjordan(f, B, losses, Bo, fo):
     """fit coeffs of
-    losses(f,B)=(cw*(f/fo)**alpha + ch*(f/fo)**beta)*(B/Bo)**gamma
-    returns (cw, alpha, ch, beta, gamma)
+    losses(f,B)=(ch*(f/fo)**alpha + ch*(f/fo)**beta)*(B/Bo)**gamma
+    returns (ch, alpha, cw, beta, gamma)
     """
+    pfe = np.asarray(losses).T
     z = []
     for i, fx in enumerate(f):
         if fx:
             if isinstance(B[0], float):
                 z += [(fx, bx, y)
-                      for bx, y in zip(B, np.array(losses).T[i])
+                      for bx, y in zip(B, pfe[i])
                       if y]
             else:
                 z += [(fx, bx, y)
-                      for bx, y in zip(B[i], np.array(losses).T[i])
+                      for bx, y in zip(B[i], pfe[i])
                       if y]
 
     fbx = np.array(z).T[0:2]
     y = np.array(z).T[2]
-    fitp, cov = so.curve_fit(lambda x, cw, alpha, ch, beta, gamma: pfe_jordan(
-        x[0], x[1], cw, alpha, ch, beta, gamma, fo, Bo),
-                             fbx, y, (1.0, 2.0, 1.0, 1.0, 1.0))
+    fitp, cov = so.curve_fit(lambda x, ch, alpha, cw, beta, gamma: pfe_jordan(
+        x[0], x[1], ch, alpha, cw, beta, gamma, fo, Bo),
+                             fbx, y, (1.0, 1.0, 1.0, 2.0, 1.0))
     return fitp

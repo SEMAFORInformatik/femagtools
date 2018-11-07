@@ -40,7 +40,7 @@ def test_steinmetz():
 def test_jordan():
     c = femagtools.losscoeffs.fitjordan(f, B, pfe, Bo, fo)
     np.testing.assert_almost_equal(c,
-                                   (1.5702,  1.6385,
-                                    1.3448,  0.4234,  2.0473),
+                                   (1.3448,  0.4234,
+                                    1.5702,  1.6385, 2.0473),
                                    decimal=4)
     

@@ -109,7 +109,14 @@ class BaseFemag(object):
                          errors='ignore') as f:
                 result.read(f)
         return result
-    
+
+    def read_isa(self, modelname=None):
+        "read most recent I7/ISA7 file and return result"
+        if not modelname:
+            modelname = self._get_modelname_from_log()
+        import femagtools.isa7
+        return femagtools.isa7.read(os.path.join(self.workdir, modelname))
+
     def read_los(self, modelname=None):
         "read most recent LOS file and return result"
         # read latest los file if any
@@ -123,9 +130,18 @@ class BaseFemag(object):
 
         return dict()
 
-    def read_airgap_induction(self):
+    def read_airgap_induction(self, modelname=''):
         """read airgap induction"""
-        return ag.read(os.path.join(self.workdir, 'bag.dat'))
+        # we need to figure out the number of slots and poles
+        bch = self.read_bch()
+        Q = bch.machine['Q']
+        p = bch.machine['p']
+        
+        def gcd(a, b):
+            while b:
+                a, b = b, a % b
+            return a
+        return ag.read(os.path.join(self.workdir, 'bag.dat'), 360/gcd(Q, p))
     
     def _get_modelname_from_log(self):
         """

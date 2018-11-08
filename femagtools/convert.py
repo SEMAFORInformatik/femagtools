@@ -167,7 +167,7 @@ def _from_isa(isa, filename, target_format,
     triangle_h = []
     perm = dict(triangle=[], quad=[])
     iron_losses = dict(triangle=[], quad=[])
-    magn_losses = dict(triangle=[], quad=[])
+    mag_losses = dict(triangle=[], quad=[])
     quads = []
     quad_physical_ids = []
     quad_geometrical_ids = []
@@ -226,7 +226,7 @@ def _from_isa(isa, filename, target_format,
                 "gmsh:physical": np.array(triangle_physical_ids),
                 "b": np.array([b + (0,) for b in triangle_b]),
                 "h": np.array(triangle_h),
-                "Rel. Permeability": np.array(perm['triangle'),
+                "Rel. Permeability": np.array(perm['triangle']),
                 "Iron Loss Dens.": np.array(iron_losses['triangle']),
                 "Mag. Loss Dens.": np.array(mag_losses['triangle'])
             },

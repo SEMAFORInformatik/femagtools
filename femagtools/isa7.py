@@ -551,7 +551,6 @@ class Isa7(object):
 
         self.ELEM_ISA_ELEM_REC_LOSS_DENS = reader.next_block("f")
 
-
 class Point(object):
     def __init__(self, valid, x, y):
         self.valid = valid
@@ -700,11 +699,35 @@ class Element(BaseEntity):
         """return permeability of this element"""
         if self.reluc[0] < 1:
             return 1 / self.reluc[0]
-        return 0
+        return 1
 
     def loss_density(self):
         return self.loss_density
 
+    def iron_loss_density(self):
+        """return loss_density if element in iron (eg. lamination region)"""
+        if self.reluc != (1.0, 1.0) and self.mag == (0.0, 0.0):
+            return self.loss_density
+        return 0
+                
+    def mag_loss_density(self):
+        """return loss_density if element in magnet region"""
+        if np.any(self.mag):
+            return self.loss_density
+        return 0
+    
+    def wdg_loss_density(self):
+        """return loss_density if element in winding region"""
+        if np.any(self.mag):
+            return self.loss_density
+        return 0
+                
+
+    def wdg_elements(self):
+        """return elements in winding region"""
+        return [el for el in self.elements
+                if el.reluc != (1.0, 1.0) and el.mag == (0.0, 0.0)]
+        
 
 class SuperElement(BaseEntity):
     def __init__(self, valid, key, sr_key, elements, nodechains, color,

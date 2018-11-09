@@ -177,9 +177,11 @@ class PmRelMachine(object):
                 self.uqd(x, *iqd(-np.pi/2, imax))) - umax*np.sqrt(2),
             np.sqrt(2)*umax/la.norm(self.psi(*self.io)),
             full_output=True)
-        if ier != 1:
-            logger.warn("w2_imax_umax ier=%d imax %f", ier, imax)
-        return w[0]
+        if ier == 1:
+            return w[0]
+
+        logger.warn("w2_imax_umax ier=%d imax %f", ier, imax)
+        raise ValueError("w2_imax_umax {} imax {}".format(mesg, imax))
         
     def beta_u(self, w1, u, i1):
         "beta at given frequency, voltage and current"
@@ -218,8 +220,8 @@ class PmRelMachine(object):
             full_output=True)
         if ier == 1:
             return i1
-        raise ValueError("no solution found for w1 {}, u1 {}, beta {}".format(
-            w1, u1, beta))
+        raise ValueError("{} for w1 {}, u1 {}, beta {}".format(
+            mesg, w1, u1, beta))
     
     def id_torque(self, torque, iq):
         "return d current with given torque and d-current"
@@ -259,8 +261,10 @@ class PmRelMachine(object):
         """return d-q current at stator frequency and max voltage
         and max current (for motor operation if maxtorque else generator operation)"""
 
-        beta0 = -0.7*np.pi/2 if maxtorque else -1.4*np.pi/2
-    
+        beta0 = max(
+            self.betarange[0],
+            -0.7*np.pi/2 if maxtorque else -1.4*np.pi/2)
+        
         beta, info, ier, mesg = so.fsolve(
             lambda b: la.norm(
                 self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
@@ -323,8 +327,8 @@ class PmRelMachine(object):
             iq, id = self.iqd_torque(T)
             i1max = betai1(iq, id)[1]
             w1 = self.w1max(u1max, iq, id)
-            nmax = max(w1,
-                       self.w1max(u1max, *self.iqdmin(i1max)))/2/np.pi/self.p
+            w1max = self.w1max(u1max, *self.iqdmin(i1max))
+            nmax = max(w1, w1max)/2/np.pi/self.p
 
             n1 = min(w1/2/np.pi/self.p, nmax)
             r['n_type'] = n1
@@ -366,14 +370,16 @@ class PmRelMachine(object):
             if nx < n3:
                 for nx in np.linspace(nx+dn/2, n2, int(n2)//dn):
                     w1 = 2*np.pi*nx*self.p
-                    iq, id = self.iqd_imax_umax(i1max, w1, u1max, maxtorque=T > 0)
+                    iq, id = self.iqd_imax_umax(i1max, w1, u1max,
+                                                maxtorque=T > 0)
                     tq = self.torque_iqd(iq, id)
                     r['id'].append(id)
                     r['iq'].append(iq)
                     r['n'].append(nx)
                     r['T'].append(tq)
-                    if T>0 and tq<0:
-                        logger.info("2: n %g T %g i1max %g w1 %g u1 %g", nx*60, tq, i1max, w1, u1max)
+                    if T > 0 and tq < 0:
+                        logger.info("2: n %g T %g i1max %g w1 %g u1 %g",
+                                    nx*60, tq, i1max, w1, u1max)
                     
             if nx < n3:
                 for nx in np.linspace(nx+dn/2, n3, int(n3)//dn):
@@ -389,7 +395,6 @@ class PmRelMachine(object):
                     r['iq'].append(iq)
                     r['n'].append(nx)
                     r['T'].append(tq)
-            logger.info("(3) nmax %f", max(r['n'])*60)
             
         else:
             for t, nx in zip(T, n):

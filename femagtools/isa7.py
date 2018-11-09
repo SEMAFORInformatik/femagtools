@@ -551,6 +551,19 @@ class Isa7(object):
 
         self.ELEM_ISA_ELEM_REC_LOSS_DENS = reader.next_block("f")
 
+    def get_subregion(self, name):
+        """return subregion by name"""
+        for s in self.subregions:
+            if s.name == name:
+                return s
+        raise ValueError('no such subregion "{}" in this model'.format(name))
+
+    def wdg_elements(self):
+        """return elements in winding region"""
+        return [el for el in self.elements
+                if self.superelement.condtype != 0]
+
+
 class Point(object):
     def __init__(self, valid, x, y):
         self.valid = valid
@@ -651,7 +664,7 @@ class Element(BaseEntity):
             x21 = ev[1].x - ev[0].x
             a21 = ev[1].vpot[0] - ev[0].vpot[0]
             a31 = ev[2].vpot[0] - ev[0].vpot[0]
-            delta = self.se_length * (y31 * x21 + y21 * x13)
+            delta = self.superelement.length * (y31 * x21 + y21 * x13)
 
             return ((x13 * a21 + x21 * a31) / delta,
                     (-y31 * a21 + y21 * a31) / delta)
@@ -663,7 +676,7 @@ class Element(BaseEntity):
             x21 = ev[1].x - ev[0].x
             a21 = ev[1].vpot[0] - ev[0].vpot[0]
             a31 = ev[2].vpot[0] - ev[0].vpot[0]
-            delta = self.se_length * (y31 * x21 + y21 * x13)
+            delta = self.superelement.length * (y31 * x21 + y21 * x13)
             b1_a = (x13 * a21 + x21 * a31) / delta
             b2_a = (y21 * a31 - y31 * a21) / delta
 
@@ -673,7 +686,7 @@ class Element(BaseEntity):
             x21 = ev[3].x - ev[2].x
             a24 = ev[3].vpot[0] - ev[2].vpot[0]
             a34 = ev[0].vpot[0] - ev[2].vpot[0]
-            delta = self.se_length * (y31 * x21 + y21 * x13)
+            delta = self.superelement.length * (y31 * x21 + y21 * x13)
             b1_b = (x13 * a24 + x21 * a34) / delta
             b2_b = (y21 * a34 - y31 * a24) / delta
 
@@ -718,15 +731,9 @@ class Element(BaseEntity):
     
     def wdg_loss_density(self):
         """return loss_density if element in winding region"""
-        if np.any(self.mag):
+        if self.superelement.condtype != 0:
             return self.loss_density
         return 0
-                
-
-    def wdg_elements(self):
-        """return elements in winding region"""
-        return [el for el in self.elements
-                if el.reluc != (1.0, 1.0) and el.mag == (0.0, 0.0)]
         
 
 class SuperElement(BaseEntity):
@@ -737,7 +744,7 @@ class SuperElement(BaseEntity):
         self.sr_key = sr_key
         self.elements = elements
         for e in elements:
-            e.se_length = length
+            e.superelement = self
         self.nodechains = nodechains
         self.color = color
         self.nc_keys = nc_keys
@@ -762,6 +769,13 @@ class SubRegion(BaseEntity):
         self.superelements = superelements
         self.nodechains = nodechains
 
+    def elements(self):
+        """return elements of this subregion"""
+        e = []
+        for s in self.superelements:
+            e.append(s.elements)
+        return e
+
 
 class Winding(BaseEntity):
     def __init__(self, valid, key, name, subregions, num_turns, cur_re, cur_im,
@@ -773,6 +787,13 @@ class Winding(BaseEntity):
         self.cur = cur_re, cur_im
         self.flux = flux_re, flux_im
         self.volt = volt_re, volt_im
+
+    def elements(self):
+        """return elements of this winding"""
+        e = []
+        for s in self.subregions:
+            e.append(s.elements)
+        return e
 
 
 def read(filename):

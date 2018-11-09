@@ -168,6 +168,7 @@ def _from_isa(isa, filename, target_format,
     perm = dict(triangle=[], quad=[])
     iron_losses = dict(triangle=[], quad=[])
     mag_losses = dict(triangle=[], quad=[])
+    wdg_losses = dict(triangle=[], quad=[])
     quads = []
     quad_physical_ids = []
     quad_geometrical_ids = []
@@ -190,6 +191,7 @@ def _from_isa(isa, filename, target_format,
             perm['triangle'].append(e.permeability())
             iron_losses['triangle'].append(e.iron_loss_density())
             mag_losses['triangle'].append(e.mag_loss_density())
+            wdg_losses['triangle'].append(e.wdg_loss_density())
 
         elif len(ev) == 4:
             quads.append([n.key - 1 for n in ev])
@@ -200,6 +202,7 @@ def _from_isa(isa, filename, target_format,
             perm['quad'].append(e.permeability())
             iron_losses['quad'].append(e.iron_loss_density())
             mag_losses['quad'].append(e.mag_loss_density())
+            wdg_losses['quad'].append(e.wdg_loss_density())
 
     if target_format == "msh":
         import meshio
@@ -219,7 +222,8 @@ def _from_isa(isa, filename, target_format,
                 "h": np.array([0 for l in lines]),
                 "Rel. Permeability": np.array([0 for l in lines]),
                 "Iron Loss Dens.": np.array([0 for l in lines]),
-                "Mag. Loss Dens.": np.array([0 for l in lines])
+                "Mag. Loss Dens.": np.array([0 for l in lines]),
+                "Wdg. Loss Dens.": np.array([0 for l in lines])
             },
             "triangle": {
                 "gmsh:geometrical": np.array(triangle_geometrical_ids),
@@ -228,7 +232,8 @@ def _from_isa(isa, filename, target_format,
                 "h": np.array(triangle_h),
                 "Rel. Permeability": np.array(perm['triangle']),
                 "Iron Loss Dens.": np.array(iron_losses['triangle']),
-                "Mag. Loss Dens.": np.array(mag_losses['triangle'])
+                "Mag. Loss Dens.": np.array(mag_losses['triangle']),
+                "Wdg. Loss Dens.": np.array(wdg_losses['triangle'])
             },
             "quad": {
                 "gmsh:geometrical": np.array(quad_geometrical_ids),
@@ -237,7 +242,8 @@ def _from_isa(isa, filename, target_format,
                 "h": np.array(quad_h),
                 "Rel. Permeability": np.array(perm['quad']),
                 "Iron Loss Dens.": np.array(iron_losses['quad']),
-                "Mag. Loss Dens.": np.array(mag_losses['quad'])
+                "Mag. Loss Dens.": np.array(mag_losses['quad']),
+                "Wdg. Loss Dens.": np.array(wdg_losses['quad'])
             }
         }
 
@@ -358,7 +364,8 @@ def _from_isa(isa, filename, target_format,
                 "Demagnetization": np.array([0 for l in lines]),
                 "Rel. Permeability": np.array([0 for l in lines]),
                 "Iron Loss Dens.": np.array([0 for l in lines]),
-                "Mag. Loss Dens.": np.array([0 for l in lines])
+                "Mag. Loss Dens.": np.array([0 for l in lines]),
+                "Wdg. Loss Dens.": np.array([0 for l in lines])
             },
             "triangle": {
                 "GeometryIds": np.array(triangle_geometrical_ids),
@@ -367,7 +374,8 @@ def _from_isa(isa, filename, target_format,
                 "Demagnetization": np.array(triangle_h),
                 "Rel. Permeability": np.array(perm['triangle']),
                 "Iron Loss Dens.": np.array(iron_losses['triangle']),
-                "Mag. Loss Dens.": np.array(mag_losses['triangle'])
+                "Mag. Loss Dens.": np.array(mag_losses['triangle']),
+                "Wdg. Loss Dens.": np.array(wdg_losses['triangle'])
             },
             "quad": {
                 "GeometryIds": np.array(quad_geometrical_ids),
@@ -376,7 +384,8 @@ def _from_isa(isa, filename, target_format,
                 "Demagnetization": np.array(quad_h),
                 "Rel. Permeability": np.array(perm['quad']),
                 "Iron Loss Dens.": np.array(iron_losses['quad']),
-                "Mag. Loss Dens.": np.array(mag_losses['quad'])
+                "Mag. Loss Dens.": np.array(mag_losses['quad']),
+                "Wdg. Loss Dens.": np.array(wdg_losses['quad'])
             }
         }
 

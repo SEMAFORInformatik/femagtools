@@ -456,8 +456,9 @@ class Isa7(object):
         reader.skip_block(1)
 
         self.FC_RADIUS = reader.next_block("f")[0]
-
-        reader.skip_block(9)
+        reader.skip_block(2)
+        self.M_POLES = reader.next_block("i")[0]
+        reader.skip_block(6)
         FC_NUM_CUR_ID, FC_NUM_BETA_ID = reader.next_block("i")[0:2]
         if FC_NUM_CUR_ID > 16:
             FC_NUM_CUR_ID = 16
@@ -497,7 +498,38 @@ class Isa7(object):
         reader.skip_block(3 * 30 * 30)
         reader.skip_block(3)
         reader.skip_block(30 * 30)
-        reader.skip_block(21)
+        reader.skip_block(4)
+        # stator 3
+        reader.skip_block(4)
+        (yoke_diam, inside_diam,
+         slot_height,slot_h1,slot_h2,
+         slot_width,slot_r1,slot_r2) = reader.next_block("f")[:8]
+        reader.skip_block(3)
+        # magnet sector
+        magn_rad, yoke_rad, magn_height = reader.next_block("f")[:3]
+        self.da2 = 2*magn_rad*1e-3
+        self.dy2 = 2*yoke_rad*1e-3
+        self.da1 = inside_diam
+        self.dy1 = yoke_diam
+        reader.skip_block(3)
+        # windings generation
+        (tot_num_slot, num_phases, num_layers, 
+         self.NUM_WIRES, self.CURRENT,
+         coil_span, num_slots) = reader.next_block("f")[:7]
+        self.TOT_NUM_SLOT = int(tot_num_slot)
+        self.NUM_PHASES = int(num_phases)
+        self.NUM_LAYERS = int(num_layers)
+        self.NUM_SLOTS = int(num_slots)
+        self.COIL_SPAN = coil_span
+        
+        reader.skip_block(1)
+        (move_action, arm_length, self.SKEW_ANGLE,
+         HI, num_move_ar, self.ANGL_I_UP,
+         num_par_wdgs, cur_control) = reader.next_block("f")[:8]
+        self.NUM_PAR_WDGS = int(num_par_wdgs)
+        self.lfe = arm_length*1e-3
+        
+        reader.skip_block(2)      
         reader.skip_block(30 * 30)
         reader.skip_block(30 * 30)
         reader.skip_block(1 * 20)
@@ -508,8 +540,18 @@ class Isa7(object):
         if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
             reader.skip_block(2 * (NUM_FE_EVAL_MOVE_STEP + 1))
             reader.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
-
-        reader.skip_block(74)
+        # VIRGIN_PM_SYN
+        reader.skip_block(3)
+        # magnet iron 4
+        reader.skip_block(3)
+        # stator 4
+        reader.skip_block(1)
+        # stator 2
+        reader.skip_block(3)
+        # stator 1
+        reader.skip_block(2)
+# ---
+        reader.skip_block(62)
 
         ANZ_FORCE_AREAS = reader.next_block("i")[0]
 
@@ -524,7 +566,14 @@ class Isa7(object):
         reader.skip_block(11 * 4)
         reader.skip_block()
         reader.skip_block(1 * 4)
-        reader.skip_block(8)
+        # NOM_CURRENT
+        # PR_BASIC_LOSS_DATA
+        # TOT_MAGNET_AREA
+        # MOVE_EXTERN
+        # MOVE_ARMATURE
+        reader.skip_block(5)
+        self.POLPAAR_ZAHL, self.NO_POLES_SIM = reader.next_block("i")[:2]
+        reader.skip_block(2)
         reader.skip_block(3 * 20 + 2 * 20 * 20)
         reader.skip_block(14)
 
@@ -537,7 +586,9 @@ class Isa7(object):
 
         reader.skip_block()
         reader.skip_block(2 * 3)
-        reader.skip_block(3)
+        self.Q_SLOTS_NUMBER, self.M_PHASE_NUMBER = reader.next_block("i")[:2]
+        self.N_LAYERS_SLOT, self.N_WIRES_PER_SLOT = reader.next_block("i")[:2]
+        reader.skip_block(1)
         reader.skip_block(10 * 100)
         reader.skip_block(1 * 100)
         reader.skip_block()

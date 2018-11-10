@@ -191,9 +191,10 @@ class PmRelMachine(object):
     
     def iq_u(self, w1, u, id):
         "iq at given frequency, voltage and id current"
+        iq0 = max(self.io[0]/4, id*np.tan(self.betarange[0]))
         return so.fsolve(lambda iq:
                          la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2),
-                         self.io[0]/4)[0]
+                         iq0)[0]
     
     def iqd_uqd(self, w1, uq, ud):
         "return iq, id current at given frequency, voltage"
@@ -225,8 +226,8 @@ class PmRelMachine(object):
     
     def id_torque(self, torque, iq):
         "return d current with given torque and d-current"
-        i0 = iqd(*self.io)[1]
-        return so.fsolve(lambda id: self.torque_iqd(iq, id)-torque, i0)[0]
+        id0 = min(self.io[1]/4, iq/np.tan(self.betarange[0]))
+        return so.fsolve(lambda id: self.torque_iqd(iq, id)-torque, id0)[0]
     
     def iqd_torque_umax(self, torque, w1, u1max):
         "return d-q current and torque at stator frequency and max voltage"

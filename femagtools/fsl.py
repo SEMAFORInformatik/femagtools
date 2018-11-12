@@ -14,7 +14,7 @@ import os
 import re
 import sys
 from femagtools.dxfsl.converter import convert
-
+from . import __version__
 logger = logging.getLogger(__name__)
 
 
@@ -178,14 +178,16 @@ class Builder:
         return []
 
     def create_open(self, model):
-        return self.__render(model, 'open') + \
-            self.__render(model, 'basic_modpar')
+        return (['-- created by femagtools {}'.format(__version__), ''] +
+                self.__render(model, 'open') +
+                self.__render(model, 'basic_modpar'))
 
     def set_modpar(self, model):
         return self.__render(model, 'basic_modpar')
 
     def create_new_model(self, model):
-        return self.__render(model, 'new_model')
+        return (['-- created by femagtools {}'.format(__version__), ''] +
+                self.__render(model, 'new_model'))
 
     def create_cu_losses(self, model):
         return self.__render(model.windings, 'cu_losses')

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    from .. import __version__
+#    from .. import __version__
     argparser = argparse.ArgumentParser(
         description='Process DXF file and create a plot or FSL file.')
     argparser.add_argument('dxfile',
@@ -100,9 +100,10 @@ def main():
     argparser.add_argument('--version',
                            help='show version of some packages',
                            dest='version',
-                           version="%(prog)s {}, Python {}".format(
-                               __version__, sys.version),
-                           action="version")
+                           #version="%(prog)s {}, Python {}".format(
+                           #    __version__, sys.version),
+                           #action="version")
+                           action="store_true")
     argparser.add_argument('--debugger',
                            help='print debug information in logfile',
                            dest='debugger',

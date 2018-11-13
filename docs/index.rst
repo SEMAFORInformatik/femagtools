@@ -9,14 +9,14 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 
 * run Femag with a FSL file anywhere:
   locally (single and multi-core), remote (ZMQ), HT Condor, Cloud (Amazon AWS, Google Cloud)
-* read BCH/BATCH, I7/ISA7, PLT files
+* read BCH/BATCH, I7/ISA7, PLT, ERG files
 * read and write MCV files (magnetizing curves)
 * create FSL files from model and calculation templates and/or user specific FSL or from DXF
 * create a variety of plots
 * calculate machine characteristics by using analytic machine models
 * execute parameter studies and multi-objective optimization
 
-The package is hosted on github: <https://github.com/SEMAFORInformatik/femagtools/>`_.
+The package is hosted on github: <https://github.com/SEMAFORInformatik/femagtools/>`.
 Contributions are highly welcome.
   
 Installation
@@ -45,8 +45,19 @@ For Anaconda you can setup the environment variables HTTP_PROXY and HTTPS_PROXY 
 
 For further information: <https://conda.io/docs/user-guide/configuration>_.
 
-Contents
-========
+Console Scripts
+===============
+
+The following scripts can be executed from console:
+
+* femagtools-plot: create plots from BCH/BATCH file
+* femagtools-convert: various mesh format conversion
+* femagtools-bchxml: convert BCH/BATCH file into XML
+* femagtools-dxfsl: convert DXF into FSL
+
+
+User Guide
+==========
 
 .. toctree::
    :maxdepth: 2
@@ -56,6 +67,13 @@ Contents
    bchreader
    forcedens
    engine
+
+References
+==========
+
+.. toctree::
+   :maxdepth: 2
+
    apidocs
 
 
@@ -66,3 +84,9 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+Copyright
+=========
+
+Copyright: 2017-2018 Semafor Informatik & Energie AG, Basel
+
+License: BSD, see LICENSE for more details.

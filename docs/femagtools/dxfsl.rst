@@ -1,0 +1,2 @@
+.. automodule:: femagtools.dxfsl
+   :members:

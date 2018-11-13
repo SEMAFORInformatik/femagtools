@@ -41,9 +41,9 @@ This command creates the file TEST_002.xml
 
 Read I7/ISA7 File
 +++++++++++++++++
-Read an ISA7 File::
+Read an ISA7/I7 File (filename extension is optional):
 
-  >>> isa = isa7.read('foo.ISA7')
+  >>> isa = isa7.read('foo')
 
 Print Node coordinates::
   
@@ -111,7 +111,6 @@ Create a FE model from the templates stator1 and magnetSector::
      
      stator = dict(
          num_slots = 12,
-         num_slots_gen = 3,
          mcvkey_yoke = "dummy",
          rlength = 1.0,
          stator1 = dict(

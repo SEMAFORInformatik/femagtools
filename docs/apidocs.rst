@@ -1,8 +1,10 @@
-.. include:: _build/tmp/femagtools.rst
 
-Copyright
-=========
+.. automodule:: femagtools
+   :members:
 
-Copyright: 2017 Semafor Informatik & Energie AG, Basel
-
-License: BSD, see LICENSE for more details.
+   .. toctree::
+      :maxdepth: 2
+		 
+   femagtools/airgap
+   femagtools/dxfsl
+   femagtools/moo

@@ -8,8 +8,8 @@ Machine
 
 Machines have a set of basic parameters, a stator, a magnet and a winding:
 
-==============  ================================  ======
-Parameter        Description                      Unit
+==============  ======================================  ======
+Parameter        Description                            Unit
 ==============  ======================================  ======
 name             Name of machine
 lfe              Lenght of iron                         m

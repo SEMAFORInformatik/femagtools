@@ -369,7 +369,7 @@ class PmRelMachine(object):
                 r['T'].append(T)
 
             if nx < n3:
-                for nx in np.linspace(nx+dn/2, n2, int(n2)//dn):
+                for nx in np.linspace(nx+dn/2, n2, int(n2/dn)):
                     w1 = 2*np.pi*nx*self.p
                     iq, id = self.iqd_imax_umax(i1max, w1, u1max,
                                                 maxtorque=T > 0)
@@ -381,9 +381,8 @@ class PmRelMachine(object):
                     if T > 0 and tq < 0:
                         logger.info("2: n %g T %g i1max %g w1 %g u1 %g",
                                     nx*60, tq, i1max, w1, u1max)
-                    
             if nx < n3:
-                for nx in np.linspace(nx+dn/2, n3, int(n3)//dn):
+                for nx in np.linspace(nx+dn/2, n3, int(n3/dn)):
                     w1 = 2*np.pi*nx*self.p
                     try:
                         iq, id, tq = self.mtpv(w1, u1max, i1max, maxtorque=T > 0)

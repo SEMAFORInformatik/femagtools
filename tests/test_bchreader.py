@@ -264,6 +264,12 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual([-370.92, -2241.79, -2236.31],
                          [d['H_max'] for d in bch.demag if d['segment'] == 3])
 
+    def test_read_characteristics(self):
+        bch = self.read_bch('char.BATCH')
+        self.assertEqual(len(bch.characteristics), 1)
+        self.assertEqual(len(bch.characteristics[0].keys()), 19)
+        self.assertEqual(len(bch.characteristics[0]['speed_torque']['n']), 16)
+
 
 if __name__ == '__main__':
     unittest.main()

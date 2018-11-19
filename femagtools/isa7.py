@@ -782,8 +782,9 @@ class Element(BaseEntity):
     
     def wdg_loss_density(self):
         """return loss_density if element in winding region"""
-        if self.superelement.condtype != 0:
-            return self.loss_density
+        if self.superelement.subregion:
+            if self.superelement.subregion.winding:
+                return self.loss_density
         return 0
         
 
@@ -793,6 +794,7 @@ class SuperElement(BaseEntity):
                  velsys, velo_1, velo_2, curd_re, curd_im):
         super(self.__class__, self).__init__(valid, key)
         self.sr_key = sr_key
+        self.subregion = None
         self.elements = elements
         for e in elements:
             e.superelement = self
@@ -817,7 +819,10 @@ class SubRegion(BaseEntity):
         self.name = name
         self.curdir = curdir
         self.wb_key = wb_key
+        self.winding = None
         self.superelements = superelements
+        for se in superelements:
+            se.subregion = self
         self.nodechains = nodechains
 
     def elements(self):
@@ -834,6 +839,8 @@ class Winding(BaseEntity):
         super(self.__class__, self).__init__(valid, key)
         self.name = name
         self.subregions = subregions
+        for sr in subregions:
+            sr.winding = self
         self.num_turns = num_turns
         self.cur = cur_re, cur_im
         self.flux = flux_re, flux_im

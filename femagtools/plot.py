@@ -8,11 +8,18 @@
 
 
 """
-import matplotlib.pyplot as pl
-import matplotlib.cm as cm
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
 import scipy.interpolate as ip
+import logging
+import logging.config
+try:
+    import matplotlib
+    import matplotlib.pyplot as pl
+    import matplotlib.cm as cm
+    from mpl_toolkits.mplot3d import Axes3D
+    matplotlibversion = matplotlib.__version__
+except ImportError:   # ModuleNotFoundError:
+    matplotlibversion = 0
 
 
 def _create_3d_axis():
@@ -86,7 +93,7 @@ def __phasor_plot(up, idq, uxdq):
     ax.text(1.15*i1d, 0.72*i1q, r'$I_1$', fontsize=18)
 
     xmin, xmax = (min(0, uxd, i1d), max(0, i1d, uxd))
-    ymin, ymax = (min(0, i1q, 1-uxq), max(1, i1q))
+    ymin, ymax = (min(0, i1q, 1-uxq), max(1, i1q, 1+uxq))
 
     ax.set_xlim([xmin-0.1, xmax+0.1])
     ax.set_ylim([ymin-0.1, ymax+0.1])
@@ -302,11 +309,12 @@ def mtpa(pmrel, i1max, title='', projection=''):
 
     iqmax, idmax = pmrel.iqdmax(i1max)
     iqmin, idmin = pmrel.iqdmin(i1max)
-    
+
     if projection == '3d':
         nsamples = 50
     else:
-        iqmin = 0.1*iqmax
+        if iqmin == 0:
+            iqmin = 0.1*iqmax
     id = np.linspace(idmin, idmax, nsamples)
     iq = np.linspace(iqmin, iqmax, nsamples)
 
@@ -709,7 +717,7 @@ def felosses(losses, coeffs, title='', log=True):
                        1.1*0.9*np.max(losses['B']))
                                   
     for i, f in enumerate(losses['f']):
-        pfe = [p for p in np.array(losses['pfe']).T[i] if p]
+        pfe = [p for p in np.array(losses['pfe'])[i] if p]
         if f > 0:
             if len(coeffs) == 5:
                 ax.plot(B, lc.pfe_jordan(f, B, *coeffs, fo=fo, Bo=Bo))
@@ -772,26 +780,52 @@ def mesh(isa, with_axis=False):
     if not with_axis:
         ax.axis('off')
 
-   
-if __name__ == "__main__":
+
+def main():
     import io
     import sys
+    import argparse    
+    from .__init__ import __version__
     from femagtools.bch import Reader
-    for filename in sys.argv[1:]:
-        bchresults = Reader()
-        with io.open(filename, encoding='latin1', errors='ignore') as f:
-            bchresults.read(f.readlines())
+    
+    argparser = argparse.ArgumentParser(
+        description='Read BCH/BATCH file and create a plot')
+    argparser.add_argument('filename',
+                           help='name of BCH/BATCH file')
+    argparser.add_argument(
+        "--version",
+        "-v",
+        action="version",
+        version="%(prog)s {}, Python {}".format(__version__, sys.version),
+        help="display version information",
+    )
+    args = argparser.parse_args()
+    if not matplotlibversion:
+        sys.exit(0)
+    if not args.filename:
+        sys.exit(0)
+        
+    bchresults = Reader()
+    with io.open(args.filename, encoding='latin1', errors='ignore') as f:
+        bchresults.read(f.readlines())
 
-        if bchresults.type.lower().find(
-                'pm-synchronous-motor simulation') >= 0:
-            pmrelsim(bchresults, bchresults.filename)
-        elif bchresults.type.lower().find('cogging calculation') >= 0:
-            cogging(bchresults, bchresults.filename)
-        elif bchresults.type.lower().find('ld-lq-identification') >= 0:
-            ldlq(bchresults)
-        elif bchresults.type.lower().find('psid-psiq-identification') >= 0:
-            psidq(bchresults)
-        else:
-            raise ValueError("BCH type {} not yet supported".format(
-                bchresults.type))
-        pl.show()
+    if bchresults.type.lower().find(
+            'pm-synchronous-motor simulation') >= 0:
+        pmrelsim(bchresults, bchresults.filename)
+    elif bchresults.type.lower().find('cogging calculation') >= 0:
+        cogging(bchresults, bchresults.filename)
+    elif bchresults.type.lower().find('ld-lq-identification') >= 0:
+        ldlq(bchresults)
+    elif bchresults.type.lower().find('psid-psiq-identification') >= 0:
+        psidq(bchresults)
+    else:
+        raise ValueError("BCH type {} not yet supported".format(
+            bchresults.type))
+    pl.show()
+
+
+if __name__ == "__main__":
+    logger = logging.getLogger("femagtools.plot")
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
+    main()

@@ -70,7 +70,7 @@ class Reader(object):
             if dtype == "?":
                 values.append([bool(u[i]) for u in unpacked])
             elif "s" in dtype:
-                values.append([u[i].decode() for u in unpacked])
+                values.append([u[i].decode('latin-1') for u in unpacked])
             else:
                 values.append([u[i] for u in unpacked])
 
@@ -143,9 +143,7 @@ class Isa7(object):
                 self.lines.append(
                     Line(self.LINE_ISA_LN_VALID, point1, point2))
 
-        self.nodes = []
-        for n in range(self.NUM_NOD):
-            self.nodes.append(
+        self.nodes = [
                 Node(self.NODE_ISA_ND_VALID[n],
                      n + 1,
                      self.NODE_ISA_NODE_REC_ND_BND_CND[n],
@@ -153,28 +151,32 @@ class Isa7(object):
                      self.NODE_ISA_NODE_REC_ND_CO_1[n],
                      self.NODE_ISA_NODE_REC_ND_CO_2[n],
                      self.NODE_ISA_NODE_REC_ND_VP_RE[n],
-                     self.NODE_ISA_NODE_REC_ND_VP_IM[n]))
+                     self.NODE_ISA_NODE_REC_ND_VP_IM[n])
+            for n in range(self.NUM_NOD)]
 
         self.nodechains = []
         for nc in range(self.NUM_NDCH):
             nd1 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_1[nc]
             nd2 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_2[nc]
             ndm = self.NDCHN_ISA_NDCHN_REC_NC_NOD_MID[nc]
+            try:
+                node1 = self.nodes[abs(nd1) - 1]
+                nodem = self.nodes[ndm - 1]
+                node2 = self.nodes[abs(nd2) - 1]
 
-            node1 = self.nodes[abs(nd1) - 1]
-            nodem = self.nodes[ndm - 1]
-            node2 = self.nodes[abs(nd2) - 1]
+                if nd1 < 0 or nd2 < 0:
+                    nodes = node1, nodem, node2
+                elif ndm > 0:
+                    nodes = node1, nodem, node2
+                else:
+                    nodes = node1, None, node2
 
-            if nd1 < 0 or nd2 < 0:
-                nodes = node1, nodem, node2
-            elif ndm > 0:
-                nodes = node1, nodem, node2
-            else:
-                nodes = node1, None, node2
-
-            self.nodechains.append(
-                NodeChain(self.NDCHN_ISA_NC_VALID, nc + 1, nodes))
-
+                self.nodechains.append(
+                    NodeChain(self.NDCHN_ISA_NC_VALID, nc + 1, nodes))
+            except IndexError as ex:
+                logger.warn('IndexError in nodes')
+                raise  # preserve the stack trace
+                    
         self.elements = []
         for e in range(self.NUM_ELE):
             ndkeys = []
@@ -454,8 +456,9 @@ class Isa7(object):
         reader.skip_block(1)
 
         self.FC_RADIUS = reader.next_block("f")[0]
-
-        reader.skip_block(9)
+        reader.skip_block(2)
+        self.M_POLES = reader.next_block("i")[0]
+        reader.skip_block(6)
         FC_NUM_CUR_ID, FC_NUM_BETA_ID = reader.next_block("i")[0:2]
         if FC_NUM_CUR_ID > 16:
             FC_NUM_CUR_ID = 16
@@ -495,7 +498,38 @@ class Isa7(object):
         reader.skip_block(3 * 30 * 30)
         reader.skip_block(3)
         reader.skip_block(30 * 30)
-        reader.skip_block(21)
+        reader.skip_block(4)
+        # stator 3
+        reader.skip_block(4)
+        (yoke_diam, inside_diam,
+         slot_height,slot_h1,slot_h2,
+         slot_width,slot_r1,slot_r2) = reader.next_block("f")[:8]
+        reader.skip_block(3)
+        # magnet sector
+        magn_rad, yoke_rad, magn_height = reader.next_block("f")[:3]
+        self.da2 = 2*magn_rad*1e-3
+        self.dy2 = 2*yoke_rad*1e-3
+        self.da1 = inside_diam
+        self.dy1 = yoke_diam
+        reader.skip_block(3)
+        # windings generation
+        (tot_num_slot, num_phases, num_layers, 
+         self.NUM_WIRES, self.CURRENT,
+         coil_span, num_slots) = reader.next_block("f")[:7]
+        self.TOT_NUM_SLOT = int(tot_num_slot)
+        self.NUM_PHASES = int(num_phases)
+        self.NUM_LAYERS = int(num_layers)
+        self.NUM_SLOTS = int(num_slots)
+        self.COIL_SPAN = coil_span
+        
+        reader.skip_block(1)
+        (move_action, arm_length, self.SKEW_ANGLE,
+         HI, num_move_ar, self.ANGL_I_UP,
+         num_par_wdgs, cur_control) = reader.next_block("f")[:8]
+        self.NUM_PAR_WDGS = int(num_par_wdgs)
+        self.lfe = arm_length*1e-3
+        
+        reader.skip_block(2)      
         reader.skip_block(30 * 30)
         reader.skip_block(30 * 30)
         reader.skip_block(1 * 20)
@@ -506,8 +540,18 @@ class Isa7(object):
         if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
             reader.skip_block(2 * (NUM_FE_EVAL_MOVE_STEP + 1))
             reader.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
-
-        reader.skip_block(74)
+        # VIRGIN_PM_SYN
+        reader.skip_block(3)
+        # magnet iron 4
+        reader.skip_block(3)
+        # stator 4
+        reader.skip_block(1)
+        # stator 2
+        reader.skip_block(3)
+        # stator 1
+        reader.skip_block(2)
+# ---
+        reader.skip_block(62)
 
         ANZ_FORCE_AREAS = reader.next_block("i")[0]
 
@@ -522,7 +566,14 @@ class Isa7(object):
         reader.skip_block(11 * 4)
         reader.skip_block()
         reader.skip_block(1 * 4)
-        reader.skip_block(8)
+        # NOM_CURRENT
+        # PR_BASIC_LOSS_DATA
+        # TOT_MAGNET_AREA
+        # MOVE_EXTERN
+        # MOVE_ARMATURE
+        reader.skip_block(5)
+        self.POLPAAR_ZAHL, self.NO_POLES_SIM = reader.next_block("i")[:2]
+        reader.skip_block(2)
         reader.skip_block(3 * 20 + 2 * 20 * 20)
         reader.skip_block(14)
 
@@ -535,7 +586,9 @@ class Isa7(object):
 
         reader.skip_block()
         reader.skip_block(2 * 3)
-        reader.skip_block(3)
+        self.Q_SLOTS_NUMBER, self.M_PHASE_NUMBER = reader.next_block("i")[:2]
+        self.N_LAYERS_SLOT, self.N_WIRES_PER_SLOT = reader.next_block("i")[:2]
+        reader.skip_block(1)
         reader.skip_block(10 * 100)
         reader.skip_block(1 * 100)
         reader.skip_block()
@@ -548,6 +601,18 @@ class Isa7(object):
         reader.skip_block(6)
 
         self.ELEM_ISA_ELEM_REC_LOSS_DENS = reader.next_block("f")
+
+    def get_subregion(self, name):
+        """return subregion by name"""
+        for s in self.subregions:
+            if s.name == name:
+                return s
+        raise ValueError('no such subregion "{}" in this model'.format(name))
+
+    def wdg_elements(self):
+        """return elements in winding region"""
+        return [el for el in self.elements
+                if self.superelement.condtype != 0]
 
 
 class Point(object):
@@ -650,7 +715,7 @@ class Element(BaseEntity):
             x21 = ev[1].x - ev[0].x
             a21 = ev[1].vpot[0] - ev[0].vpot[0]
             a31 = ev[2].vpot[0] - ev[0].vpot[0]
-            delta = self.se_length * (y31 * x21 + y21 * x13)
+            delta = self.superelement.length * (y31 * x21 + y21 * x13)
 
             return ((x13 * a21 + x21 * a31) / delta,
                     (-y31 * a21 + y21 * a31) / delta)
@@ -662,7 +727,7 @@ class Element(BaseEntity):
             x21 = ev[1].x - ev[0].x
             a21 = ev[1].vpot[0] - ev[0].vpot[0]
             a31 = ev[2].vpot[0] - ev[0].vpot[0]
-            delta = self.se_length * (y31 * x21 + y21 * x13)
+            delta = self.superelement.length * (y31 * x21 + y21 * x13)
             b1_a = (x13 * a21 + x21 * a31) / delta
             b2_a = (y21 * a31 - y31 * a21) / delta
 
@@ -672,7 +737,7 @@ class Element(BaseEntity):
             x21 = ev[3].x - ev[2].x
             a24 = ev[3].vpot[0] - ev[2].vpot[0]
             a34 = ev[0].vpot[0] - ev[2].vpot[0]
-            delta = self.se_length * (y31 * x21 + y21 * x13)
+            delta = self.superelement.length * (y31 * x21 + y21 * x13)
             b1_b = (x13 * a24 + x21 * a34) / delta
             b2_b = (y21 * a34 - y31 * a24) / delta
 
@@ -698,11 +763,29 @@ class Element(BaseEntity):
         """return permeability of this element"""
         if self.reluc[0] < 1:
             return 1 / self.reluc[0]
-        return 0
+        return 1
 
     def loss_density(self):
         return self.loss_density
 
+    def iron_loss_density(self):
+        """return loss_density if element in iron (eg. lamination region)"""
+        if self.reluc != (1.0, 1.0) and self.mag == (0.0, 0.0):
+            return self.loss_density
+        return 0
+                
+    def mag_loss_density(self):
+        """return loss_density if element in magnet region"""
+        if np.any(self.mag):
+            return self.loss_density
+        return 0
+    
+    def wdg_loss_density(self):
+        """return loss_density if element in winding region"""
+        if self.superelement.condtype != 0:
+            return self.loss_density
+        return 0
+        
 
 class SuperElement(BaseEntity):
     def __init__(self, valid, key, sr_key, elements, nodechains, color,
@@ -712,7 +795,7 @@ class SuperElement(BaseEntity):
         self.sr_key = sr_key
         self.elements = elements
         for e in elements:
-            e.se_length = length
+            e.superelement = self
         self.nodechains = nodechains
         self.color = color
         self.nc_keys = nc_keys
@@ -737,6 +820,13 @@ class SubRegion(BaseEntity):
         self.superelements = superelements
         self.nodechains = nodechains
 
+    def elements(self):
+        """return elements of this subregion"""
+        e = []
+        for s in self.superelements:
+            e.append(s.elements)
+        return e
+
 
 class Winding(BaseEntity):
     def __init__(self, valid, key, name, subregions, num_turns, cur_re, cur_im,
@@ -749,6 +839,13 @@ class Winding(BaseEntity):
         self.flux = flux_re, flux_im
         self.volt = volt_re, volt_im
 
+    def elements(self):
+        """return elements of this winding"""
+        e = []
+        for s in self.subregions:
+            e.append(s.elements)
+        return e
+
 
 def read(filename):
     """
@@ -757,12 +854,16 @@ def read(filename):
     Arguments:
         filename: name of I7/ISA7 file to be read
     """
+    import os
+    ext = os.path.splitext(filename)[-1]
+    if not ext:
+        ext = '.I7' if sys.platform == 'win32' else '.ISA7'
+        filename += ext
     isa = Isa7(filename)
     return isa
 
 
 if __name__ == "__main__":
-
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
     if len(sys.argv) == 2:

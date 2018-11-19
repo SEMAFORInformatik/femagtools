@@ -25,6 +25,15 @@ def test_objects(isa):
     assert len(isa.nodechains) == 98
     assert len(isa.elements) == 822
     assert len(isa.superelements) == 3
+    assert len(isa.get_subregion('asdf').elements()) == 1
+
+
+def test_no_such_subregion(isa):
+    with pytest.raises(ValueError) as excinfo:
+        n = 'foo'
+        isa.get_subregion(n)
+    assert str(excinfo.value) == (
+        'no such subregion "{}" in this model'.format(n))
 
 
 def test_points(isa):

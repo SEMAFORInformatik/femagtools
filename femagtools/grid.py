@@ -152,6 +152,8 @@ class Grid(object):
         operatingConditions['pocfilename'] = (model.get('name') +
                                               '_' + str(model.get('poles')) +
                                               'p.poc')
+        operatingConditions['phi_start'] = 0.0
+        operatingConditions['range_phi'] = 720/model.get('poles')
         operatingConditions.update(model.windings)
         fea = femagtools.model.FeaModel(operatingConditions)
 

@@ -7,7 +7,7 @@ Magnet geometries not covered by the built in models can be specified by fsl cod
 
    Example of a user specified geometry (created with `TikZ <http://www.texample.net/tikz>`_)
 
-The procedure is as follows:
+The steps are:
 
 1. Create a diagram of the geometry and decide about the parameters to be used.
 2. Create a fsl mako template file with the chosen parameters as placeholders

@@ -17,7 +17,7 @@ try:
 
     matplotlibversion = (int(matplotlib.__version__.split('.')[0]) +
                          int(matplotlib.__version__.split('.')[1])/10)
-except ModuleNotFoundError:
+except ImportError:  # ModuleNotFoundError:
     matplotlibversion = 0  # no matplotlib
 
 logger = logging.getLogger(__name__)
@@ -28,14 +28,15 @@ class PlotRenderer(object):
     def __init__(self):
         self.fig = None
         self.background = '#eeeeee'
+#        self.background = facecolor='lightblue',
         if matplotlibversion == 0:
             import matplotlib   # throws exception
         pass
 
     def figure(self):
         if self.fig is None:
-            self.fig = pl.figure(facecolor='lightblue',
-                                 figsize=(9, 10))
+            self.fig = pl.figure(figsize=(9, 10))
+            #         facecolor='lightblue'
             if matplotlibversion > 2:
                 pl.tight_layout(h_pad=0.2, w_pad=0.2)
             pl.subplots_adjust(bottom=0.05, top=0.95,
@@ -44,8 +45,8 @@ class PlotRenderer(object):
 
     def add_plot(self, rows=1, cols=1, num=1):
         self.ax = self.figure().add_subplot(rows, cols,
-                                            num,
-                                            facecolor=self.background)
+                                            num)
+#                                            facecolor=self.background)
         return self.ax
 
     def add_emptyplot(self, rows=1, cols=1, num=1, title=''):
@@ -69,7 +70,7 @@ class PlotRenderer(object):
                                   theta2=endangle*180/np.pi,
                                   color=color))
 
-    def line(self, p1, p2, color='blue'):
+    def line(self, p1, p2, color='blue', e=None):
         self.ax.add_line(pl.Line2D((p1[0], p2[0]),
                                    (p1[1], p2[1]), color=color))
 
@@ -79,6 +80,9 @@ class PlotRenderer(object):
 
     def point(self, p, col, color='blue'):
         pl.plot([p[0]], [p[1]], col, color=color)
+
+    def text(self, p, txt):
+        pl.text(p[0], p[1], txt)
 
     def fill(self, x, y, color, alpha):
         self.ax.fill(x, y, 'b', alpha=alpha, color=color, edgecolor='blue')
@@ -160,6 +164,7 @@ class PlotRenderer(object):
         draw_center = kwargs.get('draw_center', False)
         draw_inside = kwargs.get('draw_inside', False)
         fill_areas = kwargs.get('fill_areas', False)
+        write_id = kwargs.get('write_id', False)
         title = kwargs.get('title', "")
         show = kwargs.get('show', True)
         rows = kwargs.get('rows', 1)
@@ -197,8 +202,8 @@ class PlotRenderer(object):
             return
 
         self.ax = self.figure().add_subplot(rows, cols,
-                                            num,
-                                            facecolor=self.background)
+                                            num)
+#                                            facecolor=self.background)
         if len(title) > 0:
             self.ax.set_title(title, size=14)
         self.ax.grid(color='blue', linewidth=0.5)
@@ -224,6 +229,8 @@ class PlotRenderer(object):
                 p = area.get_point_inside(geom)
                 if p:
                     pl.plot([p[0]], [p[1]], 'ro', color='magenta')
+                    if write_id:
+                        self.text(p, area.identifier())
 
         if fill_areas:
             handles = geom.render_area_fill(self)

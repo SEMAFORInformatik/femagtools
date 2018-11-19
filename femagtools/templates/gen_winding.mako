@@ -5,7 +5,7 @@ m.num_layers      =  ${model.get(['windings','num_layers'])}
 m.num_wires       =  ${model.get(['windings','num_wires'])}
 m.coil_span       =  ${model.get(['windings','coil_span'])}
 
-% if model.get('move_action') == 0:
+% if model.get('move_action', 0) == 0:
 m.current         =   0.0
 m.mat_type        =   1.0 -- rotating 
 m.wind_type       =   1.0 -- winding & current
@@ -13,11 +13,6 @@ m.win_asym        =   1.0 -- sym
 
 m.curr_inp        =   0.0 -- const
 m.dq_offset       =   0
-
-if tmp.coil_exists == 1 and tmp.coil_mirrored then
-  r, phi = c2pr(m.xcoil_1, m.ycoil_1)
-  m.xcoil_2, m.ycoil_2 = pr2c(r, tmp.coil_alpha*2.0 - phi)
-end
 
 pre_models("Gen_winding")
 pre_models("gen_pocfile") 

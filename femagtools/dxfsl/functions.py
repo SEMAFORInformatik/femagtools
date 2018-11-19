@@ -170,6 +170,26 @@ def middle_angle(alpha1, alpha2):
     return (a1+a2)/2.0
 
 
+def third_angle(alpha1, alpha2):
+    a1 = normalise_angle(alpha1)
+    a2 = normalise_angle(alpha2)
+
+    if np.isclose(a1, a2):
+        return a1
+
+    if greater_equal(a1, 0.0):
+        if a2 < a1:
+            a2 += 2.0*np.pi
+    else:
+        if less_equal(a2, a1):
+            a1 += 2.0*np.pi
+
+    if np.isclose(a1, a2):
+        return copy.copy(a1)
+
+    return (a1+a2)/3.0
+
+
 def middle_point_of_line(p1, p2):
     return [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2]
 
@@ -209,6 +229,14 @@ def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
 
     return (np.isclose(p1[0], p2[0], rtol, atol) and
             np.isclose(p1[1], p2[1], rtol, atol))
+
+
+def point_in_region(p, x_min, x_max, y_min, y_max):
+    if p[0] < x_min or p[0] > x_max:
+        return False
+    if p[1] < y_min or p[1] > y_max:
+        return False
+    return True
 
 
 def within_interval(x, v1, v2, rtol=1e-3, atol=1e-8):
@@ -258,7 +286,7 @@ def part_of_circle(startangle, endangle, pos=3):
         x = float(0.0)
     logger.debug("part_of_circle: {}".format(x))
     if x.is_integer():
-        return x
+        return int(x)
     return 0
 
 
@@ -342,6 +370,12 @@ def angles_on_arc(startangle, endangle, parts=8):
         yield float(x)/num*alpha + startangle
     if less(alpha, 2.0*np.pi):
         yield alpha + startangle
+
+
+def point_on_arc(center, radius, angle):
+    alpha = normalise_angle(angle)
+    return (center[0] + radius * np.cos(alpha),
+            center[1] + radius * np.sin(alpha))
 
 
 def points_on_arc(center, radius, startangle, endangle, parts=8):

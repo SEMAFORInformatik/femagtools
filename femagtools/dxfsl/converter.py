@@ -5,43 +5,16 @@
 # Author: Ronald Tanner
 # Date: 2016/01/24
 #
-import sys
 import os
-from femagtools.dxfsl.geom import Geometry, dxfshapes
+from femagtools.dxfsl.geom import Geometry, dxfshapes, femshapes
 from femagtools.dxfsl.shape import Shape
-from femagtools.dxfsl.fslrenderer import FslRenderer
+from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
 from femagtools.dxfsl.plotrenderer import PlotRenderer
 import logging
 import logging.config
 import numpy as np
 
 logger = logging.getLogger(__name__)
-
-
-def usage(name):
-    print("Usage: ", name,
-          " [-h] [--help]")
-
-
-def write_fsl_file(machine,
-                   basename,
-                   inner=False,
-                   outer=False):
-    model = FslRenderer(basename)
-    filename = basename + '_' + machine.geom.kind + '.fsl'
-    model.render(machine, filename, inner, outer)
-    return filename
-
-
-def write_main_fsl_file(machine,
-                        machine_inner,
-                        machine_outer,
-                        params,
-                        basename):
-    model = FslRenderer(basename)
-    filename = basename + '.fsl'
-    model.render_main(machine, machine_inner, machine_outer, params, filename)
-    return filename
 
 
 def symmetry_search(machine,
@@ -55,20 +28,23 @@ def symmetry_search(machine,
                     rows=1,
                     cols=1,
                     num=1):
-    logger.info("symmetry search for %s", kind)
+    logger.info(" ")
+    logger.info("*** Begin of symmetry search for %s ***", kind)
+
     machine.clear_cut_lines()
     if show_plots and debug_mode:
         plt.render_elements(machine.geom, Shape,
                             neighbors=True, title=kind)
 
     if not machine.find_symmetry(symtol):
-        logger.info("{}: no symmetry axis found".format(kind))
+        logger.info(" - {}: no symmetry axis found".format(kind))
         if show_plots:
             plt.add_emptyplot(rows, cols, num, 'no symmetry axis')
 
         machine_mirror = machine.get_symmetry_mirror()
         machine_slice = machine
     else:
+        logger.info(" - {}: symmetry axis found !!".format(kind))
         if show_plots:
             plt.render_elements(machine.geom, Shape,
                                 title=kind+' (symmetrylines)',
@@ -77,12 +53,18 @@ def symmetry_search(machine,
         machine_slice = machine.get_symmetry_slice()
         if machine_slice is None:
             machine.kind = kind
+            logger.info(" - no slice extracted ?!?")
+            logger.info("*** End of symmetry search for %s ***", kind)
             return machine
 
         machine_mirror = machine_slice.get_symmetry_mirror()
 
     if machine_mirror is None:
-        logger.info("no mirror found")
+        logger.info(" - no mirror found")
+        if not machine_slice.is_startangle_zero():
+            machine_slice.rotate_to(0.0)
+            machine_slice.set_alfa_and_corners()
+
         machine_ok = machine_slice
     else:
         if show_plots and debug_mode:
@@ -90,37 +72,40 @@ def symmetry_search(machine,
                                 title='Mirror of '+kind,
                                 rows=rows, cols=cols, num=num, show=True)
 
-        logger.info("mirror found")
-        machine_next_mirror = machine_mirror
+        logger.info(" - mirror found")
+        machine_next_mirror = machine_mirror.get_symmetry_mirror()
         while machine_next_mirror is not None:
+            logger.info(" - another mirror found")
             machine_mirror = machine_next_mirror
             machine_next_mirror = machine_mirror.get_symmetry_mirror()
-            logger.info("another mirror found")
+
         machine_ok = machine_mirror
 
     machine_ok.set_minmax_radius()
     # machine_ok.complete_hull(is_inner, is_outer)
     machine_ok.create_auxiliary_lines()
     machine_ok.set_kind(kind)
+
+    logger.info("*** End of symmetry search for %s ***", kind)
     return machine_ok
 
 
-def converter(dxfile,
-              rtol=1e-03,
-              atol=1e-03,
-              mindist=0.01,
-              symtol=0.001,
-              split=False,
-              inner_name='inner',
-              outer_name='outer',
-              part=(),
-              airgap=0.0,
-              airgap2=0.0,
-              view_only=False,
-              show_plots=True,
-              show_areas=False,
-              write_fsl=False,
-              debug_mode=False):
+def convert(dxfile,
+            rtol=1e-03,
+            atol=1e-03,
+            mindist=0.01,
+            symtol=0.001,
+            split=False,
+            inner_name='inner',
+            outer_name='outer',
+            part=(),
+            airgap=0.0,
+            airgap2=0.0,
+            view_only=False,
+            show_plots=False,
+            show_areas=False,
+            write_fsl=True,
+            debug_mode=False):
     layers = ()
     conv = {}
 
@@ -130,17 +115,28 @@ def converter(dxfile,
     if part:
         if part[0] not in ('rotor', 'stator'):
             logger.error('FATAL: Parameter rotor or stator expected')
-            sys.exit(1)
+            return dict(error='unknown part {}'.format(part))
         if part[1] not in ('in', 'out'):
             logger.error('"{}" has to be defined in/out'.format(part[0]))
-            sys.exit(1)
+            return dict(error='unknown location {}'.format(part[1]))
 
-    basegeom = Geometry(dxfshapes(dxfile,
-                                  mindist=mindist,
-                                  layers=layers),
-                        rtol=rtol,
-                        atol=atol,
-                        split=split)
+    try:
+        if dxfile.split('.')[-1] == 'fem':
+            basegeom = Geometry(femshapes(dxfile),
+                                rtol=rtol,
+                                atol=atol,
+                                split=split)
+        else:
+            basegeom = Geometry(dxfshapes(dxfile,
+                                          mindist=mindist,
+                                          layers=layers),
+                                rtol=rtol,
+                                atol=atol,
+                                split=split)
+    except FileNotFoundError as ex:
+        logger.error(ex)
+        return dict()
+
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = PlotRenderer()
@@ -148,11 +144,7 @@ def converter(dxfile,
         p.render_elements(basegeom, Shape,
                           neighbors=True,
                           show=True)
-
-        if write_fsl:
-            model = FslRenderer(basename)
-            model.render_raw(basegeom)
-        sys.exit(0)
+        return dict()
 
     machine_base = basegeom.get_machine()
     if show_plots:
@@ -162,23 +154,19 @@ def converter(dxfile,
                           rows=3, cols=2, num=1, show=debug_mode)
 
     if not machine_base.is_a_machine():
-        logger.info("it's Not a Machine!!")
-        sys.exit(1)
+        logger.warn("it's Not a Machine!!")
+        return dict(error='machine not detected')
 
-    if machine_base.is_full() or \
-       machine_base.is_half() or \
-       machine_base.is_quarter():
-        # create a copy for further processing
-        machine = machine_base.full_copy()
-    else:
+    if not (machine_base.part > 0):
         # machine shape is unclear
         machine_base.set_center(0.0, 0.0)
         machine_base.set_radius(9999999)
-        machine = machine_base.full_copy()
+
+    machine = machine_base
 
     if machine.part_of_circle() == 0:
-        logger.info("No arc segment found")
-        sys.exit(1)
+        logger.warn("No arc segment found")
+        return dict(error='no arc segment found')
 
     machine.clear_cut_lines()
     machine.move_to_middle()
@@ -191,7 +179,7 @@ def converter(dxfile,
         p.render_elements(machine.geom, Shape,
                           title='Search for airgap failed',
                           with_corners=False, show=True)
-        sys.exit(1)
+        return dict(error='no airgap found')
 
     if show_plots:
         p.render_elements(basegeom, Shape, neighbors=True,
@@ -268,33 +256,28 @@ def converter(dxfile,
                            single_view=True)
 
         if write_fsl:
-            inner_filename = write_fsl_file(machine_inner,
-                                            basename,
-                                            True,
-                                            False)
-            outer_filename = write_fsl_file(machine_outer,
-                                            basename,
-                                            False,
-                                            True)
+            fslrenderer = FslRenderer(basename)
+            inner = fslrenderer.render(machine_inner, inner=True)
+            outer = fslrenderer.render(machine_outer, outer=True)
 
             if machine_inner.geom.is_rotor():
-                conv['filename_rotor'] = inner_filename
-                conv['filename_stator'] = outer_filename
+                conv['fsl_magnet'] = inner
+                conv['fsl_stator'] = outer
             else:
-                conv['filename_stator'] = inner_filename
-                conv['filename_rotor'] = outer_filename
+                conv['fsl_magnet'] = inner
+                conv['fsl_rotor'] = outer
 
             params = create_femag_parameters(machine_inner,
                                              machine_outer)
 
-            conv['main_filename'] = write_main_fsl_file(machine,
-                                                        machine_inner,
-                                                        machine_outer,
-                                                        params,
-                                                        basename)
             conv.update(params)
+            conv['fsl'] = fslrenderer.render_main(
+                machine,
+                machine_inner, machine_outer,
+                inner, outer,
+                params)
     else:
-        # No airgap found
+        # No airgap found. This must be an inner or outer part
         name = "No_Airgap"
         inner = False
         outer = False
@@ -327,11 +310,13 @@ def converter(dxfile,
                 machine.geom.search_rotor_subregions(part[1])
                 params = create_femag_parameters_rotor(machine,
                                                        part[1])
-
+        else:
+            machine.geom.search_subregions()
         if show_plots:
             p.render_elements(machine.geom, Shape,
                               draw_inside=True, title=name,
                               rows=3, cols=2, num=5, show=False,
+                              # with_nodes=True,
                               fill_areas=True)
             p.show_plot()
 
@@ -342,10 +327,11 @@ def converter(dxfile,
                            single_view=True)
 
         if write_fsl:
-            conv['filename'] = write_fsl_file(machine, basename, inner, outer)
+            fslrenderer = FslRenderer(basename)
+            conv['fsl'] = fslrenderer.render(machine, inner, outer)
             if params:
                 conv.update(params)
-
+            
     logger.info("done")
     return conv
 
@@ -382,6 +368,7 @@ def create_femag_parameters(m_inner, m_outer):
     params['da1'] = 2*geom_outer.min_radius
     params['da2'] = 2*geom_inner.max_radius
     params['dy2'] = 2*geom_inner.min_radius
+    params['agndst'] = agndst(params['da1'], params['da2'])
 
     params['alfa_slot'] = alfa_slot
     params['alfa_pole'] = alfa_pole

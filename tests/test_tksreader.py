@@ -14,9 +14,9 @@ def test_read_tks():
     assert len(tks['losses']['f']) == 4
     assert len(tks['losses']['B']) == 14
     assert len(tks['losses']['pfe']) == 4
-    assert len(tks['losses']['pfe'][0]) == 14
+    assert len(tks['losses']['pfe'][0]) == 27
     assert tks['losses']['f'][-1] == 400.0
     assert tks['losses']['B'][-1] == 1.9
-    # [1.71, 3.55, 5.98, 9.21, 13.17, 17.95, 23.87, 30.84, 39.24, 48.9, 60.23, 73.1,, None, None]
-    assert tks['losses']['pfe'][3][-3:] == [73.1, None, None]
+    # 13.1279112, 17.92205587, 23.79869172, 30.84129721, 39.3434623, 48.97389844, 60.25629981, 72.88007909
+    assert len([x for x in tks['losses']['pfe'][3] if x]) == 8
 

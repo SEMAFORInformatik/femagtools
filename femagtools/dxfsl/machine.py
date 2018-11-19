@@ -13,7 +13,7 @@ import numpy as np
 import logging
 from .shape import Element, Circle, Line, Shape
 from .functions import point, points_are_close
-from .functions import alpha_angle, normalise_angle, middle_angle
+from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
 from .functions import line_m, line_n, mirror_point
 from .functions import within_interval, part_of_circle
 logger = logging.getLogger('femagtools.geom')
@@ -89,6 +89,9 @@ class Machine(object):
     def is_quarter(self):
         return self.radius > 0.0 and \
                np.isclose(alpha_angle(self.startangle, self.endangle), np.pi/2)
+
+    def is_startangle_zero(self):
+        return np.isclose(self.startangle, 0.0)
 
     def move_to_middle(self):
         if not self.is_in_middle():
@@ -208,6 +211,7 @@ class Machine(object):
         assert(self.previous_machine)
         self.previous_machine.set_minmax_radius()
         # self.previous_machine.complete_hull()
+        self.set_alfa_and_corners()
         self.previous_machine.create_auxiliary_lines()
         self.previous_machine.set_kind(self.geom.kind)
         return self.previous_machine
@@ -229,7 +233,7 @@ class Machine(object):
 
         if np.isclose(self.radius, 0.0):
             logger.debug('no radius')
-            return
+            return False
 
         if correct_airgap < 0:
             logger.debug('no airgap')
@@ -314,6 +318,7 @@ class Machine(object):
             return False  # correct airgap set
 
         gaps = [c for b, c, d in airgap_candidates if b == 0]
+
         if len(gaps) == 1:  # one candidate without border intersection
             self.airgap_radius = gaps[0].radius
             return False  # ok
@@ -335,6 +340,7 @@ class Machine(object):
                   .format(len(airgap_candidates)))
         dist = 999
         circle = None
+        pos_list = []
         for b, c, d in airgap_candidates:
             if get_one:
                 logger.info(" --- {}   (width={})".format(c.radius, d))
@@ -344,7 +350,19 @@ class Machine(object):
                 dist = d
                 circle = c
 
+            inner_pc = (c.radius - self.geom.min_radius) / \
+                       (self.geom.max_radius - self.geom.min_radius)
+            pos = np.abs(inner_pc * 100 - 50)
+            logger.debug("Abstand Mitte = {} %".format(pos))
+            if pos < 20:
+                pos_list.append([pos, d, c])
+
         if get_one:
+            if pos_list:
+                dist_list = [[d, c] for pos, d, c in pos_list]
+                dist_list.sort()
+                circle = dist_list[0][1]
+
             logger.info("airgap {} prefered".format(circle.radius))
             return circle.radius
 
@@ -380,7 +398,7 @@ class Machine(object):
                 self.geom.delete_circle((0.0, 0.0), first_dist)
 
     def repair_hull(self):
-        logger.info('repair_hull')
+        logger.debug('repair_hull')
         if self.is_full() and not self.has_airgap():
             self.delete_center_circle()
 
@@ -421,7 +439,7 @@ class Machine(object):
         self.set_alfa_and_corners()
 
     def create_auxiliary_lines(self):
-        self.geom.create_auxiliary_lines(self.endangle)
+        self.geom.create_auxiliary_lines(self.startangle, self.endangle)
 
     def set_alfa_and_corners(self):
         self.geom.start_corners = self.geom.get_corner_nodes(self.center,
@@ -435,6 +453,12 @@ class Machine(object):
 
     def is_mirrored(self):
         return self.mirror_geom is not None
+
+    def num_of_layers(self):
+        w = self.geom.num_of_windings()
+        if w > 0 and self.is_mirrored():
+            return w*2
+        return w
 
     def find_symmetry(self, sym_tolerance):
         if self.radius <= 0.0:
@@ -456,6 +480,31 @@ class Machine(object):
         machine_slice.set_alfa_and_corners()
         return machine_slice
 
+    def get_third_symmetry_mirror(self):
+        first_thirdangle = third_angle(self.startangle, self.endangle)
+        second_thirdangle = middle_angle(first_thirdangle, self.endangle)
+
+        machine_mirror_1 = self.copy_mirror(self.startangle,
+                                            first_thirdangle,
+                                            second_thirdangle)
+        machine_mirror_1.clear_cut_lines()
+        machine_mirror_1.repair_hull()
+        machine_mirror_1.set_alfa_and_corners()
+        if not machine_mirror_1.check_symmetry_graph(0.001, 0.05):
+            return None
+
+        machine_mirror_2 = self.copy_mirror(first_thirdangle,
+                                            second_thirdangle,
+                                            self.endangle)
+        machine_mirror_2.clear_cut_lines()
+        machine_mirror_2.repair_hull()
+        machine_mirror_2.set_alfa_and_corners()
+        if not machine_mirror_2.check_symmetry_graph(0.001, 0.05):
+            return None
+
+        machine_mirror_1.previous_machine = self
+        return machine_mirror_1
+
     def get_symmetry_mirror(self):
         if self.part == 1:
             # a complete machine
@@ -466,6 +515,10 @@ class Machine(object):
             startangle = self.startangle
             endangle = self.endangle
             midangle = middle_angle(self.startangle, self.endangle)
+            machine_mirror = self.get_third_symmetry_mirror()
+            if machine_mirror:
+                logger.debug("third symmetry found")
+                return machine_mirror
 
         machine_mirror = self.copy_mirror(startangle, midangle, endangle)
         machine_mirror.clear_cut_lines()
@@ -473,6 +526,8 @@ class Machine(object):
         machine_mirror.set_alfa_and_corners()
         if machine_mirror.check_symmetry_graph(0.001, 0.05):
             machine_mirror.previous_machine = self
+            machine_mirror.rotate_to(0.0)
+            machine_mirror.set_alfa_and_corners()
             return machine_mirror
         return None
 
@@ -483,6 +538,7 @@ class Machine(object):
             return self.part
 
     def check_symmetry_graph(self, rtol, atol):
+        logger.debug("check_symmetry_graph")
         axis_p = point(self.center, self.radius, self.mirror_startangle)
         axis_m = line_m(self.center, axis_p)
         axis_n = line_n(self.center, axis_m)
@@ -506,12 +562,17 @@ class Machine(object):
 
         hit_factor1 = get_hit_factor(self.geom.g.nodes(),
                                      self.mirror_geom.g.nodes())
+        logger.debug("=> hit_factor1 = {}".format(hit_factor1))
         if hit_factor1 < 0.9:
             return False  # not ok
 
         hit_factor2 = get_hit_factor(self.mirror_geom.g.nodes(),
                                      self.geom.g.nodes())
-        if hit_factor2 < hit_factor1:
+        logger.debug("=> hit_factor2 = {}".format(hit_factor2))
+        if hit_factor2 < 0.9:
+            return False  # not ok
+
+        if hit_factor1 < 0.93 and hit_factor2 < 0.93:
             return False  # not ok
         return True
 

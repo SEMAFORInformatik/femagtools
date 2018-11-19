@@ -118,7 +118,7 @@ class Reader:
         self.demag = []
         self.weights = []
         self.weight = {}
-        self.characteristics = {}
+        self.characteristics = []
         self.areas = []
         self.current_angles = []
         self.dispatch = {
@@ -425,6 +425,7 @@ class Reader:
                 self.machine['pocfile'] = l.split(':')[-1].strip()
                 
     def __read_characteristics(self, content):
+        characteristics={}
         for i, l in enumerate(content):
             if l.startswith('[[***'):
                 break
@@ -450,19 +451,20 @@ class Reader:
                 if l.find(v[0]) > -1:
                     rec = self._numPattern.findall(l)
                     if len(rec) > 0:
-                        self.characteristics[v[1]] = floatnan(rec[-1])
+                        characteristics[v[1]] = floatnan(rec[-1])
                         break
 
-        self.characteristics['ldq'] = {}
-        self.armatureLength = self.characteristics['lfe']
+        characteristics['ldq'] = {}
         m = []
-        for k, l in enumerate(content[i+3:]):
-            if l.startswith('[[***'):
-                break
-            rec = l.split('\t')
-            if len(rec) == 6:
-                m.append([floatnan(x) for x in rec])
-
+        if content[i+1].startswith('Wdg'):
+            for k, l in enumerate(content[i+3:]):
+                if l.startswith('[[***'):
+                    break
+                rec = l.split('\t')
+                if len(rec) == 6:
+                    m.append([floatnan(x) for x in rec])
+        else:
+            k = -3
         if m:
             m = np.array(m).T
             ncols = len(set(m[1]))
@@ -470,16 +472,16 @@ class Reader:
             nrows = len(i1)
 
             logger.info('characteristics ld-lq %d x %d', nrows, ncols)
-            self.characteristics['ldq'] = {
+            characteristics['ldq'] = {
                 'beta': m[1][:ncols][::-1].tolist(),
                 'i1': i1.tolist(),
-                'ld': (self.armatureLength*np.reshape(
+                'ld': (characteristics['lfe']*np.reshape(
                     m[2], (nrows, ncols)).T[::-1]).tolist(),
-                'lq': (self.armatureLength*np.reshape(
+                'lq': (characteristics['lfe']*np.reshape(
                     m[3], (nrows, ncols)).T[::-1]).tolist(),
-                'psim': (self.armatureLength*np.reshape(
+                'psim': (characteristics['lfe']*np.reshape(
                     m[4], (nrows, ncols)).T[::-1]).tolist(),
-                'torque': (self.armatureLength*np.reshape(
+                'torque': (characteristics['lfe']*np.reshape(
                     m[5], (nrows, ncols)).T[::-1]).tolist()}
 
         m = []
@@ -488,7 +490,7 @@ class Reader:
                    ['lang', 'ud', 'uq', 'i1'],
                    ['lang', 'ld', 'lq', 'psim']]
         nsec = 0
-        self.characteristics['speed_torque'] = {}
+        characteristics['speed_torque'] = {}
         for l in content[k+i+6:]:
             if l.startswith('[[***'):
                 break
@@ -500,13 +502,15 @@ class Reader:
                 else:
                     m = np.array(m).T[1:]
                 for j, k in enumerate(columns[nsec]):
-                    self.characteristics['speed_torque'][k] = m[j].tolist()
+                    characteristics['speed_torque'][k] = m[j].tolist()
                 m = []
                 nsec += 1
             else:
                 rec = self._numPattern.findall(l)
                 if len(rec) > 3:
                     m.append([floatnan(x) for x in rec])
+
+        self.characteristics.append(characteristics)
 
     def __read_flux(self, content):
         "read and append flux section"

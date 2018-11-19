@@ -13,8 +13,8 @@ import mako.lookup
 import os
 import re
 import sys
-from femagtools.dxfsl.converter import converter
-
+from femagtools.dxfsl.converter import convert
+from . import __version__
 logger = logging.getLogger(__name__)
 
 
@@ -42,42 +42,36 @@ class Builder:
 
         return mcv + self.render_stator(model)
 
-    def prepare_stator_dxf2fsl(self, model):
+    def prepare_stator(self, model):
         templ = model.statortype()
-        if not os.path.isfile(templ + '.dxf'):
+        if templ != 'dxffile':
             return
-        if os.path.isfile(templ + '.fsl'):
-            return  # ok (fsl already available)
 
+        logger.info("Conv stator from %s",
+                    model.stator['dxffile']['name'])
         params = {}
         params['split'] = model.stator[templ].get('split', False)
         params['show_plots'] = model.stator[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
         params['part'] = ('stator', model.stator[templ].get('position'))
-        params['inner_name'] = 'tmp'
-        params['outer_name'] = 'tmp'
-        conv = converter(templ + '.dxf', **params)
+        conv = convert(model.stator['dxffile']['name'], **params)
 
         model.stator['num_slots'] = conv.get('tot_num_slot')
         self.set_diameter_parameter(model, conv)
+        if model.get('dy1'):
+            model.set_value('outer_diam', model.get('dy1'))
+            model.set_value('bore_diam', model.get('da1'))
+
         self.fsl_stator = True
         del model.stator[templ]
-        model.stator[conv['filename']] = dict()
 
     def set_diameter_parameter(self, model, conv):
-        dy1 = conv.get('dy1', None)
-        da1 = conv.get('da1', None)
-        dy2 = conv.get('dy2', None)
-        da2 = conv.get('da2', None)
-        if dy1:
-            model.set_value('dy1', dy1)
-        if da1:
-            model.set_value('da1', da1)
-        if da2:
-            model.set_value('da2', da2)
-        if dy2:
-            model.set_value('dy2', dy2)
+        for v in ('dy1', 'da1', 'da2', 'dy2'):
+            try:
+                model.set_value(v, conv[v])
+            except KeyError:
+                pass
 
     def prepare_diameter(self, model):
         dy1 = model.get('dy1', 0.0)
@@ -95,52 +89,59 @@ class Builder:
 
     def render_stator(self, model):
         templ = model.statortype()
+        if templ == 'dxf':
+            return [
+                'agndst = {}'.format(model.agndst),
+                'ndt(agndst)'
+            ] + model.stator['dxf']['fsl']
         fslcode = self.__render(model, templ, stator=True)
         if fslcode:
             return fslcode
 
-        logger.error('File {}.fsl not found'.format(templ))
-        sys.exit(1)
+        logger.error('File {}.mako not found'.format(templ))
+        return []
 
     def create_magnet_model(self, model):
         mcv = ["mcvkey_yoke = '{}'"
                .format(model.magnet.get('mcvkey_yoke', 'dummy')),
                "mcvkey_shaft = '{}'"
                .format(model.magnet.get('mcvkey_shaft', 'dummy'))]
-        try:
-            if 'magnetFsl' in model.magnet:
-                #  obsolete
-                if 'parameter' in model.magnet['magnetFsl']:
-                    return mcv + self.render_template(
-                        model.magnet['magnetFsl']['content_template'],
-                        model.magnet['magnetFsl']['parameter'])
-                if isinstance(model.magnet['magnetFsl']
-                              ['content_template'], str):
-                    with open(model.magnet['magnetFsl']
-                              ['content_template']) as f:
-                        templ = [l.strip() for l in f.readlines()]
-                else:
-                    templ = model.magnet['magnetFsl']['content_template']
 
+        if 'magnetFsl' in model.magnet:
+            #  obsolete
+            if 'parameter' in model.magnet['magnetFsl']:
                 return mcv + self.render_template(
-                    '\n'.join(templ),
-                    model.magnet['magnetFsl'])
+                    model.magnet['magnetFsl']['content_template'],
+                    model.magnet['magnetFsl']['parameter'])
+            if isinstance(model.magnet['magnetFsl']
+                          ['content_template'], str):
+                with open(model.magnet['magnetFsl']
+                          ['content_template']) as f:
+                    templ = [l.strip() for l in f.readlines()]
+            else:
+                templ = model.magnet['magnetFsl']['content_template']
 
-            templ = model.magnettype()
-            magmodel = model.magnet.copy()
-            magmodel.update(model.magnet[templ])
-            magmodel['mcvkey_magnet'] = model.get_mcvkey_magnet()
-            return mcv + self.render_rotor(magmodel, templ)
-        except AttributeError:
-            pass  # no magnet
-        return []
+            return mcv + self.render_template(
+                '\n'.join(templ),
+                model.magnet['magnetFsl'])
 
-    def prepare_rotor_dxf2fsl(self, model):
         templ = model.magnettype()
-        if not os.path.isfile(templ + '.dxf'):
+        magmodel = model.magnet.copy()
+        magmodel.update(model.magnet[templ])
+        magmodel['mcvkey_magnet'] = model.get_mcvkey_magnet()
+        if templ == 'dxf':
+            return mcv + [
+                u'xmag = {}',
+                u'ymag = {}',
+                u'mag_orient = {}',
+                u'ndt(agndst)'] + model.magnet['dxf']['fsl']
+            
+        return mcv + self.render_rotor(magmodel, templ)
+
+    def prepare_rotor(self, model):
+        templ = model.magnettype()
+        if templ != 'dxffile':
             return
-        if os.path.isfile(templ + '.fsl'):
-            return  # ok (fsl already available)
 
         params = {}
         params['split'] = model.magnet[templ].get('split', False)
@@ -148,15 +149,19 @@ class Builder:
         params['write_fsl'] = True
         params['airgap'] = -1.0
         params['part'] = ('rotor', model.magnet[templ].get('position'))
-        params['inner_name'] = 'tmp'
-        params['outer_name'] = 'tmp'
-        conv = converter(templ + '.dxf', **params)
-
+        logger.info("Conv rotor from %s", templ + '.dxf')
+        conv = convert(model.magnet[templ]['name'], **params)
+        assert conv.get('num_poles')
         model.set_value('poles', conv.get('num_poles'))
         self.set_diameter_parameter(model, conv)
+        if model.get('da2'):
+            logger.info('da2 %f',  model.get('da2')/1e3)
+            ag = (model.get('bore_diam') - model.get('da2')/1e3)/2
+            model.set_value('airgap', ag)
+            
+        model.magnet['dxf'] = dict(fsl=conv['fsl'])
         self.fsl_magnet = True
         del model.magnet[templ]
-        model.magnet[conv['filename']] = dict()
 
     def render_rotor(self, magmodel, templ):
         fslcode = self.__render(magmodel, templ, magnet=True)
@@ -164,7 +169,7 @@ class Builder:
             return fslcode
 
         logger.error('File {}.fsl not found'.format(templ))
-        sys.exit(1)
+        return []
 
     def create_connect_models(self, model):
         """return connect_model if rotating machine"""
@@ -173,14 +178,16 @@ class Builder:
         return []
 
     def create_open(self, model):
-        return self.__render(model, 'open') + \
-            self.__render(model, 'basic_modpar')
+        return (['-- created by femagtools {}'.format(__version__), ''] +
+                self.__render(model, 'open') +
+                self.__render(model, 'basic_modpar'))
 
     def set_modpar(self, model):
         return self.__render(model, 'basic_modpar')
 
     def create_new_model(self, model):
-        return self.__render(model, 'new_model')
+        return (['-- created by femagtools {}'.format(__version__), ''] +
+                self.__render(model, 'new_model'))
 
     def create_cu_losses(self, model):
         return self.__render(model.windings, 'cu_losses')
@@ -192,49 +199,39 @@ class Builder:
         dxfname = model.dxffile.get('name', None)
         if not dxfname:
             logger.error('Name of dxf-file expected')
-            sys.exit(1)
+            return []
 
         if dxfname.split('.')[-1] not in ('dxf'):
             dxfname += '.dxf'
         if not os.path.isfile(dxfname):
             logger.error('File {} not found'.format(dxfname))
-            sys.exit(1)
+            return []
 
         params = {}
         params['split'] = model.dxffile.get('split', False)
         params['show_plots'] = model.dxffile.get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = model.dxffile.get('airgap', 0.0)
-        params['inner_name'] = 'inner_tmp'
-        params['outer_name'] = 'outer_tmp'
 
-        conv = converter(dxfname, **params)
+        conv = convert(dxfname, **params)
 
         model.set_value('poles', conv.get('num_poles'))
         model.set_value('outer_diam', conv.get('dy1') * 1e-3)
         model.set_value('bore_diam', conv.get('da1') * 1e-3)
         model.set_value('inner_diam', conv.get('dy2') * 1e-3)
         model.set_value('airgap', (conv.get('da1') - conv.get('da2'))/2/1e3)
+        model.set_value('agndst', conv.get('agndst'))
 
-        stator = getattr(model, 'stator', None)
-        if stator is None:
+        if not hasattr(model, 'stator'):
             setattr(model, 'stator', {})
         model.stator['num_slots'] = conv.get('tot_num_slot')
         model.stator['num_slots_gen'] = conv.get('num_sl_gen')
-        filename = conv.get('filename_stator', None)
-        if not filename:
-            logger.error('Filename of stator not found')
-            sys.exit(1)
-        model.stator[filename.split('.')[0]] = {}
-
-        rotor = getattr(model, 'magnet', None)
-        if rotor is None:
+        if 'fsl_stator' in conv:
+            model.stator['dxf'] = dict(fsl=conv['fsl_stator'])
+        if not hasattr(model, 'magnet'):
             setattr(model, 'magnet', {})
-        filename = conv.get('filename_rotor', None)
-        if not filename:
-            logger.error('Filename of rotor not found')
-            sys.exit(1)
-        model.magnet[filename.split('.')[0]] = {}
+        if 'fsl_magnet' in conv:
+            model.magnet['dxf'] = dict(fsl=conv['fsl_magnet'])
 
         return self.create_new_model(model) + \
             self.create_cu_losses(model) + \
@@ -247,9 +244,12 @@ class Builder:
             self.create_connect_models(model)
 
     def create_model(self, model):
+        if model.is_dxffile():
+            return self.create_model_with_dxf(model)
+
         if model.is_complete():
-            self.prepare_stator_dxf2fsl(model)
-            self.prepare_rotor_dxf2fsl(model)
+            self.prepare_stator(model)
+            self.prepare_rotor(model)
             self.prepare_diameter(model)
 
             model.set_num_slots_gen()
@@ -265,9 +265,6 @@ class Builder:
                 self.mesh_airgap(model) + \
                 self.create_permanent_magnets(model) + \
                 self.create_connect_models(model)
-
-        if model.is_dxffile():
-            return self.create_model_with_dxf(model)
 
         return self.open_model(model)
 
@@ -292,7 +289,7 @@ class Builder:
     def create_common(self, model):
         return self.__render(model, 'common')
 
-    def create_analysis(self, model, magnets, magnet_material):
+    def create_analysis(self, model, magnets=None, magnet_material=None):
         magnetMat = None
         magndata = []
         if magnets and magnet_material:
@@ -308,6 +305,7 @@ class Builder:
 
         airgap_induc = (self.create_airgap_induc()
                         if model.get('airgap_induc', 0) else [])
+        
         if model.get('calculationMode') in ('cogg_calc',
                                             'ld_lq_fast',
                                             'pm_sym_loss',
@@ -344,31 +342,31 @@ class Builder:
     def create(self, model, fea, magnets=None):
         "create model and analysis function"
         try:
-            fea['pocfilename'] = (model.get('name') +
-                                  '_' + str(model.get('poles')) +
-                                  'p.poc')
-        except:
-            pass
-        try:
             fea['lfe'] = model.get('lfe')
-        except:
+        except AttributeError:
             pass
         try:
             fea['move_action'] = model.get('move_action')
-        except:
+        except AttributeError:
             pass
         try:
             fea.update(model.windings)
-        except:
+        except AttributeError:
             pass
         
         if model.is_complete():
-            return self.create_model(model) + \
-                self.create_analysis(fea, magnets,
-                                     model.magnet.get('material', 0))
+            logger.info("create new model and simulation")
+            fslmodel = self.create_model(model)
+            fea['pocfilename'] = (model.get('name') +
+                                  '_' + str(model.get('poles')) +
+                                  'p.poc')
+            fea['phi_start'] = 0.0
+            fea['range_phi'] = 720/model.get('poles')
+            return fslmodel + self.create_analysis(fea, magnets,
+                                                   model.magnet.get('material', 0))
+        logger.info("create open model and simulation")
         return self.open_model(model) + \
-            self.create_analysis(fea, magnets,
-                                 model.magnet.get('material', 0))
+            self.create_analysis(fea)
 
     def __render(self, model, templ, stator=False, magnet=False):
         if templ.split('.')[-1] in ('fsl', 'mako'):

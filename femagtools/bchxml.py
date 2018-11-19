@@ -70,7 +70,7 @@ def dict_to_xml(tag, d):
     return elem
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) != 2:
         usage()
 
@@ -85,3 +85,8 @@ if __name__ == "__main__":
     with io.open(filename.split('.')[0]+'.xml',
                  mode='w', encoding='utf-8') as f:
         f.write(reparsed.toprettyxml(indent='  '))
+
+
+if __name__ == "__main__":
+    main()
+    sys.exit(0)

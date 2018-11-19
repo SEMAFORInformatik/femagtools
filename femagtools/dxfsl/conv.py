@@ -5,10 +5,11 @@
 # Author: Ronald Tanner
 # Date: 2016/01/24
 #
-
 import sys
+import os
+import io
 import femagtools
-from femagtools.dxfsl.converter import converter
+from femagtools.dxfsl.converter import convert
 import argparse
 import logging
 import logging.config
@@ -16,18 +17,8 @@ import logging.config
 logger = logging.getLogger(__name__)
 
 
-def usage(name):
-    print("Usage: ", name,
-          " [-h] [--help]")
-
-
-#############################
-#            Main           #
-#############################
-
-if __name__ == "__main__":
-    loglevel = logging.INFO
-
+def main():
+#    from .. import __version__
     argparser = argparse.ArgumentParser(
         description='Process DXF file and create a plot or FSL file.')
     argparser.add_argument('dxfile',
@@ -99,43 +90,57 @@ if __name__ == "__main__":
                            dest='view',
                            action="store_true")
     argparser.add_argument('-d', '--debug',
-                           help='print debug information',
+                           help='print debug information in logfile',
                            dest='debug',
                            action="store_true")
     argparser.add_argument('-l', '--log',
-                           help='print debug information',
+                           help='print information in logfile',
                            dest='debug',
                            action="store_true")
     argparser.add_argument('--version',
                            help='show version of some packages',
                            dest='version',
+                           #version="%(prog)s {}, Python {}".format(
+                           #    __version__, sys.version),
+                           #action="version")
+                           action="store_true")
+    argparser.add_argument('--debugger',
+                           help='print debug information in logfile',
+                           dest='debugger',
                            action="store_true")
 
     args = argparser.parse_args()
 
+    logfilename = None
+    loglevel = logging.INFO
     if args.debug:
         loglevel = logging.DEBUG
+        logfilename = 'debugger.log'
+        print("see log-messages in {}".format(logfilename))
+
     logging.basicConfig(level=loglevel,
-                        format='%(asctime)s %(message)s')
+                        format='%(asctime)s %(message)s',
+                        filename=logfilename,
+                        filemode='w')
 
     if args.version:
         logger.info("femagtools version: %s", femagtools.__version__)
         try:
             import networkx as nx
             logger.info("networkx version: %s", nx.__version__)
-        except:
+        except ImportError:  # ModuleNotFoundError:
             logger.info("networkx version: <networkx not available>")
         try:
-            import xmatplotlib
-            logger.info("matplotlib version: %s", xmatplotlib.__version__)
-        except:
+            import matplotlib
+            logger.info("matplotlib version: %s", matplotlib.__version__)
+        except ImportError:  # ModuleNotFoundError:
             logger.info("matplotlib version: <matplotlib not available>")
         sys.exit(0)
 
     if args.airgap > 0.0:
         if args.airgap2 > 0.0:
-            logger.info("Airgap is set from {} to {}".
-                        format(args.airgap, args.airgap2))
+            logger.info("Airgap is set from {} to {}"
+                        .format(args.airgap, args.airgap2))
         else:
             logger.info("Airgap is set to {}".format(args.airgap))
 
@@ -160,19 +165,30 @@ if __name__ == "__main__":
         if not (args.show_plots or args.show_areas or args.view):
             args.write_fsl = True
 
-    converter(args.dxfile,  # DXF-Filename
-              rtol=args.rtol,    # relative pickdist toleranz
-              atol=args.atol,    # absolute pickdist toleranz
-              symtol=args.sym_tolerance,
-              mindist=args.mindist,
-              split=args.split,
-              inner_name=args.inner,
-              outer_name=args.outer,
-              part=part,
-              airgap=args.airgap,
-              airgap2=args.airgap2,
-              view_only=args.view,
-              show_plots=args.show_plots,
-              show_areas=args.show_areas,
-              write_fsl=args.write_fsl,
-              debug_mode=args.debug)
+    res = convert(args.dxfile,  # DXF-Filename
+                  rtol=args.rtol,    # relative pickdist toleranz
+                  atol=args.atol,    # absolute pickdist toleranz
+                  symtol=args.sym_tolerance,
+                  mindist=args.mindist,
+                  split=args.split,
+                  inner_name=args.inner,
+                  outer_name=args.outer,
+                  part=part,
+                  airgap=args.airgap,
+                  airgap2=args.airgap2,
+                  view_only=args.view,
+                  show_plots=args.show_plots,
+                  show_areas=args.show_areas,
+                  write_fsl=args.write_fsl,
+                  debug_mode=args.debugger)
+
+    if args.write_fsl:
+        basename = os.path.basename(args.dxfile).split('.')[0]
+        with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
+            f.write('\n'.join(res['fsl']))
+
+
+if __name__ == "__main__":
+    loglevel = logging.INFO
+
+    main()

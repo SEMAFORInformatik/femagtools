@@ -3,7 +3,7 @@
     femagtools.convert
     ~~~~~~~~~~~~~~~~~~
 
-    Covert FEMAG files to various unstructured grid file formats
+    Convert FEMAG files to various unstructured grid file formats
 """
 import logging
 import numpy as np
@@ -11,6 +11,10 @@ from femagtools import isa7
 from collections import defaultdict
 
 logger = logging.getLogger('femagtools.convert')
+
+
+output_filetypes = [
+    "msh", "geo", "vtu"]
 
 
 def _from_isa(isa, filename, target_format,
@@ -161,15 +165,15 @@ def _from_isa(isa, filename, target_format,
     triangle_geometrical_ids = []
     triangle_b = []
     triangle_h = []
-    triangle_perm = []
-    triangle_losses = []
+    perm = dict(triangle=[], quad=[])
+    iron_losses = dict(triangle=[], quad=[])
+    mag_losses = dict(triangle=[], quad=[])
+    wdg_losses = dict(triangle=[], quad=[])
     quads = []
     quad_physical_ids = []
     quad_geometrical_ids = []
     quad_b = []
     quad_h = []
-    quad_perm = []
-    quad_losses = []
     for e in isa.elements:
         ev = e.vertices
         for i, v in enumerate(ev):
@@ -184,8 +188,10 @@ def _from_isa(isa, filename, target_format,
             triangle_geometrical_ids.append(e.se_key)
             triangle_b.append(e.induction())
             triangle_h.append(e.demagnetization())
-            triangle_perm.append(e.permeability())
-            triangle_losses.append(e.loss_density)
+            perm['triangle'].append(e.permeability())
+            iron_losses['triangle'].append(e.iron_loss_density())
+            mag_losses['triangle'].append(e.mag_loss_density())
+            wdg_losses['triangle'].append(e.wdg_loss_density())
 
         elif len(ev) == 4:
             quads.append([n.key - 1 for n in ev])
@@ -193,8 +199,10 @@ def _from_isa(isa, filename, target_format,
             quad_geometrical_ids.append(e.se_key)
             quad_b.append(e.induction())
             quad_h.append(e.demagnetization())
-            quad_perm.append(e.permeability())
-            quad_losses.append(e.loss_density)
+            perm['quad'].append(e.permeability())
+            iron_losses['quad'].append(e.iron_loss_density())
+            mag_losses['quad'].append(e.mag_loss_density())
+            wdg_losses['quad'].append(e.wdg_loss_density())
 
     if target_format == "msh":
         import meshio
@@ -213,23 +221,29 @@ def _from_isa(isa, filename, target_format,
                 "b": np.array([(0, 0, 0) for l in lines]),
                 "h": np.array([0 for l in lines]),
                 "Rel. Permeability": np.array([0 for l in lines]),
-                "Losses": np.array([0 for l in lines]),
+                "Iron Loss Dens.": np.array([0 for l in lines]),
+                "Mag. Loss Dens.": np.array([0 for l in lines]),
+                "Wdg. Loss Dens.": np.array([0 for l in lines])
             },
             "triangle": {
                 "gmsh:geometrical": np.array(triangle_geometrical_ids),
                 "gmsh:physical": np.array(triangle_physical_ids),
                 "b": np.array([b + (0,) for b in triangle_b]),
                 "h": np.array(triangle_h),
-                "Rel. Permeability": np.array(triangle_perm),
-                "Losses": np.array(triangle_losses),
+                "Rel. Permeability": np.array(perm['triangle']),
+                "Iron Loss Dens.": np.array(iron_losses['triangle']),
+                "Mag. Loss Dens.": np.array(mag_losses['triangle']),
+                "Wdg. Loss Dens.": np.array(wdg_losses['triangle'])
             },
             "quad": {
                 "gmsh:geometrical": np.array(quad_geometrical_ids),
                 "gmsh:physical": np.array(quad_physical_ids),
                 "b": np.array([b + (0,) for b in quad_b]),
                 "h": np.array(quad_h),
-                "Rel. Permeability": np.array(quad_perm),
-                "Losses": np.array(quad_losses),
+                "Rel. Permeability": np.array(perm['quad']),
+                "Iron Loss Dens.": np.array(iron_losses['quad']),
+                "Mag. Loss Dens.": np.array(mag_losses['quad']),
+                "Wdg. Loss Dens.": np.array(wdg_losses['quad'])
             }
         }
 
@@ -331,8 +345,8 @@ def _from_isa(isa, filename, target_format,
         import meshio
         assert len(points) == len(vpot)
         assert len(lines) == len(line_ids)
-        assert len(triangles) == len(triangle_physical_ids) == len(triangle_geometrical_ids) == len(triangle_b) == len(triangle_h) == len(triangle_perm)
-        assert len(quads) == len(quad_physical_ids) == len(quad_geometrical_ids) == len(quad_b) == len(quad_h) == len(quad_perm)
+        assert len(triangles) == len(triangle_physical_ids) == len(triangle_geometrical_ids) == len(triangle_b) == len(triangle_h) == len(perm['triangle'])
+        assert len(quads) == len(quad_physical_ids) == len(quad_geometrical_ids) == len(quad_b) == len(quad_h) == len(perm['quad'])
 
         points = np.array(points)
 
@@ -349,23 +363,29 @@ def _from_isa(isa, filename, target_format,
                 "b": np.array([(0, 0) for l in lines]),
                 "Demagnetization": np.array([0 for l in lines]),
                 "Rel. Permeability": np.array([0 for l in lines]),
-                "Losses": np.array([0 for l in lines]),
+                "Iron Loss Dens.": np.array([0 for l in lines]),
+                "Mag. Loss Dens.": np.array([0 for l in lines]),
+                "Wdg. Loss Dens.": np.array([0 for l in lines])
             },
             "triangle": {
                 "GeometryIds": np.array(triangle_geometrical_ids),
                 "PhysicalIds": np.array(triangle_physical_ids),
                 "b": np.array(triangle_b),
                 "Demagnetization": np.array(triangle_h),
-                "Rel. Permeability": np.array(triangle_perm),
-                "Losses": np.array(triangle_losses),
+                "Rel. Permeability": np.array(perm['triangle']),
+                "Iron Loss Dens.": np.array(iron_losses['triangle']),
+                "Mag. Loss Dens.": np.array(mag_losses['triangle']),
+                "Wdg. Loss Dens.": np.array(wdg_losses['triangle'])
             },
             "quad": {
                 "GeometryIds": np.array(quad_geometrical_ids),
                 "PhysicalIds": np.array(quad_physical_ids),
                 "b": np.array(quad_b),
                 "Demagnetization": np.array(quad_h),
-                "Rel. Permeability": np.array(quad_perm),
-                "Losses": np.array(quad_losses),
+                "Rel. Permeability": np.array(perm['quad']),
+                "Iron Loss Dens.": np.array(iron_losses['quad']),
+                "Mag. Loss Dens.": np.array(mag_losses['quad']),
+                "Wdg. Loss Dens.": np.array(wdg_losses['quad'])
             }
         }
 
@@ -402,7 +422,7 @@ def to_msh(source, filename, infile_type=None):
         else:
             file_ext = source.split(".")[-1].lower()
 
-        if file_ext in ["isa7", "a7"]:
+        if file_ext in ["isa7", "i7"]:
             isa = isa7.read(source)
             _from_isa(isa, filename, "msh")
         else:
@@ -435,7 +455,7 @@ def to_geo(source, filename, extrude=0, layers=0,
         else:
             file_ext = source.split(".")[-1].lower()
         
-        if file_ext in ["isa7", "a7"]:
+        if file_ext in ["isa7", "i7"]:
             isa = isa7.read(source)
             _from_isa(isa, filename, "geo", extrude, layers, recombine)
         else:
@@ -463,7 +483,7 @@ def to_vtu(source, filename, infile_type=None):
         else:
             file_ext = source.split(".")[-1].lower()
 
-        if file_ext in ["isa7", "a7"]:
+        if file_ext in ["isa7", "i7"]:
             isa = isa7.read(source)
             _from_isa(isa, filename, "vtu")
         else:
@@ -471,3 +491,83 @@ def to_vtu(source, filename, infile_type=None):
                 "cannot convert files of format {} to .vtu".format(file_ext))
     else:
         raise ValueError("cannot convert {} to .vtu".format(source))
+
+
+def main(argv=None):
+    # Parse command line arguments.
+    parser = _get_parser()
+    args = parser.parse_args(argv)
+
+    if not args.output_format:
+        args.output_format = args.outfile.split('.')[-1]
+        
+    if args.output_format == 'msh':
+        to_msh(args.infile, args.outfile)
+    elif args.output_format == 'geo':
+        to_geo(args.infile, args.outfile,
+               extrude=args.extrude, layers=args.layers,
+               recombine=args.recombine)
+    elif args.output_format == 'vtu':
+        to_vtu(args.infile, args.outfile)
+    else:
+        raise ValueError(
+                "unsupported output format {}".format(args.output_format))
+    return
+
+
+def _get_parser():
+    """Parse input options."""
+    import argparse
+    import sys
+    from .__init__ import __version__
+    
+    parser = argparse.ArgumentParser(description=("Convert to mesh formats."))
+
+    parser.add_argument("infile", type=str, help="mesh file to be read from")
+
+    parser.add_argument(
+        "--output-format",
+        "-o",
+        type=str,
+        choices=output_filetypes,
+        help="output file format",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--extrude",
+        "-x",
+        type=float,
+        help="extrusion length",
+        default=None,
+    )
+    
+    parser.add_argument(
+        "--layers",
+        "-l",
+        type=int,
+        help="number of layers",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--recombine",
+        "-r",
+        action='store_true',
+        help="recombine")
+
+    parser.add_argument("outfile", type=str, help="mesh file to be written to")
+
+    parser.add_argument(
+        "--version",
+        "-v",
+        action="version",
+        version="%(prog)s {}, Python {}".format(__version__, sys.version),
+        help="display version information",
+    )
+
+    return parser
+
+
+if __name__ == "__main__":
+    main()

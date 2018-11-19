@@ -9,10 +9,10 @@
 
 """
 __title__ = 'femagtools'
-__version__ = '0.6.7-snapshot'
+__version__ = '0.8.1-snapshot'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
-__copyright__ = 'Copyright 2016 SEMAFOR Informatik & Energie AG'
+__copyright__ = 'Copyright 2016-2018 SEMAFOR Informatik & Energie AG'
 
 from .bch import Reader
 from .model import MachineModel

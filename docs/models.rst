@@ -8,19 +8,19 @@ Machine
 
 Machines have a set of basic parameters, a stator, a magnet and a winding:
 
-==============  ================================  ======
-Parameter        Description                      Unit
-==============  ================================  ======
+==============  ======================================  ======
+Parameter        Description                            Unit
+==============  ======================================  ======
 name             Name of machine
-lfe              Lenght of iron                    m
+lfe              Lenght of iron                         m
 poles            Number of poles
-outer_diam       Outer diameter (yoke side)        m
-bore_diam        Bore diameter  (airgap side)      m
-inner_diam       Inner diameter (yoke)             m
-airgap           airgap width                      m
-external_rotor   True, False                       False
-dxffile          (see :ref:`Machine with dxf`)
-==============  ================================  ======
+outer_diam       Outer diameter (yoke side)             m
+bore_diam        Bore diameter  (airgap side)           m
+inner_diam       Inner diameter (yoke)                  m
+airgap           airgap width                           m
+external_rotor   True, False                            False
+dxffile          (see :ref:`Model Creation with DXF`)
+==============  ======================================  ======
 
 Stator
 ------
@@ -37,7 +37,7 @@ mcvkey_yoke      Name of lamination material   dummy
 nodedist         Factor for node distance      1.0
 ==============  ============================  =====================
 
-.. note::
+.. Note::
 
    if no value for num_slots_gen is given its value is calculated from
    the the number of slots Q and pole pairs p. (version added 0.0.16)
@@ -95,11 +95,12 @@ statorBG
 		 tip_rad,
 		 slottooth
 <filename>
-                 (see :ref:`stator_slots_fsl`
-                 or :ref:`stator_slots_dxf`)
+                 (see :ref:`stator_slots_fsl`)
+dxffile
+                 (see :ref:`stator_slots_dxf`)
 ============    ===========================================
 
-.. note::
+.. Note::
 
    All units are metric units.
 
@@ -108,10 +109,9 @@ statorBG
 User defined Slots with FSL
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Example:**
+If a FSL file that includes the definition of stator geometry exists and is readable it can be used for the model creation.
 
-A file with the name *mystator.fsl* has to be available.
-The slot has no parameters::
+Example with file mystator.fsl::
 
   machine = dict(
       name="Motor",
@@ -128,19 +128,19 @@ The slot has no parameters::
 User defined Slots with DXF
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Example:**
+If a DXF file that defines the stator geometry exists and is readable 
+it can be used to create the FSL of the model.
+All DXF conversion parameters are supported.
 
-A file with the name *mystator.dxf* has to be available.
-Femagtools calls the converter to generate a FSL-File.
-All parameters of a slot are for the converter::
+Example::
 
   machine = dict(
       name="Motor",
       ...
       stator=dict(
           mcvkey_yoke='dummy',
-	  mcvkey_shaft="dummy",
-	  mystator=dict(
+	  dxffile=dict(
+	      name="mystator.dxf",
 	      position='out',
               split=True
 	  )
@@ -151,11 +151,13 @@ All parameters of a slot are for the converter::
 Parameters   Description                   Default
 ==========   ============================  =======
 position     'in' or 'out'                 
-split        splits the lines at           False
-             intersection-points
-plot         the converter shows the plot  False
+split        splits intersecting lines at  False
+             their intersection-points
+plot         creates the plot              False
 	     of the integrated object
 ==========   ============================  =======
+
+-- Note:: The split option is required only if intersecting lines have no common point.
 
 Windings
 --------
@@ -186,7 +188,7 @@ material         Name of magnet material
 nodedist         Factor for node distance         1.0
 ==============  ================================  =======
 
-.. note::
+.. Note::
 
    * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the magnetizingCurve object.
    * the material parameter references a name of the 'Magnet Material'_ list. 
@@ -285,8 +287,8 @@ magnetFC2       yoke_height,
 		iron_shape,
 		iron_hp,
 		magn_num
-<filename>      (see :ref:`rotor_slots_fsl`
-                or :ref:`rotor_slots_dxf`)
+<filename>      see :ref:`rotor_slots_fsl`
+dxffile         see :ref:`rotor_slots_dxf`
 ============    ===========================================
 
 **Example**::
@@ -344,8 +346,8 @@ User defined Slots with FSL
 
 **Example**
 
-A file with the name *myrotor.fsl* has to be available.
-The slot has no parameters::
+If a FSL file that creates the magnet geometry exists and is readable 
+it can be used for the model creation as an empty dict::
 
   machine = dict(
       name="Motor",
@@ -362,19 +364,19 @@ The slot has no parameters::
 User defined Slots with DXF
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Example**
+If a DXF file that defines the magnet geometry exists and is readable 
+it can be used to create the FSL for the model.
 
-A file with the name *myrotor.dxf* has to be available.
-Femagtools calls the converter to generate a FSL-File.
-All parameters of a slot are for the converter::
-
+Example::
+  
   machine = dict(
       name="Motor",
       ...
       magnet=dict(
           mcvkey_yoke='dummy',
 	  mcvkey_shaft="dummy",
-	  myrotor=dict(
+	  dxffile=dict(
+	      name='mymagnet.dxf',
 	      position='in',
               split=True
 	  )
@@ -385,11 +387,13 @@ All parameters of a slot are for the converter::
 Parameters   Description                   Default
 ==========   ============================  =======
 position     'in' or 'out'                 
-split        splits the lines at           False
-             intersection-points
-plot         the converter shows the plot  False
+split        splits intersecting lines at  False
+             their intersection points
+plot         creates the plot              False
 	     of the integrated object
 ==========   ============================  =======
+
+-- Note:: The split option is required only if intersecting lines have no common point.
 
 Magnetizing Curve
 =================
@@ -472,7 +476,7 @@ Using a magnetizingcurve to write a mcv file::
 .. image:: img/mcv.png
   :height: 290pt
 
-.. note::
+.. Note::
 
    if the curve data is used in a stator or magnet slot model there is no need to create the file explicitly. Femagtools will take care of that during the model creation.
    
@@ -500,7 +504,7 @@ magnwidth         Magnet width                    0.0       m
 magnlength        Magnet length in z direction   0.0        m      
 ==============   ============================== ==========  ========
 
-.. note::
+.. Note::
 
   * name must be unique within list. It may be used as reference in the magnet model of the machine.
     
@@ -567,7 +571,7 @@ plots           Create plots                    []
 airgap_induc    calculate airgap induction      False
 ==============  ============================= ==========  ============
 
-.. note::
+.. Note::
    
    plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
    'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
@@ -583,7 +587,7 @@ Example::
     speed=50.0,
     plots=['field_lines', 'Babs'])
 
-.. note::
+.. Note::
    If airgap_induc is True the induction in the airgap is calculated after the simulation returns. The values can be read with the method read_airgap_induc() of call Femag.
    
    ==============  ============================= ============
@@ -736,17 +740,30 @@ For older versions the minimal data is::
   )
 
   
-Machine with dxf
-================
+Model Creation with DXF
+=======================
 
-**Example with one dxf**::
+The goal of the dxfsl modules is to create a complete FE model for rotating PM and Reluctance Machines on the basis of a DXF file with
+as little restrictions as possible.
+This has the consequence that symmetries, subregions, magnets, windings, boundary conditions need to be identified.
+
+The procedure is as follows:
+
+1. Read the DXF file and create a graph object with nodes and edges.
+2. Identify the areas stator, rotor and airgap and their symmetry axis.
+3. Add auxiliary lines if required by the meshing process.
+4. Convert the graph object into FSL code including the identified subregions.
+
+For monitoring and trouble-shooting purposes it is possible to create plots that display the intermediate results.
+
+Example with a single dxf file motor.dxf::
    
    machine = dict(
       name="Motor",
       lfe=0.001,
 
       dxffile=dict(
-         name='motor',
+         name='motor.dxf'
       ),
       stator=dict(
          mcvkey_yoke='dummy',
@@ -758,13 +775,11 @@ Machine with dxf
       ),
       ...
 
-.. note::
-    machine: The Parameters *poles*, *outer_diam*, *bore_diam* and *airgap* will be set automatically
+.. Note::
+    The parameters *poles*, *outer_diam*, *bore_diam* and *airgap* as well as *num_slots* and *num_slots_gen* will be set automatically
 
-.. note::
-    magnet: The Parameters *num_slots* and *num_slots_gen* will be set automatically
 
-**Example with two dxf for stator and rotor**::
+Example with two dxf for stator and rotor::
 
    machine = dict(
       name="Motor",
@@ -772,8 +787,8 @@ Machine with dxf
 
       stator=dict(
           mcvkey_yoke='dummy',
-	  mcvkey_shaft="dummy",
-  	  mystator=dict(
+  	  dxffile=dict(
+	      name='mystator.dxf',
 	      position='out',
               split=True
 	 )
@@ -781,15 +796,11 @@ Machine with dxf
       magnet=dict(
           mcvkey_yoke="dummy",
 	  mcvkey_shaft="dummy",
-	  myrotor=dict(
+	  dxffile=dict(
+	      name='myrotor.dxf',
               position='in',
               split=True
 	  )  
       ),
       ...
 
-.. note::
-    machine: The Parameters *poles*, *outer_diam*, *bore_diam* and *airgap* will be set automatically
-
-.. note::
-    magnet: The Parameters *num_slots* and *num_slots_gen* will be set automatically

@@ -78,7 +78,8 @@ nc_line_cont(P[9].x, P[9].y, 0)
 x0, y0 = pd2c((da2/2 + dy2/2+bm)/2, taup/4 + m.zeroangl - 0.1)
 create_mesh_se(x0, y0)
 
-x0, y0 = (P[2].x+P[3].x)/2, (P[2].y+P[6].y)/2
+r, phi = c2pd((P[2].x + P[3].x)/2, (P[2].y + P[3].y)/2)
+x0, y0 = pd2c(r, m.zeroangl + 0.1)
 create_mesh_se(x0, y0)
 def_new_sreg(x0, y0, "RotorYoke", yellow)
 x0, y0 = (P[1].x+P[2].x)/2, (P[1].y+P[7].y)/2

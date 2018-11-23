@@ -64,7 +64,7 @@ class FslBuilderTest(unittest.TestCase):
             slot_width=0.003)
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 19)
+        self.assertEqual(len(fsl), 25)
 
     def test_stator2(self):
         self.m['stator']['stator2'] = dict(
@@ -76,7 +76,7 @@ class FslBuilderTest(unittest.TestCase):
             slot_depth=0.003)
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 19)
+        self.assertEqual(len(fsl), 20)
 
     def test_stator3(self):
         self.m['stator']['statorRotor3'] = dict(
@@ -93,7 +93,7 @@ class FslBuilderTest(unittest.TestCase):
             slot_width=0.003)
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 25)
+        self.assertEqual(len(fsl), 35)
 
     def test_stator4(self):
         self.m['stator']['stator4'] = dict(
@@ -109,7 +109,7 @@ class FslBuilderTest(unittest.TestCase):
             wedge_width3=333e-5)
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 24)
+        self.assertEqual(len(fsl), 34)
 
     def test_statorBG(self):
         self.m['stator']['statorBG'] = dict(
@@ -126,7 +126,7 @@ class FslBuilderTest(unittest.TestCase):
 
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 26)
+        self.assertEqual(len(fsl), 31)
 
     def test_magnetSector(self):
         self.m['magnet'] = dict(

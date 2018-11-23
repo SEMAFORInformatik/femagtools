@@ -34,6 +34,7 @@ num_slots        Number of Slots Q
 num_slots_gen    Number of Slots in Model      m*Q/gcd(Q, 2p*m)
 rlength          Relative iron length          1.0
 mcvkey_yoke      Name of lamination material   dummy
+mcvkey_teeth     Name of lamination material   dummy
 nodedist         Factor for node distance      1.0
 ==============  ============================  =====================
 

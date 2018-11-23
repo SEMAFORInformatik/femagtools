@@ -15,8 +15,18 @@ m.slot_top_sh = ${model.get(['stator','statorRotor3','slot_top_sh'])}
 m.zeroangl    = ${model.stator.get('zeroangle',0)}
 m.rlength     = ${model.stator.get('rlength',1.0)*100}  
 
-m.mcvkey_yoke = '${model.stator.get('mcvkey_yoke','dummy')}'  
+m.mcvkey_yoke = mcvkey_yoke
 m.wdg_location=  -1.0 -- stator (internal values)
    
 --m.delta_angle_ndchn =          0.8 --   angle nodechain airgap in [degr]
 pre_models("STATOR_3")                                                      
+
+if mcvkey_teeth ~= nil then
+  if da1 > da2 then
+     r = (da1 + m.slot_height)/2
+  else
+     r = (da1 - m.slot_height)/2
+  end  
+  x0, y0 = pr2c(r, 2*math.pi/m.tot_num_slot + m.zeroangl/180*math.pi)
+   def_mat_fm_nlin(x0, y0, blue, mcvkey_teeth, m.rlength)
+end

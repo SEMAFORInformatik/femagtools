@@ -13,12 +13,13 @@ def create_fsl():
 
         stator=dict(
             num_slots=12,
-            stator1=dict(
-                slot_rf1=0.057,
-                tip_rh1=0.037,
-                tip_rh2=0.037,
-                tooth_width=0.009,
-                slot_width=0.003)
+            stator2=dict(
+                slot_t1=0.001,
+                slot_t2=0.0005,
+                slot_t3=0.0005,
+                slot_depth=0.020,
+                slot_width=0.009,
+                corner_width=0.01)
         ),
 
         magnet=dict(

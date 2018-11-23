@@ -39,6 +39,9 @@ class Builder:
                .format(model.stator.get('mcvkey_yoke', 'dummy')),
                "mcvkey_shaft = '{}'"
                .format(model.stator.get('mcvkey_shaft', 'dummy'))]
+        if model.stator.get('mcvkey_teeth'):
+            mcv.append("mcvkey_teeth = '{}'".format(
+                model.stator['mcvkey_teeth']))
 
         return mcv + self.render_stator(model)
 

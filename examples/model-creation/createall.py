@@ -5,12 +5,12 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-models = ['stator1-magnetIron2',
+models = ['statorBG-magnetSector',
           'stator1-magnetIron3',
           'stator1-magnetIron4',
           'stator1-magnetIron5',
           'stator1-magnetIronV',
-          'stator1-magnetSector',
+          'stator2-magnetSector',
           'stator1-spoke',
           'stator4-magnetSector',
           'statorRotor3-magnetIron',
@@ -19,7 +19,8 @@ models = ['stator1-magnetIron2',
 
 logger = logging.getLogger("fslcreator")
 workdir = os.path.join(os.path.expanduser('~'), 'femag')
-logger.info("Femagtools Version %s", femagtools.__version__)
+logger.info("Femagtools Version %s Working Dir %s",
+            femagtools.__version__, workdir)
 for m in models:
     mod = importlib.import_module(m)
     logger.info("--> %s <--", m)

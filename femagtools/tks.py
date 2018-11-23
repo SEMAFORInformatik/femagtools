@@ -122,14 +122,15 @@ class Reader(object):
             # must normalize pfe matrix:
             bmin = np.ceil(10*max([min(b) for b in self.losses['B']]))/10.0
             bmax = np.ceil(10*max([max(b) for b in self.losses['B']]))/10.0
-            Bv = np.arange(bmin, bmax + 0.1, 0.1)
+            Bv = np.arange(bmin, bmax+0.01, 0.1)
             m = []
             for i, b in enumerate(self.losses['B']):
                 pfunc = ip.interp1d(b, pfe[i], kind='cubic')
                 n = len([x for x in Bv if x < b[-1]])
-                m.append([pfunc(x) for x in Bv[:n]] + [None]*(len(Bv-n)))
+                m.append([float(pfunc(x))
+                          for x in Bv[:n]] + [None]*(len(Bv-n)))
             self.losses['B'] = Bv.tolist()
-            self.losses['pfe'] = list(m)
+            self.losses['pfe'] = m
 
     def __getitem__(self, index):
         return self.__getattribute__(index)

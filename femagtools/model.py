@@ -204,36 +204,41 @@ class MachineModel(Model):
 
         mcv = 0
         if 'stator' in self.__dict__:
-            if 'mcvkey_yoke_name' not in self.stator:
+            for k in ('mcvkey_yoke', 'mcvkey_teeth'):
+                mcvname = k+'_name'
                 fillfac = self.stator.get('fillfac', 1.0)
-                try:
-                    if self.stator['mcvkey_yoke'] != 'dummy':
-                        if magcurves:
-                            mcv = magcurves.find(self.stator['mcvkey_yoke'])
-                        if mcv:
-                            logger.debug('stator mcv %s', mcv)
-                            self.stator['mcvkey_yoke'] = magcurves.fix_name(mcv, fillfac)
-                            names.append((mcv, fillfac))
-                            self.stator['mcvkey_yoke_name'] = mcv
-                        else:
-                            missing.append(self.stator['mcvkey_yoke'])
-                            logger.error('stator mcv %s not found',
-                                         self.stator['mcvkey_yoke'])
-                except KeyError:
-                    pass
+                if mcvname not in self.stator:
+                    try:
+                        if self.stator[k] != 'dummy':
+                            if magcurves:
+                                mcv = magcurves.find(self.stator[k])
+                            if mcv:
+                                logger.debug('stator mcv %s', mcv)
+                                self.stator[k] = magcurves.fix_name(
+                                    mcv, fillfac)
+                                names.append((mcv, fillfac))
+                                self.stator[mcvname] = mcv
+                            else:
+                                missing.append(self.stator[k])
+                                logger.error('stator mcv %s not found',
+                                             self.stator[k])
+                    except KeyError:
+                        pass
 
-            elif 'mcvkey_yoke_name' in self.stator:
-                names.append((self.stator['mcvkey_yoke_name'], fillfac))
-
+                else:  # mcvname in self.stator:
+                    names.append((self.stator[mcvname], fillfac))
+                    
         if 'magnet' in self.__dict__:
             fillfac = self.magnet.get('fillfac', 1.0)
             try:
-                if self.magnet['mcvkey_yoke'] != 'dummy' and 'mcvkey_yoke_name' not in self.magnet:
+                if (self.magnet['mcvkey_yoke'] != 'dummy' and
+                    'mcvkey_yoke_name' not in self.magnet):
                     if magcurves:
                         mcv = magcurves.find(self.magnet['mcvkey_yoke'])
                     if mcv:
                         logger.debug('magnet mcv %s', mcv)
-                        self.magnet['mcvkey_yoke'] = magcurves.fix_name(mcv, fillfac)
+                        self.magnet['mcvkey_yoke'] = magcurves.fix_name(
+                            mcv, fillfac)
                         self.magnet['mcvkey_yoke_name'] = mcv
                         names.append((mcv, fillfac))
                     else:
@@ -247,7 +252,8 @@ class MachineModel(Model):
                 pass
 
             try:
-                if self.magnet['mcvkey_shaft'] != 'dummy' and 'mcvkey_shaft_name' not in self.magnet:
+                if (self.magnet['mcvkey_shaft'] != 'dummy' and
+                    'mcvkey_shaft_name' not in self.magnet):
                     if magcurves:
                         mcv = magcurves.find(self.magnet['mcvkey_shaft'])
                     if mcv:

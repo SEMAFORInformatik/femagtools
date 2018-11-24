@@ -619,7 +619,7 @@ class PmRelMachinePsidq(PmRelMachine):
         iq = np.asarray(iq)
         self.idrange = (min(id), max(id))
         self.iqrange = (min(iq), max(iq))
-        self.betarange = (-np.pi if min(iq) < 0 else 0,
+        self.betarange = (-np.pi if min(iq) < 0 else -np.pi/2,
                           0 if max(iq) > 0 else -np.pi/2)
         self.i1range = (0, np.sqrt(2)*np.min(id))
         self.io = np.max(iq)/2, np.min(id)/2

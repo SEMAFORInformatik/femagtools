@@ -19,6 +19,7 @@ bore_diam        Bore diameter  (airgap side)           m
 inner_diam       Inner diameter (yoke)                  m
 airgap           airgap width                           m
 external_rotor   True, False                            False
+ffactor          processing factor for iron losses      
 dxffile          (see :ref:`Model Creation with DXF`)
 ==============  ======================================  ======
 

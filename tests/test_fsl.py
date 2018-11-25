@@ -276,6 +276,28 @@ class FslBuilderTest(unittest.TestCase):
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 25)
 
+    def test_fe_losses(self):
+        model = femagtools.MachineModel(self.m)
+        fsl = self.builder.create_fe_losses(model)
+        self.assertFalse(fsl)
+        self.m['ffactor'] = 1.1
+        model = femagtools.MachineModel(self.m)
+        fsl = self.builder.create_fe_losses(model)
+        self.assertEqual(len(fsl), 20)
+        ffact = [float(f.split('=')[1])
+                 for f in fsl if f.startswith('m.ffactor')][0]
+        self.assertEqual(ffact, self.m['ffactor'])
+        feloss = [f.split('"')[1]
+                  for f in fsl if f.find('pre_models') > 0][0]
+        self.assertEqual(feloss, 'FE-Losses-1')
+        self.m['external_rotor'] = True
+        model = femagtools.MachineModel(self.m)
+        fsl = self.builder.create_fe_losses(model)
+        feloss = [f.split('"')[1]
+                  for f in fsl if f.find('pre_models') > 0][0]
+        self.assertEqual(feloss, 'FE-Losses-2')
+
+        
     def test_run_models(self):
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create_analysis(feapars, [], 0)

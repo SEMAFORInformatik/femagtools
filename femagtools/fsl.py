@@ -88,7 +88,7 @@ class Builder:
             model.set_value('inner_diam', dy2 * 1e-3)
         da2 = model.get('da2', 0.0)
         if da1 and da2:
-            model.set_value('airgap', (da1 - da2)/2/1e3)
+            model.set_value('airgap', abs(da1 - da2)/2/1e3)
 
     def render_stator(self, model):
         templ = model.statortype()
@@ -195,6 +195,11 @@ class Builder:
     def create_cu_losses(self, model):
         return self.__render(model.windings, 'cu_losses')
 
+    def create_fe_losses(self, model):
+        if model.get('ffactor', 0):
+            return self.__render(model, 'FE-losses')
+        return []
+    
     def create_gen_winding(self, model):
         return self.__render(model, 'gen_winding')
 
@@ -365,8 +370,10 @@ class Builder:
                                   'p.poc')
             fea['phi_start'] = 0.0
             fea['range_phi'] = 720/model.get('poles')
-            return fslmodel + self.create_analysis(fea, magnets,
-                                                   model.magnet.get('material', 0))
+            fe_losses = self.create_fe_losses(model)
+            return fslmodel + fe_losses + self.create_analysis(
+                fea, magnets, model.magnet.get('material', 0))
+        
         logger.info("create open model and simulation")
         return self.open_model(model) + \
             self.create_analysis(fea)

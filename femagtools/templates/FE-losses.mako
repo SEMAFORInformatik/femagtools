@@ -16,8 +16,5 @@ m.dampfact        =      ${model.get('dampfact', 0.0)}
 m.thcond          =      ${model.get('thcond', 30.0)}
 m.thcap           =      ${model.get('thcap', 480.0)}
 
-% if model.get('external_rotor'):
- pre_models("FE-Losses-2")
-% else:
  pre_models("FE-Losses-1")
-% endif
+ pre_models("FE-Losses-2")

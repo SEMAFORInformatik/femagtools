@@ -66,6 +66,7 @@ class Builder:
             model.set_value('outer_diam', model.get('dy1'))
             model.set_value('bore_diam', model.get('da1'))
 
+        model.stator['dxf'] = dict(fsl=conv['fsl'])
         self.fsl_stator = True
         del model.stator[templ]
 
@@ -94,12 +95,14 @@ class Builder:
         templ = model.statortype()
         if templ == 'dxf':
             return [
-                'agndst = {}'.format(model.agndst),
+                'agndst = {}'.format(model.agndst*1e3),
                 'ndt(agndst)'
             ] + model.stator['dxf']['fsl']
         fslcode = self.__render(model, templ, stator=True)
         if fslcode:
-            return fslcode
+            return (fslcode +
+                    ['post_models("nodedistance", "ndst" )',
+                     'agndst=ndst[1]*1e3'])
 
         logger.error('File {}.mako not found'.format(templ))
         return []
@@ -154,7 +157,7 @@ class Builder:
         params['part'] = ('rotor', model.magnet[templ].get('position'))
         logger.info("Conv rotor from %s", templ + '.dxf')
         conv = convert(model.magnet[templ]['name'], **params)
-        assert conv.get('num_poles')
+        #assert conv.get('num_poles')
         model.set_value('poles', conv.get('num_poles'))
         self.set_diameter_parameter(model, conv)
         if model.get('da2'):
@@ -228,17 +231,19 @@ class Builder:
         model.set_value('bore_diam', conv.get('da1') * 1e-3)
         model.set_value('inner_diam', conv.get('dy2') * 1e-3)
         model.set_value('airgap', (conv.get('da1') - conv.get('da2'))/2/1e3)
-        model.set_value('agndst', conv.get('agndst'))
+        model.set_value('agndst', conv.get('agndst')*1e-3)
 
         if not hasattr(model, 'stator'):
             setattr(model, 'stator', {})
         model.stator['num_slots'] = conv.get('tot_num_slot')
         model.stator['num_slots_gen'] = conv.get('num_sl_gen')
         if 'fsl_stator' in conv:
+            self.fsl_stator = True
             model.stator['dxf'] = dict(fsl=conv['fsl_stator'])
         if not hasattr(model, 'magnet'):
             setattr(model, 'magnet', {})
         if 'fsl_magnet' in conv:
+            self.fsl_magnet = True
             model.magnet['dxf'] = dict(fsl=conv['fsl_magnet'])
 
         return self.create_new_model(model) + \
@@ -248,7 +253,6 @@ class Builder:
             self.create_magnet(model) + \
             self.create_magnet_model(model) + \
             self.mesh_airgap(model) + \
-            self.create_permanent_magnets(model) + \
             self.create_connect_models(model)
 
     def create_model(self, model):
@@ -259,19 +263,23 @@ class Builder:
             self.prepare_stator(model)
             self.prepare_rotor(model)
             self.prepare_diameter(model)
+            if self.fsl_stator:
+                from femagtools.dxfsl.fslrenderer import agndst
+                ag = model.get('airgap')
+                model.set_value(
+                    'agndst',
+                    agndst(model.get('bore_diam'),
+                           model.get('bore_diam') - 2*ag))
 
             model.set_num_slots_gen()
 
             return self.create_new_model(model) + \
                 self.__render(model.windings, 'cu_losses') + \
                 self.create_stator_model(model) + \
-                ['post_models("nodedistance", "ndst" )',
-                 'agndst=ndst[1]*1e3'] + \
                 self.__render(model, 'gen_winding') + \
                 self.create_magnet(model) + \
                 self.create_magnet_model(model) + \
                 self.mesh_airgap(model) + \
-                self.create_permanent_magnets(model) + \
                 self.create_connect_models(model)
 
         return self.open_model(model)
@@ -338,12 +346,6 @@ class Builder:
     def mesh_airgap(self, model):
         if self.fsl_stator and self.fsl_magnet:
             return self.__render(model, 'mesh-airgap')
-        else:
-            return []
-
-    def create_permanent_magnets(self, model):
-        if self.fsl_stator and self.fsl_magnet:
-            return self.__render(model, 'permanentmagnets')
         else:
             return []
 

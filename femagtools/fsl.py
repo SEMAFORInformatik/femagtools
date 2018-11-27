@@ -146,6 +146,7 @@ class Builder:
 
     def prepare_rotor(self, model):
         templ = model.magnettype()
+        print('prepare_rotor: {}'.format(templ))
         if templ != 'dxffile':
             return
 
@@ -157,8 +158,7 @@ class Builder:
         params['part'] = ('rotor', model.magnet[templ].get('position'))
         logger.info("Conv rotor from %s", templ + '.dxf')
         conv = convert(model.magnet[templ]['name'], **params)
-        #assert conv.get('num_poles')
-        model.set_value('poles', conv.get('num_poles'))
+        model.set_value('poles', int(conv.get('num_poles')))
         self.set_diameter_parameter(model, conv)
         if model.get('da2'):
             logger.info('da2 %f',  model.get('da2')/1e3)

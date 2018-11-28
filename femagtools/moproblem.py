@@ -41,7 +41,7 @@ class FemagMoProblem(Problem):
 
         # simple dict
         for d, v in zip(self.decision_vars, x):
-            logger.info("Prepare: %s = %s",  d['name'], v)
+            logger.debug("Prepare: %s = %s",  d['name'], v)
             model.set_value(d['name'].split('.'), v)
 
     def setResult(self, result):

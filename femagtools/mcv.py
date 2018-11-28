@@ -502,7 +502,8 @@ class Reader(Mcv):
             self.version_mc_curve = self.readBlock(int)
         else:
             self.version_mc_curve = int(self.fp.readline().strip())
-        logger.info("MC Version %s", self.version_mc_curve)
+        logger.debug("MC file %s Version %s",
+                     filename, self.version_mc_curve)
 
         # read dummy text and title 2x (CHARACTER*40)
         if binary:

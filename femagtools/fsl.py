@@ -146,7 +146,6 @@ class Builder:
 
     def prepare_rotor(self, model):
         templ = model.magnettype()
-        print('prepare_rotor: {}'.format(templ))
         if templ != 'dxffile':
             return
 

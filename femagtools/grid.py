@@ -209,7 +209,9 @@ class Grid(object):
                     return {}
                     pass
 
-            logger.info('........ %d / %d', p, len(par_range)//len(population))
+            logger.info('........ %d / %d results: %s',
+                        p, len(par_range)//len(population)+1,
+                        np.shape(f))
             job.cleanup()
             for k, x in enumerate(population):
                 task = job.add_task(self.result_func)
@@ -260,8 +262,9 @@ class Grid(object):
                         try:
                             shutil.copy(glob.glob(os.path.join(
                                 t.directory, r.filename)+'.B*CH')[0], repdir)
-                        except FileNotFoundError:
-                            pass
+                        except (FileNotFoundError, AttributeError):
+                            shutil.rmtree(repdir)
+                            shutil.copytree(t.directory, repdir)
                         calcid += 1
                     if bchMapper:  # Mode => collectBchData
                         self.addBchMapperData(bchMapper(r))
@@ -276,14 +279,12 @@ class Grid(object):
                             prob.setResult(femagtools.getset.GetterSetter(r))
                         else:
                             prob.setResult(r)
-                    f.append(prob.objfun([]))
+                        f.append(prob.objfun([]))
                 else:
                     f.append([float('nan')]*len(objective_vars))
-
             p += 1
 
         logger.info('...... DONE')
-        logger.debug("Result %s", np.shape(f))
 
         shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
         logger.info("f shape %s --> %s", np.shape(np.array(f).T), shape)
@@ -296,7 +297,7 @@ class Grid(object):
                         x=domain)
         except ValueError as v:
             logger.error(v)
-            return {}
+            return dict(f=f, x=domain)
         
     def addBchMapperData(self, bchData):
         self.bchmapper_data.append(bchData)

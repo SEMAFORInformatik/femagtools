@@ -216,13 +216,13 @@ def convert(dxfile,
         machine_inner.search_subregions()
         machine_outer.search_subregions()
 
-        if machine_inner.geom.area_close_to_endangle(2) > 0:
+        if machine_inner.has_mirrored_windings():
             logger.info("undo mirror of %s", inner_name)
             machine_inner = machine_inner.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
             machine_inner.search_subregions()
 
-        elif machine_outer.geom.area_close_to_endangle(2) > 0:
+        elif machine_outer.has_mirrored_windings():
             logger.info("undo mirror of %s", outer_name)
             machine_outer = machine_outer.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
@@ -303,6 +303,12 @@ def convert(dxfile,
             if part[0] == 'stator':
                 machine.geom.set_stator()
                 machine.geom.search_stator_subregions(part[1])
+
+                if machine.has_mirrored_windings():
+                    logger.info("undo mirror of stator")
+                    machine = machine.undo_mirror()
+                    machine.geom.search_stator_subregions(part[1])
+
                 params = create_femag_parameters_stator(machine,
                                                         part[1])
             else:

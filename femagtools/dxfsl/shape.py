@@ -113,6 +113,10 @@ class Shape(object):
         self.p2 = (n[0], n[1])
         return self
 
+    def overlapping_shape(self, e, rtol=1e-03, atol=1e-03):
+        # element e is already installed
+        return None  # no overlap
+    
     def intersect_shape(self, e, rtol=1e-03, atol=1e-03, include_end=False):
         if isinstance(e, Line):
             return self.intersect_line(e, rtol, atol, include_end)
@@ -244,6 +248,73 @@ class Circle(Shape):
     def center_of_connection(self, ndec):
         return (self.center[0] + self.radius, self.center[1])
 
+    def overlapping_shape(self, e, rtol=1e-03, atol=1e-03):
+        if not isinstance(e, Arc):  # Arc is always a Circle
+            return None
+        if not (points_are_close(self.center, e.center) and
+                np.isclose(self.radius, e.radius)):
+            return None
+
+        if isinstance(e, Circle):
+            logger.debug("OVERLAPPING CIRCLES #1")
+            return [e]  # The same circle twice
+
+        logger.debug("OVERLAPPING CIRCLE AND ARC2")
+        half_up = Arc(Element(center=self.center, radius=self.radius,
+                              start_angle=0, end_angle=180))
+        half_left = Arc(Element(center=self.center, radius=self.radius,
+                                start_angle=90, end_angle=270))
+
+        points = []
+        points.append(e.p1)
+        points.append(e.p2)
+        p1_is_up = half_up.is_point_inside(e.p1, rtol, atol)
+        p2_is_up = half_up.is_point_inside(e.p2, rtol, atol)
+        p1_is_left = half_left.is_point_inside(e.p1, rtol, atol)
+        p2_is_left = half_left.is_point_inside(e.p2, rtol, atol)
+
+        if p1_is_up:
+            if p2_is_up:
+                # down
+                points.append((self.center[0], self.center[1] - 10.0))
+            elif p2_is_left:
+                # right
+                points.append(half_circle.p1)
+            else:
+                # left
+                points.append(half_circle.p2)
+        else:
+            if not p2_is_up:
+                # up
+                points.append((self.center[0], self.center[1] + 10.0))
+            elif p1_is_left:
+                # right
+                points.append(half_circle.p1)
+            else:
+                #left
+                points.append(half_circle.p2)
+
+            points.append(e.p1)
+            return self.create_arcs(points)
+
+        return None
+
+    def create_arcs(self, points):
+        if not points:
+            return None
+
+        pieces = []
+        p1 = points[0]
+        for p2 in points[1:]:
+            alpha1 = alpha_line(self.center, p1)
+            alpha2 = alpha_line(self.center, p2)
+            arc = Arc(Element(center=self.center, radius=self.radius,
+                              start_angle=alpha1*180/np.pi,
+                              end_angle=alpha2*180/np.pi))
+            pieces.append(arc)
+            p1 = p2
+        return pieces
+
     def intersect_line(self, line, rtol=1e-03, atol=1e-03, include_end=False):
         """ Von einem Circle-Objekt und einem Line-Objekt werden die
             Schnittpunkte bestimmt und in einer Liste ausgegeben.
@@ -326,7 +397,7 @@ class Circle(Shape):
         assert(isinstance(arc, Arc))
         # let Arc do the work
         return arc.intersect_circle(self, rtol, atol, include_end)
-
+       
     def split(self, points, rtol, atol):
         """ Die Funktion splittet das Circle-Objekt an den vorgegebenen Punkten
             und gibt eine Liste der neu enstandenen Elemente aus.
@@ -441,6 +512,60 @@ class Arc(Circle):
         """returns x,y coordinates of angle"""
         return (self.center[0] + self.radius*np.cos(alpha),
                 self.center[1] + self.radius*np.sin(alpha))
+
+    def overlapping_shape(self, e, rtol=1e-03, atol=1e-03):
+        if not isinstance(e, Arc):
+            if isinstance(e, Circle):
+                return e.overlapping_shape(self, rtol, atol)
+            return None
+
+        if not (points_are_close(self.center, e.center) and
+                np.isclose(self.radius, e.radius)):
+            return None
+        if points_are_close(self.p2, e.p1):
+            return None
+        if points_are_close(self.p1, e.p2):
+            return None
+
+        points = []
+        if self.is_point_inside(e.p1, rtol, atol):
+            points.append(self.p1)
+            if self.is_point_inside(e.p2, rtol, atol):
+                points.append(e.p2)
+                points.append(self.p2)
+            else:
+                points.append(self.p2)
+                if not points_are_close(self.p2, e.p2):
+                    points.append(e.p2)
+            logger.debug("OVERLAP ARC #1")
+
+        elif self.is_point_inside(e.p2, rtol, atol):
+            points.append(e.p1)
+            points.append(self.p1)
+            points.append(e.p2)
+            points.append(self.p2)
+            logger.debug("OVERLAP ARC #2")
+
+        elif e.is_point_inside(self.p1, rtol, atol):
+            points.append(e.p1)
+            points.append(self.p1)
+            if e.is_point_inside(self.p2, rtol, atol):
+                points.append(self.p2)
+                points.append(e.p2)
+            else:
+                if not points_are_close(self.p2, e.p2):
+                    points.append(e.p2)
+                points.append(self.p2)
+            logger.debug("OVERLAP ARC #3")
+
+        elif e.is_point_inside(self.p2, rtol, atol):
+            points.append(self.p1)
+            points.append(e.p1)
+            points.append(self.p2)
+            points.append(e.p2)
+            logger.debug("OVERLAP ARC #4")
+
+        return self.create_arcs(points)
 
     def intersect_line(self, line, rtol=1e-03, atol=1e-03, include_end=False):
         """ Von einem Arc-Objekt und einem Line-Objekt werden die

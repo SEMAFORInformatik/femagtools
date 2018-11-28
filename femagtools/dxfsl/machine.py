@@ -206,6 +206,11 @@ class Machine(object):
         machine.mirror_endangle = endangle
         return machine
 
+    def has_mirrored_windings(self):
+        if not self.is_mirrored():
+            return False
+        return self.geom.area_close_to_endangle(2) > 0
+
     def undo_mirror(self):
         assert(self.is_mirrored())
         assert(self.previous_machine)

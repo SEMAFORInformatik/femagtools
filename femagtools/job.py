@@ -154,7 +154,7 @@ class Job(object):
     def cleanup(self):
         """removes all task directories of previous run"""
         for task in self.tasks:
-            logger.info("rm %s", task.directory)
+            logger.debug("rm %s", task.directory)
             shutil.rmtree(task.directory, ignore_errors=True)
         self.tasks = []
 

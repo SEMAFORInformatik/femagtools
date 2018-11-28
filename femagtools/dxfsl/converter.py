@@ -149,7 +149,7 @@ def convert(dxfile,
     machine_base = basegeom.get_machine()
     if show_plots:
         p.render_elements(basegeom, Shape,
-                          title='Original',
+                          title=os.path.basename(dxfile),
                           with_hull=False,
                           rows=3, cols=2, num=1, show=debug_mode)
 

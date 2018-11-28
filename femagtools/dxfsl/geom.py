@@ -95,6 +95,12 @@ def intersect_and_split_element(el, out_elements, out_start,
 def add_or_split(el, x, out_elements, rtol, atol):
     if out_elements[x] is None:
         return []
+    split_el = el.overlapping_shape(out_elements[x], rtol, atol)
+    if split_el:
+        logger.debug("=== overlapping elements ===")
+        out_elements[x] = None
+        return split_el
+    
     points = el.intersect_shape(out_elements[x], rtol, atol, True)
     if len(points) > 0:
         split_elements = out_elements[x].split(points, rtol, atol)

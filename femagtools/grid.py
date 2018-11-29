@@ -263,12 +263,14 @@ class Grid(object):
                             shutil.copy(glob.glob(os.path.join(
                                 t.directory, r.filename)+'.B*CH')[0], repdir)
                         except (FileNotFoundError, AttributeError):
-                            shutil.rmtree(repdir)
-                            shutil.copytree(t.directory, repdir)
+                            # must be a failure, copy all files
+                            for ff in glob.glob(
+                                    os.path.join(t.directory, '*')):
+                                shutil.copy(ff, repdir)
                         calcid += 1
                     if bchMapper:  # Mode => collectBchData
                         self.addBchMapperData(bchMapper(r))
-                        
+
                     if isinstance(r, dict) and 'error' in r:
                         logger.warn("job %d failed: %s", k, r['error'])
                         f.append([float('nan')]*len(objective_vars))

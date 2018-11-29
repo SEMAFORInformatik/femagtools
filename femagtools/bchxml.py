@@ -8,7 +8,6 @@
 import sys
 import re
 import io
-from .bch import Reader
 import xml.etree.ElementTree as el
 import xml.dom.minidom
 
@@ -71,18 +70,33 @@ def dict_to_xml(tag, d):
 
 
 def main():
-    if len(sys.argv) != 2:
-        usage()
+    import argparse 
+    from .__init__ import __version__
+    from femagtools.bch import Reader
 
-    filename = sys.argv[1]
+    argparser = argparse.ArgumentParser(
+        description='Read BCH/BATCH file and convert to XML format')
+    argparser.add_argument('filename',
+                           help='name of BCH/BATCH file')
+    argparser.add_argument(
+        "--version",
+        "-v",
+        action="version",
+        version="%(prog)s {}, Python {}".format(__version__, sys.version),
+        help="display version information",
+    )
+    args = argparser.parse_args()
+    if not args.filename:
+        sys.exit(0)
+    
     bchresults = Reader()
-    with io.open(filename, encoding='latin1', errors='ignore') as f:
+    with io.open(args.filename, encoding='latin1', errors='ignore') as f:
         bchresults.read(f.readlines())
 
     reparsed = xml.dom.minidom.parseString(el.tostring(
         dict_to_xml("bch", bchresults), method='xml'))
 
-    with io.open(filename.split('.')[0]+'.xml',
+    with io.open(args.filename.split('.')[0]+'.xml',
                  mode='w', encoding='utf-8') as f:
         f.write(reparsed.toprettyxml(indent='  '))
 

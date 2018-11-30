@@ -307,6 +307,7 @@ def convert(dxfile,
                 if machine.has_mirrored_windings():
                     logger.info("undo mirror of stator")
                     machine = machine.undo_mirror()
+                    machine.geom.set_stator()
                     machine.geom.search_stator_subregions(part[1])
 
                 params = create_femag_parameters_stator(machine,

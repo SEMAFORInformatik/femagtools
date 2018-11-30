@@ -57,7 +57,8 @@ class Builder:
         params['show_plots'] = model.stator[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
-        params['part'] = ('stator', model.stator[templ].get('position'))
+        pos = 'in' if model.external_rotor else 'out'
+        params['part'] = ('stator', pos)
         conv = convert(model.stator['dxffile']['name'], **params)
 
         model.stator['num_slots'] = conv.get('tot_num_slot')
@@ -154,7 +155,8 @@ class Builder:
         params['show_plots'] = model.magnet[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
-        params['part'] = ('rotor', model.magnet[templ].get('position'))
+        pos = 'out' if model.external_rotor else 'in'
+        params['part'] = ('rotor', pos)
         logger.info("Conv rotor from %s", templ + '.dxf')
         conv = convert(model.magnet[templ]['name'], **params)
         model.set_value('poles', int(conv.get('num_poles')))

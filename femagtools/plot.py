@@ -361,7 +361,7 @@ def mtpv(pmrel, u1max, i1max, title='', projection=''):
         [[np.linalg.norm(pmrel.uqd(w1, iqx, idx))/np.sqrt(2)
           for idx in id] for iqx in iq])
     u1 = np.mean(u1_iqd)
-    imtpv = np.array([pmrel.mtpv(wx, u1)
+    imtpv = np.array([pmrel.mtpv(wx, u1, i1max)
                       for wx in np.linspace(w1, 20*w1, nsamples)]).T
     
     if projection == '3d':

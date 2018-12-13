@@ -241,10 +241,10 @@ class PmRelMachine(object):
                          self.torque_iqd(*iqd) - torque),
             (iq, id),
             full_output=True)
-        if ier != 1:
+        if ier != 1:  # didn't converge
             return self.mtpv(w1, u1max, betai1(iq, id)[1],
                              maxtorque=torque > 0)
-        return iq, id, self.torque_iqd(iq, id)
+        return iqd[0], iqd[1], self.torque_iqd(iq, id)
 
     def iqd_torque_imax_umax(self, torque, n, umax):
         """return iq, id, torque for constant torque or field weakening"""

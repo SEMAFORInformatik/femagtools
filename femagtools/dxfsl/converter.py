@@ -338,7 +338,8 @@ def convert(dxfile,
             conv['fsl'] = fslrenderer.render(machine, inner, outer)
             if params:
                 conv.update(params)
-            
+
+    conv['name'] = basename
     logger.info("done")
     return conv
 

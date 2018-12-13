@@ -1210,9 +1210,9 @@ class Reader:
             if _rotloss.search(l):
                 rec = self._numPattern.findall(content[i+2])
                 if len(rec) == 1:
-                    if floatnan(rec[0]) > losses['rotfe']:
-                        losses['rotfe'] = floatnan(rec[0])
-                    losses['total'] += losses['rotfe']
+                    rotfe = floatnan(rec[0])
+                    losses['rotfe'] += rotfe
+                    losses['total'] += rotfe
                 continue
                     
             if l.find('Fe-Losses-Rotor') > -1:
@@ -1246,7 +1246,7 @@ class Reader:
             self.losses.append(losses)
 
     def __read_hysteresis_eddy_current_losses(self, content):
-        losses = dict(staza=[], stajo=[], rotor=[])
+        losses = dict(staza=[], stajo=[])
         k = ''
         for i, l in enumerate(content):
             if l.startswith('*************'):
@@ -1276,12 +1276,15 @@ class Reader:
                     k = 'staza'
                 else:
                     k = 'rotor'
-            elif l.find('Roto') > -1 or \
-                 l.find('Ring') < -1:
-                k = 'rotor'
+            elif l.find(': Roto') > -1:
+                k = 'roto'
+            elif l.find(': Ring') > -1:
+                k = 'ring'
             elif l.find('Stat') > -1:
                 k = 'stajo'
             else:
+                if k and k not in losses:
+                    losses[k] = []
                 try:
                     rec = self._numPattern.findall(l)
                     if len(rec) == 4:
@@ -1292,7 +1295,7 @@ class Reader:
                                           if not i == 1])
                 except:
                     pass
-                  
+    
     def get(self, name, r=None):
         """return value of key name
         name can be a list such as ['torque[1]', 'ripple']

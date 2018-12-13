@@ -285,8 +285,8 @@ class PmMachineTest(unittest.TestCase):
     self.assertAlmostEqual(ud, -522.735358830)
     self.assertAlmostEqual(uq, 213.623501918)
     iqx, idx, tq = pm.iqd_torque_umax(T, w1, U)
-    self.assertAlmostEqual(idx, -196.8154330)
-    self.assertAlmostEqual(iqx, 303.31347107)
+    self.assertAlmostEqual(idx, -297.986735702)
+    self.assertAlmostEqual(iqx, 248.31913889352)
 
 if __name__ == '__main__':
   unittest.main()

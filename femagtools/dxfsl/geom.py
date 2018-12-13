@@ -2216,6 +2216,18 @@ class Geometry(object):
         return len([area for area in self.list_of_areas()
                     if area.type == type and area.close_to_endangle])
 
+    def corners_dont_match(self):
+        if self.is_mirrored():
+            return False
+        if len(self.start_corners) != len(self.end_corners):
+            return True
+        for i in range(len(self.start_corners)):
+            d1 = distance(self.center, self.start_corners[i])
+            d2 = distance(self.center, self.end_corners[i])
+            if not np.isclose(d1, d2):
+                return True
+        return False
+
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))
         for n in self.g.nodes():

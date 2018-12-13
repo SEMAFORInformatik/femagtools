@@ -264,10 +264,22 @@ class FslRenderer(object):
                     geom.end_corners[0][0], geom.end_corners[0][1]))  # min xy4
 
         self.content.append(u'if {} > 1 then'.format(geom.num_variable()))
-        self.content.append(
-            u'  rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,{}-1)'
-            .format(geom.num_variable()))
+        if geom.corners_dont_match():
+            txt = [u'  mirror_nodechains(x3, y3, x4, y4)',
+                   u'  if m.npols_gen > 2 then',
+                   u'    my_alfa = alfa * 2',
+                   u'    x3, y3 = pr2c(x2, my_alfa)',
+                   u'    x4, y4 = pr2c(x1, my_alfa)',
+                   u'    n = {} / 2'.format(geom.num_variable()),
+                   u'    rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,n-1)',
+                   u'  end']
+            self.content.append(u'\n'.join(txt))
+        else:
+            self.content.append(
+                u'  rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,{}-1)'
+                .format(geom.num_variable()))
         self.content.append(u'end')
+
         self.content.append(u'alfa = {} * alfa'.format(geom.num_variable()))
 
         if self.fm_nlin:

@@ -150,6 +150,9 @@ class Area(object):
     def is_air(self):
         return self.type == 0
 
+    def set_type(self, t):
+        self.type = t
+
     def calc_signature(self, center):
         if not self.area:
             return
@@ -515,6 +518,20 @@ class Area(object):
 
         return False
 
+    def is_half_circle(self, center, angle):
+        for e in self.area:
+            if isinstance(e, Line):
+                if not np.isclose(angle, alpha_line(center, e.p1)):
+                    return False
+                if not np.isclose(angle, alpha_line(center, e.p2)):
+                    return False
+            elif isinstance(e, Arc):
+                if not np.isclose(angle, alpha_line(center, e.center)):
+                    return False
+            else:
+                return False
+        return True
+
     def is_rectangle(self):
         lines = [[c, e.m(99999.0), e.length()]
                  for c, e in enumerate(self.area)
@@ -779,6 +796,18 @@ class Area(object):
             logger.debug("***** air or iron ??\n")
             return self.type
 
+        if self.close_to_startangle:
+            if self.is_half_circle(center, self.min_angle):
+                self.type = 0  # air
+                logger.debug("***** air (part of a circle)\n")
+                return self.type
+
+        if self.close_to_endangle:
+            if self.is_half_circle(center, self.max_angle):
+                self.type = 0  # air
+                logger.debug("***** air (part of a circle)\n")
+                return self.type
+
         if self.min_angle > 0.001:
             if self.max_angle < alpha - 0.001:
                 self.type = 2  # windings
@@ -866,6 +895,18 @@ class Area(object):
             self.type = 0  # air
             logger.debug("***** air (somewhere)\n")
             return self.type
+
+        if self.close_to_startangle:
+            if self.is_half_circle(center, self.min_angle):
+                self.type = 0  # air
+                logger.debug("***** air (part of a circle)\n")
+                return self.type
+
+        if self.close_to_endangle:
+            if self.is_half_circle(center, self.max_angle):
+                self.type = 0  # air
+                logger.debug("***** air (part of a circle)\n")
+                return self.type
 
         self.type = 1  # iron
         if self.min_angle > 0.001:

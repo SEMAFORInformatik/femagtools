@@ -2118,6 +2118,11 @@ class Geometry(object):
 
         windings = [a for a in self.list_of_areas()
                     if a.type == 2]
+        if len(windings) > 2:
+            [w.set_type(0) for w in windings]
+            [a.set_type(1) for a in self.list_of_areas() if a.is_iron()]
+            windings = []
+
         wdg_min_angle = 99
         wdg_max_angle = 0
         wdg_min_dist = 99
@@ -2137,7 +2142,7 @@ class Geometry(object):
         for a in air_areas:
             if a.around_windings(windings):
                 logger.debug(" - air-angle min/max = {}/{}"
-                            .format(a.min_air_angle, a.max_air_angle))
+                             .format(a.min_air_angle, a.max_air_angle))
                 if greater_equal(a.min_air_angle, wdg_min_angle):
                     if a.close_to_endangle and self.is_mirrored():
                         a.type = 0  # air

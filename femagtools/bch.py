@@ -837,6 +837,7 @@ class Reader:
             ncols = ncols-1
 
         id = np.reshape(m[0], (-1, ncols)).T[0]
+        id = self.__removeTrailingZero(id)
         nrows = len(id)
         if nrows > 1 and id[nrows-1] < id[nrows-2]:
             nrows = nrows-1

@@ -81,6 +81,7 @@ def _readSections(f):
 class Reader:
     """Reads a BCH/BATCH-File"""
     _numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
+    _numPatternNaN = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?|nan)\s*')
 
     def __init__(self):
         self._fft = None
@@ -209,6 +210,16 @@ class Reader:
             self.weight['magnet'] = sum(w[2])
             self.weight['total'] = sum([sum(l) for l in w])
 
+    def __findNums(self, l):
+        rec = self._numPattern.findall(l)
+        if 3 * '*' in l:  # min 3 '*'
+            li = re.sub('[\*]+', str(np.NaN), l)
+            rec = self._numPatternNaN.findall(li)
+            logger.debug("Numbers with **** In: %s", l)
+            logger.debug("Out: %s", li)
+            logger.debug("%d. NUMS: %s", len(rec), rec)
+        return rec
+
     def __read_version(self, content):
         self.version = content[0].split(' ')[3]
 
@@ -226,7 +237,7 @@ class Reader:
 
     def __read_nodes_and_mesh(self, content):
         self.nodes, self.elements, self.quality = \
-            [floatnan(r[0]) for r in [self._numPattern.findall(l)
+            [floatnan(r[0]) for r in [self.__findNums(l)
                                       for l in content[:3]]]
         for l in content[3:]:
             m = re.match(r'\*+([^\*]+)\*+', l)
@@ -247,7 +258,7 @@ class Reader:
                       ["Total magnet area", 'area']]:
 
                 if l.startswith(v[0]):
-                    rec = self._numPattern.findall(l)
+                    rec = self.__findNums(l)
                     if len(rec) > 0:
                         self.magnet[v[1]] = floatnan(rec[-1])
                     break
@@ -291,7 +302,7 @@ class Reader:
                 self.wdgfactors.append(dict(order=[], wfac=[],
                                             skewf=[], total=[]))
             else:
-                rec = self._numPattern.findall(line)
+                rec = self.__findNums(line)
                 if len(rec) == 4:
                     self.wdgfactors[-1]['order'].append(int(rec[0]))
                     self.wdgfactors[-1]['wfac'].append(float(rec[1]))
@@ -310,7 +321,7 @@ class Reader:
     def __read_current_angles(self, content):
         self.current_angles = []
         for l in content:
-            rec = self._numPattern.findall(l)
+            rec = self.__findNums(l)
             if len(rec) == 3:
                 self.current_angles.append(floatnan(rec[-1]))
         return
@@ -342,7 +353,7 @@ class Reader:
                       ["Material factor", 'mat']]:
 
                 if l.find(v[0]) > -1:
-                    rec = self._numPattern.findall(l)
+                    rec = self.__findNums(l)
                     if len(rec) > 0:
                         self.lossPar[v[1]].append(floatnan(rec[-1]))
                     break
@@ -357,7 +368,7 @@ class Reader:
         
         demag = dict()
         for l in content:
-            rec = self._numPattern.findall(l)
+            rec = self.__findNums(l)
             if len(rec) == 7 or len(rec) == 6:
                 i = 0 if len(rec) == 7 else 1
                 self.demag.append(
@@ -449,7 +460,7 @@ class Reader:
                       ['Max. speed', 'nmax']]:
 
                 if l.find(v[0]) > -1:
-                    rec = self._numPattern.findall(l)
+                    rec = self.__findNums(l)
                     if len(rec) > 0:
                         characteristics[v[1]] = floatnan(rec[-1])
                         break
@@ -506,7 +517,7 @@ class Reader:
                 m = []
                 nsec += 1
             else:
-                rec = self._numPattern.findall(l)
+                rec = self.__findNums(l)
                 if len(rec) > 3:
                     m.append([floatnan(x) for x in rec])
 
@@ -521,7 +532,7 @@ class Reader:
         for l in content:
             rec = l.split()
             if l.startswith('Flux-Area'):
-                areas = self._numPattern.findall(l)
+                areas = self.__findNums(l)
                 if not areas:
                     continue
 
@@ -548,7 +559,7 @@ class Reader:
              'force_y': [], 'f_idpsi': []}
 
         for l in content:
-            rec = self._numPattern.findall(l)
+            rec = self.__findNums(l)
             if len(rec) > 4:
                 f['displ'].append(floatnan(rec[1].strip()))
                 f['magnet_1'].append(floatnan(rec[2].strip()))
@@ -571,7 +582,7 @@ class Reader:
         linearForce_fft = dict(order=[], force=[], force_perc=[],
                                a=[], b=[])
         for l in content:
-            rec = self._numPattern.findall(l)
+            rec = self.__findNums(l)
             if len(rec) > 2:
                 linearForce_fft['order'].append(int(rec[0].strip()))
                 linearForce_fft['force'].append(floatnan(rec[1].strip()))
@@ -596,7 +607,7 @@ class Reader:
         flux_fft = dict(order=[], flux=[], flux_perc=[],
                         voltage=[], voltage_perc=[], a=[], b=[])
         for l in content:
-            rec = self._numPattern.findall(l)
+            rec = self.__findNums(l)
             if len(rec) > 4:
                 flux_fft['order'].append(int(rec[0].strip()))
                 flux_fft['flux'].append(floatnan(rec[1].strip()))
@@ -645,7 +656,7 @@ class Reader:
             if line.startswith("C_STEP"):
                 return   # ignore this section
             try:
-                rec = self._numPattern.findall(line)
+                rec = self.__findNums(line)
                 if len(rec) == 10:
                     f = [float(s) for s in rec]
                     an[0].append(f[2])
@@ -732,7 +743,7 @@ class Reader:
             't_idpsi': [],
             'torque': []}
         for l in content:
-            rec = self._numPattern.findall(l)
+            rec = self.__findNums(l)
             if len(rec) == 7:
                 torque['angle'].append(floatnan(rec[1].strip()))
                 torque['current_1'].append(floatnan(rec[2].strip()))
@@ -757,7 +768,7 @@ class Reader:
                               a=[],
                               b=[])
             for l in content:
-                rec = self._numPattern.findall(l)
+                rec = self.__findNums(l)
                 if len(rec) > 2:
                     torque_fft['order'].append(int(rec[0].strip()))
                     torque_fft['torque'].append(floatnan(rec[1].strip()))
@@ -1090,7 +1101,7 @@ class Reader:
 
         keys = []
         for l in content:
-            rec = self._numPattern.findall(l)
+            rec = self.__findNums(l)
             if len(rec) == 8:
                 for k, r in zip(*[keys, rec]):
                     self.dqPar[k].append(floatnan(r))
@@ -1176,7 +1187,7 @@ class Reader:
                 continue
             
             if l.find('Cu-losses') > -1:
-                rec = self._numPattern.findall(content[i+1])
+                rec = self.__findNums(content[i+1])
                 if len(rec) > 0:
                     losses['winding'] += floatnan(rec[0])
                     losses['total'] += floatnan(rec[0])
@@ -1185,7 +1196,7 @@ class Reader:
                 continue
                     
             elif l.startswith('StZa') or l.startswith('RoZa'):
-                rec = self._numPattern.findall(content[i+2])
+                rec = self.__findNums(content[i+2])
                 if len(rec) == 2:
                     losses['stajo'] = floatnan(rec[1])
                     losses['staza'] = floatnan(rec[0])
@@ -1194,7 +1205,7 @@ class Reader:
                 
             if l.startswith('StJo') or l.startswith('RoJo') or \
                _statloss.search(l):
-                rec = self._numPattern.findall(content[i+2])
+                rec = self.__findNums(content[i+2])
                 if len(rec) == 2:
                     losses['stajo'] = floatnan(rec[0])
                     losses['staza'] = floatnan(rec[1])
@@ -1209,7 +1220,7 @@ class Reader:
                 continue
                             
             if _rotloss.search(l):
-                rec = self._numPattern.findall(content[i+2])
+                rec = self.__findNums(content[i+2])
                 if len(rec) == 1:
                     rotfe = floatnan(rec[0])
                     losses['rotfe'] += rotfe
@@ -1217,7 +1228,7 @@ class Reader:
                 continue
                     
             if l.find('Fe-Losses-Rotor') > -1:
-                rec = self._numPattern.findall(content[i+3])
+                rec = self.__findNums(content[i+3])
                 if len(rec) == 2:
                     if content[i+1].find('Iron') > -1 and content[i+1].find('StJo') > 0:
                         self.external_rotor = True
@@ -1231,7 +1242,7 @@ class Reader:
                 continue
                     
             if l.find('Magnet-Losses') > -1:
-                rec = self._numPattern.findall(content[i+1])
+                rec = self.__findNums(content[i+1])
                 if len(rec) == 1:
                     losses['magnetJ'] = float(rec[0])
                     #losses['magnetB'] = float(Nan)
@@ -1287,7 +1298,7 @@ class Reader:
                 if k and k not in losses:
                     losses[k] = []
                 try:
-                    rec = self._numPattern.findall(l)
+                    rec = self.__findNums(l)
                     if len(rec) == 4:
                         losses[k].append([floatnan(x) for x in rec])
                     elif len(rec) == 5:  # FEMAG Rel 8.3 with el/mech order

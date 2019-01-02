@@ -516,12 +516,15 @@ class ZmqFemag(BaseFemag):
         return response
 
     def upload(self, filename):
-        """upload file"""
+        """upload file
+        returns number of transferred bytes
+        """
         request_socket = self.__req_socket()
         request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
         request_socket.send_string('upload = {}'.format(filename),
                                    flags=zmq.SNDMORE)
 
+        total = 0
         chunk_size = 20*1024
         with open(filename, mode="rb") as file:
             while True:
@@ -530,7 +533,11 @@ class ZmqFemag(BaseFemag):
                     break
                 more = 0 if len(data) < chunk_size else zmq.SNDMORE
                 request_socket.send(data, flags=more)
+                total += len(data)
 
+        response = request_socket.recv_multipart()
+        return total
+    
     def stopStreamReader(self):
         if self.reader:
             logger.debug("stop stream reader")

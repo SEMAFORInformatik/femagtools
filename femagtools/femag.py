@@ -515,6 +515,22 @@ class ZmqFemag(BaseFemag):
             self.proc = None
         return response
 
+    def upload(self, filename):
+        """upload file"""
+        request_socket = self.__req_socket()
+        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+        request_socket.send_string('upload = {}'.format(filename),
+                                   flags=zmq.SNDMORE)
+
+        chunk_size = 20*1024
+        with open(filename, mode="rb") as file:
+            while True:
+                data = file.read(chunk_size)
+                if not data:
+                    break
+                more = 0 if len(data) < chunk_size else zmq.SNDMORE
+                request_socket.send(data, flags=more)
+
     def stopStreamReader(self):
         if self.reader:
             logger.debug("stop stream reader")

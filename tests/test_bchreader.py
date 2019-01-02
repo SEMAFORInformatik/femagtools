@@ -270,6 +270,12 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.characteristics[0].keys()), 19)
         self.assertEqual(len(bch.characteristics[0]['speed_torque']['n']), 16)
 
+    def test_read_asterisks(self):
+        bch = self.read_bch('PM-with-asterisks_001.BATCH')
+        self.assertTrue(np.isnan(bch.nodes))
+        self.assertAlmostEqual(bch.airgapInduction['an'][0][8][0], 0.0690, 1)
+        self.assertAlmostEqual(bch.airgapInduction['an'][0][9][0], -0.9915, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

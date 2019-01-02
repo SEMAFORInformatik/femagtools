@@ -538,6 +538,13 @@ class ZmqFemag(BaseFemag):
         response = request_socket.recv_multipart()
         return total
     
+    def cleanup(self):
+        """remove all FEMAG files in working directory"""
+        request_socket = self.__req_socket()
+        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+        request_socket.send_string('cleanup')
+        response = request_socket.recv_multipart()
+        
     def stopStreamReader(self):
         if self.reader:
             logger.debug("stop stream reader")

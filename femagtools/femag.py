@@ -543,7 +543,20 @@ class ZmqFemag(BaseFemag):
         request_socket = self.__req_socket()
         request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
         request_socket.send_string('cleanup')
-        response = request_socket.recv_multipart()
+        return request_socket.recv_multipart()
+        
+    def info(self):
+        request_socket = self.__req_socket()
+        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+        request_socket.send_string('info')
+        return request_socket.recv_multipart()
+
+    def getfile(self, filename=''):
+        request_socket = self.__req_socket()
+        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+        request_socket.send_string('getfile = {}'.format(filename))
+        print("waiting response")
+        return request_socket.recv_multipart()
         
     def stopStreamReader(self):
         if self.reader:

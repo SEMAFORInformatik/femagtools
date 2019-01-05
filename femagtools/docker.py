@@ -7,7 +7,6 @@
 
 """
 import os
-import shutil
 import json
 import logging
 import threading
@@ -63,27 +62,37 @@ class AsyncFemag(threading.Thread):
             task = self.queue.get()
             if task is None:
                 break
+            task.container = self.container  # used in get_results
+            r = self.container.cleanup()
+            for f in task.transfer_files:
+                r = self.container.upload(os.path.join(task.directory, f))
             fslfile = os.path.join(task.directory, task.fsl_file)
-            # TODO: there must be a better way to set the workdir
-            workdir = '/'.join(task.directory.split('/')[-3:])
-            logger.info('Docker task %s %s workdir %s',
-                        task.id, task.fsl_file, workdir)
-            fslcmds = ['save_model(close)',
-                       "chdir('{}')".format(workdir)]
-                
+            logger.info('Docker task %s %s',
+                        task.id, task.fsl_file)
+            fslcmds = []
             with open(fslfile) as f:
                 fslcmds += f.readlines()
+            ret = self.container.send_fsl(
+                '\n'.join(fslcmds), publish_receive)[:2]
+            logger.debug(ret)
             r = [json.loads(s)
-                 for s in self.container.send_fsl(
-                         '\n'.join(fslcmds), publish_receive)[:2]]
+                 for s in ret]
+            logger.info("Finished %s", r)
             try:
                 if r[0]['status'] == 'ok':
                     task.status = 'C'
+                    status, content = self.container.getfile()[:2]  # last element is 'end.'
+                    logging.info("get results %s: status %s len %d",
+                                 task.id, status, len(content))
+                    bchfile = json.loads(status)['message']
+                    with open(os.path.join(task.directory,
+                                           bchfile), 'wb') as f:
+                        f.write(content)
                 else:
                     task.status = 'X'
-            except:
+            except (KeyError, IndexError):
                 task.status = 'X'
-            logger.info("Finished %s", r)
+
             if self.stoponend:
                 self.container.quit()
                 # lets hope that docker will always restart this container
@@ -100,11 +109,17 @@ class Engine(object):
          hosts (list of str): list of container names
          stoponend (bool): stop container after each task (experimental)
     """
-    def __init__(self, hosts=[], stoponend=True):
-        self.hosts = hosts
+    def __init__(self, hosts=[], ports=[], stoponend=True):
         self.stoponend = stoponend
-        self.femag_port = int(os.environ.get('FEMAG_PORT', 5555))
-
+        if ports:
+            self.femag_ports = ports
+        else:
+            self.femag_ports = [int(os.environ.get('FEMAG_PORT', 5555))]*len(hosts)
+        if hosts:
+            self.hosts = hosts
+        else:
+            self.hosts = ['127.0.0.1']*len(ports)
+            
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`CloudJob`
 
@@ -119,10 +134,9 @@ class Engine(object):
         self.queue = Queue()
         self.async_femags = [AsyncFemag(self.queue,
                                         workdir,
-                                        self.femag_port,
-                                        h,
+                                        p, h,
                                         self.stoponend)
-                             for h in self.hosts]
+                             for h, p in zip(self.hosts, self.femag_ports)]
         
         self.job = femagtools.job.Job(workdir)
         return self.job
@@ -133,6 +147,7 @@ class Engine(object):
         Return:
             number of started tasks (int)
         """
+        
         for async_femag in self.async_femags:
             async_femag.start()
 

@@ -518,10 +518,13 @@ class ZmqFemag(BaseFemag):
     def upload(self, filename):
         """upload file
         returns number of transferred bytes
+        (FEMAG 8.5 Rev 3282 or greater only)
         """
         request_socket = self.__req_socket()
         request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-        request_socket.send_string('upload = {}'.format(filename),
+        basename = os.path.basename(filename)
+        logger.info("upload %s --> %s", filename, basename)
+        request_socket.send_string('upload = {}'.format(basename),
                                    flags=zmq.SNDMORE)
 
         total = 0
@@ -535,28 +538,34 @@ class ZmqFemag(BaseFemag):
                 request_socket.send(data, flags=more)
                 total += len(data)
 
-        response = request_socket.recv_multipart()
-        return total
+        return [s.decode() for s in request_socket.recv_multipart()]
     
     def cleanup(self):
-        """remove all FEMAG files in working directory"""
+        """remove all FEMAG files in working directory (FEMAG 8.5 Rev 3282 or greater only)"""
         request_socket = self.__req_socket()
-        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-        request_socket.send_string('cleanup')
-        return request_socket.recv_multipart()
-        
+        request_socket.send_string('FSL', flags=zmq.SNDMORE)
+        request_socket.send_string('save_model(close)')
+        response = request_socket.recv_multipart()
+        if 'status' in response and response['status'] == 'ok':
+            request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+            request_socket.send_string('cleanup')
+            return [s.decode() for s in request_socket.recv_multipart()]
+        return [s.decode() for s in response]
+    
     def info(self):
+        """get various resource information (FEMAG 8.5 Rev 3282 or greater only)"""
         request_socket = self.__req_socket()
         request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
         request_socket.send_string('info')
-        return request_socket.recv_multipart()
+        return [s.decode() for s in request_socket.recv_multipart()]
 
     def getfile(self, filename=''):
+        """get file (FEMAG 8.5 Rev 3282 or greater only)"""
         request_socket = self.__req_socket()
         request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
         request_socket.send_string('getfile = {}'.format(filename))
-        print("waiting response")
-        return request_socket.recv_multipart()
+        response = request_socket.recv_multipart()
+        return [response[0].decode(), response[1]]
         
     def stopStreamReader(self):
         if self.reader:

@@ -20,7 +20,7 @@ import importlib
 
 logger = logging.getLogger(__name__)
 
-
+# https://python-3-patterns-idioms-test.readthedocs.io/en/latest/Factory.html
 class TaskFactory:
     factories = {}
 
@@ -110,8 +110,8 @@ class Task(object):
         
 
 class CloudTask(Task):
-    def __init__(self, id, directory):
-        super(self.__class__, self).__init__(id, directory)
+    def __init__(self, id, directory, result_func=None):
+        super(self.__class__, self).__init__(id, directory, result_func)
         import tarfile
         self.file = "{}.tar.gz".format(self.directory)
         self.tar_file = tarfile.open(self.file, "w:gz")
@@ -138,8 +138,8 @@ class CloudTask(Task):
         data = io.BytesIO(str.encode(content))
         self.tar_file.addfile(info, data)
         
-        class Factory:
-            def create(self, id, dir, result_func): return CloudTask(id, dir, result_func)
+    class Factory:
+        def create(self, id, dir, result_func): return CloudTask(id, dir, result_func)
 
 
 class Job(object):
@@ -235,3 +235,4 @@ class CloudJob(Job):
         t = TaskFactory.createTask('CloudTask', taskid, dir, result_func)
         self.tasks.append(t)
         return t
+

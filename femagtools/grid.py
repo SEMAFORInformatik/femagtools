@@ -19,6 +19,7 @@ import femagtools.condor
 import femagtools.moproblem
 import femagtools.getset
 import shutil
+import functools
 
 logger = logging.getLogger(__name__)
 
@@ -189,8 +190,8 @@ class Grid(object):
                                                      for d in reversed(domain)]
                     logger.debug("BEFORE: f shape %s --> %s",
                                  np.shape(np.array(f).T), shape)
-                    completed = int(reduce((lambda x, y: x * y),
-                                           [len(z) for z in domain]))
+                    completed = int(functools.reduce(
+                        (lambda x, y: x * y), [len(z) for z in domain]))
                     logger.debug("need {} in total".format(completed))
                     remaining = completed - int(np.shape(np.array(f).T)[1])
                     values = int(np.shape(np.array(f).T)[0])

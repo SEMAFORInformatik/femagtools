@@ -474,7 +474,9 @@ class Machine(object):
                                        sym_tolerance)
 
     def get_symmetry_slice(self):
+        logger.debug("begin get_symmetry_slice")
         if not self.geom.has_symmetry_area():
+            logger.debug("end get_symmetry_slice: no symmetry area")
             return None
 
         machine_slice = self.copy(self.geom.symmetry_startangle(),
@@ -483,9 +485,13 @@ class Machine(object):
         machine_slice.repair_hull()
         machine_slice.rotate_to(0.0)
         machine_slice.set_alfa_and_corners()
+        logger.debug("end get_symmetry_slice: angle start: {}, end: {}"
+                    .format(self.geom.symmetry_startangle(),
+                            self.geom.symmetry_endangle()))
         return machine_slice
 
     def get_third_symmetry_mirror(self):
+        logger.debug("begin get_third_symmetry_mirror")
         first_thirdangle = third_angle(self.startangle, self.endangle)
         second_thirdangle = middle_angle(first_thirdangle, self.endangle)
 
@@ -496,6 +502,7 @@ class Machine(object):
         machine_mirror_1.repair_hull()
         machine_mirror_1.set_alfa_and_corners()
         if not machine_mirror_1.check_symmetry_graph(0.001, 0.05):
+            logger.debug("end get_third_symmetry_mirror: no mirror first third")
             return None
 
         machine_mirror_2 = self.copy_mirror(first_thirdangle,
@@ -505,12 +512,15 @@ class Machine(object):
         machine_mirror_2.repair_hull()
         machine_mirror_2.set_alfa_and_corners()
         if not machine_mirror_2.check_symmetry_graph(0.001, 0.05):
+            logger.debug("end get_third_symmetry_mirror: no mirror second third")
             return None
 
         machine_mirror_1.previous_machine = self
+        logger.debug("end get_third_symmetry_mirror: ok")
         return machine_mirror_1
 
     def get_symmetry_mirror(self):
+        logger.debug("begin get_symmetry_mirror")
         if self.part == 1:
             # a complete machine
             startangle = 0.0
@@ -522,9 +532,11 @@ class Machine(object):
             midangle = middle_angle(self.startangle, self.endangle)
             machine_mirror = self.get_third_symmetry_mirror()
             if machine_mirror:
-                logger.debug("third symmetry found")
+                logger.debug("end get_symmetry_mirror: third found")
                 return machine_mirror
 
+        logger.debug(" - angles: start: {}, mid: {}, end: {}"
+                    .format(startangle, midangle, endangle))
         machine_mirror = self.copy_mirror(startangle, midangle, endangle)
         machine_mirror.clear_cut_lines()
         machine_mirror.repair_hull()
@@ -533,7 +545,10 @@ class Machine(object):
             machine_mirror.previous_machine = self
             machine_mirror.rotate_to(0.0)
             machine_mirror.set_alfa_and_corners()
+            logger.debug("end get_symmetry_mirror: found")
             return machine_mirror
+
+        logger.debug("end get_symmetry_mirror: no mirror")
         return None
 
     def get_symmetry_part(self):
@@ -543,7 +558,7 @@ class Machine(object):
             return self.part
 
     def check_symmetry_graph(self, rtol, atol):
-        logger.debug("check_symmetry_graph")
+        logger.debug("begin check_symmetry_graph")
         axis_p = point(self.center, self.radius, self.mirror_startangle)
         axis_m = line_m(self.center, axis_p)
         axis_n = line_n(self.center, axis_m)
@@ -579,6 +594,8 @@ class Machine(object):
 
         if hit_factor1 < 0.93 and hit_factor2 < 0.93:
             return False  # not ok
+
+        logger.debug("end check_symmetry_graph: ok")
         return True
 
     def sync_with_counterpart(self, cp_machine):

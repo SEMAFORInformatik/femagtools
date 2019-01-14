@@ -15,7 +15,7 @@ import logging
 from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
-from .functions import middle_angle, part_of_circle
+from .functions import middle_angle, part_of_circle, is_same_angle
 from .shape import Element, Shape, Line, Arc, Circle
 
 logger = logging.getLogger('femagtools.area')
@@ -41,6 +41,7 @@ class Area(object):
         self.close_to_endangle = False
         self.min_dist = 99999.0
         self.max_dist = 0.0
+        self.height = 0.0
         self.alpha = 0.0
         self.count = 1
         self.equal_areas = []
@@ -166,6 +167,7 @@ class Area(object):
             mm_dist = s.minmax_from_center(center)
             self.min_dist = min(self.min_dist, mm_dist[0])
             self.max_dist = max(self.max_dist, mm_dist[1])
+            self.height = self.max_dist - self.min_dist
 
             mm_angle = s.minmax_angle_from_center(center)
             self.min_angle = min_angle(self.min_angle, mm_angle[0])
@@ -280,7 +282,6 @@ class Area(object):
                           round(a.max_dist, 2)) and \
                np.isclose(round(self.alpha, 3),
                           round(a.alpha, 3), 1e-02, 0.001):
-                print(" - OK")
                 return True
         return False
 
@@ -305,12 +306,14 @@ class Area(object):
         self.equal_areas.append(a)
 
     def set_delta(self):
+        logger.debug("begin set_delta of {}".format(self.id))
         self.delta = 0.0
         self.symmetry = 0
 
         if len(self.equal_areas) < 2:
             # Mit zwei Objekten lässt sich das Teil nur noch halbieren. Das
             # wird zum Schluss sowieso versucht.
+            logger.debug("end set_delta: zuwenig Gleiche")
             return
 
         sorted_areas = []
@@ -330,6 +333,7 @@ class Area(object):
             prev_angle = angle
 
         delta_sorted = list([v, k] for (k, v) in delta.items())
+        logger.debug(" - delta: {}".format(delta_sorted))
 
         if len(delta_sorted) == 1:
             # simple case: all have the same angle
@@ -339,11 +343,16 @@ class Area(object):
                                       sorted_areas[1][1].min_angle)
             self.sym_type = 3
             self.symmetry = part_of_circle(0.0, self.delta, 1)
+            logger.debug("end set_delta: simple case")
             return
+
+        logger.debug("end set_delta: {} deltas, {} areas"
+                     .format(len(delta_sorted), len(self.equal_areas)))
 
         if len(delta_sorted) > 2:
             # Mehr als 2 Winkel untersuchen wir (noch) nicht. Wir brechen
             # die Suche nach dem richtigen Winkel ab.
+            logger.debug("end set_delta: zuviele Winkel")
             return
 
         # Bei 2 verschiedenen Winkeln werden die näher beieinander liegenden
@@ -352,17 +361,26 @@ class Area(object):
         if len(self.equal_areas) < 4:
             # Wenn nicht mehr als 4 Objekte vorhanden sind, brechen wir auch
             # ab.
+            logger.debug("end set_delta: zuwenig areas")
             return
 
-        percent = delta_sorted[0][0] / (len(self.equal_areas)+1)
+        if np.isclose(delta_sorted[1][1],
+                      delta_sorted[0][1]*2, atol=0.01):
+            # Lets hope we have unreqognised areas inbetween
+            percent = 1.0
+        else:
+            percent = delta_sorted[0][0] / (len(self.equal_areas)+1)
+
         if percent > 0.75:
-            # lets assume we only have on angle
+            # lets assume we only have one angle
             self.delta = alpha_angle(sorted_areas[0][1].min_angle,
                                      sorted_areas[1][1].min_angle)
             self.start = middle_angle(sorted_areas[0][1].max_angle,
                                       sorted_areas[1][1].min_angle)
             self.sym_type = 2
             self.symmetry = part_of_circle(0.0, self.delta, 1)
+            logger.debug("end set_delta: {} Prozent gleiche deltas"
+                         .format(percent))
             return
 
         # Lets hope the distances are changing
@@ -378,6 +396,7 @@ class Area(object):
         if np.isclose(delta_1, delta_2):
             # Hm. the distances are not changing
             self.delta = 0.0
+            logger.debug("end set_delta: the distances are not changing")
             return
 
         if delta_1 < delta_2:
@@ -386,8 +405,14 @@ class Area(object):
         else:
             self.start = middle_angle(sorted_areas[0][1].max_angle,
                                       sorted_areas[1][1].min_angle)
+        logger.debug("end set_delta: delta wechselt: delta={}"
+                     .format(self.delta))
 
     def symmetry_lines(self, startangle, endangle):
+        logger.debug("begin symmetry_lines of {} ({}, {})"
+                     .format(self.id,
+                             startangle,
+                             endangle))
         if less_equal(endangle, startangle):
             endangle += 2*np.pi
 
@@ -400,10 +425,14 @@ class Area(object):
         # Damit man anschliessend ohne Umstände schneiden kann.
         self.sym_startangle = angle
         self.sym_endangle = angle + self.delta
-
+        logger.debug(" - delta: {}, sym start: {}, end: {}"
+                     .format(self.sym_startangle,
+                             self.delta,
+                             self.sym_endangle))
         while angle < endangle:
             yield angle
             angle += self.delta
+        logger.debug("end symmetry_lines")
 
     def minmax(self):
         mm = [99999, -99999, 99999, -99999]
@@ -415,6 +444,12 @@ class Area(object):
             mm[2] = min(mm[2], n[2])
             mm[3] = max(mm[3], n[3])
         return mm
+
+    def intersect_line(self, line):
+        for e in self.area:
+            if e.intersect_line(line):
+                return True
+        return False
 
     def get_point_inside(self, geom):
         """return point inside area"""
@@ -628,20 +663,20 @@ class Area(object):
             if not p:
                 return False
 
-            if np.isclose(a_prev, a_curr, atol=0.001):
-                # Gleicher Winkel
+            if is_same_angle(a_prev, a_curr, atol=0.01):
+                # its the same angle
                 # assert(np.isclose(m_prev, m, atol=0.001))
                 if c_prev+1 != c:
-                    logger.debug(" - ok, aber keine Verlängerung")
-                    # ..., aber keine Verlängerung
+                    logger.debug(" - ok, but not an extension")
+                    # ..., but not an extension
                     lines_clam.append([c_prev, l_prev, a_prev, m])
                     l_prev = e.length()
                 else:
-                    # ... und Verlängerung
+                    # ... and an extension
                     l_prev += e.length()
-                    logger.debug(" - ok, Verlängerung")
+                    logger.debug(" - ok, it's an extension")
             else:
-                # Anderer Winkel
+                # it's a different angle
                 logger.debug(" - diff, angle {} and {} not equal "
                              .format(a_prev, a_curr))
                 lines_clam.append([c_prev, l_prev, a_prev, m_prev])
@@ -908,16 +943,8 @@ class Area(object):
                 logger.debug("***** air (part of a circle)\n")
                 return self.type
 
-        self.type = 1  # iron
-        if self.min_angle > 0.001:
-            if self.max_angle < alpha - 0.001:
-                self.type = 0  # air
-            elif mirrored:
-                self.type = 0  # air
-            logger.debug("***** air ??\n")
-            return self.type
-
-        logger.debug("***** iron (remains)\n")
+        self.type = 0  # iron
+        logger.debug("***** air (remains)\n")
         return self.type
 
     def mark_unknown_subregions(self, mirrored, alpha,
@@ -971,6 +998,9 @@ class Area(object):
         if self.count != a.count:
             return self.count > a.count
 
+        if not np.isclose(self.height, a.height):
+            return self.height > a.height
+
         if self.sym_tolerance > 0.0:
             if not np.isclose(round(self.min_dist, 4),
                               round(a.min_dist, 4), 1e-03,
@@ -997,9 +1027,15 @@ class Area(object):
         return self.min_angle < a.min_angle
 
     def __str__(self):
-        return "Area\ndistance: from {} to {}\n".\
+        return "Area {}\n".format(self.id) + \
+            "distance: from {} to {}\n".\
             format(round(self.min_dist, 4), round(self.max_dist, 4)) + \
+            "height..: {}\n".format(self.height) + \
             "alpha...: {}\n".format(self.alpha) + \
             "angle...: from {} to {}\n".\
             format(round(self.min_angle, 6), round(self.max_angle, 6)) + \
-            "delta...: {}".format(self.delta)
+            "delta...: {}\n".format(self.delta) + \
+            "number..: {}\n".format(self.count) + \
+            "equal...: {}\n".format(len(self.equal_areas)) + \
+            "symmetry: {}\n".format(self.symmetry) + \
+            "sym_type: {}".format(self.sym_type)

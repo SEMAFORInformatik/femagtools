@@ -258,14 +258,14 @@ def normalise_angle(alpha):
     return alpha
 
 
-def is_same_angle(angle1, angle2):
+def is_same_angle(angle1, angle2, atol=0.001):
     """ returns true if angles are equal
     """
-    return (np.isclose(np.cos(angle1), np.cos(angle2)) and
-            np.isclose(np.sin(angle1), np.sin(angle2)))
+    return (np.isclose(np.cos(angle1), np.cos(angle2), atol=atol) and
+            np.isclose(np.sin(angle1), np.sin(angle2), atol=atol))
 
 
-def part_of_circle(startangle, endangle, pos=3):
+def part_of_circle(startangle, endangle, dec_place=3):
     """ returns the number of segments included in the circle
       if an integer number, 0 otherwise
     """
@@ -281,7 +281,7 @@ def part_of_circle(startangle, endangle, pos=3):
         angle = 2*np.pi + end - start
 
     if angle != 0.0:
-        x = float(round(2*np.pi/angle, pos))
+        x = float(round(2*np.pi/angle, dec_place))
     else:
         x = float(0.0)
     logger.debug("part_of_circle: {}".format(x))

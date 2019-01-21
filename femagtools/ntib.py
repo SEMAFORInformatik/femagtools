@@ -32,8 +32,10 @@ def toFloat(s, fac=1.0):
         return float('nan')
 
 
-def read_los(filename):
-    """return dict of losses in LOS-file"""
+
+
+def read_los_content(content):
+    """return dict of losses in LOS-file content"""
     result = dict(speed=[],
                   torque=[],
                   i1=[],
@@ -44,39 +46,57 @@ def read_los(filename):
                   magnet=[],
                   winding=[],
                   total=[])
-    with open(filename) as f:
-        started = False
-        for l in f:
-            if not started and l.startswith('[1/min]   '):
-                started = True
-            elif started:
-                r = l.strip().split()
-                if len(r) > 7:
-                    result['speed'].append(toFloat(r[0], 1./60))
-                    result['torque'].append(toFloat(r[1]))
-                    result['i1'].append(toFloat(r[2]))
-                    result['beta'].append(toFloat(r[3]))
-                    pfe1 = toFloat(r[4])
-                    pfe2 = 0
-                    p = 4
-                    if len(r) > 8:
-                        pfe2 = toFloat(r[5])
-                        p = 5
-                    result['stajo'].append(pfe1)
-                    result['staza'].append(pfe2)
-                    result['rotfe'].append(toFloat(r[p+1]))
-                    result['magnet'].append(toFloat(r[p+2]))
-                    result['winding'].append(toFloat(r[p+3]))
+    started = False
+    for l in content:
+        if not started and l.startswith('[1/min]   '):
+            started = True
+        elif started:
+            r = l.strip().split()
+            if len(r) > 7:
+                result['speed'].append(toFloat(r[0], 1./60))
+                result['torque'].append(toFloat(r[1]))
+                result['i1'].append(toFloat(r[2]))
+                result['beta'].append(toFloat(r[3]))
+                pfe1 = toFloat(r[4])
+                pfe2 = 0
+                p = 4
+                if len(r) > 8:
+                    pfe2 = toFloat(r[5])
+                    p = 5
+                result['stajo'].append(pfe1)
+                result['staza'].append(pfe2)
+                result['rotfe'].append(toFloat(r[p+1]))
+                result['magnet'].append(toFloat(r[p+2]))
+                result['winding'].append(toFloat(r[p+3]))
 
-                    try:
-                        result['stafe'] = result['stajo'] + result['staza']
-                        result['total'].append(sum([result[k][-1]
-                                                    for k in ('stajo',
-                                                              'staza',
-                                                              'rotfe',
-                                                              'magnet',
-                                                              'winding')]))
-                    except KeyError:
-                        result['total'].append(None)
-    logger.info("%s num rows %d", filename, len(result['total']))
+                try:
+                    result['stafe'] = result['stajo'] + result['staza']
+                    result['total'].append(sum([result[k][-1]
+                                                for k in ('stajo',
+                                                          'staza',
+                                                          'rotfe',
+                                                          'magnet',
+                                                          'winding')]))
+                except KeyError:
+                    result['total'].append(None)
+    logger.info("num rows %d", len(result['total']))
     return result
+
+
+def read_los(filename):
+    """return dict of losses in LOS-file"""
+    logger.info("read loss file: %s", filename)
+    with open(filename) as f:
+        return read_los_content(f.readlines())
+
+    # empty
+    return dict(speed=[],
+                torque=[],
+                i1=[],
+                beta=[],
+                stajo=[],
+                staza=[],
+                rotfe=[],
+                magnet=[],
+                winding=[],
+                total=[])

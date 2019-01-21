@@ -577,6 +577,8 @@ class ZmqFemag(BaseFemag):
         """setup fsl file, run calculation and return BCH results"""
         self.send_fsl('\n'.join(self.create_fsl(pmMachine,
                                                 operatingConditions)))
+        if operatingConditions['calculationMode'] == "pm_sym_loss":
+            return self.read_los(self.modelname)
         return self.read_bch(self.modelname)
 
 

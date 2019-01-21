@@ -1425,15 +1425,37 @@ class Geometry(object):
             a.set_delta()
         arealist_match.sort()
 
-        area = arealist_match[0]
-        if area.delta == 0.0:
+        arealist_sym = [a for a in arealist_match if a.symmetry > 0]
+        if not arealist_sym:
             logger.info("No symmetry-axis found (delta == 0.0)")
             return False
 
-        sym = part_of_circle(0.0, area.delta, 1)
-        if sym == 0.0:
-            logger.info("No symmetry-axis found (sym = 0.0)")
-            return False
+        ggt = arealist_sym[0].symmetry
+        for a in arealist_sym[1:]:
+            if ggt != a.symmetry:
+                ggt = gcd(ggt, a.symmetry)
+                if ggt == 1:
+                    logger.warning("asymmetrical iteration of areas detected")
+                    break
+
+                if ggt != a.symmetry:
+                    logger.warning("unhandled asymmetry")
+                    break
+
+        arealist_ok = [a for a in arealist_sym if a.symmetry == ggt]
+        midlist = {}
+        for a in arealist_ok:
+            mid = round(a.start, 3)
+            if midlist.get(mid, None) is None:
+                midlist[mid] = [1, a]
+            else:
+                midlist[mid][0] = midlist[mid][0]+1
+
+        arealist_srt = [[v[0], k, v[1]] for k, v in midlist.items()]
+        arealist_srt.sort(reverse=True)
+
+        area = arealist_srt[0][2]
+        sym = area.symmetry
         area.delta = 2*np.pi/sym
 
         for alpha in area.symmetry_lines(startangle, endangle):
@@ -1992,8 +2014,10 @@ class Geometry(object):
 
             for lst in notouch_list:
                 if lst:
+                    my_keys = lst.keys()
+                    my_areas = lst.values()
                     gap_list = []
-                    for id, a in lst.items():
+                    for a in my_areas:
                         logger.debug(">> area {} not in touch"
                                      .format(a.identifier()))
                         gap_list += area.get_lowest_gap_list(a,
@@ -2003,15 +2027,33 @@ class Geometry(object):
                                                              leftangle)
                     gap_list.sort()
                     assert(len(gap_list) > 0)
-                    points = gap_list[0][1]
 
-                    logger.debug(">> auxiliary line from {} to {}"
-                                 .format(points[0], points[1]))
-                    line = Line(Element(start=points[0], end=points[1]),
-                                color='orange',
-                                attr='auxline')
-                    add_or_join(self, points[0], points[1], line,
-                                self.rtol, self.atol)
+                    my_notouch = [a for i, a in areas_notouch.items()
+                                  if i not in my_keys]
+
+                    for g in gap_list:
+                        points = g[1]
+                        line = Line(Element(start=points[0],
+                                            end=points[1]),
+                                    color='orange',
+                                    attr='auxline')
+
+                        intersection = False
+                        for no_a in my_notouch:
+                            if no_a.intersect_line(line):
+                                intersection = True
+                                break
+
+                        if not intersection:
+                            logger.debug(">> auxiliary line from {} to {}"
+                                         .format(points[0], points[1]))
+                            add_or_join(self,
+                                        points[0],
+                                        points[1],
+                                        line,
+                                        self.rtol,
+                                        self.atol)
+                            break
 
     def set_rotor(self):
         self.sym_counterpart = 1

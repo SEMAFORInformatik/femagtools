@@ -546,11 +546,9 @@ class ZmqFemag(BaseFemag):
         request_socket.send_string('FSL', flags=zmq.SNDMORE)
         request_socket.send_string('save_model(close)')
         response = request_socket.recv_multipart()
-        if 'status' in response and response['status'] == 'ok':
-            request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-            request_socket.send_string('cleanup')
-            return [s.decode() for s in request_socket.recv_multipart()]
-        return [s.decode() for s in response]
+        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+        request_socket.send_string('cleanup')
+        return [s.decode() for s in request_socket.recv_multipart()]
     
     def info(self):
         """get various resource information (FEMAG 8.5 Rev 3282 or greater only)"""

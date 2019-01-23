@@ -392,15 +392,28 @@ class ZmqFemag(BaseFemag):
             else:
                 request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
                 request_socket.setsockopt(zmq.LINGER, 30000)  # default value
-            try:
-                response = request_socket.recv_multipart()
-                time.sleep(.5)  # Be sure all messages are arrived over zmq
-                if callback:
-                    self.reader.continue_loop = False
-                return [s.decode() for s in response]
-            except zmq.error.Again as e:
-                logger.info("Again [%s], timeout: %d", str(e), timeout)
-                return ['{"status":"error", "message":"Femag is not running"}', '{}']
+            import datetime
+            startTime = datetime.datetime.now() if timeout else None
+            while True:
+                try:
+                    response = request_socket.recv_multipart()
+                    time.sleep(.5)  # Be sure all messages are arrived over zmq
+                    if callback:
+                        self.reader.continue_loop = False
+                    return [s.decode() for s in response]
+                except zmq.error.Again as e:
+                    logger.info("Again [%s], timeout: %d", str(e), timeout)
+                    if startTime:
+                        diffTime = datetime.datetime.now() - startTime
+                        logger.debug("Diff msec[%d]", diffTime.microseconds)
+                        if diffTime.microseconds < timeout:
+                            continue
+                        else:
+                            self.request_socket.close()
+                            self.request_socket = None
+                            return ['{"status":"error", "message":"Femag is not running"}', '{}']
+
+                    continue
         except Exception as e:
             logger.exception("send_fsl")
             logger.error("send_fsl: %s", str(e))

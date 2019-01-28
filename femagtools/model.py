@@ -9,8 +9,16 @@
 
 """
 import logging
+import string
+
 
 logger = logging.getLogger(__name__)
+#
+# Set of legal model name chars
+# 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+MODELNAME_CHARS = string.printable[:63] + "-_äöüéè"
+# maximum name length
+MAX_MODEL_NAME_LEN = 255
 
 
 def gcd(a, b):
@@ -128,11 +136,10 @@ class MachineModel(Model):
             name = parameters
         elif 'name' in parameters:
             name = parameters['name']
-        # must replace white space
-        name = name.strip().replace(' ', '_')
-        for c in ('"', '(', ')'):
-            name = name.replace(c, '')
-        setattr(self, 'name', name)
+        # must sanitize name to prevent femag complaints
+        self.name = ''.join([n
+                             for n in name.strip()
+                             if n in MODELNAME_CHARS][:MAX_MODEL_NAME_LEN])
         try:
             self.external_rotor = (self.external_rotor == 1)
         except AttributeError:

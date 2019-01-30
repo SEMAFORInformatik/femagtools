@@ -162,9 +162,9 @@ class Shape(object):
     def minmax_angle_dist_from_center(self, center, dist):
         dist_p1 = distance(center, self.p1)
         dist_p2 = distance(center, self.p2)
-        if np.isclose(dist, dist_p1):
+        if np.isclose(dist, dist_p1, atol=0.005):
             alpha_p1 = alpha_line(center, self.p1)
-            if np.isclose(dist, dist_p2):
+            if np.isclose(dist, dist_p2, atol=0.005):
                 alpha_p2 = alpha_line(center, self.p2)
                 if alpha_angle(alpha_p1, alpha_p2) < np.pi:
                     return (alpha_p1, alpha_p2)
@@ -173,7 +173,7 @@ class Shape(object):
             else:
                 return (alpha_p1, alpha_p1)
         else:
-            if np.isclose(dist, dist_p2):
+            if np.isclose(dist, dist_p2, atol=0.005):
                 alpha_p2 = alpha_line(center, self.p2)
                 return (alpha_p2, alpha_p2)
         return ()

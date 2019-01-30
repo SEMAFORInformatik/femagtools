@@ -801,14 +801,14 @@ class Area(object):
 
         logger.debug("\n***** mark_stator_subregions [{}] *****"
                      .format(self.id))
-        logger.debug(" - close_to_ag        : {}".format(close_to_ag))
-        logger.debug(" - close_to_opposition: {}".format(close_to_opposition))
-        logger.debug(" - airgap_radius      : {}".format(airgap_radius))
-        logger.debug(" - close_to_startangle: {}".format(self.close_to_startangle))
-        logger.debug(" - close_to_endangle  : {}".format(self.close_to_endangle))
-        logger.debug(" - alpha              : {}".format(alpha))
-        logger.debug(" - min_angle          : {}".format(self.min_angle))
-        logger.debug(" - max_angle          : {}".format(self.max_angle))
+        logger.debug(" - close_to_ag        : %s", close_to_ag)
+        logger.debug(" - close_to_opposition: %s", close_to_opposition)
+        logger.debug(" - airgap_radius      : %3.12f", airgap_radius)
+        logger.debug(" - close_to_startangle: %s", self.close_to_startangle)
+        logger.debug(" - close_to_endangle  : %s", self.close_to_endangle)
+        logger.debug(" - alpha              : %3.12f", alpha)
+        logger.debug(" - min_angle          : %3.12f", self.min_angle)
+        logger.debug(" - max_angle          : %3.12f", self.max_angle)
 
         if close_to_opposition:
             self.type = 5  # iron yoke (Joch)
@@ -870,27 +870,32 @@ class Area(object):
             return self.type
 
         if is_inner:
-            close_to_ag = np.isclose(r_out, self.max_dist)
-            close_to_opposition = np.isclose(r_in, self.min_dist)
+            close_to_ag = np.isclose(r_out, self.max_dist, atol=0.005)
+            close_to_opposition = r_in * 1.05 > self.min_dist
             airgap_radius = r_out
+            opposite_radius = r_in
         else:
-            close_to_ag = np.isclose(r_in, self.min_dist)
-            close_to_opposition = np.isclose(r_out, self.max_dist)
+            close_to_ag = np.isclose(r_in, self.min_dist, atol=0.005)
+            close_to_opposition = self.max_dist * 1.05 > r_out
             airgap_radius = r_in
+            opposite_radius = r_out
 
         self.close_to_startangle = np.isclose(self.min_angle, 0.0)
         self.close_to_endangle = np.isclose(self.max_angle, alpha)
 
         logger.debug("\n***** mark_rotor_subregions [{}] *****"
                      .format(self.id))
-        logger.debug(" - close_to_ag        : {}".format(close_to_ag))
-        logger.debug(" - close_to_opposition: {}".format(close_to_opposition))
-        logger.debug(" - airgap_radius      : {}".format(airgap_radius))
-        logger.debug(" - close_to_startangle: {}".format(self.close_to_startangle))
-        logger.debug(" - close_to_endangle  : {}".format(self.close_to_endangle))
-        logger.debug(" - alpha              : {}".format(alpha))
-        logger.debug(" - min_angle          : {}".format(self.min_angle))
-        logger.debug(" - max_angle          : {}".format(self.max_angle))
+        logger.debug(" - close_to_ag        : %s", close_to_ag)
+        logger.debug(" - close_to_opposition: %s", close_to_opposition)
+        logger.debug(" - min dist           : %3.12f", self.min_dist)
+        logger.debug(" - max dist           : %3.12f", self.max_dist)
+        logger.debug(" - airgap radius      : %3.12f", airgap_radius)
+        logger.debug(" - opposite radius    : %3.12f", opposite_radius)
+        logger.debug(" - close_to_startangle: %s", self.close_to_startangle)
+        logger.debug(" - close_to_endangle  : %s", self.close_to_endangle)
+        logger.debug(" - alpha              : %3.12f", alpha)
+        logger.debug(" - min_angle          : %3.12f", self.min_angle)
+        logger.debug(" - max_angle          : %3.12f", self.max_angle)
 
         if close_to_opposition:
             self.type = 1  # iron
@@ -900,6 +905,7 @@ class Area(object):
         if close_to_ag:
             mm = self.minmax_angle_dist_from_center(center, airgap_radius)
             air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
+
             if air_alpha / alpha < 0.2:
                 self.type = 0  # air
                 logger.debug("***** air #1 (close to airgap)\n")

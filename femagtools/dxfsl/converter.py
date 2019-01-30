@@ -246,10 +246,23 @@ def convert(dxfile,
             p.show_plot()
 
         if show_areas:
+            p.render_elements(machine_inner.geom, Shape,
+                              title=inner_name,
+                              show=True,
+                              draw_inside=True,
+                              neighbors=True,
+                              fill_areas=True)
             p.render_areas(machine_inner.geom,
                            title=inner_name,
                            with_nodes=True,
                            single_view=True)
+
+            p.render_elements(machine_outer.geom, Shape,
+                              title=outer_name,
+                              show=True,
+                              draw_inside=True,
+                              neighbors=True,
+                              fill_areas=True)
             p.render_areas(machine_outer.geom,
                            title=outer_name,
                            with_nodes=True,
@@ -323,11 +336,16 @@ def convert(dxfile,
             p.render_elements(machine.geom, Shape,
                               draw_inside=True, title=name,
                               rows=3, cols=2, num=5, show=False,
-                              # with_nodes=True,
                               fill_areas=True)
             p.show_plot()
 
         if show_areas:
+            p.render_elements(machine.geom, Shape,
+                              title=name,
+                              show=True,
+                              draw_inside=True,
+                              neighbors=True,
+                              fill_areas=True)
             p.render_areas(machine.geom,
                            title=name,
                            with_nodes=True,

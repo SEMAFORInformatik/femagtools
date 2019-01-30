@@ -25,8 +25,9 @@ from .functions import middle_point_of_line, middle_point_of_arc
 from .functions import middle_angle
 from .functions import normalise_angle, is_same_angle
 from .functions import part_of_circle, gcd
-from .functions import point_in_region, point_on_arc
+from .functions import point_on_arc, nodes_are_equal
 import io
+import time
 
 logger = logging.getLogger('femagtools.geom')
 
@@ -100,7 +101,7 @@ def add_or_split(el, x, out_elements, rtol, atol):
         logger.debug("=== overlapping elements ===")
         out_elements[x] = None
         return split_el
-    
+
     points = el.intersect_shape(out_elements[x], rtol, atol, True)
     if len(points) > 0:
         split_elements = out_elements[x].split(points, rtol, atol)
@@ -525,6 +526,9 @@ def single_path(edges):
 #         Geometrie         #
 #############################
 
+nodes_filecount = 0
+
+
 class Geometry(object):
     """collection of connected shapes"""
     def __init__(self, elements=[],
@@ -601,10 +605,11 @@ class Geometry(object):
     def move(self, offset):
         """moves all objects"""
         for e in self.g.edges(data=True):
-            e[2]['object'].move(offset)
+            e[2]['object'].move(offset, ndec)
         for c in self.circles():
             c.move((-offset[0], -offset[1]))
-        mapping = {n: (round(n[0]+offset[0], 3), round(n[1]+offset[1], 3))
+        mapping = {n: (round(n[0] + offset[0], ndec),
+                       round(n[1] + offset[1], ndec))
                    for n in self.g.nodes()}
         nx.relabel_nodes(self.g, mapping, copy=False)
 
@@ -613,11 +618,12 @@ class Geometry(object):
         T = np.array(((np.cos(alpha), -np.sin(alpha)),
                       (np.sin(alpha), np.cos(alpha))))
         for e in self.g.edges(data=True):
-            e[2]['object'].transform(T)
+            e[2]['object'].transform(T, ndec)
         for c in self.circles():
-            c.transform(T)
+            c.transform(T, ndec)
         rotnodes = np.dot(T, np.asarray(self.g.nodes()).T).T.tolist()
-        mapping = {n: (round(r[0], 3), round(r[1], 3))
+        mapping = {n: (round(r[0], ndec),
+                       round(r[1], ndec))
                    for n, r in zip(self.g.nodes(), rotnodes)}
         nx.relabel_nodes(self.g, mapping, copy=False)
 
@@ -627,7 +633,8 @@ class Geometry(object):
             e[2]['object'].scale(factor)
         for c in self.circles():
             c.scale(factor)
-        mapping = {n: (round(factor*n[0], 3), round(factor*n[1], 3))
+        mapping = {n: (round(factor * n[0], ndec),
+                       round(factor * n[1], ndec))
                    for n in self.g.nodes()}
         nx.relabel_nodes(self.g, mapping, copy=False)
         self.diameters = tuple([factor*d for d in self.diameters])
@@ -702,6 +709,7 @@ class Geometry(object):
             logger.debug("WARNING in add_edge(): Points ar close together")
             logger.debug("        p1 = {}, p2 = {}".format(n1, n2))
 
+        entity.set_nodes(n1, n2)
         self.g.add_edge(n1, n2, object=entity)
 
     def get_edge(self, eg):
@@ -961,15 +969,23 @@ class Geometry(object):
         angles.sort()
         return angles[len(angles)-1][1]
 
-    def get_new_area(self, start_p1, start_p2, solo):
-        logger.debug('==> start of get_new_area({}, {})'
-                     .format(start_p1, start_p2))
-        e_dict = self.g.get_edge_data(start_p1, start_p2)
+    def get_new_area(self, start_n1, start_n2, solo):
+        logger.debug('==> start of get_new_area()')
+
+        e_dict = self.g.get_edge_data(start_n1, start_n2)
         if not e_dict:
             raise ValueError("Fatal: no edge-data found")
         area = []
         e = e_dict['object']
-        x = e.get_point_number(start_p1)
+        x = e.get_node_number(start_n1)
+
+        logger.debug("  FIRST {} => {} #{}: [{}, {}, {}]"
+                     .format(start_n1,
+                             start_n2,
+                             x,
+                             e_dict[0],
+                             e_dict[1],
+                             e_dict[2]))
 
         if e_dict[x]:
             logger.debug("<== area already tracked ({}) ***".format(x))
@@ -983,57 +999,64 @@ class Geometry(object):
             e_dict[2] = True  # footprint
             return area
 
-        first_p = start_p1
-        this_p = start_p2
+        first_n = start_n1
+        this_n = start_n2
 
-        next_p = self.point_lefthand_side(first_p, this_p)
-        if not next_p:
+        next_n = self.point_lefthand_side(first_n, this_n)
+        if not next_n:
             logger.debug("<== dead end ({}, {})"
-                         .format(first_p, this_p))
+                         .format(first_n, this_n))
             return None
 
-        a = normalise_angle(alpha_points(first_p, this_p, next_p))
+        a = normalise_angle(alpha_points(first_n, this_n, next_n))
         alpha = a
 
-        afternext_p = ()
+        afternext_n = ()
         c = 0
-        while not (points_are_close(next_p, start_p1) and
-                   points_are_close(afternext_p, start_p2)):
-            logger.debug('  Next {}'.format(next_p))
+        while not (nodes_are_equal(next_n, start_n1) and
+                   nodes_are_equal(afternext_n, start_n2)):
             c += 1
             if c > self.num_edges * 2:
                 logger.error("FATAL: *** over {} elements in area ? ***"
                              .format(self.num_edges))
                 plot_area(area)
                 sys.exit(1)
-            e_dict = self.g.get_edge_data(this_p, next_p)
+            e_dict = self.g.get_edge_data(this_n, next_n)
             e = e_dict['object']
-            x = e.get_point_number(this_p)
+            x = e.get_node_number(this_n)
+            logger.debug("  NEXT {} => {} #{}: [{}, {}, {}]"
+                         .format(this_n,
+                                 next_n,
+                                 x,
+                                 e_dict[0],
+                                 e_dict[1],
+                                 e_dict[2]))
+
             if e_dict[x]:
                 logger.debug('<== path already tracked ***')
                 return None
             e_dict[x] = True  # footprint
-            first_p = this_p
-            this_p = next_p
-            next_p = self.point_lefthand_side(first_p, this_p)
-            if not next_p:
+            first_n = this_n
+            this_n = next_n
+            next_n = self.point_lefthand_side(first_n, this_n)
+            if not next_n:
                 logger.debug("<== dead end ({},{})"
-                             .format(first_p, this_p))
+                             .format(first_n, this_n))
                 return None
 
-            a = normalise_angle(alpha_points(first_p, this_p, next_p))
+            a = normalise_angle(alpha_points(first_n, this_n, next_n))
             alpha += a
             area.append(e)
-            afternext_p = self.point_lefthand_side(this_p, next_p)
+            afternext_n = self.point_lefthand_side(this_n, next_n)
 
         logger.debug("  END OF get_new_area")
 
-        e_dict = self.g.get_edge_data(this_p, next_p)
+        e_dict = self.g.get_edge_data(this_n, next_n)
         e = e_dict['object']
-        x = e.get_point_number(this_p)
+        x = e.get_node_number(this_n)
         e_dict[x] = True  # footprint
         area.append(e)
-        a = normalise_angle(alpha_points(this_p, next_p, start_p2))
+        a = normalise_angle(alpha_points(this_n, next_n, start_n2))
         alpha += a
 
         if alpha < 0.0:
@@ -1068,12 +1091,13 @@ class Geometry(object):
             nx.set_edge_attributes(self.g, False, 1)
             nx.set_edge_attributes(self.g, False, 2)
 
-        for p in self.g.nodes():
+        for n in self.g.nodes():
             if self.debug:
                 print('.', end='', flush=True)
-            neighbors = [n for n in self.g[p]]
-            for next_p in neighbors:
-                area = self.get_new_area(p, next_p, len(neighbors) < 3)
+
+            nbrs = [nbr for nbr in self.g.neighbors(n)]
+            for next_n in nbrs:
+                area = self.get_new_area(n, next_n, len(nbrs) < 3)
                 if area:
                     a = Area(area, self.center, 0.0)
                     append(self.area_list, a)
@@ -1402,7 +1426,7 @@ class Geometry(object):
         logger.info("find symmetry")
         arealist = self.list_of_areas()
 
-        logger.info("  {} areas available".format(len(arealist)))
+        logger.info(" - {} areas available".format(len(arealist)))
         if len(arealist) == 0:
             return False
 
@@ -2276,6 +2300,16 @@ class Geometry(object):
             print(n)
 
     def write_nodes(self, filename):
+        global nodes_filecount
+        ts = time.localtime(time.time())
+        nodes_filecount += 1
+        name = "{}_{}_{:02}_{:02}_{:02}.{}".format(filename,
+                                                   nodes_filecount,
+                                                   ts.tm_hour,
+                                                   ts.tm_min,
+                                                   ts.tm_sec,
+                                                   'txt')
+        logger.info(">>> write nodes {} <<<".format(name))
         nodes = []
         for n in self.g.nodes():
             nodes.append(n)
@@ -2285,7 +2319,12 @@ class Geometry(object):
         for n in nodes:
             content.append(u"{}".format(n))
             for nbr in self.g.neighbors(n):
-                content.append(u" --> {}".format(nbr))
+                e_dict = self.g.get_edge_data(n, nbr)
+                if not e_dict:
+                    raise ValueError("Fatal: no edge-data found")
+                e = e_dict['object']
+                content.append(u" --> {}   e-nodes {} / {}"
+                               .format(nbr, e.n1, e.n2))
 
-        with io.open(filename, 'w', encoding='utf-8') as f:
+        with io.open(name, 'w', encoding='utf-8') as f:
             f.write('\n'.join(content))

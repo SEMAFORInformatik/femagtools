@@ -14,7 +14,7 @@ from .functions import distance, line_m, line_n
 from .functions import point, points_are_close, points_on_arc
 from .functions import alpha_line, alpha_angle, alpha_triangle
 from .functions import normalise_angle, min_angle, get_angle_of_arc
-from .functions import lines_intersect_point
+from .functions import lines_intersect_point, nodes_are_equal
 from .functions import is_angle_inside
 # from .geom import ndec
 
@@ -57,6 +57,10 @@ class Shape(object):
             return attr in self.my_attrs
         return False
 
+    def set_nodes(self, n1, n2):
+        self.n1 = n1
+        self.n2 = n2
+
     """an abstract geometry with 2 points"""
     def start(self):
         return self.p1
@@ -98,25 +102,39 @@ class Shape(object):
     def n(self, m):
         return line_n(self.p1, m)
 
-    def move(self, dist):
+    def move(self, dist, ndec):
         self.p1 = self.p1[0] + dist[0], self.p1[1] + dist[1]
         self.p2 = self.p2[0] + dist[0], self.p2[1] + dist[1]
+        self.n1 = (round(self.n1[0] + dist[0], ndec),
+                   round(self.n1[1] + dist[1], ndec))
+        self.n2 = (round(self.n2[0] + dist[0], ndec),
+                   round(self.n2[1] + dist[1], ndec))
 
-    def scale(self, factor):
+    def scale(self, factor, ndec):
         self.p1 = factor*self.p1[0], factor*self.p1[1]
         self.p2 = factor*self.p2[0], factor*self.p2[1]
+        self.n1 = (round(factor*self.p1[0], ndec),
+                   round(factor*self.p1[1], ndec))
+        self.n2 = (round(factor*self.p2[0], ndec),
+                   round(factor*self.p2[1], ndec))
 
-    def transform(self, T, **kwargs):
+    def transform(self, T, ndec):
         n = T.dot(np.array((self.p1[0], self.p1[1])))
         self.p1 = (n[0], n[1])
         n = T.dot(np.array((self.p2[0], self.p2[1])))
         self.p2 = (n[0], n[1])
+        n = T.dot(np.array((self.n1[0], self.n1[1])))
+        self.n1 = (round(n[0], ndec),
+                   round(n[1], ndec))
+        n = T.dot(np.array((self.n2[0], self.n2[1])))
+        self.n2 = (round(n[0], ndec),
+                   round(n[1], ndec))
         return self
 
     def overlapping_shape(self, e, rtol=1e-03, atol=1e-03):
         # element e is already installed
         return None  # no overlap
-    
+
     def intersect_shape(self, e, rtol=1e-03, atol=1e-03, include_end=False):
         if isinstance(e, Line):
             return self.intersect_line(e, rtol, atol, include_end)
@@ -126,15 +144,19 @@ class Shape(object):
             return self.intersect_circle(e, rtol, atol, include_end)
         return []
 
-    def get_point_number(self, p):
-        if points_are_close(p, self.p1, rtol=0.0, atol=0.001) and \
-           points_are_close(p, self.p2, rtol=0.0, atol=0.001):
-            logger.debug("WARNING: get_point_number(): " +
-                         "both points are close !!")
-        if points_are_close(p, self.p1, rtol=0.0, atol=0.001):
+    def get_node_number(self, n):
+        if nodes_are_equal(n, self.n1):
+            if nodes_are_equal(n, self.n2):
+                logger.debug("FATAL: get_node_number(): " +
+                             "both nodes are close !!")
+                raise ValueError('both nodes are equal in element')
             return 1
-        if points_are_close(p, self.p2, rtol=0.0, atol=0.001):
+
+        if nodes_are_equal(n, self.n2):
             return 2
+
+        logger.debug("FATAL: get_node_number(): missing node")
+        raise ValueError('missing node in element')
         return 0
 
     def minmax_angle_dist_from_center(self, center, dist):
@@ -175,14 +197,16 @@ class Circle(Shape):
         self.radius = e.radius
         self.p1 = self.center[0]-self.radius, self.center[1]
         self.p2 = self.center[0]+self.radius, self.center[1]
+        self.n1 = None
+        self.n2 = None
 
     def render(self, renderer, color='blue', with_nodes=False):
         renderer.circle(self.center, self.radius, color)
         if with_nodes:
             renderer.point(self.center, 'ro', 'white')
 
-    def move(self, dist):
-        super(Circle, self).move(dist)
+    def move(self, dist, ndec):
+        super(Circle, self).move(dist, ndec)
         self.center = self.center[0]+dist[0], self.center[1]+dist[1]
 
     def minmax(self):
@@ -239,8 +263,8 @@ class Circle(Shape):
         self.center = factor*self.center[0], factor*self.center[1]
         self.radius = factor*self.radius
 
-    def transform(self, T, **kwargs):
-        super(Circle, self).transform(T)
+    def transform(self, T, ndec):
+        super(Circle, self).transform(T, ndec)
         n = T.dot(np.array((self.center[0], self.center[1])))
         self.center = (n[0], n[1])
         return self
@@ -474,6 +498,8 @@ class Arc(Circle):
                    self.center[1] + e.radius*np.sin(self.startangle))
         self.p2 = (self.center[0] + e.radius*np.cos(self.endangle),
                    self.center[1] + e.radius*np.sin(self.endangle))
+        self.n1 = None
+        self.n2 = None
 
     def render(self, renderer, color='blue', with_nodes=False):
         renderer.arc(self.startangle, self.endangle,
@@ -663,20 +689,15 @@ class Arc(Circle):
         """
         return is_angle_inside(self.startangle, self.endangle, alpha)
 
-    def transform(self, T, **kwargs):
-        super(Arc, self).transform(T)
+    def transform(self, T, ndec):
+        super(Arc, self).transform(T, ndec)
         p1, p2 = ((self.p1[0]-self.center[0],
                    self.p1[1]-self.center[1]),
                   (self.p2[0]-self.center[0],
                    self.p2[1]-self.center[1]))
 
-        if kwargs.get('reflect', False):
-            self.p1, self.p2 = self.p2, self.p1
-            self.endangle = np.arctan2(p1[1], p1[0])
-            self.startangle = np.arctan2(p2[1], p2[0])
-        else:
-            self.startangle = np.arctan2(p1[1], p1[0])
-            self.endangle = np.arctan2(p2[1], p2[0])
+        self.startangle = np.arctan2(p1[1], p1[0])
+        self.endangle = np.arctan2(p2[1], p2[0])
         return self
 
     def minmax(self):
@@ -808,6 +829,8 @@ class Line(Shape):
         self.init_attributes(color, attr)
         self.p1 = e.start[0], e.start[1]
         self.p2 = e.end[0], e.end[1]
+        self.n1 = None
+        self.n2 = None
 
     def render(self, renderer, color='blue', with_nodes=False):
         tmp_color = color

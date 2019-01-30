@@ -231,6 +231,13 @@ def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
             np.isclose(p1[1], p2[1], rtol, atol))
 
 
+def nodes_are_equal(n1, n2):
+    if not (n1 and n2):
+        return False
+    return (np.isclose(n1[0], n2[0], rtol=0.0, atol=1e-08) and
+            np.isclose(n1[1], n2[1], rtol=0.0, atol=1e-08))
+
+
 def point_in_region(p, x_min, x_max, y_min, y_max):
     if p[0] < x_min or p[0] > x_max:
         return False

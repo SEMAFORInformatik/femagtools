@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-#    from .. import __version__
     argparser = argparse.ArgumentParser(
         description='Process DXF file and create a plot or FSL file.')
     argparser.add_argument('dxfile',
@@ -68,7 +67,7 @@ def main():
                            help='absolut tolerance (pickdist)',
                            dest='atol',
                            type=float,
-                           default=1e-03)
+                           default=0.005)
     argparser.add_argument('-s', '--split',
                            help='split intersections',
                            dest='split',
@@ -100,9 +99,6 @@ def main():
     argparser.add_argument('--version',
                            help='show version of some packages',
                            dest='version',
-                           #version="%(prog)s {}, Python {}".format(
-                           #    __version__, sys.version),
-                           #action="version")
                            action="store_true")
     argparser.add_argument('--debugger',
                            help='print debug information in logfile',
@@ -135,6 +131,7 @@ def main():
             logger.info("matplotlib version: %s", matplotlib.__version__)
         except ImportError:  # ModuleNotFoundError:
             logger.info("matplotlib version: <matplotlib not available>")
+        logger.info("Python: %s", sys.version)
         sys.exit(0)
 
     if args.airgap > 0.0:

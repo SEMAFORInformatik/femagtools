@@ -262,6 +262,7 @@ class ZmqFemag(BaseFemag):
                                              magnetizingCurves, magnets)
         self.host = host
         self.port = port
+        self.ipaddr = ''
         self.request_socket = None
         self.subscriber_socket = None
         self.proc = None
@@ -280,6 +281,13 @@ class ZmqFemag(BaseFemag):
         self.request_socket = context.socket(zmq.REQ)
         self.request_socket.connect('tcp://{0}:{1}'.format(
             self.host, self.port))
+        if not self.ipaddr:
+            if self.host != 'localhost':
+                inforesp = self.info()
+                self.ipaddr = json.loads(inforesp[1])['addr']
+                logger.info("Connected with %s", self.ipaddr)
+            else:
+                self.ipaddr = '127.0.0.1'
         self.request_socket.setsockopt(zmq.LINGER, 500)
         return self.request_socket
 
@@ -288,10 +296,12 @@ class ZmqFemag(BaseFemag):
         if self.subscriber_socket:
             return self.subscriber_socket
         context = zmq.Context.instance()
+        if not self.ipaddr:
+            self.ipaddr = '127.0.1'
         self.subscriber_socket = context.socket(zmq.SUB)
         self.subscriber_socket.connect(
             'tcp://{0}:{1}'.format(
-                self.host, self.port+1))
+                self.ipaddr, self.port+1))
         self.subscriber_socket.setsockopt(zmq.SUBSCRIBE, b'')
         self.subscriber_socket.RCVTIMEO = 900  # in milliseconds
         return self.subscriber_socket
@@ -359,6 +369,13 @@ class ZmqFemag(BaseFemag):
         logger.debug("femag is not running")
         return False
 
+    def send_request(self, msg):
+        request_socket = self.__req_socket()
+        for m in msg[:-1]:
+            request_socket.send_string(m, flags=zmq.SNDMORE)
+        request_socket.send_string(msg[-1])
+        return request_socket.recv_multipart()
+
     def send_fsl(self, fsl, callback=None, header='FSL', timeout=None):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
 
@@ -373,6 +390,7 @@ class ZmqFemag(BaseFemag):
             fsl, callback, header))
 
         try:
+            request_socket = self.__req_socket()
             # Start the reader thread to get information about the next calculation
             if callback:
                 self.stopStreamReader()
@@ -380,7 +398,6 @@ class ZmqFemag(BaseFemag):
                 self.reader.setDaemon(True)
                 self.reader.start()
 
-            request_socket = self.__req_socket()
             request_socket.send_string(header, flags=zmq.SNDMORE)
             logger.debug("Sent header")
             request_socket.send_string(fsl)
@@ -555,27 +572,17 @@ class ZmqFemag(BaseFemag):
     
     def cleanup(self):
         """remove all FEMAG files in working directory (FEMAG 8.5 Rev 3282 or greater only)"""
-        request_socket = self.__req_socket()
-        request_socket.send_string('FSL', flags=zmq.SNDMORE)
-        request_socket.send_string('save_model(close)')
-        response = request_socket.recv_multipart()
-        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-        request_socket.send_string('cleanup')
-        return [s.decode() for s in request_socket.recv_multipart()]
+        self.send_request(['FSL', 'save_model(close)'])
+        return [r.decode() for r in self.send_request(['CONTROL', 'cleanup'])]
     
     def info(self):
         """get various resource information (FEMAG 8.5 Rev 3282 or greater only)"""
-        request_socket = self.__req_socket()
-        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-        request_socket.send_string('info')
-        return [s.decode() for s in request_socket.recv_multipart()]
+        return [r.decode() for r in self.send_request(['CONTROL', 'info'])]
 
     def getfile(self, filename=''):
         """get file (FEMAG 8.5 Rev 3282 or greater only)"""
-        request_socket = self.__req_socket()
-        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-        request_socket.send_string('getfile = {}'.format(filename))
-        response = request_socket.recv_multipart()
+        response = self.send_request(
+            ['CONTROL', 'getfile = {}'.format(filename)])
         return [response[0].decode(), response[1]]
         
     def stopStreamReader(self):

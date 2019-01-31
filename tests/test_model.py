@@ -52,6 +52,15 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(model.magnettype(), 'magnetSector')
         self.assertEqual(model.magnet['material'], {'name': 'MCV'})
 
+    def test_modelname(self):
+        modelname = 'PM-45_56-B'
+        model = femagtools.MachineModel({'name': modelname})
+        self.assertEqual(modelname, model.name)
+        modelname = 'PM-45/?@56-B'
+        model = femagtools.MachineModel({'name': modelname})
+        self.assertEqual('PM-4556-B', model.name)
+
+
 if __name__ == '__main__':
     unittest.main()
 

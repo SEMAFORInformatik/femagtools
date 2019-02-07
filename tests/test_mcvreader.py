@@ -37,6 +37,19 @@ class McvReaderTest(unittest.TestCase):
         self.assertAlmostEqual(r['curve'][0]['hi'][-1], 16073, 0)
         self.assertAlmostEqual(r['curve'][1]['hi'][-1], 18718, 0)
 
+    def test_read_PM_mcv(self):
+        testPath = os.path.split(__file__)[0]
+        if not testPath:
+            testPath = '.'
+        filename = "data/FERRIT_20gC.MCV"
+        mcv = femagtools.mcv.read(
+            '{0}/{1}'.format(testPath, filename))
+        self.assertEqual(mcv.mc1_type, 2)
+        self.assertAlmostEquals(min(mcv.curve[0]['hi']), -560e3)
+        self.assertAlmostEquals(max(mcv.curve[0]['hi']), -50e3)
+        self.assertAlmostEquals(min(mcv.curve[0]['bi']), -1.10371697)
+        self.assertAlmostEquals(max(mcv.curve[0]['bi']), 0.4)
+
         
 if __name__ == '__main__':
     unittest.main()

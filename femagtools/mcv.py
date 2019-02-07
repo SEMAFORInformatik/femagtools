@@ -25,7 +25,11 @@ types = {1: 'Soft iron B(H)',
          2: 'Permanent magnet B(H)',
          3: 'Soft iron B(H,alfa)',
          4: 'Permanent magnet B(H,Br)',
-         5: 'Permanent magnet B(H,alfa)'}
+         5: 'Permanent magnet B(H,alfa)',
+         6: 'Soft iron Punching',
+         7: 'Soft iron Tension',
+         8: 'Soft iron Temperature'}
+         
 MAGCRV = 1
 DEMCRV = 2
 ORIENT_CRV = 3
@@ -697,10 +701,8 @@ class Reader(Mcv):
             'b_coeff': self.b_coeff,
             'rho': self.rho,
             'fe_sat_mag': self.fe_sat_mag,
-            'curve': [{
-                'bi': c.get('bi'),
-                'hi': c.get('hi'),
-            } for c in self.curve]
+            'curve': [{k: c[k] for k in ('hi', 'bi')}
+                      for c in self.curve]
         }
         try:
             if self.losses:
@@ -837,26 +839,26 @@ class MagnetizingCurve(object):
 
             bk1 = 0.0
             while bk1 <= curve['bi'][-1]:
-                    bk12 = bk02 + self.mcv[m]['db2']
-                    bk1 = np.sqrt(bk12)
-                    j = 2
-                    while j < len(curve['bi']) and bk1 <= curve['bi'][j]:
-                        j += 1
-                    j -= 1
-                    bdel = curve['bi'][j] - curve['bi'][j1]
-                    c1 = (curve['hi'][j] - curve['hi'][j1])/bdel
-                    c2 = curve['hi'][j1] - c1*curve['bi'][j1]
+                bk12 = bk02 + self.mcv[m]['db2']
+                bk1 = np.sqrt(bk12)
+                j = 2
+                while j < len(curve['bi']) and bk1 <= curve['bi'][j]:
+                    j += 1
+                j -= 1
+                bdel = curve['bi'][j] - curve['bi'][j1]
+                c1 = (curve['hi'][j] - curve['hi'][j1])/bdel
+                c2 = curve['hi'][j1] - c1*curve['bi'][j1]
 
-                    nuek1 = c1 + c2/bk1
+                nuek1 = c1 + c2/bk1
 
-                    curve['a'].append(MUE0*(bk12*nuek0 -
-                                            bk02*nuek1)/self.mcv[m]['db2'])
-                    curve['b'].append(MUE0*(nuek1 - nuek0)/self.mcv[m]['db2'])
-                    nuek0 = nuek1
-                    bk02 = bk12
+                curve['a'].append(MUE0*(bk12*nuek0 -
+                                        bk02*nuek1)/self.mcv[m]['db2'])
+                curve['b'].append(MUE0*(nuek1 - nuek0)/self.mcv[m]['db2'])
+                nuek0 = nuek1
+                bk02 = bk12
 
-                    curve['nuer'].append(MUE0*nuek1)
-                    curve['bi2'].append(bk12)
+                curve['nuer'].append(MUE0*nuek1)
+                curve['bi2'].append(bk12)
 
             curve['a'].append(1.0)
             curve['b'].append(MUE0*curve['hi'][-1]-curve['bi'][-1])
@@ -912,7 +914,8 @@ class MagnetizingCurve(object):
         bname = self.fix_name(mcv['name'], fillfac)
         filename = ''.join((bname, ext))
         writer = Writer(mcv)
-        writer.writeMcv(os.path.join(directory, filename), fillfac=fillfac)
+        writer.writeMcv(os.path.join(directory, filename),
+                        fillfac=fillfac)
         return filename
 
     def fitLossCoeffs(self):

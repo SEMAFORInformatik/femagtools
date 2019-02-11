@@ -977,7 +977,11 @@ class Geometry(object):
             raise ValueError("Fatal: no edge-data found")
         area = []
         e = e_dict['object']
-        x = e.get_node_number(start_n1)
+        try:
+            x = e.get_node_number(start_n1)
+        except Exception:
+            logger.debug(" start n1=%s, n2=%s", start_n1, start_n2)
+            return None
 
         logger.debug("  FIRST {} => {} #{}: [{}, {}, {}]"
                      .format(start_n1,

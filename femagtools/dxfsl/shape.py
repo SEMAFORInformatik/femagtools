@@ -148,14 +148,16 @@ class Shape(object):
         if nodes_are_equal(n, self.n1):
             if nodes_are_equal(n, self.n2):
                 logger.debug("FATAL: get_node_number(): " +
-                             "both nodes are close !!")
+                             "both nodes of %s are close to %s",
+                             self, n)
                 raise ValueError('both nodes are equal in element')
             return 1
 
         if nodes_are_equal(n, self.n2):
             return 2
 
-        logger.debug("FATAL: get_node_number(): missing node")
+        logger.debug("FATAL: get_node_number(): node %s missing in %s",
+                     n, self)
         raise ValueError('missing node in element')
         return 0
 

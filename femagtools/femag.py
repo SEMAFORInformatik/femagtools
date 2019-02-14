@@ -373,7 +373,10 @@ class ZmqFemag(BaseFemag):
         request_socket = self.__req_socket()
         for m in msg[:-1]:
             request_socket.send_string(m, flags=zmq.SNDMORE)
-        request_socket.send_string(msg[-1])
+        if isinstance(msg[-1], list):
+            request_socket.send_string('\n'.join(msg[-1]))
+        else:
+            request_socket.send_string(msg[-1])
         return request_socket.recv_multipart()
 
     def send_fsl(self, fsl, callback=None, header='FSL', timeout=None):
@@ -585,6 +588,15 @@ class ZmqFemag(BaseFemag):
             ['CONTROL', 'getfile = {}'.format(filename)])
         return [response[0].decode(), response[1]]
         
+    def exportsvg(self, fslcmds):
+        """get svg format from fsl commands (if any graphic created)"""
+        response = self.send_request(['SVG', fslcmds])
+        status = json.loads(response[0].decode())['status']
+        if status == 'ok':
+            filename = json.loads(response[1].decode())['svgfile']
+            return self.getfile(filename)
+        return [s.decode() for s in response]
+            
     def stopStreamReader(self):
         if self.reader:
             logger.debug("stop stream reader")

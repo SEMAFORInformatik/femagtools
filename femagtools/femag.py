@@ -589,12 +589,12 @@ class ZmqFemag(BaseFemag):
         return [response[0].decode(), response[1]]
         
     def exportsvg(self, fslcmds):
-        """get svg format from fsl commands (if any graphic created)"""
+        """get svg format from fsl commands (if any graphic created)
+        (since FEMAG 8.5 Rev 3343) """
         response = self.send_request(['SVG', fslcmds])
-        status = json.loads(response[0].decode())['status']
-        if status == 'ok':
-            filename = json.loads(response[1].decode())['svgfile']
-            return self.getfile(filename)
+        rc = json.loads(response[0].decode())
+        if rc['status'] == 'ok':
+            return self.getfile(rc['result_file'][0])
         return [s.decode() for s in response]
             
     def stopStreamReader(self):

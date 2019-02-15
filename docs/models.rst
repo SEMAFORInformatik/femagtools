@@ -724,7 +724,7 @@ Since Femag Rel 8.3 there is no need to fully specify the machine model::
   r = femag(machine,
             operatingConditions)
 
-For older versions the minimal data is::
+For older FEMAG versions the minimal data is::
 
   machine = dict(
       name="PM 130 L4",
@@ -781,7 +781,7 @@ Example with a single dxf file motor.dxf::
     The parameters *poles*, *outer_diam*, *bore_diam* and *airgap* as well as *num_slots* and *num_slots_gen* will be set automatically
 
 
-Example with two dxf for stator and rotor::
+Example with two separate dxf files for stator and rotor::
 
    machine = dict(
       name="Motor",

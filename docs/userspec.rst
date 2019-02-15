@@ -10,10 +10,8 @@ Magnet geometries not covered by the built in models can be specified by fsl cod
 The steps are:
 
 1. Create a diagram of the geometry and decide about the parameters to be used.
-2. Create a fsl mako template file with the chosen parameters as placeholders
-      using the `Mako <http://www.makotemplates.org>`_ syntax with ${}.
-3. Include this filename in the magnet model within the section using the basename of the mako file
-   and set the parameter values.
+2. Create a fsl mako template file with the chosen parameters as placeholders using the `Mako <http://www.makotemplates.org>`_ syntax with ${}.
+3. Include this filename in the magnet model within the section using the basename of the mako file and set the parameter values.
 
 The following values are defined globally and can be referenced in the template:
 
@@ -33,7 +31,7 @@ da2             Diameter of rotor           m
 dy2             Diameter of rotor yoke      m
 ==============  =========================== =======
 
-Example FSL Template file spoke.mako using 4 parameters::
+Example FSL Template file ''spoke.mako'' using 4 parameters::
 
   -- Model parameters
 
@@ -64,7 +62,7 @@ Example FSL Template file spoke.mako using 4 parameters::
   x[9],y[9] = pr2c(da2/2 - hs, taup)
   x[10],y[10] = pr2c(da2/2, taup)
   
-Magnet definition in Python file with included fsl file and the parameter definition::
+Magnet definition in Python file with included mako file (eg in this case ''spoke'') and the parameter definition::
 
   ..
   magnet=dict(
@@ -85,4 +83,4 @@ The resulting model:
 
    Starting with Release 0.4.4 the syntax has changed but backward compatibility is fully supported.
    
-   the complete example can be found in `stator1-spoke.py <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/stator1-spoke.py>`_ and `spokefml.fsl <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/spokefml.fsl>`_ in the example directory on github.
+   the complete example can be found in `stator1-spoke.py <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/stator1-spoke.py>`_ and `spokefml.mako <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/spokefml.mako>`_ in the example directory on github.

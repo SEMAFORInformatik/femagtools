@@ -12,6 +12,7 @@ from __future__ import print_function
 import numpy as np
 import logging
 from .shape import Element, Circle, Line, Shape
+from .corner import Corner
 from .functions import point, points_are_close
 from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
 from .functions import line_m, line_n, mirror_point
@@ -408,16 +409,31 @@ class Machine(object):
             self.delete_center_circle()
 
         if self.startangle == self.endangle:
+            logger.info('end of repair_hull: circle')
             return
 
-        self.geom.repair_hull_line(self.center, self.startangle)
-        self.geom.repair_hull_line(self.center, self.endangle)
+        self.repair_hull_geom(self.geom, self.startangle, self.endangle)
 
         if self.mirror_geom:
-            self.mirror_geom.repair_hull_line(self.center,
-                                              self.mirror_startangle)
-            self.mirror_geom.repair_hull_line(self.center,
-                                              self.mirror_endangle)
+            self.repair_hull_geom(self.mirror_geom,
+                                  self.mirror_startangle,
+                                  self.mirror_endangle)
+        logger.debug('end of repair_hull')
+
+    def repair_hull_geom(self, geom, startangle, endangle):
+        logger.debug('repair_hull_geom')
+
+        c_corner = Corner(self.center, self.center)
+        start_corners = geom.get_corner_list(self.center, startangle)
+        end_corners = geom.get_corner_list(self.center, endangle)
+
+        geom.repair_hull_line(self.center,
+                              startangle, start_corners,
+                              c_corner in end_corners)
+        geom.repair_hull_line(self.center,
+                              endangle, end_corners,
+                              c_corner in start_corners)
+        logger.debug('end of repair_hull_geom')
 
     def set_minmax_radius(self):
         self.geom.set_minmax_radius(self.center)

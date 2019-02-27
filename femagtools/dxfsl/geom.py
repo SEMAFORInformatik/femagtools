@@ -786,7 +786,7 @@ class Geometry(object):
         corners = [Corner(center, c)
                    for c in self.angle_nodes(center, angle, rtol, atol)]
         if len(corners) == 1:
-            logger.debug('the center is a corner')
+            logger.debug('get_corner_list: the center is a corner')
             corners.append(Corner(center, tuple(center)))
         if len(corners) > 1:
             corners.sort()
@@ -798,7 +798,7 @@ class Geometry(object):
     def start_max_corner(self, i):
         return self.start_corners[-1][i]
 
-    def repair_hull_line(self, center, angle):
+    def repair_hull_line(self, center, angle, corners, with_center):
         # We need to set our own tolerance range
         # to find the right points
         rtol = 1e-4
@@ -806,10 +806,10 @@ class Geometry(object):
 
         logger.debug("repair_hull_line(center={}, angle={})"
                      .format(center, angle))
-        corners = self.get_corner_list(center, angle, rtol, atol)
+
         if len(corners) < 2:
             # no hull without more than 1 corners
-            logger.debug('repair_hull_line: only {} corners: EXIT'
+            logger.debug('end of repair_hull_line: only {} corners: EXIT'
                          .format(len(corners)))
             return
 
@@ -857,10 +857,19 @@ class Geometry(object):
                     clist = [c for c in clist_p2]
                 [corner.set_keep_node() for corner in clist]
 
-        [self.g.remove_node(c.point()) for c in corners if not c.keep_node()]
+        try:
+            [self.g.remove_node(c.point())
+             for c in corners if not c.keep_node()]
+        except Exception as e:
+            logger.error("Error: {}".format(e))
 
         # Rebuild Corner-list after correction
         corners = self.get_corner_list(center, angle, rtol, atol)
+
+        if with_center:
+            c_corner = Corner(center, tuple(center))
+            if c_corner not in corners:
+                corners.append(c_corner)
 
         if len(corners) > 1:
             corners.sort()
@@ -869,7 +878,7 @@ class Geometry(object):
                 p2 = c.point()
                 self.add_edge(p1, p2, Line(Element(start=p1, end=p2)))
                 p1 = p2
-        logger.debug('repair_hull_line: EXIT')
+        logger.debug('end of repair_hull_line')
 
     def set_minmax_radius(self, center):
         self.min_radius = 99999.0
@@ -2265,6 +2274,20 @@ class Geometry(object):
             for area in self.list_of_areas():
                 if area.type == 3:
                     area.type = 1  # iron
+
+        iron_mag_areas = [a for a in self.list_of_areas() if a.type == 9]
+        air_mag_areas = [a for a in self.list_of_areas() if a.type == 8]
+        ag_areas = [a for a in self.list_of_areas() if a.close_to_ag]
+        if len(ag_areas) == 1:
+            if len(iron_mag_areas) == 1:
+                [a.set_type(3) for a in iron_mag_areas]
+                iron_mag_areas = []
+            if len(air_mag_areas) == 1:
+                [a.set_type(3) for a in air_mag_areas]
+                air_mag_areas = []
+
+        [a.set_type(1) for a in iron_mag_areas]
+        [a.set_type(0) for a in air_mag_areas]
 
     def search_unknown_subregions(self):
         for area in self.list_of_areas():

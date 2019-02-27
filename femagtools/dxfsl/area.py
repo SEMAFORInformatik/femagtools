@@ -37,6 +37,7 @@ class Area(object):
         self.max_angle = 0.0
         self.min_air_angle = 0.0
         self.max_air_angle = 0.0
+        self.close_to_ag = False
         self.close_to_startangle = False
         self.close_to_endangle = False
         self.min_dist = 99999.0
@@ -176,12 +177,15 @@ class Area(object):
         self.alpha = round(alpha_angle(self.min_angle, self.max_angle), 3)
 
     def minmax_angle_dist_from_center(self, center, dist):
+        circ = Circle(Element(center=center, radius=dist))
         s = self.area[0]
         my_min_angle = self.max_angle
         my_max_angle = self.min_angle
         mm_angle = None
         for s in self.area:
-            mm_angle = s.minmax_angle_dist_from_center(center, dist)
+            mm_angle = s.minmax_angle_dist_from_center(my_min_angle,
+                                                       my_max_angle,
+                                                       center, circ)
             if mm_angle:
                 my_min_angle = min_angle(my_min_angle, mm_angle[0])
                 my_max_angle = max_angle(my_max_angle, mm_angle[1])
@@ -786,13 +790,17 @@ class Area(object):
             return self.type
 
         if is_inner:
-            close_to_ag = np.isclose(r_out, self.max_dist)
+            self.close_to_ag = np.isclose(r_out, self.max_dist)
             close_to_opposition = np.isclose(r_in, self.min_dist)
             airgap_radius = r_out
+            opposite_radius = r_in
+            airgap_toleranz = -(self.max_dist - self.min_dist) / 50.0  # 2%
         else:
-            close_to_ag = np.isclose(r_in, self.min_dist)
+            self.close_to_ag = np.isclose(r_in, self.min_dist)
             close_to_opposition = np.isclose(r_out, self.max_dist)
             airgap_radius = r_in
+            opposite_radius = r_out
+            airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
 
         self.close_to_startangle = np.isclose(self.min_angle, 0.0,
                                               1e-04, 1e-04)
@@ -801,14 +809,18 @@ class Area(object):
 
         logger.debug("\n***** mark_stator_subregions [{}] *****"
                      .format(self.id))
-        logger.debug(" - close_to_ag        : %s", close_to_ag)
+        logger.debug(" - close_to_ag        : %s", self.close_to_ag)
         logger.debug(" - close_to_opposition: %s", close_to_opposition)
         logger.debug(" - airgap_radius      : %3.12f", airgap_radius)
+        logger.debug(" - airgap_toleranz    : %3.12f", airgap_toleranz)
+        logger.debug(" - opposite radius    : %3.12f", opposite_radius)
         logger.debug(" - close_to_startangle: %s", self.close_to_startangle)
         logger.debug(" - close_to_endangle  : %s", self.close_to_endangle)
         logger.debug(" - alpha              : %3.12f", alpha)
         logger.debug(" - min_angle          : %3.12f", self.min_angle)
         logger.debug(" - max_angle          : %3.12f", self.max_angle)
+        logger.debug(" - min_dist           : %3.12f", self.min_dist)
+        logger.debug(" - max_dist           : %3.12f", self.max_dist)
 
         if close_to_opposition:
             self.type = 5  # iron yoke (Joch)
@@ -820,15 +832,23 @@ class Area(object):
             logger.debug("***** iron yoke #2\n")
             return self.type
 
-        if close_to_ag:  # close to airgap
-            mm = self.minmax_angle_dist_from_center(center, airgap_radius)
+        if self.close_to_ag:  # close to airgap
+            mm = self.minmax_angle_dist_from_center(center,
+                                                    airgap_radius +
+                                                    airgap_toleranz)
             self.min_air_angle = mm[0]
             self.max_air_angle = mm[1]
             air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
+            logger.debug(" - min_air_alpha      : {}".format(mm[0]))
+            logger.debug(" - max_air_alpha      : {}".format(mm[1]))
             logger.debug(" - air_alpha          : {}".format(air_alpha))
 
-            self.type = 9  # air or iron near windings and near airgap?
-            logger.debug("***** air or iron ??\n")
+            if self.alpha / air_alpha > 2:
+                logger.debug("***** windings near airgap\n")
+                self.type = 2  # windings
+            else:
+                self.type = 9  # air or iron near windings and near airgap?
+                logger.debug("***** air or iron ??\n")
             return self.type
 
         if self.close_to_startangle:
@@ -870,22 +890,24 @@ class Area(object):
             return self.type
 
         if is_inner:
-            close_to_ag = np.isclose(r_out, self.max_dist, atol=0.005)
-            close_to_opposition = r_in * 1.05 > self.min_dist
+            self.close_to_ag = np.isclose(r_out, self.max_dist, atol=0.005)
+            close_to_opposition = greater_equal(r_in * 1.05, self.min_dist)
             airgap_radius = r_out
             opposite_radius = r_in
+            airgap_toleranz = -(self.max_dist - self.min_dist) / 50.0  # 2%
         else:
-            close_to_ag = np.isclose(r_in, self.min_dist, atol=0.005)
-            close_to_opposition = self.max_dist * 1.05 > r_out
+            self.close_to_ag = np.isclose(r_in, self.min_dist, atol=0.005)
+            close_to_opposition = greater_equal(self.max_dist * 1.05, r_out)
             airgap_radius = r_in
             opposite_radius = r_out
+            airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
 
         self.close_to_startangle = np.isclose(self.min_angle, 0.0)
         self.close_to_endangle = np.isclose(self.max_angle, alpha)
 
         logger.debug("\n***** mark_rotor_subregions [{}] *****"
                      .format(self.id))
-        logger.debug(" - close_to_ag        : %s", close_to_ag)
+        logger.debug(" - close_to_ag        : %s", self.close_to_ag)
         logger.debug(" - close_to_opposition: %s", close_to_opposition)
         logger.debug(" - min dist           : %3.12f", self.min_dist)
         logger.debug(" - max dist           : %3.12f", self.max_dist)
@@ -902,12 +924,15 @@ class Area(object):
             logger.debug("***** iron (close to opposition)\n")
             return self.type
 
-        if close_to_ag:
-            mm = self.minmax_angle_dist_from_center(center, airgap_radius)
+        if self.close_to_ag:
+            mm = self.minmax_angle_dist_from_center(center,
+                                                    airgap_radius +
+                                                    airgap_toleranz)
             air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
+            logger.debug(" - air_alpha          : {}".format(air_alpha))
 
             if air_alpha / alpha < 0.2:
-                self.type = 0  # air
+                self.type = 8  # air or magnet ?
                 logger.debug("***** air #1 (close to airgap)\n")
                 return self.type
 
@@ -922,8 +947,8 @@ class Area(object):
                     self.phi = middle_angle(self.min_angle, self.max_angle)
                 logger.debug("***** magnet (close to airgap)\n")
             else:
-                self.type = 1  # iron
-                logger.debug("***** iron (close to airgap)\n")
+                self.type = 9  # iron or magnet ?
+                logger.debug("***** iron or magnet(close to airgap)\n")
             return self.type
 
         if self.is_mag_rectangle():
@@ -949,7 +974,7 @@ class Area(object):
                 logger.debug("***** air (part of a circle)\n")
                 return self.type
 
-        self.type = 0  # iron
+        self.type = 0  # air
         logger.debug("***** air (remains)\n")
         return self.type
 

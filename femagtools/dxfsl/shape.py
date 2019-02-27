@@ -13,9 +13,9 @@ from .functions import less_equal
 from .functions import distance, line_m, line_n
 from .functions import point, points_are_close, points_on_arc
 from .functions import alpha_line, alpha_angle, alpha_triangle
-from .functions import normalise_angle, min_angle, get_angle_of_arc
+from .functions import normalise_angle, min_angle, max_angle, get_angle_of_arc
 from .functions import lines_intersect_point, nodes_are_equal
-from .functions import is_angle_inside
+from .functions import is_angle_inside, intersect_point
 # from .geom import ndec
 
 logger = logging.getLogger('femagtools.geom')
@@ -161,24 +161,31 @@ class Shape(object):
         raise ValueError('missing node in element')
         return 0
 
-    def minmax_angle_dist_from_center(self, center, dist):
-        dist_p1 = distance(center, self.p1)
-        dist_p2 = distance(center, self.p2)
-        if np.isclose(dist, dist_p1, atol=0.005):
-            alpha_p1 = alpha_line(center, self.p1)
-            if np.isclose(dist, dist_p2, atol=0.005):
-                alpha_p2 = alpha_line(center, self.p2)
-                if alpha_angle(alpha_p1, alpha_p2) < np.pi:
-                    return (alpha_p1, alpha_p2)
-                else:
-                    return (alpha_p2, alpha_p1)
-            else:
-                return (alpha_p1, alpha_p1)
-        else:
-            if np.isclose(dist, dist_p2, atol=0.005):
-                alpha_p2 = alpha_line(center, self.p2)
-                return (alpha_p2, alpha_p2)
-        return ()
+    def minmax_angle_dist_from_center(self,
+                                      min_alfa, max_alfa,
+                                      center, circ):
+        logger.debug("minmax_angle_dist_from_center(center={}, circle={}"
+                     .format(center, circ))
+
+        points = self.intersect_circle(circ, include_end=True)
+        logger.debug("self={}".format(self))
+        logger.debug("points={}".format(points))
+        if not points:
+            logger.debug(" - no points")
+            return None
+        my_min_angle = min_alfa
+        my_max_angle = max_alfa
+        logger.debug(" - min {}, max {}"
+                     .format(my_min_angle, my_max_angle))
+        for p in points:
+            alpha = alpha_line(center, p)
+            my_min_angle = min_angle(my_min_angle, alpha)
+            my_max_angle = max_angle(my_max_angle, alpha)
+            logger.debug(" - min {}, max {}, alpha {}"
+                         .format(my_min_angle, my_max_angle, alpha))
+
+        logger.debug("end of minmax_angle_dist_from_center")
+        return (my_min_angle, my_max_angle)
 
     def __str__(self):
         return " {}/{}".format(self.p1, self.p2)
@@ -248,9 +255,6 @@ class Circle(Shape):
                 return (alpha_p2, alpha_p1)
         else:
             return (0.0, 0.0)
-
-    def minmax_angle_dist_from_center(self, center, dist):
-        return ()
 
     def get_nodes(self, parts=8):
         """ returns a list of virtual nodes to create the convex hull
@@ -770,7 +774,7 @@ class Arc(Circle):
         else:
             r2 = np.sqrt(v)
             circ = Circle(Element(center=center, radius=r2))
-            points = self.intersect_circle(circ)
+            points = self.intersect_circle(circ, include_end=True)
 
         points.append(self.p2)
 
@@ -972,6 +976,13 @@ class Line(Shape):
         """
         dist_max = max(distance(center, self.p1), distance(center, self.p2))
         dist_min = min(distance(center, self.p1), distance(center, self.p2))
+        m = line_m(self.p1, self.p2)
+        n = line_n(self.p1, m)
+        p = intersect_point(center, self.p1, m, n)
+
+        if self.is_point_inside(p, 1e-03, 1e-03):
+            dist_min = min(distance(center, p), dist_min)
+
         return (dist_min, dist_max)
 
     def minmax_angle_from_center(self, center):

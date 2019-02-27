@@ -217,13 +217,13 @@ def convert(dxfile,
         machine_outer.search_subregions()
 
         if machine_inner.has_mirrored_windings():
-            logger.info("undo mirror of %s", inner_name)
+            logger.info("undo mirrored windings of %s", inner_name)
             machine_inner = machine_inner.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
             machine_inner.search_subregions()
 
         elif machine_outer.has_mirrored_windings():
-            logger.info("undo mirror of %s", outer_name)
+            logger.info("undo mirrored windings of %s", outer_name)
             machine_outer = machine_outer.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
             machine_outer.search_subregions()

@@ -2275,13 +2275,19 @@ class Geometry(object):
                 if area.type == 3:
                     area.type = 1  # iron
 
-        mag_areas = [a for a in self.list_of_areas() if a.type == 9]
-        if len(mag_areas) == 1:
-            ag_areas = [a for a in self.list_of_areas() if a.close_to_ag]
-            if len(ag_areas) == 1:
-                mag_areas[0].type = 3
-                mag_areas = []
-        [a.set_type(1) for a in mag_areas]
+        iron_mag_areas = [a for a in self.list_of_areas() if a.type == 9]
+        air_mag_areas = [a for a in self.list_of_areas() if a.type == 8]
+        ag_areas = [a for a in self.list_of_areas() if a.close_to_ag]
+        if len(ag_areas) == 1:
+            if len(iron_mag_areas) == 1:
+                [a.set_type(3) for a in iron_mag_areas]
+                iron_mag_areas = []
+            if len(air_mag_areas) == 1:
+                [a.set_type(3) for a in air_mag_areas]
+                air_mag_areas = []
+
+        [a.set_type(1) for a in iron_mag_areas]
+        [a.set_type(0) for a in air_mag_areas]
 
     def search_unknown_subregions(self):
         for area in self.list_of_areas():

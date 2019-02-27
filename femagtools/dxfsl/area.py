@@ -932,7 +932,7 @@ class Area(object):
             logger.debug(" - air_alpha          : {}".format(air_alpha))
 
             if air_alpha / alpha < 0.2:
-                self.type = 0  # air
+                self.type = 8  # air or magnet ?
                 logger.debug("***** air #1 (close to airgap)\n")
                 return self.type
 

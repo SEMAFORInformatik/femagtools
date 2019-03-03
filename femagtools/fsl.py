@@ -99,7 +99,14 @@ class Builder:
                 'agndst = {}'.format(model.agndst*1e3),
                 'ndt(agndst)'
             ] + model.stator['dxf']['fsl']
-        fslcode = self.__render(model, templ, stator=True)
+        statmodel = model.stator.copy()
+        statmodel.update(model.stator[templ])
+        statmodel.update({
+            'zeroangle': model.stator.get('zeroangle', 0),
+            'rlength': model.stator.get('rlength', 1),
+            'num_layers': model.windings.get('num_layers', 1)})
+        
+        fslcode = self.__render(statmodel, templ, stator=True)
         if fslcode:
             return (fslcode +
                     ['post_models("nodedistance", "ndst" )',

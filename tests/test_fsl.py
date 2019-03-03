@@ -76,7 +76,7 @@ class FslBuilderTest(unittest.TestCase):
             slot_depth=0.003)
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 22)
+        self.assertEqual(len(fsl), 23)
 
     def test_stator3(self):
         self.m['stator']['statorRotor3'] = dict(

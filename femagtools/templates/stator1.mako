@@ -1,15 +1,15 @@
 m.yoke_rad   = dy1/2
 m.inside_rad = da1/2
 
-m.tip_rh2         =     ${model.get(['stator', 'stator1', 'tip_rh2'])*1e3}
-m.tip_rh1         =     ${model.get(['stator', 'stator1', 'tip_rh1'])*1e3}
-m.slot_rf1        =     ${model.get(['stator', 'stator1', 'slot_rf1'])*1e3}
+m.tip_rh2         =     ${model['tip_rh2']*1e3}
+m.tip_rh1         =     ${model['tip_rh1']*1e3}
+m.slot_rf1        =     ${model['slot_rf1']*1e3}
 m.slot_rf2        =     m.slot_rf1
 m.yoke_rad2       =     m.yoke_rad
-m.slot_width      =     ${model.get(['stator', 'stator1', 'slot_width'])*1e3}
-m.tooth_width     =     ${model.get(['stator', 'stator1', 'tooth_width'])*1e3}
-m.zeroangl        =     ${model.stator.get('zeroangle',0.0)}
-m.rlength         =     ${model.stator.get('rlength',1.0)*100}  
+m.slot_width      =     ${model['slot_width']*1e3}
+m.tooth_width     =     ${model['tooth_width']*1e3}
+m.zeroangl        =     ${model['zeroangle']}
+m.rlength         =     ${model['rlength']*100}  
 
  m.mcvkey_yoke    =   mcvkey_yoke
  m.wdg_location   =   -1.0 -- stator (internal values)

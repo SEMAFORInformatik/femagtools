@@ -14,6 +14,6 @@ m.tooth_width     = ${model['tooth_width']*1e3}
 m.middle_line     = ${model['middle_line']}
 m.zeroangl        =          0.000 --   Reference angle to x-axis [grad]        
  
- m.mcvkey_yoke = '${model.stator.get('mcvkey_yoke', 'dummy')}'                                                
+ m.mcvkey_yoke = mcvkey_yoke
  
  pre_models("STATOR3_Linear");

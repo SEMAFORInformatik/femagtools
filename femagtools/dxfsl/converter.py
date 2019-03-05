@@ -269,6 +269,10 @@ def convert(dxfile,
                            single_view=True)
 
         if write_fsl:
+            if machine_inner.is_full() or machine_outer.is_full():
+                logger.warning("it's not possible to create fsl-file")
+                return None
+
             fslrenderer = FslRenderer(basename)
             inner = fslrenderer.render(machine_inner, inner=True)
             outer = fslrenderer.render(machine_outer, outer=True)
@@ -352,6 +356,10 @@ def convert(dxfile,
                            single_view=True)
 
         if write_fsl:
+            if machine.is_full():
+                logger.warning("it's not possible to create fsl-file")
+                return None
+
             fslrenderer = FslRenderer(basename)
             conv['fsl'] = fslrenderer.render(machine, inner, outer)
             if params:

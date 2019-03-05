@@ -798,6 +798,22 @@ class Geometry(object):
     def start_max_corner(self, i):
         return self.start_corners[-1][i]
 
+    def dist_start_max_corner(self):
+        return distance(self.center, self.start_corners[-1])
+
+    def dist_end_max_corner(self):
+        if self.is_mirrored():
+            return self.dist_start_max_corner()
+        return distance(self.center, self.end_corners[-1])
+
+    def dist_start_min_corner(self):
+        return distance(self.center, self.start_corners[0])
+
+    def dist_end_min_corner(self):
+        if self.is_mirrored():
+            return self.dist_end_max_corner()
+        return distance(self.center, self.end_corners[0])
+
     def repair_hull_line(self, center, angle, corners, with_center):
         # We need to set our own tolerance range
         # to find the right points
@@ -2187,6 +2203,9 @@ class Geometry(object):
         elif place == 'out':
             is_inner = False
 
+        if self.alfa == 0.0:
+            self.alfa = np.pi * 2.0
+
         for area in self.list_of_areas():
             area.mark_stator_subregions(is_inner,
                                         self.is_mirrored(),
@@ -2254,6 +2273,9 @@ class Geometry(object):
         elif place == 'out':
             is_inner = False
 
+        if self.alfa == 0.0:
+            self.alfa = np.pi * 2.0
+
         types = {}
         for area in self.list_of_areas():
             t = area.mark_rotor_subregions(is_inner,
@@ -2313,11 +2335,16 @@ class Geometry(object):
         if self.is_mirrored():
             return False
         if len(self.start_corners) != len(self.end_corners):
+            logger.warning("number of corners dont match: {} != {}"
+                           .format(len(self.start_corners),
+                                   len(self.end_corners)))
             return True
         for i in range(len(self.start_corners)):
             d1 = distance(self.center, self.start_corners[i])
             d2 = distance(self.center, self.end_corners[i])
-            if not np.isclose(d1, d2):
+            if not np.isclose(d1, d2, atol=0.02):
+                logger.warning("distance of corners dont match: {} != {}"
+                               .format(d1, d2))
                 return True
         return False
 

@@ -180,9 +180,10 @@ def main():
                   debug_mode=args.debugger)
 
     if args.write_fsl:
-        basename = os.path.basename(args.dxfile).split('.')[0]
-        with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
-            f.write('\n'.join(res['fsl']))
+        if res is not None:
+            basename = os.path.basename(args.dxfile).split('.')[0]
+            with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
+                f.write('\n'.join(res['fsl']))
 
 
 if __name__ == "__main__":

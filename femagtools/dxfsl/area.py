@@ -40,6 +40,7 @@ class Area(object):
         self.close_to_ag = False
         self.close_to_startangle = False
         self.close_to_endangle = False
+        self.mag_rectangle = False
         self.min_dist = 99999.0
         self.max_dist = 0.0
         self.height = 0.0
@@ -771,6 +772,18 @@ class Area(object):
             alpha += np.pi
         return alpha + np.pi/2
 
+    def get_mag_orientation(self):
+        if self.mag_rectangle:
+            return self.get_mag_orient_rectangle()
+
+        if self.close_to_endangle:
+            if self.close_to_startangle:
+                return middle_angle(self.min_angle, self.max_angle)
+            else:
+                return self.max_angle
+        else:
+            return middle_angle(self.min_angle, self.max_angle)
+
     def around_windings(self, areas):
         for a in areas:
             if a.is_winding():
@@ -924,6 +937,8 @@ class Area(object):
             logger.debug("***** iron (close to opposition)\n")
             return self.type
 
+        self.mag_rectangle = self.is_mag_rectangle()
+
         if self.close_to_ag:
             mm = self.minmax_angle_dist_from_center(center,
                                                     airgap_radius +
@@ -932,29 +947,25 @@ class Area(object):
             logger.debug(" - air_alpha          : {}".format(air_alpha))
 
             if air_alpha / alpha < 0.2:
+                self.phi = self.get_mag_orientation()
                 self.type = 8  # air or magnet ?
                 logger.debug("***** air #1 (close to airgap)\n")
                 return self.type
 
             if air_alpha / alpha > 0.6:
+                self.phi = self.get_mag_orientation()
                 self.type = 3  # magnet
-                if self.close_to_endangle:
-                    if self.close_to_startangle:
-                        self.phi = middle_angle(self.min_angle, self.max_angle)
-                    else:
-                        self.phi = self.max_angle
-                else:
-                    self.phi = middle_angle(self.min_angle, self.max_angle)
                 logger.debug("***** magnet (close to airgap)\n")
             else:
+                self.phi = self.get_mag_orientation()
                 self.type = 9  # iron or magnet ?
                 logger.debug("***** iron or magnet(close to airgap)\n")
             return self.type
 
         if self.is_mag_rectangle():
+            self.phi = self.get_mag_orientation()
             self.type = 4  # magnet embedded
             logger.debug("***** magnet (embedded)\n")
-            self.phi = self.get_mag_orient_rectangle()
             return self.type
 
         if not (self.close_to_startangle or self.close_to_endangle):

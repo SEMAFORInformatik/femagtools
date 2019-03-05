@@ -140,15 +140,16 @@ class FslRenderer(object):
         self.content.append(u'\n')
 
         if inner:
-            self.content.append(u'inner_max_corner_x = {}'
-                                .format(geom.start_max_corner(0)))
-            self.content.append(u'inner_max_corner_y = {}'
-                                .format(geom.start_max_corner(1)))
+            self.content.append(u'inner_da_start = {}'
+                                .format(geom.dist_start_max_corner()))
+            self.content.append(u'inner_da_end = {}'
+                                .format(geom.dist_end_max_corner()))
         if outer:
-            self.content.append(u'outer_min_corner_x = {}'
-                                .format(geom.start_min_corner(0)))
-            self.content.append(u'outer_min_corner_y = {}'
-                                .format(geom.start_min_corner(1)))
+            self.content.append(u'outer_da_start = {}'
+                                .format(geom.dist_start_min_corner()))
+            self.content.append(u'outer_da_end = {}'
+                                .format(geom.dist_end_min_corner()))
+
         self.content.append(u'\n')
 
         self.content.append(u'x0_iron_shaft, y0_iron_shaft = 0.0, 0.0')
@@ -265,8 +266,9 @@ class FslRenderer(object):
 
         self.content.append(u'if {} > 1 then'.format(geom.num_variable()))
         if geom.corners_dont_match():
-            txt = [u'  mirror_nodechains(x3, y3, x4, y4)',
-                   u'  if m.npols_gen > 2 then',
+            txt = [u'  -- Warning: corners dont match',
+                   u'  mirror_nodechains(x3, y3, x4, y4)',
+                   u'  if {} > 2 then'.format(geom.num_variable()),
                    u'    my_alfa = alfa * 2',
                    u'    x3, y3 = pr2c(x2, my_alfa)',
                    u'    x4, y4 = pr2c(x1, my_alfa)',
@@ -404,22 +406,24 @@ class FslRenderer(object):
                     u'r2 = da2/2 + 2*ag/3',
                     u'x2, y2 = pr2c(r2, alfa)',
                     u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
-                    u'if inner_max_corner_x == nil then',
-                    u'  inner_max_corner_x = da2/2',
+                    u'if inner_da_start == nil then',
+                    u'  inner_da_start = da2/2',
                     u'end',
-                    u'x1, y1 = inner_max_corner_x, 0.0',
+                    u'x1, y1 = pr2c(inner_da_start, 0.0)',
                     u'nc_line(x1, y1, r1, 0.0, 0.0)\n',
-                    u'if outer_min_corner_x == nil then',
-                    u'  outer_min_corner_x = da1/2',
+                    u'if outer_da_start == nil then',
+                    u'  outer_da_start = da1/2',
                     u'end',
-                    u'x2, y2 = outer_min_corner_x, 0.0',
+                    u'x2, y2 = pr2c(outer_da_start, 0.0)',
                     u'nc_line(r2, 0.0, x2, y2, 0.0)\n',
-                    u'x3, y3 = pr2c(x1, alfa)',
-                    u'x4, y4 = pr2c(r1, alfa)',
-                    u'nc_line(x3, y3, x4, y4, 0, 0)\n',
-                    u'x3, y3 = pr2c(x2, alfa)',
-                    u'x4, y4 = pr2c(r2, alfa)',
-                    u'nc_line(x3, y3, x4, y4, 0, 0)\n',
+                    u'if m.tot_num_slot > m.num_sl_gen then',
+                    u'  x3, y3 = pr2c(inner_da_end, alfa)',
+                    u'  x4, y4 = pr2c(r1, alfa)',
+                    u'  nc_line(x3, y3, x4, y4, 0, 0)\n',
+                    u'  x3, y3 = pr2c(outer_da_end, alfa)',
+                    u'  x4, y4 = pr2c(r2, alfa)',
+                    u'  nc_line(x3, y3, x4, y4, 0, 0)',
+                    u'end\n',
                     u'x0, y0 = pr2c(r1-ag/6, alfa/2)',
                     u'create_mesh_se(x0, y0)',
                     u'x0, y0 = pr2c(r2+ag/6, alfa/2)',

@@ -99,6 +99,23 @@ class Builder:
                 'agndst = {}'.format(model.agndst*1e3),
                 'ndt(agndst)'
             ] + model.stator['dxf']['fsl']
+        if templ == 'statorFsl':
+            #  obsolete
+            if 'parameter' in model.stator['statorFsl']:
+                return self.render_template(
+                    model.stator['statorFsl']['content_template'],
+                    model.stator['statorFsl']['parameter'])
+            if isinstance(model.stator['statorFsl']
+                          ['content_template'], str):
+                with open(model.stator['statorFsl']
+                          ['content_template']) as f:
+                    templ = [l.strip() for l in f.readlines()]
+            else:
+                templ = model.stator['statorFsl']['content_template']
+            return self.render_template(
+                '\n'.join(templ),
+                model.stator['statorFsl'])
+        
         statmodel = model.stator.copy()
         statmodel.update(model.stator[templ])
         statmodel.update({

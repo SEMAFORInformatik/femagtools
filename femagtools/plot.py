@@ -326,7 +326,7 @@ def mtpa(pmrel, i1max, title='', projection=''):
         ax = pl.gca()
         ax.plot(iopt[1], iopt[0], iopt[2],
                 color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
-                    np.max(iopt[2])))
+                    np.max(iopt[2][-1])))
     else:
         ax = pl.gca()
         ax.set_aspect('equal')

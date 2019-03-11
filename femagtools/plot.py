@@ -338,7 +338,7 @@ def mtpa(pmrel, i1max, title='', projection=''):
         ax.set_ylabel('Iq/A')
         ax.plot(iopt[1], iopt[0],
                 color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
-                    np.max(iopt[2])))
+                    np.max(iopt[2][-1])))
         ax.grid()
         
     if title:

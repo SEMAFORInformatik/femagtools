@@ -799,20 +799,38 @@ class Geometry(object):
         return self.start_corners[-1][i]
 
     def dist_start_max_corner(self):
-        return distance(self.center, self.start_corners[-1])
+        logger.debug("begin of dist_start_max_corner")
+        logger.debug("start corners: {}".format(self.start_corners))
+        d = distance(self.center, self.start_corners[-1])
+        logger.debug("end of dist_start_max_corner: {}".format(d))
+        return d
 
     def dist_end_max_corner(self):
+        logger.debug("begin of dist_end_max_corner")
+        logger.debug("end corners: {}".format(self.end_corners))
+
         if self.is_mirrored():
             return self.dist_start_max_corner()
-        return distance(self.center, self.end_corners[-1])
+        d = distance(self.center, self.end_corners[-1])
+        logger.debug("end of dist_end_max_corner: {}".format(d))
+        return d
 
     def dist_start_min_corner(self):
-        return distance(self.center, self.start_corners[0])
+        logger.debug("begin of dist_start_min_corner")
+        logger.debug("start corners: {}".format(self.start_corners))
+        d = distance(self.center, self.start_corners[0])
+        logger.debug("end of dist_start_min_corner: {}".format(d))
+        return d
 
     def dist_end_min_corner(self):
+        logger.debug("begin of dist_end_min_corner")
+        logger.debug("end corners: {}".format(self.end_corners))
+
         if self.is_mirrored():
-            return self.dist_end_max_corner()
-        return distance(self.center, self.end_corners[0])
+            return self.dist_start_min_corner()
+        d = distance(self.center, self.end_corners[0])
+        logger.debug("end of dist_end_min_corner: {}".format(d))
+        return d
 
     def repair_hull_line(self, center, angle, corners, with_center):
         # We need to set our own tolerance range

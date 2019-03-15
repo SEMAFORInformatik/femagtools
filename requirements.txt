@@ -1,0 +1,7 @@
+numpy
+scipy
+mako
+networkx
+meshio
+matplotlib
+lxml

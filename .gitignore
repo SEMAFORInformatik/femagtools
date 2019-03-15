@@ -4,8 +4,6 @@ build/
 docs/_build/
 dist/
 __pycache__/
-venv
-requirements.txt
 .cache/
 .coverage
 

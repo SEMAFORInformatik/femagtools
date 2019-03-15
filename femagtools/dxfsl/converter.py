@@ -403,8 +403,8 @@ def create_femag_parameters(m_inner, m_outer):
     params['da1'] = 2*geom_outer.min_radius
     params['da2'] = 2*geom_inner.max_radius
     params['dy2'] = 2*geom_inner.min_radius
-    params['agndst'] = agndst(params['da1'], params['da2'])
-
+    params['agndst'] = agndst(params['da1'], params['da2'],
+                              num_slots, num_poles)
     params['alfa_slot'] = alfa_slot
     params['alfa_pole'] = alfa_pole
     assert(np.isclose(alfa_slot * num_slots,

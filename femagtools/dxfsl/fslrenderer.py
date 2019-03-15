@@ -14,14 +14,28 @@ from .. import __version__
 logger = logging.getLogger(__name__)
 
 
-def agndst(da1, da2):
+def gcd(a, b):
+    """calc greatest common divisor"""
+    while b:
+        a, b = b, a % b
+    return a
+
+
+def lcm(a, b):
+    """least common multiple"""
+    return a*b//gcd(a, b)
+
+    
+def agndst(da1, da2, Q, p):
     """return agndst"""
-    # set of useful node angles:  4°, 2°, 1.5°, 1°, 0.75°, 0.5°, 0.25°
-    dagset = [np.pi/45, np.pi/90, np.pi/120, np.pi/180, np.pi/240, np.pi/360, np.pi/720]
     r = (da1 + da2)/4
     ag = abs(da1 - da2)/6
-    i = max(np.argmin(np.abs(np.array(dagset) - np.sqrt(2)*np.arctan2(ag, r))), 1)
-    return dagset[i-1]*r
+    n = 12
+    a = [r*4*np.pi/p/(i*lcm(Q, p)) for i in range(1, n)]
+    i = np.argmin(np.abs(np.array([ag]*(n-1)) - a))
+    if i > 0:
+        return a[i-1]
+    return a[0]
 
 
 class FslRenderer(object):

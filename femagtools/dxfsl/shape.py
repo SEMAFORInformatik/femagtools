@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-    NOTE: This code is in highly experimental state.
-          Use at your own risk.
+  femagtools.dxfsl.shape
+  ~~~~~~~~~~~~~~~~~~~~~~
 
-  Author: Ronald Tanner
-    Date: 2017/07/06
+  shape objects are basic geometric elements which have 2 nodes
+
+  Authors: Ronald Tanner, Beat Holm
 """
 from __future__ import print_function
 import numpy as np
@@ -21,20 +22,12 @@ from .functions import is_angle_inside, intersect_point
 logger = logging.getLogger('femagtools.geom')
 
 
-#############################
-#       Shape (Basis)       #
-#############################
-
 class Element(object):
     """value object class"""
     def __init__(self, **kwargs):
         for k in kwargs.keys():
             setattr(self, k, kwargs[k])
 
-
-#############################
-#       Shape (Basis)       #
-#############################
 
 class Shape(object):
     def init_attributes(self, color, attr):

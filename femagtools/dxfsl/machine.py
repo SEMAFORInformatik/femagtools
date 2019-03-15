@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-"""manage a geometry with
-    lines, circles and arcs built from DXF
+"""
+    femagtools.dxfsl.machine
+    ~~~~~~~~~~~~~~~~~~~~~~~~
 
-  NOTE: This code is in highly experimental state.
-        Use at your own risk.
+    a machine consists of 2 parts and has a geometry 
 
-  Author: Ronald Tanner
-    Date: 2017/07/06
+  Authors: Ronald Tanner, Beat Holm
 """
 from __future__ import print_function
 import numpy as np

@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-    NOTE: This code is in highly experimental state.
-          Use at your own risk.
+  femagtools.dxfsl.functions
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  Author: Ronald Tanner
-    Date: 2017/07/06
+  internal utility functions
+
+  Authors: Ronald Tanner, Beat Holm
 """
 from __future__ import print_function
 import logging

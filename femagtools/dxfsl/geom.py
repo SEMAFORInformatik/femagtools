@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-    NOTE: This code is in highly experimental state.
-          Use at your own risk.
+  femagtools.dxfsl.geom
+  ~~~~~~~~~~~~~~~~~~~~~
 
-  Author: Ronald Tanner
-    Date: 2017/07/06
+  a geometry is composed of connected shapes (lines, arcs, circles) which 
+  build areas
+
+  Authors: Ronald Tanner, Beat Holm
 """
 from __future__ import print_function
 
-import dxfgrabber
 import numpy as np
 import networkx as nx
 import logging
@@ -387,6 +388,7 @@ def dxfshapes0(dxffile, mindist=0.01, layers=[]):
 
 def dxfshapes(dxffile, mindist=0.01, layers=[]):
     """returns a collection of dxf entities (dxfgrabber)"""
+    import dxfgrabber
     dwg = dxfgrabber.readfile(dxffile)
     # print("Layers = {}".format(dwg.layers.names()))
     id = 0

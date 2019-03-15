@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    dxfsl
-    ~~~~~
+    femagtools.dxfsl.fslreader
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    renders geometry
+    renders geometry to fsl
 
 
 """

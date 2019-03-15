@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
-"""manage a geometry with
-    lines, circles and arcs built from DXF
+"""
+  femagtools.dxfsl.corner
+  ~~~~~~~~~~~~~~~~~~~~~~~
 
-  NOTE: This code is in highly experimental state.
-        Use at your own risk.
-
-  Author: Ronald Tanner
-    Date: 2017/07/06
+  Authors: Ronald Tanner, beat Holm
 """
 from __future__ import print_function
 import numpy as np
@@ -15,10 +12,6 @@ from .functions import distance
 
 logger = logging.getLogger('femagtools.corner')
 
-
-#############################
-#           Corner          #
-#############################
 
 class Corner(object):
     def __init__(self, center, p):

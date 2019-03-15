@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-"""manage a geometry with
-    lines, circles and arcs built from DXF
+"""
+  femagtools.dxfsl.area
+  ~~~~~~~~~~~~~~~~~~~~~
 
-  NOTE: This code is in highly experimental state.
-        Use at your own risk.
+  areas are regions surrounded by a collection of shapes
 
-  Author: Ronald Tanner
-    Date: 2017/07/06
+  Authors: Ronald Tanner, beat Holm
 """
 from __future__ import print_function
 import numpy as np

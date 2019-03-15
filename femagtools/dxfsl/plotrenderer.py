@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    dxfsl
-    ~~~~~
+    femagtools.dxfsl.plotrenderer
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    renders geometry
-
+    renders geometry to plot
 
 """
 import numpy as np

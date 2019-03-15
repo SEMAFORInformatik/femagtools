@@ -1,10 +1,11 @@
-#!/usr/bin/env python
-#
-# read a dxf file and create a plot or fsl file
-#
-# Author: Ronald Tanner
-# Date: 2016/01/24
-#
+"""
+  femagtools.dxfsl.converter
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  read a dxf file and create a plot or fsl file
+
+ Authors: Ronald Tanner, Beat Holm
+"""
 import os
 from femagtools.dxfsl.geom import Geometry, dxfshapes, femshapes
 from femagtools.dxfsl.shape import Shape

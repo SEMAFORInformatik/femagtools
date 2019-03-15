@@ -158,7 +158,7 @@ class Mcv(object):
         
         self.mc1_title = ''
         self.version_mc_curve = self.ACT_VERSION_MC_CURVE
-        self.mc1_type = 1    # Soft Iron B(H)
+        self.mc1_type = MAGCRV    # Soft Iron B(H)
         self.mc1_remz = 0.0
         self.mc1_recalc = 0
         self.mc1_bsat = 0.0
@@ -320,14 +320,14 @@ class Writer(Mcv):
 
         # write line, mc1_remz, mc1_bsat, mc1_bref, mc1_fillfac
         if self.version_mc_curve == self.ACT_VERSION_MC_CURVE:
-            self.writeBlock([self.mc1_remz, self.mc1_bsat,
-                             self.mc1_bref, self.mc1_fillfac])
+            self.writeBlock([float(self.mc1_remz), float(self.mc1_bsat),
+                             float(self.mc1_bref), float(self.mc1_fillfac)])
         if self.mc1_type == DEMCRV_BR:
             self.mc1_remz = self.mc1_angle[self.mc1_curves-1]
         if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
            self.version_mc_curve == self.PARAMETER_PM_CURVE:
-            self.writeBlock([self.mc1_remz, self.mc1_bsat,
-                             self.mc1_bref, self.mc1_fillfac,
+            self.writeBlock([float(self.mc1_remz), float(self.mc1_bsat),
+                             float(self.mc1_bref), float(self.mc1_fillfac),
                              self.mc1_curves])
             
         if self.mc1_type == DEMCRV_BR:

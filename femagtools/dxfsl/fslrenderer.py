@@ -139,33 +139,58 @@ class FslRenderer(object):
         self.content.append(u'\n')
 
         parts = int(machine.get_symmetry_part())
-        self.content.append(u'-- parts      = {}'
-                            .format(parts))
-        self.content.append(u'-- min_radius = {}'
-                            .format(geom.min_radius))
-        self.content.append(u'-- max_radius = {}'
-                            .format(geom.max_radius))
-        self.content.append(u'-- min_corner = {}, {}'
-                            .format(geom.start_min_corner(0),
-                                    geom.start_min_corner(1)))
-        self.content.append(u'-- max_corner = {}, {}'
-                            .format(geom.start_max_corner(0),
-                                    geom.start_max_corner(1)))
-        self.content.append(u'\n')
-
+        self.content += [u'-- parts      = {}'.format(parts),
+                         u'-- min_radius = {}'.format(geom.min_radius),
+                         u'-- max_radius = {}'.format(geom.max_radius),
+                         u'-- min_corner = {}, {}'.format(
+                             geom.start_min_corner(0),
+                             geom.start_min_corner(1)),
+                         u'-- max_corner = {}, {}'.format(
+                             geom.start_max_corner(0),
+                             geom.start_max_corner(1)),
+                         u'\n']
         if inner:
-            self.content.append(u'inner_da_start = {}'
-                                .format(geom.dist_start_max_corner()))
-            self.content.append(u'inner_da_end = {}'
-                                .format(geom.dist_end_max_corner()))
+            self.content += [u'inner_da_start = {}'
+                             .format(geom.dist_start_max_corner()),
+                             u'inner_da_end = {}'
+                             .format(geom.dist_end_max_corner())]
         if outer:
-            self.content.append(u'outer_da_start = {}'
-                                .format(geom.dist_start_min_corner()))
-            self.content.append(u'outer_da_end = {}'
-                                .format(geom.dist_end_min_corner()))
+            self.content += [u'-- create air layer outside',
+                             u'x0, y0 = {}, {}'.format(
+                                 geom.start_max_corner(0),
+                                 geom.start_max_corner(1)),
+                             u'hair = 1.0',
+                             u'r1 = {} + hair'.format(geom.max_radius),
+                             u'r, phi = c2pr(x0, y0)',
+                             u'x1, y1 = pr2c(r1, phi)']
+            if geom.is_mirrored():
+                self.content += [
+                    u'x2, y2 = pr2c(r1, math.pi/m.tot_num_slot+phi/2)',
+                    u'x3, y3 = pr2c(r, math.pi/m.tot_num_slot+phi/2)']
+            else:
+                self.content += [
+                    u'x2, y2 = pr2c(r1, 2*math.pi/m.tot_num_slot+phi)',
+                    u'x3, y3 = pr2c(r, 2*math.pi/m.tot_num_slot+phi)']
+                
+            self.content += [u'nc_line(x0, y0, x1, y1, 0)',
+                             u'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
+                             u'nc_line(x2, y2, x3, y3, 0)']
+            if geom.is_mirrored():
+                self.content.append(
+                    u'x0, y0 = pr2c(r1 - hair/2, math.pi/m.tot_num_slot/2+phi/4)')
+            else:    
+                self.content.append(
+                    u'x0, y0 = pr2c(r1 - hair/2, math.pi/m.tot_num_slot+phi/2)')
+                
+            self.content += [
+                u'create_mesh_se(x0, y0)',
+                u'\n',
+                u'outer_da_start = {}'.format(
+                    geom.dist_start_min_corner()),
+                u'outer_da_end = {}'.format(
+                    geom.dist_end_min_corner())]
 
         self.content.append(u'\n')
-
         self.content.append(u'x0_iron_shaft, y0_iron_shaft = 0.0, 0.0')
         self.content.append(u'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0\n')
 
@@ -263,20 +288,25 @@ class FslRenderer(object):
         # angle after mirroring
         self.content.append(u'alfa = {}\n'.format(geom.get_alfa()))
 
-        self.content.append(u'-- rotate')
-        self.content.append(u'x1, y1 = {}, {}'.format(
-                geom.start_corners[0][0], geom.start_corners[0][1]))  # min xy1
-        self.content.append(u'x2, y2 = {}, {}'.format(
-                geom.start_corners[1][0], geom.start_corners[1][1]))  # max xy2
-
+        self.content += [u'-- rotate',
+                         u'x1, y1 = {}, {}'.format(
+                             geom.start_corners[0][0],
+                             geom.start_corners[0][1])] # min xy1
+        if outer:
+            self.content.append(u'x2, y2 = pr2c(r1, phi)')
+        else:
+            self.content.append(u'x2, y2 = {}, {}'.format(
+                             geom.start_corners[1][0],
+                             geom.start_corners[1][1])) # max xy1
+            
         if geom.is_mirrored():
             self.content.append(u'x3, y3 = pr2c(x2, alfa)')
             self.content.append(u'x4, y4 = pr2c(x1, alfa)')
         else:
-            self.content.append(u'x3, y3 = {}, {}'.format(
-                    geom.end_corners[1][0], geom.end_corners[1][1]))  # max xy3
-            self.content.append(u'x4, y4 = {}, {}'.format(
-                    geom.end_corners[0][0], geom.end_corners[0][1]))  # min xy4
+            self.content += [u'x3, y3 = pr2c(r1, 2*math.pi/m.tot_num_slot+phi)',
+                             u'x4, y4 = {}, {}'.format(
+                                 geom.end_corners[0][0],
+                                 geom.end_corners[0][1])]  # min xy4
 
         self.content.append(u'if {} > 1 then'.format(geom.num_variable()))
         if geom.corners_dont_match():
@@ -380,7 +410,6 @@ class FslRenderer(object):
             u'global_unit(mm)',
             u'pickdist(0.001)',
             u'cosys(polar)\n',
-            u'tmp = {}',
             u'xmag = {}',
             u'ymag = {}',
             u'mag_orient = {}',

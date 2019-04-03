@@ -178,12 +178,16 @@ class Reader:
             return self.flux[0]['displ'][1]-self.flux[0]['displ'][0]
         return None
 
-    def read(self, lines):
+    def read(self, content):
         """read bch file
 
         Args:
-          lines (list of str) the text lines of the BCH file
+          content (str or list of str) the text lines of the BCH file
         """
+        if isinstance(content, str):
+            lines = content.split('\n')
+        else:
+            lines = content
         for s in _readSections(lines):
             if not s:
                 continue
@@ -209,7 +213,8 @@ class Reader:
             self.weight['conductor'] = sum(w[1])
             self.weight['magnet'] = sum(w[2])
             self.weight['total'] = sum([sum(l) for l in w])
-
+        return self
+        
     def __findNums(self, l):
         rec = self._numPattern.findall(l)
         if 3 * '*' in l:  # min 3 '*'

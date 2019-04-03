@@ -290,7 +290,7 @@ class MachineModel(Model):
                     if mcv:
                         logger.debug('magnet mcv %s', mcv)
                         self.magnet['mcvkey_magnet'] = mcv
-                        names.append(mcv)
+                        names.append((mcv, 1.0))
                     else:
                         missing.append(magnet['mcvkey'])
                         logger.error('magnet mcv %s not found',

@@ -907,10 +907,13 @@ class MagnetizingCurve(object):
                     logger.error("MCV %s not found in directory %s",
                                  str(filename), directory)
                     return None
-            mcv = Reader()
-            mcv.readMcv(os.path.join(self.mcdirectory,
-                                     filename))
-
+            try:
+                mcv = Reader()
+                mcv.readMcv(os.path.join(self.mcdirectory,
+                                         filename))
+            except AttributeError:
+                logger.error("MCV %s not found in dict list", name)
+                return ''
         bname = self.fix_name(mcv['name'], fillfac)
         filename = ''.join((bname, ext))
         writer = Writer(mcv)

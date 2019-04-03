@@ -809,8 +809,10 @@ def main():
     with io.open(args.filename, encoding='latin1', errors='ignore') as f:
         bchresults.read(f.readlines())
 
-    if bchresults.type.lower().find(
-            'pm-synchronous-motor simulation') >= 0:
+    if (bchresults.type.lower().find(
+            'pm-synchronous-motor simulation') >= 0 or
+        bchresults.type.lower().find(
+            'permanet-magnet-synchronous-motor') >= 0):
         pmrelsim(bchresults, bchresults.filename)
     elif bchresults.type.lower().find('cogging calculation') >= 0:
         cogging(bchresults, bchresults.filename)

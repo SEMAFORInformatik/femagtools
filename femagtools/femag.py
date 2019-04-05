@@ -629,7 +629,7 @@ class ZmqFemag(BaseFemag):
             f = self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
             self.upload(os.path.join(dest, f))
     
-    def __call__(self, pmMachine, simulation):
+    def __call__(self, pmMachine, simulation, pub_consumer=None):
         """setup fsl file, run calculation and return BCH results
         Args:
           pmMachine: dict with machine parameters or name of model
@@ -648,7 +648,8 @@ class ZmqFemag(BaseFemag):
             modelpars['exit_on_error'] = 'false'
         response = self.send_fsl(['save_model(close)'] +
                                  self.create_fsl(modelpars,
-                                                 simulation))
+                                                 simulation),
+                                 pub_consumer=pub_consumer)
         r = json.loads(response[0])
         if r['status'] != 'ok':
             raise FemagError(r['message'])

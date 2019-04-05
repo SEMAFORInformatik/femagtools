@@ -1,0 +1,11 @@
+This directory includes a cogging calculation example
+with FEMAG running as a service. This can be done
+either by starting a docker container:
+
+  docker run -p 5555:5555 -p 5556:5556 -d \
+              hub.semafor.ch/profemag/femag:8.4.6
+
+or as a operating system process with an port number argument
+
+  xfemag64 -b 5555
+

@@ -771,7 +771,7 @@ class MagnetizingCurve(object):
                 ext = '.MC' if sys.platform == 'win32' else '.MCV'
                 filename = ''.join((id, ext))
                 logger.info("search file %s in %s", filename,
-                             self.mcdirectory)
+                            self.mcdirectory)
                 if os.access(os.path.join(self.mcdirectory,
                                           filename), os.R_OK):
                     return id

@@ -28,16 +28,18 @@ Femagtools can be installed on any 2.7 or 3.x Python distribution with Numpy, Sc
 
 Or with Anaconda::
   
-  $ conda install -c semafor femagtools
+  $ conda install -c semafor -c conda-forge femagtools
 
-Prerequisite: a fairly recent FEMAG version (see http://www.profemag.ch) must be found in one of the
+Prerequisite: a fairly recent FEMAG version
+(see http://www.profemag.ch) must be found in one of the
 directories listed in your PATH variable.
 
 If a proxy is needed::
 
   $ pip --proxy http://proxy.hell:3128 install femagtools
 
-For Anaconda you can setup the environment variables HTTP_PROXY and HTTPS_PROXY or the file .condarc::
+For Anaconda you can setup the environment variables HTTP_PROXY and
+HTTPS_PROXY or the file .condarc::
 
   proxy_servers:
     http: http://user:pass@corp.com:8080
@@ -63,6 +65,7 @@ User Guide
    :maxdepth: 2
 
    intro
+   femag
    models
    bchreader
    forcedens

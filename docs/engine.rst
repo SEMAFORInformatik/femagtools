@@ -23,18 +23,19 @@ Amazon Engine
 =============
 
 The Amazon engine executes the FEMAG tasks in the Amazon EC2 cloud.
-The files for calculation are uploaded to an unique S3 Bucket.
+The files for the calculation are uploaded to an unique S3 Bucket.
 
 Prerequisite
 ------------
 To use Amazon as a calculation engine you have to:
 
 * create an account and setup a user with the correct authority.
-* configured your aws credentials under ~/.aws/credentials
+* configured your AWS credentials under ~/.aws/credentials
 
 Fast start
 ----------
-To use Amazon as engine, setup a configuration and a cloud init file and use amazon as engine::
+To use Amazon as engine setup a configuration and a cloud init file
+and use Amazon as engine::
 
   import femagtools
   engine = femagtools.amazon.Engine(buckets=None, configfile='config.ini')
@@ -47,7 +48,8 @@ If you already uploaded some FEMAG files you can add the bucket as list::
   
 Configuration file
 ------------------
-You have to setup a configuration file with an amazon Section, where you define some Amazon EC2 Instance attribute.
+You have to setup a configuration file with an amazon Section, where you define some
+Amazon EC2 Instance attribute.
 
 ====================  =========================  =======================================================
 Name                  Example value              Description
@@ -163,9 +165,10 @@ Example of a configuration file::
  
 startup.sh
 ----------
-With the startup.sh file you can define, what happens, after the instance startet up. This is a good place to start the calculation.
+With the startup.sh file you can define the processing sequence after the instance
+has started up. This is a good place to start the calculation.
 
-.. note:: The files for one calculation are transferd in a tar.gz file
+.. note:: The files for one calculation are transferred in a tar.gz file
 
 Example::
  

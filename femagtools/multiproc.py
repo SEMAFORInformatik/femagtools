@@ -138,6 +138,6 @@ class Engine:
                     procId = int(pidfile.readline())
                     p = psutil.Process(procId)
                     p.terminate()
-                    p.wait()
+                    p.wait(1)  # timeout 1 second
             except Exception as e:
                 pass  # ignore

@@ -1,6 +1,6 @@
 % if model.get('colorgrad_babs',None):
   bmin = ${model.get('bmin', 0.0)}
-  bmax = ${model.get('hmax', 0.0)}
+  bmax = ${model.get('bmax', 0.0)}
   color_gradation( 0,0, tot, Babs, bmin, bmax, '${model['colorgrad_babs']}')
 % endif
 % if model.get('colorgrad_demag',None):

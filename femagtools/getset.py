@@ -55,7 +55,6 @@ class GetterSetter(object):
             return
         setattr(self, name[0], value)
 
-
     def get(self, name, r=None):
         """return value of key name
         name can be a list such as ['torque[1]', 'ripple']

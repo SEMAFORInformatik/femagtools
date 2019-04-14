@@ -359,8 +359,8 @@ class Builder:
                 magndata +
                 self.__render(model, model.get('calculationMode')) +
                 airgap_induc +
-                self.__render(model, 'plots') +
-                ['save_model(cont)'])
+                self.__render(model, 'plots'))
+#                ['save_model(cont)'])
 
     def create_airgap_induc(self):
             return self.__render(dict(), 'airgapinduc')
@@ -417,10 +417,10 @@ class Builder:
 
         try:
             template = self.lookup.get_template(templ+".mako")
-            logger.info('use template {}.mako'.format(templ))
+            logger.debug('use template {}.mako'.format(templ))
         except mako.exceptions.TopLevelLookupException as ex:
             template = self.lookup.get_template(templ+".fsl")
-            logger.info('use FSL {}.fsl'.format(templ))
+            logger.debug('use FSL {}.fsl'.format(templ))
             if stator:
                 self.fsl_stator = True
             if magnet:

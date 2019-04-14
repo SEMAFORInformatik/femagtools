@@ -269,9 +269,20 @@ class ZmqFemag(BaseFemag):
         self.proc = None
         self.reader = None
 
-    def __del__(self):
+    def close(self):
         if self.reader:
             self.reader.continue_loop = False
+        if self.proc:
+            self.quit()
+        if self.request_socket:
+            self.request_socket.close()
+            self.request_socket = None
+        if self.subscriber_socket:
+            self.subscriber_socket.close()
+            self.subscriber_socket = None
+            
+    def __del__(self):
+        self.close()
         logger.debug("Destructor ZmqFemag")
 
     def __req_socket(self):
@@ -282,13 +293,13 @@ class ZmqFemag(BaseFemag):
         self.request_socket = context.socket(zmq.REQ)
         self.request_socket.connect('tcp://{0}:{1}'.format(
             self.host, self.port))
-        if not self.ipaddr:
-            if self.host != 'localhost':
-                inforesp = self.info()
-                self.ipaddr = json.loads(inforesp[1])['addr']
-                logger.info("Connected with %s", self.ipaddr)
-            else:
-                self.ipaddr = '127.0.0.1'
+        #if not self.ipaddr:
+        #    if self.host != 'localhost':
+        #        inforesp = self.info()
+        #        self.ipaddr = json.loads(inforesp[1])['addr']
+        #        logger.info("Connected with %s", self.ipaddr)
+        #    else:
+        #        self.ipaddr = '127.0.0.1'
         self.request_socket.setsockopt(zmq.LINGER, 500)
         return self.request_socket
 
@@ -529,7 +540,7 @@ class ZmqFemag(BaseFemag):
 
         # send quit command
         try:
-            response = self.send_fsl('quit', header='CONTROL')
+            response = self.send_request([b'CONTROL', b'quit'])
 #                                     recvflags=zmq.NOBLOCK)
         except Exception as e:
             logger.error("Femag Quit zmq message %s", e)
@@ -588,6 +599,13 @@ class ZmqFemag(BaseFemag):
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
                 for r in self.send_request(['CONTROL', 'cleanup'])]
+    
+    def release(self):
+        """signal finish calculation task to load balancer to free resources
+        (Docker Cloud environment only)
+        """
+        return [r.decode('latin1')
+                for r in self.send_request(['close'])]
     
     def info(self):
         """get various resource information 

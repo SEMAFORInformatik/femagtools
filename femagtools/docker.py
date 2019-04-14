@@ -2,7 +2,7 @@
     femagtools.docker
     ~~~~~~~~~~~~~~~~~
 
-    Running FEMAG on Docker Swarm
+    Running FEMAG on Docker/Cloud
 
 
 """
@@ -21,20 +21,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def get_port_binding():
-    """returns list with dict(HostIp, HostPort) of all
-    running femag containers:
-      [{'HostPort': '25555', 'HostIp': '0.0.0.0'}, 
-       {'HostPort': '15555', 'HostIp': '0.0.0.0'}, 
-       {'HostPort': '5555', 'HostIp': '0.0.0.0'}]
-    """
-    import docker
-    client = docker.from_env()
-    return [c.attrs['NetworkSettings']['Ports']['5555/tcp'][0]
-            for c in client.containers.list(
-                    filters={'label': 'org.label-schema.name=profemag/femag'})]
-
-
 def publish_receive(message):
     """handle messages from femag publisher"""
     topic, content = message  # "femag_log" + text
@@ -47,13 +33,10 @@ def publish_receive(message):
 
 
 class AsyncFemag(threading.Thread):
-    def __init__(self, queue, workdir, port, host, stoponend):
+    def __init__(self, queue, port, host):
         threading.Thread.__init__(self)
         self.queue = queue
-        self.workdir = workdir
-        self.stoponend = stoponend
         self.container = femagtools.femag.ZmqFemag(
-            workdir,
             port, host)
         
     def run(self):
@@ -62,43 +45,47 @@ class AsyncFemag(threading.Thread):
             task = self.queue.get()
             if task is None:
                 break
-            task.container = self.container  # used in get_results
+
             r = self.container.cleanup()
             for f in task.transfer_files:
-                r = self.container.upload(os.path.join(task.directory, f))
+                if f != task.fsl_file:
+                    r = self.container.upload(
+                        os.path.join(task.directory, f))
             fslfile = os.path.join(task.directory, task.fsl_file)
             logger.info('Docker task %s %s',
                         task.id, task.fsl_file)
             fslcmds = []
             with open(fslfile) as f:
-                fslcmds += f.readlines()
-            ret = self.container.send_fsl(
-                '\n'.join(fslcmds), publish_receive)[:2]
+                fslcmds = f.readlines()
+            ret = self.container.send_fsl(fslcmds +
+                                          ['save_model(close)'])
+            # TODO: add publish_receive
             logger.debug(ret)
-            r = [json.loads(s)
-                 for s in ret]
-            logger.info("Finished %s", r)
+            r = [json.loads(s) for s in ret]
+            logger.debug("Finished %s", r)
             try:
                 if r[0]['status'] == 'ok':
                     task.status = 'C'
-                    status, content = self.container.getfile()[:2]  # last element is 'end.'
+                    bchfile = r[0]['result_file'][0]
+                    status, content = self.container.getfile(bchfile)
                     logging.info("get results %s: status %s len %d",
                                  task.id, status, len(content))
-                    bchfile = json.loads(status)['message']
                     with open(os.path.join(task.directory,
                                            bchfile), 'wb') as f:
                         f.write(content)
                 else:
                     task.status = 'X'
+                    logger.warn("%s: %s", task.id, r['message'])
             except (KeyError, IndexError):
                 task.status = 'X'
 
-            if self.stoponend:
-                self.container.quit()
-                # lets hope that docker will always restart this container
+            logger.info("Task %s end status %s",
+                        task.id, task.status)
+            ret = self.container.release()
             self.queue.task_done()
-        
-    
+        self.container.close()
+
+
 class Engine(object):
 
     """The Docker Engine
@@ -106,20 +93,17 @@ class Engine(object):
        execute Femag-Simulations with docker
 
        Args:
-         hosts (list of str): list of container names
-         stoponend (bool): stop container after each task (experimental)
+         dispatcher (str): hostname of dispatcher
+         port (int): port number of dispatcher
+         num_threads: number of threads to send requests
     """
-    def __init__(self, hosts=[], ports=[], stoponend=True):
-        self.stoponend = stoponend
-        if ports:
-            self.femag_ports = ports
-        else:
-            self.femag_ports = [int(os.environ.get('FEMAG_PORT', 5555))]*len(hosts)
-        if hosts:
-            self.hosts = hosts
-        else:
-            self.hosts = ['127.0.0.1']*len(ports)
-            
+    def __init__(self, dispatcher='127.0.0.1', port=5000,
+                 num_threads=5):
+        self.port = port
+        self.dispatcher = dispatcher
+        self.num_threads = num_threads
+        self.async_femags = None
+        
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`CloudJob`
 
@@ -129,15 +113,6 @@ class Engine(object):
         Return:
             job (:class:`Job`)
         """
-        if not self.hosts:
-            raise ValueError("empty host list")
-        self.queue = Queue()
-        self.async_femags = [AsyncFemag(self.queue,
-                                        workdir,
-                                        p, h,
-                                        self.stoponend)
-                             for h, p in zip(self.hosts, self.femag_ports)]
-        
         self.job = femagtools.job.Job(workdir)
         return self.job
 
@@ -147,13 +122,17 @@ class Engine(object):
         Return:
             number of started tasks (int)
         """
-        
+        self.queue = Queue()
+        self.async_femags = [AsyncFemag(self.queue,
+                                        self.port, self.dispatcher)
+                             for i in range(self.num_threads)]
+
         for async_femag in self.async_femags:
             async_femag.start()
 
         for task in self.job.tasks:
             self.queue.put(task)
-
+            
         return len(self.job.tasks)
 
     def join(self):
@@ -168,24 +147,9 @@ class Engine(object):
         # stop workers
         for _ in self.async_femags:
             self.queue.put(None)
+
+        # wait for all workers
         for async_femag in self.async_femags:
             async_femag.join()
-            
+
         return [t.status for t in self.job.tasks]
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(message)s')
-    engine = Engine()
-    job = engine.create_job('/tmp/tar/docker-femag')
-    for _ in range(3):
-        t = job.add_task()
-        t.add_file('femag.fsl',
-                   content=[''])
-    engine.submit()
-    status = engine.join()
-    print("Status {}".format(status))
-    for t in engine.job.tasks:
-        print(t.directory)
-    

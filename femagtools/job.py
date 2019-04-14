@@ -139,7 +139,8 @@ class CloudTask(Task):
         self.tar_file.addfile(info, data)
         
     class Factory:
-        def create(self, id, dir, result_func): return CloudTask(id, dir, result_func)
+        def create(self, id, dir, result_func): return CloudTask(
+                id, dir, result_func)
 
 
 class Job(object):
@@ -160,7 +161,8 @@ class Job(object):
 
     def add_task(self, result_func=None):
         "adds a new task to this job"
-        taskid = "{}-{}".format(str(uuid.uuid4()), len(self.tasks))
+        taskid = "{}-{}".format(
+            str(uuid.uuid4()).split('-')[0], len(self.tasks))
         dir = os.path.join(self.basedir,
                            '{}{:d}'.format(self.runDirPrefix,
                                            len(self.tasks)))

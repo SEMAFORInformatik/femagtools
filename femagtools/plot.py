@@ -383,7 +383,7 @@ def mtpv(pmrel, u1max, i1max, title='', projection=''):
                 color='red', linewidth=2,
                 label='MTPV: {0:5.0f} Nm'.format(np.max(imtpv[2])))
         beta = np.arctan2(imtpv[1][0], imtpv[0][0])
-        b = np.linspace(beta, 0)
+        #b = np.linspace(beta, 0)
         #ax.plot(np.sqrt(2)*i1max*np.sin(b), np.sqrt(2)*i1max*np.cos(b), 'r-')
         
         ax.grid()
@@ -467,7 +467,76 @@ def pmrelsim(bch, title=''):
     fig.tight_layout(h_pad=3.5)
     if title:
         fig.subplots_adjust(top=0.92)
-    
+
+
+def fasttorque(bch, title=''):
+    """creates a plot of a Fast Torque simulation"""
+    cols = 2
+    rows = 4
+    if len(bch.flux['1']) > 1:
+        rows += 1
+    htitle = 1.5 if title else 0
+    fig, ax = pl.subplots(nrows=rows, ncols=cols,
+                          figsize=(10, 3*rows + htitle))
+    if title:
+        fig.suptitle(title, fontsize=16)
+
+    row = 1
+    pl.subplot(rows, cols, row)
+    if bch.torque:
+        torque(bch.torque[-1]['angle'], bch.torque[-1]['torque'])
+        pl.subplot(rows, cols, row+1)
+        torque_fft(bch.torque_fft[-1]['order'], bch.torque_fft[-1]['torque'])
+        pl.subplot(rows, cols, row+2)
+        force('Force Fx',
+              bch.torque[-1]['angle'], bch.torque[-1]['force_x'])
+        pl.subplot(rows, cols, row+3)
+        force('Force Fy',
+              bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
+        row += 3
+    elif bch.linearForce:
+        force('Force x', bch.linearForce[-1]['displ'],
+              bch.linearForce[-1]['force_x'], 'Displ. / mm')
+        pl.subplot(rows, cols, row+1)
+        force_fft(bch.linearForce_fft[-2]['order'],
+                  bch.linearForce_fft[-2]['force'])
+        pl.subplot(rows, cols, row+2)
+        force('Force y', bch.linearForce[-1]['displ'],
+              bch.linearForce[-1]['force_y'], 'Displ. / mm')
+        pl.subplot(rows, cols, row+3)
+        force_fft(bch.linearForce_fft[-1]['order'],
+                  bch.linearForce_fft[-1]['force'])
+        row += 3
+        
+    pl.subplot(rows, cols, row+1)
+    flux = [bch.flux[k][-1] for k in bch.flux]
+    pos = [f['displ'] for f in flux]
+    winding_flux(pos,[f['flux_k'] for f in flux])
+    pl.subplot(rows, cols, row+2)
+    winding_current(pos, [f['current_k'] for f in flux])
+    pl.subplot(rows, cols, row+3)
+    voltage('Internal Voltage',
+            bch.flux['1'][-1]['displ'],
+            bch.flux['1'][-1]['voltage_dpsi'])
+    pl.subplot(rows, cols, row+4)
+    voltage_fft('Internal Voltage Harmonics',
+                bch.flux_fft['1'][-1]['order'],
+                bch.flux_fft['1'][-1]['voltage'])
+   
+    if len(bch.flux['1']) > 1:
+        pl.subplot(rows, cols, row+5)
+        voltage('No Load Voltage',
+                bch.flux['1'][0]['displ'],
+                bch.flux['1'][0]['voltage_dpsi'])
+        pl.subplot(rows, cols, row+6)
+        voltage_fft('No Load Voltage Harmonics',
+                    bch.flux_fft['1'][0]['order'],
+                    bch.flux_fft['1'][0]['voltage'])
+
+    fig.tight_layout(h_pad=3.5)
+    if title:
+        fig.subplots_adjust(top=0.92)
+
 
 def cogging(bch, title=''):
     """creates a cogging plot"""
@@ -809,8 +878,10 @@ def main():
     with io.open(args.filename, encoding='latin1', errors='ignore') as f:
         bchresults.read(f.readlines())
 
-    if bchresults.type.lower().find(
-            'pm-synchronous-motor simulation') >= 0:
+    if (bchresults.type.lower().find(
+            'pm-synchronous-motor simulation') >= 0 or
+        bchresults.type.lower().find(
+            'permanet-magnet-synchronous-motor') >= 0):
         pmrelsim(bchresults, bchresults.filename)
     elif bchresults.type.lower().find('cogging calculation') >= 0:
         cogging(bchresults, bchresults.filename)
@@ -818,6 +889,8 @@ def main():
         ldlq(bchresults)
     elif bchresults.type.lower().find('psid-psiq-identification') >= 0:
         psidq(bchresults)
+    elif bchresults.type.lower().find('fast_torque calculation') >= 0:
+        fasttorque(bchresults)
     else:
         raise ValueError("BCH type {} not yet supported".format(
             bchresults.type))

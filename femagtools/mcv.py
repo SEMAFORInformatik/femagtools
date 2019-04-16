@@ -771,7 +771,7 @@ class MagnetizingCurve(object):
                 ext = '.MC' if sys.platform == 'win32' else '.MCV'
                 filename = ''.join((id, ext))
                 logger.info("search file %s in %s", filename,
-                             self.mcdirectory)
+                            self.mcdirectory)
                 if os.access(os.path.join(self.mcdirectory,
                                           filename), os.R_OK):
                     return id
@@ -907,10 +907,13 @@ class MagnetizingCurve(object):
                     logger.error("MCV %s not found in directory %s",
                                  str(filename), directory)
                     return None
-            mcv = Reader()
-            mcv.readMcv(os.path.join(self.mcdirectory,
-                                     filename))
-
+            try:
+                mcv = Reader()
+                mcv.readMcv(os.path.join(self.mcdirectory,
+                                         filename))
+            except AttributeError:
+                logger.error("MCV %s not found in dict list", name)
+                return ''
         bname = self.fix_name(mcv['name'], fillfac)
         filename = ''.join((bname, ext))
         writer = Writer(mcv)

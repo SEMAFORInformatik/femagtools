@@ -6,7 +6,6 @@
     Running FEMAG
 
 
-
 """
 import subprocess
 import os
@@ -253,10 +252,12 @@ class ZmqFemag(BaseFemag):
     """Invoke and control execution of FEMAG with ZeroMQ
 
     Args:
+        port: port number of req socket
+        host: hostname (ip addr)
         workdir: name of working directory
         cmd: name of femag program
     """
-    def __init__(self, workdir, port, host='localhost', cmd=None,
+    def __init__(self, port, host='localhost', workdir='', cmd=None,
                  magnetizingCurves=None, magnets=None):
         super(self.__class__, self).__init__(workdir, cmd,
                                              magnetizingCurves, magnets)
@@ -268,9 +269,20 @@ class ZmqFemag(BaseFemag):
         self.proc = None
         self.reader = None
 
-    def __del__(self):
+    def close(self):
         if self.reader:
             self.reader.continue_loop = False
+        if self.proc:
+            self.quit()
+        if self.request_socket:
+            self.request_socket.close()
+            self.request_socket = None
+        if self.subscriber_socket:
+            self.subscriber_socket.close()
+            self.subscriber_socket = None
+            
+    def __del__(self):
+        self.close()
         logger.debug("Destructor ZmqFemag")
 
     def __req_socket(self):
@@ -281,13 +293,13 @@ class ZmqFemag(BaseFemag):
         self.request_socket = context.socket(zmq.REQ)
         self.request_socket.connect('tcp://{0}:{1}'.format(
             self.host, self.port))
-        if not self.ipaddr:
-            if self.host != 'localhost':
-                inforesp = self.info()
-                self.ipaddr = json.loads(inforesp[1])['addr']
-                logger.info("Connected with %s", self.ipaddr)
-            else:
-                self.ipaddr = '127.0.0.1'
+        #if not self.ipaddr:
+        #    if self.host != 'localhost':
+        #        inforesp = self.info()
+        #        self.ipaddr = json.loads(inforesp[1])['addr']
+        #        logger.info("Connected with %s", self.ipaddr)
+        #    else:
+        #        self.ipaddr = '127.0.0.1'
         self.request_socket.setsockopt(zmq.LINGER, 500)
         return self.request_socket
 
@@ -379,31 +391,37 @@ class ZmqFemag(BaseFemag):
             request_socket.send_string(msg[-1])
         return request_socket.recv_multipart()
 
-    def send_fsl(self, fsl, callback=None, header='FSL', timeout=None):
+    def send_fsl(self, fsl, pub_consumer=None, timeout=None):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
 
         Args:
-            fsl: string of FSL commands
+            fsl: string (or list) of FSL commands
             timeout: The timeout (in milliseconds) to wait for a response
+            pub_consumer: callable object to be invoked with publish message 
+                      tuple (topic, content)
 
         Return:
-            response
+            status
         """
-        logger.debug("Send fsl with fsl: {}, callback: {}, header: {}".format(
-            fsl, callback, header))
+        header = 'FSL'
+        logger.debug("Send fsl with fsl: {}, pub_consumer: {}, header: {}".format(
+            fsl, pub_consumer, header))
 
         try:
             request_socket = self.__req_socket()
             # Start the reader thread to get information about the next calculation
-            if callback:
+            if pub_consumer:
                 self.stopStreamReader()
-                self.reader = FemagReadStream(self.__sub_socket(), callback)
+                self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
                 self.reader.setDaemon(True)
                 self.reader.start()
 
             request_socket.send_string(header, flags=zmq.SNDMORE)
             logger.debug("Sent header")
-            request_socket.send_string(fsl)
+            if isinstance(fsl, list):
+                request_socket.send_string('\n'.join(fsl))
+            else:
+                request_socket.send_string(fsl)
             logger.debug("Sent fsl wait for response")
 
             if timeout:
@@ -418,9 +436,9 @@ class ZmqFemag(BaseFemag):
                 try:
                     response = request_socket.recv_multipart()
                     time.sleep(.5)  # Be sure all messages are arrived over zmq
-                    if callback:
+                    if pub_consumer:
                         self.reader.continue_loop = False
-                    return [s.decode() for s in response]
+                    return [s.decode('latin1') for s in response]
                 except zmq.error.Again as e:
                     logger.info("Again [%s], timeout: %d", str(e), timeout)
                     if startTime:
@@ -447,9 +465,6 @@ class ZmqFemag(BaseFemag):
 
         Args:
             options: list of FEMAG options
-
-        Raises:
-            FemagError
         """
         args = [self.cmd] + options
 
@@ -525,7 +540,7 @@ class ZmqFemag(BaseFemag):
 
         # send quit command
         try:
-            response = self.send_fsl('quit', header='CONTROL')
+            response = self.send_request([b'CONTROL', b'quit'])
 #                                     recvflags=zmq.NOBLOCK)
         except Exception as e:
             logger.error("Femag Quit zmq message %s", e)
@@ -548,54 +563,70 @@ class ZmqFemag(BaseFemag):
             self.proc = None
         return response
 
-    def upload(self, filename):
-        """upload file
+    def upload(self, files):
+        """upload file or files
         returns number of transferred bytes
         (FEMAG 8.5 Rev 3282 or greater only)
         """
         request_socket = self.__req_socket()
-        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-        basename = os.path.basename(filename)
-        logger.info("upload %s --> %s", filename, basename)
-        request_socket.send_string('upload = {}'.format(basename),
-                                   flags=zmq.SNDMORE)
 
+        ret = []
         total = 0
         chunk_size = 20*1024
-        with open(filename, mode="rb") as file:
-            while True:
-                data = file.read(chunk_size)
-                if not data:
-                    break
-                more = 0 if len(data) < chunk_size else zmq.SNDMORE
-                request_socket.send(data, flags=more)
-                total += len(data)
-
-        return [s.decode() for s in request_socket.recv_multipart()]
+        fnames = files
+        if isinstance(files, str):
+            fnames = [files]
+        for fn in fnames:
+            request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+            basename = os.path.basename(fn)
+            logger.info("upload %s --> %s", fn, basename)
+            request_socket.send_string('upload = {}'.format(basename),
+                                       flags=zmq.SNDMORE)
+            with open(fn, mode="rb") as file:
+                while True:
+                    data = file.read(chunk_size)
+                    if not data:
+                        break
+                    more = 0 if len(data) < chunk_size else zmq.SNDMORE
+                    request_socket.send(data, flags=more)
+                    total += len(data)
+            ret += [s.decode('latin1')
+                    for s in request_socket.recv_multipart()]
+        return ret
     
     def cleanup(self):
-        """remove all FEMAG files in working directory (FEMAG 8.5 Rev 3282 or greater only)"""
-        self.send_request(['FSL', 'save_model(close)'])
-        return [r.decode() for r in self.send_request(['CONTROL', 'cleanup'])]
+        """remove all FEMAG files in working directory 
+        (FEMAG 8.5 Rev 3282 or greater only)"""
+        return [r.decode('latin1')
+                for r in self.send_request(['CONTROL', 'cleanup'])]
+    
+    def release(self):
+        """signal finish calculation task to load balancer to free resources
+        (Docker Cloud environment only)
+        """
+        return [r.decode('latin1')
+                for r in self.send_request(['close'])]
     
     def info(self):
-        """get various resource information (FEMAG 8.5 Rev 3282 or greater only)"""
-        return [r.decode() for r in self.send_request(['CONTROL', 'info'])]
+        """get various resource information 
+        (FEMAG 8.5 Rev 3282 or greater only)"""
+        return [r.decode('latin1')
+                for r in self.send_request(['CONTROL', 'info'])]
 
     def getfile(self, filename=''):
         """get file (FEMAG 8.5 Rev 3282 or greater only)"""
         response = self.send_request(
             ['CONTROL', 'getfile = {}'.format(filename)])
-        return [response[0].decode(), response[1]]
+        return [response[0].decode('latin1'), response[1]]
         
     def exportsvg(self, fslcmds):
         """get svg format from fsl commands (if any graphic created)
         (since FEMAG 8.5 Rev 3343) """
         response = self.send_request(['SVG', fslcmds])
-        rc = json.loads(response[0].decode())
+        rc = json.loads(response[0].decode('latin1'))
         if rc['status'] == 'ok':
             return self.getfile(rc['result_file'][0])
-        return [s.decode() for s in response]
+        return [s.decode('latin1') for s in response]
             
     def stopStreamReader(self):
         if self.reader:
@@ -603,29 +634,70 @@ class ZmqFemag(BaseFemag):
             self.reader.continue_loop = False
             self.reader.join()
 
-    def __call__(self, pmMachine, operatingConditions):
-        """setup fsl file, run calculation and return BCH results"""
-        self.send_fsl('\n'.join(self.create_fsl(pmMachine,
-                                                operatingConditions)))
-        if operatingConditions['calculationMode'] == "pm_sym_loss":
+    def copy_magnetizing_curves(self, model, dir=None):
+        """extract mc names from model and write files into workdir or dir if given
+           and upload to Femag
+
+        Return:
+            list of extracted mc names (:obj:`list`)
+        """
+        dest = dir if dir else self.workdir
+        for m in model.set_magcurves(
+                self.magnetizingCurves, self.magnets):
+            f = self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
+            self.upload(os.path.join(dest, f))
+    
+    def __call__(self, pmMachine, simulation, pub_consumer=None):
+        """setup fsl file, run calculation and return BCH results
+        Args:
+          pmMachine: dict with machine parameters or name of model
+          simulation; dict with simulation parameters
+
+        Raises:
+           FemagError
+        """
+        if isinstance(pmMachine, str):
+            modelpars = dict(name=pmMachine)
+        else:
+            modelpars = pmMachine
+        if 'exit_on_end' not in modelpars:
+            modelpars['exit_on_end'] = 'false'
+        if 'exit_on_error' not in modelpars:
+            modelpars['exit_on_error'] = 'false'
+        response = self.send_fsl(['save_model(close)'] +
+                                 self.create_fsl(modelpars,
+                                                 simulation),
+                                 pub_consumer=pub_consumer)
+        r = json.loads(response[0])
+        if r['status'] != 'ok':
+            raise FemagError(r['message'])
+
+        result_file = r['result_file'][0]
+        if simulation['calculationMode'] == "pm_sym_loss":
             return self.read_los(self.modelname)
-        return self.read_bch(self.modelname)
+
+        status, content = self.getfile(result_file)
+        r = json.loads(status)
+        if r['status'] == 'ok':
+            bch = femagtools.bch.Reader()
+            return bch.read(content.decode('latin1'))
+        raise FemagError(r['message'])
 
 
 class FemagReadStream(Thread):
-    def __init__(self, sub_socket, callback):
+    def __init__(self, sub_socket, pub_consumer):
         Thread.__init__(self)
         logger.debug("Initialize reader thread")
         self.sub_socket = sub_socket
-        # TODO: use a function to handle calls without callback
-        self.callback = callback if callback else self.dummy_callback
+        # TODO: use a function to handle calls without pub_consumer
+        self.pub_consumer = pub_consumer if pub_consumer else self.dummy_pub_consumer
         self.continue_loop = True
 
-    def dummy_callback(self, data):
-        """This dummy method is used when no callback is defined.
+    def dummy_pub_consumer(self, data):
+        """This dummy method is used when no pub_consumer is defined.
         """
         logger.warn(
-            "No callback defined, fallback to dummy\n >{}".format(data))
+            "No pub_consumer defined, fallback to dummy\n >{}".format(data))
 
     def run(self):
         """Listen for messages from femag as long as the continue_loop is True
@@ -640,8 +712,9 @@ class FemagReadStream(Thread):
                 # Sometimes femag send messages with only len = 1. These messages must be ignored
                 if len(response) < 2:
                     continue
-                # Call the callback function
-                self.callback([s.decode() for s in response])
+                # Call the pub_consumer function
+                self.pub_consumer([s.decode('latin1')
+                                   for s in response])
             # The subscriber_socket has a timeout of 900 mil sec. If no answer was arrived
             # this exception is raised - Ingnore
             except zmq.error.Again:

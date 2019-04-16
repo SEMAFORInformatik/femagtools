@@ -33,16 +33,16 @@ class FemagMoProblem(Problem):
         # list of dicts (model, feaModel)
         if isinstance(model, list):
             for o in model:
-                try:
-                    self.prepare(x, o)
-                except:
-                    pass  # ignore silently
+                self.prepare(x, o)
             return
 
         # simple dict
         for d, v in zip(self.decision_vars, x):
             logger.debug("Prepare: %s = %s",  d['name'], v)
-            model.set_value(d['name'].split('.'), v)
+            attr = d['name'].split('.')
+            # only if model has such an attr
+            if hasattr(model, attr[0]):
+                model.set_value(attr, v)
 
     def setResult(self, result):
         self.result = result

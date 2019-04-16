@@ -8,6 +8,7 @@
 
 
 """
+import time
 import femagtools
 import femagtools.fsl
 import femagtools.moproblem
@@ -67,9 +68,10 @@ class Optimizer(object):
             task.add_file('femag.fsl',
                           self.builder.create(self.model, self.fea,
                                               self.femag.magnets))
-
+        tstart = time.time()
         ntasks = engine.submit()
         status = engine.join()
+        tend = time.time()
 
         for t, i in zip(self.job.tasks, pop.individuals):
             if t.status == 'C':
@@ -87,7 +89,8 @@ class Optimizer(object):
                 logger.warn("Task %s failed with status %s", t.id, t.status)
 
         pop.update()
-
+        return tend - tstart
+    
     def __call__(self, num_generations, opt, pmMachine,
                  operatingConditions, engine):
         return self.optimize(num_generations, opt, pmMachine,
@@ -126,17 +129,20 @@ class Optimizer(object):
                     self.pop.size())
 
         results = dict(rank=[], f=[], x=[])
-
+        elapsedTime = 0
         for i in range(num_generations):
             logger.info("Generation %d", i)
             if i > 0:
                 newpop = algo.evolve(self.pop)
-                self._update_population(newpop, engine)
+                deltat = self._update_population(newpop, engine)
                 self.pop.merge(newpop)
             else:
-                self._update_population(self.pop, engine)
-            logger.info('\n'.join(log_pop(self.pop, i)))
-        logger.info("finished")
+                deltat = self._update_population(self.pop, engine)
+            logger.info('\n'.join(log_pop(self.pop, i) +
+                                  ['', '  Elapsed Time: {} s'.format(
+                                      int(deltat))]))
+            elapsedTime += deltat
+        logger.info("TOTAL Elapsed Time: %d s", elapsedTime)
         ft = []
         xt = []
         for i in self.pop.individuals:

@@ -17,7 +17,8 @@ modelpars = dict(
         nodedist=1.5,
         rlength=1.0),
 
-    magnet=dict())
+    magnet=dict(),
+    windings=dict())
 
 
 class ModelTest(unittest.TestCase):
@@ -60,6 +61,19 @@ class ModelTest(unittest.TestCase):
         model = femagtools.MachineModel({'name': modelname})
         self.assertEqual('PM-4556-B', model.name)
 
+    def test_unchanged(self):
+        m = dict(modelpars)
+        model = femagtools.MachineModel(m)
+        decision_vars = [{'name':   'current',
+                          'steps':  2,
+                          'bounds': [50.0, 100.0]},
+                         {'name':   'windings.num_wires',
+                          'steps':  3,
+                          'bounds': [10.0, 20.0]}]
+        matched_attrs = [d for d in decision_vars
+                         if hasattr(model,
+                                    d['name'].split('.')[0])]
+        self.assertTrue(matched_attrs)
 
 if __name__ == '__main__':
     unittest.main()

@@ -577,7 +577,7 @@ airgap_induc    calculate airgap induction      False
    
    plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
    'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
-   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.profemag.ch/ColorGrad.html) added in version 0.0.16
+   'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.profemag.ch/ColorGrad.html) added in version 0.0.16. The value types can be simple strings or list with name and min/max range.
 
 Example::
 
@@ -587,7 +587,7 @@ Example::
     magn_temp=60.0,
     current=50.0,
     speed=50.0,
-    plots=['field_lines', 'Babs'])
+    plots=['field_lines', ['Babs', 0.0, 2.5]])
 
 .. Note::
    If airgap_induc is True the induction in the airgap is calculated after the simulation returns. The values can be read with the method read_airgap_induc() of call Femag.

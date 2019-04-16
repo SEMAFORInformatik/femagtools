@@ -11,6 +11,7 @@
 import logging
 import glob
 import os
+import time
 import numpy as np
 import femagtools
 import femagtools.model
@@ -179,6 +180,7 @@ class Grid(object):
             modelfiles = self.setup_model(builder, model)
             logger.info("Files %s", modelfiles)
 
+        elapsedTime = 0
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:
         for population in baskets(par_range, opt['population_size']):
@@ -229,10 +231,7 @@ class Grid(object):
                                                 self.femag.magnets,
                                                 model.magnet.get('material', 0)))
                 else:
-                    try:
-                        prob.prepare(x, model)
-                    except:
-                        prob.prepare(x, [model, fea])
+                    prob.prepare(x, [model, fea])
                     logger.info("prepare %s", x)
                     for mc in self.femag.copy_magnetizing_curves(
                             model,
@@ -246,12 +245,16 @@ class Grid(object):
                                                 self.femag.magnets,
                                                 model.magnet.get('material', 0)))
 
+            tstart = time.time()
             status = engine.submit()
             logger.info('Started %s', status)
             if bchMapper and isinstance(engine, femagtools.condor.Engine):
                 return {}  # BatchCalc Mode
             status = engine.join()
-
+            tend = time.time()
+            elapsedTime += (tend-tstart)
+            logger.info("Elapsed time %d s Status %s",
+                        (tend-tstart), status)
             for t in job.tasks:
                 if t.status == 'C':
                     r = t.get_results()
@@ -287,7 +290,7 @@ class Grid(object):
                     f.append([float('nan')]*len(objective_vars))
             p += 1
 
-        logger.info('...... DONE')
+        logger.info('Total elapsed time %d s ...... DONE', elapsedTime)
 
         shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
         logger.info("f shape %s --> %s", np.shape(np.array(f).T), shape)

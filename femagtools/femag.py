@@ -381,15 +381,30 @@ class ZmqFemag(BaseFemag):
         logger.debug("femag is not running")
         return False
 
-    def send_request(self, msg):
-        request_socket = self.__req_socket()
-        for m in msg[:-1]:
-            request_socket.send_string(m, flags=zmq.SNDMORE)
-        if isinstance(msg[-1], list):
-            request_socket.send_string('\n'.join(msg[-1]))
-        else:
-            request_socket.send_string(msg[-1])
-        return request_socket.recv_multipart()
+    def send_request(self, msg, timeout=None):
+        try:
+            request_socket = self.__req_socket()
+            if timeout:
+                request_socket.setsockopt(zmq.RCVTIMEO, timeout)
+                request_socket.setsockopt(zmq.LINGER, 0)
+            else:
+                request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
+                request_socket.setsockopt(zmq.LINGER, 30000)  # default value
+            import datetime
+
+            for m in msg[:-1]:
+                request_socket.send_string(m, flags=zmq.SNDMORE)
+            if isinstance(msg[-1], list):
+                request_socket.send_string('\n'.join(msg[-1]))
+            else:
+                request_socket.send_string(msg[-1])
+            return request_socket.recv_multipart()
+        except Exception as e:
+            logger.exception("send_request")
+            logger.info("send_request: %s", str(e))
+            if timeout:  # only first call raises zmq.error.Again
+                return [b'{"status":"error", "message":"Femag is not running"}']
+            return [b'{"status":"error", "message":"' + str(e) + '"}']
 
     def send_fsl(self, fsl, pub_consumer=None, timeout=None):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
@@ -540,7 +555,8 @@ class ZmqFemag(BaseFemag):
 
         # send quit command
         try:
-            response = self.send_request([b'CONTROL', b'quit'])
+            response = [r.decode('latin1')
+                        for r in self.send_request(['CONTROL', 'quit'], timeout=10000)]
 #                                     recvflags=zmq.NOBLOCK)
         except Exception as e:
             logger.error("Femag Quit zmq message %s", e)
@@ -598,7 +614,7 @@ class ZmqFemag(BaseFemag):
         """remove all FEMAG files in working directory 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'cleanup'])]
+                for r in self.send_request(['CONTROL', 'cleanup'], timeout=10000)]
     
     def release(self):
         """signal finish calculation task to load balancer to free resources
@@ -611,7 +627,13 @@ class ZmqFemag(BaseFemag):
         """get various resource information 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'info'])]
+                for r in self.send_request(['CONTROL', 'info'], timeout=10000)]
+
+    def publishLevel(self, level):
+        """set publish level"""
+        return [r.decode('latin1')
+                for r in self.send_request(['CONTROL', 'publish = {}'
+                                            .format(level)], timeout=10000)]
 
     def getfile(self, filename=''):
         """get file (FEMAG 8.5 Rev 3282 or greater only)"""

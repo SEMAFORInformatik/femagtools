@@ -403,8 +403,10 @@ class ZmqFemag(BaseFemag):
             logger.exception("send_request")
             logger.info("send_request: %s", str(e))
             if timeout:  # only first call raises zmq.error.Again
-                return [b'{"status":"error", "message":"Femag is not running"}']
-            return [b'{"status":"error", "message":"' + str(e) + '"}']
+                return [b'{"status":"error", "message":"Femag is not running"}',
+                        b'']
+            return [b'{"status":"error", "message":"' + str(e).encode() + b'"}',
+                    b'']
 
     def send_fsl(self, fsl, pub_consumer=None, timeout=None):
         """sends FSL commands in ZMQ mode and blocks until commands are processed

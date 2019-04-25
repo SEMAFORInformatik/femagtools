@@ -403,10 +403,8 @@ class ZmqFemag(BaseFemag):
             logger.exception("send_request")
             logger.info("send_request: %s", str(e))
             if timeout:  # only first call raises zmq.error.Again
-                return [b'{"status":"error", "message":"Femag is not running"}',
-                        b'']
-            return [b'{"status":"error", "message":"' + str(e).encode() + b'"}',
-                    b'']
+                return [b'{"status":"error", "message":"Femag is not running"}']
+            return [b'{"status":"error", "message":"' + str(e).encode() + b'"}']
 
     def send_fsl(self, fsl, pub_consumer=None, timeout=None):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
@@ -629,7 +627,7 @@ class ZmqFemag(BaseFemag):
         """get various resource information 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'info'], timeout=10000)]
+                for r in self.send_request(['CONTROL', 'info'], timeout=2000)]
 
     def publishLevel(self, level):
         """set publish level"""
@@ -641,7 +639,8 @@ class ZmqFemag(BaseFemag):
         """get file (FEMAG 8.5 Rev 3282 or greater only)"""
         response = self.send_request(
             ['CONTROL', 'getfile = {}'.format(filename)])
-        return [response[0].decode('latin1'), response[1]]
+        return [response[0].decode('latin1'),
+                response[1] if len(response) else b'']
         
     def exportsvg(self, fslcmds):
         """get svg format from fsl commands (if any graphic created)

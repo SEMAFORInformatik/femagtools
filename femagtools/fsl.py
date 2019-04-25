@@ -395,8 +395,10 @@ class Builder:
             fea['pocfilename'] = (model.get('name') +
                                   '_' + str(model.get('poles')) +
                                   'p.poc')
-            fea['phi_start'] = 0.0
-            fea['range_phi'] = 720/model.get('poles')
+            if not 'phi_start' in fea:
+                fea['phi_start'] = 0.0
+            if not 'range_phi' in fea:
+                fea['range_phi'] = 720/model.get('poles')
             fe_losses = self.create_fe_losses(model)
             return fslmodel + fe_losses + self.create_analysis(
                 fea, magnets, model.magnet.get('material', 0))

@@ -269,20 +269,9 @@ class ZmqFemag(BaseFemag):
         self.proc = None
         self.reader = None
 
-    def close(self):
+    def __del__(self):
         if self.reader:
             self.reader.continue_loop = False
-        if self.proc:
-            self.quit()
-        if self.request_socket:
-            self.request_socket.close()
-            self.request_socket = None
-        if self.subscriber_socket:
-            self.subscriber_socket.close()
-            self.subscriber_socket = None
-            
-    def __del__(self):
-        self.close()
         logger.debug("Destructor ZmqFemag")
 
     def __req_socket(self):
@@ -293,13 +282,13 @@ class ZmqFemag(BaseFemag):
         self.request_socket = context.socket(zmq.REQ)
         self.request_socket.connect('tcp://{0}:{1}'.format(
             self.host, self.port))
-        #if not self.ipaddr:
-        #    if self.host != 'localhost':
-        #        inforesp = self.info()
-        #        self.ipaddr = json.loads(inforesp[1])['addr']
-        #        logger.info("Connected with %s", self.ipaddr)
-        #    else:
-        #        self.ipaddr = '127.0.0.1'
+        if not self.ipaddr:
+            if self.host != 'localhost':
+                inforesp = self.info()
+                self.ipaddr = json.loads(inforesp[1])['addr']
+                logger.info("Connected with %s", self.ipaddr)
+            else:
+                self.ipaddr = '127.0.0.1'
         self.request_socket.setsockopt(zmq.LINGER, 500)
         return self.request_socket
 
@@ -614,26 +603,13 @@ class ZmqFemag(BaseFemag):
         """remove all FEMAG files in working directory 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'cleanup'], timeout=10000)]
-    
-    def release(self):
-        """signal finish calculation task to load balancer to free resources
-        (Docker Cloud environment only)
-        """
-        return [r.decode('latin1')
-                for r in self.send_request(['close'])]
+                for r in self.send_request(['CONTROL', 'cleanup'])]
     
     def info(self):
         """get various resource information 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'info'], timeout=2000)]
-
-    def publishLevel(self, level):
-        """set publish level"""
-        return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'publish = {}'
-                                            .format(level)], timeout=10000)]
+                for r in self.send_request(['CONTROL', 'info'])]
 
     def getfile(self, filename=''):
         """get file (FEMAG 8.5 Rev 3282 or greater only)"""

@@ -71,7 +71,14 @@ def _readSections(f):
     for line in f:
         if line.startswith('[****'):
             if section:
-                yield section
+                # skip empty lines
+                i = 0
+                try:
+                    while not section[i]:
+                        i = i+1
+                except IndexError:
+                    i = i-1
+                yield section[i:]
                 section = []
         else:
             section.append(line.strip())

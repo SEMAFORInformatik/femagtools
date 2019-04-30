@@ -298,7 +298,7 @@ class ZmqFemag(BaseFemag):
             return self.subscriber_socket
         context = zmq.Context.instance()
         if not self.ipaddr:
-            self.ipaddr = '127.0.1'
+            self.ipaddr = '127.0.0.1'
         self.subscriber_socket = context.socket(zmq.SUB)
         self.subscriber_socket.connect(
             'tcp://{0}:{1}'.format(

@@ -280,7 +280,7 @@ class ZmqFemag(BaseFemag):
         if self.subscriber_socket:
             self.subscriber_socket.close()
             self.subscriber_socket = None
-            
+
     def __del__(self):
         self.close()
         logger.debug("Destructor ZmqFemag")
@@ -293,13 +293,13 @@ class ZmqFemag(BaseFemag):
         self.request_socket = context.socket(zmq.REQ)
         self.request_socket.connect('tcp://{0}:{1}'.format(
             self.host, self.port))
-        #if not self.ipaddr:
-        #    if self.host != 'localhost':
-        #        inforesp = self.info()
-        #        self.ipaddr = json.loads(inforesp[1])['addr']
-        #        logger.info("Connected with %s", self.ipaddr)
-        #    else:
-        #        self.ipaddr = '127.0.0.1'
+        if not self.ipaddr:
+            if self.host != 'localhost':
+                inforesp = self.info()
+                self.ipaddr = json.loads(inforesp[1])['addr']
+                logger.info("Connected with %s", self.ipaddr)
+            else:
+                self.ipaddr = '127.0.0.1'
         self.request_socket.setsockopt(zmq.LINGER, 500)
         return self.request_socket
 
@@ -390,7 +390,6 @@ class ZmqFemag(BaseFemag):
             else:
                 request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
                 request_socket.setsockopt(zmq.LINGER, 30000)  # default value
-            import datetime
 
             for m in msg[:-1]:
                 request_socket.send_string(m, flags=zmq.SNDMORE)

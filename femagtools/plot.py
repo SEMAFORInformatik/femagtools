@@ -48,15 +48,13 @@ def _plot_surface(ax, x, y, z, labels, azim=None):
                     vmin=np.nanmin(z), vmax=np.nanmax(z),
                     linewidth=0, antialiased=True)
 #                    edgecolor=(0, 0, 0, 0))
-
     #ax.set_xticks(xticks)
     #ax.set_yticks(yticks)
     #ax.set_zticks(zticks)
-
     ax.set_xlabel(labels[0])
     ax.set_ylabel(labels[1])
     ax.set_title(labels[2])
-    
+
     #pl.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
 
 
@@ -214,6 +212,19 @@ def force_fft(order, force):
     ax.set_xlim(left=-bw/2)
 
 
+def forcedens(title, pos, fdens):
+    """plot force densities"""
+    ax = pl.gca()
+    ax.set_title(title)
+    ax.grid(True)
+        
+    ax.plot(pos, [1e-3*ft for ft in fdens[0]], label='F tang')
+    ax.plot(pos, [1e-3*fn for fn in fdens[1]], label='F norm')
+    ax.legend()
+    ax.set_xlabel('Pos / deg')
+    ax.set_ylabel('Force Density / N/mm²')
+
+    
 def winding_flux(pos, flux):
     """plot flux vs position"""
     ax = pl.gca()
@@ -858,9 +869,9 @@ def main():
     from femagtools.bch import Reader
     
     argparser = argparse.ArgumentParser(
-        description='Read BCH/BATCH file and create a plot')
+        description='Read BCH/BATCH/PLT file and create a plot')
     argparser.add_argument('filename',
-                           help='name of BCH/BATCH file')
+                           help='name of BCH/BATCH/PLT file')
     argparser.add_argument(
         "--version",
         "-v",
@@ -873,7 +884,18 @@ def main():
         sys.exit(0)
     if not args.filename:
         sys.exit(0)
-        
+    if args.filename.split('.')[-1].startswith('PLT'):
+        import femagtools.forcedens
+        fdens = femagtools.forcedens.read(args.filename)
+        title = '{}, Rotor position {}'.format(
+            fdens.title, fdens.positions[0]['position'])
+        pos = fdens.positions[0]['X']
+        fdens = (fdens.positions[0]['FT'],
+                 fdens.positions[0]['FN'])
+        forcedens(title, pos, fdens)
+        pl.show()
+        return
+    
     bchresults = Reader()
     with io.open(args.filename, encoding='latin1', errors='ignore') as f:
         bchresults.read(f.readlines())

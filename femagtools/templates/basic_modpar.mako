@@ -1,6 +1,6 @@
-  global_unit(mm)
+  global_unit('mm')
   pickdist(0.001)
-  cosys(polar)
+  cosys('polar')
 
 <%include file="fe-contr.mako" />
 

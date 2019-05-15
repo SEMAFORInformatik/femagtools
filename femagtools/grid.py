@@ -272,15 +272,14 @@ class Grid(object):
                                     os.path.join(t.directory, '*')):
                                 shutil.copy(ff, repdir)
                         calcid += 1
-                    if bchMapper:  # Mode => collectBchData
-                        self.addBchMapperData(bchMapper(r))
-
                     if isinstance(r, dict) and 'error' in r:
                         logger.warn("job %d failed: %s", k, r['error'])
                         f.append([float('nan')]*len(objective_vars))
                     else:
                         if bchMapper:
-                            prob.setResult(bchMapper(r))
+                            bchData = bchMapper(r)
+                            self.addBchMapperData(bchData)
+                            prob.setResult(bchData)
                         elif isinstance(r, dict):
                             prob.setResult(femagtools.getset.GetterSetter(r))
                         else:

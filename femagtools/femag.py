@@ -131,17 +131,11 @@ class BaseFemag(object):
 
     def read_airgap_induction(self, modelname=''):
         """read airgap induction"""
-        # we need to figure out the number of slots and poles
-        bch = self.read_bch()
-        Q = bch.machine['Q']
-        p = bch.machine['p']
-        
-        def gcd(a, b):
-            while b:
-                a, b = b, a % b
-            return a
-        return ag.read(os.path.join(self.workdir, 'bag.dat'), 360/gcd(Q, p))
-    
+        # we need to figure out the number of poles in model
+        bch = self.read_bch(modelname)
+        return ag.read(os.path.join(self.workdir, 'bag.dat'),
+                       bch.machine['p_sim'])
+
     def _get_modelname_from_log(self):
         """
         Read the modelname from the Femag Log file

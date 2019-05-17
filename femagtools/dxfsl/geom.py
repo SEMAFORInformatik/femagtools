@@ -197,7 +197,7 @@ def intersect(a, b):
         ccw(b.p1, b.p2, a.p1) != ccw(b.p1, b.p2, a.p2)
 
 
-def polylines(entity):
+def polylines(entity, lf):
     """returns a collection of bulged vertices
     http://www.afralisp.net/archive/lisp/Bulges1.htm
     """
@@ -237,43 +237,44 @@ def polylines(entity):
                 sa = np.arctan2(p1[1]-pc[1], p1[0]-pc[0])
                 ea = np.arctan2(p2[1]-pc[1], p2[0]-pc[0])
             logger.debug("Poly p1 %s p2 %s r %s", p1, p2, r)
-            yield Arc(Element(center=pc, radius=np.abs(r),
-                              start_angle=sa/np.pi*180,
-                              end_angle=ea/np.pi*180))
+            yield Arc(Element(center=(lf*pc[0], lf*pc[1]),
+                              radius=lf*np.abs(r),
+                              start_angle=sa,
+                              end_angle=ea))
         else:
-            yield Line(Element(start=p1, end=p2))
+            yield Line(Element(start=p1, end=p2), lf)
         i += 1
 
 
-def lw_polyline(entity):
+def lw_polyline(entity, lf):
     """returns a collection of bulged vertices
     http://www.afralisp.net/archive/lisp/Bulges1.htm
     """
     if isinstance(entity.points, list):
-        points = [(p[0], p[1]) for p in entity.points]
+        points = [(lf*p[0], lf*p[1]) for p in entity.points]
     else:
-        points = [(p[0], p[1]) for p in entity.points()]
+        points = [(lf*p[0], lf*p[1]) for p in entity.points()]
 
     if points:
         p1 = points[0]
         for p2 in points[1:]:
-            yield Line(Element(start=p1, end=p2))
+            yield Line(Element(start=p1, end=p2), lf)
             p1 = p2
     if entity.is_closed:
-        yield Line(Element(start=p1, end=points[0]))
+        yield Line(Element(start=p1, end=points[0]), lf)
 
 
-def spline(entity, min_dist=0.001):
+def spline(entity, lf, min_dist=0.001):
     if False:
         yield Line(Element(start=entity.control_points[0],
-                           end=entity.control_points[-1]))
+                           end=entity.control_points[-1]), lf)
         return
 
     if False:
         p_prev = None
         for p in entity.control_points:
             if p_prev:
-                yield Line(Element(start=p_prev, end=p))
+                yield Line(Element(start=p_prev, end=p), lf)
             p_prev = p
         return
 
@@ -285,16 +286,16 @@ def spline(entity, min_dist=0.001):
         dist_2e = distance(p2, pe)
         if dist_2e < min_dist:
             logger.debug("SPLINE: ignor small end-distance {}".format(dist_2e))
-            yield Line(Element(start=p1, end=pe))
+            yield Line(Element(start=p1, end=pe), lf)
             return
 
         if dist_12 > min_dist:
-            yield Line(Element(start=p1, end=p2))
+            yield Line(Element(start=p1, end=p2), lf)
             p1 = p2
         else:
             logger.debug("SPLINE: ignor small distance {}".format(dist_12))
 
-    yield Line(Element(start=p1, end=pe))
+    yield Line(Element(start=p1, end=pe), lf)
 
 
 def insert_block(insert_entity, block, min_dist=0.001):
@@ -339,13 +340,13 @@ def insert_block(insert_entity, block, min_dist=0.001):
         elif e.dxftype == 'LINE':
             yield Line(e)
         elif e.dxftype == 'POLYLINE':
-            for p in polylines(e):
+            for p in polylines(e, lf):
                 yield p
         elif e.dxftype == 'LWPOLYLINE':
-            for p in lw_polyline(e):
+            for p in lw_polyline(e, lf):
                 yield p
         elif e.dxftype == 'SPLINE':
-            for l in spline(e, min_dist=min_dist):
+            for l in spline(e, lf, min_dist=min_dist):
                 yield l
         elif e.dxftype == 'INSERT':
             logger.warn("Nested Insert of Blocks not supported")
@@ -363,7 +364,7 @@ def dxfshapes0(dxffile, mindist=0.01, layers=[]):
     #   AC1014 = R14 AC1015 = Release 2000/0i/2
     # check units:
     # dwg.header['$ANGDIR'] 1 = Clockwise angles, 0 = Counterclockwise
-    # dwg.header['$AUNITS'] Decimal Degrees, Deg/Min/Sec, Grads, Radians
+    # dwg.header['$AUNITS'] 0 Decimal Degrees, 1 Deg/Min/Sec, 2 Grads, 3 Radians
     # dwg.header['$INSUNIT'] 1 = Inches; 2 = Feet; 3 = Miles;
     #   4 = Millimeters; 5 = Centimeters; 6 = Meters
     # dwg.header['$LUNITS']
@@ -379,7 +380,7 @@ def dxfshapes0(dxffile, mindist=0.01, layers=[]):
             for p in polylines(e):
                 yield p
         elif e.dxftype() == 'SPLINE':
-            for l in spline(e, min_dist=mindist):
+            for l in spline(e, 1.0, in_dist=mindist):
                 yield l
         else:
             logger.warning("Id %d4: unknown type %s", id, e.dxftype)
@@ -400,17 +401,26 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
     # dwg.header['$INSUNIT'] 1 = Inches; 2 = Feet; 3 = Miles;
     #   4 = Millimeters; 5 = Centimeters; 6 = Meters
     # dwg.header['$LUNITS']
+    lf = 1
+    if dwg.header['$LUNITS'] and dwg.header['$LUNITS'] == 1:
+        #conv = [1, 2.54e-2, 10.12, 633.0, 1e-3, 1e-2, 1] 
+        lf = 2.54e3
+
+    rf = np.pi/180
+    if dwg.header['$AUNITS'] and dwg.header['$AUNITS'] == 4:
+        rf = 1
+    
     for e in dwg.modelspace():
         if not layers or e.layer in layers:
             if e.dxftype == 'ARC':
-                yield Arc(e)
+                yield Arc(e, lf, rf)
             elif e.dxftype == 'CIRCLE':
                 logger.debug("Circle %s, Radius %f", e.center[:2], e.radius)
-                yield Circle(e)
+                yield Circle(e, lf)
             elif e.dxftype == 'LINE':
-                yield Line(e)
+                yield Line(e, lf)
             elif e.dxftype == 'POLYLINE':
-                for p in polylines(e):
+                for p in polylines(e, lf):
                     yield p
             elif e.dxftype == 'LWPOLYLINE':
                 for p in lw_polyline(e):

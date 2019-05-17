@@ -193,10 +193,10 @@ class Shape(object):
 
 class Circle(Shape):
     """a circle with center and radius"""
-    def __init__(self, e, color=None, attr=None):
+    def __init__(self, e, lf=1, color=None, attr=None):
         self.init_attributes(color, attr)
-        self.center = e.center[:2]
-        self.radius = e.radius
+        self.center = lf*e.center[0], lf*e.center[1]
+        self.radius = lf*e.radius
         self.p1 = self.center[0]-self.radius, self.center[1]
         self.p2 = self.center[0]+self.radius, self.center[1]
         self.n1 = None
@@ -480,11 +480,11 @@ class Circle(Shape):
 
 class Arc(Circle):
     """a counter clockwise segment of a circle with start and end point"""
-    def __init__(self, e, color=None, attr=None):
-        super(self.__class__, self).__init__(e)
+    def __init__(self, e, lf=1, rf=np.pi/180, color=None, attr=None):
+        super(self.__class__, self).__init__(e, lf)
         self.init_attributes(color, attr)
-        self.startangle = e.start_angle/180*np.pi
-        self.endangle = e.end_angle/180*np.pi
+        self.startangle = e.start_angle*rf
+        self.endangle = e.end_angle*rf
         if self.endangle < self.startangle:
             if self.endangle < 0:
                 self.endangle += 2*np.pi
@@ -824,10 +824,10 @@ class Arc(Circle):
 
 class Line(Shape):
     """straight connection between start and end point"""
-    def __init__(self, e, color=None, attr=None):
+    def __init__(self, e, lf=1, color=None, attr=None):
         self.init_attributes(color, attr)
-        self.p1 = e.start[0], e.start[1]
-        self.p2 = e.end[0], e.end[1]
+        self.p1 = lf*e.start[0], lf*e.start[1]
+        self.p2 = lf*e.end[0], lf*e.end[1]
         self.n1 = None
         self.n2 = None
 

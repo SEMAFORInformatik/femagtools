@@ -219,7 +219,9 @@ def polylines(entity, lf):
         p1 = points[i]
         try:
             p2 = points[i+1]
-        except:
+        except Exception:
+            if not entity.is_closed:
+                break
             p2 = points[0]
         if b != 0.0:
             dx, dy = p2[0] - p1[0], p2[1] - p1[1]

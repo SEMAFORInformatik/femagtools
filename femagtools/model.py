@@ -159,18 +159,18 @@ class MachineModel(Model):
             self.coord_system = 0
             self.move_action = 0
 
-        if 'stator' in parameters and 'num_slots_gen' not in self.stator:
-            try:
-                m = self.windings['num_phases']
-            except KeyError:
-                m = 1
+        try:
+            m = self.windings['num_phases']
+        except (KeyError, AttributeError):
+            m = 1
 
-            try:
+        try:
+            if 'num_slots_gen' not in self.stator:
                 self.stator['num_slots_gen'] = (m*self.stator['num_slots'] /
                                                 gcd(self.stator['num_slots'],
                                                     m*self.poles))
-            except:
-                pass
+        except (KeyError, AttributeError):
+            pass
 
     def set_num_slots_gen(self):
         if 'num_slots_gen' not in self.stator:

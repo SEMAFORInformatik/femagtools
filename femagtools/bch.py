@@ -176,6 +176,7 @@ class Reader:
             'Flux observed': Reader.__read_flux,
             'Linear Force': Reader.__read_linear_force,
             'Demagnetization Data': Reader.__read_demagnetization,
+            'Power Situation (VZS)': Reader.__read_power_situation,
             '** Characteristics of Permanent-Magnet-Motors **':
             Reader.__read_characteristics}
 
@@ -210,10 +211,9 @@ class Reader:
                 for k in ['Airgap Induction Br']:
                     if k == title2[:len(k)]:
                         title = title2[:len(k)]
-
             if title in self.dispatch:
                 self.dispatch[title](self, s)
-
+                
         if len(self.weights) > 0:
             w = list(zip(*self.weights))
             self.weight['iron'] = sum(w[0])
@@ -794,6 +794,30 @@ class Reader:
             if torque_fft['order']:
                 self.torque_fft.append(torque_fft)
 
+    def __read_power_situation(self, content):
+        "read and append power situation section"
+        ps = dict()
+        beta = ''
+        logger.info('power situation')
+        for l in content:
+            rec = self.__findNums(l)
+            logger.info("%s", rec)
+            if len(rec) == 7:
+                w = rec[0]
+                ps[w] = dict(
+                    voltage=floatnan(rec[1].strip()),
+                    current_1=floatnan(rec[2].strip()),
+                    beta=floatnan(rec[2].strip()),
+                    cosphi=floatnan(rec[2].strip()),
+                    powerp=floatnan(rec[2].strip()),
+                    powerq=floatnan(rec[2].strip()))
+            elif l.startswith('Angle current'):
+                beta = rec[0]
+        if ps:
+            self.powerSituation = dict(windings=ps)
+            if beta:
+                self.powerSituation['beta'] = float(beta)
+            
     def __removeTrailingZero(self, idList):
         '''if id list is inhomogeneous, remove a trailing '0'
         e.g. : idList[-450, -350, -250, -150, -50, 0]

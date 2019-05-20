@@ -478,7 +478,7 @@ class ZmqFemag(BaseFemag):
 
         if self.__is_running():
             if restart:
-                logging.info("must restart")
+                logger.info("must restart")
                 self.quit(True)
 
                 # check if process really finished (mq_connection)

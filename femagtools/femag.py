@@ -38,6 +38,11 @@ class FemagError(Exception):
     pass
 
 
+def subscribe_dev_null(message):
+    logger.debug("DevNull: %s", message)
+    pass
+
+
 class BaseFemag(object):
     def __init__(self, workdir, cmd, magnetizingCurves, magnets):
         self.workdir = workdir
@@ -191,10 +196,8 @@ class Femag(BaseFemag):
         proc.wait()
         errs = []
         # print femag output
-        print(outname)
         with io.open(outname, encoding='latin1', errors='ignore') as outfile:
             for l in outfile:
-                print(l.strip())
                 if l.find('ERROR') > -1:
                     errs.append(l.strip())
 
@@ -363,9 +366,6 @@ class ZmqFemag(BaseFemag):
             # use POLLIN for recv, POLLOUT for send
             poller.register(request_socket, zmq.POLLIN)
             if poller.poll(timeout):  # ok, femag is running
-                logger.info('femag is running for %s',
-                            self.request_socket.getsockopt_string(
-                                zmq.IDENTITY))
                 request_socket.recv_multipart()
                 return True
         except Exception as e:
@@ -375,9 +375,16 @@ class ZmqFemag(BaseFemag):
         logger.debug("femag is not running")
         return False
 
-    def send_request(self, msg, timeout=None):
+    def send_request(self, msg, pub_consumer=None, timeout=None):
         try:
             request_socket = self.__req_socket()
+            # Start the reader thread to get information
+            if pub_consumer:
+                self.stopStreamReader()
+                self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
+                self.reader.setDaemon(True)
+                self.reader.start()
+
             if timeout:
                 request_socket.setsockopt(zmq.RCVTIMEO, timeout)
                 request_socket.setsockopt(zmq.LINGER, 0)
@@ -482,8 +489,8 @@ class ZmqFemag(BaseFemag):
                 self.quit(True)
 
                 # check if process really finished (mq_connection)
-                logger.info("procId: %s", procId)
                 if procId:
+                    logger.info("procId: %s", procId)
                     for t in range(200):
                         time.sleep(0.1)
                         if not self.__is_process_running(procId):
@@ -491,7 +498,7 @@ class ZmqFemag(BaseFemag):
                         logger.info(
                             "femag (pid: '{}') not stopped yet".format(
                                 procId))
-                logger.info("Stopped procId: %s", procId)
+                    logger.info("Stopped procId: %s", procId)
             else:
                 try:
                     with open(os.path.join(self.workdir,
@@ -511,7 +518,7 @@ class ZmqFemag(BaseFemag):
         outname = os.path.join(self.workdir, basename+'.out')
         errname = os.path.join(self.workdir, basename+'.err')
         with open(outname, 'w') as out, open(errname, 'w') as err:
-            logger.info('invoking %s', ' '.join(args))
+            logger.debug('invoking %s', ' '.join(args))
             self.proc = subprocess.Popen(
                 args,
                 stdout=out, stderr=err, cwd=self.workdir)
@@ -525,7 +532,6 @@ class ZmqFemag(BaseFemag):
                 break
 
         # write femag.pid
-        logger.info("ready %s", self.proc.pid)
         with open(os.path.join(self.workdir, 'femag.pid'), 'w') as pidfile:
             pidfile.write("{}\n".format(self.proc.pid))
         return self.proc.pid
@@ -544,17 +550,18 @@ class ZmqFemag(BaseFemag):
         self.__req_socket()
         f = '\n'.join(['exit_on_end = true',
                        'exit_on_error = true'])
-        response = self.send_fsl(f)
+        response = self.send_fsl(f, pub_consumer=subscribe_dev_null)
 
         # send quit command
         try:
             response = [r.decode('latin1')
-                        for r in self.send_request(['CONTROL', 'quit'], timeout=10000)]
-#                                     recvflags=zmq.NOBLOCK)
+                        for r in self.send_request(
+                                ['CONTROL', 'quit'], timeout=10000,
+                                pub_consumer=subscribe_dev_null)]
         except Exception as e:
             logger.error("Femag Quit zmq message %s", e)
 
-        logger.info("Sent QUIT to femag %s", response)
+        logger.debug("Sent QUIT to femag %s", response)
         # if query, send a answer
         obj = json.loads(response[0])
         logger.debug("status: {}".format(obj['status']))

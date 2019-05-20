@@ -20,6 +20,13 @@ import importlib
 
 logger = logging.getLogger(__name__)
 
+# lines that contains this words are detected as error messages
+protfile_error = ['Model has no field sources']
+femagfile_error = ['ms_error',
+                   'unexpected terminal input in quiet mode',
+                   'Fortran runtime error',
+                   'Exception system errors']
+
 # https://python-3-patterns-idioms-test.readthedocs.io/en/latest/Factory.html
 class TaskFactory:
     factories = {}
@@ -100,6 +107,43 @@ class Task(object):
             logger.error(msg)
             result = dict(error=msg)
         return result
+
+    def readErrorMessage(self, html=True):
+        errstr = ""
+        if html:
+            sepIn = '<p><b>{}</b><br/>'
+            sepOut = '</p>'
+            newLine = '<br/>'
+        else:
+            sepIn = '=== {} ===\n'
+            sepOut = '\n\n'
+            newLine = '\n'
+
+        errstr += sepIn.format(self.directory)
+
+        # read latest prot file
+        protfile_list = sorted(glob.glob(os.path.join(self.directory, '*.PROT')))
+        if protfile_list:
+            with open(protfile_list[-1], encoding='latin1') as f:
+                e = [em in l for em in protfile_error for l in f.readlines()]
+                if sum(e):
+                    logger.info("Prot Files Message.\n '%s'\n\nDirectory '%s'.",
+                                l, self.directory)
+                    errstr += "ProtFile: {}{}".format(l, newLine)
+
+        # read femag.err file
+        try:
+            with open(os.path.join(self.directory, 'femag.err'), 'r') as file:
+                e = [em in l for em in femagfile_error for l in file.readlines()]
+                if sum(e):
+                    logger.error("Femag Error detected\n '%s'\n\nDirectory '%s'.",
+                                 l, self.directory)
+                    errstr += "{}{}".format(l, newLine)
+        except Exception as e:
+            logger.debug("Exception: %s", e)
+            pass
+        errstr += sepOut
+        return errstr
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and \

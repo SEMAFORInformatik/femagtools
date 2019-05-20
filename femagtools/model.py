@@ -33,6 +33,15 @@ def lcm(a, b):
     return 0
 
 
+def movesteps(nodes):
+    """retuns list of move steps
+
+    Args:
+       nodes: number of nodes in airgap
+    """
+    return [nodes // w for w in range(2, nodes//2) if nodes % w == 0]
+
+
 class MCerror(Exception):
     pass
 
@@ -160,16 +169,8 @@ class MachineModel(Model):
             self.move_action = 0
 
         try:
-            m = self.windings['num_phases']
-        except (KeyError, AttributeError):
-            m = 1
-
-        try:
-            if 'num_slots_gen' not in self.stator:
-                self.stator['num_slots_gen'] = (m*self.stator['num_slots'] /
-                                                gcd(self.stator['num_slots'],
-                                                    m*self.poles))
-        except (KeyError, AttributeError):
+            self.set_num_slots_gen()
+        except (AttributeError):
             pass
 
     def set_num_slots_gen(self):

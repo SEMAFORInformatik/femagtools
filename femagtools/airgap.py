@@ -29,7 +29,7 @@ def read(filename, pmod):
 
     N = 2**10  # The DFT is most efficient when N is a power of 2
     phi = np.linspace(0, 2*np.pi, N)
-    nphi = int(360/(bag[0][1] - bag[0][0])) + 1
+    nphi = int(round(360/((bag[0][-1] - bag[0][0])/(len(bag[0]) - 1)))) + 1
     ntiles = (nphi-1)//(len(bag[0]) - 1)
     phitab = np.linspace(0, 2*np.pi, nphi)
     if pmod % 2:

@@ -197,7 +197,7 @@ def intersect(a, b):
         ccw(b.p1, b.p2, a.p1) != ccw(b.p1, b.p2, a.p2)
 
 
-def polylines(entity, lf):
+def polylines(entity, lf, rf):
     """returns a collection of bulged vertices
     http://www.afralisp.net/archive/lisp/Bulges1.htm
     """
@@ -219,7 +219,7 @@ def polylines(entity, lf):
         p1 = points[i]
         try:
             p2 = points[i+1]
-        except Exception:
+        except Exception as e:
             if not entity.is_closed:
                 break
             p2 = points[0]
@@ -239,10 +239,11 @@ def polylines(entity, lf):
                 sa = np.arctan2(p1[1]-pc[1], p1[0]-pc[0])
                 ea = np.arctan2(p2[1]-pc[1], p2[0]-pc[0])
             logger.debug("Poly p1 %s p2 %s r %s", p1, p2, r)
-            yield Arc(Element(center=(lf*pc[0], lf*pc[1]),
-                              radius=lf*np.abs(r),
-                              start_angle=sa,
-                              end_angle=ea))
+            yield Arc(Element(center=(pc[0], pc[1]),
+                              radius=np.abs(r),
+                              start_angle=sa/rf,
+                              end_angle=ea/rf),
+                      lf, rf)
         else:
             yield Line(Element(start=p1, end=p2), lf)
         i += 1
@@ -342,7 +343,7 @@ def insert_block(insert_entity, lf, rf, block, min_dist=0.001):
         elif e.dxftype == 'LINE':
             yield Line(e, lf)
         elif e.dxftype == 'POLYLINE':
-            for p in polylines(e, lf):
+            for p in polylines(e, lf, rf):
                 yield p
         elif e.dxftype == 'LWPOLYLINE':
             for p in lw_polyline(e, lf):
@@ -422,7 +423,7 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
             elif e.dxftype == 'LINE':
                 yield Line(e, lf)
             elif e.dxftype == 'POLYLINE':
-                for p in polylines(e, lf):
+                for p in polylines(e, lf, rf):
                     yield p
             elif e.dxftype == 'LWPOLYLINE':
                 for p in lw_polyline(e, lf):

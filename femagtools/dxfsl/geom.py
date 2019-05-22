@@ -300,7 +300,7 @@ def spline(entity, lf, min_dist=0.001):
     yield Line(Element(start=p1, end=pe), lf)
 
 
-def insert_block(insert_entity, block, min_dist=0.001):
+def insert_block(insert_entity, lf, rf, block, min_dist=0.001):
     logger.debug('Insert {} entities from block {}'
                  .format(len(block), insert_entity.name))
 
@@ -335,12 +335,12 @@ def insert_block(insert_entity, block, min_dist=0.001):
 
     for e in block:
         if e.dxftype == 'ARC':
-            yield Arc(e)
+            yield Arc(e, lf, rf)
         elif e.dxftype == 'CIRCLE':
             logger.debug("Circle %s, Radius %f", e.center[:2], e.radius)
-            yield Circle(e)
+            yield Circle(e, lf)
         elif e.dxftype == 'LINE':
-            yield Line(e)
+            yield Line(e, lf)
         elif e.dxftype == 'POLYLINE':
             for p in polylines(e, lf):
                 yield p
@@ -404,14 +404,14 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
     #   4 = Millimeters; 5 = Centimeters; 6 = Meters
     # dwg.header['$LUNITS']
     lf = 1
-    if dwg.header['$LUNITS'] and dwg.header['$LUNITS'] == 1:
+    if dwg.header.get('$LUNITS', 0) == 1:
         #conv = [1, 2.54e-2, 10.12, 633.0, 1e-3, 1e-2, 1] 
         lf = 2.54e3
 
     rf = np.pi/180
-    if dwg.header['$AUNITS'] and dwg.header['$AUNITS'] == 4:
+    if dwg.header.get('$AUNITS', 0) == 4:
         rf = 1
-    
+
     for e in dwg.modelspace():
         if not layers or e.layer in layers:
             if e.dxftype == 'ARC':
@@ -425,14 +425,14 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 for p in polylines(e, lf):
                     yield p
             elif e.dxftype == 'LWPOLYLINE':
-                for p in lw_polyline(e):
+                for p in lw_polyline(e, lf):
                     yield p
             elif e.dxftype == 'SPLINE':
-                for l in spline(e, min_dist=mindist):
+                for l in spline(e, lf, min_dist=mindist):
                     yield l
             elif e.dxftype == 'INSERT':
                 block = dwg.blocks[e.name]
-                for l in insert_block(e, block, min_dist=mindist):
+                for l in insert_block(e, lf, rf, block, min_dist=mindist):
                     yield l
             else:
                 logger.warning("Id %d4: unknown type %s", id, e.dxftype)
@@ -1785,6 +1785,9 @@ class Geometry(object):
     def get_machine_part(self, mm):
         logger.debug("*** Begin of get_machine_part() ***")
 
+        h_points = [h for h in convex_hull(self.virtual_nodes())]
+        h_center = self.get_center(h_points)
+
         center_list = []
         for e in self.elements(Arc):
             center = [round(e.center[0], 3), round(e.center[1], 3)]
@@ -1808,6 +1811,9 @@ class Geometry(object):
             # x(min) und y(min)
             center = [round(mm[0], 4), round(mm[2], 4)]
 
+        if h_center:
+            center = h_center
+
         logger.debug(" - Center is {}".format(center))
 
         min_radius = 99999
@@ -1815,7 +1821,7 @@ class Geometry(object):
         startangle = 999.0
         endangle = -999.0
 
-        for h in convex_hull(self.virtual_nodes()):
+        for h in h_points:
             if not points_are_close(center, h):
                 angle = alpha_line(center, [round(h[0], 4), round(h[1], 4)])
                 if angle < 0.0:
@@ -1918,6 +1924,51 @@ class Geometry(object):
 
         return Machine(self, [round(center[0], 8), round(center[1], 8)],
                        max_radius, angle, np.pi - angle)
+
+    def get_center(self, points):
+        logger.debug("Begin of get_center({} points)".format(len(points)))
+        if len(points) < 3:
+            return None
+        p1 = points[0]
+        points.append(p1)
+        p2 = points[1]
+        a1 = alpha_line(p1, p2)
+
+        logger.debug(" - p1 = {}".format(p1))
+        logger.debug(" - p2 = {}".format(p2))
+
+        lines = []
+        for p in points[2:]:
+            logger.debug(" - pn = {}".format(p))
+            a2 = alpha_line(p2, p)
+            if not np.isclose(a1, a2):
+                d = distance(p1, p2)
+                logger.debug(" - d = {}: p1/p2 = {}/{}".format(d, p1, p2))
+                lines.append([d, a1, p1, p2])
+                p1 = p2
+                a1 = a2
+            p2 = p
+
+        d = distance(p1, p2)
+        logger.debug(" - d = {}: p1/p2 = {}/{}".format(d, p1, p2))
+        lines.append([d, a1, p1, p2])
+
+        if np.isclose(lines[0][1], lines[-1][1]):
+            lines[0][0] += lines[-1][0]  # distance
+            lines[0][2] = lines[-1][2]   # start point
+            del lines[-1]
+
+        lines.sort(reverse=True)
+        for l in lines:
+            logger.debug(" - Line {}".format(l))
+
+        l1 = Line(Element(start=lines[0][2], end=lines[0][3]))
+        l2 = Line(Element(start=lines[1][2], end=lines[1][3]))
+        center = l1.intersect_line(l2, all=True)
+        logger.debug("End of get_center: {}".format(center))
+        if center:
+            return center[0]
+        return None
 
     def is_new_radius(self, radius_list, radius):
         for r, d in radius_list:

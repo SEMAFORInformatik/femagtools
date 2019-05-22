@@ -106,6 +106,7 @@ def convert(dxfile,
             show_plots=False,
             show_areas=False,
             write_fsl=True,
+            write_png=False,
             debug_mode=False):
     layers = ()
     conv = {}
@@ -141,6 +142,14 @@ def convert(dxfile,
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = PlotRenderer()
+    if write_png:
+        p.render_elements(basegeom, Shape,
+                          show=False,
+                          title=basename,
+                          png=True)
+        if not view_only:
+            return None
+
     if view_only:
         p.render_elements(basegeom, Shape,
                           neighbors=True,

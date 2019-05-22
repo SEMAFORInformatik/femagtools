@@ -87,6 +87,10 @@ def main():
                            help='show a view only',
                            dest='view',
                            action="store_true")
+    argparser.add_argument('--png',
+                           help='write png-file only',
+                           dest='write_png',
+                           action="store_true")
     argparser.add_argument('-d', '--debug',
                            help='print debug information in logfile',
                            dest='debug',
@@ -176,6 +180,7 @@ def main():
                   show_plots=args.show_plots,
                   show_areas=args.show_areas,
                   write_fsl=args.write_fsl,
+                  write_png=args.write_png,
                   debug_mode=args.debugger)
 
     if args.write_fsl:

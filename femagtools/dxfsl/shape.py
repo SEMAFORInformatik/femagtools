@@ -420,7 +420,7 @@ class Circle(Shape):
         assert(isinstance(arc, Arc))
         # let Arc do the work
         return arc.intersect_circle(self, rtol, atol, include_end)
-       
+
     def split(self, points, rtol, atol):
         """ Die Funktion splittet das Circle-Objekt an den vorgegebenen Punkten
             und gibt eine Liste der neu enstandenen Elemente aus.
@@ -868,7 +868,8 @@ class Line(Shape):
             return float('nan')
         return self.dy()/self.dx()*(x - self.p1[0]) + self.p1[1]
 
-    def intersect_line(self, line, rtol=1e-03, atol=1e-03, include_end=False):
+    def intersect_line(self, line, rtol=1e-03, atol=1e-03,
+                       include_end=False, all=False):
         """ Von zwei Line-Objekten wird der Schnittpunkt bestimmt und in
             einer Liste ausgegeben.
         """
@@ -891,6 +892,9 @@ class Line(Shape):
                 else:
                     point = lines_intersect_point(self.p1, m_L1, self.n(m_L1),
                                                   line.p1, m_L2, line.n(m_L2))
+
+        if all:
+            return[point]
 
         if line.is_point_inside(point, rtol, atol, include_end):
             if self.is_point_inside(point, rtol, atol, include_end):

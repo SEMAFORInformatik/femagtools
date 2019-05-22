@@ -166,6 +166,7 @@ class PlotRenderer(object):
         write_id = kwargs.get('write_id', False)
         title = kwargs.get('title', "")
         show = kwargs.get('show', True)
+        write_png = kwargs.get('png', False)
         rows = kwargs.get('rows', 1)
         cols = kwargs.get('cols', 1)
         num = kwargs.get('num', 1)
@@ -266,6 +267,8 @@ class PlotRenderer(object):
         self.ax.set_xlim(x_min, x_max)
         self.ax.set_ylim(y_min, y_max)
 
+        if write_png:
+            self.write_plot(title)
         if show:
             self.show_plot()
 
@@ -338,3 +341,8 @@ class PlotRenderer(object):
                   sum(list(zip(*slot))[1])/len(slot))
         ax.text(center[0], center[1], str(id))
         ax.add_patch(poly)
+
+    def write_plot(self, name):
+        filename = '{}.png'.format(name)
+        fig = self.figure()
+        fig.savefig(filename)

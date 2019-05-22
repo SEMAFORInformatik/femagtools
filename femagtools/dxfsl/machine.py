@@ -501,8 +501,8 @@ class Machine(object):
         machine_slice.rotate_to(0.0)
         machine_slice.set_alfa_and_corners()
         logger.debug("end get_symmetry_slice: angle start: {}, end: {}"
-                    .format(self.geom.symmetry_startangle(),
-                            self.geom.symmetry_endangle()))
+                     .format(self.geom.symmetry_startangle(),
+                             self.geom.symmetry_endangle()))
         return machine_slice
 
     def get_third_symmetry_mirror(self):

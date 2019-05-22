@@ -616,7 +616,6 @@ class Area(object):
     def is_mag_rectangle(self):
         lines_ceml = [[c, e, e.m(99999.0), e.length()]
                       for c, e in enumerate(self.area)]
-        # if isinstance(e, Line)]
         if len(lines_ceml) < 4:
             return False
 
@@ -801,14 +800,17 @@ class Area(object):
             self.type = 0  # air
             return self.type
 
+        ag_delta = (r_out - r_in) / 100.0
         if is_inner:
             self.close_to_ag = np.isclose(r_out, self.max_dist)
+            self.close_to_ag = greater_equal(self.max_dist + ag_delta, r_out)
             close_to_opposition = np.isclose(r_in, self.min_dist)
             airgap_radius = r_out
             opposite_radius = r_in
             airgap_toleranz = -(self.max_dist - self.min_dist) / 50.0  # 2%
         else:
             self.close_to_ag = np.isclose(r_in, self.min_dist)
+            self.close_to_ag = less_equal(self.min_dist - ag_delta, r_in)
             close_to_opposition = np.isclose(r_out, self.max_dist)
             airgap_radius = r_in
             opposite_radius = r_out

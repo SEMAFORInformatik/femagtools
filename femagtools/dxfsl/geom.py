@@ -910,7 +910,7 @@ class Geometry(object):
             [self.g.remove_node(c.point())
              for c in corners if not c.keep_node()]
         except Exception as e:
-            logger.error("Error: {}".format(e))
+            logger.warn("Warning: {}".format(e))
 
         # Rebuild Corner-list after correction
         corners = self.get_corner_list(center, angle, rtol, atol)

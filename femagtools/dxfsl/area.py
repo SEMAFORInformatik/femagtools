@@ -636,13 +636,13 @@ class Area(object):
         e1_p1 = e1.p1
         e1_p2 = e1.p2
 
-        if points_are_close(e0_p2, e1_p1) or \
-           points_are_close(e0_p2, e1_p2):
+        if points_are_close(e0_p2, e1_p1, atol=1e-05) or \
+           points_are_close(e0_p2, e1_p2, atol=1e-05):
             a_prev = alpha_line(e0_p1, e0_p2)
             p = e0_p2
         else:
-            if points_are_close(e0_p1, e1_p1) or \
-               points_are_close(e0_p1, e1_p2):
+            if points_are_close(e0_p1, e1_p1, atol=1e-05) or \
+               points_are_close(e0_p1, e1_p2, atol=1e-05):
                 a_prev = alpha_line(e0_p2, e0_p1)
                 p = e0_p1
             else:
@@ -652,9 +652,9 @@ class Area(object):
                 return False
 
         def alpha_current(p, e):
-            if points_are_close(p, e.p1):
+            if points_are_close(p, e.p1, atol=1e-05):
                 return e.p2, alpha_line(e.p1, e.p2)
-            if points_are_close(p, e.p2):
+            if points_are_close(p, e.p2, atol=1e-05):
                 return e.p1, alpha_line(e.p2, e.p1)
             logger.error("ERROR: is_mag_rectangle(): points are not close together")
             logger.error("       p={}, p1={}, p2={}".format(p, e.p1, e.p2))

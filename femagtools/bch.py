@@ -798,10 +798,8 @@ class Reader:
         "read and append power situation section"
         ps = dict()
         beta = ''
-        logger.info('power situation')
         for l in content:
             rec = self.__findNums(l)
-            logger.info("%s", rec)
             if len(rec) == 7:
                 w = rec[0]
                 ps[w] = dict(

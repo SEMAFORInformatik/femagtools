@@ -60,7 +60,6 @@ class AsyncFemag(threading.Thread):
             ret = self.container.send_fsl(fslcmds +
                                           ['save_model(close)'])
             # TODO: add publish_receive
-            logger.debug(ret)
             r = [json.loads(s) for s in ret]
             logger.debug("Finished %s", r)
             try:
@@ -75,7 +74,7 @@ class AsyncFemag(threading.Thread):
                         f.write(content)
                 else:
                     task.status = 'X'
-                    logger.warn("%s: %s", task.id, r['message'])
+                    logger.warn("%s: %s", task.id, r[0]['message'])
             except (KeyError, IndexError):
                 task.status = 'X'
 
@@ -123,6 +122,9 @@ class Engine(object):
             number of started tasks (int)
         """
         self.queue = Queue()
+        for task in self.job.tasks:
+            self.queue.put(task)
+            
         self.async_femags = [AsyncFemag(self.queue,
                                         self.port, self.dispatcher)
                              for i in range(self.num_threads)]
@@ -130,9 +132,6 @@ class Engine(object):
         for async_femag in self.async_femags:
             async_femag.start()
 
-        for task in self.job.tasks:
-            self.queue.put(task)
-            
         return len(self.job.tasks)
 
     def join(self):

@@ -261,12 +261,14 @@ class ZmqFemag(BaseFemag):
         self.host = host
         self.port = port
         self.ipaddr = ''
-        self.request_socket = None
+
+        self.request_socket = self.__req_socket()
         self.subscriber_socket = None
         self.proc = None
         self.reader = None
 
     def close(self):
+        logger.info("zmq close")
         if self.reader:
             self.reader.continue_loop = False
         if self.proc:
@@ -284,20 +286,18 @@ class ZmqFemag(BaseFemag):
 
     def __req_socket(self):
         """returns a new request client"""
-        if self.request_socket:
-            return self.request_socket
         context = zmq.Context.instance()
         self.request_socket = context.socket(zmq.REQ)
         self.request_socket.connect('tcp://{0}:{1}'.format(
             self.host, self.port))
-        if not self.ipaddr:
-            if self.host != 'localhost':
-                inforesp = self.info()
-                self.ipaddr = json.loads(inforesp[1])['addr']
-                logger.info("Connected with %s", self.ipaddr)
-            else:
-                self.ipaddr = '127.0.0.1'
-        self.request_socket.setsockopt(zmq.LINGER, 500)
+        #if not self.ipaddr:
+        #    if self.host != 'localhost':
+        #        inforesp = self.info()
+        #        self.ipaddr = json.loads(inforesp[1])['addr']
+        #        logger.info("Connected with %s", self.ipaddr)
+        #    else:
+        #        self.ipaddr = '127.0.0.1'
+
         return self.request_socket
 
     def __sub_socket(self):
@@ -319,7 +319,7 @@ class ZmqFemag(BaseFemag):
         try:
             import psutil
             return psutil.pid_exists(procId)
-        except:
+        except ModuleNotFoundError:
             pass
         # long version, self made
         try:
@@ -359,25 +359,23 @@ class ZmqFemag(BaseFemag):
 
         """
         try:
-            request_socket = self.__req_socket()
-            request_socket.send_string("FSL", flags=zmq.SNDMORE)
-            request_socket.send_string("testvar=0")
+            self.request_socket.send_string("FSL", flags=zmq.SNDMORE)
+            self.request_socket.send_string("testvar=0")
             poller = zmq.Poller()
             # use POLLIN for recv, POLLOUT for send
-            poller.register(request_socket, zmq.POLLIN)
+            poller.register(self.request_socket, zmq.POLLIN)
             if poller.poll(timeout):  # ok, femag is running
-                request_socket.recv_multipart()
+                self.request_socket.recv_multipart()
                 return True
         except Exception as e:
             logger.error(e)
         self.request_socket.close()
         self.request_socket = None
-        logger.debug("femag is not running")
+        logger.warn("femag is not running")
         return False
 
     def send_request(self, msg, pub_consumer=None, timeout=None):
         try:
-            request_socket = self.__req_socket()
             # Start the reader thread to get information
             if pub_consumer:
                 self.stopStreamReader()
@@ -386,22 +384,27 @@ class ZmqFemag(BaseFemag):
                 self.reader.start()
 
             if timeout:
-                request_socket.setsockopt(zmq.RCVTIMEO, timeout)
-                request_socket.setsockopt(zmq.LINGER, 0)
+                self.request_socket.setsockopt(zmq.RCVTIMEO, timeout)
+                self.request_socket.setsockopt(zmq.LINGER, 0)
             else:
-                request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
-                request_socket.setsockopt(zmq.LINGER, 30000)  # default value
+                self.request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
+                self.request_socket.setsockopt(zmq.LINGER, 30000)  # default value
 
-            for m in msg[:-1]:
-                request_socket.send_string(m, flags=zmq.SNDMORE)
-            if isinstance(msg[-1], list):
-                request_socket.send_string('\n'.join(msg[-1]))
-            else:
-                request_socket.send_string(msg[-1])
-            return request_socket.recv_multipart()
+            while True:
+                try:
+                    for m in msg[:-1]:
+                        self.request_socket.send_string(m, flags=zmq.SNDMORE)
+                    if isinstance(msg[-1], list):
+                        self.request_socket.send_string('\n'.join(msg[-1]))
+                    else:
+                        self.request_socket.send_string(msg[-1])
+                    return self.request_socket.recv_multipart()
+                except zmq.error.Again:
+                    pass
+                
         except Exception as e:
-            logger.exception("send_request")
-            logger.info("send_request: %s", str(e))
+            #logger.exception("send_request")
+            logger.info("send_request: %s Message %s", str(e), msg)
             if timeout:  # only first call raises zmq.error.Again
                 return [b'{"status":"error", "message":"Femag is not running"}']
             return [b'{"status":"error", "message":"' + str(e).encode() + b'"}']
@@ -423,7 +426,6 @@ class ZmqFemag(BaseFemag):
             fsl, pub_consumer, header))
 
         try:
-            request_socket = self.__req_socket()
             # Start the reader thread to get information about the next calculation
             if pub_consumer:
                 self.stopStreamReader()
@@ -431,25 +433,25 @@ class ZmqFemag(BaseFemag):
                 self.reader.setDaemon(True)
                 self.reader.start()
 
-            request_socket.send_string(header, flags=zmq.SNDMORE)
+            self.request_socket.send_string(header, flags=zmq.SNDMORE)
             logger.debug("Sent header")
             if isinstance(fsl, list):
-                request_socket.send_string('\n'.join(fsl))
+                self.request_socket.send_string('\n'.join(fsl))
             else:
-                request_socket.send_string(fsl)
+                self.request_socket.send_string(fsl)
             logger.debug("Sent fsl wait for response")
 
             if timeout:
-                request_socket.setsockopt(zmq.RCVTIMEO, timeout)
-                request_socket.setsockopt(zmq.LINGER, 0)
+                self.request_socket.setsockopt(zmq.RCVTIMEO, timeout)
+                self.request_socket.setsockopt(zmq.LINGER, 0)
             else:
-                request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
-                request_socket.setsockopt(zmq.LINGER, 30000)  # default value
+                self.request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
+                self.request_socket.setsockopt(zmq.LINGER, 30000)  # default value
             import datetime
             startTime = datetime.datetime.now() if timeout else None
             while True:
                 try:
-                    response = request_socket.recv_multipart()
+                    response = self.request_socket.recv_multipart()
                     time.sleep(.5)  # Be sure all messages are arrived over zmq
                     if pub_consumer:
                         self.reader.continue_loop = False
@@ -462,6 +464,7 @@ class ZmqFemag(BaseFemag):
                         if diffTime.microseconds < timeout:
                             continue
                         else:
+                            logger.info("ALERT not running close socket")
                             self.request_socket.close()
                             self.request_socket = None
                             return ['{"status":"error", "message":"Femag is not running"}', '{}']
@@ -510,6 +513,7 @@ class ZmqFemag(BaseFemag):
 
         if self.request_socket:
             self.request_socket.close()
+        logger.warn("ALERT run close socket")
         self.request_socket = None
 
         basename = str(self.port)
@@ -547,7 +551,6 @@ class ZmqFemag(BaseFemag):
             return
 
         # send exit flags
-        self.__req_socket()
         f = '\n'.join(['exit_on_end = true',
                        'exit_on_error = true'])
         response = self.send_fsl(f, pub_consumer=subscribe_dev_null)
@@ -570,8 +573,7 @@ class ZmqFemag(BaseFemag):
                         obj['message'], 'saved' if save_model else 'not saved')
 
             # Only send one msg
-            request_socket = self.__req_socket()
-            response = request_socket.send_string(
+            response = self.request_socket.send_string(
                 'Ok' if save_model else 'Cancel')
         
         if self.proc:
@@ -584,8 +586,6 @@ class ZmqFemag(BaseFemag):
         returns number of transferred bytes
         (FEMAG 8.5 Rev 3282 or greater only)
         """
-        request_socket = self.__req_socket()
-
         ret = []
         total = 0
         chunk_size = 20*1024
@@ -593,28 +593,28 @@ class ZmqFemag(BaseFemag):
         if isinstance(files, str):
             fnames = [files]
         for fn in fnames:
-            request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+            self.request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
             basename = os.path.basename(fn)
             logger.info("upload %s --> %s", fn, basename)
-            request_socket.send_string('upload = {}'.format(basename),
-                                       flags=zmq.SNDMORE)
+            self.request_socket.send_string('upload = {}'.format(basename),
+                                            flags=zmq.SNDMORE)
             with open(fn, mode="rb") as file:
                 while True:
                     data = file.read(chunk_size)
                     if not data:
                         break
                     more = 0 if len(data) < chunk_size else zmq.SNDMORE
-                    request_socket.send(data, flags=more)
+                    self.request_socket.send(data, flags=more)
                     total += len(data)
             ret += [s.decode('latin1')
-                    for s in request_socket.recv_multipart()]
+                    for s in self.request_socket.recv_multipart()]
         return ret
     
     def cleanup(self):
         """remove all FEMAG files in working directory 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'cleanup'], timeout=10000)]
+                for r in self.send_request(['CONTROL', 'cleanup'])]
     
     def release(self):
         """signal finish calculation task to load balancer to free resources

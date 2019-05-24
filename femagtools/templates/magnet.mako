@@ -11,8 +11,8 @@
  m.orient     = ${model.get('orient', 'mpolaniso')}
  m.rlen       = ${model.get('rlen', 1.0)*100}   
 %else:
- m.magnwidth      =    ${model.get('magnwidth', 0.0)*1e3}
- m.magnlength     =    ${model.get('magnlength', 0.0)*1e3}
+ m.magsegwid      =    ${model.get('magnwidth', 0.0)*1e3}
+ m.magseglen     =    ${model.get('magnlength', 0.0)*1e3}
  %endif
 
 pre_models("Magnet-data")

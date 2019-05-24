@@ -1,6 +1,7 @@
 --
 -- PM/Rel Simulation
 --
+set_sim_data("explicit_mode", ${model.get('explicit_mode',0)})
 % if model.get('wind_temp',0):
 set_dev_data("cond_temp", ${model.get('wind_temp')}, ${model.get('wind_temp')})
 % endif

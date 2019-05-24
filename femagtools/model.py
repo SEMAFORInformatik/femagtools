@@ -34,12 +34,12 @@ def lcm(a, b):
 
 
 def movesteps(nodes):
-    """retuns list of move steps
+    """returns list of move steps
 
     Args:
        nodes: number of nodes in airgap
     """
-    return [nodes // w for w in range(2, nodes//2) if nodes % w == 0]
+    return [nodes // w + 1 for w in range(1, nodes//2) if nodes % w == 0]
 
 
 class MCerror(Exception):

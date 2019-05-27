@@ -34,6 +34,7 @@ losses             Losses in iron, magnets and conductors from Move-calc
 demag              Demagnetisation
 weights            Total weight and weight of iron, conductor and magnets
 inertia            Inertia of stator and rotor
+leak_dist_wind     End Winding Leakage
 ================  =======================================================
 
 Flux
@@ -422,3 +423,29 @@ Demag
   H_av               average field strength                    kA/m
   area               area with H > Hx                          %
   ================  ========================================== =============
+
+ Leak_dist_wind
+ ==============
+
+  Dict with end-winding leakage values (version added 0.9.9)
+
+  ================  ========================================== =============
+  Attribute          Description                               Unit
+  ================  ========================================== =============
+  nseg              Number of segments
+  npolsim           Number of poles in model
+  fc_radius         Force radius (center of airgap             m
+  armatureLength    Lenght of armature                         m
+  perimrad          Radius of perimeter                        m
+  vbendrad          Bending radius vertical                    m
+  endheight         End winding height                         m
+  wiredia           Diameter of wire                           m
+  L0e               Ext. Inductance                            H
+  Lde               Ext. Inductance                            H
+  Lqe               Ext. Inductance                            H
+  L0i               Int. Inductance                            H
+  Ldi               Int. Inductance                            H
+  Lqi               Int. Inductance                            H
+  
+  
+  

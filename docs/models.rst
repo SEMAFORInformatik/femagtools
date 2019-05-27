@@ -176,6 +176,20 @@ culength        rel length of conductor        1.4
 slot_indul      insulation thickness in slot   0.0 
 ============    ============================  =======
 
+leak_dist_wind
+..............
+
+ Windings may contain a leakage dict (version added 0.9.9)
+
+============    ============================  =======
+Name             Parameter                    Unit
+============    ============================  =======
+perimrad        Radius of perimeter            m     
+vbendrad        Bending radius vertical        m
+endheight       End winding height             m
+m.wiredia       Wire diameter                  m
+
+
 Magnet
 ------
 
@@ -555,23 +569,27 @@ Example::
 
 PM/Rel Machine Simulation (pm_sym_fast)
 
-==============  ============================= ==========  ============
-Parameter        Description                   Default      Unit
-==============  ============================= ==========  ============
-speed           Speed                                     1/s
-skew_angle      Skewing angle                   0         deg
-num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        °C
-wind_temp       Winding Temperature             20        °C
-num_move_steps  Number of move steps            49
-num_par_wdgs    Number of parallel windings     1      
-eval_force      Evaluate force                  0         
-current         Phase current                             A (RMS)
-angl_i_up       Angle I vs. Up                  0         deg
-optim_i_up      Optimize Current                0
-plots           Create plots                    []
-airgap_induc    calculate airgap induction      False
-==============  ============================= ==========  ============
+==============  ======================================= ========  ============
+Parameter        Description                            Default      Unit
+==============  ======================================= ========  ============
+speed           Speed                                              1/s
+skew_angle      Skewing angle                           0          deg
+num_skew_steps  Number of skew steps                    0
+magn_temp       Magnet Temperature                                 °C
+wind_temp       Winding Temperature                     20         °C
+num_move_steps  Number of move steps                    49
+num_par_wdgs    Number of parallel windings             1      
+eval_force      Evaluate force                          0
+explicit_mode   Activates/deactivates step adjustments  0
+current         Phase current                                      A (RMS)
+angl_i_up       Angle I vs. Up                          0          deg
+optim_i_up      Optimize Current                        0
+phi_start       Start angle of rotation                 0          deg
+range_phi       Rotation angle                          360/p      deg
+explicit_mode   Deactivate rotation correction          0
+plots           Create plots                            []
+airgap_induc    calculate airgap induction              False
+==============  ======================================= ========  ============
 
 .. Note::
    

@@ -276,6 +276,11 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.airgapInduction['an'][0][8][0], 0.0690, 1)
         self.assertAlmostEqual(bch.airgapInduction['an'][0][9][0], -0.9915, 1)
 
+    def test_read_dist_leak(self):
+        bch = self.read_bch('PM-4p-distleak.BATCH')
+        self.assertTrue(bch.leak_dist_wind)
+        self.assertEqual(bch.leak_dist_wind['nseg'], 4)
+
 
 if __name__ == '__main__':
     unittest.main()

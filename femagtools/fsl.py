@@ -229,8 +229,13 @@ class Builder:
         return []
     
     def create_gen_winding(self, model):
-        return self.__render(model, 'gen_winding')
-
+        try:
+            return self.__render(model, 'gen_winding') + \
+                self.__render(model.windings['leak_dist_wind'],
+                              'leak_dist_wind')
+        except KeyError:
+            return self.__render(model, 'gen_winding')
+            
     def create_model_with_dxf(self, model):
         dxfname = model.dxffile.get('name', None)
         if not dxfname:
@@ -301,7 +306,7 @@ class Builder:
             return self.create_new_model(model) + \
                 self.__render(model.windings, 'cu_losses') + \
                 self.create_stator_model(model) + \
-                self.__render(model, 'gen_winding') + \
+                self.create_gen_winding(model) + \
                 self.create_magnet(model) + \
                 self.create_magnet_model(model) + \
                 self.mesh_airgap(model) + \

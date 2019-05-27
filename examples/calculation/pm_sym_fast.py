@@ -46,7 +46,13 @@ machine = dict(
         num_phases=3,
         num_wires=100,
         coil_span=3.0,
-        num_layers=1)
+        num_layers=1,
+        leak_dist_wind=dict(
+            perimrad=67.1e-3, # Radius of perimeter [m]                
+            vbendrad=5e-3,    # Bending radius vertical [m]            
+            endheight=20e-3,  # End winding height [m]                 
+            wiredia=1e-3)     # Wire diameter [m]
+    )
 )
 
 logging.basicConfig(level=logging.INFO,
@@ -68,7 +74,7 @@ operatingConditions = dict(
     magn_temp=60.0,
     current=50.0,
     speed=50.0,
-    plots=['field_lines', 'Babs'])
+    plots=['field_lines', ['Babs', 1.2, 2.4]])
 
 r = femag(machine,
           operatingConditions)

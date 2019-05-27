@@ -47,7 +47,7 @@ def r1_20(r1, theta):
 
 def get_si_factor(contentline):
     "extract the first pattern and return conversion factor for SI unit"
-    pattern = re.compile("\[([A-Za-z/0-9]+)\]")
+    pattern = re.compile(r"\[([A-Za-z/0-9]+)\]")
     search = pattern.search(contentline)
     if search:
         if search.group(1) in ('kW', 'kNm'):
@@ -225,7 +225,7 @@ class Reader:
     def __findNums(self, l):
         rec = self._numPattern.findall(l)
         if 3 * '*' in l:  # min 3 '*'
-            li = re.sub('[\*]+', str(np.NaN), l)
+            li = re.sub(r'[\*]+', str(np.NaN), l)
             rec = self._numPatternNaN.findall(li)
             logger.debug("Numbers with **** In: %s", l)
             logger.debug("Out: %s", li)
@@ -325,10 +325,46 @@ class Reader:
         return
 
     def __read_simulation_data(self, content):
-        for line in content:
+        for i, line in enumerate(content):
             if line.startswith('Number of Phases m'):
                 self.machine['m'] = int(float((line.split()[-1])))
+            if line.startswith('leak_dist_wind'):
+                self.leak_dist_wind = self.__read_leak_dist_wind(content[i+1:])
         return
+    
+    def __read_leak_dist_wind(self, content):
+        leak_wind = dict()
+        vmap = {
+            'Number of segments': 'nseg',
+            'Number of poles simulated': 'npolsim',
+            'Radius air-gap center (torque) [mm]': 'fc_radius',
+            'Radius of perimeter [mm]': 'perimrad',
+            'Bending radius vertical [mm]': 'vbendrad',
+            'End winding height [mm]': 'endheight',
+            'Wire diameter [mm]': 'wiredia',
+            'Armature length [mm]': 'armatureLength',
+            'End winding length [mm]': 'wdgendlen',
+            'External inductance L0e/winding [H]': 'L0e',
+            'Lde/winding [H]': 'Lde',
+            'Lqe/winding [H]': 'Lqe',
+            'Internal inductance L0i/winding [H]': 'L0i',
+            'Ldi/winding [H]': 'Ldi',
+            'Lqi/winding [H]': 'Lqi'}
+        
+        for line in content:
+            rec = [l.strip() for l in line.split()]
+            try:
+                k = vmap[' '.join(rec[:-1])]
+                v = float(rec[-1])
+                if rec[-2] == '[mm]':
+                    leak_wind[k] = 1e-3*v
+                elif rec[-2] == '[H]':
+                    leak_wind[k] = v
+                else:
+                    leak_wind[k] = int(v)
+            except (KeyError, ValueError):
+                pass
+        return leak_wind
 
     def __read_current_angles(self, content):
         self.current_angles = []

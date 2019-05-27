@@ -446,6 +446,4 @@ Demag
   L0i               Int. Inductance                            H
   Ldi               Int. Inductance                            H
   Lqi               Int. Inductance                            H
-  
-  
-  
+  ================  ========================================== =============

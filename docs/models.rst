@@ -188,6 +188,7 @@ perimrad        Radius of perimeter            m
 vbendrad        Bending radius vertical        m
 endheight       End winding height             m
 m.wiredia       Wire diameter                  m
+============    ============================  =======
 
 
 Magnet

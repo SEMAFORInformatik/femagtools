@@ -163,7 +163,7 @@ def torque(pos, torque):
         ax.set_ylim(bottom=0)
     elif min(torque) < 0 and max(torque) < 0:
         ax.set_ylim(top=0)
-    
+
 
 def torque_fft(order, torque):
     """plot torque harmonics"""
@@ -422,7 +422,12 @@ def pmrelsim(bch, title=''):
     if bch.torque:
         torque(bch.torque[-1]['angle'], bch.torque[-1]['torque'])
         pl.subplot(rows, cols, row+1)
-        torque_fft(bch.torque_fft[-1]['order'], bch.torque_fft[-1]['torque'])
+        tq = list(bch.torque_fft[-1]['torque'])
+        order = list(bch.torque_fft[-1]['order'])
+        if max(order) < 5:
+            order += [15]
+            tq += [0]
+        torque_fft(order, tq)
         pl.subplot(rows, cols, row+2)
         force('Force Fx',
               bch.torque[-1]['angle'], bch.torque[-1]['force_x'])

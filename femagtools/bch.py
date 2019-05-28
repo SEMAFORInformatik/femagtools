@@ -386,6 +386,7 @@ class Reader:
             'gamfe': [],
             'thetaw': [],
             'fillfe': [],
+            'culength': [],
             'mat': []}
         for l in content:
             for v in [["Base Frequency", 'fo'],
@@ -398,12 +399,16 @@ class Reader:
                       ["Specific Weight Iron", 'gamfe'],
                       ["Conductor Temperature", 'thetaw'],
                       ["Fillfactor Iron", 'fillfe'],
+                      ["Relative conductor length", 'culength'],
                       ["Material factor", 'mat']]:
 
                 if l.find(v[0]) > -1:
                     rec = self.__findNums(l)
                     if len(rec) > 0:
-                        self.lossPar[v[1]].append(floatnan(rec[-1]))
+                        if v[1] == 'culength':
+                            self.lossPar[v[1]].append(floatnan(rec[-1])/100)
+                        else:
+                            self.lossPar[v[1]].append(floatnan(rec[-1]))
                     break
 
         return l

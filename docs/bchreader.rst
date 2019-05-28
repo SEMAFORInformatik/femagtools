@@ -131,32 +131,67 @@ Linear Force
 Psidq
 =====
 
-  ================  =======================================================
-  Attribute          Description     
-  ================  =======================================================
-  iq                Iq current list (n)
-  id                Id current list (m)
-  psid              Psid matrix (n x m)
-  psiq              Psiq matrix (n x m)
-  torque            Torque matrix (n x m)
-  ================  =======================================================
-  
+  ================  =============================  ========================
+  Attribute          Description                   Unit
+  ================  =============================  ========================
+  iq                Iq current list (n)            A
+  id                Id current list (m)            A
+  psid              Psid matrix (n x m)            Vs
+  psiq              Psiq matrix (n x m)            Vs
+  torque            Torque matrix (n x m)          Nm
+  losses            dict of loss values          
+  ================  =============================  ========================
+
+  * losses
+    
+  ================  ====================================  =====
+  Attribute          Description                          Unit
+  ================  ====================================  =====
+  styoke            Losses of stator yoke (n x m)         W 
+  stteeth           Losses of stator teeth (n x m)        W
+  rotor             Losses of rotor (n x m)               W
+  magnet            Losses of magnet (n x m)              W
+  styoke_hyst       Hyst. Losses of stator yoke (n x m)   W
+  styoke_eddy       Eddy Losses of stator yoke (n x m)    W
+  stteeth_hyst      Hyst. Losses of stator teeth (n x m)  W
+  stteeth_eddy      Eddy Losses of stator yoke (n x m)    W
+  rotor_hyst        Hyst. Losses of rotor (n x m)         W
+  rotor_eddy        Eddy Losses of rotor (n x m)          W
+  speed             Speed                                 1/s
+  ================  ====================================  =====
+    
 Psidq Ldq
 =========
 
-  ================  =======================================================
-  Attribute          Description     
-  ================  =======================================================
-  iq                Iq current list (n)
-  id                Id current list (m)
-  ld                Ld matrix (n x m)
-  lq                Lq matrix (n x m)
-  psim              Psim matrix (n x m)
-  psid              Psid matrix (n x m)
-  psiq              Psiq matrix (n x m)
-  torque            Torque matrix (n x m)
-  ================  =======================================================
+  ================  =============================  ========================
+  Attribute          Description                   Unit
+  ================  =============================  ========================
+  iq                Iq current list (n)            A
+  id                Id current list (m)            A
+  ld                Ld matrix (n x m)              H
+  lq                Lq matrix (n x m)              H
+  psim              Psim matrix (n x m)            Vs
+  psid              Psid matrix (n x m)            Vs
+  psiq              Psiq matrix (n x m)            Vs
+  torque            Torque matrix (n x m)          Nm
+  ================  =============================  ========================
 
+Ldq
+===
+
+  ================  =============================  ========================
+  Attribute          Description                   Unit
+  ================  =============================  ========================
+  i1                I1 current list (n)            A
+  beta              Beta current angle list (m)    deg
+  ld                Ld matrix (n x m)              H
+  lq                Lq matrix (n x m)              H
+  psim              Psim matrix (n x m)            Vs
+  psid              Psid matrix (n x m)            Vs
+  psiq              Psiq matrix (n x m)            Vs
+  torque            Torque matrix (n x m)          Nm
+
+  
 Machine
 =======
 
@@ -424,8 +459,8 @@ Demag
   area               area with H > Hx                          %
   ================  ========================================== =============
 
- Leak_dist_wind
- ==============
+Leak_dist_wind
+==============
 
   Dict with end-winding leakage values (version added 0.9.9)
 

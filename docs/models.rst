@@ -216,6 +216,21 @@ Windings may contain a leakage dict: leak_dist_wind, leak_evol_wind, leak_tooth_
   m.wiredia       Wire diameter                  m
   ============    ============================  =======
 
+  Example::
+
+    windings=dict(
+        num_phases=3,
+        num_wires=100,
+        coil_span=3.0,
+        num_layers=1,
+        leak_dist_wind=dict(
+            perimrad=67.1e-3, # Radius of perimeter [m]                
+            vbendrad=5e-3,    # Bending radius vertical [m]            
+            endheight=20e-3,  # End winding height [m]                 
+            wiredia=1e-3)     # Wire diameter [m]
+    )
+
+  
 Magnet
 ------
 

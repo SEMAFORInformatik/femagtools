@@ -227,14 +227,21 @@ class Builder:
         if model.get('ffactor', 0):
             return self.__render(model, 'FE-losses')
         return []
-    
+
     def create_gen_winding(self, model):
-        try:
+        if 'leak_dist_wind' in model.windings:
             return self.__render(model, 'gen_winding') + \
                 self.__render(model.windings['leak_dist_wind'],
                               'leak_dist_wind')
-        except KeyError:
-            return self.__render(model, 'gen_winding')
+        elif 'leak_evol_wind' in model.windings:
+            return self.__render(model, 'gen_winding') + \
+                self.__render(model.windings['leak_evol_wind'],
+                              'leak_evol_wind')
+        elif 'leak_tooth_wind' in model.windings:
+            return self.__render(model, 'gen_winding') + \
+                self.__render(model.windings['leak_tooth_wind'],
+                              'leak_tooth_wind')
+        return self.__render(model, 'gen_winding')
             
     def create_model_with_dxf(self, model):
         dxfname = model.dxffile.get('name', None)

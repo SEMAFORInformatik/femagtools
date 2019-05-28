@@ -44,8 +44,8 @@ nodedist         Factor for node distance      1.0
    if no value for num_slots_gen is given its value is calculated from
    the the number of slots Q and pole pairs p. (version added 0.0.16)
 
-Slots
-^^^^^
+Stator Slots
+^^^^^^^^^^^^
 ============    ===========================================
 Name             Parameter      
 ============    ===========================================
@@ -108,8 +108,8 @@ dxffile
 
 .. _stator_slots_fsl:
    
-User defined Slots with FSL
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Stator Slots with FSL
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a FSL file that includes the definition of stator geometry exists and is readable it can be used for the model creation.
 
@@ -176,20 +176,45 @@ culength        rel length of conductor        1.4
 slot_indul      insulation thickness in slot   0.0 
 ============    ============================  =======
 
-leak_dist_wind
-..............
+End-Winding Leakage
+...................
 
- Windings may contain a leakage dict (version added 0.9.9)
+Windings may contain a leakage dict: leak_dist_wind, leak_evol_wind, leak_tooth_wind (version added 0.9.9)
 
-============    ============================  =======
-Name             Parameter                    Unit
-============    ============================  =======
-perimrad        Radius of perimeter            m     
-vbendrad        Bending radius vertical        m
-endheight       End winding height             m
-m.wiredia       Wire diameter                  m
-============    ============================  =======
+* leak_dist_wind
+  
+  ============    ============================  =======
+  Name             Parameter                    Unit
+  ============    ============================  =======
+  perimrad        Radius of perimeter            m     
+  vbendrad        Bending radius vertical        m
+  endheight       End winding height             m
+  m.wiredia       Wire diameter                  m
+  ============    ============================  =======
 
+* leak_evol_wind
+  
+  ============    =============================  =======
+  Name             Parameter                     Unit
+  ============    =============================  =======
+  evol1rad        Top radius of first evolvent   m
+  evol2rad        Top radius of second evolvent  m   
+  botlevel        Level at bottom of evolvents   m   
+  toplevel        Level at top of evolvents      m 
+  evolbend        Bending radius                 m
+  endheight       End winding height             m
+  m.wiredia       Wire diameter                  m
+  ============    =============================  =======
+
+* leak_tooth_wind
+  
+  ============    ============================  =======
+  Name             Parameter                    Unit
+  ============    ============================  =======
+  bendrad         Bending radius vertical        m
+  endheight       End winding height             m
+  m.wiredia       Wire diameter                  m
+  ============    ============================  =======
 
 Magnet
 ------
@@ -210,8 +235,8 @@ nodedist         Factor for node distance         1.0
    * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the magnetizingCurve object.
    * the material parameter references a name of the 'Magnet Material'_ list. 
 
-Slots
-^^^^^
+Rotor Slots
+^^^^^^^^^^^
 
 ============    ===========================================
 Name             Parameter      
@@ -358,8 +383,8 @@ dxffile         see :ref:`rotor_slots_dxf`
 
 .. _rotor_slots_fsl:
 		 
-User defined Slots with FSL
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Magnet Slots with FSL
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Example**
 

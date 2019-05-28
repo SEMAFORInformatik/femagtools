@@ -319,11 +319,11 @@ class FslBuilderTest(unittest.TestCase):
         pars['calculationMode'] = "pm_sym_fast"
         pars['plots'] = ['field_lines', 'Babs']
         fsl = self.builder.create_analysis(pars, {}, 0)
-        field_lines = re.findall('field_lines\(([^)]*)\)', ''.join(fsl))
+        field_lines = re.findall(r'field_lines\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         self.assertEqual(int(field_lines[0].split(',')[-1]), 20)
         
-        colorgrad = re.findall('color_gradation\(([^)]*)\)', ''.join(fsl))
+        colorgrad = re.findall(r'color_gradation\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         min, max = [int(l) for l in colorgrad[0].split(',')[4:6]]
         self.assertEqual(min, 0)
@@ -331,11 +331,11 @@ class FslBuilderTest(unittest.TestCase):
         
         pars['plots'] = [('field_lines', 10), ('Babs', 0.0, 2.0)]
         fsl = self.builder.create_analysis(pars, {}, 0)
-        field_lines = re.findall('field_lines\(([^)]*)\)', ''.join(fsl))
+        field_lines = re.findall(r'field_lines\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         self.assertEqual(int(field_lines[0].split(',')[-1]), 10)
         
-        colorgrad = re.findall('color_gradation\(([^)]*)\)', ''.join(fsl))
+        colorgrad = re.findall(r'color_gradation\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         min, max = [float(l) for l in colorgrad[0].split(',')[4:6]]
         self.assertEqual(min, 0.0)
@@ -365,5 +365,40 @@ class FslBuilderTest(unittest.TestCase):
         for p in result['parameter']:
             self.assertTrue(p['key'] in ['dshaft', 'hm', 'bm', 'ws'])
 
+    def test_gen_winding(self):
+        model = femagtools.MachineModel(self.m)
+
+        fsl = self.builder.create_gen_winding(model)
+        self.assertEqual(len(fsl), 18)
+
+        model.windings['leak_dist_wind'] = dict(
+            perimrad=1,
+            vbendrad=1,
+            endheight=1,
+            wiredia=1) 
+        fsl = self.builder.create_gen_winding(model)
+        self.assertEqual(len(fsl), 28)
+
+        model.windings.pop('leak_dist_wind')
+        model.windings['leak_evol_wind'] = dict(
+            evol1rad=1,
+            evol2rad=1,
+            botlevel=1,
+            toplevel=1,
+            endheight=1,
+            evolbend=1,
+            wiredia=1)
+        fsl = self.builder.create_gen_winding(model)
+        self.assertEqual(len(fsl), 32)
+
+        model.windings.pop('leak_evol_wind')
+        model.windings['leak_tooth_wind'] = dict(
+            endheight=1,
+            bendrad=1,
+            wiredia=1)
+        fsl = self.builder.create_gen_winding(model)
+        self.assertEqual(len(fsl), 28)
+
+        
 if __name__ == '__main__':
     unittest.main()

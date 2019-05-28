@@ -158,7 +158,7 @@ class Femag(BaseFemag):
 
     Args:
         workdir: name of working directory
-        cmd: name of femag program
+        cmd: name of femag program (default wfemag64 on windows, xfemag64 on linux)
         magnetizingCurves: collection of lamination material curves
         magnets: collection of magnet material
     """
@@ -268,7 +268,6 @@ class ZmqFemag(BaseFemag):
         self.reader = None
 
     def close(self):
-        logger.info("zmq close")
         if self.reader:
             self.reader.continue_loop = False
         if self.proc:
@@ -333,18 +332,18 @@ class ZmqFemag(BaseFemag):
                         try:
                             if str(procId) == ls[1]:
                                 return True
-                        except:
+                        except IndexError:
                             continue
                 else:
                     if not os.kill(procId, 0):
                         return True
         except OSError as e:
             # No such process
-            logger.info("OSError: '{}'\n".format(str(e)))
+            logger.info("OSError: %s", e)
             return False
-        except Exception:
+        except Exception as e:
             # we cannot check processId
-            logger.info("Error: unknown\n")
+            logger.warn("process check error %s", e)
             return True
         return False
 
@@ -358,6 +357,8 @@ class ZmqFemag(BaseFemag):
             True if FEMAG is running, False otherwise
 
         """
+        if not self.request_socket:
+            return False
         try:
             self.request_socket.send_string("FSL", flags=zmq.SNDMORE)
             self.request_socket.send_string("testvar=0")
@@ -369,8 +370,7 @@ class ZmqFemag(BaseFemag):
                 return True
         except Exception as e:
             logger.error(e)
-        self.request_socket.close()
-        self.request_socket = None
+        self.close()
         logger.warn("femag is not running")
         return False
 
@@ -465,8 +465,7 @@ class ZmqFemag(BaseFemag):
                             continue
                         else:
                             logger.info("ALERT not running close socket")
-                            self.request_socket.close()
-                            self.request_socket = None
+                            self.close()
                             return ['{"status":"error", "message":"Femag is not running"}', '{}']
 
                     continue
@@ -510,11 +509,6 @@ class ZmqFemag(BaseFemag):
                 except Exception:
                     pass
                 return procId
-
-        if self.request_socket:
-            self.request_socket.close()
-        logger.warn("ALERT run close socket")
-        self.request_socket = None
 
         basename = str(self.port)
         args.append(basename)
@@ -739,11 +733,11 @@ class FemagReadStream(Thread):
                 self.pub_consumer([s.decode('latin1')
                                    for s in response])
             # The subscriber_socket has a timeout of 900 mil sec. If no answer was arrived
-            # this exception is raised - Ingnore
+            # this exception is raised - Ignore
             except zmq.error.Again:
                 continue
             # Any other exception is shown in the error log
             except Exception as e:
-                logger.error("error in reading output from femag {}".format(e))
+                logger.error("error in reading output from femag: {}".format(e))
                 continue
         logger.debug("Exit reader thread")

@@ -372,7 +372,7 @@ class Builder:
                 self.__render(model, model.get('calculationMode')) +
                 airgap_induc +
                 self.__render(model, 'plots'))
-#                ['save_model(cont)'])
+#                ['save_model("cont")'])
 
     def create_airgap_induc(self):
             return self.__render(dict(), 'airgapinduc')

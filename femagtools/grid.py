@@ -119,7 +119,7 @@ class Grid(object):
         logger.info("setup model in %s", self.femag.workdir)
         with open(os.path.join(self.femag.workdir, filename), 'w') as f:
             f.write('\n'.join(builder.create_model(model) +
-                              ['save_model(close)']))
+                              ['save_model("close")']))
 
         self.femag.run(filename, options=['-b'])
         model_files = [os.path.join(self.femag.workdir, m)

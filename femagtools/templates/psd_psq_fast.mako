@@ -1,6 +1,9 @@
 --
 -- Psid-Psiq- Identification
 --
+% if model.get('magn_temp',0):
+set_dev_data("magn_temp", ${model.get('magn_temp')})
+%endif
 	 
 m.move_action     =    0.0 -- rotate
 % if 'lfe' in model:
@@ -9,7 +12,6 @@ m.arm_length      =    ${model.get('lfe')*1e3}
 m.speed           =    ${model.get('speed')*60}
 m.skew_angle      =    ${model.get('skew_angle',0)}
 m.nu_skew_steps   =    ${model.get('num_skew_steps',0)}
-m.magn_temp       =    ${model.get('magn_temp')}
 m.fc_mult_move_type =  1.0 --  Type of move path in air gap
 m.phi_start       =    ${model.get('phi_start', 0)}
 m.range_phi       =    ${model.get('range_phi', 0)}
@@ -24,7 +26,6 @@ m.delta_id        =    ${model['delta_id']}/m.num_par_wdgs
 m.delta_iq        =    ${model['delta_iq']}/m.num_par_wdgs
 
 m.pm_eff_aktiv    =    0.0
-
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
-
 run_models("psd_psq_fast")
+

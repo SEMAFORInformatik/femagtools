@@ -275,6 +275,7 @@ class ZmqFemag(BaseFemag):
         if self.request_socket:
             self.request_socket.close()
             self.request_socket = None
+            self.request_socket = self.__req_socket()
         if self.subscriber_socket:
             self.subscriber_socket.close()
             self.subscriber_socket = None
@@ -347,11 +348,8 @@ class ZmqFemag(BaseFemag):
             return True
         return False
 
-    def __is_running(self, timeout=1500):
+    def __is_running(self):
         """check if FEMAG is running in ZMQ mode
-
-        Args:
-            timeout: The timeout (in milliseconds) to wait for a response
 
         Return:
             True if FEMAG is running, False otherwise
@@ -359,20 +357,14 @@ class ZmqFemag(BaseFemag):
         """
         if not self.request_socket:
             return False
-        try:
-            self.request_socket.send_string("FSL", flags=zmq.SNDMORE)
-            self.request_socket.send_string("testvar=0")
-            poller = zmq.Poller()
-            # use POLLIN for recv, POLLOUT for send
-            poller.register(self.request_socket, zmq.POLLIN)
-            if poller.poll(timeout):  # ok, femag is running
-                self.request_socket.recv_multipart()
-                return True
-        except Exception as e:
-            logger.error(e)
-        self.close()
-        logger.warn("femag is not running")
-        return False
+
+        # call info() and check result
+        ret = [json.loads(s, strict=False) for s in self.info()]
+        if ret[0].get('status') != 'ok':
+            self.proc = None  # no call of quit to prevent recursive calls
+            self.close()
+            logger.warn("femag is not running")
+        return ret[0].get('status') == 'ok'
 
     def send_request(self, msg, pub_consumer=None, timeout=None):
         try:

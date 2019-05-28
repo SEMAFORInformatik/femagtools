@@ -681,7 +681,7 @@ class ZmqFemag(BaseFemag):
             modelpars['exit_on_end'] = 'false'
         if 'exit_on_error' not in modelpars:
             modelpars['exit_on_error'] = 'false'
-        response = self.send_fsl(['save_model(close)'] +
+        response = self.send_fsl(['save_model("close")'] +
                                  self.create_fsl(modelpars,
                                                  simulation),
                                  pub_consumer=pub_consumer)

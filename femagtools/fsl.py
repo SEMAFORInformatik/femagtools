@@ -24,9 +24,15 @@ class FslBuilderError(Exception):
 
 class Builder:
     def __init__(self):
+        if getattr(sys, 'frozen', False):
+            # lookup up files in pyinstaller bundle
+            dirs = [os.path.join(sys._MEIPASS, 'fsltemplates'),
+                    os.path.join(os.getcwd(), '.')]
+        else:
+            dirs = [os.path.join(os.path.dirname(__file__), 'templates'),
+                    os.path.join(os.getcwd(), '.')]
         self.lookup = mako.lookup.TemplateLookup(
-            directories=[os.path.join(os.path.dirname(__file__), 'templates'),
-                         os.path.join(os.getcwd(), '.')],
+            directories=dirs,
             disable_unicode=False, input_encoding='utf-8',
             output_encoding='utf-8',
             default_filters=['decode.utf8'])

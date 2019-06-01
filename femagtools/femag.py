@@ -512,9 +512,12 @@ class ZmqFemag(BaseFemag):
             self.proc = subprocess.Popen(
                 args,
                 stdout=out, stderr=err, cwd=self.workdir)
-
+            rc = self.proc.poll()
+            if rc:
+                raise RuntimeError('Process "{}" exited with {}'.format(
+                    ' '.join(args), rc)) 
         # check if mq is ready for listening
-        for t in range(200):
+        for t in range(10):
             time.sleep(0.1)
             if self.__is_running():
                 logger.info("femag (pid: '{}') is listening".format(

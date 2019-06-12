@@ -119,6 +119,7 @@ class Reader:
         self.flux_fft = {}
         self.linearForce = []
         self.linearForce_fft = []
+        self.powerSituation = {}
         self.scData = {}
         self.dqPar = {}
         self.ldq = {}
@@ -1448,6 +1449,7 @@ class Reader:
                                            'demag',
                                            'linearForce',
                                            'linearForce_fft',
+                                           'powerSituation',
                                            'characteristics') if self.get(k)]
 
     def __str__(self):

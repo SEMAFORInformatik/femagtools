@@ -359,7 +359,8 @@ class Builder:
             try:
                 magnetMat['magntemp'] = model.magn_temp
             except AttributeError:
-                pass
+                magnetMat['magntemp'] = model['magn_temp']
+                
             magndata = self.create_magnet(model, magnetMat)
 
         airgap_induc = (self.create_airgap_induc()
@@ -377,8 +378,8 @@ class Builder:
                 magndata +
                 self.__render(model, model.get('calculationMode')) +
                 airgap_induc +
-                self.__render(model, 'plots'))
-#                ['save_model("cont")'])
+                self.__render(model, 'plots') +
+                ['save_model("cont")'])
 
     def create_airgap_induc(self):
             return self.__render(dict(), 'airgapinduc')
@@ -413,9 +414,9 @@ class Builder:
             fea['pocfilename'] = (model.get('name') +
                                   '_' + str(model.get('poles')) +
                                   'p.poc')
-            if not 'phi_start' in fea:
+            if 'phi_start' not in fea:
                 fea['phi_start'] = 0.0
-            if not 'range_phi' in fea:
+            if 'range_phi' not in fea:
                 fea['range_phi'] = 720/model.get('poles')
             fe_losses = self.create_fe_losses(model)
             return fslmodel + fe_losses + self.create_analysis(

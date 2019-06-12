@@ -56,9 +56,9 @@ class Optimizer(object):
                                       magnetizingCurves=magnetizingCurves,
                                       magnets=magnetMat)
         
-    def _update_population(self, pop, engine):
+    def _update_population(self, generation, pop, engine):
         self.job.cleanup()
-
+        
         for k, i in enumerate(pop.individuals):
             task = self.job.add_task(self.result_func)
             pop.problem.prepare(i.cur_x, self.model)
@@ -85,8 +85,12 @@ class Optimizer(object):
                         pop.problem.setResult(r)
 
                     i.cur_f = pop.problem.objfun([])
+                    i.results = {k: v for k, v in r.items()}
             else:
                 logger.warn("Task %s failed with status %s", t.id, t.status)
+                i.cur_f = [None]*pop.problem.f_dim
+
+            i.generation = generation  # for reporting purposes
 
         pop.update()
         return tend - tstart
@@ -134,10 +138,10 @@ class Optimizer(object):
             logger.info("Generation %d", i)
             if i > 0:
                 newpop = algo.evolve(self.pop)
-                deltat = self._update_population(newpop, engine)
+                deltat = self._update_population(i, newpop, engine)
                 self.pop.merge(newpop)
             else:
-                deltat = self._update_population(self.pop, engine)
+                deltat = self._update_population(i, self.pop, engine)
             logger.info('\n'.join(log_pop(self.pop, i) +
                                   ['', '  Elapsed Time: {} s'.format(
                                       int(deltat))]))
@@ -172,6 +176,7 @@ class Optimizer(object):
             return '<?>'
         results['objective'] = [label(o) for o in objective_vars]
         results['decision'] = [label(d) for d in decision_vars]
+        results['population'] = [i.results for i in self.pop.individuals]
         return results
     
     #print("\nChampion: {}\n".format(pop.champion['f']))

@@ -99,9 +99,6 @@ class CondorCluster(object):
                             s += "<tr><td>{0}:</td><td>{1}</td></tr>".format(attrs[a][i], rs)
             s += "</table>"
 
-            # decision_vars
-            dv = []
-
             # get infos from each cluster directory
             if 'clusterId' in vars:
                 obj = dict(clusterId=vars['clusterId'],

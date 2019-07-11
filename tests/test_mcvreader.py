@@ -45,10 +45,10 @@ class McvReaderTest(unittest.TestCase):
         mcv = femagtools.mcv.read(
             '{0}/{1}'.format(testPath, filename))
         self.assertEqual(mcv.mc1_type, 2)
-        self.assertAlmostEquals(min(mcv.curve[0]['hi']), -560e3)
-        self.assertAlmostEquals(max(mcv.curve[0]['hi']), -50e3)
-        self.assertAlmostEquals(min(mcv.curve[0]['bi']), -1.10371697)
-        self.assertAlmostEquals(max(mcv.curve[0]['bi']), 0.4)
+        self.assertAlmostEqual(min(mcv.curve[0]['hi']), -560e3)
+        self.assertAlmostEqual(max(mcv.curve[0]['hi']), -50e3)
+        self.assertAlmostEqual(min(mcv.curve[0]['bi']), -1.10371697)
+        self.assertAlmostEqual(max(mcv.curve[0]['bi']), 0.4)
 
         
 if __name__ == '__main__':

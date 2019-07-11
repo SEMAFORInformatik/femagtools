@@ -4,7 +4,6 @@ import unittest
 from femagtools import moo
 import numpy as np
 import matplotlib as mp
-mp.use('Agg') # Generate images without having a window appear
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d as mpl
 import matplotlib.cm as cm

@@ -1,4 +1,3 @@
-import pytest
 import meshio
 from femagtools import convert, isa7
 

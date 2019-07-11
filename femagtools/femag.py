@@ -148,7 +148,7 @@ class BaseFemag(object):
         with open(os.path.join(self.workdir, 'FEMAG-FSL.log')) as f:
             for l in f:
                 if l.startswith('New model') or l.startswith('Load model'):
-                    model = l.split()[2].replace('"', '').replace(',', '')
+                    model = l.split('"')[1]
                     break
         return model
 
@@ -359,13 +359,17 @@ class ZmqFemag(BaseFemag):
             return False
 
         # call info() and check result
-        ret = [json.loads(s, strict=False) for s in self.info()]
-        if ret[0].get('status') != 'ok':
-            self.proc = None  # no call of quit to prevent recursive calls
-            self.close()
-            logger.warn("femag is not running")
-        return ret[0].get('status') == 'ok'
-
+        try:
+            ret = [json.loads(s, strict=False) for s in self.info()]
+            if ret[0].get('status') != 'ok':
+                self.proc = None  # no call of quit to prevent recursive calls
+                self.close()
+                logger.warn("femag is not running")
+            return ret[0].get('status') == 'ok'
+        except Exception:
+            pass
+        return False
+            
     def send_request(self, msg, pub_consumer=None, timeout=None):
         try:
             # Start the reader thread to get information

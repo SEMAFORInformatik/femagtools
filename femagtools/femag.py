@@ -362,14 +362,13 @@ class ZmqFemag(BaseFemag):
         try:
             ret = [json.loads(s, strict=False) for s in self.info()]
             if ret[0].get('status') != 'ok':
-                self.proc = None  # no call of quit to prevent recursive calls
                 self.close()
                 logger.warn("femag is not running")
             return ret[0].get('status') == 'ok'
         except Exception:
             pass
         return False
-            
+
     def send_request(self, msg, pub_consumer=None, timeout=None):
         try:
             # Start the reader thread to get information
@@ -402,6 +401,7 @@ class ZmqFemag(BaseFemag):
             #logger.exception("send_request")
             logger.info("send_request: %s Message %s", str(e), msg)
             if timeout:  # only first call raises zmq.error.Again
+                logger.info("Femag is not running")
                 return [b'{"status":"error", "message":"Femag is not running"}']
             return [b'{"status":"error", "message":"' + str(e).encode() + b'"}']
 

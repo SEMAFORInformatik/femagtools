@@ -175,9 +175,12 @@ def torque_fft(order, torque):
     ax = pl.gca()
     ax.set_title('Torque Harmonics / {}'.format(unit))
     ax.grid(True)
-    bw = 2.5E-2*max(order)
-    ax.bar(order, [scale*t for t in torque], width=bw, align='center')
-    ax.set_xlim(left=-bw/2)
+    try:
+        bw = 2.5E-2*max(order)
+        ax.bar(order, [scale*t for t in torque], width=bw, align='center')
+        ax.set_xlim(left=-bw/2)
+    except ValueError:  # empty sequence
+        pass
 
 
 def force(title, pos, force, xlabel=''):
@@ -207,9 +210,12 @@ def force_fft(order, force):
     ax = pl.gca()
     ax.set_title('Force Harmonics / {}'.format(unit))
     ax.grid(True)
-    bw = 2.5E-2*max(order)
-    ax.bar(order, [scale*t for t in force], width=bw, align='center')
-    ax.set_xlim(left=-bw/2)
+    try:
+        bw = 2.5E-2*max(order)
+        ax.bar(order, [scale*t for t in force], width=bw, align='center')
+        ax.set_xlim(left=-bw/2)
+    except ValueError:  # empty sequence
+        pass
 
 
 def forcedens(title, pos, fdens):
@@ -256,8 +262,11 @@ def voltage_fft(title, order, voltage):
     ax = pl.gca()
     ax.set_title('{} / V'.format(title))
     ax.grid(True)
-    bw = 2.5E-2*max(order)
-    ax.bar(order, voltage, width=bw, align='center')
+    try:
+        bw = 2.5E-2*max(order)
+        ax.bar(order, voltage, width=bw, align='center')
+    except ValueError:  # empty sequence
+        pass
 
 
 def mcv_hbj(mcv, log=True):
@@ -424,7 +433,7 @@ def pmrelsim(bch, title=''):
         pl.subplot(rows, cols, row+1)
         tq = list(bch.torque_fft[-1]['torque'])
         order = list(bch.torque_fft[-1]['order'])
-        if max(order) < 5:
+        if order and max(order) < 5:
             order += [15]
             tq += [0]
         torque_fft(order, tq)
@@ -603,7 +612,40 @@ def cogging(bch, title=''):
     fig.tight_layout(h_pad=2)
     if title:
         fig.subplots_adjust(top=0.92)
-       
+
+
+def transientsc(bch, title=''):
+    """creates a transient short circuit plot"""
+    cols = 1
+    rows = 2
+    htitle = 1.5 if title else 0
+    fig, ax = pl.subplots(nrows=rows, ncols=cols,
+                          figsize=(10, 3*rows + htitle))
+    if title:
+        fig.suptitle(title, fontsize=16)
+
+    row = 1
+    pl.subplot(rows, cols, row)
+    ax = pl.gca()
+    ax.set_title('Currents / A')
+    ax.grid(True)
+    for i in ('ia', 'ib', 'ic'):
+        ax.plot(bch.scData['time'], bch.scData[i], label=i)
+    ax.set_xlabel('Time / s')
+    ax.legend()
+
+    row = 2
+    pl.subplot(rows, cols, row)
+    ax = pl.gca()
+    ax.set_title('Torque / Nm')
+    ax.grid(True)
+    ax.plot(bch.scData['time'], bch.scData['torque'])
+    ax.set_xlabel('Time / s')
+
+    fig.tight_layout(h_pad=2)
+    if title:
+        fig.subplots_adjust(top=0.92)
+
 
 def i1beta_torque(i1, beta, torque):
     """creates a surface plot of torque vs i1, beta"""
@@ -918,6 +960,8 @@ def main():
         psidq(bchresults)
     elif bchresults.type.lower().find('fast_torque calculation') >= 0:
         fasttorque(bchresults)
+    elif bchresults.type.lower().find('transient sc') >= 0:
+        transientsc(bchresults, bchresults.filename)
     else:
         raise ValueError("BCH type {} not yet supported".format(
             bchresults.type))

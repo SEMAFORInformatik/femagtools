@@ -180,7 +180,7 @@ class Engine(object):
     def submit(self):
         submitfile = self.job.prepareDescription()
         cmdout = subprocess.check_output(["condor_submit", submitfile])
-        self.clusterId = re.findall('\d+', cmdout.decode('utf-8'))[-1]
+        self.clusterId = re.findall(r'\d+', cmdout.decode('utf-8'))[-1]
         logger.info('submit cluster %s', self.clusterId)
         return self.clusterId
 
@@ -192,7 +192,7 @@ class Engine(object):
             while True:
                 time.sleep(2)
                 cmdout = subprocess.check_output(cmd)
-                tasks = re.findall(self.clusterId+'\.\d+',
+                tasks = re.findall(self.clusterId+r'\.\d+',
                                    cmdout.decode('utf-8'))
                 if len(tasks) == 0:
                     break
@@ -201,7 +201,7 @@ class Engine(object):
             cmdout = subprocess.check_output(
                 ["condor_history", self.clusterId])
             for jobinfo in re.findall(
-                    '^\s*{}\.\d+.+$'.format(
+                    r'^\s*{}\.\d+.+$'.format(
                         self.clusterId),
                     cmdout.decode('utf-8'), re.M):
                 l = jobinfo.split()

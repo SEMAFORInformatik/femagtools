@@ -298,7 +298,7 @@ class FslBuilderTest(unittest.TestCase):
 
         feapars['calculationMode'] = "pm_sym_fast"
         fsl = self.builder.create_analysis(feapars, {}, 0)
-        self.assertEqual(len(fsl), 52)
+        self.assertEqual(len(fsl), 51)
 
         feapars['calculationMode'] = "mult_cal_fast"
         fsl = self.builder.create_analysis(feapars, {}, 0)

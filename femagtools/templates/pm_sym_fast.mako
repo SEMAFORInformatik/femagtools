@@ -53,6 +53,7 @@ m.angl_i_up       =    ${model.get('angl_i_up', 0)}
 m.optim_i_up      =    ${model.get('optim_i_up', 0)}
 
 m.pm_eff_aktiv    =    0.0
+m.calc_noload     =    ${model.get('calc_noload', 1)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 

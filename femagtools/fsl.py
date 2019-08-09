@@ -463,7 +463,7 @@ class Builder:
     def read(self, fslfile):
         """extracts parameters from content and creates template"""
         parpat = re.compile(
-            r'''(\w+)\s*= # key
+            r'''([\w\.]+)\s*= # key
             \s*(([+-]?\d+((?:\.\d+)?(?:[eE][+-]\d+)?))|
             (['"][^'"]*['"]))\s*-- # value
             \s*(.+)$''', re.X)

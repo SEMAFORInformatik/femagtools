@@ -336,6 +336,7 @@ class Builder:
     def create_magnet(self, model, magnetMat=None):
         try:
             if magnetMat:
+                logger.info("Setting magnet properties %s", magnetMat['name'])
                 if 'mcvkey' in magnetMat:
                     model.set_mcvkey_magnet(magnetMat['mcvkey'])
                 return self.__render(magnetMat, 'magnet')
@@ -365,21 +366,21 @@ class Builder:
 
         airgap_induc = (self.create_airgap_induc()
                         if model.get('airgap_induc', 0) else [])
+
+        fslcalc = (self.__render(model, 'cu_losses') +
+                   magndata +
+                   self.__render(model, model.get('calculationMode')) +
+                   airgap_induc)
         
         if model.get('calculationMode') in ('cogg_calc',
                                             'ld_lq_fast',
                                             'pm_sym_loss',
                                             'torq_calc',
                                             'psd_psq_fast'):
-            return (self.__render(model, model.get('calculationMode')) +
-                    airgap_induc)
+            return fslcalc
         
-        return (self.__render(model, 'cu_losses') +
-                magndata +
-                self.__render(model, model.get('calculationMode')) +
-                airgap_induc +
-                self.__render(model, 'plots') +
-                ['save_model("cont")'])
+        return (fslcalc +
+                self.__render(model, 'plots'))
 
     def create_airgap_induc(self):
             return self.__render(dict(), 'airgapinduc')

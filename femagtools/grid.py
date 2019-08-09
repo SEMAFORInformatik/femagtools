@@ -123,11 +123,15 @@ class Grid(object):
 
         self.femag.run(filename, options=['-b'])
         model_files = [os.path.join(self.femag.workdir, m)
-                       for m in mc_files] + \
-                           glob.glob(os.path.join(self.femag.workdir,
-                                                  model.name+'_*.poc')) + \
-                            glob.glob(os.path.join(self.femag.workdir,
-                                                   model.name+'*7'))
+                       for m in mc_files] + [f
+                                             for sublist in [
+                                                     glob.glob(os.path.join(
+                                                         self.femag.workdir,
+                                                         model.name+e))
+                                                     for e in (
+                                                             '_*.poc',
+                                                             '.nc', '.[IA]*7')]
+                                             for f in sublist]
         
         logger.info("model %s created", model.name)
         return model_files

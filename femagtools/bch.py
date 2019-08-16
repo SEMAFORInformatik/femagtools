@@ -1365,7 +1365,7 @@ class Reader:
                 else:
                     k = 'rotor'
             elif l.find(': Roto') > -1:
-                k = 'roto'
+                k = 'rotor'
             elif l.find(': Ring') > -1:
                 k = 'ring'
             elif l.find('Stat') > -1:

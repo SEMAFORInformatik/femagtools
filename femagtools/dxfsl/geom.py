@@ -1540,6 +1540,9 @@ class Geometry(object):
         arealist_srt = [[v[0], k, v[1]] for k, v in midlist.items()]
         arealist_srt.sort(reverse=True)
 
+        if not arealist_srt:
+            return False
+
         area = arealist_srt[0][2]
         sym = area.symmetry
         area.delta = 2*np.pi/sym
@@ -1776,12 +1779,11 @@ class Geometry(object):
         logger.info("The shape of the Machine is unexpected")
         return Machine(self, [0.0, 0.0], 0.0, 0.0, 0.0)
 
-    def is_new_center(self, center_list, center, rtol, atol):
-        for c in center_list:
-            if points_are_close(c[0], center, rtol, atol):
-                c[1][0] += 1
-                return False
-        return True
+    def get_same_center(self, center_lst, center, rtol, atol):
+        for c in center_lst:
+            if points_are_close(c[1], center, rtol, atol):
+                return c
+        return None
 
     def get_machine_part(self, mm):
         logger.debug("*** Begin of get_machine_part() ***")
@@ -1792,28 +1794,38 @@ class Geometry(object):
         center_list = []
         for e in self.elements(Arc):
             center = [round(e.center[0], 3), round(e.center[1], 3)]
-            if self.is_new_center(center_list, center, self.rtol, self.atol):
-                center_list.append((center, [1]))
+            radius = round(e.radius, 1)
+            c = self.get_same_center(center_list, center, self.rtol, self.atol)
+            if c is None:
+                center_list.append(([1], center, [radius]))
+            else:
+                c[0][0] += 1
+                if radius not in c[2]:
+                    c[2].append(radius)
 
-        center = []
-        count = 0
-        unique = False
-        for c in center_list:
-            if c[1][0] == count:
-                unique = False
-            elif c[1][0] > count:
-                count = c[1][0]
-                unique = True
-                center = c[0]
+        center = None
+        arc_list = [[len(c[2]), c[0][0], c[1]] for c in center_list]
+        arc_list.sort(reverse=True)
 
-        if not unique:
+        if arc_list:
+            c1 = arc_list[0]
+            center = c1[2]
+            if len(arc_list) > 1:
+                c2 = arc_list[1]
+                if not c1[0] > c2[0]:
+                    center = None
+
+        logger.debug("hull center: {}".format(h_center))
+        logger.debug("arc center : {}".format(center))
+
+        if not center:
             # Wir finden keine Arc-Objekte, welche uns einen Hinweis auf den
             # Center geben können. Wir versuchen in der Verzweiflung mit
-            # x(min) und y(min)
-            center = [round(mm[0], 4), round(mm[2], 4)]
-
-        if h_center:
-            center = h_center
+            # h_center oder x(min) und y(min)
+            if h_center:
+                center = h_center
+            else:
+                center = [round(mm[0], 4), round(mm[2], 4)]
 
         logger.debug(" - Center is {}".format(center))
 

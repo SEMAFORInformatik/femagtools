@@ -361,9 +361,6 @@ class ZmqFemag(BaseFemag):
         # call info() and check result
         try:
             ret = [json.loads(s, strict=False) for s in self.info()]
-            if ret[0].get('status') != 'ok':
-                self.close()
-                logger.warn("femag is not running")
             return ret[0].get('status') == 'ok'
         except Exception:
             pass
@@ -519,14 +516,29 @@ class ZmqFemag(BaseFemag):
             rc = self.proc.poll()
             if rc:
                 raise RuntimeError('Process "{}" exited with {}'.format(
-                    ' '.join(args), rc)) 
+                    ' '.join(args), rc))
+
         # check if mq is ready for listening
-        for t in range(10):
+        lcount = 10
+        for t in range(lcount):
             time.sleep(0.1)
             if self.__is_running():
                 logger.info("femag (pid: '{}') is listening".format(
                     self.proc.pid))
                 break
+            else:
+                # reopen request socket
+                logger.debug('reopen request port')
+                self.request_socket.close()
+                self.request_socket = None
+                if t == (lcount-1):
+                    # 10 attempts fails, abort
+                    logger.info('abort (starting femag)')
+                    self.proc.wait(1000)
+                    rc = self.proc.returncode
+                    self.proc = None
+                    return rc  # self.proc.returncode
+                self.request_socket = self.__req_socket()
 
         # write femag.pid
         with open(os.path.join(self.workdir, 'femag.pid'), 'w') as pidfile:
@@ -615,12 +627,13 @@ class ZmqFemag(BaseFemag):
         """
         return [r.decode('latin1')
                 for r in self.send_request(['close'])]
-    
-    def info(self):
+
+    def info(self, timeout=2000):
         """get various resource information 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'info'], timeout=2000)]
+                for r in self.send_request(['CONTROL', 'info'],
+                                           timeout=timeout)]
 
     def publishLevel(self, level):
         """set publish level"""

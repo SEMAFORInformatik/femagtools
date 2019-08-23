@@ -112,7 +112,7 @@ class PlotRenderer(object):
                 for s in area:
                     s.render(self)
                     if draw_center:
-                        c = s.center_of_connection()
+                        c = s.center_of_connection(4)
                         pl.plot([c[0]], [c[1]], 'gs')
 
         geom.remove_areas(incl_bnd)
@@ -123,7 +123,7 @@ class PlotRenderer(object):
          for e1, e2, attr in geom.g.edges(data=True)]
         if draw_center:
             for e1, e2, attr in geom.g.edges(data=True):
-                c = attr['object'].center_of_connection()
+                c = attr['object'].center_of_connection(4)
                 pl.plot([c[0]], [c[1]], 'gs')
 
         geom.render_cut_lines(self)
@@ -221,7 +221,7 @@ class PlotRenderer(object):
         if draw_center:
             for area in geom.list_of_areas():
                 for s in area.elements():
-                    c = s.center_of_connection()
+                    c = s.center_of_connection(4)
                     pl.plot([c[0]], [c[1]], 'gs')
 
         if draw_inside:

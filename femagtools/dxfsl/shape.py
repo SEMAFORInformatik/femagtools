@@ -17,6 +17,7 @@ from .functions import alpha_line, alpha_angle, alpha_triangle
 from .functions import normalise_angle, min_angle, max_angle, get_angle_of_arc
 from .functions import lines_intersect_point, nodes_are_equal
 from .functions import is_angle_inside, intersect_point
+from .functions import middle_angle
 # from .geom import ndec
 
 logger = logging.getLogger('femagtools.geom')
@@ -508,11 +509,8 @@ class Arc(Circle):
             renderer.point(self.p2, 'ro', color)
 
     def center_of_connection(self, ndec):
-        s = self.startangle
-        d = self.endangle - s
-        if d > 2*np.pi:
-            d -= 2*np.pi
-        x, y = self(s + d/2)
+        midangle = middle_angle(self.startangle, self.endangle)
+        x, y = self(midangle)
         return (round(x, ndec), round(y, ndec))
 
     def length(self):

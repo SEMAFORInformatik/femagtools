@@ -2407,6 +2407,30 @@ class Geometry(object):
         [a.set_type(1) for a in iron_mag_areas]
         [a.set_type(0) for a in air_mag_areas]
 
+        mag_areas = [[round(a.phi, 3), a.id, a] for a in self.list_of_areas()
+                     if a.type == 4]
+        if len(mag_areas) > 2:
+            mag_areas.sort()
+            mag_phi = {}
+            for phi, id, a in mag_areas:
+                x = mag_phi.get(phi, [0, []])
+                x[0] += 1
+                x[1].append(a)
+                mag_phi[phi] = x
+
+            phi_list = [[l[0], p, l[1]] for p, l in mag_phi.items()]
+            phi_list.sort(reverse=True)
+
+            if len(phi_list) > 1:
+                c0 = phi_list[0][0]
+                c1 = phi_list[1][0]
+                first = 1
+                if c0 == c1:
+                    first = 2
+                for c, phi, a_lst in phi_list[first:]:
+                    for a in a_lst:
+                        a.set_type(0)
+
     def search_unknown_subregions(self):
         for area in self.list_of_areas():
             area.mark_unknown_subregions(self.is_mirrored(),

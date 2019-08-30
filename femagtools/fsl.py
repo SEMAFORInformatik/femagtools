@@ -249,7 +249,7 @@ class Builder:
                               'leak_tooth_wind')
         return self.__render(model, 'gen_winding')
             
-    def create_model_with_dxf(self, model):
+    def prepare_model_with_dxf(self, model):
         dxfname = model.dxffile.get('name', None)
         if not dxfname:
             logger.error('Name of dxf-file expected')
@@ -289,38 +289,42 @@ class Builder:
             self.fsl_magnet = True
             model.magnet['dxf'] = dict(fsl=conv['fsl_magnet'])
 
-        return self.create_new_model(model) + \
-            self.create_cu_losses(model) + \
-            self.create_stator_model(model) + \
-            self.create_gen_winding(model) + \
-            self.create_magnet(model) + \
-            self.create_magnet_model(model) + \
-            self.mesh_airgap(model) + \
-            self.create_connect_models(model)
-
-    def create_model(self, model):
-        if model.is_dxffile():
-            return self.create_model_with_dxf(model)
-
+    def create_model(self, model, magnets=[]):
         if model.is_complete():
-            self.prepare_stator(model)
-            self.prepare_rotor(model)
-            self.prepare_diameter(model)
-            if self.fsl_stator:
-                from femagtools.dxfsl.fslrenderer import agndst
-                ag = model.get('airgap')
-                model.set_value(
-                    'agndst',
-                    agndst(model.get('bore_diam'),
-                           model.get('bore_diam') - 2*ag))
+            if model.is_dxffile():
+                self.prepare_model_with_dxf(model)
+            else:
+                self.prepare_stator(model)
+                self.prepare_rotor(model)
+                self.prepare_diameter(model)
+                if self.fsl_stator:
+                    from femagtools.dxfsl.fslrenderer import agndst
+                    ag = model.get('airgap')
+                    model.set_value(
+                        'agndst',
+                        agndst(model.get('bore_diam'),
+                               model.get('bore_diam') - 2*ag))
 
-            model.set_num_slots_gen()
-
+                model.set_num_slots_gen()
+            
+            material = model.magnet.get('material', 0)
+            magnetMat = {}
+            if magnets and material:
+                magnetMat = magnets.find(material)
+                if not magnetMat:
+                    raise FslBuilderError(
+                        'magnet material {} not found'.format(
+                            material))
+                try:
+                    magnetMat['magntemp'] = model.magn_temp
+                except AttributeError:
+                    magnetMat['magntemp'] = 20
+                
             return self.create_new_model(model) + \
                 self.__render(model.windings, 'cu_losses') + \
                 self.create_stator_model(model) + \
                 self.create_gen_winding(model) + \
-                self.create_magnet(model) + \
+                self.create_magnet(magnetMat) + \
                 self.create_magnet_model(model) + \
                 self.mesh_airgap(model) + \
                 self.create_connect_models(model)
@@ -333,42 +337,21 @@ class Builder:
     def load_model(self, model):
         return self.__render(model, 'open')
 
-    def create_magnet(self, model, magnetMat=None):
-        try:
-            if magnetMat:
-                logger.info("Setting magnet properties %s", magnetMat['name'])
-                if 'mcvkey' in magnetMat:
-                    model.set_mcvkey_magnet(magnetMat['mcvkey'])
-                return self.__render(magnetMat, 'magnet')
-            return ['m.remanenc       =  1.2',
-                    'm.relperm        =  1.05']
-        except AttributeError:
-            pass  # no magnet
-        return []
+    def create_magnet(self, magnetMat=None):
+        if magnetMat:
+            logger.info("Setting magnet properties %s", magnetMat['name'])
+            return self.__render(magnetMat, 'magnet')
+        return ['m.remanenc       =  1.2',
+                'm.relperm        =  1.05']
 
     def create_common(self, model):
         return self.__render(model, 'common')
 
-    def create_analysis(self, model, magnets=None, magnet_material=None):
-        magnetMat = None
-        magndata = []
-        if magnets and magnet_material:
-            magnetMat = magnets.find(magnet_material)
-            if not magnetMat:
-                raise FslBuilderError('magnet material {} not found'.format(
-                    magnet_material))
-            try:
-                magnetMat['magntemp'] = model.magn_temp
-            except AttributeError:
-                magnetMat['magntemp'] = model['magn_temp']
-                
-            magndata = self.create_magnet(model, magnetMat)
-
+    def create_analysis(self, model):
         airgap_induc = (self.create_airgap_induc()
                         if model.get('airgap_induc', 0) else [])
 
         fslcalc = (self.__render(model, 'cu_losses') +
-                   magndata +
                    self.__render(model, model.get('calculationMode')) +
                    airgap_induc)
         
@@ -411,7 +394,7 @@ class Builder:
         
         if model.is_complete():
             logger.info("create new model and simulation")
-            fslmodel = self.create_model(model)
+            fslmodel = self.create_model(model, magnets)
             fea['pocfilename'] = (model.get('name') +
                                   '_' + str(model.get('poles')) +
                                   'p.poc')
@@ -420,8 +403,9 @@ class Builder:
             if 'range_phi' not in fea:
                 fea['range_phi'] = 720/model.get('poles')
             fe_losses = self.create_fe_losses(model)
-            return fslmodel + fe_losses + self.create_analysis(
-                fea, magnets, model.magnet.get('material', 0))
+            
+            return (fslmodel + fe_losses +
+                    self.create_analysis(fea))
         
         logger.info("create open model and simulation")
         return self.open_model(model) + \

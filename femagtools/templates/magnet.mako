@@ -8,7 +8,7 @@
  m.magncond       =    ${model.get('magncond', 625000.0)}
 %if model.get('mcvkey',0):
  m.mcvkey_magnet = '${model.get('mcvkey')}'
- m.orient     = ${model.get('orient', 'mpolaniso')}
+ m.orient     = ${model.get('orient', 'm.cartiso')}
  m.rlen       = ${model.get('rlen', 1.0)*100}   
 %else:
  m.magsegwid      =    ${model.get('magnwidth', 0.0)*1e3}

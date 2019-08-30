@@ -231,9 +231,7 @@ class Grid(object):
                         builder.create_open(model) +
                         builder.create_common(model) +
                         builder.create_fe_losses(model) +
-                        builder.create_analysis(fea,
-                                                self.femag.magnets,
-                                                model.magnet.get('material', 0)))
+                        builder.create_analysis(fea))
                 else:
                     prob.prepare(x, [model, fea])
                     logger.info("prepare %s", x)
@@ -245,9 +243,7 @@ class Grid(object):
                     task.add_file(
                         'femag.fsl',
                         builder.create_model(model) +
-                        builder.create_analysis(fea,
-                                                self.femag.magnets,
-                                                model.magnet.get('material', 0)))
+                        builder.create_analysis(fea))
 
             tstart = time.time()
             status = engine.submit()

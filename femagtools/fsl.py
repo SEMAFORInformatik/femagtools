@@ -405,11 +405,14 @@ class Builder:
             fe_losses = self.create_fe_losses(model)
             
             return (fslmodel + fe_losses +
-                    self.create_analysis(fea))
+                    self.create_analysis(fea) +
+                    ['save_model("close")'])
         
         logger.info("create open model and simulation")
-        return self.open_model(model) + \
-            self.create_analysis(fea)
+        return (self.open_model(model) + 
+                self.create_analysis(fea) +
+                ['save_model("close")'])
+                
 
     def __render(self, model, templ, stator=False, magnet=False):
         if templ.split('.')[-1] in ('fsl', 'mako'):

@@ -29,7 +29,28 @@ m.nodedist        =   ${model.get('nodedist',1)}
 
  pre_models("Magnet-Sector")
 
-%if model.get('mcvkey_magnet', ''):
+%if model.get('magn_ori', 0) == 8:
+if m.magncond == nil then
+  m.magncond = 6.25e5
+end
+if m.rlen == nil then
+  m.rlen = 100
+end
+
+for i = 0, m.npols_gen-1 do
+    alfa = (2*i+1)*180/m.num_poles
+    x0, y0 = pd2c(m.magn_rad - m.magn_height/2, alfa)
+    if i % 2 == 0 then
+      color = red
+      phi = alfa+180/m.num_poles
+    else
+      phi = alfa-180/m.num_poles
+      color = green
+    end
+    def_mat_pm(x0, y0, color, m.remanenc, m.relperm,
+	               phi, m.radial, m.magncond, m.rlen)
+end
+%elif model.get('mcvkey_magnet', ''):
 gamma = 0
 for i = 0, m.npols_gen-1 do
     alfa = (2*i+1)*180/m.num_poles

@@ -216,9 +216,9 @@ class Femag(BaseFemag):
         "removes all created files in workdir"
         if not os.path.exists(self.workdir):
             return
-        cleanfiles = ('*.B*CH', '*.I*7-*', '*.A*7-*',
-                      '*.dat', '*.LOS', '*.svg', '*.png')
-        # '*.TMC','*.TMO', '*.PROT', '*.hxy'):
+        cleanfiles = ('*.B*CH', '*.I*7-*', '*.A*7-*', '*.nc-*',
+                      '*.dat', '*.LOS', '*.svg', '*.png', '*.hxy')
+        # '*.TMC','*.TMO', '*.PROT'):
         for p in cleanfiles:
             for f in glob.glob(os.path.join(self.workdir, p)):
                 os.remove(f)

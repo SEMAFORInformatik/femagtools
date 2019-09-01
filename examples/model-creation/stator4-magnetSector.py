@@ -2,6 +2,16 @@ import femagtools
 
 
 def create_fsl():
+    magnetmat = [dict(
+        name='M45',
+        remanenc=1.1,
+        relperm=1.04,
+        spmaweight=7.4,
+        temcoefbr=-0.0015,
+        temcoefhc=-0.0013,
+        magncond=625000.0
+    )]
+    
     machine = dict(
         name="PM 886 32",
         lfe=0.224,
@@ -31,6 +41,7 @@ def create_fsl():
 
         magnet=dict(
             mcvkey_yoke="dummy",
+            material='M45',
             magnetSector=dict(
                 magn_num=1,
                 magn_height=0.014,
@@ -53,7 +64,7 @@ def create_fsl():
             num_layers=2)
     )
 
-    return femagtools.create_fsl(machine)
+    return femagtools.create_fsl(machine, magnetmat=magnetmat)
 
 
 if __name__ == '__main__':

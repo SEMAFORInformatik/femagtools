@@ -79,14 +79,17 @@ class BaseFemag(object):
                 for m in model.set_magcurves(
                         self.magnetizingCurves, self.magnets)]
 
-    def create_fsl(self, pmMachine, operatingConditions):
+    def create_fsl(self, pmMachine, simulation):
         """create list of fsl commands"""
         model = femagtools.MachineModel(pmMachine)
         self.modelname = model.name
         self.copy_magnetizing_curves(model)
 
         builder = femagtools.fsl.Builder()
-        return builder.create(model, operatingConditions, self.magnets)
+        if simulation:
+            return builder.create(model, simulation, self.magnets)
+        return builder.create_model(model) + ['save_model("cont")']
+        
 
     def get_log_value(self, pattern, modelname='FEMAG-FSL.log'):
         result = []
@@ -223,26 +226,29 @@ class Femag(BaseFemag):
             for f in glob.glob(os.path.join(self.workdir, p)):
                 os.remove(f)
 
-    def __call__(self, pmMachine, operatingConditions,
+    def __call__(self, pmMachine, simulation={},
                  options=['-b'], fsl_args=[]):
-        """setup fsl file, run calculation and return BCH results"""
+        """setup fsl file, run calculation and return 
+        BCH or LOS results if any."""
         fslfile = 'femag.fsl'
         with open(os.path.join(self.workdir, fslfile), 'w') as f:
             f.write('\n'.join(self.create_fsl(pmMachine,
-                                              operatingConditions)))
-        if operatingConditions['calculationMode'] == "pm_sym_loss":
+                                              simulation)))
+        if simulation and simulation['calculationMode'] == "pm_sym_loss":
             with open(os.path.join(self.workdir,
                                    self.modelname+'.ntib'), 'w') as f:
                 f.write('\n'.join(ntib.create(
-                    operatingConditions['speed'],
-                    operatingConditions['current'],
-                    operatingConditions['angl_i_up'])))
+                    simulation['speed'],
+                    simulation['current'],
+                    simulation['angl_i_up'])))
                 # TODO: add r1, m
 
         self.run(fslfile, options, fsl_args)
-        if operatingConditions['calculationMode'] == "pm_sym_loss":
-            return self.read_los(self.modelname)
-        return self.read_bch(self.modelname)
+        if simulation:
+            if simulation['calculationMode'] == "pm_sym_loss":
+                return self.read_los(self.modelname)
+            return self.read_bch(self.modelname)
+        return dict(status='ok', message=self.modelname)
 
 
 class ZmqFemag(BaseFemag):

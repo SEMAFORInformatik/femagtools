@@ -2,6 +2,7 @@
 #
 import unittest
 import femagtools.fsl
+import femagtools.magnet
 import copy
 import re
 
@@ -399,6 +400,73 @@ class FslBuilderTest(unittest.TestCase):
         fsl = self.builder.create_gen_winding(model)
         self.assertEqual(len(fsl), 28)
 
+    def test_create_model_with_magnet_material(self):
+        magnetmat = [dict(
+            name='M45',
+            remanenc=1.1,
+            relperm=1.04,
+            spmaweight=7.4,
+            temcoefbr=-0.0015,
+            temcoefhc=-0.0013,
+            magncond=625000.0
+        )]
+
+        machine = dict(
+            name="PM 886 32",
+            lfe=0.224,
+            poles=32,
+            outer_diam=0.886,
+            bore_diam=0.76,
+            inner_diam=0.4956,
+            airgap=0.007,
+            external_rotor=1,
+
+            stator=dict(
+                num_slots=120,
+                rlength=1.0,
+                stator4=dict(
+                    slot_height=0.035,
+                    slot_h1=0.002,
+                    slot_h2=0.0,
+                    slot_h3=0.004,
+                    slot_h4=0.0,
+                    slot_width=0.01,
+                    slot_r1=0.0,
+                    wedge_width1=0.01,
+                    wedge_width2=0.01,
+                    wedge_width3=0.01)
+            ),
+
+            magnet=dict(
+                material='M45',
+                magnetSector=dict(
+                    magn_num=1,
+                    magn_height=0.014,
+                    magn_width_pct=0.85,
+                    condshaft_r=0.0,
+                    magn_rfe=0.0,
+                    magn_len=1.0,
+                    magn_shape=0.0,
+                    bridge_height=0.0,
+                    bridge_width=0.0,
+                    magn_ori=1,
+                    magn_type=1
+                )
+            ),
+
+            windings=dict(
+                num_phases=3,
+                num_wires=5,
+                coil_span=1,
+                num_layers=2)
+        )
+        model = femagtools.MachineModel(machine)
+        magnets = femagtools.magnet.Magnet(magnetmat)
+        fsl = self.builder.create_model(model, magnets)
+        self.assertEqual(len(fsl), 178)
+        brem = [l.strip() for l in fsl
+                if l.split('=')[0].strip() == 'm.remanenc'][0]
+        self.assertEqual(brem.split('=')[-1].strip(), '1.1')
         
 if __name__ == '__main__':
     unittest.main()

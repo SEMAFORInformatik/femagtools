@@ -88,7 +88,7 @@ class BaseFemag(object):
         builder = femagtools.fsl.Builder()
         if simulation:
             return builder.create(model, simulation, self.magnets)
-        return builder.create_model(model) + ['save_model("cont")']
+        return builder.create_model(model, self.magnets) + ['save_model("cont")']
         
 
     def get_log_value(self, pattern, modelname='FEMAG-FSL.log'):

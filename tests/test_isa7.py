@@ -9,13 +9,10 @@ def isa():
 
 
 def test_read(isa):
-    assert isa.NUM_PNT == 39
-    assert isa.NUM_LIN == 39
-    assert isa.NUM_SPEL_NDCH == 112
-    assert isa.POINT_ISA_PT_VALID[0]
-    assert type(isa.POINT_ISA_PT_VALID[0]) == bool
-    assert isa.POINT_ISA_POINT_REC_PT_CO_X[0] == pytest.approx(0.008339,
-                                                               abs=1e-5)
+    assert len(isa.points) == 39
+    assert len(isa.lines) == 39
+    assert isa.points[0].x == pytest.approx(0.008339,
+                                            abs=1e-5)
     
 
 def test_objects(isa):

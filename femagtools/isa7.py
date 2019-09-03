@@ -420,6 +420,8 @@ class Isa7(object):
                 Node(n + 1,
                      reader.NODE_ISA_NODE_REC_ND_BND_CND[n],
                      reader.NODE_ISA_NODE_REC_ND_PER_NOD[n],
+                     reader.NODE_ISA_ND_CO_RAD[n],
+                     reader.NODE_ISA_ND_CO_PHI[n],
                      reader.NODE_ISA_NODE_REC_ND_CO_1[n],
                      reader.NODE_ISA_NODE_REC_ND_CO_2[n],
                      reader.NODE_ISA_NODE_REC_ND_VP_RE[n],
@@ -579,6 +581,8 @@ class Isa7(object):
                     len(self.superelements),
                     len(self.subregions))
 
+        self.FC_RADIUS = reader.FC_RADIUS
+
     def get_subregion(self, name):
         """return subregion by name"""
         for s in self.subregions:
@@ -611,10 +615,12 @@ class BaseEntity(object):
 
 
 class Node(BaseEntity):
-    def __init__(self, key, bndcnd, pernod, x, y, vpot_re, vpot_im):
+    def __init__(self, key, bndcnd, pernod, r, phi, x, y, vpot_re, vpot_im):
         super(self.__class__, self).__init__(key)
         self.bndcnd = bndcnd
         self.pernod = pernod
+        self.r = r
+        self.phi = phi
         self.x = x
         self.y = y
         self.xy = x, y

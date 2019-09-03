@@ -34,11 +34,13 @@ class Reader(object):
          self.NODE_ISA_NODE_REC_ND_PER_NOD,
          self.NODE_ISA_NODE_REC_ND_CO_1,
          self.NODE_ISA_NODE_REC_ND_CO_2,
+         self.NODE_ISA_ND_CO_RAD,
+         self.NODE_ISA_ND_CO_PHI,
          self.NODE_ISA_NODE_REC_ND_VP_RE,
          self.NODE_ISA_NODE_REC_ND_VP_IM) = [
              grp.variables[k][:-1]
              for k in ('bnd_cnd', 'bnd_cnd', 'per_nod',
-                       'co_1', 'co_2', 'vp_re', 'vp_im')]
+                       'co_1', 'co_2', 'co_rad', 'co_phi', 'vp_re', 'vp_im')]
 
         grp = ds.groups['node_elements']
         (self.NODE_ELE_ISA_NOD_EL_KEY,
@@ -153,7 +155,9 @@ class Reader(object):
             grp.variables[k][:]
             for k in ('sr_key', 'nxt_sr_pntr')]
 
+        self.FC_RADIUS = ds.variables['fc_radius']
 
+    
 def read(filename):
     """
     Read nc file and return NcModel object.

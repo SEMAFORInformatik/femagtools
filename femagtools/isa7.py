@@ -27,6 +27,293 @@ class Reader(object):
         with open(filename, mode="rb") as self.file:
             self.file = self.file.read()
         self.pos = 0
+        (self.NUM_PNT, self.PNT_PTR, self.PNT_HIDX,
+         self.NUM_LIN, self.LIN_PTR, self.LIN_HIDX,
+         self.NUM_NOD, self.NOD_PTR, self.NOD_HIDX,
+         self.NUM_NDEL, self.NDEL_PTR, self.NDEL_HIDX,
+         self.NUM_NDCH, self.NDCH_PTR, self.NDCH_HIDX,
+         self.NUM_ELE, self.ELE_PTR, self.ELE_HIDX,
+         self.NUM_ELND, self.ELND_PTR, self.ELND_HIDX,
+         self.NUM_SPEL, self.SPEL_PTR, self.SPEL_HIDX,
+         self.NUM_SE_EL, self.SE_EL_PTR, self.SE_EL_HIDX,
+         self.NUM_SPEL_NDCH, self.SPEL_NDCH_PTR, self.SPEL_NDCH_HIDX,
+         self.NUM_SR, self.SR_PTR, self.SR_HIDX,
+         self.NUM_SR_SE, self.SR_SE_PTR, self.SR_SE_HIDX,
+         self.NUM_WB, self.WB_PTR, self.WB_HIDX,
+         self.NUM_WB_SR, self.WB_SR_PTR, self.WB_SR_HIDX,
+         self.NUM_OB, self.OB_PTR, self.OB_HIDX,
+         self.NUM_OB_SR, self.OB_SR_PTR, self.OB_SR_HIDX,
+         self.NUM_DV, self.DV_PTR, self.DV_HIDX,
+         self.NUM_DV_OB, self.DV_OB_PTR, self.DV_OB_HIDX,
+         self.NUM_MC, self.MC_PTR, self.MC_HIDX,
+         self.NUM_CF, self.CF_PTR, self.CF_HIDX,
+         self.NUM_CF_MC, self.CF_MC_PTR, self.CF_MC_HIDX,
+         self.NUM_WN, self.WN_PTR, self.WN_HIDX,
+         self.NUM_WN_SW, self.WN_SW_PTR, self.WN_SW_HIDX
+         ) = self.next_block("i")
+
+        (valid,
+         self.POINT_ISA_POINT_REC_PT_CO_X,
+         self.POINT_ISA_POINT_REC_PT_CO_Y) = self.next_block("?ff")
+
+        (valid,
+         self.LINE_ISA_LINE_REC_LN_PNT_1,
+         self.LINE_ISA_LINE_REC_LN_PNT_2) = self.next_block("?hh")
+
+        (valid,
+         self.NODE_ISA_NOD_EL_PNTR,
+         self.NODE_ISA_ND_CO_RAD,
+         self.NODE_ISA_ND_CO_PHI,
+         self.NODE_ISA_NODE_REC_ND_BND_CND,
+         self.NODE_ISA_NODE_REC_ND_PER_NOD,
+         self.NODE_ISA_NODE_REC_ND_SV_PNTR,
+         self.NODE_ISA_NODE_REC_ND_CO_1,
+         self.NODE_ISA_NODE_REC_ND_CO_2,
+         self.NODE_ISA_NODE_REC_ND_VP_RE,
+         self.NODE_ISA_NODE_REC_ND_VP_IM) = self.next_block("?iffhiiffff")
+
+        (self.NOD_ELE_ISA_EL_KEY,
+         self.NOD_ELE_ISA_NXT_EL_PNTR) = self.next_block("ii")
+
+        (valid,
+         self.NDCHN_ISA_NDCHN_REC_NC_NOD_1,
+         self.NDCHN_ISA_NDCHN_REC_NC_NOD_2,
+         self.NDCHN_ISA_NDCHN_REC_NC_NOD_MID) = self.next_block("?iii")
+
+        (valid,
+         self.ELEM_ISA_EL_NOD_PNTR,
+         self.ELEM_ISA_ELEM_REC_EL_TYP,
+         self.ELEM_ISA_ELEM_REC_EL_SE_KEY,
+         self.ELEM_ISA_ELEM_REC_EL_RELUC,
+         self.ELEM_ISA_ELEM_REC_EL_RELUC_2,
+         self.ELEM_ISA_ELEM_REC_EL_MAG_1,
+         self.ELEM_ISA_ELEM_REC_EL_MAG_2) = self.next_block("?ihhffff")
+
+        (self.ELE_NOD_ISA_ND_KEY,
+         self.ELE_NOD_ISA_NXT_ND_PNTR) = self.next_block("ii")
+
+        (valid,
+         self.SUPEL_ISA_SE_NDCHN_PNTR,
+         self.SUPEL_ISA_SE_EL_PNTR,
+         self.SUPEL_ISA_SUPEL_REC_SE_COL,
+         self.SUPEL_ISA_SUPEL_REC_SE_MCV_TYP,
+         self.SUPEL_ISA_SUPEL_REC_SE_COND_TYP,
+         self.SUPEL_ISA_SUPEL_REC_SE_VEL_SYS,
+         self.SUPEL_ISA_SUPEL_REC_SE_SR_KEY,
+         self.SUPEL_ISA_SUPEL_REC_SE_VELO_1,
+         self.SUPEL_ISA_SUPEL_REC_SE_VELO_2,
+         self.SUPEL_ISA_SUPEL_REC_SE_CONDUC,
+         self.SUPEL_ISA_SUPEL_REC_SE_LENGHT,
+         self.SUPEL_ISA_SUPEL_REC_SE_CURD_RE,
+         self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM
+         ) = self.next_block("?iihhhhhffffff")
+
+        (self.SE_NDCHN_ISA_NC_KEY,
+         self.SE_NDCHN_ISA_NXT_NC_PNTR) = self.next_block("ii")
+
+        (self.SE_EL_ISA_EL_KEY,
+         self.SE_EL_ISA_NXT_EL_PNTR) = self.next_block("ii")
+
+        (valid,
+         self.SR_ISA_SR_SE_PNTR,
+         self.SR_ISA_SR_REC_SR_TYP,
+         self.SR_ISA_SR_REC_SR_COL,
+         self.SR_ISA_SR_REC_SR_NAME,
+         self.SR_ISA_SR_REC_SR_CUR_DIR,
+         self.SR_ISA_SR_REC_SR_WB_KEY,
+         self.SR_ISA_SR_REC_SR_NTURNS,
+         self.SR_ISA_SR_REC_SR_SV_PNTR,
+         self.SR_ISA_SR_REC_SR_ARRAY,
+         self.SR_ISA_SR_REC_SR_GCUR_RE,
+         self.SR_ISA_SR_REC_SR_GCUR_IM,
+         self.SR_ISA_SR_REC_SR_VOLT_RE,
+         self.SR_ISA_SR_REC_SR_VOLT_IM) = self.next_block("?hhh4shhhhfffff")
+
+        (self.SR_SE_ISA_SE_KEY,
+         self.SR_SE_ISA_NXT_SE_PNTR) = self.next_block("hh")
+
+        (valid,
+         self.WB_ISA_WB_SR_PNTR,
+         self.WB_ISA_WB_REC_WB_COL,
+         self.WB_ISA_WB_REC_WB_NAME,
+         self.WB_TURN,
+         self.WB_ISA_WB_REC_WB_SR_NUM,
+         self.WB_ISA_WB_REC_WB_WND_KEY,
+         self.WB_ISA_WB_REC_WB_UNIT_RES,
+         self.WB_ISA_WB_REC_WB_GCUR_RE,
+         self.WB_ISA_WB_REC_WB_GCUR_IM,
+         self.WB_ISA_WB_REC_WB_VOLT_RE,
+         self.WB_ISA_WB_REC_WB_VOLT_IM,
+         self.WB_ISA_WB_REC_WB_IMPDZ_RE,
+         self.WB_ISA_WB_REC_WB_IMPDZ_IM) = self.next_block("?hh4shhhfffffff")
+
+        self.WB_ISA_WB_REC_WB_TURN = []
+        for wd in range(self.NUM_WB):
+            if self.WB_ISA_WB_REC_WB_UNIT_RES[wd] == 0:
+                self.WB_ISA_WB_REC_WB_TURN.append(
+                    self.WB_TURN[wd])
+            else:
+                self.WB_ISA_WB_REC_WB_TURN.append(
+                    self.WB_ISA_WB_REC_WB_UNIT_RES[wd])
+                self.WB_ISA_WB_REC_WB_UNIT_RES[wd] = 0
+
+        (self.WB_SR_ISA_SR_KEY,
+         self.WB_SR_ISA_NXT_SR_PNTR) = self.next_block("hh")
+
+        self.skip_block(21)
+
+        ANZAHL_TG = self.next_block("i")[1]
+
+        self.skip_block(7)
+        self.skip_block(ANZAHL_TG + 1)
+        self.skip_block(1)
+
+        self.FC_RADIUS = self.next_block("f")[0]
+        self.skip_block(2)
+        self.M_POLES = self.next_block("i")[0]
+        self.skip_block(6)
+        FC_NUM_CUR_ID, FC_NUM_BETA_ID = self.next_block("i")[0:2]
+        if FC_NUM_CUR_ID > 16:
+            FC_NUM_CUR_ID = 16
+
+        self.skip_block(3)
+        self.skip_block(FC_NUM_CUR_ID * 2)
+        self.skip_block(1 + 10 * 5 + 3 + 1 * 5 + 14)
+
+        NUM_FE_EVAL_MOVE_STEP = self.next_block("i")[0]
+        if NUM_FE_EVAL_MOVE_STEP < 0:
+            NUM_FE_EVAL_MOVE_STEP = 0
+
+        if NUM_FE_EVAL_MOVE_STEP > 1:
+            self.skip_block()
+            self.skip_block((NUM_FE_EVAL_MOVE_STEP + 1) * 2)
+
+        FC_NUM_MOVE_CALC_LOAD_PMS, FC_NUM_FLX = self.next_block("i")[0:2]
+
+        if FC_NUM_MOVE_CALC_LOAD_PMS > 1:
+            self.skip_block(4)
+            self.skip_block(3 * FC_NUM_FLX)
+            self.skip_block()
+
+        FC_NUM_MOVE_NOLOAD_PMS = self.next_block("i")[0]
+
+        if FC_NUM_MOVE_NOLOAD_PMS > 1:
+            self.skip_block(4)
+            self.skip_block(2 * FC_NUM_FLX)
+            self.skip_block()
+
+        if NUM_FE_EVAL_MOVE_STEP > 1:
+            self.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
+
+        self.skip_block(2)
+        self.skip_block(2 * 5)
+        self.skip_block(15)
+        self.skip_block(3 * 30 * 30)
+        self.skip_block(3)
+        self.skip_block(30 * 30)
+        self.skip_block(4)
+        # stator 3
+        self.skip_block(4)
+        (yoke_diam, inside_diam,
+         slot_height,slot_h1,slot_h2,
+         slot_width,slot_r1,slot_r2) = self.next_block("f")[:8]
+        self.skip_block(3)
+        # magnet sector
+        magn_rad, yoke_rad, magn_height = self.next_block("f")[:3]
+        self.da2 = 2*magn_rad*1e-3
+        self.dy2 = 2*yoke_rad*1e-3
+        self.da1 = inside_diam
+        self.dy1 = yoke_diam
+        self.skip_block(3)
+        # windings generation
+        (tot_num_slot, num_phases, num_layers, 
+         self.NUM_WIRES, self.CURRENT,
+         coil_span, num_slots) = self.next_block("f")[:7]
+        self.TOT_NUM_SLOT = int(tot_num_slot)
+        self.NUM_PHASES = int(num_phases)
+        self.NUM_LAYERS = int(num_layers)
+        self.NUM_SLOTS = int(num_slots)
+        self.COIL_SPAN = coil_span
+        
+        self.skip_block(1)
+        (move_action, arm_length, self.SKEW_ANGLE,
+         HI, num_move_ar, self.ANGL_I_UP,
+         num_par_wdgs, cur_control) = self.next_block("f")[:8]
+        self.NUM_PAR_WDGS = int(num_par_wdgs)
+        self.lfe = arm_length*1e-3
+        
+        self.skip_block(2)      
+        self.skip_block(30 * 30)
+        self.skip_block(30 * 30)
+        self.skip_block(1 * 20)
+        self.skip_block(10)
+
+        FC_NUM_MOVE_LOSSES = self.next_block("i")[0]
+
+        if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
+            self.skip_block(2 * (NUM_FE_EVAL_MOVE_STEP + 1))
+            self.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
+        # VIRGIN_PM_SYN
+        self.skip_block(3)
+        # magnet iron 4
+        self.skip_block(3)
+        # stator 4
+        self.skip_block(1)
+        # stator 2
+        self.skip_block(3)
+        # stator 1
+        self.skip_block(2)
+# ---
+        self.skip_block(62)
+
+        ANZ_FORCE_AREAS = self.next_block("i")[0]
+
+        if ANZ_FORCE_AREAS > 3:
+            ANZ_FORCE_AREAS = 3
+
+        self.skip_block()
+        self.skip_block(2 * ANZ_FORCE_AREAS)
+        self.skip_block(14)
+        self.skip_block(2 * 3 + 6 * 100 * 3)
+        self.skip_block(30)
+        self.skip_block(11 * 4)
+        self.skip_block()
+        self.skip_block(1 * 4)
+        # NOM_CURRENT
+        # PR_BASIC_LOSS_DATA
+        # TOT_MAGNET_AREA
+        # MOVE_EXTERN
+        # MOVE_ARMATURE
+        self.skip_block(5)
+        self.POLPAAR_ZAHL, self.NO_POLES_SIM = self.next_block("i")[:2]
+        self.skip_block(2)
+        self.skip_block(3 * 20 + 2 * 20 * 20)
+        self.skip_block(14)
+
+        if (FC_NUM_MOVE_LOSSES > 2 and NUM_FE_EVAL_MOVE_STEP > 1
+           and FC_NUM_BETA_ID > 2):
+            self.skip_block(2 * NUM_FE_EVAL_MOVE_STEP + 1)
+            self.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
+            self.skip_block()
+            self.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
+
+        self.skip_block()
+        self.skip_block(2 * 3)
+        self.Q_SLOTS_NUMBER, self.M_PHASE_NUMBER = self.next_block("i")[:2]
+        self.N_LAYERS_SLOT, self.N_WIRES_PER_SLOT = self.next_block("i")[:2]
+        self.skip_block(1)
+        self.skip_block(10 * 100)
+        self.skip_block(1 * 100)
+        self.skip_block()
+        self.skip_block(1 * 4)
+        self.skip_block(2 * 2)
+        self.skip_block()
+        self.skip_block(2 * 4)
+        self.skip_block(3)
+        self.skip_block(1 * 64)
+        self.skip_block(6)
+
+        self.ELEM_ISA_ELEM_REC_LOSS_DENS = self.next_block("f")
 
     def next_block(self, fmt):
         """
@@ -117,48 +404,33 @@ class Isa7(object):
              15: [0.0, 0.8235294117647058, 1.0],
              16: [0.8274509803921568, 0.8274509803921568, 0.8274509803921568]}
 
-    def __init__(self, filename):
-        logger.info("read %s", filename)
-        self.__read(filename)
-
-        self.points = []
-        for p in range(self.NUM_PNT):
-            self.points.append(
-                Point(self.POINT_ISA_PT_VALID,
-                      self.POINT_ISA_POINT_REC_PT_CO_X[p],
-                      self.POINT_ISA_POINT_REC_PT_CO_Y[p]))
+    def __init__(self, reader):
+        self.points = [
+            Point(x, y) for x, y in zip(reader.POINT_ISA_POINT_REC_PT_CO_X,
+                                        reader.POINT_ISA_POINT_REC_PT_CO_Y)]
 
         self.lines = []
-        for ln in range(self.NUM_LIN):
-            pk1 = self.LINE_ISA_LINE_REC_LN_PNT_1[ln]
-            pk2 = self.LINE_ISA_LINE_REC_LN_PNT_2[ln]
-
+        for pk1, pk2 in zip(reader.LINE_ISA_LINE_REC_LN_PNT_1,
+                            reader.LINE_ISA_LINE_REC_LN_PNT_2):
             point1 = self.points[abs(pk1) - 1]
             point2 = self.points[abs(pk2) - 1]
-
-            if pk1 > 0 and pk2 > 0:
-                self.lines.append(
-                    Line(self.LINE_ISA_LN_VALID, point1, point2))
-            else:
-                self.lines.append(
-                    Line(self.LINE_ISA_LN_VALID, point1, point2))
+            self.lines.append(Line(point1, point2))
 
         self.nodes = [
-                Node(self.NODE_ISA_ND_VALID[n],
-                     n + 1,
-                     self.NODE_ISA_NODE_REC_ND_BND_CND[n],
-                     self.NODE_ISA_NODE_REC_ND_PER_NOD[n],
-                     self.NODE_ISA_NODE_REC_ND_CO_1[n],
-                     self.NODE_ISA_NODE_REC_ND_CO_2[n],
-                     self.NODE_ISA_NODE_REC_ND_VP_RE[n],
-                     self.NODE_ISA_NODE_REC_ND_VP_IM[n])
-            for n in range(self.NUM_NOD)]
+                Node(n + 1,
+                     reader.NODE_ISA_NODE_REC_ND_BND_CND[n],
+                     reader.NODE_ISA_NODE_REC_ND_PER_NOD[n],
+                     reader.NODE_ISA_NODE_REC_ND_CO_1[n],
+                     reader.NODE_ISA_NODE_REC_ND_CO_2[n],
+                     reader.NODE_ISA_NODE_REC_ND_VP_RE[n],
+                     reader.NODE_ISA_NODE_REC_ND_VP_IM[n])
+            for n in range(len(reader.NODE_ISA_NODE_REC_ND_BND_CND))]
 
         self.nodechains = []
-        for nc in range(self.NUM_NDCH):
-            nd1 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_1[nc]
-            nd2 = self.NDCHN_ISA_NDCHN_REC_NC_NOD_2[nc]
-            ndm = self.NDCHN_ISA_NDCHN_REC_NC_NOD_MID[nc]
+        for nc in range(len(reader.NDCHN_ISA_NDCHN_REC_NC_NOD_1)):
+            nd1 = reader.NDCHN_ISA_NDCHN_REC_NC_NOD_1[nc]
+            nd2 = reader.NDCHN_ISA_NDCHN_REC_NC_NOD_2[nc]
+            ndm = reader.NDCHN_ISA_NDCHN_REC_NC_NOD_MID[nc]
             try:
                 node1 = self.nodes[abs(nd1) - 1]
                 nodem = self.nodes[ndm - 1]
@@ -172,43 +444,42 @@ class Isa7(object):
                     nodes = node1, None, node2
 
                 self.nodechains.append(
-                    NodeChain(self.NDCHN_ISA_NC_VALID, nc + 1, nodes))
+                    NodeChain(nc + 1, nodes))
             except IndexError as ex:
                 logger.warn('IndexError in nodes')
                 raise  # preserve the stack trace
                     
         self.elements = []
-        for e in range(self.NUM_ELE):
+        for e in range(len(reader.ELEM_ISA_EL_NOD_PNTR)):
             ndkeys = []
-            ndk = self.ELEM_ISA_EL_NOD_PNTR[e]
+            ndk = reader.ELEM_ISA_EL_NOD_PNTR[e]
 
             while ndk > 0:
-                ndkeys.append(self.ELE_NOD_ISA_ND_KEY[ndk - 1])
-                ndk = self.ELE_NOD_ISA_NXT_ND_PNTR[ndk - 1]
+                ndkeys.append(reader.ELE_NOD_ISA_ND_KEY[ndk - 1])
+                ndk = reader.ELE_NOD_ISA_NXT_ND_PNTR[ndk - 1]
 
             vertices = [self.nodes[k - 1] for k in ndkeys]
 
             self.elements.append(
-                Element(self.ELEM_ISA_EL_VALID[e],
-                        e + 1,
-                        self.ELEM_ISA_ELEM_REC_EL_TYP[e],
-                        self.ELEM_ISA_ELEM_REC_EL_SE_KEY[e] - 1,
+                Element(e + 1,
+                        reader.ELEM_ISA_ELEM_REC_EL_TYP[e],
+                        reader.ELEM_ISA_ELEM_REC_EL_SE_KEY[e] - 1,
                         vertices,
-                        (self.ELEM_ISA_ELEM_REC_EL_RELUC[e],
-                         self.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
-                        (self.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
-                         self.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
-                        self.ELEM_ISA_ELEM_REC_LOSS_DENS[e] * 1e-6)
+                        (reader.ELEM_ISA_ELEM_REC_EL_RELUC[e],
+                         reader.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
+                        (reader.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
+                         reader.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
+                        reader.ELEM_ISA_ELEM_REC_LOSS_DENS[e] * 1e-6)
             )
 
         self.superelements = []
-        for se in range(self.NUM_SPEL):
+        for se in range(len(reader.SUPEL_ISA_SE_NDCHN_PNTR)):
             nc_keys = []
-            nc_ptr = self.SUPEL_ISA_SE_NDCHN_PNTR[se]
+            nc_ptr = reader.SUPEL_ISA_SE_NDCHN_PNTR[se]
 
             while nc_ptr > 0:
-                nc_keys.append(self.SE_NDCHN_ISA_NC_KEY[nc_ptr - 1])
-                nc_ptr = self.SE_NDCHN_ISA_NXT_NC_PNTR[nc_ptr - 1]
+                nc_keys.append(reader.SE_NDCHN_ISA_NC_KEY[nc_ptr - 1])
+                nc_ptr = reader.SE_NDCHN_ISA_NXT_NC_PNTR[nc_ptr - 1]
 
             nodechains = []
             for nck in nc_keys:
@@ -218,42 +489,41 @@ class Isa7(object):
                     nodechains.append(self.nodechains[abs(nck) - 1].reverse())
 
             el_keys = []
-            el_ptr = self.SUPEL_ISA_SE_EL_PNTR[se]
+            el_ptr = reader.SUPEL_ISA_SE_EL_PNTR[se]
 
             while el_ptr > 0:
-                el_keys.append(self.SE_EL_ISA_EL_KEY[el_ptr - 1])
-                el_ptr = self.SE_EL_ISA_NXT_EL_PNTR[el_ptr - 1]
+                el_keys.append(reader.SE_EL_ISA_EL_KEY[el_ptr - 1])
+                el_ptr = reader.SE_EL_ISA_NXT_EL_PNTR[el_ptr - 1]
 
             elements = []
             for elk in el_keys:
                 elements.append(self.elements[elk - 1])
 
             self.superelements.append(
-                SuperElement(self.SUPEL_ISA_SE_VALID[se],
-                             se + 1,
-                             self.SUPEL_ISA_SUPEL_REC_SE_SR_KEY[se] - 1,
+                SuperElement(se + 1,
+                             reader.SUPEL_ISA_SUPEL_REC_SE_SR_KEY[se] - 1,
                              elements,
                              nodechains,
-                             self.SUPEL_ISA_SUPEL_REC_SE_COL[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_COL[se],
                              nc_keys,
-                             self.SUPEL_ISA_SUPEL_REC_SE_MCV_TYP[se],
-                             self.SUPEL_ISA_SUPEL_REC_SE_COND_TYP[se],
-                             self.SUPEL_ISA_SUPEL_REC_SE_CONDUC[se],
-                             self.SUPEL_ISA_SUPEL_REC_SE_LENGHT[se],
-                             self.SUPEL_ISA_SUPEL_REC_SE_VEL_SYS[se],
-                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_1[se],
-                             self.SUPEL_ISA_SUPEL_REC_SE_VELO_2[se],
-                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_RE[se],
-                             self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se]))
+                             reader.SUPEL_ISA_SUPEL_REC_SE_MCV_TYP[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_COND_TYP[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_CONDUC[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_LENGHT[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_VEL_SYS[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_VELO_1[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_VELO_2[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_CURD_RE[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se]))
 
         self.subregions = []
-        for sr in range(self.NUM_SR):
+        for sr in range(len(reader.SR_ISA_SR_SE_PNTR)):
             se_keys = []
-            se_ptr = self.SR_ISA_SR_SE_PNTR[sr]
+            se_ptr = reader.SR_ISA_SR_SE_PNTR[sr]
 
             while se_ptr > 0:
-                se_keys.append(self.SR_SE_ISA_SE_KEY[se_ptr - 1])
-                se_ptr = self.SR_SE_ISA_NXT_SE_PNTR[se_ptr - 1]
+                se_keys.append(reader.SR_SE_ISA_SE_KEY[se_ptr - 1])
+                se_ptr = reader.SR_SE_ISA_NXT_SE_PNTR[se_ptr - 1]
 
             superelements = []
             for sek in se_keys:
@@ -271,336 +541,43 @@ class Isa7(object):
                                    if abs(nc.key) in nc_keys])
 
             self.subregions.append(
-                SubRegion(self.SR_ISA_SR_VALID[sr],
-                          sr + 1,
-                          self.SR_ISA_SR_REC_SR_TYP[sr],
-                          self.SR_ISA_SR_REC_SR_COL[sr],
-                          self.SR_ISA_SR_REC_SR_NAME[sr],
-                          self.SR_ISA_SR_REC_SR_CUR_DIR[sr],
-                          self.SR_ISA_SR_REC_SR_WB_KEY[sr] - 1,
+                SubRegion(sr + 1,
+                          reader.SR_ISA_SR_REC_SR_TYP[sr],
+                          reader.SR_ISA_SR_REC_SR_COL[sr],
+                          reader.SR_ISA_SR_REC_SR_NAME[sr],
+                          reader.SR_ISA_SR_REC_SR_CUR_DIR[sr],
+                          reader.SR_ISA_SR_REC_SR_WB_KEY[sr] - 1,
                           superelements,
                           nodechains))
 
         self.windings = []
-        for wd in range(self.NUM_WB):
+        for wd in range(len(reader.WB_ISA_WB_SR_PNTR)):
             sr_keys = []
-            sr_ptr = self.WB_ISA_WB_SR_PNTR[wd]
+            sr_ptr = reader.WB_ISA_WB_SR_PNTR[wd]
 
             while sr_ptr > 0:
-                sr_keys.append(self.WB_SR_ISA_SR_KEY[sr_ptr - 1])
-                sr_ptr = self.WB_SR_ISA_NXT_SR_PNTR[sr_ptr - 1]
+                sr_keys.append(reader.WB_SR_ISA_SR_KEY[sr_ptr - 1])
+                sr_ptr = reader.WB_SR_ISA_NXT_SR_PNTR[sr_ptr - 1]
 
             subregions = []
             for srk in sr_keys:
                 subregions.append(self.subregions[srk - 1])
 
             self.windings.append(
-                Winding(self.WB_ISA_WB_VALID[wd],
-                        wd + 1,
-                        self.WB_ISA_WB_REC_WB_NAME[wd],
+                Winding(wd + 1,
+                        reader.WB_ISA_WB_REC_WB_NAME[wd],
                         subregions,
-                        self.WB_ISA_WB_REC_WB_TURN[wd],
-                        self.WB_ISA_WB_REC_WB_GCUR_RE[wd],
-                        self.WB_ISA_WB_REC_WB_GCUR_IM[wd],
-                        self.WB_ISA_WB_REC_WB_IMPDZ_RE[wd],
-                        self.WB_ISA_WB_REC_WB_IMPDZ_IM[wd],
-                        self.WB_ISA_WB_REC_WB_VOLT_RE[wd],
-                        self.WB_ISA_WB_REC_WB_VOLT_IM[wd]))
+                        reader.WB_ISA_WB_REC_WB_TURN[wd],
+                        reader.WB_ISA_WB_REC_WB_GCUR_RE[wd],
+                        reader.WB_ISA_WB_REC_WB_GCUR_IM[wd],
+                        reader.WB_ISA_WB_REC_WB_IMPDZ_RE[wd],
+                        reader.WB_ISA_WB_REC_WB_IMPDZ_IM[wd],
+                        reader.WB_ISA_WB_REC_WB_VOLT_RE[wd],
+                        reader.WB_ISA_WB_REC_WB_VOLT_IM[wd]))
         logger.info("Total nodes %d elements %d superelements %d subregions %d",
                     len(self.nodes), len(self.elements),
                     len(self.superelements),
                     len(self.subregions))
-
-    def __read(self, filename):
-        reader = Reader(filename)
-
-        (self.NUM_PNT, self.PNT_PTR, self.PNT_HIDX,
-         self.NUM_LIN, self.LIN_PTR, self.LIN_HIDX,
-         self.NUM_NOD, self.NOD_PTR, self.NOD_HIDX,
-         self.NUM_NDEL, self.NDEL_PTR, self.NDEL_HIDX,
-         self.NUM_NDCH, self.NDCH_PTR, self.NDCH_HIDX,
-         self.NUM_ELE, self.ELE_PTR, self.ELE_HIDX,
-         self.NUM_ELND, self.ELND_PTR, self.ELND_HIDX,
-         self.NUM_SPEL, self.SPEL_PTR, self.SPEL_HIDX,
-         self.NUM_SE_EL, self.SE_EL_PTR, self.SE_EL_HIDX,
-         self.NUM_SPEL_NDCH, self.SPEL_NDCH_PTR, self.SPEL_NDCH_HIDX,
-         self.NUM_SR, self.SR_PTR, self.SR_HIDX,
-         self.NUM_SR_SE, self.SR_SE_PTR, self.SR_SE_HIDX,
-         self.NUM_WB, self.WB_PTR, self.WB_HIDX,
-         self.NUM_WB_SR, self.WB_SR_PTR, self.WB_SR_HIDX,
-         self.NUM_OB, self.OB_PTR, self.OB_HIDX,
-         self.NUM_OB_SR, self.OB_SR_PTR, self.OB_SR_HIDX,
-         self.NUM_DV, self.DV_PTR, self.DV_HIDX,
-         self.NUM_DV_OB, self.DV_OB_PTR, self.DV_OB_HIDX,
-         self.NUM_MC, self.MC_PTR, self.MC_HIDX,
-         self.NUM_CF, self.CF_PTR, self.CF_HIDX,
-         self.NUM_CF_MC, self.CF_MC_PTR, self.CF_MC_HIDX,
-         self.NUM_WN, self.WN_PTR, self.WN_HIDX,
-         self.NUM_WN_SW, self.WN_SW_PTR, self.WN_SW_HIDX
-         ) = reader.next_block("i")
-
-        (self.POINT_ISA_PT_VALID,
-         self.POINT_ISA_POINT_REC_PT_CO_X,
-         self.POINT_ISA_POINT_REC_PT_CO_Y) = reader.next_block("?ff")
-
-        (self.LINE_ISA_LN_VALID,
-         self.LINE_ISA_LINE_REC_LN_PNT_1,
-         self.LINE_ISA_LINE_REC_LN_PNT_2) = reader.next_block("?hh")
-
-        (self.NODE_ISA_ND_VALID,
-         self.NODE_ISA_NOD_EL_PNTR,
-         self.NODE_ISA_ND_CO_RAD,
-         self.NODE_ISA_ND_CO_PHI,
-         self.NODE_ISA_NODE_REC_ND_BND_CND,
-         self.NODE_ISA_NODE_REC_ND_PER_NOD,
-         self.NODE_ISA_NODE_REC_ND_SV_PNTR,
-         self.NODE_ISA_NODE_REC_ND_CO_1,
-         self.NODE_ISA_NODE_REC_ND_CO_2,
-         self.NODE_ISA_NODE_REC_ND_VP_RE,
-         self.NODE_ISA_NODE_REC_ND_VP_IM) = reader.next_block("?iffhiiffff")
-
-        (self.NOD_ELE_ISA_EL_KEY,
-         self.NOD_ELE_ISA_NXT_EL_PNTR) = reader.next_block("ii")
-
-        (self.NDCHN_ISA_NC_VALID,
-         self.NDCHN_ISA_NDCHN_REC_NC_NOD_1,
-         self.NDCHN_ISA_NDCHN_REC_NC_NOD_2,
-         self.NDCHN_ISA_NDCHN_REC_NC_NOD_MID) = reader.next_block("?iii")
-
-        (self.ELEM_ISA_EL_VALID,
-         self.ELEM_ISA_EL_NOD_PNTR,
-         self.ELEM_ISA_ELEM_REC_EL_TYP,
-         self.ELEM_ISA_ELEM_REC_EL_SE_KEY,
-         self.ELEM_ISA_ELEM_REC_EL_RELUC,
-         self.ELEM_ISA_ELEM_REC_EL_RELUC_2,
-         self.ELEM_ISA_ELEM_REC_EL_MAG_1,
-         self.ELEM_ISA_ELEM_REC_EL_MAG_2) = reader.next_block("?ihhffff")
-
-        (self.ELE_NOD_ISA_ND_KEY,
-         self.ELE_NOD_ISA_NXT_ND_PNTR) = reader.next_block("ii")
-
-        (self.SUPEL_ISA_SE_VALID,
-         self.SUPEL_ISA_SE_NDCHN_PNTR,
-         self.SUPEL_ISA_SE_EL_PNTR,
-         self.SUPEL_ISA_SUPEL_REC_SE_COL,
-         self.SUPEL_ISA_SUPEL_REC_SE_MCV_TYP,
-         self.SUPEL_ISA_SUPEL_REC_SE_COND_TYP,
-         self.SUPEL_ISA_SUPEL_REC_SE_VEL_SYS,
-         self.SUPEL_ISA_SUPEL_REC_SE_SR_KEY,
-         self.SUPEL_ISA_SUPEL_REC_SE_VELO_1,
-         self.SUPEL_ISA_SUPEL_REC_SE_VELO_2,
-         self.SUPEL_ISA_SUPEL_REC_SE_CONDUC,
-         self.SUPEL_ISA_SUPEL_REC_SE_LENGHT,
-         self.SUPEL_ISA_SUPEL_REC_SE_CURD_RE,
-         self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM
-         ) = reader.next_block("?iihhhhhffffff")
-
-        (self.SE_NDCHN_ISA_NC_KEY,
-         self.SE_NDCHN_ISA_NXT_NC_PNTR) = reader.next_block("ii")
-
-        (self.SE_EL_ISA_EL_KEY,
-         self.SE_EL_ISA_NXT_EL_PNTR) = reader.next_block("ii")
-
-        (self.SR_ISA_SR_VALID,
-         self.SR_ISA_SR_SE_PNTR,
-         self.SR_ISA_SR_REC_SR_TYP,
-         self.SR_ISA_SR_REC_SR_COL,
-         self.SR_ISA_SR_REC_SR_NAME,
-         self.SR_ISA_SR_REC_SR_CUR_DIR,
-         self.SR_ISA_SR_REC_SR_WB_KEY,
-         self.SR_ISA_SR_REC_SR_NTURNS,
-         self.SR_ISA_SR_REC_SR_SV_PNTR,
-         self.SR_ISA_SR_REC_SR_ARRAY,
-         self.SR_ISA_SR_REC_SR_GCUR_RE,
-         self.SR_ISA_SR_REC_SR_GCUR_IM,
-         self.SR_ISA_SR_REC_SR_VOLT_RE,
-         self.SR_ISA_SR_REC_SR_VOLT_IM) = reader.next_block("?hhh4shhhhfffff")
-
-        (self.SR_SE_ISA_SE_KEY,
-         self.SR_SE_ISA_NXT_SE_PNTR) = reader.next_block("hh")
-
-        (self.WB_ISA_WB_VALID,
-         self.WB_ISA_WB_SR_PNTR,
-         self.WB_ISA_WB_REC_WB_COL,
-         self.WB_ISA_WB_REC_WB_NAME,
-         self.WB_TURN,
-         self.WB_ISA_WB_REC_WB_SR_NUM,
-         self.WB_ISA_WB_REC_WB_WND_KEY,
-         self.WB_ISA_WB_REC_WB_UNIT_RES,
-         self.WB_ISA_WB_REC_WB_GCUR_RE,
-         self.WB_ISA_WB_REC_WB_GCUR_IM,
-         self.WB_ISA_WB_REC_WB_VOLT_RE,
-         self.WB_ISA_WB_REC_WB_VOLT_IM,
-         self.WB_ISA_WB_REC_WB_IMPDZ_RE,
-         self.WB_ISA_WB_REC_WB_IMPDZ_IM) = reader.next_block("?hh4shhhfffffff")
-
-        self.WB_ISA_WB_REC_WB_TURN = []
-        for wd in range(self.NUM_WB):
-            if self.WB_ISA_WB_REC_WB_UNIT_RES[wd] == 0:
-                self.WB_ISA_WB_REC_WB_TURN.append(
-                    self.WB_TURN[wd])
-            else:
-                self.WB_ISA_WB_REC_WB_TURN.append(
-                    self.WB_ISA_WB_REC_WB_UNIT_RES[wd])
-                self.WB_ISA_WB_REC_WB_UNIT_RES[wd] = 0
-
-        (self.WB_SR_ISA_SR_KEY,
-         self.WB_SR_ISA_NXT_SR_PNTR) = reader.next_block("hh")
-
-        reader.skip_block(21)
-
-        ANZAHL_TG = reader.next_block("i")[1]
-
-        reader.skip_block(7)
-        reader.skip_block(ANZAHL_TG + 1)
-        reader.skip_block(1)
-
-        self.FC_RADIUS = reader.next_block("f")[0]
-        reader.skip_block(2)
-        self.M_POLES = reader.next_block("i")[0]
-        reader.skip_block(6)
-        FC_NUM_CUR_ID, FC_NUM_BETA_ID = reader.next_block("i")[0:2]
-        if FC_NUM_CUR_ID > 16:
-            FC_NUM_CUR_ID = 16
-
-        reader.skip_block(3)
-        reader.skip_block(FC_NUM_CUR_ID * 2)
-        reader.skip_block(1 + 10 * 5 + 3 + 1 * 5 + 14)
-
-        NUM_FE_EVAL_MOVE_STEP = reader.next_block("i")[0]
-        if NUM_FE_EVAL_MOVE_STEP < 0:
-            NUM_FE_EVAL_MOVE_STEP = 0
-
-        if NUM_FE_EVAL_MOVE_STEP > 1:
-            reader.skip_block()
-            reader.skip_block((NUM_FE_EVAL_MOVE_STEP + 1) * 2)
-
-        FC_NUM_MOVE_CALC_LOAD_PMS, FC_NUM_FLX = reader.next_block("i")[0:2]
-
-        if FC_NUM_MOVE_CALC_LOAD_PMS > 1:
-            reader.skip_block(4)
-            reader.skip_block(3 * FC_NUM_FLX)
-            reader.skip_block()
-
-        FC_NUM_MOVE_NOLOAD_PMS = reader.next_block("i")[0]
-
-        if FC_NUM_MOVE_NOLOAD_PMS > 1:
-            reader.skip_block(4)
-            reader.skip_block(2 * FC_NUM_FLX)
-            reader.skip_block()
-
-        if NUM_FE_EVAL_MOVE_STEP > 1:
-            reader.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
-
-        reader.skip_block(2)
-        reader.skip_block(2 * 5)
-        reader.skip_block(15)
-        reader.skip_block(3 * 30 * 30)
-        reader.skip_block(3)
-        reader.skip_block(30 * 30)
-        reader.skip_block(4)
-        # stator 3
-        reader.skip_block(4)
-        (yoke_diam, inside_diam,
-         slot_height,slot_h1,slot_h2,
-         slot_width,slot_r1,slot_r2) = reader.next_block("f")[:8]
-        reader.skip_block(3)
-        # magnet sector
-        magn_rad, yoke_rad, magn_height = reader.next_block("f")[:3]
-        self.da2 = 2*magn_rad*1e-3
-        self.dy2 = 2*yoke_rad*1e-3
-        self.da1 = inside_diam
-        self.dy1 = yoke_diam
-        reader.skip_block(3)
-        # windings generation
-        (tot_num_slot, num_phases, num_layers, 
-         self.NUM_WIRES, self.CURRENT,
-         coil_span, num_slots) = reader.next_block("f")[:7]
-        self.TOT_NUM_SLOT = int(tot_num_slot)
-        self.NUM_PHASES = int(num_phases)
-        self.NUM_LAYERS = int(num_layers)
-        self.NUM_SLOTS = int(num_slots)
-        self.COIL_SPAN = coil_span
-        
-        reader.skip_block(1)
-        (move_action, arm_length, self.SKEW_ANGLE,
-         HI, num_move_ar, self.ANGL_I_UP,
-         num_par_wdgs, cur_control) = reader.next_block("f")[:8]
-        self.NUM_PAR_WDGS = int(num_par_wdgs)
-        self.lfe = arm_length*1e-3
-        
-        reader.skip_block(2)      
-        reader.skip_block(30 * 30)
-        reader.skip_block(30 * 30)
-        reader.skip_block(1 * 20)
-        reader.skip_block(10)
-
-        FC_NUM_MOVE_LOSSES = reader.next_block("i")[0]
-
-        if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
-            reader.skip_block(2 * (NUM_FE_EVAL_MOVE_STEP + 1))
-            reader.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
-        # VIRGIN_PM_SYN
-        reader.skip_block(3)
-        # magnet iron 4
-        reader.skip_block(3)
-        # stator 4
-        reader.skip_block(1)
-        # stator 2
-        reader.skip_block(3)
-        # stator 1
-        reader.skip_block(2)
-# ---
-        reader.skip_block(62)
-
-        ANZ_FORCE_AREAS = reader.next_block("i")[0]
-
-        if ANZ_FORCE_AREAS > 3:
-            ANZ_FORCE_AREAS = 3
-
-        reader.skip_block()
-        reader.skip_block(2 * ANZ_FORCE_AREAS)
-        reader.skip_block(14)
-        reader.skip_block(2 * 3 + 6 * 100 * 3)
-        reader.skip_block(30)
-        reader.skip_block(11 * 4)
-        reader.skip_block()
-        reader.skip_block(1 * 4)
-        # NOM_CURRENT
-        # PR_BASIC_LOSS_DATA
-        # TOT_MAGNET_AREA
-        # MOVE_EXTERN
-        # MOVE_ARMATURE
-        reader.skip_block(5)
-        self.POLPAAR_ZAHL, self.NO_POLES_SIM = reader.next_block("i")[:2]
-        reader.skip_block(2)
-        reader.skip_block(3 * 20 + 2 * 20 * 20)
-        reader.skip_block(14)
-
-        if (FC_NUM_MOVE_LOSSES > 2 and NUM_FE_EVAL_MOVE_STEP > 1
-           and FC_NUM_BETA_ID > 2):
-            reader.skip_block(2 * NUM_FE_EVAL_MOVE_STEP + 1)
-            reader.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
-            reader.skip_block()
-            reader.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
-
-        reader.skip_block()
-        reader.skip_block(2 * 3)
-        self.Q_SLOTS_NUMBER, self.M_PHASE_NUMBER = reader.next_block("i")[:2]
-        self.N_LAYERS_SLOT, self.N_WIRES_PER_SLOT = reader.next_block("i")[:2]
-        reader.skip_block(1)
-        reader.skip_block(10 * 100)
-        reader.skip_block(1 * 100)
-        reader.skip_block()
-        reader.skip_block(1 * 4)
-        reader.skip_block(2 * 2)
-        reader.skip_block()
-        reader.skip_block(2 * 4)
-        reader.skip_block(3)
-        reader.skip_block(1 * 64)
-        reader.skip_block(6)
-
-        self.ELEM_ISA_ELEM_REC_LOSS_DENS = reader.next_block("f")
 
     def get_subregion(self, name):
         """return subregion by name"""
@@ -616,29 +593,26 @@ class Isa7(object):
 
 
 class Point(object):
-    def __init__(self, valid, x, y):
-        self.valid = valid
+    def __init__(self, x, y):
         self.x = x
         self.y = y
         self.xy = x, y
 
 
 class Line(object):
-    def __init__(self, valid, p1, p2):
-        self.valid = valid
+    def __init__(self, p1, p2):
         self.p1 = p1
         self.p2 = p2
 
 
 class BaseEntity(object):
-    def __init__(self, valid, key):
-        self.valid = valid
+    def __init__(self, key):
         self.key = key
 
 
 class Node(BaseEntity):
-    def __init__(self, valid, key, bndcnd, pernod, x, y, vpot_re, vpot_im):
-        super(self.__class__, self).__init__(valid, key)
+    def __init__(self, key, bndcnd, pernod, x, y, vpot_re, vpot_im):
+        super(self.__class__, self).__init__(key)
         self.bndcnd = bndcnd
         self.pernod = pernod
         self.x = x
@@ -651,8 +625,8 @@ class Node(BaseEntity):
 
 
 class NodeChain(BaseEntity):
-    def __init__(self, valid, key, nodes):
-        super(self.__class__, self).__init__(valid, key)
+    def __init__(self, key, nodes):
+        super(self.__class__, self).__init__(key)
         self.node1 = nodes[0]
         self.nodemid = nodes[1]
         self.node2 = nodes[2]
@@ -662,14 +636,14 @@ class NodeChain(BaseEntity):
             self.nodes = (nodes[0], nodes[1], nodes[2])
 
     def reverse(self):
-        return NodeChain(self.valid, self.key * (-1),
+        return NodeChain(self.key * (-1),
                          [self.node2, self.nodemid, self.node1])
 
 
 class Element(BaseEntity):
-    def __init__(self, valid, key, el_type,
+    def __init__(self, key, el_type,
                  se_key, vertices, reluc, mag, loss_density):
-        super(self.__class__, self).__init__(valid, key)
+        super(self.__class__, self).__init__(key)
         self.el_type = el_type
         self.se_key = se_key
         self.vertices = vertices
@@ -789,10 +763,10 @@ class Element(BaseEntity):
         
 
 class SuperElement(BaseEntity):
-    def __init__(self, valid, key, sr_key, elements, nodechains, color,
+    def __init__(self, key, sr_key, elements, nodechains, color,
                  nc_keys, mcvtype, condtype, conduc, length,
                  velsys, velo_1, velo_2, curd_re, curd_im):
-        super(self.__class__, self).__init__(valid, key)
+        super(self.__class__, self).__init__(key)
         self.sr_key = sr_key
         self.subregion = None
         self.elements = elements
@@ -811,9 +785,9 @@ class SuperElement(BaseEntity):
 
 
 class SubRegion(BaseEntity):
-    def __init__(self, valid, key, sr_type, color, name, curdir, wb_key,
+    def __init__(self, key, sr_type, color, name, curdir, wb_key,
                  superelements, nodechains):
-        super(self.__class__, self).__init__(valid, key)
+        super(self.__class__, self).__init__(key)
         self.sr_type = sr_type
         self.color = color
         self.name = name
@@ -834,9 +808,9 @@ class SubRegion(BaseEntity):
 
 
 class Winding(BaseEntity):
-    def __init__(self, valid, key, name, subregions, num_turns, cur_re, cur_im,
+    def __init__(self, key, name, subregions, num_turns, cur_re, cur_im,
                  flux_re, flux_im, volt_re, volt_im):
-        super(self.__class__, self).__init__(valid, key)
+        super(self.__class__, self).__init__(key)
         self.name = name
         self.subregions = subregions
         for sr in subregions:
@@ -866,7 +840,7 @@ def read(filename):
     if not ext:
         ext = '.I7' if sys.platform == 'win32' else '.ISA7'
         filename += ext
-    isa = Isa7(filename)
+    isa = Isa7(Reader(filename))
     return isa
 
 

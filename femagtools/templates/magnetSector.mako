@@ -44,7 +44,7 @@ for i = 0, m.npols_gen-1 do
       color = red
       phi = alfa+180/m.num_poles
     else
-      phi = alfa-180/m.num_poles
+      phi = -90
       color = green
     end
     def_mat_pm(x0, y0, color, m.remanenc, m.relperm,

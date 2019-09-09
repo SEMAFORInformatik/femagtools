@@ -102,6 +102,8 @@ def convert(dxfile,
             part=(),
             airgap=0.0,
             airgap2=0.0,
+            da=0.0,
+            dy=0.0,
             view_only=False,
             show_plots=False,
             show_areas=False,
@@ -121,6 +123,13 @@ def convert(dxfile,
         if part[1] not in ('in', 'out'):
             logger.error('"{}" has to be defined in/out'.format(part[0]))
             return dict(error='unknown location {}'.format(part[1]))
+    else:
+        if da:
+            logger.warn("distance airgap (da) ignored")
+            da = 0.0
+        if dy:
+            logger.warn("distance yoke (dy) ignored")
+            dy = 0.0
 
     try:
         if dxfile.split('.')[-1] == 'fem':
@@ -326,6 +335,10 @@ def convert(dxfile,
                                   rows=3,  # rows
                                   cols=2,  # cols
                                   num=3)   # start num
+
+        if da > 0.0 or dy > 0.0:
+            machine = machine.cut(dy, da)
+
         if part:
             if part[0] == 'stator':
                 machine.geom.set_stator()

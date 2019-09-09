@@ -10,7 +10,7 @@
 from __future__ import print_function
 import numpy as np
 import logging
-from .shape import Element, Circle, Line, Shape
+from .shape import Element, Circle, Arc, Line, Shape
 from .corner import Corner
 from .functions import point, points_are_close
 from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
@@ -124,6 +124,28 @@ class Machine(object):
         self.geom.clear_cut_lines()
         if self.mirror_geom is not None:
             self.mirror_geom.clear_cut_lines()
+
+    def cut(self, d_in, d_out):
+        radius_in = d_in
+        radius_out = d_out
+        if d_out == 0.0:
+            radius_out = self.radius + 10
+
+        clone = self.geom.copy_shape(self.center,
+                                     self.radius,
+                                     0.0,
+                                     2*np.pi,
+                                     radius_in,
+                                     radius_out,
+                                     False,
+                                     append_inner=(d_in > 0.0),
+                                     append_outer=(d_out > 0.0))
+
+        if d_out == 0.0:
+            d_out = self.radius
+
+        return Machine(clone, self.center, d_out,
+                       self.startangle, self.endangle)
 
     def copy(self, startangle, endangle,
              airgap=False, inside=True, split=False):

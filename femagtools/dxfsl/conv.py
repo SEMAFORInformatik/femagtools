@@ -67,6 +67,16 @@ def main():
                            dest='atol',
                            type=float,
                            default=0.005)
+    argparser.add_argument('--da',
+                           help='distance airgap',
+                           dest='da',
+                           type=float,
+                           default=0.0)
+    argparser.add_argument('--dy',
+                           help='distance yoke',
+                           dest='dy',
+                           type=float,
+                           default=0.0)
     argparser.add_argument('-s', '--split',
                            help='split intersections',
                            dest='split',
@@ -176,6 +186,8 @@ def main():
                   part=part,
                   airgap=args.airgap,
                   airgap2=args.airgap2,
+                  da=args.da,  # distance airgap
+                  dy=args.dy,  # distance yoke
                   view_only=args.view,
                   show_plots=args.show_plots,
                   show_areas=args.show_areas,

@@ -295,25 +295,25 @@ class FslBuilderTest(unittest.TestCase):
     def test_run_models(self):
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 44)
+        self.assertEqual(len(fsl), 46)
 
         feapars['calculationMode'] = "pm_sym_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 51)
+        self.assertEqual(len(fsl), 53)
 
         feapars['calculationMode'] = "mult_cal_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 48)
+        self.assertEqual(len(fsl), 50)
 
         feapars['calculationMode'] = "torq_calc"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 45)
+        self.assertEqual(len(fsl), 47)
         
     def test_run_existing_model(self):
         model = femagtools.MachineModel('data/magnsec')
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create(model, feapars)
-        self.assertEqual(len(fsl), 83)
+        self.assertEqual(len(fsl), 85)
         
     def test_create_plots(self):
         pars = copy.deepcopy(feapars)
@@ -463,7 +463,7 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel(machine)
         magnets = femagtools.magnet.Magnet(magnetmat)
         fsl = self.builder.create_model(model, magnets)
-        self.assertEqual(len(fsl), 178)
+        self.assertEqual(len(fsl), 180)
         brem = [l.strip() for l in fsl
                 if l.split('=')[0].strip() == 'm.remanenc'][0]
         self.assertEqual(brem.split('=')[-1].strip(), '1.1')

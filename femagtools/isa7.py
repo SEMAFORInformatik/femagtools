@@ -314,6 +314,12 @@ class Reader(object):
         self.skip_block(6)
 
         self.ELEM_ISA_ELEM_REC_LOSS_DENS = self.next_block("f")
+        self.skip_block(3)
+        self.skip_block(1 * 64)
+        self.ROTOR_CUR_EXIST = self.next_block("i")
+        self.skip_block(20)  # mcmax = 20
+        self.skip_block(4)
+        self.NUM_SE_MAGN_KEYS = self.next_block("i")[0]
 
     def next_block(self, fmt):
         """
@@ -581,7 +587,12 @@ class Isa7(object):
                     len(self.superelements),
                     len(self.subregions))
 
+        # positions of all elements
+        self.element_pos = np.array([e.center
+                                     for e in self.elements])
+        
         self.FC_RADIUS = reader.FC_RADIUS
+        self.POLPAAR_ZAHL = reader.POLPAAR_ZAHL
 
     def get_subregion(self, name):
         """return subregion by name"""
@@ -594,6 +605,21 @@ class Isa7(object):
         """return elements in winding region"""
         return [el for el in self.elements
                 if self.superelement.condtype != 0]
+
+    def get_element(self, x, y):
+        """return element at pos x,y"""
+        k = np.argmin(np.linalg.norm(self.element_pos - (x, y), axis=1))
+        return self.elements[k]
+
+    def get_super_element(self, x, y):
+        """return element at pos x,y"""
+        e = self.get_element(x, y)
+        try:
+            return [s for s in self.superelements
+                    if e.key in [se.key for se in s.elements]][0]
+        except IndexError:
+            return []
+    
 
 
 class Point(object):
@@ -684,7 +710,9 @@ class Element(BaseEntity):
                          (vertices[0].y - vertices[4].y) -
                          (vertices[6].y - vertices[4].y) *
                          (vertices[0].x - vertices[4].x))/2
-
+        self.center = np.sum(
+            [v.xy for v in vertices], axis=0)/len(vertices)
+        
     def induction(self):
         """return induction components of this element"""
         ev = self.vertices

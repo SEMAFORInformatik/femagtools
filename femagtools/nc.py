@@ -109,7 +109,7 @@ class Reader(object):
         (self.SR_ISA_SR_SE_PNTR,
          self.SR_ISA_SR_REC_SR_TYP,
          self.SR_ISA_SR_REC_SR_COL,
-         self.SR_ISA_SR_REC_SR_NAME,
+         names,
          self.SR_ISA_SR_REC_SR_CUR_DIR,
          self.SR_ISA_SR_REC_SR_WB_KEY,
          self.SR_ISA_SR_REC_SR_NTURNS,
@@ -123,7 +123,8 @@ class Reader(object):
             for k in ('se_pntr', 'type', 'color', 'name', 'cur_dir',
                       'wb_key', 'nturns', 'sv_pntr', 'array',
                       'gcur_re', 'gcur_im', 'volt_re', 'volt_im')]
-
+        self.SR_ISA_SR_REC_SR_NAME = [''.join(str(n, encoding='utf-8'))
+                                      for n in names]
         grp = ds.groups['subregion_superelements']
         (self.SR_SE_ISA_SE_KEY,
          self.SR_SE_ISA_NXT_SE_PNTR) = [
@@ -133,7 +134,7 @@ class Reader(object):
         grp = ds.groups['windings']
         (self.WB_ISA_WB_SR_PNTR,
          self.WB_ISA_WB_REC_WB_COL,
-         self.WB_ISA_WB_REC_WB_NAME,
+         names,
          self.WB_ISA_WB_REC_WB_TURN,
          self.WB_ISA_WB_REC_WB_SR_NUM,
          self.WB_ISA_WB_REC_WB_WND_KEY,
@@ -148,16 +149,18 @@ class Reader(object):
                       'wnd_key', 'gcur_re', 'gcur_im',
                       'volt_re', 'volt_im', 'impdz_re', 'impdz_im')]
         self.WB_ISA_WB_REC_WB_UNIT_RES = self.WB_ISA_WB_REC_WB_TURN
-
+        self.WB_ISA_WB_REC_WB_NAME = [''.join(str(n, encoding='utf-8'))
+                                      for n in names]
         grp = ds.groups['winding_subregions']
         (self.WB_SR_ISA_SR_KEY,
          self.WB_SR_ISA_NXT_SR_PNTR) = [
             grp.variables[k][:]
             for k in ('sr_key', 'nxt_sr_pntr')]
 
-        self.FC_RADIUS = ds.variables['fc_radius']
+        self.FC_RADIUS = float(ds.variables['fc_radius'].getValue().data)
+        self.POLPAAR_ZAHL = int(ds.variables['pole_pairs'].getValue().data)
 
-    
+
 def read(filename):
     """
     Read nc file and return NcModel object.

@@ -267,10 +267,11 @@ class PlotRenderer(object):
         self.ax.set_xlim(x_min, x_max)
         self.ax.set_ylim(y_min, y_max)
 
-        if write_png:
-            self.write_plot(title)
         if show:
-            self.show_plot()
+            if write_png:
+                self.write_plot(title)
+            else:
+                self.show_plot()
 
     def render_areas(self, geom, **kwargs):
         with_nodes = kwargs.get('with_nodes', False)

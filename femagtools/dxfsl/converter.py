@@ -151,17 +151,11 @@ def convert(dxfile,
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = PlotRenderer()
-    if write_png:
-        p.render_elements(basegeom, Shape,
-                          show=False,
-                          title=basename,
-                          png=True)
-        if not view_only:
-            return None
 
     if view_only:
         p.render_elements(basegeom, Shape,
                           neighbors=True,
+                          png=write_png,
                           show=True)
         return dict()
 
@@ -262,7 +256,10 @@ def convert(dxfile,
                               rows=3, cols=2, num=6, show=False,
                               # with_nodes=True,
                               fill_areas=True)
-            p.show_plot()
+            if write_png:
+                p.write_plot(basename)
+            else:
+                p.show_plot()
 
         if show_areas:
             p.render_elements(machine_inner.geom, Shape,
@@ -364,7 +361,10 @@ def convert(dxfile,
                               draw_inside=True, title=name,
                               rows=3, cols=2, num=5, show=False,
                               fill_areas=True)
-            p.show_plot()
+            if write_png:
+                p.write_plot(basename)
+            else:
+                p.show_plot()
 
         if show_areas:
             p.render_elements(machine.geom, Shape,

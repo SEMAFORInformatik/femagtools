@@ -16,6 +16,7 @@ from .functions import point, points_are_close
 from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
 from .functions import line_m, line_n, mirror_point
 from .functions import within_interval, part_of_circle
+from .functions import less, less_equal, greater, greater_equal
 logger = logging.getLogger('femagtools.geom')
 
 
@@ -125,10 +126,23 @@ class Machine(object):
         if self.mirror_geom is not None:
             self.mirror_geom.clear_cut_lines()
 
-    def cut(self, d_in, d_out):
-        radius_in = d_in
-        radius_out = d_out
-        if d_out == 0.0:
+    def cut_is_possible(self, r_in, r_out):
+        if r_in > 0.0:
+            if less(self.geom.min_radius, r_in, rtol=0.0001):
+                if less_equal(self.geom.max_radius, r_in, rtol=0.0001):
+                    return False
+                return True
+        if r_out > 0.0:
+            if greater(self.geom.max_radius, r_out, rtol=0.0001):
+                if greater_equal(self.geom.min_radius, r_out, rtol=0.0001):
+                    return False
+                return True
+        return False
+
+    def cut(self, r_in, r_out):
+        radius_in = r_in
+        radius_out = r_out
+        if r_out == 0.0:
             radius_out = self.radius + 10
 
         clone = self.geom.copy_shape(self.center,
@@ -138,14 +152,23 @@ class Machine(object):
                                      radius_in,
                                      radius_out,
                                      False,
-                                     append_inner=(d_in > 0.0),
-                                     append_outer=(d_out > 0.0))
+                                     append_inner=(r_in > 0.0),
+                                     append_outer=(r_out > 0.0))
 
-        if d_out == 0.0:
-            d_out = self.radius
+        if r_out == 0.0:
+            r_out = self.radius
 
-        return Machine(clone, self.center, d_out,
-                       self.startangle, self.endangle)
+        m = Machine(clone, self.center, r_out,
+                    self.startangle, self.endangle)
+
+        m.mirror_geom = self.mirror_geom
+        m.part = self.part
+
+        m.set_minmax_radius()
+        m.create_auxiliary_lines()
+        m.set_alfa_and_corners()
+        m.set_kind(self.geom.kind)
+        return m
 
     def copy(self, startangle, endangle,
              airgap=False, inside=True, split=False):

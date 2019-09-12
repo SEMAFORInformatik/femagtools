@@ -334,7 +334,18 @@ def convert(dxfile,
                                   num=3)   # start num
 
         if da > 0.0 or dy > 0.0:
-            machine = machine.cut(dy, da)
+            if inner:
+                r_out = da / 2.0
+                r_in = dy / 2.0
+            elif outer:
+                r_out = dy / 2.0
+                r_in = da / 2.0
+            else:
+                r_out = 0.0
+                r_in = 0.0
+            if machine.cut_is_possible(r_in, r_out):
+                logger.info("make a cut")
+                machine = machine.cut(r_in, r_out)
 
         if part:
             if part[0] == 'stator':

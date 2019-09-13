@@ -160,6 +160,16 @@ class Reader(object):
         self.FC_RADIUS = float(ds.variables['fc_radius'].getValue().data)
         self.POLPAAR_ZAHL = int(ds.variables['pole_pairs'].getValue().data)
 
+        grp = ds.groups['el_fe_induction']
+        (#self.position,
+         self.el_fe_induction_1,
+         self.el_fe_induction_2,
+         #self.eddy_cu_vpot,
+        ) = [grp.variables[k][:]
+             for k in (#'position',
+                       'induction_1','induction_2',
+                       #'eddy_cu_vpot',
+             )]
 
 def read(filename):
     """

@@ -183,10 +183,15 @@ class Reader(object):
         NUM_FE_EVAL_MOVE_STEP = self.next_block("i")[0]
         if NUM_FE_EVAL_MOVE_STEP < 0:
             NUM_FE_EVAL_MOVE_STEP = 0
-
+            
+        self.el_fe_induction_1 = [[[]]]
+        self.el_fe_induction_2 = [[[]]]
+        
         if NUM_FE_EVAL_MOVE_STEP > 1:
             self.skip_block()
-            self.skip_block((NUM_FE_EVAL_MOVE_STEP + 1) * 2)
+            for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
+                self.el_fe_induction_1[0][0].append(self.next_block("h"))
+                self.el_fe_induction_2[0][0].append(self.next_block("h"))
 
         FC_NUM_MOVE_CALC_LOAD_PMS, FC_NUM_FLX = self.next_block("i")[0:2]
 
@@ -316,7 +321,7 @@ class Reader(object):
         self.ELEM_ISA_ELEM_REC_LOSS_DENS = self.next_block("f")
         self.skip_block(3)
         self.skip_block(1 * 64)
-        self.ROTOR_CUR_EXIST = self.next_block("i")
+        self.ROTOR_CUR_EXIST = self.next_block("?")[0]
         self.skip_block(20)  # mcmax = 20
         self.skip_block(4)
         self.NUM_SE_MAGN_KEYS = self.next_block("i")[0]
@@ -593,6 +598,8 @@ class Isa7(object):
         
         self.FC_RADIUS = reader.FC_RADIUS
         self.POLPAAR_ZAHL = reader.POLPAAR_ZAHL
+        self.el_fe_induction_1 = reader.el_fe_induction_1
+        self.el_fe_induction_2 = reader.el_fe_induction_2
 
     def get_subregion(self, name):
         """return subregion by name"""

@@ -186,9 +186,10 @@ class Reader(object):
             
         self.el_fe_induction_1 = [[[]]]
         self.el_fe_induction_2 = [[[]]]
+        self.pos_el_fe_induction = []
         
         if NUM_FE_EVAL_MOVE_STEP > 1:
-            self.skip_block()
+            self.pos_el_fe_induction = self.next_block("f")
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
                 self.el_fe_induction_1[0][0].append(self.next_block("h"))
                 self.el_fe_induction_2[0][0].append(self.next_block("h"))
@@ -598,8 +599,9 @@ class Isa7(object):
         
         self.FC_RADIUS = reader.FC_RADIUS
         self.POLPAAR_ZAHL = reader.POLPAAR_ZAHL
-        self.el_fe_induction_1 = reader.el_fe_induction_1
-        self.el_fe_induction_2 = reader.el_fe_induction_2
+        self.pos_el_fe_induction = reader.pos_el_fe_induction
+        self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
+        self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000
 
     def get_subregion(self, name):
         """return subregion by name"""

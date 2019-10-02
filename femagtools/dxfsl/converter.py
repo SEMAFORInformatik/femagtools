@@ -148,6 +148,8 @@ def convert(dxfile,
         logger.error(ex)
         return dict()
 
+    basegeom.search_overlapping_elements()
+
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = PlotRenderer()
@@ -186,6 +188,7 @@ def convert(dxfile,
     if show_plots and debug_mode:
         p.render_elements(machine.geom, Shape,
                           title='Areas',
+                          neighbors=True,
                           with_corners=False, show=True)
 
     if machine.airgap(airgap, airgap2, symtol):

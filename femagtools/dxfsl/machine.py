@@ -12,7 +12,7 @@ import numpy as np
 import logging
 from .shape import Element, Circle, Arc, Line, Shape
 from .corner import Corner
-from .functions import point, points_are_close
+from .functions import point, points_are_close, distance
 from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
 from .functions import line_m, line_n, mirror_point
 from .functions import within_interval, part_of_circle
@@ -638,6 +638,14 @@ class Machine(object):
             for n in nodes1:
                 if is_node_available(n, nodes2):
                     hit += 1
+                else:
+                    d = distance(self.center, n)
+                    logger.debug(" -- r={}, d={}".format(self.radius, d))
+                    if np.isclose(d, self.radius, rtol=0.075, atol=atol):
+                        # very tolerant
+                        logger.debug("NO HIT FOR {} ON OUTER HULL".format(n))
+                        hit += 1
+
             return float(hit) / len(nodes1)
 
         hit_factor1 = get_hit_factor(self.geom.g.nodes(),

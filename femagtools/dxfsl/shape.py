@@ -18,7 +18,6 @@ from .functions import normalise_angle, min_angle, max_angle, get_angle_of_arc
 from .functions import lines_intersect_point, nodes_are_equal
 from .functions import is_angle_inside, intersect_point
 from .functions import middle_angle
-# from .geom import ndec
 
 logger = logging.getLogger('femagtools.geom')
 
@@ -125,6 +124,9 @@ class Shape(object):
                    round(n[1], ndec))
         return self
 
+    def overlapping_shapes(self, n, e, rtol=1e-03, atol=1e-03):
+        return False
+
     def overlapping_shape(self, e, rtol=1e-03, atol=1e-03):
         # element e is already installed
         return None  # no overlap
@@ -154,6 +156,9 @@ class Shape(object):
                      n, self)
         raise ValueError('missing node in element')
         return 0
+
+    def get_alpha(self, n):
+        return 0.0
 
     def minmax_angle_dist_from_center(self,
                                       min_alfa, max_alfa,
@@ -269,7 +274,7 @@ class Circle(Shape):
         self.center = (n[0], n[1])
         return self
 
-    def center_of_connection(self, ndec):
+    def center_of_connection(self, ndec=6):
         return (self.center[0] + self.radius, self.center[1])
 
     def overlapping_shape(self, e, rtol=1e-03, atol=1e-03):
@@ -508,7 +513,7 @@ class Arc(Circle):
             renderer.point(self.p1, 'ro', color)
             renderer.point(self.p2, 'ro', color)
 
-    def center_of_connection(self, ndec):
+    def center_of_connection(self, ndec=6):
         midangle = middle_angle(self.startangle, self.endangle)
         x, y = self(midangle)
         return (round(x, ndec), round(y, ndec))
@@ -519,6 +524,16 @@ class Arc(Circle):
         if d > 2*np.pi:
             d -= 2*np.pi
         return self.radius*abs(d)
+
+    def get_alpha(self, n):
+        a = alpha_line(n, self.center)
+        if points_are_close(n, self.n1):
+            alpha1 = normalise_angle(a + np.pi / 2)
+        elif points_are_close(n, self.n2):
+            alpha1 = normalise_angle(a - np.pi / 2)
+        else:
+            alpha1 = 0.0
+        return alpha1
 
     def range(self, step=1.0):
         """returns evenly spaced values"""
@@ -840,13 +855,17 @@ class Line(Shape):
             renderer.point(self.p1, 'ro', tmp_color)
             renderer.point(self.p2, 'ro', tmp_color)
 
-    def center_of_connection(self, ndec):
+    def center_of_connection(self, ndec=6):
         x = (self.p1[0]+self.p2[0])/2
         y = (self.p1[1]+self.p2[1])/2
         return (x, y)
 
     def length(self):
         return np.sqrt(self.dx()**2 + self.dy()**2)
+
+    def get_alpha(self, n):
+        px = self.center_of_connection()
+        return alpha_line(px, n)
 
     def range(self, step=1.0):
         """returns evenly spaced values"""
@@ -865,6 +884,22 @@ class Line(Shape):
         if np.isclose(self.dx(), 0):
             return float('nan')
         return self.dy()/self.dx()*(x - self.p1[0]) + self.p1[1]
+
+    def overlapping_shapes(self, n, e, rtol=1e-03, atol=1e-03):
+        if not isinstance(e, Line):
+            return False
+
+        if nodes_are_equal(n, self.n1):
+            my_m = alpha_line(n, self.n2)
+        else:
+            my_m = alpha_line(n, self.n1)
+
+        if nodes_are_equal(n, e.n1):
+            other_m = alpha_line(n, e.n2)
+        else:
+            other_m = alpha_line(n, e.n1)
+
+        return np.isclose(my_m, other_m, rtol=rtol, atol=atol)
 
     def intersect_line(self, line, rtol=1e-03, atol=1e-03,
                        include_end=False, all=False):

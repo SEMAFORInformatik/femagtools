@@ -731,6 +731,12 @@ class Geometry(object):
         return [[e[0], e[1], e[2]['object']] for e in self.g.edges(data=True)
                 if e[2]['object'] is eg]
 
+    def get_edge_element(self, n1, n2):
+        e_dict = self.g.get_edge_data(n1, n2)
+        if e_dict:
+            return e_dict.get('object', None)
+        return None
+
     def _remove_edge(self, n1, n2):
         self.g.remove_edge(n1, n2)
 
@@ -999,135 +1005,308 @@ class Geometry(object):
             return ()  # not enough corners
         return (corners[0].point(), corners[len(corners)-1].point())
 
-    def point_lefthand_side(self, p1, p2):
-        alpha = alpha_line(p2, p1)
+    def get_angle(self, alpha1, alpha2):
+        if np.isclose(alpha1, alpha2, 0.001, 0.001):
+            return 0.0
+        return alpha_angle(alpha1, alpha2)
 
-        nbrs = [n for n in self.g.neighbors(p2)
-                if not (points_are_close(n, p1) or points_are_close(n, p2))]
+    def get_edge_neighbors_list(self, alpha, info):
+        n1 = info['n1']
+        n2 = info['n2']
+
+        nbrs = [n for n in self.g.neighbors(n2)
+                if not (points_are_close(n, n1) or points_are_close(n, n2))]
         if len(nbrs) == 0:
-            return None  # unexpected end
+            logger.debug("      FATAL: no neighbors of {} available ???"
+                         .format(n2))
+            return []
 
         angles = []
-        for p in nbrs:
-            e_dict = self.g.get_edge_data(p2, p)
-            assert(e_dict)
-            e = e_dict['object']
-            px = e.center_of_connection(ndec)
-            alphax = alpha_line(p2, px)
-            if np.isclose(alpha, alphax, 1e-05, 0.00001):
-                # print("   >>> alpha={}, alphax={}".format(alpha, alphax))
-                angles.append((0.0, p))
-            else:
-                # we don't move more than 180 degrees
-                angles.append((alpha_angle(alpha, alphax), p))
+        for c, n in enumerate(nbrs):
+            info_next = self.get_edge_info(n2, n)
+            angle = self.get_angle(alpha, info_next['alpha_start'])
+            angles.append((angle, c, info_next))
 
-        if len(angles) == 0:
-            return None
+        info_rev = self.get_reverse_edge_info(info)
+        angle = self.get_angle(alpha, info_rev['alpha_start'])
+        angles.append((angle, c+1, info_rev))
+        angles.sort(reverse=True)
+        return angles
 
-        angles.sort()
-        return angles[len(angles)-1][1]
+    def is_lefthand_edge(self, alpha, info1, info2):
+        logger.debug("   begin of is_lefthand_edge()")
+        angle1 = self.get_angle(alpha, info1['alpha_start'])
+        angle2 = self.get_angle(alpha, info2['alpha_start'])
+        if not np.isclose(angle1, angle2, 0.005, 0.005):
+            logger.debug("   UNEXPECTED DIFFERENT ANGLES")
+            return angle1 > angle2
+
+        if self.is_edge_arc(info1):
+            if self.is_edge_arc(info2):
+                logger.debug("   ARC - ARC")
+
+                i1_dist = distance(info1['n1'], info1['n2'])
+                i2_dist = distance(info2['n1'], info2['n2'])
+                min_dist = min(i1_dist, i2_dist) / 1.5
+
+                circ = Circle(Element(center=info1['n1'],
+                                      radius=min_dist))
+                pt = info1['element'].intersect_circle(circ)
+                if len(pt) != 1:
+                    logger.debug("WARNING: intersect problem at {}"
+                                 .format(info1['n1']))
+                    i1_alpha = info1['alpha_n2']
+                else:
+                    i1_alpha = alpha_line(info1['n1'], pt[0])
+                i1_angle = self.get_angle(alpha, i1_alpha)
+
+                circ = Circle(Element(center=info2['n1'],
+                                      radius=min_dist))
+                pt = info2['element'].intersect_circle(circ)
+                if len(pt) != 1:
+                    logger.debug("WARNING: intersect problem at {}"
+                                 .format(info2['n1']))
+                    i2_alpha = info2['alpha_n2']
+                else:
+                    i2_alpha = alpha_line(info2['n1'], pt[0])
+                i2_angle = self.get_angle(alpha, i2_alpha)
+                rslt = i1_angle > i2_angle
+                logger.debug("   end of is_lefthand_edge() = {}"
+                             .format(rslt))
+                return rslt
+
+            logger.debug("   ARC - LINE")
+
+            e1 = info1['element']
+            d2 = distance(e1.center, info2['n2'])
+            if not np.isclose(e1.radius, d2, 0.005, 0.005):
+                angle1 = self.get_angle(alpha, info1['alpha_n2'])
+                angle = alpha_angle(angle1, angle2)
+                logger.debug("   NOT close together")
+                rslt = greater(angle, np.pi)
+                logger.debug("   end of is_lefthand_edge() = {}"
+                             .format(rslt))
+                return rslt
+
+            next_info2 = self.next_edge_lefthand_side(info2)
+            if not next_info2:
+                logger.debug("FATAL ERROR")
+                raise ValueError("FATAL ERROR: no edge found")
+
+            return self.is_lefthand_edge(alpha, info1, next_info2)
+
+        if not self.is_edge_arc(info2):
+            # two overlapping lines
+            logger.debug("   end of is_lefthand_edge(): overlap")
+            return True
+
+        logger.debug("   LINE - ARC")
+
+        rslt = not self.is_lefthand_edge(alpha, info2, info1)
+        logger.debug("   end of is_lefthand_edge() = {}".format(rslt))
+        return rslt
+
+    def next_edge_lefthand_side(self, info_curr):  # current
+        alpha = normalise_angle(info_curr['alpha_n2'] + np.pi)
+        logger.debug("   next_edge_lefthand_side( alpha={} )"
+                     .format(alpha))
+
+        nbrs = self.get_edge_neighbors_list(alpha, info_curr)
+        if len(nbrs) == 0:
+            logger.debug("      no neighbors available ???")
+            return None  # unexpected end
+
+        if len(nbrs) < 3:
+            for a, c, info_next in nbrs:
+                if not info_next['reverse']:
+                    return info_next
+            raise ValueError("FATAL ERROR in next_edge_lefthand_side() !!")
+
+        logger.debug("   POINT WITH {} NEIGHBORS".format(len(nbrs)-1))
+
+        f_angle, f_c, f_info_next = nbrs[0]
+        f_info_next['angle'] = f_angle
+
+        for n_angle, n_c, n_info_next in nbrs[1:]:
+            n_info_next['angle'] = n_angle
+            if np.isclose(f_angle, n_angle):
+                logger.debug("   SAME DIRECTION")
+                # ACHTUNG
+                if self.is_lefthand_edge(alpha, f_info_next, n_info_next):
+                    logger.debug("   == first is on the left side")
+                    angle = self.get_angle(alpha,
+                                           n_info_next['alpha_start'] - 0.01)
+                    n_info_next['angle'] = angle
+                else:
+                    logger.debug("   == next is on the left side")
+                    angle = self.get_angle(alpha,
+                                           f_info_next['alpha_start'] - 0.01)
+                    f_info_next['angle'] = angle
+
+            f_angle = n_angle
+            f_info_next = n_info_next
+
+        nbrs2 = [(e['angle'], c, e) for a, c, e in nbrs
+                 if not e['reverse']]
+        nbrs2.sort(reverse=True)
+        return nbrs2[0][2]
+
+    def get_edge_info(self, n1, n2):
+        e_dict = self.g.get_edge_data(n1, n2)
+        if not e_dict:
+            raise ValueError("Fatal: no edge-data found from {} to {}"
+                             .format(n1, n2))
+
+        e = e_dict.get('object', None)
+        if not e:
+            raise ValueError("Fatal: no object found from {} to {}"
+                             .format(n1, n2))
+
+        x = e.get_node_number(n1)
+        alpha_n1 = e.get_alpha(n1)
+        info = {'n1': n1,
+                'n2': n2,
+                'data': e_dict,
+                'element': e,
+                'x': x,
+                'alpha_n1': alpha_n1,
+                'alpha_n2': e.get_alpha(n2),
+                'alpha_start': normalise_angle(alpha_n1 + np.pi),
+                'tracked': e_dict[x],
+                'reverse': False}
+        return info
+
+    def get_reverse_edge_info(self, info):
+        alpha_n1 = info['alpha_n2']
+        rev_info = {'n1': info['n2'],
+                    'n2': info['n1'],
+                    'data': info['data'],
+                    'element': info['element'],
+                    'x': 0,
+                    'alpha_n1': alpha_n1,
+                    'alpha_n2': info['alpha_n1'],
+                    'alpha_start': normalise_angle(alpha_n1 + np.pi),
+                    'tracked': False,
+                    'reverse': True}
+        return rev_info
+
+    def is_edge_arc(self, info):
+        return isinstance(info['element'], Arc)
+
+    def log_edge_info(self, info):
+        logger.debug('   node1 = {}'.format(info['n1']))
+        logger.debug('   node2 = {}'.format(info['n2']))
+        logger.debug('   x     = {}'.format(info['x']))
+        logger.debug('   lock  = ({}, {}, {})'.format(info['data'][0],
+                                                      info['data'][1],
+                                                      info['data'][2]))
+
+    def set_edge_tracked(self, info):
+        x = info['x']
+        info['data'][x] = True  # footprint
 
     def get_new_area(self, start_n1, start_n2, solo):
-        logger.debug('==> start of get_new_area()')
+        info_curr = self.get_edge_info(start_n1, start_n2)
 
-        e_dict = self.g.get_edge_data(start_n1, start_n2)
-        if not e_dict:
-            raise ValueError("Fatal: no edge-data found")
         area = []
-        e = e_dict['object']
-        try:
-            x = e.get_node_number(start_n1)
-        except Exception:
-            logger.debug(" start n1=%s, n2=%s", start_n1, start_n2)
-            return None
+        result = {'area': area,
+                  'elements': 1,
+                  'msg': "<undefined>",
+                  'reverse': False,
+                  'ok': False}
+        area.append(info_curr['element'])
 
-        logger.debug("  FIRST {} => {} #{}: [{}, {}, {}]"
-                     .format(start_n1,
-                             start_n2,
-                             x,
-                             e_dict[0],
-                             e_dict[1],
-                             e_dict[2]))
+        if info_curr['tracked']:
+            result['msg'] = ("<== area already tracked ({}) ***"
+                             .format(info_curr['x']))
+            result['area'] = None
+            return result
 
-        if e_dict[x]:
-            logger.debug("<== area already tracked ({}) ***".format(x))
-            return None
-        e_dict[x] = True  # footprint
-        area.append(e)
+        logger.debug('==> start of get_new_area()')
+        self.log_edge_info(info_curr)
+        self.set_edge_tracked(info_curr)
 
+        e = info_curr['element']
         if (isinstance(e, Circle) and not isinstance(e, Arc)):
-            logger.debug("<== area is a circle ***")
+            result['msg'] = "area is a circle !!"
+            logger.debug("<== {}".format(result['msg']))
+            e_dict = info_curr['data']
             e_dict[1] = True  # footprint
             e_dict[2] = True  # footprint
-            return area
+            result['ok'] = True
+            return result
 
-        first_n = start_n1
-        this_n = start_n2
+        info_next = self.next_edge_lefthand_side(info_curr)
+        if not info_next:
+            result['msg'] = ("dead end ({}, {})"
+                             .format(info_curr['n1'], info_curr['n2']))
+            logger.debug("<== {}".format(result['msg']))
+            return result
+        self.log_edge_info(info_next)
 
-        next_n = self.point_lefthand_side(first_n, this_n)
-        if not next_n:
-            logger.debug("<== dead end ({}, {})"
-                         .format(first_n, this_n))
-            return None
+        prev_n1 = info_curr['n1']
+        next_n1 = info_next['n1']
+        next_n2 = info_next['n2']
 
-        a = normalise_angle(alpha_points(first_n, this_n, next_n))
-        alpha = a
+        alpha = normalise_angle(alpha_points(prev_n1,
+                                             next_n1,
+                                             next_n2))
 
-        afternext_n = ()
-        c = 0
-        while not (nodes_are_equal(next_n, start_n1) and
-                   nodes_are_equal(afternext_n, start_n2)):
+        c = 1
+        while not (nodes_are_equal(next_n1, start_n1) and
+                   nodes_are_equal(next_n2, start_n2)):
             c += 1
             if c > self.num_edges * 2:
                 logger.error("FATAL: *** over {} elements in area ? ***"
                              .format(self.num_edges))
                 plot_area(area)
                 sys.exit(1)
-            e_dict = self.g.get_edge_data(this_n, next_n)
-            e = e_dict['object']
-            x = e.get_node_number(this_n)
-            logger.debug("  NEXT {} => {} #{}: [{}, {}, {}]"
-                         .format(this_n,
-                                 next_n,
-                                 x,
-                                 e_dict[0],
-                                 e_dict[1],
-                                 e_dict[2]))
 
-            if e_dict[x]:
-                logger.debug('<== path already tracked ***')
-                return None
-            e_dict[x] = True  # footprint
-            first_n = this_n
-            this_n = next_n
-            next_n = self.point_lefthand_side(first_n, this_n)
-            if not next_n:
-                logger.debug("<== dead end ({},{})"
-                             .format(first_n, this_n))
-                return None
+            area.append(info_next['element'])
 
-            a = normalise_angle(alpha_points(first_n, this_n, next_n))
+            if info_next['tracked']:
+                result['msg'] = ("FATAL: area already tracked ({}) ***"
+                                 .format(info_next['x']))
+                logger.debug("<== {}".format(result['msg']))
+                result['elements'] = c
+                return result
+
+            self.set_edge_tracked(info_next)
+
+            info_curr = info_next
+            info_next = self.next_edge_lefthand_side(info_curr)
+            if not info_next:
+                result['msg'] = ("<== dead end ({},{})"
+                                 .format(info_curr['n1'], info_curr['n2']))
+                logger.debug("<== {}".format(result['msg']))
+                result['elements'] = c
+                return result
+            self.log_edge_info(info_next)
+
+            prev_n1 = info_curr['n1']
+            next_n1 = info_next['n1']
+            next_n2 = info_next['n2']
+
+            a = normalise_angle(alpha_points(prev_n1,
+                                             next_n1,
+                                             next_n2))
             alpha += a
-            area.append(e)
-            afternext_n = self.point_lefthand_side(this_n, next_n)
 
         logger.debug("  END OF get_new_area")
 
-        e_dict = self.g.get_edge_data(this_n, next_n)
-        e = e_dict['object']
-        x = e.get_node_number(this_n)
-        e_dict[x] = True  # footprint
-        area.append(e)
-        a = normalise_angle(alpha_points(this_n, next_n, start_n2))
-        alpha += a
-
         if alpha < 0.0:
-            logger.debug("<== turn left expected, but it turned right ({})"
-                         .format(alpha))
-            return None
+            result['msg'] = ("turn left expected, but it turned right ({})"
+                             .format(alpha))
+            logger.debug("<== {}".format(result['msg']))
+            result['elements'] = c
+            result['reverse'] = True
+            return result
 
-        logger.debug("<== area found !! ")
-        return area
+        result['msg'] = "area found !!"
+        logger.debug("<== {}".format(result['msg']))
+        result['elements'] = c
+        result['ok'] = True
+        return result
 
     def create_list_of_areas(self):
         """ return list of areas for each node and their neighbors
@@ -1159,8 +1338,9 @@ class Geometry(object):
 
             nbrs = [nbr for nbr in self.g.neighbors(n)]
             for next_n in nbrs:
-                area = self.get_new_area(n, next_n, len(nbrs) < 3)
-                if area:
+                result = self.get_new_area(n, next_n, len(nbrs) < 3)
+                if result['ok']:
+                    area = result['area']
                     a = Area(area, self.center, 0.0)
                     append(self.area_list, a)
 
@@ -2341,7 +2521,8 @@ class Geometry(object):
                     deleted += 1
                     continue
 
-        logger.info("{} tiny elements deleted".format(deleted))
+        if deleted:
+            logger.info("{} tiny elements deleted".format(deleted))
         return
 
     def search_subregions(self):
@@ -2529,6 +2710,68 @@ class Geometry(object):
                                .format(d1, d2))
                 return True
         return False
+
+    def search_overlapping_elements(self):
+        logger.debug("begin of search_overlapping_elements")
+
+        for n in self.g.nodes():
+            nbrs = [nbr for nbr in self.g.neighbors(n)]
+            if len(nbrs) < 3:
+                if len(nbrs) == 1:
+                    logger.debug("  Appendix found at {}".format(n))
+                    self.remove_appendix(n, nbrs[0])
+                continue
+            logger.debug("  Node {} has {} neighbors".format(n, len(nbrs)))
+            edges = []
+            for nbr in nbrs:
+                e_dict = self.g.get_edge_data(n, nbr)
+                if not e_dict:
+                    break
+                e = e_dict.get('object', None)
+                if not e:
+                    break
+                edges.append([nbr, e])
+            if edges:
+                for i in range(len(edges)):
+                    n1 = edges[i][0]
+                    e1 = edges[i][1]
+                    for n2, e2 in edges[i+1:]:
+                        self.correct_overlapping(n, n1, e1, n2, e2)
+        logger.debug("end of search_overlapping_elements")
+
+    def correct_overlapping(self, n, n1, e1, n2, e2):
+        if e1.__class__ != e2.__class__:
+            return
+        if not e1.overlapping_shapes(n, e2):
+            return
+        if isinstance(e1, Line):
+            self.correct_overlapping_lines(n, n1, e1, n2, e2)
+
+    def correct_overlapping_lines(self, n, n1, e1, n2, e2):
+        l1 = e1.length()
+        l2 = e2.length()
+        if l1 < l2:
+            self.g.remove_edge(n, n2)
+            line = Line(Element(start=n1, end=n2))
+        else:
+            self.g.remove_edge(n, n1)
+            line = Line(Element(start=n2, end=n1))
+        logger.debug("  corrected")
+        self.add_edge(n1, n2, line)
+
+    def remove_appendix(self, n1, n2):
+        e_dict = self.g.get_edge_data(n1, n2)
+        e = e_dict.get('object', None)
+        if not e:
+            return
+        if isinstance(e, Circle):
+            return
+
+        logger.info("remove_appendix({}, {})".format(n1, n2))
+        self.g.remove_edge(n1, n2)
+        nbrs = [nbr for nbr in self.g.neighbors(n2)]
+        if len(nbrs) == 1:
+            self.remove_appendix(n2, nbrs[0])
 
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))

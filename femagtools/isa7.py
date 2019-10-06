@@ -599,6 +599,7 @@ class Isa7(object):
         
         self.FC_RADIUS = reader.FC_RADIUS
         self.POLPAAR_ZAHL = reader.POLPAAR_ZAHL
+        self.NO_POLES_SIM = reader.NO_POLES_SIM
         self.pos_el_fe_induction = reader.pos_el_fe_induction
         self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
         self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000

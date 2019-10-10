@@ -170,7 +170,7 @@ class Reader:
             'Area [mm**2]': Reader.__read_areas,
             'Basic Machine parameters': Reader.__read_dummy,
             'Winding': Reader.__read_dummy,
-            'Calculation time [sec]': Reader.__read_dummy,
+            'Calculation time [sec]': Reader.__read_calctime,
             'Results for Angle I-Up [Degree]': Reader.__read_dummy,
             'Demagnetisation': Reader.__read_demagnetization,
             'Transient short circuit': Reader.__read_short_circuit,
@@ -324,7 +324,13 @@ class Reader:
                     
     def __read_dummy(self, content):
         return
-
+    
+    def __read_calctime(self, content):
+        try:
+            self.calctime = float(content[1])
+        except (IndexError, ValueError):
+            pass
+        
     def __read_simulation_data(self, content):
         for i, line in enumerate(content):
             if line.startswith('Number of Phases m'):

@@ -2711,8 +2711,20 @@ class Geometry(object):
                 return True
         return False
 
+    def search_all_overlapping_elements(self):
+        logger.debug("begin of search_all_overlapping_elements")
+
+        c = 1
+        corr = 0
+        while c > 0:
+            c = self.search_overlapping_elements()
+            corr += c
+        logger.debug("==> {} corrections performed".format(corr))
+        logger.debug("end of search_all_overlapping_elements")
+
     def search_overlapping_elements(self):
         logger.debug("begin of search_overlapping_elements")
+        count = 0
 
         for n in self.g.nodes():
             nbrs = [nbr for nbr in self.g.neighbors(n)]
@@ -2731,21 +2743,27 @@ class Geometry(object):
                 if not e:
                     break
                 edges.append([nbr, e])
+
             if edges:
                 for i in range(len(edges)):
                     n1 = edges[i][0]
                     e1 = edges[i][1]
                     for n2, e2 in edges[i+1:]:
-                        self.correct_overlapping(n, n1, e1, n2, e2)
-        logger.debug("end of search_overlapping_elements")
+                        if self.correct_overlapping(n, n1, e1, n2, e2):
+                            count += 1
+        logger.debug("end of search_overlapping_elements(correct={})"
+                     .format(count))
+        return count
 
     def correct_overlapping(self, n, n1, e1, n2, e2):
         if e1.__class__ != e2.__class__:
-            return
+            return False
         if not e1.overlapping_shapes(n, e2):
-            return
+            return False
         if isinstance(e1, Line):
             self.correct_overlapping_lines(n, n1, e1, n2, e2)
+            return True
+        return False
 
     def correct_overlapping_lines(self, n, n1, e1, n2, e2):
         l1 = e1.length()

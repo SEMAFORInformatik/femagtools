@@ -148,7 +148,7 @@ def convert(dxfile,
         logger.error(ex)
         return dict()
 
-    basegeom.search_overlapping_elements()
+    basegeom.search_all_overlapping_elements()
 
     logger.info("total elements %s", len(basegeom.g.edges()))
 

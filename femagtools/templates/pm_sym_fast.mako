@@ -54,6 +54,7 @@ m.optim_i_up      =    ${model.get('optim_i_up', 0)}
 
 m.pm_eff_aktiv    =    0.0
 m.calc_noload     =    ${model.get('calc_noload', 1)}
+m.period_frac     =    ${model.get('period_frac', 1)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 

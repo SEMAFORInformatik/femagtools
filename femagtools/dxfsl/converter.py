@@ -105,6 +105,7 @@ def convert(dxfile,
             da=0.0,
             dy=0.0,
             view_only=False,
+            view_korr=False,
             show_plots=False,
             show_areas=False,
             write_fsl=True,
@@ -148,25 +149,30 @@ def convert(dxfile,
         logger.error(ex)
         return dict()
 
-    basegeom.search_all_overlapping_elements()
-
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = PlotRenderer()
 
     if view_only:
+        if view_korr:
+            basegeom.search_all_overlapping_elements()
+            basegeom.search_all_appendices()
+
         p.render_elements(basegeom, Shape,
                           neighbors=True,
                           png=write_png,
                           show=True)
         return dict()
 
+    basegeom.search_all_overlapping_elements()
     machine_base = basegeom.get_machine()
     if show_plots:
         p.render_elements(basegeom, Shape,
                           title=os.path.basename(dxfile),
                           with_hull=False,
                           rows=3, cols=2, num=1, show=debug_mode)
+
+    basegeom.search_all_appendices()
 
     if not machine_base.is_a_machine():
         logger.warn("it's Not a Machine!!")
@@ -203,6 +209,8 @@ def convert(dxfile,
                           rows=3, cols=2, num=2, show=False)
 
     machine.repair_hull()
+    machine.geom.delete_appendices()
+
     if machine.has_airgap():
         machine_inner = machine.copy(0.0, 2*np.pi, True, True)
         machine_inner = symmetry_search(machine_inner,

@@ -97,6 +97,10 @@ def main():
                            help='show a view only',
                            dest='view',
                            action="store_true")
+    argparser.add_argument('-k', '--korr',
+                           help='show a view with korrections',
+                           dest='view_korr',
+                           action="store_true")
     argparser.add_argument('--png',
                            help='write png-file only',
                            dest='write_png',
@@ -189,6 +193,7 @@ def main():
                   da=args.da,  # distance airgap
                   dy=args.dy,  # distance yoke
                   view_only=args.view,
+                  view_korr=args.view_korr,
                   show_plots=args.show_plots,
                   show_areas=args.show_areas,
                   write_fsl=args.write_fsl,

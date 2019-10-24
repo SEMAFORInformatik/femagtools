@@ -15,7 +15,7 @@ from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle, is_same_angle
-from .shape import Element, Shape, Line, Arc, Circle
+from .shape import Element, Shape, Line, Arc, Circle, is_Circle
 
 logger = logging.getLogger('femagtools.area')
 
@@ -539,7 +539,7 @@ class Area(object):
     def is_circle(self):
         e = self.area[0]
         if len(self.area) == 1:
-            return isinstance(e, Circle) and not isinstance(e, Arc)
+            return is_Circle(e)
 
         if isinstance(e, Arc):
             c = e.center
@@ -642,25 +642,24 @@ class Area(object):
         e1_p1 = e1.p1
         e1_p2 = e1.p2
 
-        if points_are_close(e0_p2, e1_p1, atol=1e-05) or \
-           points_are_close(e0_p2, e1_p2, atol=1e-05):
+        if (points_are_close(e0_p2, e1_p1, atol=1e-02) or
+            points_are_close(e0_p2, e1_p2, atol=1e-02)):
             a_prev = alpha_line(e0_p1, e0_p2)
             p = e0_p2
+        elif (points_are_close(e0_p1, e1_p1, atol=1e-02) or
+              points_are_close(e0_p1, e1_p2, atol=1e-02)):
+            a_prev = alpha_line(e0_p2, e0_p1)
+            p = e0_p1
         else:
-            if points_are_close(e0_p1, e1_p1, atol=1e-05) or \
-               points_are_close(e0_p1, e1_p2, atol=1e-05):
-                a_prev = alpha_line(e0_p2, e0_p1)
-                p = e0_p1
-            else:
-                logger.error("ERROR: is_mag_rectangle(): points are not close together")
-                logger.error("       e0 p1={}, p2={}".format(e0_p1, e0_p2))
-                logger.error("       e1 p1={}, p2={}".format(e1_p1, e1_p2))
-                return False
+            logger.error("ERROR: is_mag_rectangle(): points are not close together")
+            logger.error("       e0 p1={}, p2={}".format(e0_p1, e0_p2))
+            logger.error("       e1 p1={}, p2={}".format(e1_p1, e1_p2))
+            return False
 
         def alpha_current(p, e):
-            if points_are_close(p, e.p1, atol=1e-05):
+            if points_are_close(p, e.p1, atol=1e-02):
                 return e.p2, alpha_line(e.p1, e.p2), isinstance(e, Line)
-            if points_are_close(p, e.p2, atol=1e-05):
+            if points_are_close(p, e.p2, atol=1e-02):
                 return e.p1, alpha_line(e.p2, e.p1), isinstance(e, Line)
             logger.error("ERROR: is_mag_rectangle(): points are not close together")
             logger.error("       p={}, p1={}, p2={}".format(p, e.p1, e.p2))

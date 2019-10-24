@@ -427,6 +427,12 @@ class Circle(Shape):
         # let Arc do the work
         return arc.intersect_circle(self, rtol, atol, include_end)
 
+    def is_point_inside(self, p, rtol=1e-03, atol=1e-03, include_end=False):
+        """ returns true if p is on circle
+        """
+        d = distance(p, self.center)
+        return np.isclose(d, self.radius)
+
     def split(self, points, rtol, atol):
         """ Die Funktion splittet das Circle-Objekt an den vorgegebenen Punkten
             und gibt eine Liste der neu enstandenen Elemente aus.
@@ -682,6 +688,9 @@ class Arc(Circle):
     def is_point_inside(self, p, rtol=1e-03, atol=1e-03, include_end=False):
         """ returns true if p is on arc
         """
+        d = distance(p, self.center)
+        if not np.isclose(d, self.radius):
+            return False
         if points_are_close(p, self.p1, rtol, atol):
             return include_end
         elif points_are_close(p, self.p2, rtol, atol):
@@ -1063,3 +1072,15 @@ class Point(Shape):
 
     def render(self, renderer):
         renderer.point(self.p1)
+
+
+def is_Circle(e):
+    return isinstance(e, Circle) and not isinstance(e, Arc)
+
+
+def is_Arc(e):
+    return isinstance(e, Arc)
+
+
+def is_Line(e):
+    return isinstance(e, Line)

@@ -16,7 +16,7 @@ import logging
 import sys
 from .corner import Corner
 from .area import Area
-from .shape import Element, Shape, Circle, Arc, Line, Point
+from .shape import Element, Shape, Circle, Arc, Line, Point, is_Circle
 from .machine import Machine
 from .functions import less_equal, less, greater, greater_equal
 from .functions import distance, alpha_line, alpha_points, alpha_angle
@@ -288,7 +288,7 @@ def spline(entity, lf, min_dist=0.001):
         dist_12 = distance(p1, p2)
         dist_2e = distance(p2, pe)
         if dist_2e < min_dist:
-            logger.debug("SPLINE: ignor small end-distance {}".format(dist_2e))
+            logger.debug("SPLINE: ignor small end-distance %s", dist_2e)
             yield Line(Element(start=p1, end=pe), lf)
             return
 
@@ -296,22 +296,22 @@ def spline(entity, lf, min_dist=0.001):
             yield Line(Element(start=p1, end=p2), lf)
             p1 = p2
         else:
-            logger.debug("SPLINE: ignor small distance {}".format(dist_12))
+            logger.debug("SPLINE: ignor small distance %s", dist_12)
 
     yield Line(Element(start=p1, end=pe), lf)
 
 
 def insert_block(insert_entity, lf, rf, block, min_dist=0.001):
-    logger.debug('Insert {} entities from block {}'
-                 .format(len(block), insert_entity.name))
-
-    logger.debug('Insert = {}'.format(insert_entity.insert))
-    logger.debug('Rotation = {}'.format(insert_entity.rotation))
-    logger.debug('Scale = {}'.format(insert_entity.scale))
-    logger.debug('Rows = {}'.format(insert_entity.row_count))
-    logger.debug('Cols = {}'.format(insert_entity.col_count))
-    logger.debug('Row spacing = {}'.format(insert_entity.row_spacing))
-    logger.debug('Col spacing = {}'.format(insert_entity.col_spacing))
+    logger.debug('Insert %s entities from block %s',
+                 len(block),
+                 insert_entity.name)
+    logger.debug('Insert = %s', insert_entity.insert)
+    logger.debug('Rotation = %s', insert_entity.rotation)
+    logger.debug('Scale = %s', insert_entity.scale)
+    logger.debug('Rows = %s', insert_entity.row_count)
+    logger.debug('Cols = %s', insert_entity.col_count)
+    logger.debug('Row spacing = %s', insert_entity.row_spacing)
+    logger.debug('Col spacing = %s', insert_entity.col_spacing)
 
     if insert_entity.insert != (0.0, 0.0, 0.0):
         logger.error('Different Location in Insert not supported')
@@ -458,7 +458,7 @@ def read_fem_lines(f, num):
         p2 = fem_points[i2]
         if points_are_close(p1, p2):
             logger.warning("FEMM: Line with points close together")
-            logger.warning("      p1 = {}, p2 = {}".format(p1, p2))
+            logger.warning("      p1 = %s, p2 =%s", p1, p2)
         yield Line(Element(start=p1, end=p2))
 
 
@@ -472,7 +472,7 @@ def read_fem_arcs(f, num):
         p2 = fem_points[i2]
         if points_are_close(p1, p2):
             logger.warning("FEMM: Arc with points close together")
-            logger.warning("      p1 = {}, p2 = {}".format(p1, p2))
+            logger.warning("      p1 = %s, p2 = %s", p1, p2)
         for e in get_fem_arc(p1, p2, alpha):
             yield e
 
@@ -722,7 +722,7 @@ class Geometry(object):
     def add_edge(self, n1, n2, entity):
         if points_are_close(n1, n2):
             logger.debug("WARNING in add_edge(): Points ar close together")
-            logger.debug("        p1 = {}, p2 = {}".format(n1, n2))
+            logger.debug("        p1 = %s, p2 = %s", n1, n2)
 
         entity.set_nodes(n1, n2)
         self.g.add_edge(n1, n2, object=entity)
@@ -821,36 +821,36 @@ class Geometry(object):
 
     def dist_start_max_corner(self):
         logger.debug("begin of dist_start_max_corner")
-        logger.debug("start corners: {}".format(self.start_corners))
+        logger.debug("start corners: %s", self.start_corners)
         d = distance(self.center, self.start_corners[-1])
-        logger.debug("end of dist_start_max_corner: {}".format(d))
+        logger.debug("end of dist_start_max_corner: %s", d)
         return d
 
     def dist_end_max_corner(self):
         logger.debug("begin of dist_end_max_corner")
-        logger.debug("end corners: {}".format(self.end_corners))
+        logger.debug("end corners: %s", self.end_corners)
 
         if self.is_mirrored():
             return self.dist_start_max_corner()
         d = distance(self.center, self.end_corners[-1])
-        logger.debug("end of dist_end_max_corner: {}".format(d))
+        logger.debug("end of dist_end_max_corner: %s", d)
         return d
 
     def dist_start_min_corner(self):
         logger.debug("begin of dist_start_min_corner")
-        logger.debug("start corners: {}".format(self.start_corners))
+        logger.debug("start corners: %s", self.start_corners)
         d = distance(self.center, self.start_corners[0])
-        logger.debug("end of dist_start_min_corner: {}".format(d))
+        logger.debug("end of dist_start_min_corner: %s", d)
         return d
 
     def dist_end_min_corner(self):
         logger.debug("begin of dist_end_min_corner")
-        logger.debug("end corners: {}".format(self.end_corners))
+        logger.debug("end corners: %s", self.end_corners)
 
         if self.is_mirrored():
             return self.dist_start_min_corner()
         d = distance(self.center, self.end_corners[0])
-        logger.debug("end of dist_end_min_corner: {}".format(d))
+        logger.debug("end of dist_end_min_corner: %s", d)
         return d
 
     def repair_hull_line(self, center, angle, corners, with_center):
@@ -859,13 +859,12 @@ class Geometry(object):
         rtol = 1e-4
         atol = 1e-4
 
-        logger.debug("repair_hull_line(center={}, angle={})"
-                     .format(center, angle))
+        logger.debug("repair_hull_line(center=%s, angle=%s)", center, angle)
 
         if len(corners) < 2:
             # no hull without more than 1 corners
-            logger.debug('end of repair_hull_line: only {} corners: EXIT'
-                         .format(len(corners)))
+            logger.debug('end of repair_hull_line: only %s corners: EXIT',
+                         len(corners))
             return
 
         [c.set_keep_node() for c in corners if c.is_equal(center, rtol, atol)]
@@ -873,13 +872,13 @@ class Geometry(object):
             clist_p1 = [c for c in corners if c.is_equal(p1, 0.0, 1e-7)]
             clist_p2 = [c for c in corners if c.is_equal(p2, 0.0, 1e-7)]
             if len(clist_p1) > 1:
-                logger.warning("WARNING in repair_hull_line(): {} corners and p1 close together"
-                               .format(len(clist_p1)))
-                logger.warning("        p1 = {}, p2 = {}".format(p1, p2))
+                logger.warning("WARNING in repair_hull_line(): %s corners and p1 close together",
+                               len(clist_p1))
+                logger.warning("        p1 = %s, p2 = %s", p1, p2)
             if len(clist_p2) > 1:
-                logger.warning("WARNING in repair_hull_line(): {} corners and p2 close together"
-                               .format(len(clist_p2)))
-                logger.warning("        p2 = {}, p1 = {}".format(p2, p1))
+                logger.warning("WARNING in repair_hull_line(): %s corners and p2 close together",
+                               len(clist_p2))
+                logger.warning("        p2 = %s, p1 = %s", p2, p1)
 
             if clist_p1 and clist_p2:
                 # Both points are in the hull
@@ -916,7 +915,7 @@ class Geometry(object):
             [self.g.remove_node(c.point())
              for c in corners if not c.keep_node()]
         except Exception as e:
-            logger.warn("Warning: {}".format(e))
+            logger.warn("Warning: %s", e)
 
         # Rebuild Corner-list after correction
         corners = self.get_corner_list(center, angle, rtol, atol)
@@ -1017,8 +1016,7 @@ class Geometry(object):
         nbrs = [n for n in self.g.neighbors(n2)
                 if not (points_are_close(n, n1) or points_are_close(n, n2))]
         if len(nbrs) == 0:
-            logger.debug("      FATAL: no neighbors of {} available ???"
-                         .format(n2))
+            logger.debug("      FATAL: no neighbors of %s available ???", n2)
             return []
 
         angles = []
@@ -1053,8 +1051,8 @@ class Geometry(object):
                                       radius=min_dist))
                 pt = info1['element'].intersect_circle(circ)
                 if len(pt) != 1:
-                    logger.debug("WARNING: intersect problem at {}"
-                                 .format(info1['n1']))
+                    logger.debug("WARNING: intersect problem at %s",
+                                 info1['n1'])
                     i1_alpha = info1['alpha_n2']
                 else:
                     i1_alpha = alpha_line(info1['n1'], pt[0])
@@ -1064,15 +1062,15 @@ class Geometry(object):
                                       radius=min_dist))
                 pt = info2['element'].intersect_circle(circ)
                 if len(pt) != 1:
-                    logger.debug("WARNING: intersect problem at {}"
-                                 .format(info2['n1']))
+                    logger.debug("WARNING: intersect problem at %s",
+                                 info2['n1'])
                     i2_alpha = info2['alpha_n2']
                 else:
                     i2_alpha = alpha_line(info2['n1'], pt[0])
                 i2_angle = self.get_angle(alpha, i2_alpha)
                 rslt = i1_angle > i2_angle
-                logger.debug("   end of is_lefthand_edge() = {}"
-                             .format(rslt))
+                logger.debug("   end of is_lefthand_edge() = %s",
+                             rslt)
                 return rslt
 
             logger.debug("   ARC - LINE")
@@ -1084,8 +1082,7 @@ class Geometry(object):
                 angle = alpha_angle(angle1, angle2)
                 logger.debug("   NOT close together")
                 rslt = greater(angle, np.pi)
-                logger.debug("   end of is_lefthand_edge() = {}"
-                             .format(rslt))
+                logger.debug("   end of is_lefthand_edge() = %s", rslt)
                 return rslt
 
             next_info2 = self.next_edge_lefthand_side(info2)
@@ -1103,13 +1100,12 @@ class Geometry(object):
         logger.debug("   LINE - ARC")
 
         rslt = not self.is_lefthand_edge(alpha, info2, info1)
-        logger.debug("   end of is_lefthand_edge() = {}".format(rslt))
+        logger.debug("   end of is_lefthand_edge() = %s", rslt)
         return rslt
 
     def next_edge_lefthand_side(self, info_curr):  # current
         alpha = normalise_angle(info_curr['alpha_n2'] + np.pi)
-        logger.debug("   next_edge_lefthand_side( alpha={} )"
-                     .format(alpha))
+        logger.debug("   next_edge_lefthand_side( alpha=%s )", alpha)
 
         nbrs = self.get_edge_neighbors_list(alpha, info_curr)
         if len(nbrs) == 0:
@@ -1122,7 +1118,7 @@ class Geometry(object):
                     return info_next
             raise ValueError("FATAL ERROR in next_edge_lefthand_side() !!")
 
-        logger.debug("   POINT WITH {} NEIGHBORS".format(len(nbrs)-1))
+        logger.debug("   POINT WITH %s NEIGHBORS", len(nbrs)-1)
 
         f_angle, f_c, f_info_next = nbrs[0]
         f_info_next['angle'] = f_angle
@@ -1194,12 +1190,13 @@ class Geometry(object):
         return isinstance(info['element'], Arc)
 
     def log_edge_info(self, info):
-        logger.debug('   node1 = {}'.format(info['n1']))
-        logger.debug('   node2 = {}'.format(info['n2']))
-        logger.debug('   x     = {}'.format(info['x']))
-        logger.debug('   lock  = ({}, {}, {})'.format(info['data'][0],
-                                                      info['data'][1],
-                                                      info['data'][2]))
+        logger.debug('   node1 = %s', info['n1'])
+        logger.debug('   node2 = %s', info['n2'])
+        logger.debug('   x     = %s', info['x'])
+        logger.debug('   lock  = (%s, %s, %s)',
+                     info['data'][0],
+                     info['data'][1],
+                     info['data'][2])
 
     def set_edge_tracked(self, info):
         x = info['x']
@@ -1217,8 +1214,8 @@ class Geometry(object):
         area.append(info_curr['element'])
 
         if info_curr['tracked']:
-            result['msg'] = ("<== area already tracked ({}) ***"
-                             .format(info_curr['x']))
+            result['msg'] = ("<== area already tracked (%s) ***",
+                             info_curr['x'])
             result['area'] = None
             return result
 
@@ -1229,7 +1226,7 @@ class Geometry(object):
         e = info_curr['element']
         if (isinstance(e, Circle) and not isinstance(e, Arc)):
             result['msg'] = "area is a circle !!"
-            logger.debug("<== {}".format(result['msg']))
+            logger.debug("<== %s", result['msg'])
             e_dict = info_curr['data']
             e_dict[1] = True  # footprint
             e_dict[2] = True  # footprint
@@ -1240,7 +1237,7 @@ class Geometry(object):
         if not info_next:
             result['msg'] = ("dead end ({}, {})"
                              .format(info_curr['n1'], info_curr['n2']))
-            logger.debug("<== {}".format(result['msg']))
+            logger.debug("<== %s", result['msg'])
             return result
         self.log_edge_info(info_next)
 
@@ -1257,8 +1254,8 @@ class Geometry(object):
                    nodes_are_equal(next_n2, start_n2)):
             c += 1
             if c > self.num_edges * 2:
-                logger.error("FATAL: *** over {} elements in area ? ***"
-                             .format(self.num_edges))
+                logger.error("FATAL: *** over %s elements in area ? ***",
+                             self.num_edges)
                 plot_area(area)
                 sys.exit(1)
 
@@ -1267,7 +1264,7 @@ class Geometry(object):
             if info_next['tracked']:
                 result['msg'] = ("FATAL: area already tracked ({}) ***"
                                  .format(info_next['x']))
-                logger.debug("<== {}".format(result['msg']))
+                logger.debug("<== %s", result['msg'])
                 result['elements'] = c
                 return result
 
@@ -1278,7 +1275,7 @@ class Geometry(object):
             if not info_next:
                 result['msg'] = ("<== dead end ({},{})"
                                  .format(info_curr['n1'], info_curr['n2']))
-                logger.debug("<== {}".format(result['msg']))
+                logger.debug("<== %s", result['msg'])
                 result['elements'] = c
                 return result
             self.log_edge_info(info_next)
@@ -1297,13 +1294,13 @@ class Geometry(object):
         if alpha < 0.0:
             result['msg'] = ("turn left expected, but it turned right ({})"
                              .format(alpha))
-            logger.debug("<== {}".format(result['msg']))
+            logger.debug("<== %s", result['msg'])
             result['elements'] = c
             result['reverse'] = True
             return result
 
         result['msg'] = "area found !!"
-        logger.debug("<== {}".format(result['msg']))
+        logger.debug("<== %s", result['msg'])
         result['elements'] = c
         result['ok'] = True
         return result
@@ -1618,7 +1615,7 @@ class Geometry(object):
         """ Die Funktion kopiert die Teile von Shape-Objekten, welche sich in
             der durch die Parameter definierten Teilkreisfläche befinden.
         """
-        logger.debug('copy_shape({}, {})'.format(startangle, endangle))
+        logger.debug('copy_shape(%s, %s)', startangle, endangle)
 
         if not rtol:
             rtol = self.rtol
@@ -1730,7 +1727,7 @@ class Geometry(object):
         logger.info("find symmetry")
         arealist = self.list_of_areas()
 
-        logger.info(" - {} areas available".format(len(arealist)))
+        logger.info(" - %s areas available", len(arealist))
         if len(arealist) == 0:
             return False
 
@@ -2014,8 +2011,7 @@ class Geometry(object):
 
         machine = self.get_machine_part(mm)
         if machine:
-            logger.info(" - it is 1/{} of a machine"
-                        .format(machine.part))
+            logger.info(" - it is 1/%s of a machine", machine.part)
             return machine
 
         logger.info("The shape of the Machine is unexpected")
@@ -2057,8 +2053,8 @@ class Geometry(object):
                 if not c1[0] > c2[0]:
                     center = None
 
-        logger.debug("hull center: {}".format(h_center))
-        logger.debug("arc center : {}".format(center))
+        logger.debug("hull center: %s", h_center)
+        logger.debug("arc center : %s", center)
 
         if not center:
             # Wir finden keine Arc-Objekte, welche uns einen Hinweis auf den
@@ -2069,7 +2065,7 @@ class Geometry(object):
             else:
                 center = [round(mm[0], 4), round(mm[2], 4)]
 
-        logger.debug(" - Center is {}".format(center))
+        logger.debug(" - Center is %s", center)
 
         min_radius = 99999
         max_radius = 0
@@ -2080,9 +2076,8 @@ class Geometry(object):
             if not points_are_close(center, h):
                 angle = alpha_line(center, [round(h[0], 4), round(h[1], 4)])
                 if angle < 0.0:
-                    logger.debug(" - strange point {}".format(h))
-                    logger.debug(" - hull-node {} ==> angle = {}"
-                                 .format(h, angle))
+                    logger.debug(" - strange point %s", h)
+                    logger.debug(" - hull-node %s ==> angle = %s", h, angle)
                 startangle = min(startangle, angle)
                 endangle = max(endangle, angle)
 
@@ -2170,7 +2165,6 @@ class Geometry(object):
                 for n in nodes:
                     m = line_m(p, n)
                     if m and m > 0.0:
-                        # print("m = {}, p={}, n={}".format(m, p, n))
                         m_min = min(m_min, m)
 
                 y = line_n([p[0]-center[0], p[1]], m_min)
@@ -2181,7 +2175,7 @@ class Geometry(object):
                        max_radius, angle, np.pi - angle)
 
     def get_center(self, points):
-        logger.debug("Begin of get_center({} points)".format(len(points)))
+        logger.debug("Begin of get_center(%s points)", len(points))
         if len(points) < 3:
             return None
         p1 = points[0]
@@ -2189,23 +2183,23 @@ class Geometry(object):
         p2 = points[1]
         a1 = alpha_line(p1, p2)
 
-        logger.debug(" - p1 = {}".format(p1))
-        logger.debug(" - p2 = {}".format(p2))
+        logger.debug(" - p1 = %s", p1)
+        logger.debug(" - p2 = %s", p2)
 
         lines = []
         for p in points[2:]:
-            logger.debug(" - pn = {}".format(p))
+            logger.debug(" - pn = %s", p)
             a2 = alpha_line(p2, p)
             if not np.isclose(a1, a2):
                 d = distance(p1, p2)
-                logger.debug(" - d = {}: p1/p2 = {}/{}".format(d, p1, p2))
+                logger.debug(" - d = %s: p1/p2 = %s/%s", d, p1, p2)
                 lines.append([d, a1, p1, p2])
                 p1 = p2
                 a1 = a2
             p2 = p
 
         d = distance(p1, p2)
-        logger.debug(" - d = {}: p1/p2 = {}/{}".format(d, p1, p2))
+        logger.debug(" - d = %s: p1/p2 = %s/%s", d, p1, p2)
         lines.append([d, a1, p1, p2])
 
         if np.isclose(lines[0][1], lines[-1][1]):
@@ -2215,12 +2209,12 @@ class Geometry(object):
 
         lines.sort(reverse=True)
         for l in lines:
-            logger.debug(" - Line {}".format(l))
+            logger.debug(" - Line %s", l)
 
         l1 = Line(Element(start=lines[0][2], end=lines[0][3]))
         l2 = Line(Element(start=lines[1][2], end=lines[1][3]))
         center = l1.intersect_line(l2, all=True)
-        logger.debug("End of get_center: {}".format(center))
+        logger.debug("End of get_center: %s", center)
         if center:
             return center[0]
         return None
@@ -2242,7 +2236,7 @@ class Geometry(object):
                 if not self.is_border_line(center,
                                            startangle, endangle,
                                            e, atol):
-                    logger.warning("BAD: Point {}".format(p))
+                    logger.warning("BAD: Point %s", p)
                     self.airgaps.append(Point(p))
                     self.airgaps.append(e)
                     ok = False
@@ -2366,8 +2360,8 @@ class Geometry(object):
 
     def create_auxiliary_lines(self, rightangle, leftangle):
         for area in self.list_of_areas():
-            logger.debug("create_auxiliary_lines for {}"
-                         .format(area.identifier()))
+            logger.debug("create_auxiliary_lines for %s",
+                         area.identifier())
 
             areas_inside = [a for a in self.area_list
                             if area.is_inside(a)]
@@ -2409,8 +2403,8 @@ class Geometry(object):
                     my_areas = lst.values()
                     gap_list = []
                     for a in my_areas:
-                        logger.debug(">> area {} not in touch"
-                                     .format(a.identifier()))
+                        logger.debug(">> area %s not in touch",
+                                     a.identifier())
                         gap_list += area.get_lowest_gap_list(a,
                                                              self.center,
                                                              self.max_radius,
@@ -2436,8 +2430,8 @@ class Geometry(object):
                                 break
 
                         if not intersection:
-                            logger.debug(">> auxiliary line from {} to {}"
-                                         .format(points[0], points[1]))
+                            logger.debug(">> auxiliary line from %s to %s",
+                                         points[0], points[1])
                             add_or_join(self,
                                         points[0],
                                         points[1],
@@ -2480,8 +2474,7 @@ class Geometry(object):
         if not isinstance(n12_el, Line):
             return False
 
-        logger.debug("tiny line from {} to {} deleted"
-                     .format(n0, n2))
+        logger.debug("tiny line from %s to %s deleted", n0, n2)
         self._remove_edge(n0, n1)
         self._remove_edge(n1, n2)
         dict12['deleted'] = True
@@ -2497,8 +2490,8 @@ class Geometry(object):
         edges = [edge for edge in self.g.edges(data=True)
                  if distance(edge[0], edge[1]) < mindist]
         if len(edges) > 0:
-            logger.info("mindist={}: {} tiny elements found"
-                        .format(mindist, len(edges)))
+            logger.info("mindist=%s: %s tiny elements found",
+                        mindist, len(edges))
         deleted = 0
         for edge in edges:
             if edge[2].get('deleted', False):
@@ -2522,7 +2515,7 @@ class Geometry(object):
                     continue
 
         if deleted:
-            logger.info("{} tiny elements deleted".format(deleted))
+            logger.info("%s tiny elements deleted", deleted)
         return
 
     def search_subregions(self):
@@ -2570,16 +2563,17 @@ class Geometry(object):
             wdg_min_dist = min(wdg_min_dist, w.min_dist)
             wdg_max_dist = max(wdg_max_dist, w.max_dist)
 
-        logger.debug("wdg_min_angle: {}".format(wdg_min_angle))
-        logger.debug("wdg_max_angle: {}".format(wdg_max_angle))
-        logger.debug("mirrored     : {}".format(self.is_mirrored()))
+        logger.debug("wdg_min_angle: %s", wdg_min_angle)
+        logger.debug("wdg_max_angle: %s", wdg_max_angle)
+        logger.debug("mirrored     : %s", self.is_mirrored())
 
         # air or iron near windings and near airgap ?
         air_areas = [a for a in self.list_of_areas() if a.type == 9]
         for a in air_areas:
             if a.around_windings(windings):
-                logger.debug(" - air-angle min/max = {}/{}"
-                             .format(a.min_air_angle, a.max_air_angle))
+                logger.debug(" - air-angle min/max = %s/%s",
+                             a.min_air_angle,
+                             a.max_air_angle)
                 if greater_equal(a.min_air_angle, wdg_min_angle):
                     if a.close_to_endangle and self.is_mirrored():
                         a.type = 0  # air
@@ -2630,7 +2624,7 @@ class Geometry(object):
 
         if 4 in types:  # magnet rectangle
             if types[4] > 1:
-                logger.debug("{} magnets in rotor".format(types[4]))
+                logger.debug("%s magnets in rotor", types[4])
 
             for area in self.list_of_areas():
                 if area.type == 3:
@@ -2698,29 +2692,73 @@ class Geometry(object):
         if self.is_mirrored():
             return False
         if len(self.start_corners) != len(self.end_corners):
-            logger.warning("number of corners dont match: {} != {}"
-                           .format(len(self.start_corners),
-                                   len(self.end_corners)))
+            logger.warning("number of corners dont match: %s != %s",
+                           len(self.start_corners),
+                           len(self.end_corners))
             return True
         for i in range(len(self.start_corners)):
             d1 = distance(self.center, self.start_corners[i])
             d2 = distance(self.center, self.end_corners[i])
             if not np.isclose(d1, d2, atol=0.02):
-                logger.warning("distance of corners dont match: {} != {}"
-                               .format(d1, d2))
+                logger.warning("distance of corners dont match: %s != %s",
+                               d1, d2)
                 return True
         return False
 
+    def search_appendices(self):
+        c = 0
+        end_nodes = []
+        for n in self.g.nodes():
+            nbrs = [nbr for nbr in self.g.neighbors(n)]
+            if len(nbrs) == 1:
+                el = self.get_edge_element(n, nbrs[0])
+                if not el:
+                    logger.error("Element not available ?!")
+                    continue
+
+                if not is_Circle(el):
+                    end_nodes.append((n, nbrs[0]))
+
+        for n0, n1 in end_nodes:
+            logger.debug("Critical Node at %s", n0)
+            if self.node_connected(n0):
+                c += 1
+        return c
+
+    def delete_appendices(self):
+        c = 0
+        end_nodes = []
+        for n in self.g.nodes():
+            nbrs = [nbr for nbr in self.g.neighbors(n)]
+            if len(nbrs) == 1:
+                end_nodes.append((n, nbrs[0]))
+
+        for n0, n1 in end_nodes:
+            logger.debug("Deadend Node at %s", n0)
+            c += self.remove_appendix(n0, n1)
+        return c
+
     def search_all_overlapping_elements(self):
         logger.debug("begin of search_all_overlapping_elements")
-
         c = 1
         corr = 0
         while c > 0:
             c = self.search_overlapping_elements()
             corr += c
-        logger.debug("==> {} corrections performed".format(corr))
+        logger.debug("==> %s corrections performed", corr)
         logger.debug("end of search_all_overlapping_elements")
+
+    def search_all_appendices(self):
+        logger.debug("begin of search_all_appendices")
+        corr = self.search_appendices()
+        logger.debug("==> %s appendices connected", corr)
+        logger.debug("end of search_all_appendices")
+
+    def delete_all_appendices(self):
+        logger.debug("begin of delete_all_appendices")
+        corr = self.delete_appendices()
+        logger.debug("==> %s appendices removed", corr)
+        logger.debug("end of delete_all_appendices")
 
     def search_overlapping_elements(self):
         logger.debug("begin of search_overlapping_elements")
@@ -2729,11 +2767,8 @@ class Geometry(object):
         for n in self.g.nodes():
             nbrs = [nbr for nbr in self.g.neighbors(n)]
             if len(nbrs) < 3:
-                if len(nbrs) == 1:
-                    logger.debug("  Appendix found at {}".format(n))
-                    self.remove_appendix(n, nbrs[0])
                 continue
-            logger.debug("  Node {} has {} neighbors".format(n, len(nbrs)))
+            logger.debug("  Node %s has %s neighbors", n, len(nbrs))
             edges = []
             for nbr in nbrs:
                 e_dict = self.g.get_edge_data(n, nbr)
@@ -2751,8 +2786,7 @@ class Geometry(object):
                     for n2, e2 in edges[i+1:]:
                         if self.correct_overlapping(n, n1, e1, n2, e2):
                             count += 1
-        logger.debug("end of search_overlapping_elements(correct={})"
-                     .format(count))
+        logger.debug("end of search_overlapping_elements(correct=%s)", count)
         return count
 
     def correct_overlapping(self, n, n1, e1, n2, e2):
@@ -2777,19 +2811,80 @@ class Geometry(object):
         logger.debug("  corrected")
         self.add_edge(n1, n2, line)
 
-    def remove_appendix(self, n1, n2):
-        e_dict = self.g.get_edge_data(n1, n2)
-        e = e_dict.get('object', None)
-        if not e:
-            return
-        if isinstance(e, Circle):
-            return
+    def connect_arc_or_line(self, n, el, n1, n2, tol=0.01):
+        elements = el.split([n], rtol=tol, atol=tol)
+        if len(elements) != 2:
+            logger.info("Not 2 Elements")
+            logger.info("Node {} in Element {}".format(n, el))
+            for e in elements:
+                logger.info(e)
+        assert(len(elements) == 2)
 
-        logger.info("remove_appendix({}, {})".format(n1, n2))
+        logger.debug("Node %s is in %s", n, el)
+        logger.debug(" => remove from %s to %s", n1, n2)
+        self._remove_edge(n1, n2)
+        for element in elements:
+            if element.is_point_inside(n1,
+                                       rtol=tol,
+                                       atol=tol,
+                                       include_end=True):
+                self.add_edge(n1, n, element)
+            elif element.is_point_inside(n2,
+                                         rtol=tol,
+                                         atol=tol,
+                                         include_end=True):
+                self.add_edge(n2, n, element)
+            else:
+                logger.error("connect_arc_or_line: FATAL ERROR!!")
+                # assert(False)
+
+    def connect_circle(self, n, el, n1, n2, tol=0.01):
+        elements = el.split([n], rtol=tol, atol=tol)
+        assert(len(elements) == 3)
+
+        logger.debug("Node %s is in %s", n, el)
+        logger.debug(" => remove from %s to %s", n1, n2)
+        self._remove_edge(n1, n2)
+        for element in elements:
+            nodes = self.find_nodes(element.start(), element.end())
+            self.add_edge(nodes[0], nodes[1], element)
+
+    def node_connected(self, n):
+        tol = 0.0001
+        for e in self.g.edges(data=True):
+            el = e[2].get('object', None)
+            if el:
+                if el.is_point_inside(n,
+                                      rtol=tol,
+                                      atol=tol,
+                                      include_end=False):
+                    if is_Circle(el):
+                        self.connect_circle(n, el, e[0], e[1], tol=tol)
+                    else:
+                        self.connect_arc_or_line(n, el, e[0], e[1], tol=tol)
+                    return True
+        return False
+
+    def remove_appendix(self, n1, n2, incr_text=''):
+        e_dict = self.g.get_edge_data(n1, n2)
+        if not e_dict:  # already removed
+            return 0
+
+        e = e_dict.get('object', None)
+        if not e:  # unexpected
+            return 0
+
+        if isinstance(e, Circle):
+            if not isinstance(e, Arc):
+                return 0
+
+        logger.debug("%s remove_appendix(%s, %s)", incr_text, n1, n2)
         self.g.remove_edge(n1, n2)
+        c = 1
         nbrs = [nbr for nbr in self.g.neighbors(n2)]
         if len(nbrs) == 1:
-            self.remove_appendix(n2, nbrs[0])
+            c += self.remove_appendix(n2, nbrs[0], incr_text + '.')
+        return c
 
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))
@@ -2806,7 +2901,7 @@ class Geometry(object):
                                                    ts.tm_min,
                                                    ts.tm_sec,
                                                    'txt')
-        logger.info(">>> write nodes {} <<<".format(name))
+        logger.info(">>> write nodes %s <<<", name)
         nodes = []
         for n in self.g.nodes():
             nodes.append(n)

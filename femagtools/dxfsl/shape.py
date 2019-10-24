@@ -1072,3 +1072,15 @@ class Point(Shape):
 
     def render(self, renderer):
         renderer.point(self.p1)
+
+
+def is_Circle(e):
+    return isinstance(e, Circle) and not isinstance(e, Arc)
+
+
+def is_Arc(e):
+    return isinstance(e, Arc)
+
+
+def is_Line(e):
+    return isinstance(e, Line)

@@ -16,7 +16,7 @@ import logging
 import sys
 from .corner import Corner
 from .area import Area
-from .shape import Element, Shape, Circle, Arc, Line, Point
+from .shape import Element, Shape, Circle, Arc, Line, Point, is_Circle
 from .machine import Machine
 from .functions import less_equal, less, greater, greater_equal
 from .functions import distance, alpha_line, alpha_points, alpha_angle
@@ -2711,7 +2711,13 @@ class Geometry(object):
         for n in self.g.nodes():
             nbrs = [nbr for nbr in self.g.neighbors(n)]
             if len(nbrs) == 1:
-                end_nodes.append((n, nbrs[0]))
+                el = self.get_edge_element(n, nbrs[0])
+                if not el:
+                    logger.error("Element not available ?!")
+                    continue
+
+                if not is_Circle(el):
+                    end_nodes.append((n, nbrs[0]))
 
         for n0, n1 in end_nodes:
             logger.debug("Critical Node at %s", n0)
@@ -2805,36 +2811,57 @@ class Geometry(object):
         logger.debug("  corrected")
         self.add_edge(n1, n2, line)
 
+    def connect_arc_or_line(self, n, el, n1, n2, tol=0.01):
+        elements = el.split([n], rtol=tol, atol=tol)
+        if len(elements) != 2:
+            logger.info("Not 2 Elements")
+            logger.info("Node {} in Element {}".format(n, el))
+            for e in elements:
+                logger.info(e)
+        assert(len(elements) == 2)
+
+        logger.debug("Node %s is in %s", n, el)
+        logger.debug(" => remove from %s to %s", n1, n2)
+        self._remove_edge(n1, n2)
+        for element in elements:
+            if element.is_point_inside(n1,
+                                       rtol=tol,
+                                       atol=tol,
+                                       include_end=True):
+                self.add_edge(n1, n, element)
+            elif element.is_point_inside(n2,
+                                         rtol=tol,
+                                         atol=tol,
+                                         include_end=True):
+                self.add_edge(n2, n, element)
+            else:
+                logger.error("connect_arc_or_line: FATAL ERROR!!")
+                # assert(False)
+
+    def connect_circle(self, n, el, n1, n2, tol=0.01):
+        elements = el.split([n], rtol=tol, atol=tol)
+        assert(len(elements) == 3)
+
+        logger.debug("Node %s is in %s", n, el)
+        logger.debug(" => remove from %s to %s", n1, n2)
+        self._remove_edge(n1, n2)
+        for element in elements:
+            nodes = self.find_nodes(element.start(), element.end())
+            self.add_edge(nodes[0], nodes[1], element)
+
     def node_connected(self, n):
+        tol = 0.0001
         for e in self.g.edges(data=True):
             el = e[2].get('object', None)
             if el:
-                if isinstance(el, Circle):
-                    if not isinstance(el, Arc):
-                        return True
-
                 if el.is_point_inside(n,
-                                      rtol=0.001,
-                                      atol=0.001,
+                                      rtol=tol,
+                                      atol=tol,
                                       include_end=False):
-                    elements = el.split([n], rtol=0.001, atol=0.001)
-                    logger.debug("Node %s is in %s", n, el)
-                    logger.debug(" => remove from %s to %s", e[0], e[1])
-                    self._remove_edge(e[0], e[1])
-                    for element in elements:
-                        if element.is_point_inside(e[0],
-                                                   rtol=0.001,
-                                                   atol=0.001,
-                                                   include_end=True):
-                            self.add_edge(e[0], n, element)
-                        elif element.is_point_inside(e[1],
-                                                     rtol=0.001,
-                                                     atol=0.001,
-                                                     include_end=True):
-                            self.add_edge(e[1], n, element)
-                        else:
-                            logger.error("FATAL ERROR!!")
-                            assert(False)
+                    if is_Circle(el):
+                        self.connect_circle(n, el, e[0], e[1], tol=tol)
+                    else:
+                        self.connect_arc_or_line(n, el, e[0], e[1], tol=tol)
                     return True
         return False
 
@@ -2851,7 +2878,7 @@ class Geometry(object):
             if not isinstance(e, Arc):
                 return 0
 
-        logger.debug("%s remove_appendix(%s, %s)",incr_text, n1, n2)
+        logger.debug("%s remove_appendix(%s, %s)", incr_text, n1, n2)
         self.g.remove_edge(n1, n2)
         c = 1
         nbrs = [nbr for nbr in self.g.neighbors(n2)]

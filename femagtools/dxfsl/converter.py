@@ -116,6 +116,7 @@ def convert(dxfile,
 
     basename = os.path.basename(dxfile).split('.')[0]
     logger.info("start reading %s", basename)
+    logger.info("BEGIN of work")
 
     if part:
         if part[0] not in ('rotor', 'stator'):
@@ -165,6 +166,7 @@ def convert(dxfile,
         return dict()
 
     basegeom.search_all_overlapping_elements()
+
     machine_base = basegeom.get_machine()
     if show_plots:
         p.render_elements(basegeom, Shape,
@@ -254,6 +256,7 @@ def convert(dxfile,
 
         machine_inner.delete_tiny_elements(mindist)
         machine_outer.delete_tiny_elements(mindist)
+        logger.info("END of work: %s", basename)
 
         if show_plots:
             p.render_elements(machine_inner.geom, Shape,
@@ -378,6 +381,10 @@ def convert(dxfile,
                                                        part[1])
         else:
             machine.geom.search_subregions()
+
+        machine.delete_tiny_elements(mindist)
+        logger.info("END of work: %s", basename)
+
         if show_plots:
             p.render_elements(machine.geom, Shape,
                               draw_inside=True, title=name,

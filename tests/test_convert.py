@@ -118,11 +118,15 @@ def test_vtu(tmpdir):
 def test_vtu_triangles(tmpdir):
     vtu = str(tmpdir.join("triangles.vtu"))
     convert.to_vtu("tests/data/triangles.ISA7", vtu)
+    with open(vtu) as f:
+        assert len(f.readlines()) == 28
 
 
 def test_vtu_quads(tmpdir):
     vtu = str(tmpdir.join("quads.vtu"))
     convert.to_vtu("tests/data/quads.ISA7", vtu)
+    with open(vtu) as f:
+        assert len(f.readlines()) == 28
 
 
 def test_geo(tmpdir):

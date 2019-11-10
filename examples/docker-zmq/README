@@ -3,7 +3,7 @@ with FEMAG running as a service. This can be done
 either by starting a docker container:
 
   docker run -p 5555:5555 -p 5556:5556 --name femag -d \
-              hub.semafor.ch/profemag/femag:8.4.6
+              hub.semafor.ch/profemag/femag:9
 
 or as an operating system process with a port number argument
 

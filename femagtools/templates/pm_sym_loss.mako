@@ -19,6 +19,7 @@ m.num_par_wdgs    =    ${model.get('num_par_wdgs',1)}
 m.winding_temp    =    ${model.get('wind_temp')}
 m.current         =    1.0
 m.ntibfilename    =    model..'.ntib'
+m.period_frac     =    ${model.get('period_frac', 1)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 

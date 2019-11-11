@@ -26,6 +26,8 @@ m.delta_id        =    ${model['delta_id']}/m.num_par_wdgs
 m.delta_iq        =    ${model['delta_iq']}/m.num_par_wdgs
 
 m.pm_eff_aktiv    =    0.0
+m.calc_noload     =    ${model.get('calc_noload', 1)}
+m.period_frac     =    ${model.get('period_frac', 1)}
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 run_models("psd_psq_fast")
 

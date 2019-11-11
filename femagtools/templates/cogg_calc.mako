@@ -20,6 +20,7 @@ m.num_par_wdgs    =    ${model.get('num_par_wdgs',1)}
 m.nu_force_pat     =  0.0
 
 m.eval_force1     =    ${model.get('eval_force', 0)}
+m.period_frac     =    ${model.get('period_frac', 1)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 

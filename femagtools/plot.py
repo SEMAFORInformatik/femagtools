@@ -660,7 +660,7 @@ def i1beta_ld(i1, beta, ld):
     """creates a surface plot of ld vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
-    _plot_surface(ax, i1, beta, ld,
+    _plot_surface(ax, i1, beta, np.asarray(ld)*1e3,
                   (u'I1/A', u'Beta/°', u'Ld/mH'),
                   azim=60)
     
@@ -669,7 +669,7 @@ def i1beta_lq(i1, beta, lq):
     """creates a surface plot of ld vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
-    _plot_surface(ax, i1, beta, lq,
+    _plot_surface(ax, i1, beta, np.asarray(lq)*1e3,
                   (u'I1/A', u'Beta/°', u'Lq/mH'),
                   azim=60)
 
@@ -741,7 +741,7 @@ def idq_ld(id, iq, ld):
     """creates a surface plot of ld vs. id, iq"""
     _create_3d_axis()
     ax = pl.gca()
-    _plot_surface(ax, id, iq, ld,
+    _plot_surface(ax, id, iq, np.asarray(ld)*1e3,
                   (u'Id/A', u'Iq/A', u'L d/mH'),
                   azim=120)
     
@@ -750,7 +750,7 @@ def idq_lq(id, iq, lq):
     """creates a surface plot of lq vs. id, iq"""
     _create_3d_axis()
     ax = pl.gca()
-    _plot_surface(ax, id, iq, lq,
+    _plot_surface(ax, id, iq, np.asarray(lq)*1e3,
                   (u'Id/A', u'Iq/A', u'L q/mH'),
                   azim=120)
     

@@ -21,7 +21,7 @@ def _from_isa(isa, filename, target_format,
               extrude=0, layers=0, recombine=False):
 
     if not isa.FC_RADIUS:
-        logger.warn("airgap radius is not set in source file")
+        logger.warning("airgap radius is not set in source file")
 
     airgap_center_elements = []
     for e in isa.elements:

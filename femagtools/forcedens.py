@@ -126,6 +126,22 @@ class ForceDensity(object):
                 elif s[0].startswith('POSITION'):
                     self.__read_position(s)
 
+    def fft(self):
+        """return FFT of FN"""
+        import scipy.fftpack
+        try:
+            ntiles = int(360/self.positions[0]['X'][-1])
+            FN = np.tile(
+                np.array([p['FN'][:-1] for p in self.positions[:-1]]),
+                (ntiles, ntiles))
+        except AttributeError:
+            return []
+
+        N = FN.shape[0]
+        fdn = scipy.fftpack.fft2(FN)
+        dim = N//ntiles//2
+        return np.abs(fdn)[1:dim, 1:dim]/N
+    
     def items(self):
         return [(k, getattr(self, k)) for k in ('version',
                                                 'type',
@@ -177,6 +193,7 @@ def readall(workdir='.'):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as pl
+    import femagtools.plot
     import sys
     if len(sys.argv) == 2:
         filename = sys.argv[1]
@@ -184,30 +201,18 @@ if __name__ == "__main__":
         filename = sys.stdin.readline().strip()
 
     fdens = read(filename)
-    
-    pl.title('{}, Rotor position {}'.format(
-        fdens.title, fdens.positions[0]['position']))
-    pl.plot(fdens.positions[0]['X'], [1e-3*ft
-                                      for ft in fdens.positions[0]['FT']],
-            label='F tang')
-    pl.plot(fdens.positions[0]['X'], [1e-3*ft
-                                      for ft in fdens.positions[0]['FN']],
-            label='F norm')
-    pl.legend()
-    pl.show()
 
-    import scipy.fftpack
-    from matplotlib.colors import LogNorm
-
-    fdn = scipy.fftpack.fft2(
-        1e-6*np.array([p['FN']
-                       for p in fdens.positions]))
     # Show the results
-    N = len(fdens.positions[0]['FN'])
-    pl.figure()
-    pl.imshow(np.abs(fdn)/N, norm=LogNorm())
-    pl.xlabel('M harmonics')
-    pl.ylabel('N harmonics')
-    pl.colorbar()
-    pl.title('Force density N/mm2')
+
+    title = '{}, Rotor position {}'.format(
+        fdens.title, fdens.positions[0]['position'])
+    pos = fdens.positions[0]['X']
+    FT_FN = (fdens.positions[0]['FT'],
+             fdens.positions[0]['FN'])
+    femagtools.plot.forcedens(title, pos, FT_FN)    
     pl.show()
+
+    title = 'Force Density Harmonics'
+    femagtools.plot.forcedens_fft(title, fdens)
+    pl.show()
+     

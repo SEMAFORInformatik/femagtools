@@ -228,9 +228,49 @@ def forcedens(title, pos, fdens):
     ax.plot(pos, [1e-3*fn for fn in fdens[1]], label='F norm')
     ax.legend()
     ax.set_xlabel('Pos / deg')
-    ax.set_ylabel('Force Density / N/mm²')
+    ax.set_ylabel('Force Density / kN/m²')
 
-    
+
+def forcedens_surface(fdens):
+    _create_3d_axis()
+    ax = pl.gca()
+    xpos = [p for p in fdens.positions[0]['X']]
+    ypos = [p['position'] for p in fdens.positions]
+    z = 1e-3*np.array([p['FN']
+                       for p in fdens.positions])
+    _plot_surface(ax, xpos, ypos, z,             
+                  (u'Rotor pos/°', u'Pos/°', u'F N / kN/mm²'))
+
+
+def forcedens_fft(title, fdens):
+    """plot force densities FFT
+    Args:
+      title: plot title
+      fdens: force density object
+    """
+    ax = pl.axes(projection="3d")
+
+    F = 1e-3*fdens.fft()
+    fmin = 0.2
+    num_bars = F.shape[0] + 1
+    _xx, _yy = np.meshgrid(np.arange(1, num_bars),
+                           np.arange(1, num_bars))
+    z_size = F[F > fmin]
+    x_pos, y_pos = _xx[F > fmin], _yy[F > fmin]
+    z_pos = np.zeros_like(z_size)
+    x_size = 2
+    y_size = 2
+  
+    ax.bar3d(x_pos, y_pos, z_pos, x_size, y_size, z_size)
+    ax.view_init(azim=120)
+    ax.set_xlim(0, num_bars+1)
+    ax.set_ylim(0, num_bars+1)
+    ax.set_title(title)
+    ax.set_xlabel('M')
+    ax.set_ylabel('N')
+    ax.set_zlabel('kN/m²')
+
+
 def winding_flux(pos, flux):
     """plot flux vs position"""
     ax = pl.gca()
@@ -402,7 +442,7 @@ def mtpv(pmrel, u1max, i1max, title='', projection=''):
         ax.plot(imtpv[1], imtpv[0],
                 color='red', linewidth=2,
                 label='MTPV: {0:5.0f} Nm'.format(np.max(imtpv[2])))
-        beta = np.arctan2(imtpv[1][0], imtpv[0][0])
+        #beta = np.arctan2(imtpv[1][0], imtpv[0][0])
         #b = np.linspace(beta, 0)
         #ax.plot(np.sqrt(2)*i1max*np.sin(b), np.sqrt(2)*i1max*np.cos(b), 'r-')
         
@@ -934,12 +974,25 @@ def main():
     if args.filename.split('.')[-1].startswith('PLT'):
         import femagtools.forcedens
         fdens = femagtools.forcedens.read(args.filename)
+        cols = 1
+        rows = 2
+        fig, ax = pl.subplots(nrows=rows, ncols=cols,
+                              figsize=(10, 10*rows))
         title = '{}, Rotor position {}'.format(
             fdens.title, fdens.positions[0]['position'])
         pos = fdens.positions[0]['X']
-        fdens = (fdens.positions[0]['FT'],
+        FT_FN = (fdens.positions[0]['FT'],
                  fdens.positions[0]['FN'])
-        forcedens(title, pos, fdens)
+        pl.subplot(rows, cols, 1)
+        forcedens(title, pos, FT_FN)
+
+        title = 'Force Density Harmonics'
+        pl.subplot(rows, cols, 2)
+        forcedens_fft(title, fdens)
+        
+        #fig.tight_layout(h_pad=3.5)
+        #if title:
+        #    fig.subplots_adjust(top=0.92)
         pl.show()
         return
     

@@ -8,6 +8,7 @@
 import logging
 import struct
 import sys
+import pdb
 import re
 import numpy as np
 from collections import Counter
@@ -184,8 +185,9 @@ class Reader(object):
         if NUM_FE_EVAL_MOVE_STEP < 0:
             NUM_FE_EVAL_MOVE_STEP = 0
             
-        self.el_fe_induction_1 = [[[]]]
-        self.el_fe_induction_2 = [[[]]]
+        self.el_fe_induction_1 = [[[]], [[]], [[]]]
+        self.el_fe_induction_2 = [[[]], [[]], [[]]]
+        self.eddy_cu_vpot = [[[]], [[]], [[]]]
         self.pos_el_fe_induction = []
         
         if NUM_FE_EVAL_MOVE_STEP > 1:
@@ -209,9 +211,10 @@ class Reader(object):
             self.skip_block()
 
         if NUM_FE_EVAL_MOVE_STEP > 1:
-            self.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
+            for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
+                self.eddy_cu_vpot[0][0].append(self.next_block("h"))
 
-        self.skip_block(2)
+        self.skip_block(2)  # start_winkel, end_winkel
         self.skip_block(2 * 5)
         self.skip_block(15)
         self.skip_block(3 * 30 * 30)
@@ -246,19 +249,21 @@ class Reader(object):
          HI, num_move_ar, self.ANGL_I_UP,
          num_par_wdgs, cur_control) = self.next_block("f")[:8]
         self.NUM_PAR_WDGS = int(num_par_wdgs)
-        self.lfe = arm_length*1e-3
-        
+        self.ARM_LENGTH = arm_length*1e-3  # unit is m
         self.skip_block(2)      
         self.skip_block(30 * 30)
         self.skip_block(30 * 30)
         self.skip_block(1 * 20)
         self.skip_block(10)
-
         FC_NUM_MOVE_LOSSES = self.next_block("i")[0]
 
         if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
-            self.skip_block(2 * (NUM_FE_EVAL_MOVE_STEP + 1))
-            self.skip_block(NUM_FE_EVAL_MOVE_STEP + 1)
+            for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
+                self.el_fe_induction_1[1][0].append(self.next_block("h"))
+                self.el_fe_induction_2[1][0].append(self.next_block("h"))
+            for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
+                self.eddy_cu_vpot[1][0].append(self.next_block("h"))
+            
         # VIRGIN_PM_SYN
         self.skip_block(3)
         # magnet iron 4
@@ -291,34 +296,37 @@ class Reader(object):
         # MOVE_EXTERN
         # MOVE_ARMATURE
         self.skip_block(5)
+
         self.POLPAAR_ZAHL, self.NO_POLES_SIM = self.next_block("i")[:2]
-        self.skip_block(2)
-        self.skip_block(3 * 20 + 2 * 20 * 20)
-        self.skip_block(14)
+        self.SLOT_WIRE_DIAMETER = self.next_block("f")
+        self.SLOT_WIRE_NUMBERS = self.next_block("i")
+        self.skip_block(20*(3 + 2 * 20)) # BASE_FREQUENCY ..
+        self.skip_block(14) # R_TORQUE .. NUM_NOLOAD_EX_CURRENT_STEPS
 
         if (FC_NUM_MOVE_LOSSES > 2 and NUM_FE_EVAL_MOVE_STEP > 1
-           and FC_NUM_BETA_ID > 2):
-            self.skip_block(2 * NUM_FE_EVAL_MOVE_STEP + 1)
-            self.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
-            self.skip_block()
-            self.skip_block(1 * NUM_FE_EVAL_MOVE_STEP + 1)
+            and FC_NUM_BETA_ID > 1):
+            for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
+                self.el_fe_induction_1[2][0].append(self.next_block("h"))
+                self.el_fe_induction_2[2][0].append(self.next_block("h"))
+            for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
+                self.eddy_cu_vpot[2][0].append(self.next_block("h"))
 
         self.skip_block()
-        self.skip_block(2 * 3)
+        self.skip_block(2 * 3)  # MAX_LOSS_EVAL_STEPS
         self.Q_SLOTS_NUMBER, self.M_PHASE_NUMBER = self.next_block("i")[:2]
         self.N_LAYERS_SLOT, self.N_WIRES_PER_SLOT = self.next_block("i")[:2]
         self.skip_block(1)
-        self.skip_block(10 * 100)
+        self.skip_block(10 * 100) # num_index_cad
         self.skip_block(1 * 100)
-        self.skip_block()
-        self.skip_block(1 * 4)
+        self.skip_block() # index_cad
+        self.skip_block(1 * 4) # heat_tranfer_coeff
         self.skip_block(2 * 2)
         self.skip_block()
         self.skip_block(2 * 4)
         self.skip_block(3)
-        self.skip_block(1 * 64)
+        self.skip_block(1 * 64) # bnodes_mech
         self.skip_block(6)
-
+            
         self.ELEM_ISA_ELEM_REC_LOSS_DENS = self.next_block("f")
         self.skip_block(3)
         self.skip_block(1 * 64)
@@ -326,7 +334,7 @@ class Reader(object):
         self.skip_block(20)  # mcmax = 20
         self.skip_block(4)
         self.NUM_SE_MAGN_KEYS = self.next_block("i")[0]
-
+        
     def next_block(self, fmt):
         """
         Read binary data and return unpacked values according to format string.
@@ -359,13 +367,13 @@ class Reader(object):
         self.pos += blockSize + 4
 
         fmt_ = ""
-        for s in re.findall("[0-9]*.|[0-9]*\?", fmt):
+        for s in re.findall(r"[0-9]*.|[0-9]*\?", fmt):
             if len(s) > 1 and s[-1] != "s":
                 fmt_ += int(s[:-1]) * s[-1]
             else:
                 fmt_ += s
         values = []
-        for i, dtype in enumerate(re.findall("\?|[0-9]*s?", fmt_)[:-1]):
+        for i, dtype in enumerate(re.findall(r"\?|[0-9]*s?", fmt_)[:-1]):
             if dtype == "?":
                 values.append([bool(u[i]) for u in unpacked])
             elif "s" in dtype:
@@ -460,7 +468,7 @@ class Isa7(object):
                 self.nodechains.append(
                     NodeChain(nc + 1, nodes))
             except IndexError as ex:
-                logger.warn('IndexError in nodes')
+                logger.warning('IndexError in nodes')
                 raise  # preserve the stack trace
                     
         self.elements = []
@@ -473,7 +481,10 @@ class Isa7(object):
                 ndk = reader.ELE_NOD_ISA_NXT_ND_PNTR[ndk - 1]
 
             vertices = [self.nodes[k - 1] for k in ndkeys]
-
+            try:
+                loss_dens = reader.ELEM_ISA_ELEM_REC_LOSS_DENS[e]
+            except (IndexError, AttributeError):
+                loss_dens = 0
             self.elements.append(
                 Element(e + 1,
                         reader.ELEM_ISA_ELEM_REC_EL_TYP[e],
@@ -483,7 +494,7 @@ class Isa7(object):
                          reader.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
                         (reader.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
                          reader.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
-                        reader.ELEM_ISA_ELEM_REC_LOSS_DENS[e] * 1e-6)
+                        loss_dens * 1e3)   # in W/m³
             )
 
         self.superelements = []
@@ -600,9 +611,14 @@ class Isa7(object):
         self.FC_RADIUS = reader.FC_RADIUS
         self.POLPAAR_ZAHL = reader.POLPAAR_ZAHL
         self.NO_POLES_SIM = reader.NO_POLES_SIM
+        self.ARM_LENGTH = reader.ARM_LENGTH*1e-3  # in m
         self.pos_el_fe_induction = reader.pos_el_fe_induction
-        self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
-        self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000
+        self.el_fe_induction_1 = np.asarray(
+            [e for e in reader.el_fe_induction_1 if e[0]]).T/1000
+        self.el_fe_induction_2 = np.asarray(
+            [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
+        self.eddy_cu_vpot = np.asarray(
+            [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
 
     def get_subregion(self, name):
         """return subregion by name"""
@@ -622,13 +638,13 @@ class Isa7(object):
         return self.elements[k]
 
     def get_super_element(self, x, y):
-        """return element at pos x,y"""
+        """return superelement at pos x,y"""
         e = self.get_element(x, y)
         try:
             return [s for s in self.superelements
                     if e.key in [se.key for se in s.elements]][0]
         except IndexError:
-            return []
+            return None
     
 
 

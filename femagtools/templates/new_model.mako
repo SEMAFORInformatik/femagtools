@@ -4,8 +4,12 @@
   verbosity=${model.get('verbosity', 2)}
 
 model = '${model.get('name')}'
+description = '${model.get('description','')}'
+% if model.get('scratch_mode', 0):
+new_model(model, '', 'scratch')
+% else:
 new_model_force(model, '')
-
+%endif
 
 <%include file="basic_modpar.mako" />
 

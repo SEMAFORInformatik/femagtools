@@ -511,7 +511,8 @@ class PmRelMachineLdq(PmRelMachine):
             return
         
         beta = np.asarray(beta)/180.0*np.pi
-        beta[beta > 0] = beta - 2*np.pi
+        if np.any(beta[beta > 0]):
+            beta[beta > 0] = beta - 2*np.pi
         self.io = iqd((np.min(beta)+max(beta))/2, np.max(i1)/2)
         if 'psid' in kwargs:
             kx = ky = 3

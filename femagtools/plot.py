@@ -151,7 +151,7 @@ def torque(pos, torque):
     f = ip.interp1d(pos, torque, kind='cubic')
     unit = 'Nm'
     scale = 1
-    if min(torque) < -9.9e3 or max(torque) > 9.9e3:
+    if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
         scale = 1e-3
         unit = 'kNm'
     ax = pl.gca()
@@ -159,9 +159,9 @@ def torque(pos, torque):
     ax.grid(True)
     ax.plot(pos, [scale*t for t in torque], 'go')
     ax.plot(alpha, scale*f(alpha))
-    if min(torque) > 0 and max(torque) > 0:
+    if np.min(torque) > 0 and np.max(torque) > 0:
         ax.set_ylim(bottom=0)
-    elif min(torque) < 0 and max(torque) < 0:
+    elif np.min(torque) < 0 and np.max(torque) < 0:
         ax.set_ylim(top=0)
 
 
@@ -169,7 +169,7 @@ def torque_fft(order, torque):
     """plot torque harmonics"""
     unit = 'Nm'
     scale = 1
-    if min(torque) < -9.9e3 or max(torque) > 9.9e3:
+    if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
         scale = 1e-3
         unit = 'kNm'
     ax = pl.gca()
@@ -694,8 +694,13 @@ def i1beta_torque(i1, beta, torque):
     azim = 210
     if 0 < np.mean(beta) or -90 > np.mean(beta):
         azim = -60
-    _plot_surface(ax, i1, beta, torque,
-                  (u'I1/A', u'Beta/°', u'Torque/Nm'),
+    unit = 'Nm'
+    scale = 1
+    if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
+        scale = 1e-3
+        unit = 'kNm'
+    _plot_surface(ax, i1, beta, scale*np.asarray(torque),
+                  (u'I1/A', u'Beta/°', u'Torque/{}'.format(unit)),
                   azim=azim)
 
 
@@ -757,8 +762,13 @@ def idq_torque(id, iq, torque):
     """creates a surface plot of torque vs id, iq"""
     _create_3d_axis()
     ax = pl.gca()
-    _plot_surface(ax, id, iq, torque,
-                  (u'Id/A', u'Iq/A', u'Torque/Nm'),
+    unit = 'Nm'
+    scale = 1
+    if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
+        scale = 1e-3
+        unit = 'kNm'
+    _plot_surface(ax, id, iq, scale*np.asarray(torque),
+                  (u'Id/A', u'Iq/A', u'Torque/{}'.format(unit)),
                   azim=-60)
 
 

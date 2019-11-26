@@ -691,9 +691,12 @@ def i1beta_torque(i1, beta, torque):
     """creates a surface plot of torque vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
+    azim = 210
+    if 0 < np.mean(beta) or -90 > np.mean(beta):
+        azim = -60
     _plot_surface(ax, i1, beta, torque,
                   (u'I1/A', u'Beta/°', u'Torque/Nm'),
-                  azim=210)
+                  azim=azim)
 
 
 def i1beta_ld(i1, beta, ld):
@@ -709,9 +712,12 @@ def i1beta_lq(i1, beta, lq):
     """creates a surface plot of ld vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
+    azim = 60
+    if 0 < np.mean(beta) or -90 > np.mean(beta):
+        azim = -120
     _plot_surface(ax, i1, beta, np.asarray(lq)*1e3,
                   (u'I1/A', u'Beta/°', u'Lq/mH'),
-                  azim=60)
+                  azim=azim)
 
 
 def i1beta_psim(i1, beta, psim):
@@ -727,18 +733,24 @@ def i1beta_psid(i1, beta, psid):
     """creates a surface plot of psid vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
+    azim = -60
+    if 0 < np.mean(beta) or -90 > np.mean(beta):
+        azim = 60
     _plot_surface(ax, i1, beta, psid,
                   (u'I1/A', u'Beta/°', u'Psi d/Vs'),
-                  azim=-60)
+                  azim=azim)
 
 
 def i1beta_psiq(i1, beta, psiq):
     """creates a surface plot of psiq vs i1, beta"""
     _create_3d_axis()
     ax = pl.gca()
+    azim = 210
+    if 0 < np.mean(beta) or -90 > np.mean(beta):
+        azim = -60
     _plot_surface(ax, i1, beta, psiq,
                   (u'I1/A', u'Beta/°', u'Psi q/Vs'),
-                  azim=210)
+                  azim=azim)
 
 
 def idq_torque(id, iq, torque):

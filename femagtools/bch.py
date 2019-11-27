@@ -161,6 +161,7 @@ class Reader:
             'PSID-Psiq-Identification': Reader.__read_psidq,
             'Ld-Lq-Identifikation aus PSID-Psiq-Identification':
             Reader.__read_psidq_ldq,
+            'Ld-Lq-Identification': Reader.__read_ldq,
             'Ld-Lq-Identification RMS-values': Reader.__read_ldq,
             'Machine Data Rotor': Reader.__read_dummy,
             'Current Angles defined from no-load test':
@@ -751,47 +752,53 @@ class Reader:
 
         if i1beta:
             ncols = len(beta)
+            if ncols:
+                nrows = len(Ba)//ncols
+            else:
+                nrows = len(i1)
             self.airgapInduction['beta'] = beta
-            self.airgapInduction['i1'] = i1
-            nrows = len(self.airgapInduction['i1'])
+            self.airgapInduction['i1'] = i1[:nrows]
         else:
             ncols = len(iq)
             self.airgapInduction['iq'] = iq
             self.airgapInduction['id'] = id
             nrows = len(self.airgapInduction['id'])
-            
-        self.airgapInduction['an'] = [np.reshape(an[j][:nrows*ncols],
-                                                 (nrows, ncols)).T.tolist()
-                                      for j in (0, 1, 2, 3)]
-        self.airgapInduction['bn'] = [np.reshape(bn[j][:nrows*ncols],
-                                                 (nrows, ncols)).T.tolist()
-                                      for j in (0, 1, 2, 3)]
-        self.airgapInduction['Bm'] = np.reshape(Bm[:nrows*ncols],
-                                                (nrows, ncols)).T.tolist()
-        self.airgapInduction['Ba'] = np.reshape(Ba[:nrows*ncols],
-                                                (nrows, ncols)).T.tolist()
-        # check for nan:
-        if len(self.airgapInduction['an'][0]) > 1 and \
-          len(self.airgapInduction['an'][0][0]) != len(self.airgapInduction['an'][0][1]):
-            self.airgapInduction['an'] = [self.airgapInduction['an'][i][1:]
-                                          for i in range(3)]
-            self.airgapInduction['bn'] = [self.airgapInduction['bn'][i][1:]
-                                          for i in range(3)]
-            self.airgapInduction['Ba'] = self.airgapInduction['Ba'][1:]
-            self.airgapInduction['Bm'] = self.airgapInduction['Bm'][1:]
 
-        if len(self.airgapInduction['an'][0]) > 1 and \
-           len(list(filter(lambda x: np.isnan(x),
-                           list(zip(*self.airgapInduction['an'][0]))[0]))) > 0:
-            self.airgapInduction['an'] = [self.airgapInduction['an'][i][1:]
-                                          for i in range(3)]
-            self.airgapInduction['bn'] = [self.airgapInduction['bn'][i][1:]
-                                          for i in range(3)]
-            self.airgapInduction['Ba'] = zip(*zip(*self.airgapInduction['Ba'])
-                                             [1:])
-            self.airgapInduction['Bm'] = zip(*zip(*self.airgapInduction['Bm'])
-                                             [1:])
-
+        try:
+            self.airgapInduction['an'] = [np.reshape(an[j][:nrows*ncols],
+                                                     (nrows, ncols)).T.tolist()
+                                          for j in (0, 1, 2, 3)]
+            self.airgapInduction['bn'] = [np.reshape(bn[j][:nrows*ncols],
+                                                     (nrows, ncols)).T.tolist()
+                                          for j in (0, 1, 2, 3)]
+            self.airgapInduction['Bm'] = np.reshape(Bm[:nrows*ncols],
+                                                    (nrows, ncols)).T.tolist()
+            self.airgapInduction['Ba'] = np.reshape(Ba[:nrows*ncols],
+                                                (nrows, ncols)).T.tolist()
+            # check for nan:
+            if len(self.airgapInduction['an'][0]) > 1 and \
+               len(self.airgapInduction['an'][0][0]) != len(self.airgapInduction['an'][0][1]):
+                self.airgapInduction['an'] = [self.airgapInduction['an'][i][1:]
+                                              for i in range(3)]
+                self.airgapInduction['bn'] = [self.airgapInduction['bn'][i][1:]
+                                              for i in range(3)]
+                self.airgapInduction['Ba'] = self.airgapInduction['Ba'][1:]
+                self.airgapInduction['Bm'] = self.airgapInduction['Bm'][1:]
+                
+                if len(self.airgapInduction['an'][0]) > 1 and \
+                   len(list(filter(lambda x: np.isnan(x),
+                                   list(zip(*self.airgapInduction['an'][0]))[0]))) > 0:
+                    self.airgapInduction['an'] = [self.airgapInduction['an'][i][1:]
+                                                  for i in range(3)]
+                    self.airgapInduction['bn'] = [self.airgapInduction['bn'][i][1:]
+                                                  for i in range(3)]
+                    self.airgapInduction['Ba'] = zip(*zip(*self.airgapInduction['Ba'])
+                                                     [1:])
+                    self.airgapInduction['Bm'] = zip(*zip(*self.airgapInduction['Bm'])
+                                                     [1:])
+        except ValueError:
+            print(self.airgapInduction['i1'])
+    
     def __read_torque_force(self, content):
         "read and append force/torque section"
 
@@ -1225,10 +1232,13 @@ class Reader:
         #                 45.041	      0.000	     17.556
         if self.weights:
             return
+        scale = 1  # assume kg unit
+        if content[0].split()[-1] == '[gr]':
+                scale = 1e-3
         for line in content[2:]:
             rec = line.split()
             if rec[0] != 'Stator-Iron' and rec[0] != 'Rotor-Iron':
-                self.weights.append([floatnan(x) for x in rec])
+                self.weights.append([scale*floatnan(x) for x in rec])
 
     def __read_areas(self, content):
         #  Area [mm**2]: Stator-Iron           - slots         - Magnets

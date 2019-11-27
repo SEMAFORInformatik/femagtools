@@ -2600,6 +2600,7 @@ class Geometry(object):
                             a.type = 6  # iron shaft (Zahn)
 
     def search_rotor_subregions(self, place=''):
+        logger.debug("begin of search_rotor_subregions")
         is_inner = self.is_inner
         if place == 'in':
             is_inner = True
@@ -2624,11 +2625,21 @@ class Geometry(object):
 
         if 4 in types:  # magnet rectangle
             if types[4] > 1:
-                logger.debug("%s magnets in rotor", types[4])
+                logger.debug("%s embedded magnets in rotor", types[4])
+                emb_mag_areas = [a for a in self.list_of_areas()
+                                 if a.type == 4]
+                [a.set_surface(self.is_mirrored()) for a in emb_mag_areas]
+                max_surface = 0.0
+                for a in emb_mag_areas:
+                    max_surface = max(max_surface, a.surface)
+
+                for a in emb_mag_areas:
+                    if a.surface < max_surface * 0.20:  # too small
+                        a.set_type(0)  # air
 
             for area in self.list_of_areas():
                 if area.type == 3:
-                    area.type = 1  # iron
+                    area.type(1)  # iron
 
         iron_mag_areas = [a for a in self.list_of_areas() if a.type == 9]
         air_mag_areas = [a for a in self.list_of_areas() if a.type == 8]
@@ -2667,14 +2678,37 @@ class Geometry(object):
                 for c, phi, a_lst in phi_list[first:]:
                     for a in a_lst:
                         a.set_type(0)
+        logger.debug("end of search_rotor_subregions")
 
     def search_unknown_subregions(self):
+        logger.debug("begin of search_unknown_subregions")
+        types = {}
         for area in self.list_of_areas():
-            area.mark_unknown_subregions(self.is_mirrored(),
-                                         self.alfa,
-                                         self.center,
-                                         self.min_radius,
-                                         self.max_radius)
+            t = area.mark_unknown_subregions(self.is_mirrored(),
+                                             self.alfa,
+                                             self.center,
+                                             self.min_radius,
+                                             self.max_radius)
+            if t in types:
+                types[t] += 1
+            else:
+                types[t] = 1
+
+        if 4 in types:  # magnet rectangle
+            if types[4] > 1:
+                logger.debug("%s embedded magnets in rotor", types[4])
+                emb_mag_areas = [a for a in self.list_of_areas()
+                                 if a.type == 4]
+                [a.set_surface(self.is_mirrored()) for a in emb_mag_areas]
+                max_surface = 0.0
+                for a in emb_mag_areas:
+                    max_surface = max(max_surface, a.surface)
+
+                for a in emb_mag_areas:
+                    if a.surface < max_surface * 0.20:  # too small
+                        a.set_type(0)  # air
+
+        logger.debug("begin of search_unknown_subregions")
         return
 
     def num_areas_of_type(self, type):

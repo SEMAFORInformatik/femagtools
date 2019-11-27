@@ -186,6 +186,9 @@ class Shape(object):
         logger.debug("end of minmax_angle_dist_from_center")
         return (my_min_angle, my_max_angle)
 
+    def print_nodes(self):
+        return " n1={}/n2={}".format(self.n1, self.n2)
+
     def __str__(self):
         return " {}/{}".format(self.p1, self.p2)
 

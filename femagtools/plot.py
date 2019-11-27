@@ -607,6 +607,7 @@ def cogging(bch, title=''):
     """creates a cogging plot"""
     cols = 2
     rows = 3
+
     htitle = 1.5 if title else 0
     fig, ax = pl.subplots(nrows=rows, ncols=cols,
                           figsize=(10, 3*rows + htitle))
@@ -618,7 +619,8 @@ def cogging(bch, title=''):
     if bch.torque:
         torque(bch.torque[0]['angle'], bch.torque[0]['torque'])
         pl.subplot(rows, cols, row+1)
-        torque_fft(bch.torque_fft[0]['order'], bch.torque_fft[0]['torque'])
+        if bch.torque_fft:
+            torque_fft(bch.torque_fft[0]['order'], bch.torque_fft[0]['torque'])
         pl.subplot(rows, cols, row+2)
         force('Force Fx',
               bch.torque[0]['angle'], bch.torque[0]['force_x'])

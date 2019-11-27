@@ -482,6 +482,11 @@ class ZmqFemag(BaseFemag):
         Args:
             options: list of FEMAG options
         """
+        if self.cmd.startswith('wfemag') and \
+           '-b' in options and \
+           '-m' not in options:
+            options.insert(0, '-m')
+
         args = [self.cmd] + options
 
         if self.__is_running():

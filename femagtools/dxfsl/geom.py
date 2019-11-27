@@ -2630,12 +2630,21 @@ class Geometry(object):
                                  if a.type == 4]
                 [a.set_surface(self.is_mirrored()) for a in emb_mag_areas]
                 max_surface = 0.0
+                max_phi = 0.0
                 for a in emb_mag_areas:
-                    max_surface = max(max_surface, a.surface)
+                    if a.surface > max_surface:
+                        max_phi = a.phi
+                        max_surface = a.surface
 
                 for a in emb_mag_areas:
                     if a.surface < max_surface * 0.20:  # too small
-                        a.set_type(0)  # air
+                        logger.debug("embedded magnet too small: convert to air")
+                        logger.debug("max surface : %s", max_surface)
+                        logger.debug("area surface: %s", a.surface)
+                        logger.debug("max phi     : %s", max_phi)
+                        logger.debug("area phi    : %s", a.phi)
+                        if not np.isclose(a.phi, max_phi):
+                            a.set_type(0)  # air
 
             for area in self.list_of_areas():
                 if area.type == 3:

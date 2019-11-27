@@ -155,7 +155,9 @@ def convert(dxfile,
     p = PlotRenderer()
 
     if view_only:
+        logger.info("View only")
         if view_korr:
+            logger.info("With Corrections")
             basegeom.search_all_overlapping_elements()
             basegeom.search_all_appendices()
 
@@ -211,7 +213,7 @@ def convert(dxfile,
                           rows=3, cols=2, num=2, show=False)
 
     machine.repair_hull()
-    machine.geom.delete_appendices()
+    machine.geom.delete_all_appendices()
 
     if machine.has_airgap():
         machine_inner = machine.copy(0.0, 2*np.pi, True, True)
@@ -458,8 +460,20 @@ def create_femag_parameters(m_inner, m_outer):
                               num_slots, num_poles)
     params['alfa_slot'] = alfa_slot
     params['alfa_pole'] = alfa_pole
-    assert(np.isclose(alfa_slot * num_slots,
-                      alfa_pole * num_poles))
+
+    if num_slots == 0 or num_poles == 0:
+        if num_slots == 0:
+            logger.warning("No slots found")
+        if num_poles == 0:
+            logger.warning("No poles found")
+        logger.warning("Model not ready for femag")
+        return {'error': "Model not ready for femag"}
+
+    if not np.isclose(alfa_slot * num_slots,
+                      alfa_pole * num_poles):
+        logger.warning("slots and poles dont match")
+        return {'error': "Model not ready for femag"}
+
     return params
 
 

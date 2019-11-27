@@ -54,6 +54,7 @@ class Area(object):
         self.symmetry = 0
         self.sym_tolerance = sym_tolerance
         self.calc_signature(center)
+        self.surface = 0.0
         global area_number
         area_number += 1
         self.id = area_number
@@ -1011,6 +1012,9 @@ class Area(object):
             logger.debug(">>> air is a circle")
             return self.type
 
+        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
+        self.close_to_endangle = np.isclose(self.max_angle, alpha)
+
         if self.is_mag_rectangle():
             self.type = 4  # magnet embedded
             logger.debug(">>> magnet embedded")
@@ -1025,9 +1029,6 @@ class Area(object):
             logger.debug(">>> iron close to min- and max-radius")
             return self.type
 
-        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
-        self.close_to_endangle = np.isclose(self.max_angle, alpha)
-
         if self.close_to_startangle and self.close_to_endangle:
             self.type = 1  # iron
             logger.debug(">>> iron close to start- and end-angle")
@@ -1036,6 +1037,62 @@ class Area(object):
         self.type = 0  # air
         logger.debug(">>> air remains")
         return self.type
+
+    def set_surface(self, mirrored):
+        logger.debug("begin of set_surface")
+        if len(self.area) < 2:
+            self.surface = 0.0
+            logger.debug("end of set_surface: 0.0")
+            return
+
+        nodes = []
+        e0 = self.area[0]
+        e1 = self.area[1]
+
+        logger.debug("Nodes of e0: %s", e0.print_nodes())
+        logger.debug("Nodes of e1: %s", e1.print_nodes())
+
+        try:
+            e1.get_node_number(e0.n1)
+        except ValueError:
+            nx = e0.n2
+        else:
+            nx = e0.n1
+        nodes.append(nx)
+
+        try:
+            for e1 in self.area[1:]:
+                logger.debug("Nodes of e1: %s", e1.print_nodes())
+                if e1.get_node_number(nx) == 1:
+                    nx = e1.n2
+                else:
+                    nx = e1.n1
+                nodes.append(nx)
+        except Exception:
+            return 0.0  # failed
+        nodes.append(nodes[0])
+
+        for n in nodes:
+            logger.debug(" == %s", n)
+
+        x = [n[0] for n in nodes]
+        y = [n[1] for n in nodes]
+
+        logger.debug(" -- x = %s", x)
+        logger.debug(" -- y = %s", y)
+
+        s = 0.0
+        for i in range(len(x) - 1):
+            s += x[i] * y[i+1] - y[i] * x[i+1]
+
+        logger.debug("==== endangle = %s", self.close_to_endangle)
+        logger.debug("==== mirrored = %s", mirrored)
+
+        if self.close_to_endangle and mirrored:
+            self.surface = np.absolute(s)
+        else:
+            self.surface = np.absolute(s/2)
+        logger.debug("end of set_surface: %s", self.surface)
 
     def print_area(self):
         center = [0.0, 0.0]

@@ -2639,7 +2639,7 @@ class Geometry(object):
 
             for area in self.list_of_areas():
                 if area.type == 3:
-                    area.type(1)  # iron
+                    area.set_type(1)  # iron
 
         iron_mag_areas = [a for a in self.list_of_areas() if a.type == 9]
         air_mag_areas = [a for a in self.list_of_areas() if a.type == 8]

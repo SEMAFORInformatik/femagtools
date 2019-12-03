@@ -2854,7 +2854,7 @@ class Geometry(object):
         logger.debug("  corrected")
         self.add_edge(n1, n2, line)
 
-    def connect_arc_or_line(self, n, el, n1, n2, tol=0.01):
+    def connect_arc_or_line(self, n, el, n1, n2, tol=1e-05):
         elements = el.split([n], rtol=tol, atol=tol)
         if len(elements) != 2:
             logger.info("Not 2 Elements")
@@ -2863,23 +2863,36 @@ class Geometry(object):
                 logger.info(e)
         assert(len(elements) == 2)
 
-        logger.debug("Node %s is in %s", n, el)
+        logger.debug("HIT! Node %s is in %s", n, el)
         logger.debug(" => remove from %s to %s", n1, n2)
         self._remove_edge(n1, n2)
+
         for element in elements:
-            if element.is_point_inside(n1,
-                                       rtol=tol,
-                                       atol=tol,
-                                       include_end=True):
-                self.add_edge(n1, n, element)
-            elif element.is_point_inside(n2,
-                                         rtol=tol,
-                                         atol=tol,
-                                         include_end=True):
-                self.add_edge(n2, n, element)
+            logger.debug("Split: %s", element)
+
+        rtol = tol
+        atol = tol
+
+        for element in elements:
+            n1_inside = element.is_point_inside(n1,
+                                                rtol=rtol,
+                                                atol=atol,
+                                                include_end=True)
+            n2_inside = element.is_point_inside(n2,
+                                                rtol=rtol,
+                                                atol=atol,
+                                                include_end=True)
+            if n1_inside and n2_inside:
+                logger.error("FATAL: both inside %s", element)
+            elif not (n1_inside or n2_inside):
+                logger.error("FATAL: neither is inside %s", element)
             else:
-                logger.error("connect_arc_or_line: FATAL ERROR!!")
-                # assert(False)
+                if n1_inside:
+                    logger.debug(" <= #1 add from %s to %s", n1, n)
+                    self.add_edge(n1, n, element)
+                else:
+                    logger.debug(" <= #2 add from %s to %s", n2, n)
+                    self.add_edge(n2, n, element)
 
     def connect_circle(self, n, el, n1, n2, tol=0.01):
         elements = el.split([n], rtol=tol, atol=tol)

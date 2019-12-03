@@ -691,20 +691,30 @@ class Arc(Circle):
     def is_point_inside(self, p, rtol=1e-03, atol=1e-03, include_end=False):
         """ returns true if p is on arc
         """
+        logger.debug("is_point_inside: p=%s", p)
         d = distance(p, self.center)
-        if not np.isclose(d, self.radius):
+        if not np.isclose(d, self.radius, rtol=rtol, atol=atol):
+            logger.debug(" <== RADIUS %s, DISTANCE %s",
+                         self.radius, d)
             return False
-        if points_are_close(p, self.p1, rtol, atol):
+        if points_are_close(p, self.p1, rtol=rtol, atol=atol):
+            logger.debug(" <== CLOSE TO P1 %s: rtol=%s, atol=%s",
+                         self.p1, rtol, atol)
             return include_end
-        elif points_are_close(p, self.p2, rtol, atol):
+        elif points_are_close(p, self.p2, rtol=rtol, atol=atol):
+            logger.debug(" <== CLOSE TO P2 %s: rtol=%s, atol=%s",
+                         self.p2, rtol, atol)
             return include_end
-        elif points_are_close(self.p1, self.p2, rtol, atol):
+        elif points_are_close(self.p1, self.p2, rtol=rtol, atol=atol):
+            logger.debug(" <== P1 AND P2 CLOSE TOGETHER")
             return False
 
         alpha_p1 = alpha_line(self.center, self.p1)
         alpha_p2 = alpha_line(self.center, self.p2)
         alpha_p = alpha_line(self.center, p)
         alpha_inside = is_angle_inside(alpha_p1, alpha_p2, alpha_p)
+        logger.debug("is_point_inside: %s (%s, %s ,%s)",
+                     alpha_inside, alpha_p1, alpha_p2, alpha_p)
         return alpha_inside
 
     def is_angle_inside(self, alpha, rtol=1e-03, atol=1e-03,
@@ -819,7 +829,7 @@ class Arc(Circle):
         return get_angle_of_arc(self.startangle, self.endangle)
 
     def __str__(self):
-        return "Arc c={}, r={} start={}, end={}, p1={}, p2={}".\
+        return "Arc c={},\n\t r={},\n\t start={},\n\t end={},\n\t p1={},\n\t p2={}".\
             format(self.center,
                    self.radius, self.startangle,
                    self.endangle,

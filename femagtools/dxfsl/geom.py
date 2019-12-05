@@ -770,6 +770,28 @@ class Geometry(object):
     def lines(self):
         """return lists of lines"""
         return self.elements(Line)
+    
+    def split_lines_longer_than(self, length):
+        """split lines longer than length"""
+        new_lines = []
+        rem_lines = []
+        for p1, p2, data in [e for e in self.g.edges(data=True)
+                             if isinstance(e[2]['object'], Line)]:
+            l = data['object']
+            if l.length() > length:
+                p = l.center_of_connection()
+                new_lines += l.split([p])
+                rem_lines.append((p1, p2))
+
+        for p1, p2 in rem_lines:
+            self._remove_edge(p1, p2)
+        for l in new_lines:
+            add_or_join(self,
+                        l.node1(ndec),
+                        l.node2(ndec),
+                        l,
+                        self.rtol,
+                        self.atol)
 
     def circles(self):
         """return list of circle nodes"""

@@ -104,6 +104,7 @@ def convert(dxfile,
             airgap2=0.0,
             da=0.0,
             dy=0.0,
+            nodedist=1,
             view_only=False,
             view_korr=False,
             show_plots=False,
@@ -317,7 +318,8 @@ def convert(dxfile,
                 conv['fsl_rotor'] = outer
 
             params = create_femag_parameters(machine_inner,
-                                             machine_outer)
+                                             machine_outer,
+                                             nodedist)
 
             conv.update(params)
             conv['fsl'] = fslrenderer.render_main(
@@ -424,7 +426,7 @@ def convert(dxfile,
     return conv
 
 
-def create_femag_parameters(m_inner, m_outer):
+def create_femag_parameters(m_inner, m_outer, nodedist=1):
     if not (m_inner and m_outer):
         return {}
 
@@ -451,13 +453,15 @@ def create_femag_parameters(m_inner, m_outer):
     params['tot_num_slot'] = num_slots
     params['num_sl_gen'] = num_sl_gen
     params['num_poles'] = num_poles
+    params['nodedist'] = nodedist
 
     params['dy1'] = 2*geom_outer.max_radius
     params['da1'] = 2*geom_outer.min_radius
     params['da2'] = 2*geom_inner.max_radius
     params['dy2'] = 2*geom_inner.min_radius
     params['agndst'] = agndst(params['da1'], params['da2'],
-                              num_slots, num_poles)
+                              num_slots, num_poles,
+                              nodedist)
     params['alfa_slot'] = alfa_slot
     params['alfa_pole'] = alfa_pole
 

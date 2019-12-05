@@ -266,6 +266,7 @@ class Builder:
         params['show_plots'] = model.dxffile.get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = model.dxffile.get('airgap', 0.0)
+        params['nodedist'] = model.dxffile.get('nodedist', 1)
 
         conv = convert(dxfname, **params)
 

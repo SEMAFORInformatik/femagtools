@@ -39,7 +39,7 @@ def agndst2(da1, da2, Q, p):
     return a[0]
 
 
-def agndst(da1, da2, Q, p):
+def agndst(da1, da2, Q, p, nodedist=1):
     """ build agndst from set of useful node angles:  
         4°, 2°, 1.5°, 1°, 0.75°, 0.5°, 0.25, 0.1, 0.05° """
     dagset = [np.pi/45, np.pi/90, np.pi/120, np.pi/180,
@@ -47,6 +47,10 @@ def agndst(da1, da2, Q, p):
     r = (da1 + da2)/4
     ag = abs(da1 - da2)/6
     i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
+    if nodedist > 1 and i > 1:
+        return dagset[i-2]*r
+    elif nodedist < 1:
+        return dagset[i]*r
     return dagset[i-1]*r
 
 
@@ -113,39 +117,33 @@ class FslRenderer(object):
 
     def sorted_elements(self, geom, inner=False):
         if inner:
-            # Abstand von airgap Richtung Nullpunkt
-            el_sorted = [(geom.max_radius -
-                          e.minmax_from_center((0.0, 0.0))[1], e)
-                         for e in geom.elements(Shape)]
+            r = geom.max_radius
         else:
-            # Abstand von airgap Richtung Aussen
-            el_sorted = [(e.minmax_from_center((0.0, 0.0))[0] -
-                          geom.min_radius, e)
-                         for e in geom.elements(Shape)]
-
-        el_sorted.sort()
-        return el_sorted
+            r = geom.min_radius
+            
+        # return sorted list of distances from airgap and elements
+        return sorted([(abs(r - np.linalg.norm(e.center_of_connection())), e)
+                       for e in geom.elements(Shape)])
 
     def render(self, machine, inner=False, outer=False):
         '''create fsl statements with nodechains'''
         machine.set_alfa_and_corners()
         geom = machine.geom
+        geom.split_lines_longer_than(geom.max_radius/4)
         self.content = []
 
-        ndt_list = [(0.25, 1.5), (0.5, 2), (0.75, 3.0), (1.1, 3.0)]
+        ndt_list = [(0.2, 1.5), (0.45, 2), (0.7, 3.0), (1.1, 3.0)]
         dist = geom.max_radius - geom.min_radius
         el_sorted = self.sorted_elements(geom, inner)
 
-        x = 0
+        n = 0
         for d, e in el_sorted:
             d_percent = d / dist
-            if ndt_list[x][0] < d_percent:
+            if ndt_list[n][0] < d_percent:
                 self.content.append(u'\nndt({}*agndst)\n'.
-                                    format(ndt_list[x][1]))
-                while len(ndt_list) and ndt_list[x][0] < d_percent:
-                    x += 1
-#            self.content.append(u'-- d={} / dist={} == {}'.
-#                                format(d, dist, d_percent))
+                                    format(ndt_list[n][1]))
+                while len(ndt_list) and ndt_list[n][0] < d_percent:
+                    n += 1
             e.render(self)
 
         self.content.append(u'\n')

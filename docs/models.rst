@@ -600,7 +600,7 @@ num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0
 period_frac     Rotate Fraction of Period       1
-vtu_move        Create VTU files                False
+vtu_movie       Create VTU files                False
 ==============  ============================= ==========  ============
    
 Example::
@@ -634,7 +634,7 @@ explicit_mode   Deactivate rotation correction          0
 plots           Create plots                            []
 airgap_induc    calculate airgap induction              False
 period_frac     Rotate Fraction of Period               1
-vtu_move        Create VTU files                        False
+vtu_movie       Create VTU files                        False
 ==============  ======================================= ========  ============
 
 .. Note::

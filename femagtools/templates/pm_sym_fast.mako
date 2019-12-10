@@ -57,5 +57,9 @@ m.calc_noload     =    ${model.get('calc_noload', 1)}
 m.period_frac     =    ${model.get('period_frac', 1)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
-
+% if model.get('vtu_movie'):
+m.movie_type = 'vtu'
+% else:
+m.movie_type = nil
+% endif
 run_models("pm_sym_fast")

@@ -23,5 +23,9 @@ m.eval_force1     =    ${model.get('eval_force', 0)}
 m.period_frac     =    ${model.get('period_frac', 1)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
-
+% if model.get('vtu_movie'):
+m.movie_type = 'vtu'
+% else:
+m.movie_type = nil
+% endif
 run_models("cogg_calc")

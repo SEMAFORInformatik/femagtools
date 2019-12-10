@@ -173,6 +173,7 @@ coil_span       coil span
 num_layers      number of layers
 cufilfact       Fill factor of copper          0.45
 culength        rel length of conductor        1.4
+cuconduc        conductivity (S/m)             56e6
 slot_indul      insulation thickness in slot   0.0 
 ============    ============================  =======
 
@@ -548,12 +549,12 @@ Parameter         Description                   Default      Unit
 ==============   ============================== ==========  ========
 name              Name of magnet material
 mcvkey            name of nonlinear B(H) curve
-orient            Magnetizing orientation       mpolaniso
+orient            Magnetizing orientation        cartiso
 rlen              Relative length                1.0
 remanenc          Remanence Induction Br                    T
 relperm           Relative Permeability
 spmaweight        Specific Mass                  7500       kg/m³
-temcoefbr         Temperature Coefficient of Br  -0.001     T/K 
+temcoefbr         Temperature Coefficient of Br  -0.001     1/K 
 temcoefhc         Temperature Coefficient of Hc  -0.001     A/m/K
 magntemp          Magnet Temperature             20         °C      
 magncond          Electr. Conductivity           625000      S/m    
@@ -598,6 +599,8 @@ magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
 num_par_wdgs    Number of parallel windings     1      
 eval_force      Evaluate force                  0
+period_frac     Rotate Fraction of Period       1
+vtu_move        Create VTU files                False
 ==============  ============================= ==========  ============
    
 Example::
@@ -630,6 +633,8 @@ range_phi       Rotation angle                          360/p      deg
 explicit_mode   Deactivate rotation correction          0
 plots           Create plots                            []
 airgap_induc    calculate airgap induction              False
+period_frac     Rotate Fraction of Period               1
+vtu_move        Create VTU files                        False
 ==============  ======================================= ========  ============
 
 .. Note::
@@ -681,6 +686,7 @@ beta_min        Min. Beta angle                           deg
 beta_max        Max. beta angle                           deg
 num_cur_steps   Number of current steps
 num_beta_steps  Number of beta steps
+period_frac     Rotate Fraction of Period       1
 ==============  ============================= ==========  ============
 
 Example::
@@ -715,6 +721,7 @@ maxiq           Max. Amplitude Iq current                 A
 miniq           Min. Amplitude Iq current                 A 
 delta_id        Delta of Id current steps                 A
 delta_iq        Delta of Iq current steps                 A
+period_frac     Rotate Fraction of Period       1
 ==============  ============================= ==========  ============
 
 Example::
@@ -732,7 +739,7 @@ Example::
     speed=50.0)
 
     
-PM/Rel Machine Simulation (pm_sym_fast)
+PM/Rel Torque Calc (torq_calc)
 
 ==============  ============================= ==========  ============
 Parameter        Description                   Default      Unit

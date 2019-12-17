@@ -825,8 +825,8 @@ def ldlq(bch):
     beta = bch.ldq['beta']
     i1 = bch.ldq['i1']
     torque = bch.ldq['torque']
-    ld = np.array(bch.ldq['ld'])*1e3
-    lq = np.array(bch.ldq['lq'])*1e3
+    ld = np.array(bch.ldq['ld'])
+    lq = np.array(bch.ldq['lq'])
     psid = bch.ldq['psid']
     psiq = bch.ldq['psiq']
     psim = bch.ldq['psim']
@@ -859,8 +859,8 @@ def psidq(bch):
     id = bch.psidq['id']
     iq = bch.psidq['iq']
     torque = bch.psidq['torque']
-    ld = np.array(bch.psidq_ldq['ld'])*1e3
-    lq = np.array(bch.psidq_ldq['lq'])*1e3
+    ld = np.array(bch.psidq_ldq['ld'])
+    lq = np.array(bch.psidq_ldq['lq'])
     psim = bch.psidq_ldq['psim']
     psid = bch.psidq['psid']
     psiq = bch.psidq['psiq']

@@ -1,5 +1,8 @@
-
 --  Gen_winding
+if m.xcoil_1 ~= nil then
+  m.wdg_location = 1 --stator
+end
+
 m.num_phases      =  ${model.get(['windings','num_phases'])}
 m.num_layers      =  ${model.get(['windings','num_layers'])}
 m.num_wires       =  ${model.get(['windings','num_wires'])}
@@ -14,8 +17,13 @@ m.win_asym        =   1.0 -- sym
 m.curr_inp        =   0.0 -- const
 m.dq_offset       =   0
 
+% if model.get(['stator', 'num_slots_gen']) == 1:
+def_new_wdg(m.xcoil_1, m.ycoil_1, green, "1", m.num_wires, 0.0, wi)
+add_to_wdg(m.xcoil_2, m.ycoil_2, wsamekey, wo, wser) 
+% else:
 pre_models("Gen_winding")
 pre_models("gen_pocfile") 
+% endif
 % else:
 color={green, yellow, magenta,lightgrey,darkred,skyblue,violet}
 wkey={0,0,0,0,0,0}

@@ -4,19 +4,49 @@
 
 <%include file="fe-contr.mako" />
 
+% if hasattr(model, 'stator'):
 % if hasattr(model, 'airgap'):
+% if isinstance(model.get(['airgap']), list):
+<%
+ag = '{' + ','.join([str(x*1e3) for x in model.get(['airgap'])]) +'}'
+%>
+ag = ${ag}
+% else:
 ag  = ${model.get(['airgap'])*1e3}
+% endif
+% endif
 % if model.move_action == 0:
 % if model.external_rotor:
 dy2 = ${model.get(['outer_diam'])*1e3}
+% if isinstance(model.get(['bore_diam']), list):
+<%
+da2 = '{' + ','.join([str(x*1e3) for x in model.get(['bore_diam'])]) +'}'
+%>
+da2 = ${da2}
+da1 = {}
+for i=1, table.getn(ag) do
+  da1[i] = da2[i] - 2*ag[i]
+end
+% else:
 da2 = ${model.get(['bore_diam'])*1e3}
+% endif
 dy1 = ${model.get(['inner_diam'])*1e3}
-da1 = da2 - 2*ag 
 % else:
 dy1 = ${model.get(['outer_diam'])*1e3}
+% if isinstance(model.get(['bore_diam']), list):
+<%
+da1 = '{' + ','.join([str(x*1e3) for x in model.get(['bore_diam'])]) +'}'
+%>
+da1 = ${da1}
+da2 = {}
+for i=1, table.getn(ag) do
+  da2[i] = da1[i] - 2*ag[i]
+end
+% else:
 da1 = ${model.get(['bore_diam'])*1e3}
-dy2 = ${model.get(['inner_diam'])*1e3}
 da2 = da1 - 2*ag 
+% endif
+dy2 = ${model.get(['inner_diam'])*1e3}
 % endif
 % endif
 % endif
@@ -30,8 +60,14 @@ m.num_slots       =   m.num_sl_gen
 m.npols_gen       =   m.num_poles * m.num_sl_gen / m.tot_num_slot
 m.tot_num_sl      =   m.tot_num_slot
 % if model.move_action == 0:
+% if isinstance(model.get(['bore_diam']), list):
+m.fc_radius       =   (da1[2]/2-ag[2]/2) -- Radius airgap (extern)
+m.fc_radius1      =   (da1[1]/2+ag[1]/2) -- Radius airgap (intern?)
+m.fc_radius2 = 	m.fc_radius1
+% else:
 m.fc_radius       =   (da1+da2)/4
 m.fc_radius1      =   m.fc_radius
+% endif
 % endif
 m.arm_length      =   ${model.get(['lfe'])*1e3}
 pre_models("basic_modpar")

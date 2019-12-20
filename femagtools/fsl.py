@@ -341,7 +341,7 @@ class Builder:
     def create_magnet(self, magnetMat=None):
         if magnetMat:
             logger.info("Setting magnet properties %s", magnetMat['name'])
-            return self.__render(magnetMat, 'magnet')
+            return self.__render(magnetMat, 'magnet-data')
         return ['m.remanenc       =  1.2',
                 'm.relperm        =  1.05']
 

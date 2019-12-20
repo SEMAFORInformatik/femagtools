@@ -13,8 +13,11 @@ new_model_force(model, '')
 
 <%include file="basic_modpar.mako" />
 
-
+% if isinstance(model.get(['bore_diam']), list):
+m.airgap          =   2*ag[2]/3
+% else:
 m.airgap          =     2*ag/3
+% endif
 m.nodedist        =     ${model.stator.get('nodedist',1)}
 
 % if model.get('coord_system', 0) > 0:

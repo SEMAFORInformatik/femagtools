@@ -1,5 +1,6 @@
 import meshio
 from femagtools import convert, isa7
+import xml.etree.ElementTree as ET
 
 
 def test_msh(tmpdir):
@@ -90,19 +91,21 @@ def test_nastran_superelements(tmpdir):
 
 def test_vtu(tmpdir):
     vtu = str(tmpdir.join("magnsec.vtu"))
-    vtu2 = str(tmpdir.join("magnsec2.vtu"))
-
     convert.to_vtu("tests/data/magnsec.ISA7", vtu)
 
-    isa = isa7.read("tests/data/magnsec.ISA7")
-    convert.to_vtu(isa, vtu2)
+    tree = ET.parse(vtu)
+    root = tree.getroot()
+    #
+    assert [child.tag for child in root] == ['UnstructuredGrid']
+    assert [child.tag for child in root[0]] == ['Piece']
+    assert [child.tag for child in root[0][0]] == ['Points',
+                                                   'Cells',
+                                                   'PointData',
+                                                   'CellData']
+    assert [child.tag for child in root[0][0][1]] == ['DataArray',
+                                                   'DataArray',
+                                                   'DataArray']
 
-    with open(vtu) as f:
-        file1 = f.read()
-    with open(vtu2) as f:
-        file2 = f.read()
-    assert file1 == file2
-        
     m = meshio.read(vtu)
     assert len(m.points) == 2340
     assert len(m.point_data["potential"]) == len(m.points)
@@ -118,15 +121,33 @@ def test_vtu(tmpdir):
 def test_vtu_triangles(tmpdir):
     vtu = str(tmpdir.join("triangles.vtu"))
     convert.to_vtu("tests/data/triangles.ISA7", vtu)
-    with open(vtu) as f:
-        assert len(f.readlines()) == 28
+    tree = ET.parse(vtu)
+    root = tree.getroot()
+    assert [child.tag for child in root] == ['UnstructuredGrid']
+    assert [child.tag for child in root[0]] == ['Piece']
+    assert [child.tag for child in root[0][0]] == ['Points',
+                                                   'Cells',
+                                                   'PointData',
+                                                   'CellData']
+    assert [child.tag for child in root[0][0][1]] == ['DataArray',
+                                                   'DataArray',
+                                                   'DataArray']
 
 
 def test_vtu_quads(tmpdir):
     vtu = str(tmpdir.join("quads.vtu"))
     convert.to_vtu("tests/data/quads.ISA7", vtu)
-    with open(vtu) as f:
-        assert len(f.readlines()) == 28
+    tree = ET.parse(vtu)
+    root = tree.getroot()
+    assert [child.tag for child in root] == ['UnstructuredGrid']
+    assert [child.tag for child in root[0]] == ['Piece']
+    assert [child.tag for child in root[0][0]] == ['Points',
+                                                   'Cells',
+                                                   'PointData',
+                                                   'CellData']
+    assert [child.tag for child in root[0][0][1]] == ['DataArray',
+                                                   'DataArray',
+                                                   'DataArray']
 
 
 def test_geo(tmpdir):

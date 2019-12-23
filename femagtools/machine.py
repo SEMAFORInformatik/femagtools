@@ -587,12 +587,17 @@ class PmRelMachineLdq(PmRelMachine):
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""
-        return iqd(self.betarange[0], i1)
+        if self.betarange[0] <= -np.pi/2 <= self.betarange[1]:
+            return iqd(-np.pi/2, i1)
+        if self.betarange[1] == 0:
+            return iqd(self.betarange[0], i1)
+        return iqd(self.betarange[1], i1)
     
     def iqdmax(self, i1):
         """max iq, min id for given current"""
-        return iqd(self.betarange[1], i1)
-
+        if self.betarange[1] == 0:
+            return iqd(self.betarange[1], i1)
+        return iqd(self.betarange[0], i1)
 
 class PmRelMachinePsidq(PmRelMachine):
     """Standard set of PM machine parameters:

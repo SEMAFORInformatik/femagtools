@@ -300,7 +300,15 @@ class Writer(Mcv):
         self.mc1_mi = [len(c['a'])
                        for c in curve]
         return curve
-        
+
+    def transpose(self, m):
+        maxLen =  max([len(l) for l in m])
+        for mi in m:
+            for i in range(len(mi)):
+                mi[i] = mi[i] if mi[i] != None else 0.0
+            mi.extend([0.0] * (maxLen - len(mi)))
+        return np.array(m).transpose(1, 0).tolist()
+
     def writeBinaryFile(self, fillfac=None):
         curve = self._prepare(fillfac)
         # write line, version_mc_curve
@@ -310,7 +318,7 @@ class Writer(Mcv):
         self.writeBlock('    *** File with magnetic curve ***    ')
                     
         # write line, mc1_title
-        self.writeBlock(self.mc1_title.ljust(40))
+        self.writeBlock(self.mc1_title.ljust(40)[:40])
         # write line, mc1_ni(1),mc1_mi(1),mc1_type,mc1_recalc,mc1_db2(1)
         self.writeBlock([int(self.mc1_ni[0]),
                          int(self.mc1_mi[0]),
@@ -394,16 +402,18 @@ class Writer(Mcv):
             alpha = self.losses['cw_freq']
             beta = self.losses['b_coeff']
             
-            for f, p in zip(self.losses['f'], self.losses['pfe']):
-                if f:
-                    pl = [px if px else lc.pfe_steinmetz(f, b, cw, alpha, beta,
-                                                         self.losses['fo'],
-                                                         self.losses['Bo'])
+            tpfe = self.transpose(self.losses['pfe'])
+            for f, p in zip(self.losses['f'], tpfe):
+                if f != None:
+                    pl = [px if px != None else lc.pfe_steinmetz(f, b, cw, alpha, beta,
+                                                                 self.losses['fo'],
+                                                                 self.losses['Bo'])
+
                           for px, b in zip(p, self.losses['B'])]
                     self.writeBlock(pl +
-                                    [0.0]*(M_LOSS_INDUCT - nind))
+                                    [0.0]*(M_LOSS_INDUCT - len(pl)))
                     self.writeBlock(f)
-            for m in range(M_LOSS_FREQ - nfreq):
+            for m in range(M_LOSS_FREQ - len(tpfe)):
                 self.writeBlock([0.0]*M_LOSS_INDUCT)
                 self.writeBlock(0.0)
 
@@ -667,15 +677,17 @@ class Reader(Mcv):
                 for i in range(M_LOSS_FREQ):
                     res = self.readBlock([float]*M_LOSS_INDUCT)
                     f = self.readBlock(float)
-                    if f:
+                    if f != None:
                         self.losses['pfe'].append(res[:njind])
                         self.losses['f'].append(f)
                 (cw, alfa, beta, basefreq, baseind) = self.readBlock([float]*5)
-                self.losses['Bo'] = baseind
-                self.losses['fo'] = basefreq
+                self.losses['Bo'] = basefreq
+                self.losses['fo'] = baseind
                 self.losses['cw'] = cw
                 self.losses['cw_freq'] = alfa
                 self.losses['b_coeff'] = beta
+                self.losses['ch'] = self.ch
+                self.losses['ch_freq'] = self.ch_freq
         except:
             if self.losses and 'B' in self.losses:
                 if not self.losses['f'] or not self.losses['pfe']:

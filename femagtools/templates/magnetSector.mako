@@ -8,7 +8,7 @@ m.magn_height     =    ${model['magn_height']*1e3}
 % if model.get('magn_width_pct', 0):
 m.magn_width      =    ${model['magn_width_pct']*100}
 % else:
-m.magn_width      =    -${model['magn_width']}
+m.magn_width      =    -${model['magn_width']*1e3}
 % endif
 m.condshaft_r     =    ${model['condshaft_r']*1e3}
 m.magn_num        =    ${model['magn_num']}

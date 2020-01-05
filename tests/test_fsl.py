@@ -94,7 +94,7 @@ class FslBuilderTest(unittest.TestCase):
             slot_width=0.003)
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 37)
+        self.assertEqual(len(fsl), 41)
 
     def test_stator4(self):
         self.m['stator']['stator4'] = dict(
@@ -370,7 +370,7 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel(self.m)
 
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 21)
+        self.assertEqual(len(fsl), 20)
 
         model.windings['leak_dist_wind'] = dict(
             perimrad=1,
@@ -378,7 +378,7 @@ class FslBuilderTest(unittest.TestCase):
             endheight=1,
             wiredia=1) 
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 31)
+        self.assertEqual(len(fsl), 30)
 
         model.windings.pop('leak_dist_wind')
         model.windings['leak_evol_wind'] = dict(
@@ -390,7 +390,7 @@ class FslBuilderTest(unittest.TestCase):
             evolbend=1,
             wiredia=1)
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 35)
+        self.assertEqual(len(fsl), 34)
 
         model.windings.pop('leak_evol_wind')
         model.windings['leak_tooth_wind'] = dict(
@@ -398,7 +398,7 @@ class FslBuilderTest(unittest.TestCase):
             bendrad=1,
             wiredia=1)
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 31)
+        self.assertEqual(len(fsl), 30)
 
     def test_create_model_with_magnet_material(self):
         magnetmat = [dict(
@@ -463,7 +463,7 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel(machine)
         magnets = femagtools.magnet.Magnet(magnetmat)
         fsl = self.builder.create_model(model, magnets)
-        self.assertEqual(len(fsl), 181)
+        self.assertEqual(len(fsl), 180)
         brem = [l.strip() for l in fsl
                 if l.split('=')[0].strip() == 'm.remanenc'][0]
         self.assertEqual(brem.split('=')[-1].strip(), '1.1')

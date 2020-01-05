@@ -7,7 +7,9 @@ m.num_phases      =  ${model.get(['windings','num_phases'])}
 m.num_layers      =  ${model.get(['windings','num_layers'])}
 m.num_wires       =  ${model.get(['windings','num_wires'])}
 m.coil_span       =  ${model.get(['windings','coil_span'])}
-
+% if 'num_poles' in model.windings:
+m.num_poles       =  ${model.get(['windings','num_poles'])}
+% endif
 % if model.get('move_action', 0) == 0:
 m.current         =   0.0
 m.mat_type        =   1.0 -- rotating 
@@ -86,3 +88,6 @@ f = assert(io.open(model..'_'..m.num_poles.."p.poc","w"));
 io.close(f);
 
 %endif
+% if 'num_poles' in model.windings:
+m.num_poles       =  ${model.poles}
+% endif

@@ -62,7 +62,7 @@ m.tot_num_sl      =   m.tot_num_slot
 % if model.move_action == 0:
 % if isinstance(model.get(['bore_diam']), list):
 m.fc_radius       =   (da1[2]/2-ag[2]/2) -- Radius airgap (extern)
-m.fc_radius1      =   (da1[1]/2+ag[1]/2) -- Radius airgap (intern?)
+m.fc_radius1      =   (da1[1]/2-ag[1]/2) -- Radius airgap (intern?)
 m.fc_radius2 = 	m.fc_radius1
 % else:
 m.fc_radius       =   (da1+da2)/4

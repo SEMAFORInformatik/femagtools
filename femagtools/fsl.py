@@ -209,8 +209,11 @@ class Builder:
         return []
 
     def create_connect_models(self, model):
-        """return connect_model if rotating machine"""
-        if model.get('move_action') == 0:
+        """return connect_model if rotating machine and incomplete model
+        (Note: femag bug with connect model)"
+        """
+        if (model.get('move_action') == 0 and
+            model.stator['num_slots'] > model.stator['num_slots_gen']):
             return ['pre_models("connect_models")']
         return []
 
@@ -396,9 +399,14 @@ class Builder:
         if model.is_complete():
             logger.info("create new model and simulation")
             fslmodel = self.create_model(model, magnets)
-            fea['pocfilename'] = (model.get('name') +
-                                  '_' + str(model.get('poles')) +
-                                  'p.poc')
+            if 'num_poles' in model.windings:
+                fea['pocfilename'] = (model.get('name') +
+                                      '_' + str(model.windings['num_poles']) +
+                                      'p.poc')
+            else:
+                fea['pocfilename'] = (model.get('name') +
+                                      '_' + str(model.get('poles')) +
+                                      'p.poc')
             if 'phi_start' not in fea:
                 fea['phi_start'] = 0.0
             if 'range_phi' not in fea:

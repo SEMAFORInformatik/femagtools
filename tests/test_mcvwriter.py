@@ -58,9 +58,9 @@ class McvWriterTest(unittest.TestCase):
                          u'TKM270-50A-LOSS')
         self.assertEqual(len(r['curve'][0]['bi']), 35)
         self.assertAlmostEqual(r['curve'][0]['bi'][-1], 2.638, 3)
-        self.assertEqual(r['losses'].keys(),
-                         {'B', 'f', 'pfe', 'Bo', 'fo',
-                          'cw', 'cw_freq', 'b_coeff', 'ch', 'ch_freq'})
+        self.assertEqual(set(r['losses'].keys()),
+                         set({'B', 'f', 'pfe', 'Bo', 'fo',
+                              'cw', 'cw_freq', 'b_coeff', 'ch', 'ch_freq'}))
         self.assertEqual(len(r['losses']['pfe']), 20)
         self.assertEqual(len(r['losses']['pfe'][8]), 19)
         self.assertAlmostEqual(r['losses']['pfe'][8][18], 3097.6, 1)

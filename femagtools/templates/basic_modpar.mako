@@ -27,11 +27,12 @@ da1 = {}
 for i=1, table.getn(ag) do
   da1[i] = da2[i] - 2*ag[i]
 end
-% else:
+% else:  # bore_diam is scalar
 da2 = ${model.get(['bore_diam'])*1e3}
+da1 = da2 - 2*ag 
 % endif
 dy1 = ${model.get(['inner_diam'])*1e3}
-% else:
+% else: # internal rotor
 dy1 = ${model.get(['outer_diam'])*1e3}
 % if isinstance(model.get(['bore_diam']), list):
 <%
@@ -42,7 +43,7 @@ da2 = {}
 for i=1, table.getn(ag) do
   da2[i] = da1[i] - 2*ag[i]
 end
-% else:
+% else: # bore_diam is scalar
 da1 = ${model.get(['bore_diam'])*1e3}
 da2 = da1 - 2*ag 
 % endif

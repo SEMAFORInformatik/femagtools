@@ -88,7 +88,7 @@ pmRelSim = dict(
     sc_type=3,
     initial=2,
     allow_demagn=0,
-    sim_demagn=0)
+    sim_demagn=1)
 
 r = femag(machine,
           pmRelSim)
@@ -105,3 +105,4 @@ Short Circuit:
            r.scData['iks'],
            r.scData['tks'],
            r.scData['peakWindingCurrents']))
+print('Demag {}'.format(r.demag[-1]))

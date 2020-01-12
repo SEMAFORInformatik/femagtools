@@ -33,7 +33,32 @@ logger = logging.getLogger(__name__)
 
 BCHEXT = '.BATCH' if sys.platform.startswith('linux') else '.BCH'  # win32
 
-
+def get_shortCircuit_parameters(bch, nload):
+    try:
+        if nload < 0: nload=0
+        if nload > 2: nload=2
+        if nload > 0:
+            ld = bch.dqPar['ld'][nload-1]/bch.armatureLength
+            lq = bch.dqPar['lq'][nload-1]/bch.armatureLength
+            psim = bch.dqPar['psim'][nload-1]/bch.armatureLength
+        else:
+            ld = bch.machine['ld']/bch.armatureLength
+            lq = bch.machine['lq']/bch.armatureLength
+            psim = bch.machine['psim']/bch.armatureLength
+        return dict(
+                r1 = bch.machine['r1'],
+                ld = ld,
+                lq = lq,
+                psim = psim,
+                num_pol_pair = bch.machine['p'],
+                fc_radius = bch.machine['fc_radius'],
+                lfe = bch.armatureLength/1e3,
+                pocfilename = bch.machine['pocfile'],
+                num_par_wdgs = bch.machine['num_par_wdgs'],
+                calculationMode = 'shortcircuit')
+    except (KeyError, AttributeError, IndexError):
+        raise FemagError("missing pm/Rel-Sim results")
+    
 class FemagError(Exception):
     pass
 
@@ -259,16 +284,9 @@ class Femag(BaseFemag):
             if simulation['calculationMode'] == 'pm_sym_fast':
                 if simulation.get('shortCircuit', False):
                     logger.info("short circuit simulation")
-                    simulation['r1'] = bch.machine['r1']
-                    simulation['ld'] = bch.machine['ld']/bch.armatureLength
-                    simulation['lq'] = bch.machine['lq']/bch.armatureLength
-                    simulation['psim'] = bch.machine['psim']/bch.armatureLength
-                    simulation['num_pol_pair'] = bch.machine['p']
-                    simulation['fc_radius'] = bch.machine['fc_radius']
-                    simulation['lfe'] = bch.armatureLength
-                    simulation['pocfilename'] = bch.machine['pocfile']
-                    simulation['num_par_wdgs'] = bch.machine['num_par_wdgs']
-                    simulation['calculationMode'] = 'shortcircuit'
+                    simulation.update(
+                        get_shortCircuit_parameters(bch,
+                                                    simulation.get('initial',2)))
                     builder = femagtools.fsl.Builder()
                     fslcmds = (builder.open_model(self.model) +
                                builder.create_shortcircuit(simulation))
@@ -759,11 +777,9 @@ class ZmqFemag(BaseFemag):
             if simulation['calculationMode'] == 'pm_sym_fast':
                 if simulation.get('shortCircuit', False):
                     logger.info("Short Circuit")
-                    simulation['r1'] = bch.machine['r1']
-                    simulation['ld'] = bch.machine['ld']
-                    simulation['lq'] = bch.machine['lq']
-                    simulation['psim'] = bch.machine['psim']
-                    simulation['calculationMode'] = 'shortcircuit'
+                    simulation.update(
+                        get_shortCircuit_parameters(bch,
+                                                    simulation.get('initial', 2)))
                     builder = femagtools.fsl.Builder()
                     response = self.send_fsl(builder.create_shortcircuit(simulation),
                                              pub_consumer=pub_consumer)

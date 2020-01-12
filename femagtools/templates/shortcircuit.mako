@@ -5,7 +5,7 @@ m.l_qaxis        =     ${model.get('lq',0)}     --   Inductance                 
 m.l_endwindg     =     ${model.get('l_endwinding',0)}     --   Stator ewdg inductance     Le     [H]   
 m.l_external     =     ${model.get('l_external',0)}     --   Stator external inductance Lex    [H]   
 m.magn_flux      =     ${model.get('psim',0)} --   Magn. flux (RMS) = Up/omega   [Vs/mm]   
-m.arm_length     =     ${model.get('lfe',0)}     --   Effect. armature length    lm    [mm]   
+m.arm_length     =     ${model.get('lfe',0)*1e3}     --   Effect. armature length    lm    [mm]   
 m.current        =     ${model.get('current',0)}     --   Current (operat. limit) (RMS)     [A]   
 m.angl_i_up      =     ${model.get('angl_i_up',0)}     --   Angle current vs. voltage Vp    [Deg]   
 m.speed          =     ${model.get('speed',0)*60} --   Speed                         [1/min]   

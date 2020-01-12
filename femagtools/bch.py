@@ -175,6 +175,7 @@ class Reader:
             'Results for Angle I-Up [Degree]': Reader.__read_dummy,
             'Demagnetisation': Reader.__read_demagnetization,
             'Transient short circuit': Reader.__read_short_circuit,
+            'Peak winding currents': Reader.__read_peak_winding_currents,
             'Flux observed': Reader.__read_flux,
             'Linear Force': Reader.__read_linear_force,
             'Demagnetization Data': Reader.__read_demagnetization,
@@ -336,10 +337,16 @@ class Reader:
         for i, line in enumerate(content):
             if line.startswith('Number of Phases m'):
                 self.machine['m'] = int(float((line.split()[-1])))
-            if line.startswith('leak_dist_wind'):
+            elif line.startswith('Radius air-gap center (torque)'):
+                rec = [l.strip() for l in line.split()]
+                fc_radius = 1e-3*float(rec[-1])
+                self.machine['fc_radius'] = fc_radius
+            elif line.startswith('Number of parallel Windings'):
+                self.machine['num_par_wdgs'] = int(float(line.split()[-1]))
+            elif line.startswith('leak_dist_wind'):
                 self.leak_dist_wind = self.__read_leak_dist_wind(content[i+1:])
         return
-    
+
     def __read_leak_dist_wind(self, content):
         leak_wind = dict()
         vmap = {
@@ -479,6 +486,11 @@ class Reader:
         self.scData['iks'] = floatnan(rec[3])
         self.scData['tks'] = floatnan(rec[4])
 
+    def __read_peak_winding_currents(self, content):
+        self.scData['peakWindingCurrents'] = [float(x)
+                                              for x in re.findall(r'[-0-9.]+',
+                                                                  ''.join(content))]
+        
     def __read_general_machine_data(self, content):
         for l in content:
             if l.find('Armature Length [mm]:') > -1:

@@ -34,7 +34,32 @@ logger = logging.getLogger(__name__)
 
 BCHEXT = '.BATCH' if sys.platform.startswith('linux') else '.BCH'  # win32
 
-
+def get_shortCircuit_parameters(bch, nload):
+    try:
+        if nload < 0: nload=0
+        if nload > 2: nload=2
+        if nload > 0:
+            ld = bch.dqPar['ld'][nload-1]/bch.armatureLength
+            lq = bch.dqPar['lq'][nload-1]/bch.armatureLength
+            psim = bch.dqPar['psim'][nload-1]/bch.armatureLength
+        else:
+            ld = bch.machine['ld']/bch.armatureLength
+            lq = bch.machine['lq']/bch.armatureLength
+            psim = bch.machine['psim']/bch.armatureLength
+        return dict(
+                r1 = bch.machine['r1'],
+                ld = ld,
+                lq = lq,
+                psim = psim,
+                num_pol_pair = bch.machine['p'],
+                fc_radius = bch.machine['fc_radius'],
+                lfe = bch.armatureLength/1e3,
+                pocfilename = bch.machine['pocfile'],
+                num_par_wdgs = bch.machine['num_par_wdgs'],
+                calculationMode = 'shortcircuit')
+    except (KeyError, AttributeError, IndexError):
+        raise FemagError("missing pm/Rel-Sim results")
+    
 class FemagError(Exception):
     pass
 
@@ -82,14 +107,14 @@ class BaseFemag(object):
 
     def create_fsl(self, pmMachine, simulation):
         """create list of fsl commands"""
-        model = femagtools.MachineModel(pmMachine)
-        self.modelname = model.name
-        self.copy_magnetizing_curves(model)
+        self.model = femagtools.MachineModel(pmMachine)
+        self.modelname = self.model.name
+        self.copy_magnetizing_curves(self.model)
 
         builder = femagtools.fsl.Builder()
         if simulation:
-            return builder.create(model, simulation, self.magnets)
-        return builder.create_model(model, self.magnets) + ['save_model("cont")']
+            return builder.create(self.model, simulation, self.magnets)
+        return builder.create_model(self.model, self.magnets) + ['save_model("cont")']
         
 
     def get_log_value(self, pattern, modelname='FEMAG-FSL.log'):
@@ -102,6 +127,14 @@ class BaseFemag(object):
                     result.append(float(line.split(':')[-1].split()[0]))
         return result
 
+    def get_bch_file(self, modelname):
+        """return latest bch file (if any)"""
+        bchfile_list = sorted(glob.glob(os.path.join(
+            self.workdir, modelname+'_[0-9][0-9][0-9]'+BCHEXT)))
+        if(bchfile_list):
+            return bchfile_list[-1]
+        return ''
+    
     def read_bch(self, modelname=None):
         "read most recent BCH/BATCH file and return result"
         # read latest bch file if any
@@ -109,11 +142,10 @@ class BaseFemag(object):
             modelname = self._get_modelname_from_log()
 
         result = femagtools.bch.Reader()
-        bchfile_list = sorted(glob.glob(os.path.join(
-            self.workdir, modelname+'_[0-9][0-9][0-9]'+BCHEXT)))
-        if len(bchfile_list) > 0:
-            logger.info("Read BCH {}".format(bchfile_list[-1]))
-            with io.open(bchfile_list[-1], encoding='latin1',
+        bchfile = self.get_bch_file(modelname)
+        if bchfile:
+            logger.info("Read BCH {}".format(bchfile))
+            with io.open(bchfile, encoding='latin1',
                          errors='ignore') as f:
                 result.read(f)
         return result
@@ -248,7 +280,28 @@ class Femag(BaseFemag):
         if simulation:
             if simulation['calculationMode'] == "pm_sym_loss":
                 return self.read_los(self.modelname)
-            return self.read_bch(self.modelname)
+
+            bch = self.read_bch(self.modelname)
+            if simulation['calculationMode'] == 'pm_sym_fast':
+                if simulation.get('shortCircuit', False):
+                    logger.info("short circuit simulation")
+                    simulation.update(
+                        get_shortCircuit_parameters(bch,
+                                                    simulation.get('initial',2)))
+                    builder = femagtools.fsl.Builder()
+                    fslcmds = (builder.open_model(self.model) +
+                               builder.create_shortcircuit(simulation))
+                    with open(os.path.join(self.workdir, fslfile), 'w') as f:
+                        f.write('\n'.join(fslcmds))
+                    self.run(fslfile, options)
+                    bchfile = self.get_bch_file(self.modelname)
+                    if bchfile:
+                        logger.info("Read BCH {}".format(bchfile))
+                        with io.open(bchfile, encoding='latin1',
+                                     errors='ignore') as f:
+                            bch.read(f)
+
+            return bch
         return dict(status='ok', message=self.modelname)
 
 
@@ -721,7 +774,26 @@ class ZmqFemag(BaseFemag):
         r = json.loads(status)
         if r['status'] == 'ok':
             bch = femagtools.bch.Reader()
-            return bch.read(content.decode('latin1'))
+            bch.read(content.decode('latin1'))
+            if simulation['calculationMode'] == 'pm_sym_fast':
+                if simulation.get('shortCircuit', False):
+                    logger.info("Short Circuit")
+                    simulation.update(
+                        get_shortCircuit_parameters(bch,
+                                                    simulation.get('initial', 2)))
+                    builder = femagtools.fsl.Builder()
+                    response = self.send_fsl(builder.create_shortcircuit(simulation),
+                                             pub_consumer=pub_consumer)
+                    r = json.loads(response[0])
+                    if r['status'] != 'ok':
+                        raise FemagError(r['message'])
+                    result_file = r['result_file'][0]
+                    status, content = self.getfile(result_file)
+                    r = json.loads(status)
+                    if r['status'] == 'ok':
+                        bch.read(content.decode('latin1'))
+                    
+            return bch
         raise FemagError(r['message'])
 
 

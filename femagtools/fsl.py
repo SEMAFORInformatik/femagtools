@@ -348,9 +348,6 @@ class Builder:
         return ['m.remanenc       =  1.2',
                 'm.relperm        =  1.05']
 
-    def create_common(self, model):
-        return self.__render(model, 'common')
-
     def create_analysis(self, model):
         airgap_induc = (self.create_airgap_induc()
                         if model.get('airgap_induc', 0) else [])
@@ -365,10 +362,13 @@ class Builder:
                                             'torq_calc',
                                             'psd_psq_fast'):
             return fslcalc
-        
+
         return (fslcalc +
                 self.__render(model, 'plots'))
 
+    def create_shortcircuit(self, model):
+        return self.__render(model, 'shortcircuit')
+    
     def create_airgap_induc(self):
             return self.__render(dict(), 'airgapinduc')
 

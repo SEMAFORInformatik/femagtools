@@ -301,7 +301,14 @@ class Reader(object):
         self.SLOT_WIRE_DIAMETER = self.next_block("f")
         self.SLOT_WIRE_NUMBERS = self.next_block("i")
         self.skip_block(20*(3 + 2 * 20)) # BASE_FREQUENCY ..
-        self.skip_block(14) # R_TORQUE .. NUM_NOLOAD_EX_CURRENT_STEPS
+        self.skip_block(2) # R_TORQUE .. NUM_NOLOAD_EX_CURRENT_STEPS
+        (self.R_CURRENT,
+         self.R_LOAD_VOLTAGE,
+         self.R_NOLOAD_VOLTAGE) = self.next_block("f")
+        x = self.next_block("f")
+        self.R_COSPHI = x[0]
+        self.R_BETA_OPT = x[1:]
+        self.skip_block(10) # R_FLUX_LOAD. NUM_NOLOAD_EX_CURRENT_STEPS
 
         if (FC_NUM_MOVE_LOSSES > 2 and NUM_FE_EVAL_MOVE_STEP > 1
             and FC_NUM_BETA_ID > 1):

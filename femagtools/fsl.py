@@ -214,7 +214,7 @@ class Builder:
         """
         if (model.get('move_action') == 0 and
             model.stator['num_slots'] > model.stator['num_slots_gen']):
-            return ['pre_models("connect_models")']
+            return ['pre_models("connect_models")\n']
         return []
 
     def create_open(self, model):

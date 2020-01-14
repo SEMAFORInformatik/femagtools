@@ -506,7 +506,7 @@ class Reader:
             elif l.find('Number of Slot-Sides sim.') > -1:
                 self.machine['qs_sim'] = int(l.split()[-1])
             elif l.find('POC-File used in calculation') > -1:
-                self.machine['pocfile'] = l.split(':')[-1].strip()
+                self.machine['pocfile'] = l.split(':')[-1].strip().replace('\\','\\\\')
                 
     def __read_characteristics(self, content):
         characteristics={}

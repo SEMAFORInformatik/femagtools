@@ -295,11 +295,17 @@ class Femag(BaseFemag):
                     self.run(fslfile, options)
                     bchfile = self.get_bch_file(self.modelname)
                     if bchfile:
+                        bchsc = femagtools.bch.Reader()
                         logger.info("Read BCH {}".format(bchfile))
                         with io.open(bchfile, encoding='latin1',
                                      errors='ignore') as f:
-                            bch.read(f)
-
+                            bchsc.read(f)
+                    bch.scData = bchsc.scData
+                    for w in bch.flux:
+                        bch.flux[w] += bchsc.flux[w]
+                        bch.flux_fft[w] += bchsc.flux_fft[w]
+                    bch.torque += bchsc.torque
+                    bch.demag += bchsc.demag
             return bch
         return dict(status='ok', message=self.modelname)
 

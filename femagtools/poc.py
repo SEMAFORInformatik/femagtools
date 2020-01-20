@@ -25,15 +25,21 @@ class Poc:
                 self.readfile(f)
         else:
             self.pole_pitch = arg
-            self.pocType = parameters.get('pocType', 'Function')
-            self.shape_current = parameters.get('shape_current', 'sin')
-            self.num_winding = parameters.get('num_winding', 3)
+            self.pocType = parameters.get('pocType', '')
+            self.shape_current = parameters.get('shape_current', '')
+            if not self.pocType:
+                if self.shape_current:
+                    self.pocType='Function'
+                else:
+                    self.shape_current = 'sin'
+            
             self.key_winding = parameters.get('key_winding',
-                                          list(range(1, self.num_winding+1)))
+                                          [str(i+1) for i in range(3)])
             b = parameters.get('offset', 0)
+            num_winding = len(self.key_winding)
             self.phi_voltage_winding = parameters.get('phi_voltage_winding',
-                                                      [b+i*360/self.num_winding
-                                                       for i in range(self.num_winding)])
+                                                      [b+i*360/num_winding
+                                                       for i in range(num_winding)])
 
     def __setattr__(self, name, val):
         self.__dict__[name] = val  # this will create the attribute name
@@ -48,29 +54,39 @@ class Poc:
 
     def writefile(self, pocfile):
         # windings (num and keys)
-        pocfile.write("{0}\n".format(self.num_winding))
+        num_winding = len(self.key_winding)
+        pocfile.write("{0}\n".format(num_winding))
 
-        for idx in self.key_winding[:self.num_winding]:
-            pocfile.write("{0}\n".format(idx))
+        for k in self.key_winding[:num_winding]:
+            pocfile.write("{0}\n".format(k))
 
         # phi voltage windings
-        for v in self.phi_voltage_winding[:self.num_winding]:    
+        for v in self.phi_voltage_winding[:num_winding]:    
             pocfile.write("{0}\n".format(v))
 
         # rest
         if self.pole_pitch:
             pocfile.write("{0}\n".format(self.pole_pitch))
         if self.pocType in ['fun', 'har', 'hsp']:
+            func_steps = len(self.func_current)
             pocfile.write("{0}\n{1}\n".format(
-                self.pocType, self.func_steps))
-            for i, val in enumerate(self.func_current[:self.func_steps]):
-                if self.harmonic_id[i] and \
-                   self.pocType == 'hsp':
-                    pocfile.write("{0}, {1}, {2}".format(
+                self.pocType, func_steps))
+            if (self.pocType == 'fun' and
+                num_winding*func_steps > len(self.func_current)):
+                self.func_current = num_winding * self.func_current
+                self.func_phi = num_winding * self.func_phi
+                func_steps = num_winding*func_steps
+            for i, val in enumerate(self.func_current[:func_steps]):
+                if self.pocType == 'hsp':
+                    pocfile.write("{0}, {1}, {2}\n".format(
                         self.harmonic_id[i],
                         val, self.func_phi[i]))
-                pocfile.write("{0}, {1}\n".format(
-                    self.func_phi[i], val))
+                elif self.pocType == 'har':
+                    pocfile.write("{0}, {1}\n".format(
+                        val, self.func_phi[i]))
+                elif self.pocType == 'fun':
+                    pocfile.write("{0}, {1}\n".format(
+                        self.func_phi[i], val))
 
         if self.pocType == 'Function':
             pocfile.write("{0}\n".format(self.shape_current))
@@ -95,10 +111,10 @@ class Poc:
         if self.pocType in ['fun', 'har', 'hsp']:
             self.func_current = []
             self.func_phi = []
-            self.func_steps = int(pocfile.readline())
+            func_steps = int(pocfile.readline())
             if self.pocType == 'hsp':
                 self.harmonic_id = []
-            for i in range(self.func_steps):
+            for i in range(func_steps):
                 l = pocfile.readline().strip().split(',')
                 if len(l) > 2:
                     self.harmonic_id.append(int(l[0]))
@@ -118,15 +134,13 @@ class Poc:
             pass
 
     def getProps( self ):
-        keys=['num_winding',
-              'key_winding',
+        keys=['key_winding',
               'phi_voltage_winding',
               'pole_pitch',
               'pocType',
               'shape_current',
               'skew_angle',
               'num_skew_steps',
-              'func_steps',
               'harmonic_id',
               'func_phi',
               'func_current']
@@ -136,16 +150,22 @@ class Poc:
                 props[k]=self.__dict__[k]
         return props
 
-def curr(x, n, A, phi ):
+def curr_har(x, n, A, phi ):
     "return fourier sum"
-    if isinstance(A,list):
-        amax=max(A)
-        s=np.zeros(len(x))
-        for ai,ni, phii in zip(A, n, phi):
-            #if abs(ai/amax)>1e-2:
-            s += curr(x, ni, ai, phii)
-        return s
-    return A*np.sin(n*x-phi)
+    import numpy as np
+    if isinstance(A, list):
+        return np.sum([curr_har(x, *nAp)
+                       for nAp in zip(n, A, phi)], axis=0)
+    return A*np.sin(n*x - phi)
+
+
+def curr_fun(phi, A, phi_wdg ):
+    "return curr"
+    import numpy as np
+    if np.asarray(A).shape == 1:
+        return [[np.asarray(phi)+x, A] for x in phi_wdg] 
+    return [phi, A]
+
 
 if __name__ == "__main__":
     p = Poc('2p_sin.poc')

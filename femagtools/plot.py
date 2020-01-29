@@ -502,14 +502,84 @@ def pmrelsim(bch, title=''):
     flux = [bch.flux[k][-1] for k in bch.flux]
     pos = [f['displ'] for f in flux]
     winding_flux(pos,
-                 (flux[0]['flux_k'],
-                  flux[1]['flux_k'],
-                  flux[2]['flux_k']))
+                 [f['flux_k'] for f in flux])
     pl.subplot(rows, cols, row+2)
     winding_current(pos,
-                    (flux[0]['current_k'],
-                     flux[1]['current_k'],
-                     flux[2]['current_k']))
+                    [f['current_k'] for f in flux])
+    pl.subplot(rows, cols, row+3)
+    voltage('Internal Voltage',
+            bch.flux['1'][-1]['displ'],
+            bch.flux['1'][-1]['voltage_dpsi'])
+    pl.subplot(rows, cols, row+4)
+    voltage_fft('Internal Voltage Harmonics',
+                bch.flux_fft['1'][-1]['order'],
+                bch.flux_fft['1'][-1]['voltage'])
+   
+    if len(bch.flux['1']) > 1:
+        pl.subplot(rows, cols, row+5)
+        voltage('No Load Voltage',
+                bch.flux['1'][0]['displ'],
+                bch.flux['1'][0]['voltage_dpsi'])
+        pl.subplot(rows, cols, row+6)
+        voltage_fft('No Load Voltage Harmonics',
+                    bch.flux_fft['1'][0]['order'],
+                    bch.flux_fft['1'][0]['voltage'])
+
+    fig.tight_layout(h_pad=3.5)
+    if title:
+        fig.subplots_adjust(top=0.92)
+
+
+def multcal(bch, title=''):
+    """creates a plot of a MULT CAL simulation"""
+    cols = 2
+    rows = 4
+    htitle = 1.5 if title else 0
+    fig, ax = pl.subplots(nrows=rows, ncols=cols,
+                          figsize=(10, 3*rows + htitle))
+    if title:
+        fig.suptitle(title, fontsize=16)
+
+    row = 1
+    pl.subplot(rows, cols, row)
+    if bch.torque:
+        torque(bch.torque[-1]['angle'], bch.torque[-1]['torque'])
+        pl.subplot(rows, cols, row+1)
+        tq = list(bch.torque_fft[-1]['torque'])
+        order = list(bch.torque_fft[-1]['order'])
+        if order and max(order) < 5:
+            order += [15]
+            tq += [0]
+        torque_fft(order, tq)
+        pl.subplot(rows, cols, row+2)
+        force('Force Fx',
+              bch.torque[-1]['angle'], bch.torque[-1]['force_x'])
+        pl.subplot(rows, cols, row+3)
+        force('Force Fy',
+              bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
+        row += 3
+    elif bch.linearForce:
+        force('Force x', bch.linearForce[-1]['displ'],
+              bch.linearForce[-1]['force_x'], 'Displ. / mm')
+        pl.subplot(rows, cols, row+1)
+        force_fft(bch.linearForce_fft[-2]['order'],
+                  bch.linearForce_fft[-2]['force'])
+        pl.subplot(rows, cols, row+2)
+        force('Force y', bch.linearForce[-1]['displ'],
+              bch.linearForce[-1]['force_y'], 'Displ. / mm')
+        pl.subplot(rows, cols, row+3)
+        force_fft(bch.linearForce_fft[-1]['order'],
+                  bch.linearForce_fft[-1]['force'])
+        row += 3
+        
+    pl.subplot(rows, cols, row+1)
+    flux = [bch.flux[k][-1] for k in bch.flux]
+    pos = [f['displ'] for f in flux]
+    winding_flux(pos,
+                 [f['flux_k'] for f in flux])
+    pl.subplot(rows, cols, row+2)
+    winding_current(pos,
+                    [f['current_k'] for f in flux])
     pl.subplot(rows, cols, row+3)
     voltage('Internal Voltage',
             bch.flux['1'][-1]['displ'],
@@ -1029,6 +1099,9 @@ def main():
         bchresults.type.lower().find(
             'permanet-magnet-synchronous-motor') >= 0):
         pmrelsim(bchresults, bchresults.filename)
+    elif bchresults.type.lower().find(
+            'multiple calculation of forces and flux') >= 0:
+        multcal(bchresults, bchresults.filename)
     elif bchresults.type.lower().find('cogging calculation') >= 0:
         cogging(bchresults, bchresults.filename)
     elif bchresults.type.lower().find('ld-lq-identification') >= 0:

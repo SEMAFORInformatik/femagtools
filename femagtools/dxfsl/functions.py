@@ -247,7 +247,7 @@ def point_in_region(p, x_min, x_max, y_min, y_max):
     return True
 
 
-def within_interval(x, v1, v2, rtol=1e-3, atol=1e-8):
+def within_interval(x, v1, v2, rtol=1e-4, atol=1e-8):
     """ returns true if x is in interval [v1, v2]
     """
     return np.logical_and(greater_equal(x, v1, rtol, atol),

@@ -1,26 +1,19 @@
 #!/usr/bin/env python
 #
-import unittest
-import tempfile
 import femagtools.poc
-import os
+import pathlib
 
 sinPars = dict(
-    pocType="Function",
     shape_current="sin",
     phi_voltage_winding=[0.0, 120.0, 240.0],
     skew_angle=30.0,
-    num_winding=3,
     key_winding=[1, 2, 3],
     num_skew_steps=3)
 
 funPars = dict(
-    pocType="Function",
     shape_current="sin",
-    func_steps=34,
     phi_voltage_winding=[-80.0, 40.0, 160.0],
-    num_winding=3,
-    key_winding=[1, 2, 3],
+    key_winding=['1', '2', '3'],
     func_current=[0.0,
                    11.25,
                    11.25,
@@ -93,38 +86,81 @@ funPars = dict(
 funcPars = dict(
         func_current=[0.0,0.0,1.0,1.0,0.0,0.0,-1.0,-1.0,0.0,0.0]
         ,func_phi=[0.0,30.0,30.0,150.0,150.0,210.0,210.0,330.0,330.0,360.0]
-        ,harmonic_id=[1,3,5,7,9,11,13,15,17,19]
-        ,func_steps=10 )
+        ,harmonic_id=[1,3,5,7,9,11,13,15,17,19])
 
 
-class PocFileTest(unittest.TestCase):
+def test_write_poc(tmpdir):
+    poc = femagtools.poc.Poc(360, sinPars)
+    filename = tmpdir / 'sin.poc'
+    poc.write(filename)
 
-    def test_write_poc(self):
-        poc = femagtools.poc.Poc(360, sinPars)
-        filename = tempfile.mkstemp()[1]
-        with open(filename, 'w') as f:
-            poc.writefile(f)
+    expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n360\nsin\n30.0\n3\n\n'
+    assert filename.read() == expected
 
-        expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n360\nsin\n30.0\n3\n\n'
-        with open(filename) as f:
-            result = f.read()
-        self.assertEqual(result, expected)
 
-    def _createPoc(self, filename):
-        testdir = os.path.split(__file__)[0]
-        if not testdir:
-            testdir = '.'
-        return femagtools.poc.Poc(os.path.join(testdir, filename))
-
-    def test_read_poc(self):
-        poc = self._createPoc(filename='data/test.poc')
-        expected = sinPars
-        expected['pole_pitch'] = 360.0
-        self.assertEqual(poc.getProps(), sinPars)
+def test_read_poc():
+    datadir = pathlib.Path(__file__).resolve().parent.joinpath('data')
+    poc = femagtools.poc.Poc(str(datadir / 'test.poc'))
+    expected = sinPars
+    expected['pole_pitch'] = 360.0
+    expected['pocType'] = 'Function'
+    assert poc.getProps() == expected
 
 #    def test_read_poc_with_fun( self ):
-#        poc=self._createPoc(filename='2p_sin.poc')
+#        poc=self._createPoc('2p_sin.poc')
 #        self.assertEqual(poc.getProps(), funPars)
 
-if __name__ == '__main__':
-    unittest.main()
+def test_rec(tmpdir):
+    key_winding=['1','2', '3']
+    phi_voltage_winding=[30, 150, 270]
+    p = 2
+    poc = femagtools.poc.Poc(360/p,
+                             dict(key_winding=key_winding,
+                                  phi_voltage_winding=phi_voltage_winding,
+                                  shape_current='rec'))
+    filename = tmpdir / 'rec.poc'
+    poc.write(filename)
+    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nrec\n\n'
+    assert filename.read() == expected
+
+def test_har(tmpdir):
+    key_winding=['1','2', '3']
+    phi_voltage_winding=[30, 150, 270]
+    p = 2
+    poc = femagtools.poc.Poc(360/p,
+                             dict(key_winding=key_winding,
+                                  phi_voltage_winding=phi_voltage_winding,
+                                  func_current=[1, 0, 0.3, 0, 0.1],
+                                  func_phi=[0, 0, 0, 0, 0],
+                                  pocType='har'))
+    filename = tmpdir / 'har.poc'
+    poc.write(filename)
+    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nhar\n5\n1, 0\n0, 0\n0.3, 0\n0, 0\n0.1, 0\n\n'
+    assert filename.read() == expected
+
+def test_hsp(tmpdir):
+    p = 2
+    poc = femagtools.poc.Poc(360/p,
+                             dict(harmonic_id=[1, 21],
+                                  func_current=[1, 0.01],
+                                  func_phi=[0, 0],
+                                  pocType='hsp'))
+    filename = tmpdir / 'hsp.poc'
+    poc.write(filename)
+
+    expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n180.0\nhsp\n2\n1, 1, 0\n21, 0.01, 0\n\n'
+    assert filename.read() == expected
+
+def test_fun(tmpdir):
+    p = 2
+    key_winding=['1','2', '3']
+    phi_voltage_winding=[30, 150, 270]
+    poc = femagtools.poc.Poc(360/p,
+                             dict(key_winding=key_winding,
+                                  phi_voltage_winding=phi_voltage_winding,
+                                  func_current=[0, 1, -1, 0],
+                                  func_phi=[0, 45, 135, 180],
+                                  pocType='fun'))
+    filename = tmpdir / 'fun.poc'
+    poc.write(filename)
+    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nfun\n4\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n\n'

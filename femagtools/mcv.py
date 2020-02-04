@@ -280,6 +280,11 @@ class Writer(Mcv):
 
     def _prepare(self, fillfac):
         """prepare output format (internal use only)"""
+        if self.mc1_type in (ORIENT_CRV, ORIENT_PM_CRV):
+            self.version_mc_curve = self.ORIENTED_VERSION_MC_CURVE
+        elif self.mc1_type == DEMCRV_BR:
+            self.version_mc_curve = self.PARAMETER_PM_CURVE
+            
         curve = copy.deepcopy(self.curve)
         if fillfac:
             alpha = fillfac/self.mc1_fillfac
@@ -288,7 +293,9 @@ class Writer(Mcv):
                            for b, h in zip(c['bi'], c['hi'])]
             self.mc1_fillfac = fillfac
             self.mc1_recalc = 1
-            
+        logger.info("%s Type: %d Num Curves %d",
+                    self.name, self.version_mc_curve,
+                    len(self.curve))
         self.mc1_curves = len(self.curve)
         self.mc1_ni = [min(len(c['hi']),
                            len(c['bi']))
@@ -334,6 +341,7 @@ class Writer(Mcv):
             self.mc1_remz = self.mc1_angle[self.mc1_curves-1]
         if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
            self.version_mc_curve == self.PARAMETER_PM_CURVE:
+            logging.debug("write mc1_curves %d", self.mc1_curves)
             self.writeBlock([float(self.mc1_remz), float(self.mc1_bsat),
                              float(self.mc1_bref), float(self.mc1_fillfac),
                              self.mc1_curves])
@@ -343,7 +351,7 @@ class Writer(Mcv):
 
         # data
         for K in range(0, self.mc1_curves):
-
+            logger.debug(" K %d  Bi, Hi %d", K,  len(curve[K].get('bi', [])))
             # hi, bi
             lb = curve[K].get('bi', [])
             lh = curve[K].get('hi', [])
@@ -516,8 +524,6 @@ class Reader(Mcv):
             self.version_mc_curve = self.readBlock(int)
         else:
             self.version_mc_curve = int(self.fp.readline().strip())
-        logger.debug("MC file %s Version %s",
-                     filename, self.version_mc_curve)
 
         # read dummy text and title 2x (CHARACTER*40)
         if binary:
@@ -564,7 +570,8 @@ class Reader(Mcv):
             if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
                self.version_mc_curve == self.PARAMETER_PM_CURVE:
                 self.mc1_curves = int(line[4])
-
+        logger.debug("MC file %s Version %s Curves %d",
+                     filename, self.version_mc_curve, self.mc1_curves)
         if self.mc1_type == DEMCRV_BR:
             self.mc1_angle[self.mc1_curves-1] = self.mc1_remz
 

@@ -725,6 +725,7 @@ class Geometry(object):
             logger.debug("        p1 = %s, p2 = %s", n1, n2)
 
         entity.set_nodes(n1, n2)
+        logger.debug("add_edge %s - %s", n1, n2)
         self.g.add_edge(n1, n2, object=entity)
 
     def get_edge(self, eg):
@@ -738,12 +739,13 @@ class Geometry(object):
         return None
 
     def _remove_edge(self, n1, n2):
+        logger.debug("remove_edge %s - %s", n1, n2)
         self.g.remove_edge(n1, n2)
 
     def remove_edge(self, edge):
         e = self.get_edge(edge)
         assert(len(e) == 1)
-        self.g.remove_edge(e[0][0], e[0][1])
+        self._remove_edge(e[0][0], e[0][1])
 
     def remove_edges(self, edges):
         for e in edges:
@@ -770,7 +772,7 @@ class Geometry(object):
     def lines(self):
         """return lists of lines"""
         return self.elements(Line)
-    
+
     def split_lines_longer_than(self, length):
         """split lines longer than length"""
         new_lines = []
@@ -2844,37 +2846,55 @@ class Geometry(object):
                     break
                 edges.append([nbr, e])
 
-            if edges:
-                for i in range(len(edges)):
-                    n1 = edges[i][0]
-                    e1 = edges[i][1]
-                    for n2, e2 in edges[i+1:]:
-                        if self.correct_overlapping(n, n1, e1, n2, e2):
-                            count += 1
+            if not edges:
+                continue
+
+            for i in range(len(edges)):
+                e1 = edges[i][1]
+                if e1 is None:
+                    continue
+                n1 = edges[i][0]
+                over_edges = [[e1.length(), n1]]
+                # list entry [<length of edge>, <end node of edge>]
+                for j in range(i+1, len(edges)):
+                    e2 = edges[j][1]
+                    if e2 is None:
+                        continue
+                    n2 = edges[j][0]
+                    if e1.overlapping_shapes(n, e2):
+                        over_edges.append([e2.length(), n2])
+                        edges[j][1] = None
+
+                if len(over_edges) > 1:
+                    if self.correct_overlapping(n, e1, over_edges):
+                        count += 1
         logger.debug("end of search_overlapping_elements(correct=%s)", count)
         return count
 
-    def correct_overlapping(self, n, n1, e1, n2, e2):
-        if e1.__class__ != e2.__class__:
-            return False
-        if not e1.overlapping_shapes(n, e2):
-            return False
-        if isinstance(e1, Line):
-            self.correct_overlapping_lines(n, n1, e1, n2, e2)
+    def correct_overlapping(self, n, e, edges):
+        if len(edges) < 2:
+            return False  # no correction
+        edges.sort()
+        if isinstance(e, Line):
+            self.correct_overlapping_lines(n, edges)
             return True
         return False
 
-    def correct_overlapping_lines(self, n, n1, e1, n2, e2):
-        l1 = e1.length()
-        l2 = e2.length()
-        if l1 < l2:
-            self.g.remove_edge(n, n2)
+    def correct_overlapping_lines(self, n, edges):
+        logger.debug("begin of correct_overlapping_lines")
+        logger.debug(" -- n=%s", n)
+        assert(len(edges) > 1)
+
+        n1 = edges[0][1]
+        for edge in edges[1:]:
+            n2 = edge[1]
+            self._remove_edge(n, n2)
             line = Line(Element(start=n1, end=n2))
-        else:
-            self.g.remove_edge(n, n1)
-            line = Line(Element(start=n2, end=n1))
-        logger.debug("  corrected")
-        self.add_edge(n1, n2, line)
+            self.add_edge(n1, n2, line)
+            n1 = n2
+
+        logger.debug(" -- corrected")
+        logger.debug("end of correct_overlapping_lines")
 
     def connect_arc_or_line(self, n, el, n1, n2, tol=1e-05):
         elements = el.split([n], rtol=tol, atol=tol)
@@ -2957,7 +2977,7 @@ class Geometry(object):
                 return 0
 
         logger.debug("%s remove_appendix(%s, %s)", incr_text, n1, n2)
-        self.g.remove_edge(n1, n2)
+        self._remove_edge(n1, n2)
         c = 1
         nbrs = [nbr for nbr in self.g.neighbors(n2)]
         if len(nbrs) == 1:

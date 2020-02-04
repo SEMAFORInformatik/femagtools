@@ -31,7 +31,8 @@ class Reader(object):
                             self.curve[i]['bi'].append(b)
             if len(self.curve) > 1:
                 self.mc1_type = mcv.ORIENT_CRV
-        logger.info("JHB %s size %d", self.name, self.curve[0]['bi'])
+        logger.info("JHB %s curves %d sizes %s", self.name, len(self.curve),
+                    [len(c['bi']) for c in self.curve])
         
     def __getitem__(self, index):
         return self.__getattribute__(index)

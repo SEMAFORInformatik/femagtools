@@ -24,5 +24,5 @@ m.mcvkey_yoke = mcvkey_yoke
 if mcvkey_teeth ~= nil then
   r = (da1 + m.yoke_diam_ins)/4
   x0, y0 = pr2c(r, 2*math.pi/m.tot_num_slot + m.zeroangl/180*math.pi)
-   def_mat_fm_nlin(x0, y0, blue, mcvkey_teeth, m.rlength)
+   def_mat_fm_nlin(x0, y0, "blue", mcvkey_teeth, m.rlength)
 end

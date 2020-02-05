@@ -32,7 +32,7 @@ m.fcpy_mm4        =   m.fcpy_mm3
 m.fcpx_mm5        =   m.fcpx_mm1
 m.fcpy_mm5        =   m.fcpy_mm1
 
-m.npols_gen       =  1 -- nuber of sectors simulated
+m.npols_gen       =  1 -- number of sectors simulated
 
 % endif
 m.nu_skew_steps   =    ${model.get('num_skew_steps',0)}

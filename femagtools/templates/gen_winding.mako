@@ -20,14 +20,14 @@ m.curr_inp        =   0.0 -- const
 m.dq_offset       =   0
 
 % if model.get(['stator', 'num_slots_gen']) == 1:
-def_new_wdg(m.xcoil_1, m.ycoil_1, green, "1", m.num_wires, 0.0, wi)
-add_to_wdg(m.xcoil_2, m.ycoil_2, wsamekey, wo, wser) 
+def_new_wdg(m.xcoil_1, m.ycoil_1, "green", "1", m.num_wires, 0.0, "wi")
+add_to_wdg(m.xcoil_2, m.ycoil_2, "wsamekey", "wo", "wser")
 % else:
 pre_models("Gen_winding")
 pre_models("gen_pocfile") 
 % endif
 % else:
-color={green, yellow, magenta,lightgrey,darkred,skyblue,violet}
+color={"green", "yellow", "magenta", "lightgrey", "darkred", "skyblue", "violet"}
 wkey={0,0,0,0,0,0}
 --
 bz = m.width_bz
@@ -42,19 +42,19 @@ for i=1, m.num_phases do
     if g == 1 then
       wkey[i]=def_new_wdg(xs + bz/3, ys, color[i], wdg, m.num_wires, 0, dirl)
     else
-      add_to_wdg(xs + bz/3, ys, color[i], wkey[i], dirl, wser )
+      add_to_wdg(xs + bz/3, ys, color[i], wkey[i], dirl, "wser")
     end
     if m.num_layers > 1 then
-      add_to_wdg(xs + bz - bz/3, ys, wkey[i], dirl, wser)
+      add_to_wdg(xs + bz - bz/3, ys, wkey[i], dirl, "wser")
     end
     dirl = -dirl
     if i > 1 or g > 1 then
-      add_to_wdg(xs - bz/3, ys, wkey[i], dirl, wser)
+      add_to_wdg(xs - bz/3, ys, wkey[i], dirl, "wser")
     else
-      add_to_wdg(m.num_sl_gen*bz - bz/3, ys, wkey[i], -dirl, wser)
+      add_to_wdg(m.num_sl_gen*bz - bz/3, ys, wkey[i], -dirl, "wser")
     end
     if m.num_layers > 1 then
-      add_to_wdg(xs + bz + bz/3, ys, wkey[i], dirl, wser)
+      add_to_wdg(xs + bz + bz/3, ys, wkey[i], dirl, "wser")
     end
   end
 end

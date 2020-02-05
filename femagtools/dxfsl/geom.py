@@ -680,6 +680,23 @@ class Geometry(object):
             return [(round(p[0], ndec), round(p[1], ndec)) for p in points]
         return n
 
+    def find_node(self, p, **kwargs):
+        """return closest nodes to points in arg within pickdist"""
+        nodes = list(kwargs.get('g', self.g))
+        if nodes:
+            anodes = np.asarray(nodes)
+            # la.norm on numpy below 1.8 does not accept axis
+            c = anodes - p
+            dist = np.sqrt(np.einsum('ij, ij->i', c, c))
+            # dist = la.norm(np.asarray(nodes) - p, axis=1)
+            idx = dist.argmin()
+            if dist[idx] == 0.0:  # myself
+                dist[idx] = 999.0
+                idx = dist.argmin()
+                if dist[idx] < 0.05:
+                    return nodes[idx]
+        return None
+
     def polyline_paths(self):
         """return lists of line paths"""
         paths = []
@@ -2097,7 +2114,7 @@ class Geometry(object):
         endangle = -999.0
 
         for h in h_points:
-            if not points_are_close(center, h):
+            if not points_are_close(center, h, rtol=1e-02, atol=1e-03):
                 angle = alpha_line(center, [round(h[0], 4), round(h[1], 4)])
                 if angle < 0.0:
                     logger.debug(" - strange point %s", h)
@@ -2784,12 +2801,22 @@ class Geometry(object):
                     continue
 
                 if not is_Circle(el):
-                    end_nodes.append((n, nbrs[0]))
+                    end_nodes.append((n, nbrs[0], el))
 
-        for n0, n1 in end_nodes:
+        for n0, n1, el in end_nodes:
             logger.debug("Critical Node at %s", n0)
             if self.node_connected(n0):
                 c += 1
+            else:
+                nn = self.find_node(n0)
+                if nn:
+                    logger.debug("Node %s is near %s", n0, nn)
+                    try:
+                        self._remove_edge(n0, n1)
+                        self.add_edge(nn, n1, el)
+                    except Exception as e:
+                        logger.debug("delete of %s - %s failed", n0, n)
+                        logger.debug("Element %s", el)
         return c
 
     def delete_appendices(self):

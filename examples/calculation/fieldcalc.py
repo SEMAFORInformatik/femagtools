@@ -70,7 +70,9 @@ except OSError:
 femag = femagtools.Femag(workdir)
 
 simulation = dict(
-    calculationMode="fieldcalc")
+    calculationMode="fieldcalc",
+    current = 20,
+    phi = 30)
 
 r = femag(machine,
           simulation)

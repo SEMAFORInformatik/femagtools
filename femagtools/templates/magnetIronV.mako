@@ -44,26 +44,26 @@ delta = 0
 for i = 0, m.npols_gen-1 do
     gamma = (2*i+1)*180/m.num_poles
     x0, y0 = pd2c(d, gamma-alpha/math.pi*180)
-    if m.orient == mcartaniso or m.orient == mcartiso then
+    if m.orient == "cartaniso" or m.orient == "cartiso" then
         delta = gamma-m.magn_angle/2+90
     else
         delta = m.magn_angle/2 - 90/m.num_poles
     end
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, m.mcvkey_magnet, delta, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "red", m.mcvkey_magnet, delta, m.orient, m.magncond, m.rlen)
     else
-        def_mat_pm_nlin(x0, y0, green, m.mcvkey_magnet, delta-180, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "green", m.mcvkey_magnet, delta-180, m.orient, m.magncond, m.rlen)
     end
     x0, y0 = pd2c(d, gamma+alpha/math.pi*180)
-    if m.orient == mcartaniso or m.orient == mcartiso then
+    if m.orient == "cartaniso" or m.orient == "cartiso" then
        delta = gamma+m.magn_angle/2-90
     else
         delta = -m.magn_angle/2 + 90/m.num_poles
     end
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, m.mcvkey_magnet, delta, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "red", m.mcvkey_magnet, delta, m.orient, m.magncond, m.rlen)
     else
-        def_mat_pm_nlin(x0, y0, green, m.mcvkey_magnet, delta+180, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "green", m.mcvkey_magnet, delta+180, m.orient, m.magncond, m.rlen)
     end
 end
 %endif

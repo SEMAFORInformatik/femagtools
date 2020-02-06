@@ -31,13 +31,13 @@ for i = 0, m.npols_gen-1 do
     if i < 2 and m.npols_gen > 1 then
         delete_sreg(x0, y0)
     end    
-    if m.orient == mcartaniso or m.orient == mcartiso then
+    if m.orient == "cartaniso" or m.orient == "cartiso" then
         gamma = alfa
     end
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, m.mcvkey_magnet, gamma, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "red", m.mcvkey_magnet, gamma, m.orient, m.magncond, m.rlen)
     else
-        def_mat_pm_nlin(x0, y0, green, m.mcvkey_magnet, gamma-180, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "green", m.mcvkey_magnet, gamma-180, m.orient, m.magncond, m.rlen)
     end
 end
 %endif

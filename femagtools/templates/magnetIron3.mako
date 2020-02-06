@@ -36,9 +36,9 @@ for i = 0, m.npols_gen-1 do
         alfa = (2*i+1)*gamma*180/math.pi
     end
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, m.mcvkey_magnet, alfa, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "red", m.mcvkey_magnet, alfa, m.orient, m.magncond, m.rlen)
     else
-        def_mat_pm_nlin(x0, y0, green, m.mcvkey_magnet, alfa-180, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "green", m.mcvkey_magnet, alfa-180, m.orient, m.magncond, m.rlen)
     end
 end
 else
@@ -51,15 +51,15 @@ for i = 0, m.npols_gen-1 do
         delete_sreg(x0, y0)
 	delete_sreg(x1, y1)
     end
-    if m.orient == mpolaniso or m.orient == mpoliso then
+    if m.orient == "polaniso" or m.orient == "poliso" then
         alfa = 0
     end
     if i % 2 == 0 then
-        def_mat_pm_nlin(x0, y0, red, m.mcvkey_magnet, (alfa+gamma/2)*180/math.pi, m.orient, m.magncond, m.rlen)
-        def_mat_pm_nlin(x1, y1, red, m.mcvkey_magnet, (alfa-gamma/2)*180/math.pi, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "red", m.mcvkey_magnet, (alfa+gamma/2)*180/math.pi, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x1, y1, "red", m.mcvkey_magnet, (alfa-gamma/2)*180/math.pi, m.orient, m.magncond, m.rlen)
     else
-        def_mat_pm_nlin(x0, y0, green, m.mcvkey_magnet, (alfa+gamma/2)*180/math.pi-180, m.orient, m.magncond, m.rlen)
-        def_mat_pm_nlin(x1, y1, green, m.mcvkey_magnet, (alfa-gamma/2)*180/math.pi-180, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x0, y0, "green", m.mcvkey_magnet, (alfa+gamma/2)*180/math.pi-180, m.orient, m.magncond, m.rlen)
+        def_mat_pm_nlin(x1, y1, "green", m.mcvkey_magnet, (alfa-gamma/2)*180/math.pi-180, m.orient, m.magncond, m.rlen)
     end
 end
 end

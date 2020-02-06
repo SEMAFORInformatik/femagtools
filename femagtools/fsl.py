@@ -325,7 +325,7 @@ class Builder:
                     magnetMat['magntemp'] = 20
                 
             return self.create_new_model(model) + \
-                self.__render(model.windings, 'cu_losses') + \
+                self.create_cu_losses(model) + \
                 self.create_stator_model(model) + \
                 self.create_gen_winding(model) + \
                 self.create_magnet(magnetMat) + \
@@ -352,8 +352,7 @@ class Builder:
         airgap_induc = (self.create_airgap_induc()
                         if model.get('airgap_induc', 0) else [])
 
-        fslcalc = (self.__render(model, 'cu_losses') +
-                   self.__render(model, model.get('calculationMode')) +
+        fslcalc = (self.__render(model, model.get('calculationMode')) +
                    airgap_induc)
         
         if model.get('calculationMode') in ('cogg_calc',

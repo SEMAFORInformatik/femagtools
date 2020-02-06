@@ -181,7 +181,8 @@ class Engine(object):
         submitfile = self.job.prepareDescription()
         cmdout = subprocess.check_output(["condor_submit", submitfile])
         self.clusterId = re.findall(r'\d+', cmdout.decode('utf-8'))[-1]
-        logger.info('submit cluster %s', self.clusterId)
+        logger.info('submit cluster %s directory %s total tasks %d',
+                    self.clusterId, self.job.basedir, len(self.job.tasks))
         return self.clusterId
 
     def join(self):

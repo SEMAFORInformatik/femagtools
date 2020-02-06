@@ -14,14 +14,7 @@ torque = bch.ldq['torque']
 r10 = 0.1
 p = 4
 
-pm = femagtools.machine.PmRelMachineLdq(3, p,
-                                        r1=r10,
-                                        ld=bch.ldq['ld'],
-                                        psim=bch.ldq['psim'],
-                                        lq=bch.ldq['lq'],
-                                        beta=beta,
-                                        i1=i1,
-                                        ls=1e-3)
+pm = femagtools.machine.create(bch, r1=r10, ls=1e-3)
 
 u1 = 340
 tq = 200

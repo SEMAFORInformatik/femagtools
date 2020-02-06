@@ -89,7 +89,7 @@ Plot SuperElements::
   isa = isa7.read("PM_130_L4.ISA7")
   fig = plt.figure()
   ax = fig.add_subplot(111, aspect='equal')
-  plot.spels(isa)
+  plot.spel(isa)
   plt.show()
 
 

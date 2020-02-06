@@ -190,6 +190,7 @@ Ldq
   psid              Psid matrix (n x m)            Vs
   psiq              Psiq matrix (n x m)            Vs
   torque            Torque matrix (n x m)          Nm
+  ================  =============================  ========================
 
   
 Machine

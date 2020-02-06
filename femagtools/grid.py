@@ -118,7 +118,7 @@ class Grid(object):
         filename = 'femag.fsl'
         logger.info("setup model in %s", self.femag.workdir)
         with open(os.path.join(self.femag.workdir, filename), 'w') as f:
-            f.write('\n'.join(builder.create_model(model) +
+            f.write('\n'.join(builder.create_model(model, self.femag.magnets) +
                               ['save_model("close")']))
 
         self.femag.run(filename, options=['-b'])
@@ -229,7 +229,6 @@ class Grid(object):
                     task.add_file(
                         'femag.fsl',
                         builder.create_open(model) +
-                        builder.create_common(model) +
                         builder.create_fe_losses(model) +
                         builder.create_analysis(fea) +
                         ['save_model("close")'])
@@ -244,7 +243,7 @@ class Grid(object):
 
                     task.add_file(
                         'femag.fsl',
-                        builder.create_model(model) +
+                        builder.create_model(model, self.femag.magnets) +
                         builder.create_analysis(fea) +
                         ['save_model("close")'])
 

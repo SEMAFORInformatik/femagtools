@@ -13,6 +13,7 @@ def create_fsl():
 
         stator=dict(
             num_slots=12,
+            num_slots_gen=12,
             stator2=dict(
                 slot_t1=0.001,
                 slot_t2=0.0005,
@@ -31,7 +32,7 @@ def create_fsl():
                 bridge_height=0.0,
                 magn_type=1,
                 condshaft_r=0.02,
-                magn_ori=2,
+                magn_ori=8,
                 magn_rfe=0.0,
                 bridge_width=0.0,
                 magn_len=1.0)

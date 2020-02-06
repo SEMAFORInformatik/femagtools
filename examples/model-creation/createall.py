@@ -15,7 +15,8 @@ models = ['statorBG-magnetSector',
           'stator4-magnetSector',
           'statorRotor3-magnetIron',
           'statorRotor3-ipm-fml',
-          'stator1-magnetSector-pm-sym-fast']
+          'stator1-magnetSector-pm-sym-fast',
+          'dxf-ipm']
 
 logger = logging.getLogger("fslcreator")
 workdir = os.path.join(os.path.expanduser('~'), 'femag')

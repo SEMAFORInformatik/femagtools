@@ -27,9 +27,9 @@ pre_models("STATOR_3")
 
 if mcvkey_teeth ~= nil then
   if m.inside_diam > m.yoke_diam then
-     r = (m.inside_diam + m.slot_height)/2
-  else
      r = (m.inside_diam - m.slot_height)/2
+  else
+     r = (m.inside_diam + m.slot_height)/2
   end  
   x0, y0 = pr2c(r, 2*math.pi/m.tot_num_slot + m.zeroangl/180*math.pi)
    def_mat_fm_nlin(x0, y0, blue, mcvkey_teeth, m.rlength)

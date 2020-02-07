@@ -14,42 +14,17 @@ from .. import __version__
 logger = logging.getLogger(__name__)
 
 
-def gcd(a, b):
-    """calc greatest common divisor"""
-    while b:
-        a, b = b, a % b
-    return a
-
-
-def lcm(a, b):
-    """least common multiple"""
-    return a*b//gcd(a, b)
-
-    
-def agndst2(da1, da2, Q, p):
-    """return agndst from lcm"""
-    r = (da1 + da2)/4
-    ag = abs(da1 - da2)/6
-    n = 12
-    a = [r*4*np.pi/p/(i*lcm(Q, p))
-         for i in range(1, n)]
-    i = np.argmin(np.abs(np.array([ag]*(n-1)) - a))
-    if i > 0:
-        return a[i-1]
-    return a[0]
-
-
 def agndst(da1, da2, Q, p, nodedist=1):
     """ build agndst from set of useful node angles:  
         4°, 2°, 1.5°, 1°, 0.75°, 0.5°, 0.25, 0.1, 0.05° """
-    dagset = [np.pi/45, np.pi/90, np.pi/120, np.pi/180,
-              np.pi/240, np.pi/360, np.pi/720, np.pi/1800, np.pi/3600]
+    divisors = [1,2,4,8,10,16,20,40,80,160,200,400]
+    dagset = [2*np.pi/Q/i for i in divisors]
     r = (da1 + da2)/4
     ag = abs(da1 - da2)/6
     i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
     if nodedist > 1 and i > 1:
         return dagset[i-2]*r
-    elif nodedist < 1:
+    elif nodedist < 1 or i == 0:
         return dagset[i]*r
     return dagset[i-1]*r
 

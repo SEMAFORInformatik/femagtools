@@ -233,7 +233,9 @@ class Builder:
         return self.__render(model.windings, 'cu_losses')
 
     def create_fe_losses(self, model):
-        if model.get('ffactor', 0):
+        if any(model.get(k,0) for k in ('ffactor','cw', 'ch', 'hyscoef',
+                                        'edycof', 'indcof', 'fillfact',
+                                        'basfreq', 'basind')):
             return self.__render(model, 'FE-losses')
         return []
 
@@ -324,14 +326,15 @@ class Builder:
                 except AttributeError:
                     magnetMat['magntemp'] = 20
                 
-            return self.create_new_model(model) + \
-                self.create_cu_losses(model) + \
-                self.create_stator_model(model) + \
-                self.create_gen_winding(model) + \
-                self.create_magnet(magnetMat) + \
-                self.create_magnet_model(model) + \
-                self.mesh_airgap(model) + \
-                self.create_connect_models(model)
+            return (self.create_new_model(model) + 
+                    self.create_cu_losses(model) + 
+                    self.create_fe_losses(model) +
+                    self.create_stator_model(model) + 
+                    self.create_gen_winding(model) + 
+                    self.create_magnet(magnetMat) + 
+                    self.create_magnet_model(model) + 
+                    self.mesh_airgap(model) + 
+                    self.create_connect_models(model) )
 
         return self.open_model(model)
 
@@ -410,10 +413,8 @@ class Builder:
                 fea['phi_start'] = 0.0
             if 'range_phi' not in fea:
                 fea['range_phi'] = 720/model.get('poles')
-            fe_losses = self.create_fe_losses(model)
             
-            return (fslmodel + fe_losses +
-                    self.create_analysis(fea) +
+            return (fslmodel + self.create_analysis(fea) +
                     ['save_model("close")'])
         
         logger.info("create open model and simulation")

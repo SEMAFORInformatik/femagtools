@@ -2399,13 +2399,34 @@ class Geometry(object):
         self.remove_edges(self.get_circles(center, radius))
         return True
 
+    def set_areas_inside_for_all_areas(self):
+        for area in self.list_of_areas():
+            areas_inside = [a for a in self.area_list
+                            if area.is_inside(a)]
+            if not areas_inside:
+                continue
+            areas_notouch = {a.identifier(): a for a in areas_inside
+                             if not area.has_connection(self, a, ndec)}
+            area.areas_inside = areas_notouch
+
+        for area in self.list_of_areas():
+            nested = [id for id in area.list_of_nested_areas_inside()]
+            for id in nested:
+                logger.debug(" -- remove %s inside %s", id, area.identifier())
+                del area.areas_inside[id]
+
     def create_auxiliary_lines(self, rightangle, leftangle):
+        logger.debug("begin of create_auxiliary_lines")
+        self.set_areas_inside_for_all_areas()
+
         for area in self.list_of_areas():
             logger.debug("create_auxiliary_lines for %s",
                          area.identifier())
 
-            areas_inside = [a for a in self.area_list
-                            if area.is_inside(a)]
+            areas_inside = area.areas_inside.values()
+            if not areas_inside:
+                continue
+
             areas_border = {a.identifier(): a for a in areas_inside
                             if area.has_connection(self, a, ndec)}
             areas_notouch = {a.identifier(): a for a in areas_inside
@@ -2480,6 +2501,7 @@ class Geometry(object):
                                         self.rtol,
                                         self.atol)
                             break
+        logger.debug("end of create_auxiliary_lines")
 
     def set_rotor(self):
         self.sym_counterpart = 1

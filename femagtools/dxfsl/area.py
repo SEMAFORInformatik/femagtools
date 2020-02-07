@@ -58,6 +58,7 @@ class Area(object):
         global area_number
         area_number += 1
         self.id = area_number
+        self.areas_inside = {}
 
     def identifier(self):
         return "{}-{}".format(self.id, self.type)
@@ -1137,6 +1138,17 @@ class Area(object):
                 return less_equal(self.alpha, a.alpha)
 
         return self.min_angle < a.min_angle
+
+    def nested_areas_inside(self):
+        for id, a in self.areas_inside.items():
+            yield id
+            for i in a.nested_areas_inside():
+                yield i
+
+    def list_of_nested_areas_inside(self):
+        for id, a in self.areas_inside.items():
+            for i in a.nested_areas_inside():
+                yield i
 
     def __str__(self):
         return "Area {}\n".format(self.id) + \

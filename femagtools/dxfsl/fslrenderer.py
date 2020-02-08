@@ -22,10 +22,16 @@ def agndst(da1, da2, Q, p, nodedist=1):
     r = (da1 + da2)/4
     ag = abs(da1 - da2)/6
     i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
-    if nodedist > 1 and i > 1:
-        return dagset[i-2]*r
-    elif nodedist < 1 or i == 0:
-        return dagset[i]*r
+    nd = min(round(nodedist), i)
+    try:
+        logger.info("Num nodes/slot %g nodedist %g",
+                    divisors[i-1], nodedist)
+        if nodedist > 1:
+            return dagset[i-nd]*r
+        elif nodedist < 1 or i == 0:
+            return dagset[i]*r
+    except IndexError:
+        pass
     return dagset[i-1]*r
 
 

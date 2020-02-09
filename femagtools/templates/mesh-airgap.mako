@@ -2,9 +2,9 @@
 
 -- airgap
 ndt(agndst)
-r1 = da2/2 + ag/3
+r1 = m.fc_radius
 x1, y1 = pr2c(r1, alfa)
-n = r1*alfa/agndst + 1
+n = math.floor(r1*alfa/agndst + 1.5)
 nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)
 
 r2 = da2/2 + 2*ag/3

@@ -449,9 +449,9 @@ class FslRenderer(object):
                 u"ndt(agndst)"] + inner + [
                     u'-- airgap',
                     u'ndt(agndst)',
-                    u'r1 = da2/2 + ag/3',
+                    u'r1 = m.fc_radius',
                     u'x1, y1 = pr2c(r1, alfa)',
-                    u'n = r1*alfa/agndst + 1',
+                    u'n = math.floor(r1*alfa/agndst + 1.5)',
                     u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
                     u'r2 = da2/2 + 2*ag/3',
                     u'x2, y2 = pr2c(r2, alfa)',

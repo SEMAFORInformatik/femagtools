@@ -1,6 +1,6 @@
 m.hc_min          =  ${'%12.3f' % model.get('hc_min', 95.0)} --   Limit demagnetisa > 0:[%]Hc,<0:[kA/m]   
 m.con_hdcopy      =  ${'%12.3f' % model.get('con_hdcopy', 0)} --   Hc-copy:Name:auto:0,intact:1, none:-1   
-m.b_max           =         2.400 --   Max Induction [T] in colorgradation     
+m.b_max           =  ${'%12.3f' % model.get('b_max', 2.4)} --   Max Induction [T] in colorgradation     
 m.b_min           =  ${'%12.3f' % model.get('move_inside')} --   Move inside: 0 , Move outside: > 0      
 m.calc_fe_loss    =  ${'%12.3f' % model.get('calc_fe_loss', 1)} --   Calc. FE-Loss:0:no, 1:yes, 2:m-output   
 m.eval_force      =  ${'%12.3f' % model.get('eval_force', 0)} --   Eval. force density > 0, no <= 0        

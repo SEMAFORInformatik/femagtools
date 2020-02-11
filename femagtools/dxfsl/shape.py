@@ -51,8 +51,12 @@ class Shape(object):
         return False
 
     def set_nodes(self, n1, n2):
-        self.n1 = n1
-        self.n2 = n2
+        if self.get_point_number(n1) == 1:
+            self.n1 = n1
+            self.n2 = n2
+        else:
+            self.n2 = n1
+            self.n1 = n2
 
     """an abstract geometry with 2 points"""
     def start(self):
@@ -156,6 +160,14 @@ class Shape(object):
                      n, self)
         raise ValueError('missing node in element')
         return 0
+
+    def get_point_number(self, p):
+        d_p1 = distance(p, self.p1)
+        d_p2 = distance(p, self.p2)
+        if d_p1 < d_p2:
+            return 1
+        else:
+            return 2
 
     def get_alpha(self, n):
         return 0.0
@@ -829,12 +841,14 @@ class Arc(Circle):
         return get_angle_of_arc(self.startangle, self.endangle)
 
     def __str__(self):
-        return "Arc c={},\n\t r={},\n\t start={},\n\t end={},\n\t p1={},\n\t p2={}".\
+        return "Arc c={},\n\t r={},\n\t start={},\n\t end={},\n\t p1={},\n\t p2={},\n\t n1={},\n\t n2={}".\
             format(self.center,
                    self.radius, self.startangle,
                    self.endangle,
                    self.p1,
-                   self.p2)
+                   self.p2,
+                   self.n1,
+                   self.n2)
 
     def __eq__(self, other):
         """Override the default Equals behavior"""
@@ -993,7 +1007,10 @@ class Line(Shape):
             return split_lines
         return []
 
-    def is_point_inside(self, point, rtol, atol, include_end=False):
+    def is_point_inside(self, point,
+                        rtol=1e-03,
+                        atol=1e-03,
+                        include_end=False):
         """ returns True if point is between start and end point
         """
         if points_are_close(point, self.p1, rtol, atol):
@@ -1055,7 +1072,10 @@ class Line(Shape):
         return 0.0
 
     def __str__(self):
-        return "Line p1={}, p2={}".format(self.p1, self.p2)
+        return "Line p1={}, p2={}, n1={}, n2={}".format(self.p1,
+                                                        self.p2,
+                                                        self.n1,
+                                                        self.n2)
 
     def __eq__(self, other):
         """Override the default Equals behavior"""

@@ -247,7 +247,8 @@ class Area(object):
         gap_list.append((d, (p1, p2)))
         d, p1, p2 = a.get_nearest_point(center, radius, leftangle)
         gap_list.append((d, (p1, p2)))
-        return gap_list
+        gap_list.sort()
+        return [gap_list[0]]
 
     def get_nearest_point(self, center, radius, angle):
         axis_p = point(center, radius, angle)
@@ -454,6 +455,12 @@ class Area(object):
     def intersect_line(self, line):
         for e in self.area:
             if e.intersect_line(line):
+                return True
+        return False
+
+    def is_point_inside(self, pt):
+        for e in self.area:
+            if e.is_point_inside(pt, include_end=True):
                 return True
         return False
 

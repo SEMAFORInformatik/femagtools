@@ -677,3 +677,14 @@ class Machine(object):
 
     def delete_tiny_elements(self, mindist):
         self.geom.delete_tiny_elements(mindist)
+
+    def create_mirror_lines_outside_windings(self):
+        midangle = middle_angle(self.startangle, self.endangle)
+        pts = self.geom.get_intersect_points(self.center,
+                                             self.radius+10,
+                                             midangle)
+        pts.sort()
+        if self.geom.create_lines_outside_windings(pts):
+            self.geom.area_list = []
+            logger.debug("create subregions again")
+            self.geom.search_subregions()

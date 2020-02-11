@@ -1201,6 +1201,7 @@ class Geometry(object):
 
         x = e.get_node_number(n1)
         alpha_n1 = e.get_alpha(n1)
+
         info = {'n1': n1,
                 'n2': n2,
                 'data': e_dict,
@@ -1274,6 +1275,7 @@ class Geometry(object):
             result['ok'] = True
             return result
 
+        logger.debug("***** EDGE %s *****", 1)
         info_next = self.next_edge_lefthand_side(info_curr)
         if not info_next:
             result['msg'] = ("dead end ({}, {})"
@@ -1312,6 +1314,7 @@ class Geometry(object):
             self.set_edge_tracked(info_next)
 
             info_curr = info_next
+            logger.debug("***** EDGE %s *****", c)
             info_next = self.next_edge_lefthand_side(info_curr)
             if not info_next:
                 result['msg'] = ("<== dead end ({},{})"
@@ -2500,7 +2503,7 @@ class Geometry(object):
                                         line,
                                         self.rtol,
                                         self.atol)
-                            break
+
         logger.debug("end of create_auxiliary_lines")
 
     def set_rotor(self):
@@ -3032,6 +3035,44 @@ class Geometry(object):
         if len(nbrs) == 1:
             c += self.remove_appendix(n2, nbrs[0], incr_text + '.')
         return c
+
+    def get_intersect_points(self, center, outer_radius, angle):
+        line = Line(
+                Element(start=center,
+                        end=point(center, outer_radius+1, angle)))
+        points = []
+        for e in self.elements(Shape):
+            pts = e.intersect_line(line, 1e-04, 1e-04, True)
+            points += pts
+        return points
+
+    def _line_inside_windings(self, p1, p2):
+        for area in self.list_of_areas():
+            if area.is_winding():
+                if area.is_point_inside(p1):
+                    if area.is_point_inside(p2):
+                        return True
+        return False
+
+    def create_lines_outside_windings(self, points):
+        if not points:
+            return False
+        created = False
+        p1 = points[0]
+        for p2 in points[1:]:
+            if not points_are_close(p1, p2):
+                if self._line_inside_windings(p1, p2):
+                    p1 = p2
+                    continue
+
+                n = self.find_nodes(p1, p2)
+                line = Line(Element(start=n[0], end=n[1]))
+                self.add_edge(n[0], n[1], line)
+                created = True
+            p1 = p2
+
+        self.search_appendices()
+        return created
 
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))

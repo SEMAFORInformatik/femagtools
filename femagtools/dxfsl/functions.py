@@ -203,7 +203,7 @@ def lines_intersect_point(p_L1, m_L1, n_L1, p_L2, m_L2, n_L2):
 
     x = (n_L2-n_L1) / (m_L1-m_L2)
     y = m_L1 * x + n_L1
-    return [x, y]
+    return (x, y)
 
 
 def intersect_point(p, L_p, L_m, L_n):

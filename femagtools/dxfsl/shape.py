@@ -144,22 +144,26 @@ class Shape(object):
             return self.intersect_circle(e, rtol, atol, include_end)
         return []
 
-    def get_node_number(self, n):
-        if nodes_are_equal(n, self.n1):
-            if nodes_are_equal(n, self.n2):
-                logger.debug("FATAL: get_node_number(): " +
-                             "both nodes of %s are close to %s",
-                             self, n)
-                raise ValueError('both nodes are equal in element')
+    def get_node_number(self, n, override=False):
+        if not nodes_are_equal(n, self.n1):
+            if not nodes_are_equal(n, self.n2):
+                if override:
+                    return 0
+                logger.debug("FATAL: get_node_number(): node %s missing in %s",
+                             n, self)
+                raise ValueError('missing node in element')
+
+        d1 = distance(n, self.n1)
+        d2 = distance(n, self.n2)
+        if d1 == d2:
+            logger.info("distances of %s and %s are equal (%s / %s)",
+                        self.n1, self.n2, d1, d2)
+            raise ValueError('both nodes are equal in element')
+
+        if d1 < d2:
             return 1
-
-        if nodes_are_equal(n, self.n2):
+        else:
             return 2
-
-        logger.debug("FATAL: get_node_number(): node %s missing in %s",
-                     n, self)
-        raise ValueError('missing node in element')
-        return 0
 
     def get_point_number(self, p):
         d_p1 = distance(p, self.p1)

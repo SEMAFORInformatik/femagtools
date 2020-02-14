@@ -130,6 +130,21 @@ def distance(p1, p2):
     return np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
 
 
+def area_size(points):
+    if not points:
+        return 0.0
+
+    x = [p[0] for p in points]
+    y = [p[1] for p in points]
+    x.append(x[0])
+    y.append(y[0])
+
+    sz = 0.0
+    for i in range(len(x) - 1):
+        sz += x[i] * y[i+1] - y[i] * x[i+1]
+    return np.absolute(sz) / 2
+
+
 def middle_point_of_arc(center, radius, p1, p2, rtol=1e-3, atol=1e-8):
     alpha_p1 = alpha_line(center, p1)
     alpha_p2 = alpha_line(center, p2)

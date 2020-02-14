@@ -15,6 +15,7 @@ from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle, is_same_angle
+from .functions import area_size
 from .shape import Element, Shape, Line, Arc, Circle, is_Circle
 
 logger = logging.getLogger('femagtools.area')
@@ -76,6 +77,31 @@ class Area(object):
         for e in self.area:
             yield e.p1
             yield e.p2
+
+    def list_of_nodes(self):
+        if len(self.area) < 2:
+            return
+
+        e0 = self.area[0]
+        e1 = self.area[1]
+        try:
+            if e1.get_node_number(e0.n1, override=True) == 0:
+                nx = e0.n2
+            else:
+                nx = e0.n1
+            yield nx
+
+            for e1 in self.area[1:]:
+                if e1.get_node_number(nx) == 1:
+                    nx = e1.n2
+                else:
+                    nx = e1.n1
+                yield nx
+        except ValueError as e:
+            logger.error("list_of_nodes(): FATAL ERROR in area_size(): %s", e)
+            return
+        except Exception as e:
+            return
 
     def virtual_nodes(self):
         if len(self.area) < 2:
@@ -210,6 +236,9 @@ class Area(object):
             if x:
                 return True
         return False
+
+    def is_touching_both_sides(self):
+        return (self.close_to_startangle and self.close_to_endangle)
 
     def has_connection(self, geom, a, ndec):
         assert(self.area)
@@ -580,6 +609,19 @@ class Area(object):
                 return False
         return True
 
+    def has_round_edges(self):
+        arcs = 0
+        for e in self.area:
+            if isinstance(e, Line):
+                if not np.isclose(angle, alpha_line(center, e.p1)):
+                    return False
+                if not np.isclose(angle, alpha_line(center, e.p2)):
+                    return False
+            elif isinstance(e, Arc):
+                arcs += 1
+
+        return arcs > 0
+
     def is_rectangle(self):
         lines = [[c, e.m(99999.0), e.length()]
                  for c, e in enumerate(self.area)
@@ -814,8 +856,14 @@ class Area(object):
                         return True
         return False
 
-    def mark_stator_subregions(self, is_inner, mirrored, alpha,
-                               center, r_in, r_out):
+    def mark_stator_subregions(self,
+                               is_inner,
+                               stator_size,
+                               mirrored,
+                               alpha,
+                               center,
+                               r_in,
+                               r_out):
         alpha = round(alpha, 6)
 
         if self.is_circle():
@@ -840,6 +888,7 @@ class Area(object):
                                               1e-04, 1e-04)
         self.close_to_endangle = np.isclose(self.max_angle, alpha,
                                             1e-04, 1e-04)
+        self.surface = self.area_size()
 
         logger.debug("\n***** mark_stator_subregions [{}] *****"
                      .format(self.id))
@@ -855,6 +904,7 @@ class Area(object):
         logger.debug(" - max_angle          : %3.12f", self.max_angle)
         logger.debug(" - min_dist           : %3.12f", self.min_dist)
         logger.debug(" - max_dist           : %3.12f", self.max_dist)
+        logger.debug(" - surface size       : %3.12f", self.surface)
 
         if close_to_opposition:
             self.type = 5  # iron yoke (Joch)
@@ -901,12 +951,24 @@ class Area(object):
             if self.max_angle < alpha - 0.001:
                 self.type = 2  # windings
                 logger.debug("***** windings #1\n")
-            elif mirrored:
+                return self.type
+            if mirrored:
                 self.type = 2  # windings
                 logger.debug("***** windings #2\n")
-            else:
+                return self.type
+
+            self.type = 0  # air
+            logger.debug("***** air #2")
+
+        if self.close_to_startangle or self.close_to_endangle:
+            f = self.surface / stator_size
+            if f < 0.02:  # area_size less then 2 percent of stator size
+                # Luftloch
                 self.type = 0  # air
-                logger.debug("***** air #2\n")
+                logger.debug("***** small area => air\n")
+            else:
+                self.type = 9  # air or iron near windings and near airgap?
+                logger.debug("***** air or iron close to border\n")
             return self.type
 
         logger.debug("***** air #3\n")
@@ -1046,61 +1108,16 @@ class Area(object):
         logger.debug(">>> air remains")
         return self.type
 
+    def area_size(self):
+        nodes = [n for n in self.list_of_nodes()]
+        return area_size(nodes)
+
     def set_surface(self, mirrored):
-        logger.debug("begin of set_surface")
-        if len(self.area) < 2:
-            self.surface = 0.0
-            logger.debug("end of set_surface: 0.0")
-            return
-
-        nodes = []
-        e0 = self.area[0]
-        e1 = self.area[1]
-
-        logger.debug("Nodes of e0: %s", e0.print_nodes())
-        logger.debug("Nodes of e1: %s", e1.print_nodes())
-
-        try:
-            e1.get_node_number(e0.n1)
-        except ValueError:
-            nx = e0.n2
-        else:
-            nx = e0.n1
-        nodes.append(nx)
-
-        try:
-            for e1 in self.area[1:]:
-                logger.debug("Nodes of e1: %s", e1.print_nodes())
-                if e1.get_node_number(nx) == 1:
-                    nx = e1.n2
-                else:
-                    nx = e1.n1
-                nodes.append(nx)
-        except Exception:
-            return 0.0  # failed
-        nodes.append(nodes[0])
-
-        for n in nodes:
-            logger.debug(" == %s", n)
-
-        x = [n[0] for n in nodes]
-        y = [n[1] for n in nodes]
-
-        logger.debug(" -- x = %s", x)
-        logger.debug(" -- y = %s", y)
-
-        s = 0.0
-        for i in range(len(x) - 1):
-            s += x[i] * y[i+1] - y[i] * x[i+1]
-
-        logger.debug("==== endangle = %s", self.close_to_endangle)
-        logger.debug("==== mirrored = %s", mirrored)
-
+        self.surface = self.area_size()
         if self.close_to_endangle and mirrored:
-            self.surface = np.absolute(s)
+            self.surface = self.area_size() * 2.0
         else:
-            self.surface = np.absolute(s/2)
-        logger.debug("end of set_surface: %s", self.surface)
+            self.surface = self.area_size()
 
     def print_area(self):
         center = [0.0, 0.0]

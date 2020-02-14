@@ -27,6 +27,7 @@ from .functions import middle_angle
 from .functions import normalise_angle, is_same_angle
 from .functions import part_of_circle, gcd
 from .functions import point_on_arc, nodes_are_equal
+from .functions import area_size
 import io
 import time
 
@@ -385,6 +386,8 @@ def dxfshapes0(dxffile, mindist=0.01, layers=[]):
         elif e.dxftype() == 'SPLINE':
             for l in spline(e, 1.0, in_dist=mindist):
                 yield l
+        elif e.dxftype() == 'POINT':
+            logger.debug("Id %d4: type %s ignored", id, e.dxftype)
         else:
             logger.warning("Id %d4: unknown type %s", id, e.dxftype)
         id += 1
@@ -435,6 +438,8 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 block = dwg.blocks[e.name]
                 for l in insert_block(e, lf, rf, block, min_dist=mindist):
                     yield l
+            elif e.dxftype == 'POINT':
+                logger.debug("Id %d4: type %s ignored", id, e.dxftype)
             else:
                 logger.warning("Id %d4: unknown type %s", id, e.dxftype)
             id += 1
@@ -755,6 +760,11 @@ class Geometry(object):
             return e_dict.get('object', None)
         return None
 
+    def get_edge_nodes(self, edge):
+        e = self.get_edge(edge)
+        assert(len(e) == 1)
+        return (e[0][0], e[0][1])
+
     def _remove_edge(self, n1, n2):
         logger.debug("remove_edge %s - %s", n1, n2)
         self.g.remove_edge(n1, n2)
@@ -893,6 +903,11 @@ class Geometry(object):
         d = distance(self.center, self.end_corners[0])
         logger.debug("end of dist_end_min_corner: %s", d)
         return d
+
+    def area_size(self):
+        pts = [p for p in self.start_corners]
+        end_pts = [p for p in reversed(self.end_corners)]
+        return area_size(pts + end_pts)
 
     def repair_hull_line(self, center, angle, corners, with_center):
         # We need to set our own tolerance range
@@ -2604,8 +2619,10 @@ class Geometry(object):
         if self.alfa == 0.0:
             self.alfa = np.pi * 2.0
 
+        stator_size = self.area_size()
         for area in self.list_of_areas():
             area.mark_stator_subregions(is_inner,
+                                        stator_size,
                                         self.is_mirrored(),
                                         self.alfa,
                                         self.center,
@@ -2637,19 +2654,35 @@ class Geometry(object):
         air_areas = [a for a in self.list_of_areas() if a.type == 9]
         for a in air_areas:
             if a.around_windings(windings):
+                logger.debug("Area %s", a.identifier())
                 logger.debug(" - air-angle min/max = %s/%s",
                              a.min_air_angle,
                              a.max_air_angle)
                 if greater_equal(a.min_air_angle, wdg_min_angle):
+                    logger.debug("#0 ===> %s >= %s <===",
+                                 a.min_air_angle,
+                                 wdg_min_angle)
+
                     if a.close_to_endangle and self.is_mirrored():
+                        logger.debug("#1 ===> endangle and mirrored <===")
                         a.type = 0  # air
                     elif less_equal(a.max_air_angle, wdg_max_angle):
+                        logger.debug("#2 ===> %s <= %s <===",
+                                     a.max_air_angle,
+                                     wdg_max_angle)
                         a.type = 0  # air
                     else:
+                        logger.debug("#3 ===> %s > %s <===",
+                                     a.max_air_angle,
+                                     wdg_max_angle)
                         a.type = 6  # iron shaft (Zahn)
                 else:
+                    logger.debug("#4 ===> %s < %s <===",
+                                 a.min_air_angle,
+                                 wdg_min_angle)
                     a.type = 6  # iron shaft (Zahn)
             else:
+                logger.debug("#5 not around windings")
                 a.type = 6  # iron shaft (Zahn)
 
         # yoke or shaft ?
@@ -3036,14 +3069,34 @@ class Geometry(object):
             c += self.remove_appendix(n2, nbrs[0], incr_text + '.')
         return c
 
-    def get_intersect_points(self, center, outer_radius, angle):
+    def split_and_get_intersect_points(self, center, outer_radius, angle):
+        logger.debug("begin of split_and_get_intersect_points")
+        rtol = 1e-05
+        atol = 1e-07
         line = Line(
                 Element(start=center,
                         end=point(center, outer_radius+1, angle)))
         points = []
         for e in self.elements(Shape):
-            pts = e.intersect_line(line, 1e-04, 1e-04, True)
-            points += pts
+            pts = e.intersect_line(line,
+                                   rtol=rtol,
+                                   atol=atol,
+                                   include_end=True)
+            if pts:
+                pts_inside = [p for p in pts
+                              if e.is_point_inside(p, rtol, atol, False)]
+                points += pts
+                if pts_inside:
+                    self.remove_edge(e)
+                    elements = e.split(pts_inside, rtol, atol)
+                    for e in elements:
+                        n = self.find_nodes(e.start(), e.end())
+                        if distance(n[0], n[1]) == 0.0:
+                            logger.debug("=== OMIT ELEMENT WITH SAME NODES ===")
+                        else:
+                            self.add_edge(n[0], n[1], e)
+
+        logger.debug("end of split_and_get_intersect_points")
         return points
 
     def _line_inside_windings(self, p1, p2):
@@ -3058,21 +3111,30 @@ class Geometry(object):
         if not points:
             return False
         created = False
+
         p1 = points[0]
         for p2 in points[1:]:
             if not points_are_close(p1, p2):
                 if self._line_inside_windings(p1, p2):
+                    logger.debug("in winding(%s, %s)", p1, p2)
                     p1 = p2
                     continue
 
                 n = self.find_nodes(p1, p2)
-                line = Line(Element(start=n[0], end=n[1]))
+                line = Line(Element(start=n[0], end=n[1]),
+                            color='darkred')
                 self.add_edge(n[0], n[1], line)
+                logger.debug("add line(%s, %s)", n[0], n[1])
                 created = True
             p1 = p2
 
-        self.search_appendices()
         return created
+
+    def has_areas_touching_both_sides(self):
+        for a in self.area_list:
+            if a.is_touching_both_sides():
+                return True
+        return False
 
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))

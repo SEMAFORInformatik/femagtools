@@ -2518,6 +2518,7 @@ class Geometry(object):
                                         line,
                                         self.rtol,
                                         self.atol)
+                            break
 
         logger.debug("end of create_auxiliary_lines")
 

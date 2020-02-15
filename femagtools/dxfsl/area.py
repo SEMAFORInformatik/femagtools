@@ -1020,6 +1020,11 @@ class Area(object):
             logger.debug("***** iron (close to opposition)\n")
             return self.type
 
+        if self.close_to_startangle and self.close_to_endangle:
+            self.type = 1  # iron
+            logger.debug("***** iron (close to both sides)\n")
+            return self.type
+
         self.mag_rectangle = self.is_mag_rectangle()
 
         if self.close_to_ag:

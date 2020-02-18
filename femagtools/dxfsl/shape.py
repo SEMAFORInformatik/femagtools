@@ -202,6 +202,19 @@ class Shape(object):
         logger.debug("end of minmax_angle_dist_from_center")
         return (my_min_angle, my_max_angle)
 
+    def concatenate(self, n1, n2, el):
+        if isinstance(el, Line):
+            return self.concatenate_line(n1, n2, el)
+        if isinstance(el, Arc):
+            return self.concatenate_arc(n1, n2, el)
+        return None
+
+    def concatenate_line(self, n1, n2, el):
+        return None
+
+    def concatenate_arc(self, n1, n2, el):
+        return None
+
     def print_nodes(self):
         return " n1={}/n2={}".format(self.n1, self.n2)
 
@@ -228,7 +241,12 @@ class Circle(Shape):
         self.n2 = None
 
     def render(self, renderer, color='blue', with_nodes=False):
-        renderer.circle(self.center, self.radius, color)
+        tmp_color = color
+        if hasattr(self, 'my_color'):
+            if self.my_color is not None:
+                tmp_color = self.my_color
+
+        renderer.circle(self.center, self.radius, color=tmp_color)
         if with_nodes:
             renderer.point(self.center, 'ro', 'white')
 
@@ -532,8 +550,14 @@ class Arc(Circle):
         self.n2 = None
 
     def render(self, renderer, color='blue', with_nodes=False):
+        tmp_color = color
+        if hasattr(self, 'my_color'):
+            if self.my_color is not None:
+                tmp_color = self.my_color
+
         renderer.arc(self.startangle, self.endangle,
-                     self.center, self.radius, color)
+                     self.center, self.radius,
+                     color=tmp_color)
         if with_nodes:
             renderer.point(self.p1, 'ro', color)
             renderer.point(self.p2, 'ro', color)
@@ -703,6 +727,28 @@ class Arc(Circle):
 
         assert(len(points_inside) == 0)
         return []
+
+    def concatenate_arc(self, n1, n2, el):
+        if not points_are_close(self.center, el.center):
+            return None
+        if not np.isclose(self.radius, el.radius):
+            return None
+
+        if np.isclose(self.startangle, el.endangle):
+            start_angle = el.startangle
+            end_angle = self.endangle
+        else:
+            start_angle = self.startangle
+            end_angle = el.endangle
+
+        logger.debug("concatenate_arc: start=%s, end=%s",
+                     start_angle,
+                     end_angle)
+        return Arc(Element(center=self.center,
+                           radius=self.radius,
+                           start_angle=start_angle,
+                           end_angle=end_angle),
+                   rf=1)
 
     def is_point_inside(self, p, rtol=1e-03, atol=1e-03, include_end=False):
         """ returns true if p is on arc
@@ -1010,6 +1056,11 @@ class Line(Shape):
                 p_start = p
             return split_lines
         return []
+
+    def concatenate_line(self, n1, n2, el):
+        if np.isclose(self.m(999999.0), el.m(999999.0)):
+            return Line(Element(start=n1, end=n2))
+        return None
 
     def is_point_inside(self, point,
                         rtol=1e-03,

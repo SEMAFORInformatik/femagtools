@@ -771,6 +771,9 @@ class Geometry(object):
 
     def remove_edge(self, edge):
         e = self.get_edge(edge)
+        if len(e) != 1:
+            logger.info("remove edge failed: %s", edge)
+            raise ValueError("remove edge failed")
         assert(len(e) == 1)
         self._remove_edge(e[0][0], e[0][1])
 
@@ -1364,7 +1367,7 @@ class Geometry(object):
         result['ok'] = True
         return result
 
-    def create_list_of_areas(self):
+    def create_list_of_areas(self, crunch=False):
         """ return list of areas for each node and their neighbors
         """
         if len(self.area_list) > 0:
@@ -1388,20 +1391,33 @@ class Geometry(object):
             nx.set_edge_attributes(self.g, False, 1)
             nx.set_edge_attributes(self.g, False, 2)
 
+        crunched = 0
         for n in self.g.nodes():
             if self.debug:
                 print('.', end='', flush=True)
 
-            nbrs = [nbr for nbr in self.g.neighbors(n)]
-            for next_n in nbrs:
-                result = self.get_new_area(n, next_n, len(nbrs) < 3)
-                if result['ok']:
-                    area = result['area']
-                    a = Area(area, self.center, 0.0)
-                    append(self.area_list, a)
+            finished = False
+            while not finished:
+                finished = True
+                nbrs = [nbr for nbr in self.g.neighbors(n)]
+                for next_n in nbrs:
+                    result = self.get_new_area(n, next_n, len(nbrs) < 3)
+                    if result['ok']:
+                        area = result['area']
+                        a = Area(area, self.center, 0.0)
+                        if crunch:
+                            c = a.crunch_area(self)
+                        else:
+                            c = 0
+                        append(self.area_list, a)
+                        crunched += c
+                        if c > 0:
+                            # take care! may be there are new neighbors for n
+                            finished = False
+                            break
 
-        if self.debug:
-            print(" done. {} areas found".format(len(self.area_list)))
+        logger.debug("%s areas found and %s elements concatenated",
+                     len(self.area_list), crunched)
 
     def list_of_areas(self):
         self.create_list_of_areas()

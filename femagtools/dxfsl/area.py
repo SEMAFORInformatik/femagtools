@@ -70,14 +70,6 @@ class Area(object):
     def elements(self):
         return self.area
 
-    def nodes(self):
-        if len(self.area) == 0:
-            return
-
-        for e in self.area:
-            yield e.p1
-            yield e.p2
-
     def list_of_nodes(self):
         if len(self.area) < 2:
             return
@@ -98,7 +90,36 @@ class Area(object):
                     nx = e1.n1
                 yield nx
         except ValueError as e:
-            logger.error("list_of_nodes(): FATAL ERROR in area_size(): %s", e)
+            logger.error("list_of_nodes(): FATAL ERROR: %s", e)
+            return
+        except Exception as e:
+            return
+
+    def list_of_elements(self):
+        if len(self.area) < 2:
+            return
+
+        e0 = self.area[0]
+        e1 = self.area[1]
+        try:
+            if e1.get_node_number(e0.n1, override=True) == 0:
+                n1 = e0.n1
+                n2 = e0.n2
+            else:
+                n1 = e0.n2
+                n2 = e0.n1
+            yield n1, n2, e0
+
+            for e1 in self.area[1:]:
+                if e1.get_node_number(n2) == 1:
+                    n1 = e1.n1
+                    n2 = e1.n2
+                else:
+                    n1 = e1.n2
+                    n2 = e1.n1
+                yield n1, n2, e1
+        except ValueError as e:
+            logger.error("list_of_elements(): FATAL ERROR: %s", e)
             return
         except Exception as e:
             return
@@ -231,8 +252,8 @@ class Area(object):
         return True
 
     def is_touching(self, area):
-        for n in self.nodes():
-            x = [p for p in area.nodes() if points_are_close(n, p)]
+        for n in self.list_of_nodes():
+            x = [p for p in area.list_of_nodes() if points_are_close(n, p)]
             if x:
                 return True
         return False
@@ -267,8 +288,8 @@ class Area(object):
 
     def get_lowest_gap_list(self, a, center, radius, rightangle, leftangle):
         gap_list = []
-        for p1 in self.nodes():
-            for p2 in a.nodes():
+        for p1 in self.list_of_nodes():
+            for p2 in a.list_of_nodes():
                 d = distance(p1, p2)
                 gap_list.append((d, (p1, p2)))
 
@@ -287,7 +308,7 @@ class Area(object):
         the_area_p = None
         the_axis_p = None
         dist = 99999
-        for n in self.nodes():
+        for n in self.list_of_nodes():
             p = intersect_point(n, center, axis_m, axis_n)
             d = distance(n, p)
             if d < dist:
@@ -1178,6 +1199,69 @@ class Area(object):
         for id, a in self.areas_inside.items():
             for i in a.nested_areas_inside():
                 yield i
+
+    def crunch_area(self, geom):
+        n1_prev = None
+        e_prev = None
+        logger.debug("crunch area %s", self.identifier())
+
+        if self.is_circle():
+            return 0
+
+        c = 0
+        for n1, n2, e in self.list_of_elements():
+            if e_prev is not None:
+                if len([nbr for nbr in geom.g.neighbors(n1)]) == 2:
+                    e_new = e_prev.concatenate(n1_prev, n2, e)
+                    if e_new is not None:
+                        e_prev_dict = geom.g.get_edge_data(n1_prev, n1)
+                        e_dict = geom.g.get_edge_data(n1, n2)
+
+                        logger.debug("--> remove from %s to %s [%s, %s, %s]",
+                                     n1_prev,
+                                     n1,
+                                     e_prev_dict[0],
+                                     e_prev_dict[1],
+                                     e_prev_dict[2])
+                        logger.debug("    remove %s", e_prev)
+                        geom.remove_edge(e_prev)
+
+                        logger.debug("--> remove from %s to %s [%s, %s, %s]",
+                                     n1,
+                                     n2,
+                                     e_dict[0],
+                                     e_dict[1],
+                                     e_dict[2])
+                        logger.debug("    remove %s", e)
+                        if e.get_node_number(n1) == 1:
+                            flag1 = e_dict[1]
+                            flag2 = e_dict[2]
+                        else:
+                            flag1 = e_dict[2]
+                            flag2 = e_dict[1]
+                        geom.remove_edge(e)
+
+                        logger.debug("--> add from %s to %s",
+                                     n1_prev,
+                                     n2)
+                        logger.debug("    add %s", e_new)
+                        geom.add_edge(n1_prev, n2, e_new)
+
+                        e_new_dict = geom.g.get_edge_data(n1_prev, n2)
+                        e_new_dict[0] = True
+                        e_new_dict[1] = flag1
+                        e_new_dict[2] = flag2
+                        logger.debug("    new dict: [%s, %s, %s]",
+                                     e_new_dict[0],
+                                     e_new_dict[1],
+                                     e_new_dict[2])
+                        e_prev = e_new
+                        c += 1
+                        continue
+
+            n1_prev = n1
+            e_prev = e
+        return c
 
     def __str__(self):
         return "Area {}\n".format(self.id) + \

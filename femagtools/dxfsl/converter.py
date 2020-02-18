@@ -381,6 +381,7 @@ def convert(dxfile,
                     machine = machine.undo_mirror()
                     machine.geom.set_stator()
                     machine.geom.search_stator_subregions(part[1])
+                    machine.create_mirror_lines_outside_windings()
 
                 params = create_femag_parameters_stator(machine,
                                                         part[1])

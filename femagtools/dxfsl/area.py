@@ -1249,8 +1249,13 @@ class Area(object):
 
                         e_new_dict = geom.g.get_edge_data(n1_prev, n2)
                         e_new_dict[0] = True
-                        e_new_dict[1] = flag1
-                        e_new_dict[2] = flag2
+                        if e_new.get_node_number(n1_prev) == 1:
+                            e_new_dict[1] = flag1
+                            e_new_dict[2] = flag2
+                        else:
+                            e_new_dict[1] = flag2
+                            e_new_dict[2] = flag1
+
                         logger.debug("    new dict: [%s, %s, %s]",
                                      e_new_dict[0],
                                      e_new_dict[1],

@@ -1098,6 +1098,8 @@ class Geometry(object):
             logger.debug("   UNEXPECTED DIFFERENT ANGLES")
             return angle1 > angle2
 
+        alpha_start = info1['alpha_start']
+
         if self.is_edge_arc(info1):
             if self.is_edge_arc(info2):
                 logger.debug("   ARC - ARC")
@@ -1115,7 +1117,7 @@ class Geometry(object):
                     i1_alpha = info1['alpha_n2']
                 else:
                     i1_alpha = alpha_line(info1['n1'], pt[0])
-                i1_angle = self.get_angle(alpha, i1_alpha)
+                i1_angle = self.get_angle(alpha_start, i1_alpha)
 
                 circ = Circle(Element(center=info2['n1'],
                                       radius=min_dist))
@@ -1126,8 +1128,9 @@ class Geometry(object):
                     i2_alpha = info2['alpha_n2']
                 else:
                     i2_alpha = alpha_line(info2['n1'], pt[0])
-                i2_angle = self.get_angle(alpha, i2_alpha)
-                rslt = i1_angle > i2_angle
+                i2_angle = self.get_angle(alpha_start, i2_alpha)
+
+                rslt = normalise_angle(i1_angle) > normalise_angle(i2_angle)
                 logger.debug("   end of is_lefthand_edge() = %s",
                              rslt)
                 return rslt
@@ -1405,6 +1408,7 @@ class Geometry(object):
                     if result['ok']:
                         area = result['area']
                         a = Area(area, self.center, 0.0)
+                        logger.debug("Area %s found", a.identifier())
                         if crunch:
                             c = a.crunch_area(self)
                         else:
@@ -2649,9 +2653,18 @@ class Geometry(object):
         windings = [a for a in self.list_of_areas()
                     if a.type == 2]
         if len(windings) > 2:
+            windings_surface = [[w.surface, w] for w in windings]
+            windings_surface.sort(reverse=True)
             [w.set_type(0) for w in windings]
-            [a.set_type(1) for a in self.list_of_areas() if a.is_iron()]
-            windings = []
+            max_size = windings_surface[0][0]
+            if windings_surface[1][0] / max_size > 0.95:
+                windings = [windings_surface[0][1],
+                            windings_surface[1][1]]
+                [w.set_type(2) for w in windings]
+            else:
+                [w.set_type(0) for w in windings]
+                [a.set_type(1) for a in self.list_of_areas() if a.is_iron()]
+                windings = []
 
         wdg_min_angle = 99
         wdg_max_angle = 0

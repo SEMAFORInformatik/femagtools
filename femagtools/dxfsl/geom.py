@@ -3101,8 +3101,8 @@ class Geometry(object):
 
     def split_and_get_intersect_points(self, center, outer_radius, angle):
         logger.debug("begin of split_and_get_intersect_points")
-        rtol = 1e-05
-        atol = 1e-07
+        rtol = 1e-03
+        atol = 1e-03
         line = Line(
                 Element(start=center,
                         end=point(center, outer_radius+1, angle)))
@@ -3113,9 +3113,19 @@ class Geometry(object):
                                    atol=atol,
                                    include_end=True)
             if pts:
-                pts_inside = [p for p in pts
-                              if e.is_point_inside(p, rtol, atol, False)]
-                points += pts
+                pts_inside = []
+                pts_real = []
+                for p in pts:
+                    if not e.is_point_inside(p, rtol, atol, False):
+                        # get the real point
+                        if e.get_point_number(p) == 1:
+                            pts_real.append(e.p1)
+                        else:
+                            pts_real.append(e.p2)
+                    else:
+                        pts_real.append(p)
+                        pts_inside.append(p)
+
                 if pts_inside:
                     self.remove_edge(e)
                     elements = e.split(pts_inside, rtol, atol)
@@ -3125,6 +3135,7 @@ class Geometry(object):
                             logger.debug("=== OMIT ELEMENT WITH SAME NODES ===")
                         else:
                             self.add_edge(n[0], n[1], e)
+                points += pts_real
 
         logger.debug("end of split_and_get_intersect_points")
         return points
@@ -3151,7 +3162,7 @@ class Geometry(object):
                     continue
 
                 n = self.find_nodes(p1, p2)
-                line = Line(Element(start=n[0], end=n[1]),
+                line = Line(Element(start=p1, end=p2),
                             color='darkred')
                 self.add_edge(n[0], n[1], line)
                 logger.debug("add line(%s, %s)", n[0], n[1])

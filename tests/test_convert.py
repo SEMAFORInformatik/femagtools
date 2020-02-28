@@ -21,15 +21,9 @@ def test_msh(tmpdir):
     m = meshio.read(msh)
     assert len(m.points) == 2340
     assert len(m.point_data["potential"]) == len(m.points)
-    assert len(m.cells["triangle"]) == 1522
-    assert len(m.cells["quad"]) == 1506
+    assert len(m.cells[1][1]) == 1522
+    assert len(m.cells[2][1]) == 1506
     assert len(m.field_data.keys()) == 28
-    num_cells = sum(map(len, m.cells.values()))
-    for data in m.cell_data["triangle"]:
-        len_data = sum([len(m.cell_data[ctype][data])
-                        for ctype in m.cell_data])
-        assert len_data == num_cells
-
 
 def test_msh_triangles(tmpdir):
     msh = str(tmpdir.join("triangles.msh"))
@@ -58,7 +52,7 @@ def test_nastran_triangles(tmpdir):
     mesh = meshio.read(msh)
 
     assert len(mesh.points) == 4
-    assert len(mesh.cells["triangle"]) == 2
+    assert mesh.cells[0][0] == "triangle" and len(mesh.cells[0][1]) == 2
 
 
 def test_nastran_quads(tmpdir):
@@ -69,7 +63,7 @@ def test_nastran_quads(tmpdir):
     mesh = meshio.read(msh)
 
     assert len(mesh.points) == 6
-    assert len(mesh.cells["quad"]) == 2
+    assert mesh.cells[0][0] == "quad" and len(mesh.cells[0][1]) == 2
 
 
 def test_nastran_superelements(tmpdir):
@@ -80,13 +74,13 @@ def test_nastran_superelements(tmpdir):
     mesh = meshio.read(msh)
 
     assert len(mesh.points) == 6
-    assert len(mesh.cells["triangle"]) == 2
-    assert len(mesh.cells["quad"]) == 1
+    assert mesh.cells[0][0] == "triangle" and len(mesh.cells[0][1]) == 2
+    assert mesh.cells[1][0] == "quad" and len(mesh.cells[1][1]) == 1
 
-    assert mesh.cell_data["triangle"]["gmsh:geometrical"][0] == 2
-    assert mesh.cell_data["triangle"]["gmsh:geometrical"][1] == 1
+    assert mesh.cell_data["gmsh:geometrical"][0][0] == 2
+    assert mesh.cell_data["gmsh:geometrical"][0][1] == 1
 
-    assert mesh.cell_data["quad"]["gmsh:geometrical"][0] == 2
+    assert mesh.cell_data["gmsh:geometrical"][1][0] == 2
 
 
 def test_vtu(tmpdir):
@@ -109,13 +103,8 @@ def test_vtu(tmpdir):
     m = meshio.read(vtu)
     assert len(m.points) == 2340
     assert len(m.point_data["potential"]) == len(m.points)
-    assert len(m.cells["triangle"]) == 1522
-    assert len(m.cells["quad"]) == 1506
-    num_cells = sum(map(len, m.cells.values()))
-    for data in m.cell_data["triangle"]:
-        len_data = sum([len(m.cell_data[ctype][data])
-                        for ctype in m.cell_data])
-        assert len_data == num_cells
+    assert m.cells[1][0] == "triangle" and len(m.cells[1][1]) == 1522
+    assert m.cells[2][0] == "quad" and len(m.cells[2][1]) == 1506
 
 
 def test_vtu_triangles(tmpdir):

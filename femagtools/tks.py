@@ -125,12 +125,19 @@ class Reader(object):
             Bv = np.arange(bmin, bmax+0.01, 0.1)
             m = []
             for i, b in enumerate(self.losses['B']):
-                pfunc = ip.interp1d(b, pfe[i], kind='cubic')
                 n = len([x for x in Bv if x < b[-1]])
+                if n < len(b) and n < len(Bv):
+                    if Bv[n] < b[-1]+0.1:
+                        b = list(b)
+                        b[-1] = Bv[n]
+                        n += 1
+                pfunc = ip.interp1d(b, pfe[i], kind='cubic')
                 m.append([float(pfunc(x))
                           for x in Bv[:n]] + [None]*(len(Bv)-n))
+                    
             self.losses['B'] = Bv.tolist()
             self.losses['pfe'] = m
+            print(m)
 
     def __getitem__(self, index):
         return self.__getattribute__(index)

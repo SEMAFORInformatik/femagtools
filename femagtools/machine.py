@@ -121,6 +121,7 @@ class PmRelMachine(object):
         m: number of winding phases
         p: number of pole pairs
         r1: stator winding resistance (in Ohm)
+        ls: leakage inductance in H
     """
     def __init__(self, m, p, r1, ls):
         self.p = p

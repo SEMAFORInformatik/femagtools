@@ -137,7 +137,6 @@ class Reader(object):
                     
             self.losses['B'] = Bv.tolist()
             self.losses['pfe'] = m
-            print(m)
 
     def __getitem__(self, index):
         return self.__getattribute__(index)

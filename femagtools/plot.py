@@ -136,7 +136,7 @@ def phasor(bch):
 
 def airgap(airgap):
     """creates plot of flux density in airgap"""
-    pl.title('Airgap Induction [T]')
+    pl.title('Airgap Flux Density [T]')
     pl.plot(airgap['pos'], airgap['B'])
     pl.plot(airgap['pos'], airgap['B_fft'])
     pl.xlabel('Position/°')
@@ -330,9 +330,9 @@ def mcv_hbj(mcv, log=True):
             pass
         bi, hi = zip(*bh)
 
-        label = 'Induction'
+        label = 'Flux Density'
         if csiz > 1:
-            label = 'Induction ({0}°)'.format(mcv.mc1_angle[k])
+            label = 'Flux Density ({0}°)'.format(mcv.mc1_angle[k])
         if log:
             ax.semilogx(hi, bi, label=label)
             if ji:
@@ -991,7 +991,7 @@ def felosses(losses, coeffs, title='', log=True):
     if log:
         ax.set_yscale('log')
         ax.set_xscale('log')
-    ax.set_xlabel("Induction [T]")
+    ax.set_xlabel("Flux Density [T]")
     #pl.ylabel("Pfe [W/kg]")
     ax.legend()
     ax.grid(True) 

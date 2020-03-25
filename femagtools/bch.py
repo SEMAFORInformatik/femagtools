@@ -1056,7 +1056,7 @@ class Reader:
         
     def __read_machine_data(self, content):
         "read machine data section"
-        for k in ('beta', 'plfe1', 'plfe2', 'plmag'):
+        for k in ('beta', 'plfe1', 'plfe2', 'plmag', 'plcu'):
             self.machine[k] = []
         for l in content:
             contentline = l.strip()
@@ -1106,7 +1106,7 @@ class Reader:
                         self.machine[v[1]] = si*floatnan(rec[-1])
                     break
 
-        if self.machine['beta']:
+        if self.machine['beta'] and len(self.machine['beta']) > 1:
             self.machine['beta'] = self.machine['beta'][1:]
         self.machine['n'] = self.machine['n']/60
         self.machine['lfe'] = 1e-3*self.machine['lfe']
@@ -1125,7 +1125,7 @@ class Reader:
                                     for pl in zip(*[self.machine[k]
                                                     for k in ('plfe1',
                                                               'plfe2')])]
-
+        
     def __read_dq_parameter(self, content):
         if content[1].find('Windings') > -1:
             

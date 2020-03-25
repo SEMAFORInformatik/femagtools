@@ -239,7 +239,7 @@ def forcedens_surface(fdens):
     z = 1e-3*np.array([p['FN']
                        for p in fdens.positions])
     _plot_surface(ax, xpos, ypos, z,             
-                  (u'Rotor pos/°', u'Pos/°', u'F N / kN/mm²'))
+                  (u'Rotor pos/°', u'Pos/°', u'F N / kN/m²'))
 
 
 def forcedens_fft(title, fdens):

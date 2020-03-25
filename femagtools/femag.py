@@ -266,15 +266,20 @@ class Femag(BaseFemag):
         with open(os.path.join(self.workdir, fslfile), 'w') as f:
             f.write('\n'.join(self.create_fsl(pmMachine,
                                               simulation)))
-        if simulation and simulation['calculationMode'] == "pm_sym_loss":
-            with open(os.path.join(self.workdir,
-                                   self.modelname+'.ntib'), 'w') as f:
-                f.write('\n'.join(ntib.create(
-                    simulation['speed'],
-                    simulation['current'],
-                    simulation['angl_i_up'])))
+        if simulation:
+            if 'poc' in simulation:
+                 with open(os.path.join(self.workdir,
+                                        simulation['pocfilename']), 'w') as f:
+                    f.write('\n'.join(simulation['poc'].content()))
+            if simulation['calculationMode'] == "pm_sym_loss":
+                with open(os.path.join(self.workdir,
+                                       self.modelname+'.ntib'), 'w') as f:
+                    f.write('\n'.join(ntib.create(
+                        simulation['speed'],
+                        simulation['current'],
+                        simulation['angl_i_up'])))
                 # TODO: add r1, m
-
+ 
         self.run(fslfile, options, fsl_args)
         if simulation:
             if simulation['calculationMode'] == "pm_sym_loss":

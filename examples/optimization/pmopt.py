@@ -7,6 +7,7 @@ import os
 import json
 import femagtools.opt
 import logging
+import glob
 
 from femagtools.multiproc import Engine
 # instead you can use on of the following
@@ -31,7 +32,6 @@ opt = {
 }
 
 operatingConditions = {
-    "num_move_steps": 49,
     "angl_i_up": -10.0,
     "calculationMode": "pm_sym_fast",
     "wind_temp": 60.0,
@@ -39,6 +39,7 @@ operatingConditions = {
     "current": 10.0,
     "eval_force": 0,
     "speed": 50.0,
+    "period_frac": 6,
     "optim_i_up": 0
 }
 
@@ -113,6 +114,21 @@ machine = dict(
         num_layers=1)
     )
 
+def get_losses(task):
+    bch = femagtools.bch.read(
+        glob.glob(os.path.join(task.directory, '*.B*CH'))[-1])
+
+    pltot = sum((bch.losses[-1]['winding'],
+                 bch.losses[-1]['staza'], bch.losses[-1]['stajo'],
+                 bch.losses[-1]['rotfe'],
+                 bch.losses[-1]['magnetJ']))
+    eff = bch.machine['p2']/(bch.machine['p2'] + pltot)
+
+    bch.machine['pltotal'] = [pltot]
+    bch.machine['eff'] = eff
+    
+    return bch
+
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
@@ -127,7 +143,9 @@ except OSError:
     pass
 
 o = femagtools.opt.Optimizer(workdir,
-                             magnetizingCurve, magnetMat)
+                             magnetizingCurve, magnetMat,
+                             result_func=get_losses)
+                             
 num_generations = 3
 results = o.optimize(num_generations,
                      opt, machine, operatingConditions, engine)

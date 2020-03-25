@@ -1,4 +1,5 @@
 import femagtools
+import femagtools.poc
 import os
 import logging
 
@@ -66,6 +67,10 @@ except OSError:
     pass
 
 femag = femagtools.Femag(workdir)
+
+poc = femagtools.poc.HspPoc(harm=[1,5],
+                            amp=[1,0.01],
+                            phi=[0, 0])
 
 operatingConditions = dict(
     angl_i_up=0.0,

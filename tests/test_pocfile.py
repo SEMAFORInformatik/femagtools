@@ -94,7 +94,7 @@ def test_write_poc(tmpdir):
     filename = tmpdir / 'sin.poc'
     poc.write(filename)
 
-    expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n360\nsin\n30.0\n3\n\n'
+    expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n360\nsin\n30.0\n3\n'
     assert filename.read() == expected
 
 
@@ -120,7 +120,7 @@ def test_rec(tmpdir):
                                   shape_current='rec'))
     filename = tmpdir / 'rec.poc'
     poc.write(filename)
-    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nrec\n\n'
+    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nrec\n'
     assert filename.read() == expected
 
 def test_har(tmpdir):
@@ -135,20 +135,23 @@ def test_har(tmpdir):
                                   pocType='har'))
     filename = tmpdir / 'har.poc'
     poc.write(filename)
-    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nhar\n5\n1, 0\n0, 0\n0.3, 0\n0, 0\n0.1, 0\n\n'
+    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nhar\n5\n1, 0\n0, 0\n0.3, 0\n0, 0\n0.1, 0\n'
     assert filename.read() == expected
 
 def test_hsp(tmpdir):
-    p = 2
-    poc = femagtools.poc.Poc(360/p,
-                             dict(harmonic_id=[1, 21],
-                                  func_current=[1, 0.01],
-                                  func_phi=[0, 0],
-                                  pocType='hsp'))
+    poc = femagtools.poc.HspPoc(harm=[1,21],
+                                amp=[1, 0.01],
+                                phi=[0, 0])
+    poc.pole_pitch = 360/2
+    #poc = femagtools.poc.Poc(360/p,
+    #                         dict(harmonic_id=[1, 21],
+    #                              func_current=[1, 0.01],
+    #                              func_phi=[0, 0],
+    #                              pocType='hsp'))
     filename = tmpdir / 'hsp.poc'
     poc.write(filename)
 
-    expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n180.0\nhsp\n2\n1, 1, 0\n21, 0.01, 0\n\n'
+    expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n180.0\nhsp\n2\n1, 1, 0\n21, 0.01, 0\n'
     assert filename.read() == expected
 
 def test_fun(tmpdir):
@@ -163,4 +166,4 @@ def test_fun(tmpdir):
                                   pocType='fun'))
     filename = tmpdir / 'fun.poc'
     poc.write(filename)
-    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nfun\n4\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n\n'
+    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nfun\n4\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n'

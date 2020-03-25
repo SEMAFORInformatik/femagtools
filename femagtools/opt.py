@@ -68,6 +68,9 @@ class Optimizer(object):
             task.add_file('femag.fsl',
                           self.builder.create(self.model, self.fea,
                                               self.femag.magnets))
+            if 'poc' in self.fea:
+                task.add_file(self.fea['pocfilename'],
+                              self.fea['poc'].content())
         tstart = time.time()
         ntasks = engine.submit()
         status = engine.join()
@@ -115,9 +118,6 @@ class Optimizer(object):
         self.fea.update(self.model.windings)
         self.fea['lfe'] = self.model.lfe
         self.fea['move_action'] = self.model.move_action
-        self.fea['pocfilename'] = (self.model.get('name') +
-                                   '_' + str(self.model.get('poles')) +
-                                   'p.poc')
         self.fea['phi_start'] = 0.0
         self.fea['range_phi'] = 720/self.model.get('poles')
         self.pop = Population(problem, population_size)

@@ -155,9 +155,6 @@ class Grid(object):
                                           d['name'].split('.')[0])]) == 0
         operatingConditions['lfe'] = model.lfe
         operatingConditions['move_action'] = model.move_action
-        operatingConditions['pocfilename'] = (model.get('name') +
-                                              '_' + str(model.get('poles')) +
-                                              'p.poc')
         operatingConditions['phi_start'] = 0.0
         operatingConditions['range_phi'] = 720/model.get('poles')
         operatingConditions.update(model.windings)
@@ -183,6 +180,10 @@ class Grid(object):
         if immutable_model:
             modelfiles = self.setup_model(builder, model)
             logger.info("Files %s", modelfiles)
+
+        if hasattr(fea, 'poc'):
+            fea.poc.pole_pitch = 2*360/model.get('poles')
+            fea.pocfilename = fea.poc.filename()
 
         elapsedTime = 0
         self.bchmapper_data = []  # clear bch data
@@ -246,6 +247,9 @@ class Grid(object):
                         builder.create_model(model, self.femag.magnets) +
                         builder.create_analysis(fea) +
                         ['save_model("close")'])
+                if hasattr(fea, 'poc'):
+                    task.add_file(fea.pocfilename,
+                                  fea.poc.content())
 
             tstart = time.time()
             status = engine.submit()

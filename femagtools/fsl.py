@@ -402,13 +402,18 @@ class Builder:
             logger.info("create new model and simulation")
             fslmodel = self.create_model(model, magnets)
             if 'num_poles' in model.windings:
-                fea['pocfilename'] = (model.get('name') +
-                                      '_' + str(model.windings['num_poles']) +
-                                      'p.poc')
+                num_poles = model.windings['num_poles']
+            else:
+                num_poles = model.get('poles')
+            if 'poc' in fea:
+                poc = fea['poc']
+                poc.pole_pitch = 2*360/num_poles
+                fea['pocfilename'] = poc.filename()
             else:
                 fea['pocfilename'] = (model.get('name') +
-                                      '_' + str(model.get('poles')) +
+                                      '_' + str(num_poles) +
                                       'p.poc')
+
             if 'phi_start' not in fea:
                 fea['phi_start'] = 0.0
             if 'range_phi' not in fea:

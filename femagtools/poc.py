@@ -44,32 +44,36 @@ class Poc:
     def __setattr__(self, name, val):
         self.__dict__[name] = val  # this will create the attribute name
 
+    def filename(self):
+        prefix = self.pocType
+        if prefix == 'Function':
+            prefix = self.shape_current
+        return '{}_{}p.poc'.format(
+            prefix, round(720/self.pole_pitch))
+        
     def write(self, pocfilename):
         """create a new pocfile and write the data"""
-        pocfile = open(pocfilename, mode='w')
+        with open(pocfilename, mode='w') as pocfile:
+            pocfile.write('\n'.join(self.content()))
 
-        self.writefile(pocfile)
-
-        pocfile.close()
-
-    def writefile(self, pocfile):
+    def content(self):
+        """return list of lines"""
         # windings (num and keys)
         num_winding = len(self.key_winding)
-        pocfile.write("{0}\n".format(num_winding))
-
-        for k in self.key_winding[:num_winding]:
-            pocfile.write("{0}\n".format(k))
+        content = ["{0}".format(num_winding)]
+        content.extend(["{0}".format(k)
+                        for k in self.key_winding[:num_winding]])
 
         # phi voltage windings
-        for v in self.phi_voltage_winding[:num_winding]:    
-            pocfile.write("{0}\n".format(v))
+        content.extend(["{0}".format(v)
+                       for v in self.phi_voltage_winding[:num_winding]])
 
         # rest
         if self.pole_pitch:
-            pocfile.write("{0}\n".format(self.pole_pitch))
+            content.append("{0}".format(self.pole_pitch))
         if self.pocType in ['fun', 'har', 'hsp']:
             func_steps = len(self.func_current)
-            pocfile.write("{0}\n{1}\n".format(
+            content.append("{0}\n{1}".format(
                 self.pocType, func_steps))
             if (self.pocType == 'fun' and
                 num_winding*func_steps > len(self.func_current)):
@@ -78,24 +82,25 @@ class Poc:
                 func_steps = num_winding*func_steps
             for i, val in enumerate(self.func_current[:func_steps]):
                 if self.pocType == 'hsp':
-                    pocfile.write("{0}, {1}, {2}\n".format(
+                    content.append("{0}, {1}, {2}".format(
                         self.harmonic_id[i],
                         val, self.func_phi[i]))
                 elif self.pocType == 'har':
-                    pocfile.write("{0}, {1}\n".format(
+                    content.append("{0}, {1}".format(
                         val, self.func_phi[i]))
                 elif self.pocType == 'fun':
-                    pocfile.write("{0}, {1}\n".format(
+                    content.append("{0}, {1}".format(
                         self.func_phi[i], val))
 
         if self.pocType == 'Function':
-            pocfile.write("{0}\n".format(self.shape_current))
+            content.append("{0}".format(self.shape_current))
 
         if 'skew_angle' in self.__dict__:
-            pocfile.write("{0}\n".format(self.skew_angle))
+            content.append("{0}".format(self.skew_angle))
         if 'num_skew_steps' in self.__dict__:
-            pocfile.write("{0}\n".format(self.num_skew_steps))
-        pocfile.write("\n")
+            content.append("{0}".format(self.num_skew_steps))
+        content.append('')
+        return content
 
     def readfile(self, pocfile):
         """read poc file"""
@@ -150,6 +155,13 @@ class Poc:
                 props[k]=self.__dict__[k]
         return props
 
+class HspPoc(Poc):
+    def __init__(self, harm=[1], amp=[1], phi=[0]):
+        Poc.__init__(self, 0, dict(
+            pocType='hsp', harmonic_id=harm,
+            func_current=amp, func_phi=phi))
+
+        
 def curr_har(x, n, A, phi ):
     "return fourier sum"
     import numpy as np

@@ -79,6 +79,8 @@ operatingConditions = dict(
     magn_temp=60.0,
     current=50.0,
     speed=50.0,
+    period_frac=6,
+    poc=poc,
     plots=['field_lines', ['Babs', 1.2, 2.4]])
 
 r = femag(machine,

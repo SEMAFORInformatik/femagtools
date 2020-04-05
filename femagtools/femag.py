@@ -690,11 +690,11 @@ class ZmqFemag(BaseFemag):
                     for s in self.request_socket.recv_multipart()]
         return ret
     
-    def cleanup(self):
+    def cleanup(self, timeout=2000):
         """remove all FEMAG files in working directory 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'cleanup'])]
+                for r in self.send_request(['CONTROL', 'cleanup'], timeout=timeout)]
     
     def release(self):
         """signal finish calculation task to load balancer to free resources

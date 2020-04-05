@@ -12,6 +12,7 @@ import logging
 import threading
 import femagtools.femag
 import femagtools.job
+import time
 try:
     from queue import Queue
 except ImportError:
@@ -38,6 +39,29 @@ class AsyncFemag(threading.Thread):
         self.queue = queue
         self.container = femagtools.femag.ZmqFemag(
             port, host)
+
+    def _do_task(self, task):
+        r = self.container.cleanup(timeout=10000)
+        status = json.loads(r[0])
+        if status['status'] != 'ok':
+            return [status]
+        for f in task.transfer_files:
+            if f != task.fsl_file:
+                r = self.container.upload(
+                    os.path.join(task.directory, f))
+                status = json.loads(r[0])
+                if status['status'] != 'ok':
+                    return [status]
+            fslfile = os.path.join(task.directory, task.fsl_file)
+            logger.info('Docker task %s %s',
+                        task.id, task.fsl_file)
+        fslcmds = []
+        with open(fslfile) as f:
+            fslcmds = f.readlines()
+        ret = self.container.send_fsl(fslcmds +
+                                      ['save_model(close)'])
+        # TODO: add publish_receive
+        return [json.loads(s) for s in ret]
         
     def run(self):
         """execute femag fsl task in task directory"""
@@ -45,22 +69,12 @@ class AsyncFemag(threading.Thread):
             task = self.queue.get()
             if task is None:
                 break
+            while True:
+                r = self._do_task(task)
+                if r[0]['status'] != 'resend':
+                    break
+                time.sleep(1)
 
-            r = self.container.cleanup()
-            for f in task.transfer_files:
-                if f != task.fsl_file:
-                    r = self.container.upload(
-                        os.path.join(task.directory, f))
-            fslfile = os.path.join(task.directory, task.fsl_file)
-            logger.info('Docker task %s %s',
-                        task.id, task.fsl_file)
-            fslcmds = []
-            with open(fslfile) as f:
-                fslcmds = f.readlines()
-            ret = self.container.send_fsl(fslcmds +
-                                          ['save_model(close)'])
-            # TODO: add publish_receive
-            r = [json.loads(s) for s in ret]
             logger.debug("Finished %s", r)
             try:
                 if r[0]['status'] == 'ok':
@@ -125,6 +139,8 @@ class Engine(object):
         for task in self.job.tasks:
             self.queue.put(task)
             
+        logger.info("Request %d workers on %s",
+                    self.num_threads, self.dispatcher )
         self.async_femags = [AsyncFemag(self.queue,
                                         self.port, self.dispatcher)
                              for i in range(self.num_threads)]

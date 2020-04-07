@@ -53,8 +53,8 @@ class AsyncFemag(threading.Thread):
                 if status['status'] != 'ok':
                     return [status]
             fslfile = os.path.join(task.directory, task.fsl_file)
-            logger.info('Docker task %s %s',
-                        task.id, task.fsl_file)
+        logger.info('Docker task %s %s',
+                    task.id, task.fsl_file)
         fslcmds = []
         with open(fslfile) as f:
             fslcmds = f.readlines()

@@ -1,5 +1,5 @@
 
-  exit_on_error=${model.get('exit_on_error', 'true')}
+  exit_on_error=${model.get('exit_on_error', 'false')}
   exit_on_end=${model.get('exit_on_end')}
   verbosity=${model.get('verbosity', 2)}
 

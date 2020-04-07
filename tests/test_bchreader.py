@@ -21,7 +21,7 @@ class BchReaderTest(unittest.TestCase):
         
     def test_read_cogging(self):
         bch = self.read_bch('cogging.BATCH')
-        self.assertEqual(bch.version, '7.9.147')
+        self.assertEqual(bch.version, '7.9.147 November 2012')
         self.assertEqual(bch.nodes, 2315)
         self.assertEqual(bch.elements, 3305)
         self.assertEqual(bch.quality, 100.0)

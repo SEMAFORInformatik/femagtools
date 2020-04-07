@@ -236,11 +236,8 @@ class Reader:
         return rec
 
     def __read_version(self, content):
-        rec = content[0].split(' ')
-        if len(rec) > 3:
-            self.version = rec[3]
-        else:
-            self.version = rec[-1]
+        rec = content[0].split(':')
+        self.version = rec[-1].replace(' Version ','').strip()
             
     def __read_project_filename(self, content):
         self.project = content[1].strip()

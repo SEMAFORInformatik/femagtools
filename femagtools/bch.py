@@ -1114,9 +1114,9 @@ class Reader:
         self.machine['lfe'] = 1e-3*self.machine['lfe']
         if self.machine['plfe1']:  # calc sum of losses
             plfe1 = self.machine['plfe1']
-            plcu = self.machine.get('plcu', 0.0)
-            if np.isscalar(plcu):
-                self.machine['plcu'] = [plcu]*len(plfe1)
+            plcu = self.machine.get('plcu', [0.0]*len(plfe1))
+            if len(plcu) < len(plfe1):
+                self.machine['plcu'] = plcu + [plcu[-1]]*(len(plfe1)-len(plcu))
             self.machine['pltotal'] = [sum(pl)
                                        for pl in zip(*[self.machine[k]
                                                        for k in ('plfe1',

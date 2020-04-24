@@ -167,6 +167,7 @@ class Reader:
             'Current Angles defined from no-load test':
             Reader.__read_current_angles,
             'FEMAG Version': Reader.__read_version,
+            'FEMAG Classic Version': Reader.__read_version,
             'Simulation Data': Reader.__read_simulation_data,
             'Area [mm**2]': Reader.__read_areas,
             'Basic Machine parameters': Reader.__read_dummy,

@@ -38,9 +38,17 @@ def get_shortCircuit_parameters(bch, nload):
         if nload < 0: nload=0
         if nload > 2: nload=2
         if nload > 0:
-            ld = bch.dqPar['ld'][nload-1]/bch.armatureLength
-            lq = bch.dqPar['lq'][nload-1]/bch.armatureLength
-            psim = bch.dqPar['psim'][nload-1]/bch.armatureLength
+            dqld = bch.dqPar['ld']
+            dqlq = bch.dqPar['lq']
+            dqpsim = bch.dqPar['psim']
+            if len(dqld) <= nload or len(dqlq) <= nload or len (dqpsim) <= nload:
+                ld = dqld[-1]/bch.armatureLength
+                lq = dqlq[-1]/bch.armatureLength
+                psim = dqpsim[-1]/bch.armatureLength
+            else:
+                ld = dqld[nload-1]/bch.armatureLength
+                lq = dqlq[nload-1]/bch.armatureLength
+                psim = dqpsim[nload-1]/bch.armatureLength
         else:
             ld = bch.machine['ld']/bch.armatureLength
             lq = bch.machine['lq']/bch.armatureLength

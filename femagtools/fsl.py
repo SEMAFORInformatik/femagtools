@@ -24,8 +24,9 @@ class FslBuilderError(Exception):
 
 class Builder:
     def __init__(self):
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
             # lookup up files in pyinstaller bundle
+            logging.debug("Frozen!")
             dirs = [os.path.join(sys._MEIPASS, 'fsltemplates'),
                     os.path.join(os.getcwd(), '.')]
         else:

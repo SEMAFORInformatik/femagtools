@@ -1405,6 +1405,8 @@ class Reader:
                     losses[k] = []
                 try:
                     rec = self.__findNums(l)
+                    if 'nan' in rec:
+                        continue
                     if len(rec) == 4:
                         losses[k].append([floatnan(x) for x in rec])
                     elif len(rec) == 5:  # FEMAG Rel 8.3 with el/mech order

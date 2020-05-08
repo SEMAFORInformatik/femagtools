@@ -134,22 +134,22 @@ class BaseFemag(object):
                     result.append(float(line.split(':')[-1].split()[0]))
         return result
 
-    def get_bch_file(self, modelname):
+    def get_bch_file(self, modelname, offset=0):
         """return latest bch file (if any)"""
         bchfile_list = sorted(glob.glob(os.path.join(
             self.workdir, modelname+'_[0-9][0-9][0-9]'+BCHEXT)))
         if(bchfile_list):
-            return bchfile_list[-1]
+            return bchfile_list[-1-offset]
         return ''
     
-    def read_bch(self, modelname=None):
+    def read_bch(self, modelname=None, offset=0):
         "read most recent BCH/BATCH file and return result"
         # read latest bch file if any
         if not modelname:
             modelname = self._get_modelname_from_log()
 
         result = femagtools.bch.Reader()
-        bchfile = self.get_bch_file(modelname)
+        bchfile = self.get_bch_file(modelname, offset)
         if bchfile:
             logger.info("Read BCH {}".format(bchfile))
             with io.open(bchfile, encoding='latin1',
@@ -177,10 +177,10 @@ class BaseFemag(object):
 
         return dict()
 
-    def read_airgap_induction(self, modelname=''):
+    def read_airgap_induction(self, modelname='', offset=0):
         """read airgap induction"""
         # we need to figure out the number of poles in model
-        bch = self.read_bch(modelname)
+        bch = self.read_bch(modelname, offset)
         return ag.read(os.path.join(self.workdir, 'bag.dat'),
                        bch.machine['p_sim'])
 
@@ -310,8 +310,13 @@ class Femag(BaseFemag):
                             bchsc.read(f)
                     bch.scData = bchsc.scData
                     for w in bch.flux:
-                        bch.flux[w] += bchsc.flux[w]
-                        bch.flux_fft[w] += bchsc.flux_fft[w]
+                        try:
+                            bch.flux[w] += bchsc.flux[w]
+                            bch.flux_fft[w] += bchsc.flux_fft[w]
+                        except (KeyError, IndexError):
+                            logging.debug("No additional flux data in sc simulation")
+                            break
+
                     bch.torque += bchsc.torque
                     bch.demag += bchsc.demag
             return bch

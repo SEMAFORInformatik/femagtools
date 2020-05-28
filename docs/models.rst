@@ -669,6 +669,66 @@ Example::
    .. image:: img/airgapinduc.png
       :height: 240pt
 
+
+Short circuit calculation (shortcircuit)
+
+The short circuit calculation is executed subsequentially to a pm_sym_fast simulation
+if shortCircuit is set True. (version added 0.9.30). The results are included in scData dict of bch
+
+   ==============  ===================================== ==========  ==========
+   Parameter        Description                          Default      Unit
+   ==============  ===================================== ==========  ==========
+   shortCircuit    run short circuit calc if True
+   l_end_winding   winding inductance                    0           H
+   l_external      External inductance                   0           H
+   sc_type         type of short circuit (3-phase)       3
+   simultime       Simulation time                       0.1         s
+   initial         Initial condition 1: noload 2: load   2
+   allow_demagn    Allow Demagnetisation:1:yes; 0:no     0
+   sim_demagn      Simulate Demagnetisation:1:yes; 0:no  0
+   ==============  ===================================== ==========  ==========
+
+   Example::
+     
+     pmRelSim = dict(
+        angl_i_up=-39.3,
+        calculationMode="pm_sym_fast",
+        wind_temp=60.0,
+        magn_temp=60.0,
+        current=76.43,
+        period_frac=6,
+        speed=50.0,
+        shortCircuit=True,
+        l_end_winding=0,
+        l_external=0,
+        sc_type=3,
+        initial=2,
+        allow_demagn=0,
+        sim_demagn=1)
+
+     r = femag(machine,
+            pmRelSim)
+
+     print('Torque [Nm] = {}'.format(r.machine['torque']))
+     print('''
+       Short Circuit    Current         Torque
+         Peak       iks {2:8.1f} A  tks {3:8.1f} Nm
+         Stationary ikd {0:8.1f} A  tkd {1:8.1f} Nm
+
+       peak winding currents {4}
+     '''.format(r.scData['ikd'],
+                r.scData['tkd'],
+                r.scData['iks'],
+                r.scData['tks'],
+                r.scData['peakWindingCurrents']))
+
+     fig, ax = plt.subplots()
+     femagtools.plot.transientsc(r)
+     plt.show()
+   
+.. image:: img/shortcircuit.png
+  :height: 290pt
+
 Ld-Lq Identification (ld_lq_fast)
 
 ==============  ============================= ==========  ============

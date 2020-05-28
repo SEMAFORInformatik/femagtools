@@ -411,7 +411,8 @@ def _from_nastran(source, filename):
     point_index = 0
     point_indexes = {}
     cells = {"triangle": [], "quad": []}
-    cell_data = {"triangle": [], "quad": []}
+    shell_ids = {"triangle": [], "quad": []}
+    shell_material_ids = {}
 
     with open(source) as file:
         while True:
@@ -436,24 +437,35 @@ def _from_nastran(source, filename):
 
             elif fields[0].startswith("CTRIA3"):
                 cells["triangle"].append([point_indexes[int(f)] for f in fields[3:6]])
-                cell_data["triangle"].append(int(fields[2]))
+                shell_ids["triangle"].append(int(fields[2]))
 
             elif fields[0].startswith("CQUAD4"):
                 cells["quad"].append([point_indexes[int(f)] for f in fields[3:7]])
-                cell_data["quad"].append(int(fields[2]))
+                shell_ids["quad"].append(int(fields[2]))
+
+            elif fields[0].startswith("PSHELL"):
+                shell_material_ids[int(fields[1])] = int(fields[2])
 
     meshio_cells = []
     meshio_cell_data = defaultdict(list)
 
     if cells["triangle"]:
         meshio_cells.append(("triangle", np.array(cells["triangle"])))
-        meshio_cell_data["gmsh:physical"].append(np.zeros(len(cells["triangle"])))
-        meshio_cell_data["gmsh:geometrical"].append(np.array(cell_data["triangle"]))
+        meshio_cell_data["gmsh:geometrical"].append(np.array(shell_ids["triangle"]))
+        if shell_material_ids:
+            meshio_cell_data["gmsh:physical"].append(np.array(
+                [shell_material_ids[shell_id] for shell_id in shell_ids["triangle"]]))
+        else:
+            meshio_cell_data["gmsh:physical"].append(np.zeros(len(cells["triangle"])))
 
     if cells["quad"]:
         meshio_cells.append(("quad", np.array(cells["quad"])))
-        meshio_cell_data["gmsh:physical"].append(np.zeros(len(cells["quad"])))
-        meshio_cell_data["gmsh:geometrical"].append(np.array(cell_data["quad"]))
+        meshio_cell_data["gmsh:geometrical"].append(np.array(shell_ids["quad"]))
+        if shell_material_ids:
+            meshio_cell_data["gmsh:physical"].append(np.array(
+                [shell_material_ids[shell_id] for shell_id in shell_ids["quad"]]))
+        else:
+            meshio_cell_data["gmsh:physical"].append(np.zeros(len(cells["quad"])))
 
     meshio.write_points_cells(
         filename,

@@ -452,26 +452,19 @@ def _from_nastran(source, filename):
     if cells["triangle"]:
         meshio_cells.append(("triangle", np.array(cells["triangle"])))
         meshio_cell_data["gmsh:geometrical"].append(np.array(shell_ids["triangle"]))
-        if shell_material_ids:
-            meshio_cell_data["gmsh:physical"].append(np.array(
-                [shell_material_ids[shell_id] for shell_id in shell_ids["triangle"]]))
-        else:
-            meshio_cell_data["gmsh:physical"].append(np.zeros(len(cells["triangle"])))
+        meshio_cell_data["gmsh:physical"].append(np.array(shell_ids["triangle"]))
 
     if cells["quad"]:
         meshio_cells.append(("quad", np.array(cells["quad"])))
         meshio_cell_data["gmsh:geometrical"].append(np.array(shell_ids["quad"]))
-        if shell_material_ids:
-            meshio_cell_data["gmsh:physical"].append(np.array(
-                [shell_material_ids[shell_id] for shell_id in shell_ids["quad"]]))
-        else:
-            meshio_cell_data["gmsh:physical"].append(np.zeros(len(cells["quad"])))
+        meshio_cell_data["gmsh:physical"].append(np.array(shell_ids["quad"]))
 
     meshio.write_points_cells(
         filename,
         np.array(points),
         meshio_cells,
         cell_data=meshio_cell_data,
+        field_data={f"{str(n)}": (n, 2) for n in sorted(list(set(shell_material_ids)))},
         file_format="gmsh22",
         binary=False)
 

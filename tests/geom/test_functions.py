@@ -37,7 +37,6 @@ def test_same_angle():
     assert(g.is_same_angle(3.14159266, -np.pi))
 
 
-@pytest.mark.current
 def test_misc():
     assert(g.gcd(4, 5) == 1)
     assert(g.gcd(24, 6) == 6)

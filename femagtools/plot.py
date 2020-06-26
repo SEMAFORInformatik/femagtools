@@ -146,7 +146,7 @@ def airgap(airgap):
 def torque(pos, torque):
     """creates plot from torque vs position"""
     k = 20
-    alpha = np.linspace(0, pos[-1],
+    alpha = np.linspace(pos[0], pos[-1],
                         k*len(torque))
     f = ip.interp1d(pos, torque, kind='cubic')
     unit = 'Nm'
@@ -511,20 +511,24 @@ def pmrelsim(bch, title=''):
             bch.flux['1'][-1]['displ'],
             bch.flux['1'][-1]['voltage_dpsi'])
     pl.subplot(rows, cols, row+4)
-    voltage_fft('Internal Voltage Harmonics',
-                bch.flux_fft['1'][-1]['order'],
-                bch.flux_fft['1'][-1]['voltage'])
-   
+    try:
+        voltage_fft('Internal Voltage Harmonics',
+                    bch.flux_fft['1'][-1]['order'],
+                    bch.flux_fft['1'][-1]['voltage'])
+    except:
+        pass
     if len(bch.flux['1']) > 1:
         pl.subplot(rows, cols, row+5)
         voltage('No Load Voltage',
                 bch.flux['1'][0]['displ'],
                 bch.flux['1'][0]['voltage_dpsi'])
         pl.subplot(rows, cols, row+6)
-        voltage_fft('No Load Voltage Harmonics',
-                    bch.flux_fft['1'][0]['order'],
-                    bch.flux_fft['1'][0]['voltage'])
-
+        try:
+            voltage_fft('No Load Voltage Harmonics',
+                        bch.flux_fft['1'][0]['order'],
+                        bch.flux_fft['1'][0]['voltage'])
+        except:
+            pass
     fig.tight_layout(h_pad=3.5)
     if title:
         fig.subplots_adjust(top=0.92)
@@ -585,21 +589,25 @@ def multcal(bch, title=''):
             bch.flux['1'][-1]['displ'],
             bch.flux['1'][-1]['voltage_dpsi'])
     pl.subplot(rows, cols, row+4)
-    voltage_fft('Internal Voltage Harmonics',
-                bch.flux_fft['1'][-1]['order'],
-                bch.flux_fft['1'][-1]['voltage'])
-   
+    try:
+        voltage_fft('Internal Voltage Harmonics',
+                    bch.flux_fft['1'][-1]['order'],
+                    bch.flux_fft['1'][-1]['voltage'])
+    except:
+        pass
     if len(bch.flux['1']) > 1:
         pl.subplot(rows, cols, row+5)
         voltage('No Load Voltage',
                 bch.flux['1'][0]['displ'],
                 bch.flux['1'][0]['voltage_dpsi'])
         pl.subplot(rows, cols, row+6)
-        voltage_fft('No Load Voltage Harmonics',
-                    bch.flux_fft['1'][0]['order'],
-                    bch.flux_fft['1'][0]['voltage'])
-
-    fig.tight_layout(h_pad=3.5)
+        try:
+            voltage_fft('No Load Voltage Harmonics',
+                        bch.flux_fft['1'][0]['order'],
+                        bch.flux_fft['1'][0]['voltage'])
+        except:
+            pass
+        fig.tight_layout(h_pad=3.5)
     if title:
         fig.subplots_adjust(top=0.92)
 
@@ -654,20 +662,24 @@ def fasttorque(bch, title=''):
             bch.flux['1'][-1]['displ'],
             bch.flux['1'][-1]['voltage_dpsi'])
     pl.subplot(rows, cols, row+4)
-    voltage_fft('Internal Voltage Harmonics',
-                bch.flux_fft['1'][-1]['order'],
-                bch.flux_fft['1'][-1]['voltage'])
-   
+    try:
+        voltage_fft('Internal Voltage Harmonics',
+                    bch.flux_fft['1'][-1]['order'],
+                    bch.flux_fft['1'][-1]['voltage'])
+    except:
+        pass
     if len(bch.flux['1']) > 1:
         pl.subplot(rows, cols, row+5)
         voltage('No Load Voltage',
                 bch.flux['1'][0]['displ'],
                 bch.flux['1'][0]['voltage_dpsi'])
         pl.subplot(rows, cols, row+6)
-        voltage_fft('No Load Voltage Harmonics',
-                    bch.flux_fft['1'][0]['order'],
-                    bch.flux_fft['1'][0]['voltage'])
-
+        try:
+            voltage_fft('No Load Voltage Harmonics',
+                        bch.flux_fft['1'][0]['order'],
+                        bch.flux_fft['1'][0]['voltage'])
+        except:
+            pass
     fig.tight_layout(h_pad=3.5)
     if title:
         fig.subplots_adjust(top=0.92)

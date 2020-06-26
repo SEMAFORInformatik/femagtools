@@ -279,14 +279,14 @@ class PmMachineTest(unittest.TestCase):
     w1 = 2*math.pi*n*bch.machine['p']
     U = 338
     iqx, idx = pm.iqd_torque(T)
-    self.assertAlmostEqual(idx, -196.815433)
-    self.assertAlmostEqual(iqx, 303.313471074)
+    self.assertAlmostEqual(idx, -196.815433, 1)
+    self.assertAlmostEqual(iqx, 303.313471074, 1)
     uq, ud = pm.uqd(w1, iqx, idx)
-    self.assertAlmostEqual(ud, -522.735358830)
-    self.assertAlmostEqual(uq, 213.623501918)
+    self.assertAlmostEqual(ud, -522.735358830, 1)
+    self.assertAlmostEqual(uq, 213.623501918, 1)
     iqx, idx, tq = pm.iqd_torque_umax(T, w1, U)
-    self.assertAlmostEqual(idx, -297.986735702)
-    self.assertAlmostEqual(iqx, 248.31913889352)
+    self.assertAlmostEqual(idx, -297.986735702, 1)
+    self.assertAlmostEqual(iqx, 248.31913889352, 1)
 
 if __name__ == '__main__':
   unittest.main()

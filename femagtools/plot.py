@@ -137,9 +137,11 @@ def phasor(bch):
 def airgap(airgap):
     """creates plot of flux density in airgap"""
     pl.title('Airgap Flux Density [T]')
-    pl.plot(airgap['pos'], airgap['B'])
-    pl.plot(airgap['pos'], airgap['B_fft'])
+    pl.plot(airgap['pos'], airgap['B'], label='Max {:4.2f} T'.format(max(airgap['B'])))
+    pl.plot(airgap['pos'], airgap['B_fft'], label='Base Ampl {:4.2f} T'.format(airgap['Bamp']))
     pl.xlabel('Position/°')
+    pl.legend()
+        
     pl.grid()
 
     

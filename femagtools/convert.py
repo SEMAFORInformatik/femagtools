@@ -398,6 +398,8 @@ def _from_isa(isa, filename, target_format,
 
 def _nastran_real_to_float(s):
 
+    s = s.strip()
+
     if "E" not in s:
         s = s[0] + s[1:].replace("+", "e+").replace("-", "e-")
 

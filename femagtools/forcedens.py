@@ -15,7 +15,7 @@ import logging
 
 logger = logging.getLogger('femagtools.forcedens')
 
-filename_pat = re.compile('^(\w+)_(\d{3}).PLT(\d+)')
+filename_pat = re.compile(r'^(\w+)_(\d{3}).PLT(\d+)')
 num_pat = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
 pos_pat = re.compile(r'^\s*POSITION\s*\[(\w+)\]')
 unit_pat = re.compile(r'\[([^\]]+)')

@@ -73,7 +73,7 @@ class FemagError(Exception):
 
 def subscribe_dev_null(message):
     logger.debug("DevNull: %s", message)
-    pass
+    return
 
 
 class BaseFemag(object):
@@ -343,7 +343,7 @@ class ZmqFemag(BaseFemag):
                                              magnetizingCurves, magnets)
         self.host = host
         self.port = port
-        self.ipaddr = ''
+        self.pubhost = ''
 
         self.request_socket = self.__req_socket()
         self.subscriber_socket = None
@@ -373,14 +373,6 @@ class ZmqFemag(BaseFemag):
         self.request_socket = context.socket(zmq.REQ)
         self.request_socket.connect('tcp://{0}:{1}'.format(
             self.host, self.port))
-        #if not self.ipaddr:
-        #    if self.host != 'localhost':
-        #        inforesp = self.info()
-        #        self.ipaddr = json.loads(inforesp[1])['addr']
-        #        logger.info("Connected with %s", self.ipaddr)
-        #    else:
-        #        self.ipaddr = '127.0.0.1'
-
         return self.request_socket
 
     def __sub_socket(self):
@@ -388,14 +380,15 @@ class ZmqFemag(BaseFemag):
         if self.subscriber_socket:
             return self.subscriber_socket
         context = zmq.Context.instance()
-        if not self.ipaddr:
-            self.ipaddr = '127.0.0.1'
+        if not self.pubhost:
+            self.pubhost = '127.0.0.1'
         self.subscriber_socket = context.socket(zmq.SUB)
         self.subscriber_socket.connect(
             'tcp://{0}:{1}'.format(
-                self.ipaddr, self.port+1))
+                self.pubhost, self.port+1))
         self.subscriber_socket.setsockopt(zmq.SUBSCRIBE, b'')
         self.subscriber_socket.RCVTIMEO = 900  # in milliseconds
+        logger.info("Subscriber %s", self.pubhost)
         return self.subscriber_socket
 
     def __is_process_running(self, procId):
@@ -449,15 +442,22 @@ class ZmqFemag(BaseFemag):
             pass
         return False
 
+    def subscribe(self, pubhost):
+        self.pubhost = pubhost
+        
+       #if not self.pubhost:
+        #    if self.host != 'localhost':
+        #        inforesp = self.info()
+        #        self.pubhost = json.loads(inforesp[1])['addr']
+        #        logger.info("Connected with %s", self.pubhost)
+        #    else:
+        #        self.pubhost = '127.0.0.1'
+
+         
     def send_request(self, msg, pub_consumer=None, timeout=None):
         try:
             # Start the reader thread to get information
-            if pub_consumer:
-                self.stopStreamReader()
-                self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
-                self.reader.setDaemon(True)
-                self.reader.start()
-
+            self.restartStreamReader(pub_consumer)
             if timeout:
                 self.request_socket.setsockopt(zmq.RCVTIMEO, timeout)
                 self.request_socket.setsockopt(zmq.LINGER, 0)
@@ -503,11 +503,7 @@ class ZmqFemag(BaseFemag):
 
         try:
             # Start the reader thread to get information about the next calculation
-            if pub_consumer:
-                self.stopStreamReader()
-                self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
-                self.reader.setDaemon(True)
-                self.reader.start()
+            self.restartStreamReader(pub_consumer)
 
             self.request_socket.send_string(header, flags=zmq.SNDMORE)
             logger.debug("Sent header")
@@ -529,7 +525,7 @@ class ZmqFemag(BaseFemag):
                 try:
                     response = self.request_socket.recv_multipart()
                     time.sleep(.5)  # Be sure all messages are arrived over zmq
-                    if pub_consumer:
+                    if pub_consumer and self.reader:
                         self.reader.continue_loop = False
                     return [s.decode('latin1') for s in response]
                 except zmq.error.Again as e:
@@ -745,11 +741,16 @@ class ZmqFemag(BaseFemag):
             return self.getfile(rc['result_file'][0])
         return [s.decode('latin1') for s in response]
             
-    def stopStreamReader(self):
+    def restartStreamReader(self, pub_consumer):
         if self.reader:
             logger.debug("stop stream reader")
             self.reader.continue_loop = False
             self.reader.join()
+
+        if self.reader or (pub_consumer and pub_consumer != subscribe_dev_null):
+            self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
+            self.reader.setDaemon(True)
+            self.reader.start()
 
     def copy_magnetizing_curves(self, model, dir=None):
         """extract mc names from model and write files into workdir or dir if given

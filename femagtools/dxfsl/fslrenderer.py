@@ -408,6 +408,7 @@ class FslRenderer(object):
         num_layers = min(m_inner.num_of_layers() +
                          m_outer.num_of_layers(),
                          2)
+
         return [
             u'-- generated from DXF by femagtools {}'.format(__version__),
             u'exit_on_error = false',
@@ -453,7 +454,7 @@ class FslRenderer(object):
                     u'x1, y1 = pr2c(r1, alfa)',
                     u'n = math.floor(r1*alfa/agndst + 1.5)',
                     u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
-                    u'r2 = da2/2 + ag/6',
+                    u'r2 = m.fc_radius + ag/6',
                     u'x2, y2 = pr2c(r2, alfa)',
                     u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
                     u'if inner_da_start == nil then',

@@ -177,6 +177,10 @@ def torque_fft(order, torque):
     ax = pl.gca()
     ax.set_title('Torque Harmonics / {}'.format(unit))
     ax.grid(True)
+    if len(order) < 3:
+        order = order + [5]
+        torque = torque + [0]
+
     try:
         bw = 2.5E-2*max(order)
         ax.bar(order, [scale*t for t in torque], width=bw, align='center')
@@ -304,6 +308,9 @@ def voltage_fft(title, order, voltage):
     ax = pl.gca()
     ax.set_title('{} / V'.format(title))
     ax.grid(True)
+    if max(order) < 5:
+        order += [5]
+        voltage += [0]
     try:
         bw = 2.5E-2*max(order)
         ax.bar(order, voltage, width=bw, align='center')

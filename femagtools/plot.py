@@ -177,9 +177,6 @@ def torque_fft(order, torque):
     ax = pl.gca()
     ax.set_title('Torque Harmonics / {}'.format(unit))
     ax.grid(True)
-    if len(order) < 3:
-        order = order + [5]
-        torque = torque + [0]
 
     try:
         bw = 2.5E-2*max(order)

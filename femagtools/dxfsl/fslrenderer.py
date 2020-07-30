@@ -101,7 +101,7 @@ class FslRenderer(object):
             r = geom.max_radius
         else:
             r = geom.min_radius
-            
+
         # return sorted list of distances from airgap and elements
         return sorted([(abs(r - np.linalg.norm(e.center_of_connection())), e)
                        for e in geom.elements(Shape)])
@@ -162,17 +162,17 @@ class FslRenderer(object):
                 self.content += [
                     u'x2, y2 = pr2c(r1, 2*math.pi/m.tot_num_slot+phi)',
                     u'x3, y3 = pr2c(r, 2*math.pi/m.tot_num_slot+phi)']
-                
+
             self.content += [u'nc_line(x0, y0, x1, y1, 0)',
                              u'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
                              u'nc_line(x2, y2, x3, y3, 0)']
             if geom.is_mirrored():
                 self.content.append(
                     u'x0, y0 = pr2c(r1 - hair/2, math.pi/m.tot_num_slot/2+phi/4)')
-            else:    
+            else:
                 self.content.append(
                     u'x0, y0 = pr2c(r1 - hair/2, math.pi/m.tot_num_slot+phi/2)')
-                
+
             self.content += [
                 u'create_mesh_se(x0, y0)',
                 u'\n',
@@ -182,8 +182,10 @@ class FslRenderer(object):
                     geom.dist_end_min_corner())]
 
         self.content.append(u'\n')
-        self.content.append(u'x0_iron_shaft, y0_iron_shaft = 0.0, 0.0')
-        self.content.append(u'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0\n')
+        self.content.append(u'x0_iron_tooth, y0_iron_tooth = 0.0, 0.0')
+        self.content.append(u'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0')
+        self.content.append(u'x0_shaft, y0_shaft = 0.0, 0.0')
+        self.content.append(u'\n')
 
         subregions = {}
         num_windings = 0
@@ -193,7 +195,7 @@ class FslRenderer(object):
                 p = area.get_point_inside(geom)
                 if p:
                     self.content.append(u"x0, y0 = {}, {}".format(p[0], p[1]))
-                    self.content.append(u"point(x0, y0, red, 4)")
+                    # self.content.append(u"point(x0, y0, red, 4)")  # for debugging
                     self.content.append(u"create_mesh_se(x0, y0)")
 
                 if area.is_winding():
@@ -211,6 +213,7 @@ class FslRenderer(object):
                                         format(num_magnets, num_magnets))
                     self.content.append(u'mag_orient[{}] = {}'.
                                         format(num_magnets, area.phi))
+
                 elif area.type > 0:
                     if area.type in subregions:
                         self.content.append(
@@ -224,12 +227,15 @@ class FslRenderer(object):
                     if area.is_stator_iron_yoke():
                         self.content.append(
                             u'x0_iron_yoke, y0_iron_yoke = x0, y0')
-                    if area.is_stator_iron_shaft():
+                    elif area.is_stator_iron_tooth():
                         self.content.append(
-                            u'x0_iron_shaft, y0_iron_shaft = x0, y0')
-                    if area.is_rotor_iron():
+                            u'x0_iron_tooth, y0_iron_tooth = x0, y0')
+                    elif area.is_rotor_iron():
                         self.content.append(
                             u'x0_iron_yoke, y0_iron_yoke = x0, y0')
+                    elif area.is_shaft():
+                        self.content.append(
+                            u'x0_shaft, y0_shaft = x0, y0')
 
                 self.content.append(u"\n")
 
@@ -242,11 +248,20 @@ class FslRenderer(object):
                u'end\n']
         self.content.append(u'\n'.join(txt))
 
-        txt = [u"if x0_iron_shaft > 0.0 then",
-               u"  if mcvkey_shaft ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_iron_shaft, y0_iron_shaft, blue, mcvkey_shaft, 100)',
+        txt = [u"if x0_iron_tooth > 0.0 then",
+               u"  if mcvkey_tooth ~= 'dummy' then",
+               u'    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, blue, mcvkey_tooth, 100)',
                u'  else',
-               u'    def_mat_fm(x0_iron_shaft, y0_iron_shaft, ur, 100)',
+               u'    def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)',
+               u'  end',
+               u'end\n']
+        self.content.append(u'\n'.join(txt))
+
+        txt = [u"if x0_shaft > 0.0 then",
+               u"  if mcvkey_shaft ~= 'dummy' then",
+               u'    def_mat_fm_nlin(x0_shaft, y0_shaft, blue, mcvkey_shaft, 100)',
+               u'  else',
+               u'    def_mat_fm(x0_shaft, y0_shaft, ur, 100)',
                u'  end',
                u'end\n']
         self.content.append(u'\n'.join(txt))
@@ -282,14 +297,14 @@ class FslRenderer(object):
         self.content += [u'-- rotate',
                          u'x1, y1 = {}, {}'.format(
                              geom.start_corners[0][0],
-                             geom.start_corners[0][1])] # min xy1
+                             geom.start_corners[0][1])]  # min xy1
         if outer:
             self.content.append(u'x2, y2 = pr2c(r1, phi)')
         else:
             self.content.append(u'x2, y2 = {}, {}'.format(
                              geom.start_corners[1][0],
-                             geom.start_corners[1][1])) # max xy1
-            
+                             geom.start_corners[1][1]))  # max xy1
+
         if geom.is_mirrored():
             self.content.append(u'x3, y3 = pr2c(x2, alfa)')
             self.content.append(u'x4, y4 = pr2c(x1, alfa)')
@@ -441,11 +456,13 @@ class FslRenderer(object):
             u'm.airgap         = 2*ag/3',
             u'm.nodedist       = 1.0',
             u'agndst           = {}'.format(params.get('agndst', 0.1)),
+            u"mcvkey_tooth = 'dummy'",
             u"mcvkey_yoke = 'dummy'",
             u"mcvkey_shaft = 'dummy'",
             u"ur = 1000.0",
             u"ndt(agndst)"] + outer + [
-                "mcvkey_yoke = 'dummy'",
+                u"mcvkey_tooth = 'dummy'",
+                u"mcvkey_yoke = 'dummy'",
                 u"mcvkey_shaft = 'dummy'",
                 u"ndt(agndst)"] + inner + [
                     u'-- airgap',

@@ -154,17 +154,34 @@ class Area(object):
                 yield n
             last_point = next_nodes[-1]
 
+    def legend(self):
+        if self.type == 1:
+            return 'Iron'
+        if self.type == 2:
+            return 'Windings'
+        if self.type == 3 or self.type == 4:
+            return 'Magnet'
+        if self.type == 5:
+            return 'Joke'
+        if self.type == 6:
+            return 'Tooth'
+        if self.type == 10:
+            return 'Shaft'
+        return ''
+
     def name(self):
         if self.type == 1:
             return 'Iron'
         if self.type == 2:
-            return 'windings'
+            return 'Wndg'
         if self.type == 3 or self.type == 4:
-            return 'magnet'
+            return 'Mag'
         if self.type == 5:
             return 'StJo'
         if self.type == 6:
             return 'StZa'
+        if self.type == 10:
+            return 'Shft'
         return ''
 
     def color(self):
@@ -178,6 +195,8 @@ class Area(object):
             return 'cyan'
         if self.type == 6:
             return 'blue'
+        if self.type == 10:
+            return 'lightgrey'
         return 'white'
 
     def is_iron(self):
@@ -186,7 +205,7 @@ class Area(object):
     def is_stator_iron_yoke(self):
         return self.type == 5
 
-    def is_stator_iron_shaft(self):
+    def is_stator_iron_tooth(self):
         return self.type == 6
 
     def is_rotor_iron(self):
@@ -197,6 +216,9 @@ class Area(object):
 
     def is_magnet(self):
         return self.type == 3 or self.type == 4
+
+    def is_shaft(self):
+        return self.type == 10
 
     def is_air(self):
         return self.type == 0
@@ -586,7 +608,7 @@ class Area(object):
         return True
 
     def render_legend(self, renderer, alpha=1.0):
-        return renderer.new_legend_handle(self.color(), alpha, self.name())
+        return renderer.new_legend_handle(self.color(), alpha, self.legend())
 
     def remove_edges(self, g, ndec):
         for e in self.area:
@@ -642,6 +664,29 @@ class Area(object):
                 arcs += 1
 
         return arcs > 0
+
+    def is_shaft_area(self, center):
+        logger.debug("Begin of check shaft")
+
+        if not self.is_touching_both_sides():
+            logger.debug("End of check shaft: don't touch both sides")
+            return False
+
+        for n in self.list_of_nodes():
+            a = alpha_line(center, n)
+            if np.isclose(self.min_angle, a):
+                continue
+            if np.isclose(self.max_angle, a):
+                continue
+            d = distance(center, n)
+            if np.isclose(d, self.min_dist, atol=0.05):
+                continue
+            if np.isclose(d, self.max_dist, atol=0.05):
+                continue
+            logger.debug("End of check shaft: no")
+            return False
+        logger.debug("End of check shaft: ok")
+        return True
 
     def is_rectangle(self):
         lines = [[c, e.m(99999.0), e.length()]
@@ -927,6 +972,14 @@ class Area(object):
         logger.debug(" - max_dist           : %3.12f", self.max_dist)
         logger.debug(" - surface size       : %3.12f", self.surface)
 
+        if is_inner:
+            # looking for shaft
+            if close_to_opposition and not self.close_to_ag:
+                if self.is_shaft_area(center):
+                    self.type = 10  # shaft
+                    logger.debug("***** shaft (close to opposition)\n")
+                    return self.type
+
         if close_to_opposition:
             self.type = 5  # iron yoke (Joch)
             logger.debug("***** iron yoke #1\n")
@@ -1019,8 +1072,10 @@ class Area(object):
             opposite_radius = r_out
             airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
 
-        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
-        self.close_to_endangle = np.isclose(self.max_angle, alpha)
+        self.close_to_startangle = np.isclose(self.min_angle, 0.0,
+                                              1e-04, 1e-04)
+        self.close_to_endangle = np.isclose(self.max_angle, alpha,
+                                            1e-04, 1e-04)
 
         logger.debug("\n***** mark_rotor_subregions [{}] *****"
                      .format(self.id))
@@ -1035,6 +1090,14 @@ class Area(object):
         logger.debug(" - alpha              : %3.12f", alpha)
         logger.debug(" - min_angle          : %3.12f", self.min_angle)
         logger.debug(" - max_angle          : %3.12f", self.max_angle)
+
+        if is_inner:
+            # looking for shaft
+            if close_to_opposition and not self.close_to_ag:
+                if self.is_shaft_area(center):
+                    self.type = 10  # shaft
+                    logger.debug("***** shaft (close to opposition)\n")
+                    return self.type
 
         if close_to_opposition:
             self.type = 1  # iron

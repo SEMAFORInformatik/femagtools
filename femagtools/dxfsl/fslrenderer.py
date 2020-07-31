@@ -222,7 +222,7 @@ class FslRenderer(object):
                     else:
                         subregions[area.type] = 1
                         self.content.append(
-                            u'def_new_subreg(x0, y0, "{}", {})'.
+                            u'def_new_subreg(x0, y0, "{}", "{}")'.
                             format(area.name(), area.color()))
                     if area.is_stator_iron_yoke():
                         self.content.append(
@@ -241,7 +241,7 @@ class FslRenderer(object):
 
         txt = [u"if x0_iron_yoke > 0.0 then",
                u"  if mcvkey_yoke ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_iron_yoke, y0_iron_yoke, blue, mcvkey_yoke, 100)',
+               u'    def_mat_fm_nlin(x0_iron_yoke, y0_iron_yoke, "blue", mcvkey_yoke, 100)',
                u'  else',
                u'    def_mat_fm(x0_iron_yoke, y0_iron_yoke, ur, 100)',
                u'  end',
@@ -250,7 +250,7 @@ class FslRenderer(object):
 
         txt = [u"if x0_iron_tooth > 0.0 then",
                u"  if mcvkey_tooth ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, blue, mcvkey_tooth, 100)',
+               u'    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, "blue", mcvkey_tooth, 100)',
                u'  else',
                u'    def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)',
                u'  end',
@@ -259,7 +259,7 @@ class FslRenderer(object):
 
         txt = [u"if x0_shaft > 0.0 then",
                u"  if mcvkey_shaft ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_shaft, y0_shaft, blue, mcvkey_shaft, 100)',
+               u'    def_mat_fm_nlin(x0_shaft, y0_shaft, "blue", mcvkey_shaft, 100)',
                u'  else',
                u'    def_mat_fm(x0_shaft, y0_shaft, ur, 100)',
                u'  end',
@@ -379,9 +379,9 @@ class FslRenderer(object):
                 u'      phi = (i*mag_alpha+mag_orient[n])*180/math.pi',
                 u'      if ( i % 2 == 0 ) then',
                 u'        phi = phi - 180',
-                u'        color = red',
+                u'        color = "red"',
                 u'      else',
-                u'        color = green',
+                u'        color = "green"',
                 u'      end',
                 u'      if(m.mcvkey_magnet == nil) then',
                 u'        def_mat_pm(x0, y0, color, m.remanenc, m.relperm,',

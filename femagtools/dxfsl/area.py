@@ -186,7 +186,7 @@ class Area(object):
 
     def color(self):
         if self.type == 1:
-            return 'blue'
+            return 'cyan'
         if self.type == 2:
             return 'green'
         if self.type == 3 or self.type == 4:
@@ -194,10 +194,25 @@ class Area(object):
         if self.type == 5:
             return 'cyan'
         if self.type == 6:
-            return 'blue'
+            return 'skyblue'
         if self.type == 10:
             return 'lightgrey'
         return 'white'
+
+    def color_alpha(self):
+        if self.type == 1:
+            return 0.3
+        if self.type == 2:
+            return 1.0
+        if self.type == 3 or self.type == 4:
+            return 1.0
+        if self.type == 5:
+            return 0.5
+        if self.type == 6:
+            return 1.0
+        if self.type == 10:
+            return 0.8
+        return 1.0
 
     def is_iron(self):
         return self.type == 1 or self.type == 5 or self.type == 6
@@ -592,10 +607,11 @@ class Area(object):
             e.render(renderer, color, with_nodes)
         return
 
-    def render_fill(self, renderer, alpha=1.0):
+    def render_fill(self, renderer):
         color = self.color()
         if not color:
             return False
+        alpha = self.color_alpha()
 
         if self.is_circle():
             e = self.area[0]
@@ -607,8 +623,10 @@ class Area(object):
             renderer.fill(x, y, color, alpha)
         return True
 
-    def render_legend(self, renderer, alpha=1.0):
-        return renderer.new_legend_handle(self.color(), alpha, self.legend())
+    def render_legend(self, renderer):
+        return renderer.new_legend_handle(self.color(),
+                                          self.color_alpha(),
+                                          self.legend())
 
     def remove_edges(self, g, ndec):
         for e in self.area:

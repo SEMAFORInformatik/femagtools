@@ -1984,31 +1984,31 @@ class Geometry(object):
         legend = {}
         for area in self.list_of_areas():
             if area.is_iron():
-                area.render_fill(renderer, 0.3)
+                area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 0.3)
+                    legend[area.name()] = area.render_legend(renderer)
             if area.is_shaft():
-                area.render_fill(renderer, 0.7)
+                area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 0.7)
+                    legend[area.name()] = area.render_legend(renderer)
 
         for area in self.list_of_areas():
             if area.is_air():
-                area.render_fill(renderer, 1.0)
+                area.render_fill(renderer)
 
         # magnet has no air inside
         for area in self.list_of_areas():
             if area.is_magnet():
                 area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 1.0)
+                    legend[area.name()] = area.render_legend(renderer)
 
         # winding has no air inside
         for area in self.list_of_areas():
             if area.is_winding():
                 area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 1.0)
+                    legend[area.name()] = area.render_legend(renderer)
 
         if legend:
             return [h for (k, h) in legend.items()]

@@ -1984,27 +1984,31 @@ class Geometry(object):
         legend = {}
         for area in self.list_of_areas():
             if area.is_iron():
-                area.render_fill(renderer, 0.3)
+                area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 0.3)
+                    legend[area.name()] = area.render_legend(renderer)
+            if area.is_shaft():
+                area.render_fill(renderer)
+                if area.name() and area.name() not in legend:
+                    legend[area.name()] = area.render_legend(renderer)
 
         for area in self.list_of_areas():
             if area.is_air():
-                area.render_fill(renderer, 1.0)
+                area.render_fill(renderer)
 
         # magnet has no air inside
         for area in self.list_of_areas():
             if area.is_magnet():
                 area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 1.0)
+                    legend[area.name()] = area.render_legend(renderer)
 
         # winding has no air inside
         for area in self.list_of_areas():
             if area.is_winding():
                 area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 1.0)
+                    legend[area.name()] = area.render_legend(renderer)
 
         if legend:
             return [h for (k, h) in legend.items()]
@@ -2620,6 +2624,17 @@ class Geometry(object):
             logger.info("%s tiny elements deleted", deleted)
         return
 
+    def check_shaft_area(self, shaft):
+        for a in self.list_of_areas():
+            if not shaft.is_identical(a):
+                if shaft.is_inside(a):
+                    shaft.type = 6  # iron shaft (Zahn)
+                    return
+                if shaft.is_touching(a):
+                    if not a.is_iron():
+                        shaft.type = 6  # iron shaft (Zahn)
+                        return
+
     def search_subregions(self):
         if self.is_stator():
             return self.search_stator_subregions()
@@ -2728,6 +2743,13 @@ class Geometry(object):
                         if dist_low > dist_up:
                             a.type = 6  # iron shaft (Zahn)
 
+        shaft_areas = [a for a in self.list_of_areas() if a.type == 10]
+        if shaft_areas:
+            if len(shaft_areas) > 1:
+                logger.warn("More than two shafts ?!?")
+                return
+            self.check_shaft_area(shaft_areas[0])
+
     def search_rotor_subregions(self, place=''):
         logger.debug("begin of search_rotor_subregions")
         is_inner = self.is_inner
@@ -2751,6 +2773,9 @@ class Geometry(object):
                 types[t] += 1
             else:
                 types[t] = 1
+
+        if 10 in types:
+            logger.debug("Shaft is available")
 
         if 4 in types:  # magnet rectangle
             if types[4] > 1:
@@ -2816,6 +2841,14 @@ class Geometry(object):
                 for c, phi, a_lst in phi_list[first:]:
                     for a in a_lst:
                         a.set_type(0)
+
+        shaft_areas = [a for a in self.list_of_areas() if a.type == 10]
+        if shaft_areas:
+            if len(shaft_areas) > 1:
+                logger.warn("More than two shafts ?!?")
+                return
+            self.check_shaft_area(shaft_areas[0])
+
         logger.debug("end of search_rotor_subregions")
 
     def search_unknown_subregions(self):

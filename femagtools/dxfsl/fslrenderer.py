@@ -259,7 +259,7 @@ class FslRenderer(object):
 
         txt = [u"if x0_shaft > 0.0 then",
                u"  if mcvkey_shaft ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_shaft, y0_shaft, "blue", mcvkey_shaft, 100)',
+               u'    def_mat_fm_nlin(x0_shaft, y0_shaft, "lightgrey", mcvkey_shaft, 100)',
                u'  else',
                u'    def_mat_fm(x0_shaft, y0_shaft, ur, 100)',
                u'  end',
@@ -351,7 +351,7 @@ class FslRenderer(object):
 
         if self.shaft:
             mat = [u'\nif shaft_mat==1 then',
-                   u'  def_mat_fm_nlin(0.1,0.1,lightgrey,fm_nlin_mcvfile_shft,fm_nlin_rlen)',
+                   u'  def_mat_fm_nlin(0.1,0.1,"lightgrey",fm_nlin_mcvfile_shft,fm_nlin_rlen)',
                    u'end']
             self.content.append(u'\n'.join(mat))
 

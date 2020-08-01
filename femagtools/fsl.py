@@ -54,6 +54,29 @@ class Builder:
 
     def prepare_stator(self, model):
         templ = model.statortype()
+        if templ == 'mshfile':
+            import femagtools.gmsh
+            import numpy as np
+            g = femagtools.gmsh.Gmsh(model.stator['mshfile']['name'])
+            phi = g.get_section_angles()
+            model.stator['num_slots'] = int(np.round(np.pi/(phi[1]-phi[0])))
+            r = g.get_section_radius()
+            model.set_value('outer_diam', 2*r[1])
+            model.set_value('bore_diam', 2*r[0])
+            model.stator['stator_msh'] = dict(
+                name = model.stator['mshfile']['name'])
+            for sr in g.get_subregions():
+                model.stator[sr] = g.get_location(sr)
+            for k in ('yoke', 'teeth', 'air'):
+                model.stator[k] = model.stator['mshfile'].get(k, [])
+            wdg = model.stator['mshfile'].get('wdg', '')
+            if wdg:
+                model.stator['wdg'] = model.stator[wdg]
+            del model.stator['mshfile']
+            
+            self.fsl_stator = True
+            return
+        
         if templ != 'dxffile':
             return
 
@@ -132,6 +155,11 @@ class Builder:
         
         fslcode = self.__render(statmodel, templ, stator=True)
         if fslcode:
+            if self.fsl_stator:
+                return (['agndst = {}'.format(model.agndst*1e3),
+                         'alfa = 2*math.pi*m.num_sl_gen/m.tot_num_slot',
+                         'num_agnodes = math.floor(m.fc_radius*alfa/agndst + 1.5)'] +
+                        fslcode)
             return (fslcode +
                     ['post_models("nodedistance", "ndst" )',
                      'agndst=ndst[1]*1e3'])
@@ -178,6 +206,27 @@ class Builder:
 
     def prepare_rotor(self, model):
         templ = model.magnettype()
+        if templ == 'mshfile':
+            import femagtools.gmsh
+            g = femagtools.gmsh.Gmsh(model.magnet['mshfile']['name'])
+            r = g.get_section_radius()
+            model.set_value('inner_diam', 2*r[0])
+            ag = (model.get('bore_diam') - 2*r[1])/2
+            model.set_value('airgap', ag)
+            model.magnet['rotor_msh'] = dict(
+                name = model.magnet['mshfile']['name'])
+            for sr in g.get_subregions():
+                model.magnet[sr] = g.get_location(sr)
+
+            for k in ('yoke', 'air'):
+                model.magnet[k] = model.magnet['mshfile'].get(k, [])
+            model.magnet['mag'] = dict(
+                sreg=model.magnet['mshfile'].get('mag', []),
+                axis = [g.get_axis_angle(s)
+                        for s in model.magnet['mshfile'].get('mag', [])])
+            del model.magnet['mshfile']
+            return
+            
         if templ != 'dxffile':
             return
 
@@ -310,7 +359,10 @@ class Builder:
                     model.set_value(
                         'agndst',
                         agndst(model.get('bore_diam'),
-                               model.get('bore_diam') - 2*ag))
+                               model.get('bore_diam') - 2*ag,
+                               model.stator.get('num_slots'),
+                               model.get('poles'),
+                               model.stator.get('nodedist') or 1.0))
 
                 model.set_num_slots_gen()
             

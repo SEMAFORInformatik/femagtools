@@ -49,16 +49,19 @@ class Gmsh(object):
         raise ValueError("subregion '{}' not found".format(srname))
 
     def get_corners(self, srname):
+        """return corner points in counterclockwise order"""
         p = self.get_points(srname)
         corner = []
+        # 1: lower left
         for p1 in p:
             x = []
             for p2 in p:
-                if p1[1] < p2[1]: 
+                if p1[0] > p2[0]: 
                     x.append(p2)
                     break
             if not x:
                 corner.append(p1[:2])
+        # 2: lower right
         for p1 in p:
             x = []
             for p2 in p:
@@ -67,6 +70,7 @@ class Gmsh(object):
                     break
             if not x:
                 corner.append(p1[:2])
+        # 3: upper right
         for p1 in p:
             x = []
             for p2 in p:
@@ -75,10 +79,11 @@ class Gmsh(object):
                     break
             if not x:
                 corner.append(p1[:2])
+        # 4: upper left
         for p1 in p:
             x = []
             for p2 in p:
-                if p1[0] > p2[0]: 
+                if p1[1] < p2[1]: 
                     x.append(p2)
                     break
             if not x:
@@ -88,17 +93,12 @@ class Gmsh(object):
     def get_axis_angle(self, srname):
         """returns angle of axis in degrees"""
         corners = self.get_corners(srname)
-        logging.info("Corners %s of '%s'", corners, srname)
-        dist = np.linalg.norm(np.asarray(corners[1:])-corners[0], axis=1)
-        j = [i for i in range(3) if i != np.argmax(dist)]
-        if dist[j[0]] < dist[j[1]]:
-            l = corners[0], corners[j[1]]
-        else:
-            l = corners[0], corners[j[0]]
+        logging.debug("Corners %s of '%s'", corners, srname)
+        l = corners[3], corners[2]
         alfa = np.arctan2(l[0][1] - l[1][1],
                           l[0][0] - l[1][0])/np.pi*180
                           
-        logging.info("Line l %s angle %s", l, alfa)
+        logging.debug("Line l %s angle %s", l, alfa)
         return alfa
     
 if __name__ == "__main__":

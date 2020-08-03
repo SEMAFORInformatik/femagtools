@@ -40,7 +40,7 @@ create_mesh_se(x1, y1)
 	               alfa, m.parallel, m.magncond, m.rlen)
   r, phi = c2pd(x, y)
   x, y = pd2c(r, 360/m.num_poles-phi)
-  alfa = 360//m.num_poles/2 - alfa
+  alfa = 360/m.num_poles - alfa
   def_mat_pm(x, y, color, m.remanenc, m.relperm,
 	               alfa, m.parallel, m.magncond, m.rlen)
 

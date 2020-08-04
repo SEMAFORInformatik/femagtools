@@ -13,6 +13,7 @@ import mako.lookup
 import os
 import re
 import sys
+import math
 from femagtools.dxfsl.converter import convert
 from . import __version__
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class Builder:
             import numpy as np
             g = femagtools.gmsh.Gmsh(model.stator['mshfile']['name'])
             phi = g.get_section_angles()
-            model.stator['num_slots'] = int(np.round(np.pi/(phi[1]-phi[0])))
+            model.stator['num_slots'] = round(math.pi/(phi[1]-phi[0]))
             r = g.get_section_radius()
             model.set_value('outer_diam', 2*r[1])
             model.set_value('bore_diam', 2*r[0])
@@ -210,6 +211,9 @@ class Builder:
             import femagtools.gmsh
             g = femagtools.gmsh.Gmsh(model.magnet['mshfile']['name'])
             r = g.get_section_radius()
+            phi = g.get_section_angles()
+            p = round(math.pi/(phi[1]-phi[0]))
+            model.set_value('poles', p)
             model.set_value('inner_diam', 2*r[0])
             ag = (model.get('bore_diam') - 2*r[1])/2
             model.set_value('airgap', ag)

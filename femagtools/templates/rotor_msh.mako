@@ -5,6 +5,12 @@ x1, y1 = pd2c(da2/2, 360/m.num_poles/2)
 x2, y2 = pd2c(dy2/2, 360/m.num_poles/2)
 mirror_nodechains(x1, y1, x2, y2)
 
+x1, y1 = dy2/2, 0
+x2, y2 = da2/2, 0
+x3, y3 = pd2c(da2/2, 360/m.num_poles)
+x4, y4 = pd2c(dy2/2, 360/m.num_poles)
+rotate_copy_nodechains(x1, y1, x2, y2, x3, y3, x4, y4, m.npols_gen-1)
+
 -- airgap
 x1, y1 = pd2c(da2/2, 0)
 x2, y2 = pd2c(da2/2 + ag/3, 0)
@@ -27,22 +33,32 @@ create_mesh_se(x1, y1)
 % endfor
 
 -- Magnet
- color = 'red'
+ color = {'red', 'green'}
  if( m.magncond == nil ) then
    m.magncond = 625000.0
  end
  m.rlen = 100
+ alfa = {}
+ r = {}
+ phi = {}
 % for i, m in enumerate(model['mag']['sreg']):
   x, y = ${model[m][0]*1e3}, ${model[m][1]*1e3}
   delete_sreg(x, y)
-  alfa = ${model['mag']['axis'][i]-90}  -- ${m}
-  def_mat_pm(x, y, color, m.remanenc, m.relperm,
-	               alfa, m.parallel, m.magncond, m.rlen)
-  r, phi = c2pd(x, y)
-  x, y = pd2c(r, 360/m.num_poles-phi)
-  alfa = 360/m.num_poles - alfa
-  def_mat_pm(x, y, color, m.remanenc, m.relperm,
-	               alfa, m.parallel, m.magncond, m.rlen)
-
+  alfa[${i+1}] = ${model['mag']['axis'][i]-90}  -- ${m}
+  r[${i+1}], phi[${i+1}] = c2pd(x, y)
+  
 % endfor
+ for i=1, m.npols_gen do
+   for k=1, ${len(model['mag']['sreg'])} do
+     x, y = pd2c(r[k], phi[k] + (i-1)*360/m.num_poles)
+     def_mat_pm(x, y, color[(i-1) % 2 +1], m.remanenc, m.relperm,
+	               alfa[k] + (i-1)*360/m.num_poles, m.parallel, m.magncond, m.rlen)
+		       
+     x, y = pd2c(r[k], i*360/m.num_poles-phi[k])
+     def_mat_pm(x, y, color[(i-1) % 2 +1], m.remanenc, m.relperm,
+	               i*360/m.num_poles - alfa[k], m.parallel, m.magncond, m.rlen)
+		       
+   end
+end
+
 

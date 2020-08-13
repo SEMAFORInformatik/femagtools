@@ -15,6 +15,7 @@ from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle, is_same_angle
+from .functions import area_size
 from .shape import Element, Shape, Line, Arc, Circle, is_Circle
 
 logger = logging.getLogger('femagtools.area')
@@ -58,6 +59,7 @@ class Area(object):
         global area_number
         area_number += 1
         self.id = area_number
+        self.areas_inside = {}
 
     def identifier(self):
         return "{}-{}".format(self.id, self.type)
@@ -68,13 +70,59 @@ class Area(object):
     def elements(self):
         return self.area
 
-    def nodes(self):
-        if len(self.area) == 0:
+    def list_of_nodes(self):
+        if len(self.area) < 2:
             return
 
-        for e in self.area:
-            yield e.p1
-            yield e.p2
+        e0 = self.area[0]
+        e1 = self.area[1]
+        try:
+            if e1.get_node_number(e0.n1, override=True) == 0:
+                nx = e0.n2
+            else:
+                nx = e0.n1
+            yield nx
+
+            for e1 in self.area[1:]:
+                if e1.get_node_number(nx) == 1:
+                    nx = e1.n2
+                else:
+                    nx = e1.n1
+                yield nx
+        except ValueError as e:
+            logger.error("list_of_nodes(): FATAL ERROR: %s", e)
+            return
+        except Exception as e:
+            return
+
+    def list_of_elements(self):
+        if len(self.area) < 2:
+            return
+
+        e0 = self.area[0]
+        e1 = self.area[1]
+        try:
+            if e1.get_node_number(e0.n1, override=True) == 0:
+                n1 = e0.n1
+                n2 = e0.n2
+            else:
+                n1 = e0.n2
+                n2 = e0.n1
+            yield n1, n2, e0
+
+            for e1 in self.area[1:]:
+                if e1.get_node_number(n2) == 1:
+                    n1 = e1.n1
+                    n2 = e1.n2
+                else:
+                    n1 = e1.n2
+                    n2 = e1.n1
+                yield n1, n2, e1
+        except ValueError as e:
+            logger.error("list_of_elements(): FATAL ERROR: %s", e)
+            return
+        except Exception as e:
+            return
 
     def virtual_nodes(self):
         if len(self.area) < 2:
@@ -106,22 +154,39 @@ class Area(object):
                 yield n
             last_point = next_nodes[-1]
 
+    def legend(self):
+        if self.type == 1:
+            return 'Iron'
+        if self.type == 2:
+            return 'Windings'
+        if self.type == 3 or self.type == 4:
+            return 'Magnet'
+        if self.type == 5:
+            return 'Joke'
+        if self.type == 6:
+            return 'Tooth'
+        if self.type == 10:
+            return 'Shaft'
+        return ''
+
     def name(self):
         if self.type == 1:
             return 'Iron'
         if self.type == 2:
-            return 'windings'
+            return 'Wndg'
         if self.type == 3 or self.type == 4:
-            return 'magnet'
+            return 'Mag'
         if self.type == 5:
             return 'StJo'
         if self.type == 6:
             return 'StZa'
+        if self.type == 10:
+            return 'Shft'
         return ''
 
     def color(self):
         if self.type == 1:
-            return 'blue'
+            return 'cyan'
         if self.type == 2:
             return 'green'
         if self.type == 3 or self.type == 4:
@@ -129,8 +194,25 @@ class Area(object):
         if self.type == 5:
             return 'cyan'
         if self.type == 6:
-            return 'blue'
+            return 'skyblue'
+        if self.type == 10:
+            return 'lightgrey'
         return 'white'
+
+    def color_alpha(self):
+        if self.type == 1:
+            return 0.3
+        if self.type == 2:
+            return 1.0
+        if self.type == 3 or self.type == 4:
+            return 1.0
+        if self.type == 5:
+            return 0.5
+        if self.type == 6:
+            return 1.0
+        if self.type == 10:
+            return 0.8
+        return 1.0
 
     def is_iron(self):
         return self.type == 1 or self.type == 5 or self.type == 6
@@ -138,7 +220,7 @@ class Area(object):
     def is_stator_iron_yoke(self):
         return self.type == 5
 
-    def is_stator_iron_shaft(self):
+    def is_stator_iron_tooth(self):
         return self.type == 6
 
     def is_rotor_iron(self):
@@ -149,6 +231,9 @@ class Area(object):
 
     def is_magnet(self):
         return self.type == 3 or self.type == 4
+
+    def is_shaft(self):
+        return self.type == 10
 
     def is_air(self):
         return self.type == 0
@@ -204,11 +289,14 @@ class Area(object):
         return True
 
     def is_touching(self, area):
-        for n in self.nodes():
-            x = [p for p in area.nodes() if points_are_close(n, p)]
+        for n in self.list_of_nodes():
+            x = [p for p in area.list_of_nodes() if points_are_close(n, p)]
             if x:
                 return True
         return False
+
+    def is_touching_both_sides(self):
+        return (self.close_to_startangle and self.close_to_endangle)
 
     def has_connection(self, geom, a, ndec):
         assert(self.area)
@@ -237,8 +325,8 @@ class Area(object):
 
     def get_lowest_gap_list(self, a, center, radius, rightangle, leftangle):
         gap_list = []
-        for p1 in self.nodes():
-            for p2 in a.nodes():
+        for p1 in self.list_of_nodes():
+            for p2 in a.list_of_nodes():
                 d = distance(p1, p2)
                 gap_list.append((d, (p1, p2)))
 
@@ -246,7 +334,8 @@ class Area(object):
         gap_list.append((d, (p1, p2)))
         d, p1, p2 = a.get_nearest_point(center, radius, leftangle)
         gap_list.append((d, (p1, p2)))
-        return gap_list
+        gap_list.sort()
+        return [gap_list[0]]
 
     def get_nearest_point(self, center, radius, angle):
         axis_p = point(center, radius, angle)
@@ -256,7 +345,7 @@ class Area(object):
         the_area_p = None
         the_axis_p = None
         dist = 99999
-        for n in self.nodes():
+        for n in self.list_of_nodes():
             p = intersect_point(n, center, axis_m, axis_n)
             d = distance(n, p)
             if d < dist:
@@ -456,6 +545,12 @@ class Area(object):
                 return True
         return False
 
+    def is_point_inside(self, pt):
+        for e in self.area:
+            if e.is_point_inside(pt, include_end=True):
+                return True
+        return False
+
     def get_point_inside(self, geom):
         """return point inside area"""
         mm = self.minmax()
@@ -512,10 +607,11 @@ class Area(object):
             e.render(renderer, color, with_nodes)
         return
 
-    def render_fill(self, renderer, alpha=1.0):
+    def render_fill(self, renderer):
         color = self.color()
         if not color:
             return False
+        alpha = self.color_alpha()
 
         if self.is_circle():
             e = self.area[0]
@@ -527,8 +623,10 @@ class Area(object):
             renderer.fill(x, y, color, alpha)
         return True
 
-    def render_legend(self, renderer, alpha=1.0):
-        return renderer.new_legend_handle(self.color(), alpha, self.name())
+    def render_legend(self, renderer):
+        return renderer.new_legend_handle(self.color(),
+                                          self.color_alpha(),
+                                          self.legend())
 
     def remove_edges(self, g, ndec):
         for e in self.area:
@@ -570,6 +668,42 @@ class Area(object):
                     return False
             else:
                 return False
+        return True
+
+    def has_round_edges(self):
+        arcs = 0
+        for e in self.area:
+            if isinstance(e, Line):
+                if not np.isclose(angle, alpha_line(center, e.p1)):
+                    return False
+                if not np.isclose(angle, alpha_line(center, e.p2)):
+                    return False
+            elif isinstance(e, Arc):
+                arcs += 1
+
+        return arcs > 0
+
+    def is_shaft_area(self, center):
+        logger.debug("Begin of check shaft")
+
+        if not self.is_touching_both_sides():
+            logger.debug("End of check shaft: don't touch both sides")
+            return False
+
+        for n in self.list_of_nodes():
+            a = alpha_line(center, n)
+            if np.isclose(self.min_angle, a):
+                continue
+            if np.isclose(self.max_angle, a):
+                continue
+            d = distance(center, n)
+            if np.isclose(d, self.min_dist, atol=0.05):
+                continue
+            if np.isclose(d, self.max_dist, atol=0.05):
+                continue
+            logger.debug("End of check shaft: no")
+            return False
+        logger.debug("End of check shaft: ok")
         return True
 
     def is_rectangle(self):
@@ -806,8 +940,14 @@ class Area(object):
                         return True
         return False
 
-    def mark_stator_subregions(self, is_inner, mirrored, alpha,
-                               center, r_in, r_out):
+    def mark_stator_subregions(self,
+                               is_inner,
+                               stator_size,
+                               mirrored,
+                               alpha,
+                               center,
+                               r_in,
+                               r_out):
         alpha = round(alpha, 6)
 
         if self.is_circle():
@@ -832,6 +972,7 @@ class Area(object):
                                               1e-04, 1e-04)
         self.close_to_endangle = np.isclose(self.max_angle, alpha,
                                             1e-04, 1e-04)
+        self.surface = self.area_size()
 
         logger.debug("\n***** mark_stator_subregions [{}] *****"
                      .format(self.id))
@@ -847,6 +988,15 @@ class Area(object):
         logger.debug(" - max_angle          : %3.12f", self.max_angle)
         logger.debug(" - min_dist           : %3.12f", self.min_dist)
         logger.debug(" - max_dist           : %3.12f", self.max_dist)
+        logger.debug(" - surface size       : %3.12f", self.surface)
+
+        if is_inner:
+            # looking for shaft
+            if close_to_opposition and not self.close_to_ag:
+                if self.is_shaft_area(center):
+                    self.type = 10  # shaft
+                    logger.debug("***** shaft (close to opposition)\n")
+                    return self.type
 
         if close_to_opposition:
             self.type = 5  # iron yoke (Joch)
@@ -893,12 +1043,24 @@ class Area(object):
             if self.max_angle < alpha - 0.001:
                 self.type = 2  # windings
                 logger.debug("***** windings #1\n")
-            elif mirrored:
+                return self.type
+            if mirrored:
                 self.type = 2  # windings
                 logger.debug("***** windings #2\n")
-            else:
+                return self.type
+
+            self.type = 0  # air
+            logger.debug("***** air #2")
+
+        if self.close_to_startangle or self.close_to_endangle:
+            f = self.surface / stator_size
+            if f < 0.02:  # area_size less then 2 percent of stator size
+                # Luftloch
                 self.type = 0  # air
-                logger.debug("***** air #2\n")
+                logger.debug("***** small area => air\n")
+            else:
+                self.type = 9  # air or iron near windings and near airgap?
+                logger.debug("***** air or iron close to border\n")
             return self.type
 
         logger.debug("***** air #3\n")
@@ -928,8 +1090,10 @@ class Area(object):
             opposite_radius = r_out
             airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
 
-        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
-        self.close_to_endangle = np.isclose(self.max_angle, alpha)
+        self.close_to_startangle = np.isclose(self.min_angle, 0.0,
+                                              1e-04, 1e-04)
+        self.close_to_endangle = np.isclose(self.max_angle, alpha,
+                                            1e-04, 1e-04)
 
         logger.debug("\n***** mark_rotor_subregions [{}] *****"
                      .format(self.id))
@@ -945,9 +1109,22 @@ class Area(object):
         logger.debug(" - min_angle          : %3.12f", self.min_angle)
         logger.debug(" - max_angle          : %3.12f", self.max_angle)
 
+        if is_inner:
+            # looking for shaft
+            if close_to_opposition and not self.close_to_ag:
+                if self.is_shaft_area(center):
+                    self.type = 10  # shaft
+                    logger.debug("***** shaft (close to opposition)\n")
+                    return self.type
+
         if close_to_opposition:
             self.type = 1  # iron
             logger.debug("***** iron (close to opposition)\n")
+            return self.type
+
+        if self.close_to_startangle and self.close_to_endangle:
+            self.type = 1  # iron
+            logger.debug("***** iron (close to both sides)\n")
             return self.type
 
         self.mag_rectangle = self.is_mag_rectangle()
@@ -1038,61 +1215,16 @@ class Area(object):
         logger.debug(">>> air remains")
         return self.type
 
+    def area_size(self):
+        nodes = [n for n in self.list_of_nodes()]
+        return area_size(nodes)
+
     def set_surface(self, mirrored):
-        logger.debug("begin of set_surface")
-        if len(self.area) < 2:
-            self.surface = 0.0
-            logger.debug("end of set_surface: 0.0")
-            return
-
-        nodes = []
-        e0 = self.area[0]
-        e1 = self.area[1]
-
-        logger.debug("Nodes of e0: %s", e0.print_nodes())
-        logger.debug("Nodes of e1: %s", e1.print_nodes())
-
-        try:
-            e1.get_node_number(e0.n1)
-        except ValueError:
-            nx = e0.n2
-        else:
-            nx = e0.n1
-        nodes.append(nx)
-
-        try:
-            for e1 in self.area[1:]:
-                logger.debug("Nodes of e1: %s", e1.print_nodes())
-                if e1.get_node_number(nx) == 1:
-                    nx = e1.n2
-                else:
-                    nx = e1.n1
-                nodes.append(nx)
-        except Exception:
-            return 0.0  # failed
-        nodes.append(nodes[0])
-
-        for n in nodes:
-            logger.debug(" == %s", n)
-
-        x = [n[0] for n in nodes]
-        y = [n[1] for n in nodes]
-
-        logger.debug(" -- x = %s", x)
-        logger.debug(" -- y = %s", y)
-
-        s = 0.0
-        for i in range(len(x) - 1):
-            s += x[i] * y[i+1] - y[i] * x[i+1]
-
-        logger.debug("==== endangle = %s", self.close_to_endangle)
-        logger.debug("==== mirrored = %s", mirrored)
-
+        self.surface = self.area_size()
         if self.close_to_endangle and mirrored:
-            self.surface = np.absolute(s)
+            self.surface = self.area_size() * 2.0
         else:
-            self.surface = np.absolute(s/2)
-        logger.debug("end of set_surface: %s", self.surface)
+            self.surface = self.area_size()
 
     def print_area(self):
         center = [0.0, 0.0]
@@ -1137,6 +1269,85 @@ class Area(object):
                 return less_equal(self.alpha, a.alpha)
 
         return self.min_angle < a.min_angle
+
+    def nested_areas_inside(self):
+        for id, a in self.areas_inside.items():
+            yield id
+            for i in a.nested_areas_inside():
+                yield i
+
+    def list_of_nested_areas_inside(self):
+        for id, a in self.areas_inside.items():
+            for i in a.nested_areas_inside():
+                yield i
+
+    def crunch_area(self, geom):
+        n1_prev = None
+        e_prev = None
+        logger.debug("crunch area %s", self.identifier())
+
+        if self.is_circle():
+            return 0
+
+        c = 0
+        for n1, n2, e in self.list_of_elements():
+            if e_prev is not None:
+                if len([nbr for nbr in geom.g.neighbors(n1)]) == 2:
+                    e_new = e_prev.concatenate(n1_prev, n2, e)
+                    if e_new is not None:
+                        e_prev_dict = geom.g.get_edge_data(n1_prev, n1)
+                        e_dict = geom.g.get_edge_data(n1, n2)
+
+                        logger.debug("--> remove from %s to %s [%s, %s, %s]",
+                                     n1_prev,
+                                     n1,
+                                     e_prev_dict[0],
+                                     e_prev_dict[1],
+                                     e_prev_dict[2])
+                        logger.debug("    remove %s", e_prev)
+                        geom.remove_edge(e_prev)
+
+                        logger.debug("--> remove from %s to %s [%s, %s, %s]",
+                                     n1,
+                                     n2,
+                                     e_dict[0],
+                                     e_dict[1],
+                                     e_dict[2])
+                        logger.debug("    remove %s", e)
+                        if e.get_node_number(n1) == 1:
+                            flag1 = e_dict[1]
+                            flag2 = e_dict[2]
+                        else:
+                            flag1 = e_dict[2]
+                            flag2 = e_dict[1]
+                        geom.remove_edge(e)
+
+                        logger.debug("--> add from %s to %s",
+                                     n1_prev,
+                                     n2)
+                        logger.debug("    add %s", e_new)
+                        geom.add_edge(n1_prev, n2, e_new)
+
+                        e_new_dict = geom.g.get_edge_data(n1_prev, n2)
+                        e_new_dict[0] = True
+                        if e_new.get_node_number(n1_prev) == 1:
+                            e_new_dict[1] = flag1
+                            e_new_dict[2] = flag2
+                        else:
+                            e_new_dict[1] = flag2
+                            e_new_dict[2] = flag1
+
+                        logger.debug("    new dict: [%s, %s, %s]",
+                                     e_new_dict[0],
+                                     e_new_dict[1],
+                                     e_new_dict[2])
+                        e_prev = e_new
+                        c += 1
+                        continue
+
+            n1_prev = n1
+            e_prev = e
+        return c
 
     def __str__(self):
         return "Area {}\n".format(self.id) + \

@@ -250,12 +250,14 @@ def convert(dxfile,
             machine_inner = machine_inner.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
             machine_inner.search_subregions()
+            machine_inner.create_mirror_lines_outside_windings()
 
         elif machine_outer.has_mirrored_windings():
             logger.info("undo mirrored windings of %s", outer_name)
             machine_outer = machine_outer.undo_mirror()
             machine_inner.sync_with_counterpart(machine_outer)
             machine_outer.search_subregions()
+            machine_outer.create_mirror_lines_outside_windings()
 
         machine_inner.delete_tiny_elements(mindist)
         machine_outer.delete_tiny_elements(mindist)
@@ -266,12 +268,16 @@ def convert(dxfile,
                               draw_inside=True, title=inner_name,
                               rows=3, cols=2, num=5, show=False,
                               # with_nodes=True,
+                              # neighbors=True,
+                              # write_id=True,
                               fill_areas=True)
 
             p.render_elements(machine_outer.geom, Shape,
                               draw_inside=True, title=outer_name,
                               rows=3, cols=2, num=6, show=False,
                               # with_nodes=True,
+                              # neighbors=True,
+                              # write_id=True,
                               fill_areas=True)
             if write_png:
                 p.write_plot(basename)
@@ -375,6 +381,7 @@ def convert(dxfile,
                     machine = machine.undo_mirror()
                     machine.geom.set_stator()
                     machine.geom.search_stator_subregions(part[1])
+                    machine.create_mirror_lines_outside_windings()
 
                 params = create_femag_parameters_stator(machine,
                                                         part[1])

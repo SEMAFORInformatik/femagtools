@@ -51,8 +51,12 @@ class Shape(object):
         return False
 
     def set_nodes(self, n1, n2):
-        self.n1 = n1
-        self.n2 = n2
+        if self.get_point_number(n1) == 1:
+            self.n1 = n1
+            self.n2 = n2
+        else:
+            self.n2 = n1
+            self.n1 = n2
 
     """an abstract geometry with 2 points"""
     def start(self):
@@ -140,22 +144,34 @@ class Shape(object):
             return self.intersect_circle(e, rtol, atol, include_end)
         return []
 
-    def get_node_number(self, n):
-        if nodes_are_equal(n, self.n1):
-            if nodes_are_equal(n, self.n2):
-                logger.debug("FATAL: get_node_number(): " +
-                             "both nodes of %s are close to %s",
-                             self, n)
-                raise ValueError('both nodes are equal in element')
-            return 1
+    def get_node_number(self, n, override=False):
+        if not nodes_are_equal(n, self.n1):
+            if not nodes_are_equal(n, self.n2):
+                if override:
+                    return 0
+                logger.debug("FATAL: get_node_number(): node %s missing in %s",
+                             n, self)
+                raise ValueError('missing node in element')
 
-        if nodes_are_equal(n, self.n2):
+        d1 = distance(n, self.n1)
+        d2 = distance(n, self.n2)
+        if d1 == d2:
+            logger.info("distances of %s and %s are equal (%s / %s)",
+                        self.n1, self.n2, d1, d2)
+            raise ValueError('both nodes are equal in element')
+
+        if d1 < d2:
+            return 1
+        else:
             return 2
 
-        logger.debug("FATAL: get_node_number(): node %s missing in %s",
-                     n, self)
-        raise ValueError('missing node in element')
-        return 0
+    def get_point_number(self, p):
+        d_p1 = distance(p, self.p1)
+        d_p2 = distance(p, self.p2)
+        if d_p1 < d_p2:
+            return 1
+        else:
+            return 2
 
     def get_alpha(self, n):
         return 0.0
@@ -186,6 +202,19 @@ class Shape(object):
         logger.debug("end of minmax_angle_dist_from_center")
         return (my_min_angle, my_max_angle)
 
+    def concatenate(self, n1, n2, el):
+        if isinstance(el, Line):
+            return self.concatenate_line(n1, n2, el)
+        if isinstance(el, Arc):
+            return self.concatenate_arc(n1, n2, el)
+        return None
+
+    def concatenate_line(self, n1, n2, el):
+        return None
+
+    def concatenate_arc(self, n1, n2, el):
+        return None
+
     def print_nodes(self):
         return " n1={}/n2={}".format(self.n1, self.n2)
 
@@ -212,7 +241,12 @@ class Circle(Shape):
         self.n2 = None
 
     def render(self, renderer, color='blue', with_nodes=False):
-        renderer.circle(self.center, self.radius, color)
+        tmp_color = color
+        if hasattr(self, 'my_color'):
+            if self.my_color is not None:
+                tmp_color = self.my_color
+
+        renderer.circle(self.center, self.radius, color=tmp_color)
         if with_nodes:
             renderer.point(self.center, 'ro', 'white')
 
@@ -516,8 +550,14 @@ class Arc(Circle):
         self.n2 = None
 
     def render(self, renderer, color='blue', with_nodes=False):
+        tmp_color = color
+        if hasattr(self, 'my_color'):
+            if self.my_color is not None:
+                tmp_color = self.my_color
+
         renderer.arc(self.startangle, self.endangle,
-                     self.center, self.radius, color)
+                     self.center, self.radius,
+                     color=tmp_color)
         if with_nodes:
             renderer.point(self.p1, 'ro', color)
             renderer.point(self.p2, 'ro', color)
@@ -688,6 +728,28 @@ class Arc(Circle):
         assert(len(points_inside) == 0)
         return []
 
+    def concatenate_arc(self, n1, n2, el):
+        if not points_are_close(self.center, el.center):
+            return None
+        if not np.isclose(self.radius, el.radius):
+            return None
+
+        if np.isclose(self.startangle, el.endangle):
+            start_angle = el.startangle
+            end_angle = self.endangle
+        else:
+            start_angle = self.startangle
+            end_angle = el.endangle
+
+        logger.debug("concatenate_arc: start=%s, end=%s",
+                     start_angle,
+                     end_angle)
+        return Arc(Element(center=self.center,
+                           radius=self.radius,
+                           start_angle=start_angle,
+                           end_angle=end_angle),
+                   rf=1)
+
     def is_point_inside(self, p, rtol=1e-03, atol=1e-03, include_end=False):
         """ returns true if p is on arc
         """
@@ -829,12 +891,14 @@ class Arc(Circle):
         return get_angle_of_arc(self.startangle, self.endangle)
 
     def __str__(self):
-        return "Arc c={},\n\t r={},\n\t start={},\n\t end={},\n\t p1={},\n\t p2={}".\
+        return "Arc c={},\n\t r={},\n\t start={},\n\t end={},\n\t p1={},\n\t p2={},\n\t n1={},\n\t n2={}".\
             format(self.center,
                    self.radius, self.startangle,
                    self.endangle,
                    self.p1,
-                   self.p2)
+                   self.p2,
+                   self.n1,
+                   self.n2)
 
     def __eq__(self, other):
         """Override the default Equals behavior"""
@@ -993,7 +1057,15 @@ class Line(Shape):
             return split_lines
         return []
 
-    def is_point_inside(self, point, rtol, atol, include_end=False):
+    def concatenate_line(self, n1, n2, el):
+        if np.isclose(self.m(999999.0), el.m(999999.0)):
+            return Line(Element(start=n1, end=n2))
+        return None
+
+    def is_point_inside(self, point,
+                        rtol=1e-03,
+                        atol=1e-03,
+                        include_end=False):
         """ returns True if point is between start and end point
         """
         if points_are_close(point, self.p1, rtol, atol):
@@ -1055,7 +1127,10 @@ class Line(Shape):
         return 0.0
 
     def __str__(self):
-        return "Line p1={}, p2={}".format(self.p1, self.p2)
+        return "Line p1={}, p2={}, n1={}, n2={}".format(self.p1,
+                                                        self.p2,
+                                                        self.n1,
+                                                        self.n2)
 
     def __eq__(self, other):
         """Override the default Equals behavior"""

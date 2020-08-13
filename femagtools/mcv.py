@@ -410,8 +410,7 @@ class Writer(Mcv):
             alpha = self.losses['cw_freq']
             beta = self.losses['b_coeff']
             
-            tpfe = self.transpose(self.losses['pfe'])
-            for f, p in zip(self.losses['f'], tpfe):
+            for f, p in zip(self.losses['f'], self.losses['pfe']):
                 if f != None:
                     pl = [px if px != None else lc.pfe_steinmetz(f, b, cw, alpha, beta,
                                                                  self.losses['fo'],
@@ -421,7 +420,7 @@ class Writer(Mcv):
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - len(pl)))
                     self.writeBlock(f)
-            for m in range(M_LOSS_FREQ - len(tpfe)):
+            for m in range(M_LOSS_FREQ - len(self.losses['pfe'])):
                 self.writeBlock([0.0]*M_LOSS_INDUCT)
                 self.writeBlock(0.0)
 
@@ -913,7 +912,7 @@ class MagnetizingCurve(object):
             bname = name
             filename = ''.join((name, ext))
             # check fillfac and readmcv
-            if not fillfac:
+            if not fillfac or fillfac==1.0:
                 try:
                     import shutil
                     logger.info("Copy file %s", filename)

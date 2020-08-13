@@ -167,6 +167,7 @@ class Reader:
             'Current Angles defined from no-load test':
             Reader.__read_current_angles,
             'FEMAG Version': Reader.__read_version,
+            'FEMAG Classic Version': Reader.__read_version,
             'Simulation Data': Reader.__read_simulation_data,
             'Area [mm**2]': Reader.__read_areas,
             'Basic Machine parameters': Reader.__read_dummy,
@@ -236,8 +237,9 @@ class Reader:
         return rec
 
     def __read_version(self, content):
-        self.version = content[0].split(' ')[3]
-
+        rec = content[0].split(':')
+        self.version = rec[-1].replace(' Version ','').strip()
+            
     def __read_project_filename(self, content):
         self.project = content[1].strip()
 
@@ -1056,7 +1058,7 @@ class Reader:
         
     def __read_machine_data(self, content):
         "read machine data section"
-        for k in ('beta', 'plfe1', 'plfe2', 'plmag'):
+        for k in ('beta', 'plfe1', 'plfe2', 'plmag', 'plcu'):
             self.machine[k] = []
         for l in content:
             contentline = l.strip()
@@ -1106,15 +1108,15 @@ class Reader:
                         self.machine[v[1]] = si*floatnan(rec[-1])
                     break
 
-        if self.machine['beta']:
+        if self.machine['beta'] and len(self.machine['beta']) > 1:
             self.machine['beta'] = self.machine['beta'][1:]
         self.machine['n'] = self.machine['n']/60
         self.machine['lfe'] = 1e-3*self.machine['lfe']
         if self.machine['plfe1']:  # calc sum of losses
             plfe1 = self.machine['plfe1']
-            plcu = self.machine.get('plcu', 0.0)
-            if np.isscalar(plcu):
-                self.machine['plcu'] = [plcu]*len(plfe1)
+            plcu = self.machine.get('plcu', [0.0]*len(plfe1))
+            if len(plcu) < len(plfe1):
+                self.machine['plcu'] = plcu + [plcu[-1]]*(len(plfe1)-len(plcu))
             self.machine['pltotal'] = [sum(pl)
                                        for pl in zip(*[self.machine[k]
                                                        for k in ('plfe1',
@@ -1125,7 +1127,7 @@ class Reader:
                                     for pl in zip(*[self.machine[k]
                                                     for k in ('plfe1',
                                                               'plfe2')])]
-
+        
     def __read_dq_parameter(self, content):
         if content[1].find('Windings') > -1:
             
@@ -1403,6 +1405,8 @@ class Reader:
                     losses[k] = []
                 try:
                     rec = self.__findNums(l)
+                    if 'nan' in rec:
+                        continue
                     if len(rec) == 4:
                         losses[k].append([floatnan(x) for x in rec])
                     elif len(rec) == 5:  # FEMAG Rel 8.3 with el/mech order

@@ -1,6 +1,8 @@
 import femagtools
+import femagtools.plot
 import femagtools.machine
 import logging
+import matplotlib.pyplot as plt
 import os
 
 logging.basicConfig(level=logging.INFO,
@@ -95,9 +97,9 @@ r = femag(machine,
 
 print('Torque [Nm] = {}'.format(r.machine['torque']))
 print('''
-Short Circuit:
-  ikd {0:8.1f}  tkd {1:8.1f}
-  iks {2:8.1f}  tks {3:8.1f}
+Short Circuit    Current         Torque
+ Peak       iks {2:8.1f} A  tks {3:8.1f} Nm
+ Stationary ikd {0:8.1f} A  tkd {1:8.1f} Nm
 
   peak winding currents {4}
 '''.format(r.scData['ikd'],
@@ -106,3 +108,7 @@ Short Circuit:
            r.scData['tks'],
            r.scData['peakWindingCurrents']))
 print('Demag {}'.format(r.demag[-1]))
+
+fig, ax = plt.subplots()
+femagtools.plot.transientsc(r)
+plt.show()

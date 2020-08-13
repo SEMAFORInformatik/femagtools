@@ -13,8 +13,8 @@ import numpy as np
 import io
 
 
-head_pattern = re.compile('([A-Za-z_0-9]+)')
-unit_pattern = re.compile('\[([A-Za-z/0-9 ]+)\]')
+head_pattern = re.compile(r'([A-Za-z_0-9]+)')
+unit_pattern = re.compile(r'\[([A-Za-z/0-9 ]+)\]')
 num_pattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
 
 

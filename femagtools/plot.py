@@ -136,17 +136,19 @@ def phasor(bch):
 
 def airgap(airgap):
     """creates plot of flux density in airgap"""
-    pl.title('Airgap Induction [T]')
-    pl.plot(airgap['pos'], airgap['B'])
-    pl.plot(airgap['pos'], airgap['B_fft'])
+    pl.title('Airgap Flux Density [T]')
+    pl.plot(airgap['pos'], airgap['B'], label='Max {:4.2f} T'.format(max(airgap['B'])))
+    pl.plot(airgap['pos'], airgap['B_fft'], label='Base Ampl {:4.2f} T'.format(airgap['Bamp']))
     pl.xlabel('Position/°')
+    pl.legend()
+        
     pl.grid()
 
     
 def torque(pos, torque):
     """creates plot from torque vs position"""
     k = 20
-    alpha = np.linspace(0, pos[-1],
+    alpha = np.linspace(pos[0], pos[-1],
                         k*len(torque))
     f = ip.interp1d(pos, torque, kind='cubic')
     unit = 'Nm'
@@ -175,6 +177,7 @@ def torque_fft(order, torque):
     ax = pl.gca()
     ax.set_title('Torque Harmonics / {}'.format(unit))
     ax.grid(True)
+
     try:
         bw = 2.5E-2*max(order)
         ax.bar(order, [scale*t for t in torque], width=bw, align='center')
@@ -239,7 +242,7 @@ def forcedens_surface(fdens):
     z = 1e-3*np.array([p['FN']
                        for p in fdens.positions])
     _plot_surface(ax, xpos, ypos, z,             
-                  (u'Rotor pos/°', u'Pos/°', u'F N / kN/mm²'))
+                  (u'Rotor pos/°', u'Pos/°', u'F N / kN/m²'))
 
 
 def forcedens_fft(title, fdens):
@@ -302,6 +305,9 @@ def voltage_fft(title, order, voltage):
     ax = pl.gca()
     ax.set_title('{} / V'.format(title))
     ax.grid(True)
+    if max(order) < 5:
+        order += [5]
+        voltage += [0]
     try:
         bw = 2.5E-2*max(order)
         ax.bar(order, voltage, width=bw, align='center')
@@ -330,9 +336,9 @@ def mcv_hbj(mcv, log=True):
             pass
         bi, hi = zip(*bh)
 
-        label = 'Induction'
+        label = 'Flux Density'
         if csiz > 1:
-            label = 'Induction ({0}°)'.format(mcv.mc1_angle[k])
+            label = 'Flux Density ({0}°)'.format(mcv.mc1_angle[k])
         if log:
             ax.semilogx(hi, bi, label=label)
             if ji:
@@ -511,20 +517,24 @@ def pmrelsim(bch, title=''):
             bch.flux['1'][-1]['displ'],
             bch.flux['1'][-1]['voltage_dpsi'])
     pl.subplot(rows, cols, row+4)
-    voltage_fft('Internal Voltage Harmonics',
-                bch.flux_fft['1'][-1]['order'],
-                bch.flux_fft['1'][-1]['voltage'])
-   
+    try:
+        voltage_fft('Internal Voltage Harmonics',
+                    bch.flux_fft['1'][-1]['order'],
+                    bch.flux_fft['1'][-1]['voltage'])
+    except:
+        pass
     if len(bch.flux['1']) > 1:
         pl.subplot(rows, cols, row+5)
         voltage('No Load Voltage',
                 bch.flux['1'][0]['displ'],
                 bch.flux['1'][0]['voltage_dpsi'])
         pl.subplot(rows, cols, row+6)
-        voltage_fft('No Load Voltage Harmonics',
-                    bch.flux_fft['1'][0]['order'],
-                    bch.flux_fft['1'][0]['voltage'])
-
+        try:
+            voltage_fft('No Load Voltage Harmonics',
+                        bch.flux_fft['1'][0]['order'],
+                        bch.flux_fft['1'][0]['voltage'])
+        except:
+            pass
     fig.tight_layout(h_pad=3.5)
     if title:
         fig.subplots_adjust(top=0.92)
@@ -585,21 +595,25 @@ def multcal(bch, title=''):
             bch.flux['1'][-1]['displ'],
             bch.flux['1'][-1]['voltage_dpsi'])
     pl.subplot(rows, cols, row+4)
-    voltage_fft('Internal Voltage Harmonics',
-                bch.flux_fft['1'][-1]['order'],
-                bch.flux_fft['1'][-1]['voltage'])
-   
+    try:
+        voltage_fft('Internal Voltage Harmonics',
+                    bch.flux_fft['1'][-1]['order'],
+                    bch.flux_fft['1'][-1]['voltage'])
+    except:
+        pass
     if len(bch.flux['1']) > 1:
         pl.subplot(rows, cols, row+5)
         voltage('No Load Voltage',
                 bch.flux['1'][0]['displ'],
                 bch.flux['1'][0]['voltage_dpsi'])
         pl.subplot(rows, cols, row+6)
-        voltage_fft('No Load Voltage Harmonics',
-                    bch.flux_fft['1'][0]['order'],
-                    bch.flux_fft['1'][0]['voltage'])
-
-    fig.tight_layout(h_pad=3.5)
+        try:
+            voltage_fft('No Load Voltage Harmonics',
+                        bch.flux_fft['1'][0]['order'],
+                        bch.flux_fft['1'][0]['voltage'])
+        except:
+            pass
+        fig.tight_layout(h_pad=3.5)
     if title:
         fig.subplots_adjust(top=0.92)
 
@@ -654,20 +668,24 @@ def fasttorque(bch, title=''):
             bch.flux['1'][-1]['displ'],
             bch.flux['1'][-1]['voltage_dpsi'])
     pl.subplot(rows, cols, row+4)
-    voltage_fft('Internal Voltage Harmonics',
-                bch.flux_fft['1'][-1]['order'],
-                bch.flux_fft['1'][-1]['voltage'])
-   
+    try:
+        voltage_fft('Internal Voltage Harmonics',
+                    bch.flux_fft['1'][-1]['order'],
+                    bch.flux_fft['1'][-1]['voltage'])
+    except:
+        pass
     if len(bch.flux['1']) > 1:
         pl.subplot(rows, cols, row+5)
         voltage('No Load Voltage',
                 bch.flux['1'][0]['displ'],
                 bch.flux['1'][0]['voltage_dpsi'])
         pl.subplot(rows, cols, row+6)
-        voltage_fft('No Load Voltage Harmonics',
-                    bch.flux_fft['1'][0]['order'],
-                    bch.flux_fft['1'][0]['voltage'])
-
+        try:
+            voltage_fft('No Load Voltage Harmonics',
+                        bch.flux_fft['1'][0]['order'],
+                        bch.flux_fft['1'][0]['voltage'])
+        except:
+            pass
     fig.tight_layout(h_pad=3.5)
     if title:
         fig.subplots_adjust(top=0.92)
@@ -991,7 +1009,7 @@ def felosses(losses, coeffs, title='', log=True):
     if log:
         ax.set_yscale('log')
         ax.set_xscale('log')
-    ax.set_xlabel("Induction [T]")
+    ax.set_xlabel("Flux Density [T]")
     #pl.ylabel("Pfe [W/kg]")
     ax.legend()
     ax.grid(True) 

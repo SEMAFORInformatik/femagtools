@@ -15,7 +15,7 @@ import logging
 
 logger = logging.getLogger('femagtools.forcedens')
 
-filename_pat = re.compile('^(\w+)_(\d{3}).PLT(\d+)')
+filename_pat = re.compile(r'^(\w+)_(\d{3}).PLT(\d+)')
 num_pat = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
 pos_pat = re.compile(r'^\s*POSITION\s*\[(\w+)\]')
 unit_pat = re.compile(r'\[([^\]]+)')
@@ -59,8 +59,12 @@ class ForceDensity(object):
         pass
 
     def __read_version(self, content):
-        self.version = content[0].split(' ')[3]
-
+        rec = content[0].split(' ')
+        if len(rec) > 3:
+            self.version = rec[3]
+        else:
+            self.version = rec[-1]
+            
     def __read_project_filename(self, content):
         self.project = content[1].strip()
         

@@ -13,6 +13,7 @@ import mako.lookup
 import os
 import re
 import sys
+import math
 from femagtools.dxfsl.converter import convert
 from . import __version__
 logger = logging.getLogger(__name__)
@@ -24,8 +25,9 @@ class FslBuilderError(Exception):
 
 class Builder:
     def __init__(self):
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
             # lookup up files in pyinstaller bundle
+            logging.debug("Frozen!")
             dirs = [os.path.join(sys._MEIPASS, 'fsltemplates'),
                     os.path.join(os.getcwd(), '.')]
         else:
@@ -53,6 +55,29 @@ class Builder:
 
     def prepare_stator(self, model):
         templ = model.statortype()
+        if templ == 'mshfile':
+            import femagtools.gmsh
+            import numpy as np
+            g = femagtools.gmsh.Gmsh(model.stator['mshfile']['name'])
+            phi = g.get_section_angles()
+            model.stator['num_slots'] = round(math.pi/(phi[1]-phi[0]))
+            r = g.get_section_radius()
+            model.set_value('outer_diam', 2*r[1])
+            model.set_value('bore_diam', 2*r[0])
+            model.stator['stator_msh'] = dict(
+                name = model.stator['mshfile']['name'])
+            for sr in g.get_subregions():
+                model.stator[sr] = g.get_location(sr)
+            for k in ('yoke', 'teeth', 'air'):
+                model.stator[k] = model.stator['mshfile'].get(k, [])
+            wdg = model.stator['mshfile'].get('wdg', '')
+            if wdg:
+                model.stator['wdg'] = model.stator[wdg]
+            del model.stator['mshfile']
+            
+            self.fsl_stator = True
+            return
+        
         if templ != 'dxffile':
             return
 
@@ -131,6 +156,11 @@ class Builder:
         
         fslcode = self.__render(statmodel, templ, stator=True)
         if fslcode:
+            if self.fsl_stator:
+                return (['agndst = {}'.format(model.agndst*1e3),
+                         'alfa = 2*math.pi*m.num_sl_gen/m.tot_num_slot',
+                         'num_agnodes = math.floor(m.fc_radius*alfa/agndst + 1.5)'] +
+                        fslcode)
             return (fslcode +
                     ['post_models("nodedistance", "ndst" )',
                      'agndst=ndst[1]*1e3'])
@@ -177,6 +207,30 @@ class Builder:
 
     def prepare_rotor(self, model):
         templ = model.magnettype()
+        if templ == 'mshfile':
+            import femagtools.gmsh
+            g = femagtools.gmsh.Gmsh(model.magnet['mshfile']['name'])
+            r = g.get_section_radius()
+            phi = g.get_section_angles()
+            p = round(math.pi/(phi[1]-phi[0]))
+            model.set_value('poles', p)
+            model.set_value('inner_diam', 2*r[0])
+            ag = (model.get('bore_diam') - 2*r[1])/2
+            model.set_value('airgap', ag)
+            model.magnet['rotor_msh'] = dict(
+                name = model.magnet['mshfile']['name'])
+            for sr in g.get_subregions():
+                model.magnet[sr] = g.get_location(sr)
+
+            for k in ('yoke', 'air'):
+                model.magnet[k] = model.magnet['mshfile'].get(k, [])
+            model.magnet['mag'] = dict(
+                sreg=model.magnet['mshfile'].get('mag', []),
+                axis = [g.get_axis_angle(s)
+                        for s in model.magnet['mshfile'].get('mag', [])])
+            del model.magnet['mshfile']
+            return
+            
         if templ != 'dxffile':
             return
 
@@ -233,7 +287,9 @@ class Builder:
         return self.__render(model.windings, 'cu_losses')
 
     def create_fe_losses(self, model):
-        if model.get('ffactor', 0):
+        if any(model.get(k,0) for k in ('ffactor','cw', 'ch', 'hyscoef',
+                                        'edycof', 'indcof', 'fillfact',
+                                        'basfreq', 'basind')):
             return self.__render(model, 'FE-losses')
         return []
 
@@ -307,7 +363,10 @@ class Builder:
                     model.set_value(
                         'agndst',
                         agndst(model.get('bore_diam'),
-                               model.get('bore_diam') - 2*ag))
+                               model.get('bore_diam') - 2*ag,
+                               model.stator.get('num_slots'),
+                               model.get('poles'),
+                               model.stator.get('nodedist') or 1.0))
 
                 model.set_num_slots_gen()
             
@@ -324,14 +383,15 @@ class Builder:
                 except AttributeError:
                     magnetMat['magntemp'] = 20
                 
-            return self.create_new_model(model) + \
-                self.create_cu_losses(model) + \
-                self.create_stator_model(model) + \
-                self.create_gen_winding(model) + \
-                self.create_magnet(magnetMat) + \
-                self.create_magnet_model(model) + \
-                self.mesh_airgap(model) + \
-                self.create_connect_models(model)
+            return (self.create_new_model(model) + 
+                    self.create_cu_losses(model) + 
+                    self.create_fe_losses(model) +
+                    self.create_stator_model(model) + 
+                    self.create_gen_winding(model) + 
+                    self.create_magnet(magnetMat) + 
+                    self.create_magnet_model(model) + 
+                    self.mesh_airgap(model) + 
+                    self.create_connect_models(model) )
 
         return self.open_model(model)
 
@@ -399,21 +459,24 @@ class Builder:
             logger.info("create new model and simulation")
             fslmodel = self.create_model(model, magnets)
             if 'num_poles' in model.windings:
-                fea['pocfilename'] = (model.get('name') +
-                                      '_' + str(model.windings['num_poles']) +
-                                      'p.poc')
+                num_poles = model.windings['num_poles']
+            else:
+                num_poles = model.get('poles')
+            if 'poc' in fea:
+                poc = fea['poc']
+                poc.pole_pitch = 2*360/num_poles
+                fea['pocfilename'] = poc.filename()
             else:
                 fea['pocfilename'] = (model.get('name') +
-                                      '_' + str(model.get('poles')) +
+                                      '_' + str(num_poles) +
                                       'p.poc')
+
             if 'phi_start' not in fea:
                 fea['phi_start'] = 0.0
             if 'range_phi' not in fea:
                 fea['range_phi'] = 720/model.get('poles')
-            fe_losses = self.create_fe_losses(model)
             
-            return (fslmodel + fe_losses +
-                    self.create_analysis(fea) +
+            return (fslmodel + self.create_analysis(fea) +
                     ['save_model("close")'])
         
         logger.info("create open model and simulation")

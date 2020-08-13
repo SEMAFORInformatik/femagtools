@@ -121,6 +121,7 @@ class PmRelMachine(object):
         m: number of winding phases
         p: number of pole pairs
         r1: stator winding resistance (in Ohm)
+        ls: leakage inductance in H
     """
     def __init__(self, m, p, r1, ls):
         self.p = p
@@ -511,8 +512,8 @@ class PmRelMachineLdq(PmRelMachine):
             return
         
         beta = np.asarray(beta)/180.0*np.pi
-        if np.any(beta[beta > 0]):
-            beta[beta > 0] = beta - 2*np.pi
+        if np.any(beta[beta > np.pi]):
+            beta[beta > np.pi] = beta - 2*np.pi
         self.io = iqd((np.min(beta)+max(beta))/2, np.max(i1)/2)
         if 'psid' in kwargs:
             kx = ky = 3

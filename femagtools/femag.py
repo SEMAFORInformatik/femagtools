@@ -39,9 +39,17 @@ def get_shortCircuit_parameters(bch, nload):
         if nload < 0: nload=0
         if nload > 2: nload=2
         if nload > 0:
-            ld = bch.dqPar['ld'][nload-1]/bch.armatureLength
-            lq = bch.dqPar['lq'][nload-1]/bch.armatureLength
-            psim = bch.dqPar['psim'][nload-1]/bch.armatureLength
+            dqld = bch.dqPar['ld']
+            dqlq = bch.dqPar['lq']
+            dqpsim = bch.dqPar['psim']
+            if len(dqld) <= nload or len(dqlq) <= nload or len (dqpsim) <= nload:
+                ld = dqld[-1]/bch.armatureLength
+                lq = dqlq[-1]/bch.armatureLength
+                psim = dqpsim[-1]/bch.armatureLength
+            else:
+                ld = dqld[nload-1]/bch.armatureLength
+                lq = dqlq[nload-1]/bch.armatureLength
+                psim = dqpsim[nload-1]/bch.armatureLength
         else:
             ld = bch.machine['ld']/bch.armatureLength
             lq = bch.machine['lq']/bch.armatureLength
@@ -66,7 +74,7 @@ class FemagError(Exception):
 
 def subscribe_dev_null(message):
     logger.debug("DevNull: %s", message)
-    pass
+    return
 
 
 class BaseFemag(object):
@@ -127,22 +135,22 @@ class BaseFemag(object):
                     result.append(float(line.split(':')[-1].split()[0]))
         return result
 
-    def get_bch_file(self, modelname):
+    def get_bch_file(self, modelname, offset=0):
         """return latest bch file (if any)"""
         bchfile_list = sorted(glob.glob(os.path.join(
             self.workdir, modelname+'_[0-9][0-9][0-9]'+BCHEXT)))
         if(bchfile_list):
-            return bchfile_list[-1]
+            return bchfile_list[-1-offset]
         return ''
     
-    def read_bch(self, modelname=None):
+    def read_bch(self, modelname=None, offset=0):
         "read most recent BCH/BATCH file and return result"
         # read latest bch file if any
         if not modelname:
             modelname = self._get_modelname_from_log()
 
         result = femagtools.bch.Reader()
-        bchfile = self.get_bch_file(modelname)
+        bchfile = self.get_bch_file(modelname, offset)
         if bchfile:
             logger.info("Read BCH {}".format(bchfile))
             with io.open(bchfile, encoding='latin1',
@@ -170,10 +178,10 @@ class BaseFemag(object):
 
         return dict()
 
-    def read_airgap_induction(self, modelname=''):
+    def read_airgap_induction(self, modelname='', offset=0):
         """read airgap induction"""
         # we need to figure out the number of poles in model
-        bch = self.read_bch(modelname)
+        bch = self.read_bch(modelname, offset)
         return ag.read(os.path.join(self.workdir, 'bag.dat'),
                        bch.machine['p_sim'])
 
@@ -267,15 +275,20 @@ class Femag(BaseFemag):
         with open(os.path.join(self.workdir, fslfile), 'w') as f:
             f.write('\n'.join(self.create_fsl(pmMachine,
                                               simulation)))
-        if simulation and simulation['calculationMode'] == "pm_sym_loss":
-            with open(os.path.join(self.workdir,
-                                   self.modelname+'.ntib'), 'w') as f:
-                f.write('\n'.join(ntib.create(
-                    simulation['speed'],
-                    simulation['current'],
-                    simulation['angl_i_up'])))
+        if simulation:
+            if 'poc' in simulation:
+                 with open(os.path.join(self.workdir,
+                                        simulation['pocfilename']), 'w') as f:
+                    f.write('\n'.join(simulation['poc'].content()))
+            if simulation['calculationMode'] == "pm_sym_loss":
+                with open(os.path.join(self.workdir,
+                                       self.modelname+'.ntib'), 'w') as f:
+                    f.write('\n'.join(ntib.create(
+                        simulation['speed'],
+                        simulation['current'],
+                        simulation['angl_i_up'])))
                 # TODO: add r1, m
-
+ 
         self.run(fslfile, options, fsl_args)
         if simulation:
             if simulation['calculationMode'] == "pm_sym_loss":
@@ -303,8 +316,13 @@ class Femag(BaseFemag):
                             bchsc.read(f)
                     bch.scData = bchsc.scData
                     for w in bch.flux:
-                        bch.flux[w] += bchsc.flux[w]
-                        bch.flux_fft[w] += bchsc.flux_fft[w]
+                        try:
+                            bch.flux[w] += bchsc.flux[w]
+                            bch.flux_fft[w] += bchsc.flux_fft[w]
+                        except (KeyError, IndexError):
+                            logging.debug("No additional flux data in sc simulation")
+                            break
+
                     bch.torque += bchsc.torque
                     bch.demag += bchsc.demag
             return bch
@@ -326,7 +344,7 @@ class ZmqFemag(BaseFemag):
                                              magnetizingCurves, magnets)
         self.host = host
         self.port = port
-        self.ipaddr = ''
+        self.pubhost = ''
 
         self.request_socket = self.__req_socket()
         self.subscriber_socket = None
@@ -356,14 +374,6 @@ class ZmqFemag(BaseFemag):
         self.request_socket = context.socket(zmq.REQ)
         self.request_socket.connect('tcp://{0}:{1}'.format(
             self.host, self.port))
-        #if not self.ipaddr:
-        #    if self.host != 'localhost':
-        #        inforesp = self.info()
-        #        self.ipaddr = json.loads(inforesp[1])['addr']
-        #        logger.info("Connected with %s", self.ipaddr)
-        #    else:
-        #        self.ipaddr = '127.0.0.1'
-
         return self.request_socket
 
     def __sub_socket(self):
@@ -371,14 +381,15 @@ class ZmqFemag(BaseFemag):
         if self.subscriber_socket:
             return self.subscriber_socket
         context = zmq.Context.instance()
-        if not self.ipaddr:
-            self.ipaddr = '127.0.0.1'
+        if not self.pubhost:
+            self.pubhost = '127.0.0.1'
         self.subscriber_socket = context.socket(zmq.SUB)
         self.subscriber_socket.connect(
             'tcp://{0}:{1}'.format(
-                self.ipaddr, self.port+1))
+                self.pubhost, self.port+1))
         self.subscriber_socket.setsockopt(zmq.SUBSCRIBE, b'')
         self.subscriber_socket.RCVTIMEO = 900  # in milliseconds
+        logger.info("Subscriber %s", self.pubhost)
         return self.subscriber_socket
 
     def __is_process_running(self, procId):
@@ -432,15 +443,22 @@ class ZmqFemag(BaseFemag):
             pass
         return False
 
+    def subscribe(self, pubhost):
+        self.pubhost = pubhost
+        
+       #if not self.pubhost:
+        #    if self.host != 'localhost':
+        #        inforesp = self.info()
+        #        self.pubhost = json.loads(inforesp[1])['addr']
+        #        logger.info("Connected with %s", self.pubhost)
+        #    else:
+        #        self.pubhost = '127.0.0.1'
+
+         
     def send_request(self, msg, pub_consumer=None, timeout=None):
         try:
             # Start the reader thread to get information
-            if pub_consumer:
-                self.stopStreamReader()
-                self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
-                self.reader.setDaemon(True)
-                self.reader.start()
-
+            self.restartStreamReader(pub_consumer)
             if timeout:
                 self.request_socket.setsockopt(zmq.RCVTIMEO, timeout)
                 self.request_socket.setsockopt(zmq.LINGER, 0)
@@ -486,11 +504,7 @@ class ZmqFemag(BaseFemag):
 
         try:
             # Start the reader thread to get information about the next calculation
-            if pub_consumer:
-                self.stopStreamReader()
-                self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
-                self.reader.setDaemon(True)
-                self.reader.start()
+            self.restartStreamReader(pub_consumer)
 
             self.request_socket.send_string(header, flags=zmq.SNDMORE)
             logger.debug("Sent header")
@@ -512,7 +526,7 @@ class ZmqFemag(BaseFemag):
                 try:
                     response = self.request_socket.recv_multipart()
                     time.sleep(.5)  # Be sure all messages are arrived over zmq
-                    if pub_consumer:
+                    if pub_consumer and self.reader:
                         self.reader.continue_loop = False
                     return [s.decode('latin1') for s in response]
                 except zmq.error.Again as e:
@@ -686,11 +700,11 @@ class ZmqFemag(BaseFemag):
                     for s in self.request_socket.recv_multipart()]
         return ret
     
-    def cleanup(self):
+    def cleanup(self, timeout=2000):
         """remove all FEMAG files in working directory 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'cleanup'])]
+                for r in self.send_request(['CONTROL', 'cleanup'], timeout=timeout)]
     
     def release(self):
         """signal finish calculation task to load balancer to free resources
@@ -728,11 +742,16 @@ class ZmqFemag(BaseFemag):
             return self.getfile(rc['result_file'][0])
         return [s.decode('latin1') for s in response]
             
-    def stopStreamReader(self):
+    def restartStreamReader(self, pub_consumer):
         if self.reader:
             logger.debug("stop stream reader")
             self.reader.continue_loop = False
             self.reader.join()
+
+        if self.reader or (pub_consumer and pub_consumer != subscribe_dev_null):
+            self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
+            self.reader.setDaemon(True)
+            self.reader.start()
 
     def copy_magnetizing_curves(self, model, dir=None):
         """extract mc names from model and write files into workdir or dir if given

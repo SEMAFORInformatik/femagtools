@@ -203,47 +203,41 @@ def _from_isa(isa, filename, target_format,
         points = np.array(points)
         point_data = {"potential": np.array(vpot)}
 
-        cells = {}
-        cell_data = {}
+        cells = []
+        cell_data = defaultdict(list)
 
         if lines:
-            cells["line"] = np.array(lines)
-            cell_data["line"] = {
-                "gmsh:geometrical": np.array(line_ids),
-                "gmsh:physical": np.array(line_ids),
-                "b": np.zeros((len(lines), 3)),
-                "h": np.zeros(len(lines)),
-                "Rel. Permeability": np.zeros(len(lines)),
-                "Iron Loss Dens.": np.zeros(len(lines)),
-                "Mag. Loss Dens.": np.zeros(len(lines)),
-                "Wdg. Loss Dens.": np.zeros(len(lines)),
-            }
+            cells.append(("line", np.array(lines)))
+            cell_data["gmsh:geometrical"].append(np.array(line_ids))
+            cell_data["gmsh:physical"].append(np.array(line_ids))
+            cell_data["b"].append(np.zeros((len(lines), 3)))
+            cell_data["h"].append(np.zeros(len(lines)))
+            cell_data["Rel. Permeability"].append(np.zeros(len(lines)))
+            cell_data["Iron Loss Dens."].append(np.zeros(len(lines)))
+            cell_data["Mag. Loss Dens."].append(np.zeros(len(lines)))
+            cell_data["Wdg. Loss Dens."].append(np.zeros(len(lines)))
 
         if triangles:
-            cells["triangle"] = np.array(triangles)
-            cell_data["triangle"] = {
-                "gmsh:geometrical": np.array(geometrical_ids["triangle"]),
-                "gmsh:physical": np.array(physical_ids["triangle"]),
-                "b": np.array([i + (0,) for i in b["triangle"]]),
-                "h": np.array(h["triangle"]),
-                "Rel. Permeability": np.array(perm["triangle"]),
-                "Iron Loss Dens.": np.array(iron_losses["triangle"]),
-                "Mag. Loss Dens.": np.array(mag_losses["triangle"]),
-                "Wdg. Loss Dens.": np.array(wdg_losses["triangle"]),
-            }
+            cells.append(("triangle", np.array(triangles)))
+            cell_data["gmsh:geometrical"].append(np.array(geometrical_ids["triangle"]))
+            cell_data["gmsh:physical"].append(np.array(physical_ids["triangle"]))
+            cell_data["b"].append(np.array([i + (0,) for i in b["triangle"]]))
+            cell_data["h"].append(np.array(h["triangle"]))
+            cell_data["Rel. Permeability"].append(np.array(perm["triangle"]))
+            cell_data["Iron Loss Dens."].append(np.array(iron_losses["triangle"]))
+            cell_data["Mag. Loss Dens."].append(np.array(mag_losses["triangle"]))
+            cell_data["Wdg. Loss Dens."].append(np.array(wdg_losses["triangle"]))
 
         if quads:
-            cells["quad"] = np.array(quads)
-            cell_data["quad"] = {
-                "gmsh:geometrical": np.array(geometrical_ids['quad']),
-                "gmsh:physical": np.array(physical_ids['quad']),
-                "b": np.array([i + (0,) for i in b['quad']]),
-                "h": np.array(h['quad']),
-                "Rel. Permeability": np.array(perm['quad']),
-                "Iron Loss Dens.": np.array(iron_losses['quad']),
-                "Mag. Loss Dens.": np.array(mag_losses['quad']),
-                "Wdg. Loss Dens.": np.array(wdg_losses['quad']),
-            }
+            cells.append(("quad", np.array(quads)))
+            cell_data["gmsh:geometrical"].append(np.array(geometrical_ids['quad']))
+            cell_data["gmsh:physical"].append(np.array(physical_ids['quad']))
+            cell_data["b"].append(np.array([i + (0,) for i in b['quad']]))
+            cell_data["h"].append(np.array(h['quad']))
+            cell_data["Rel. Permeability"].append(np.array(perm['quad']))
+            cell_data["Iron Loss Dens."].append(np.array(iron_losses['quad']))
+            cell_data["Mag. Loss Dens."].append(np.array(mag_losses['quad']))
+            cell_data["Wdg. Loss Dens."].append(np.array(wdg_losses['quad']))
 
         field_data = {}
         for l in physical_lines:
@@ -257,7 +251,8 @@ def _from_isa(isa, filename, target_format,
                                   point_data,
                                   cell_data,
                                   field_data,
-                                  "gmsh2-ascii")
+                                  file_format="gmsh22",
+                                  binary=False)
 
     if target_format == "geo":
         import meshio
@@ -349,47 +344,41 @@ def _from_isa(isa, filename, target_format,
         points = np.array(points)
         point_data = {"potential": np.array(vpot)}
 
-        cells = {}
-        cell_data = {}
+        cells = []
+        cell_data = defaultdict(list)
 
         if lines:
-            cells["line"] = np.array(lines)
-            cell_data["line"] = {
-                "GeometryIds": np.array(line_ids),
-                "PhysicalIds": np.array(line_ids),
-                "b": np.zeros((len(lines), 2)),
-                "Demagnetization": np.zeros(len(lines)),
-                "Rel. Permeability": np.zeros(len(lines)),
-                "Iron Loss Dens.": np.zeros(len(lines)),
-                "Mag. Loss Dens.": np.zeros(len(lines)),
-                "Wdg. Loss Dens.": np.zeros(len(lines)),
-            }
+            cells.append(("line", np.array(lines)))
+            cell_data["GeometryIds"].append(np.array(line_ids))
+            cell_data["PhysicalIds"].append(np.array(line_ids))
+            cell_data["b"].append(np.zeros((len(lines), 3)))
+            cell_data["Demagnetization"].append(np.zeros(len(lines)))
+            cell_data["Rel. Permeability"].append(np.zeros(len(lines)))
+            cell_data["Iron Loss Dens."].append(np.zeros(len(lines)))
+            cell_data["Mag. Loss Dens."].append(np.zeros(len(lines)))
+            cell_data["Wdg. Loss Dens."].append(np.zeros(len(lines)))
 
         if triangles:
-            cells["triangle"] = np.array(triangles)
-            cell_data["triangle"] = {
-                "GeometryIds": np.array(geometrical_ids['triangle']),
-                "PhysicalIds": np.array(physical_ids['triangle']),
-                "b": np.array(b['triangle']),
-                "Demagnetization": np.array(h['triangle']),
-                "Rel. Permeability": np.array(perm['triangle']),
-                "Iron Loss Dens.": np.array(iron_losses['triangle']),
-                "Mag. Loss Dens.": np.array(mag_losses['triangle']),
-                "Wdg. Loss Dens.": np.array(wdg_losses['triangle']),
-            }
+            cells.append(("triangle", np.array(triangles)))
+            cell_data["GeometryIds"].append(np.array(geometrical_ids['triangle']))
+            cell_data["PhysicalIds"].append(np.array(physical_ids['triangle']))
+            cell_data["b"].append(np.array([i + (0,) for i in b['triangle']]))
+            cell_data["Demagnetization"].append(np.array(h['triangle']))
+            cell_data["Rel. Permeability"].append(np.array(perm['triangle']))
+            cell_data["Iron Loss Dens."].append(np.array(iron_losses['triangle']))
+            cell_data["Mag. Loss Dens."].append(np.array(mag_losses['triangle']))
+            cell_data["Wdg. Loss Dens."].append(np.array(wdg_losses['triangle']))
 
         if quads:
-            cells["quad"] = np.array(quads)
-            cell_data["quad"] = {
-                "GeometryIds": np.array(geometrical_ids['quad']),
-                "PhysicalIds": np.array(physical_ids['quad']),
-                "b": np.array(b['quad']),
-                "Demagnetization": np.array(h['quad']),
-                "Rel. Permeability": np.array(perm['quad']),
-                "Iron Loss Dens.": np.array(iron_losses['quad']),
-                "Mag. Loss Dens.": np.array(mag_losses['quad']),
-                "Wdg. Loss Dens.": np.array(wdg_losses['quad']),
-            }
+            cells.append(("quad", np.array(quads)))
+            cell_data["GeometryIds"].append(np.array(geometrical_ids['quad']))
+            cell_data["PhysicalIds"].append(np.array(physical_ids['quad']))
+            cell_data["b"].append(np.array([i + (0,) for i in b['quad']]))
+            cell_data["Demagnetization"].append(np.array(h['quad']))
+            cell_data["Rel. Permeability"].append(np.array(perm['quad']))
+            cell_data["Iron Loss Dens."].append(np.array(iron_losses['quad']))
+            cell_data["Mag. Loss Dens."].append(np.array(mag_losses['quad']))
+            cell_data["Wdg. Loss Dens."].append(np.array(wdg_losses['quad']))
 
         field_data = {}
         for l in physical_lines:
@@ -403,10 +392,13 @@ def _from_isa(isa, filename, target_format,
                                   point_data=point_data,
                                   cell_data=cell_data,
                                   field_data=field_data,
-                                  file_format="vtu-binary")
+                                  file_format="vtu",
+                                  binary=True)
 
 
 def _nastran_real_to_float(s):
+
+    s = s.strip()
 
     if "E" not in s:
         s = s[0] + s[1:].replace("+", "e+").replace("-", "e-")
@@ -421,7 +413,8 @@ def _from_nastran(source, filename):
     point_index = 0
     point_indexes = {}
     cells = {"triangle": [], "quad": []}
-    cell_data = {"triangle": [], "quad": []}
+    shell_ids = {"triangle": [], "quad": []}
+    shell_material_ids = {}
 
     with open(source) as file:
         while True:
@@ -446,35 +439,36 @@ def _from_nastran(source, filename):
 
             elif fields[0].startswith("CTRIA3"):
                 cells["triangle"].append([point_indexes[int(f)] for f in fields[3:6]])
-                cell_data["triangle"].append(int(fields[2]))
+                shell_ids["triangle"].append(int(fields[2]))
 
             elif fields[0].startswith("CQUAD4"):
                 cells["quad"].append([point_indexes[int(f)] for f in fields[3:7]])
-                cell_data["quad"].append(int(fields[2]))
+                shell_ids["quad"].append(int(fields[2]))
 
-    meshio_cells = {}
-    meshio_cell_data = {}
+            elif fields[0].startswith("PSHELL"):
+                shell_material_ids[int(fields[1])] = int(fields[2])
+
+    meshio_cells = []
+    meshio_cell_data = defaultdict(list)
 
     if cells["triangle"]:
-        meshio_cells["triangle"] = np.array(cells["triangle"])
-        meshio_cell_data["triangle"] = {
-            "gmsh:physical": np.zeros(len(cells["triangle"])),
-            "gmsh:geometrical": np.array(cell_data["triangle"]),
-        }
+        meshio_cells.append(("triangle", np.array(cells["triangle"])))
+        meshio_cell_data["gmsh:geometrical"].append(np.array(shell_ids["triangle"]))
+        meshio_cell_data["gmsh:physical"].append(np.array(shell_ids["triangle"]))
 
     if cells["quad"]:
-        meshio_cells["quad"] = np.array(cells["quad"])
-        meshio_cell_data["quad"] = {
-            "gmsh:physical": np.zeros(len(cells["quad"])),
-            "gmsh:geometrical": np.array(cell_data["quad"]),
-        }
+        meshio_cells.append(("quad", np.array(cells["quad"])))
+        meshio_cell_data["gmsh:geometrical"].append(np.array(shell_ids["quad"]))
+        meshio_cell_data["gmsh:physical"].append(np.array(shell_ids["quad"]))
 
     meshio.write_points_cells(
         filename,
         np.array(points),
         meshio_cells,
         cell_data=meshio_cell_data,
-        file_format="gmsh2-ascii")
+        field_data={f"{str(n)}": (n, 2) for n in sorted(list(set(shell_material_ids)))},
+        file_format="gmsh22",
+        binary=False)
 
 
 def to_msh(source, filename, infile_type=None):

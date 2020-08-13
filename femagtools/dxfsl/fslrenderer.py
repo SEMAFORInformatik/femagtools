@@ -14,43 +14,24 @@ from .. import __version__
 logger = logging.getLogger(__name__)
 
 
-def gcd(a, b):
-    """calc greatest common divisor"""
-    while b:
-        a, b = b, a % b
-    return a
-
-
-def lcm(a, b):
-    """least common multiple"""
-    return a*b//gcd(a, b)
-
-    
-def agndst2(da1, da2, Q, p):
-    """return agndst from lcm"""
-    r = (da1 + da2)/4
-    ag = abs(da1 - da2)/6
-    n = 12
-    a = [r*4*np.pi/p/(i*lcm(Q, p))
-         for i in range(1, n)]
-    i = np.argmin(np.abs(np.array([ag]*(n-1)) - a))
-    if i > 0:
-        return a[i-1]
-    return a[0]
-
-
 def agndst(da1, da2, Q, p, nodedist=1):
     """ build agndst from set of useful node angles:  
         4°, 2°, 1.5°, 1°, 0.75°, 0.5°, 0.25, 0.1, 0.05° """
-    dagset = [np.pi/45, np.pi/90, np.pi/120, np.pi/180,
-              np.pi/240, np.pi/360, np.pi/720, np.pi/1800, np.pi/3600]
+    divisors = [1,2,4,8,10,16,20,40,80,160,200,400]
+    dagset = [2*np.pi/Q/i for i in divisors]
     r = (da1 + da2)/4
     ag = abs(da1 - da2)/6
     i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
-    if nodedist > 1 and i > 1:
-        return dagset[i-2]*r
-    elif nodedist < 1:
-        return dagset[i]*r
+    nd = min(round(nodedist), i)
+    try:
+        logger.info("Num nodes/slot %g nodedist %g",
+                    divisors[i-1], nodedist)
+        if nodedist > 1:
+            return dagset[i-nd]*r
+        elif nodedist < 1 or i == 0:
+            return dagset[i]*r
+    except IndexError:
+        pass
     return dagset[i-1]*r
 
 
@@ -120,7 +101,7 @@ class FslRenderer(object):
             r = geom.max_radius
         else:
             r = geom.min_radius
-            
+
         # return sorted list of distances from airgap and elements
         return sorted([(abs(r - np.linalg.norm(e.center_of_connection())), e)
                        for e in geom.elements(Shape)])
@@ -181,17 +162,17 @@ class FslRenderer(object):
                 self.content += [
                     u'x2, y2 = pr2c(r1, 2*math.pi/m.tot_num_slot+phi)',
                     u'x3, y3 = pr2c(r, 2*math.pi/m.tot_num_slot+phi)']
-                
+
             self.content += [u'nc_line(x0, y0, x1, y1, 0)',
                              u'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
                              u'nc_line(x2, y2, x3, y3, 0)']
             if geom.is_mirrored():
                 self.content.append(
                     u'x0, y0 = pr2c(r1 - hair/2, math.pi/m.tot_num_slot/2+phi/4)')
-            else:    
+            else:
                 self.content.append(
                     u'x0, y0 = pr2c(r1 - hair/2, math.pi/m.tot_num_slot+phi/2)')
-                
+
             self.content += [
                 u'create_mesh_se(x0, y0)',
                 u'\n',
@@ -201,8 +182,10 @@ class FslRenderer(object):
                     geom.dist_end_min_corner())]
 
         self.content.append(u'\n')
-        self.content.append(u'x0_iron_shaft, y0_iron_shaft = 0.0, 0.0')
-        self.content.append(u'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0\n')
+        self.content.append(u'x0_iron_tooth, y0_iron_tooth = 0.0, 0.0')
+        self.content.append(u'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0')
+        self.content.append(u'x0_shaft, y0_shaft = 0.0, 0.0')
+        self.content.append(u'\n')
 
         subregions = {}
         num_windings = 0
@@ -212,7 +195,7 @@ class FslRenderer(object):
                 p = area.get_point_inside(geom)
                 if p:
                     self.content.append(u"x0, y0 = {}, {}".format(p[0], p[1]))
-                    self.content.append(u"point(x0, y0, red, 4)")
+                    # self.content.append(u"point(x0, y0, red, 4)")  # for debugging
                     self.content.append(u"create_mesh_se(x0, y0)")
 
                 if area.is_winding():
@@ -230,6 +213,7 @@ class FslRenderer(object):
                                         format(num_magnets, num_magnets))
                     self.content.append(u'mag_orient[{}] = {}'.
                                         format(num_magnets, area.phi))
+
                 elif area.type > 0:
                     if area.type in subregions:
                         self.content.append(
@@ -238,34 +222,46 @@ class FslRenderer(object):
                     else:
                         subregions[area.type] = 1
                         self.content.append(
-                            u'def_new_subreg(x0, y0, "{}", {})'.
+                            u'def_new_subreg(x0, y0, "{}", "{}")'.
                             format(area.name(), area.color()))
                     if area.is_stator_iron_yoke():
                         self.content.append(
                             u'x0_iron_yoke, y0_iron_yoke = x0, y0')
-                    if area.is_stator_iron_shaft():
+                    elif area.is_stator_iron_tooth():
                         self.content.append(
-                            u'x0_iron_shaft, y0_iron_shaft = x0, y0')
-                    if area.is_rotor_iron():
+                            u'x0_iron_tooth, y0_iron_tooth = x0, y0')
+                    elif area.is_rotor_iron():
                         self.content.append(
                             u'x0_iron_yoke, y0_iron_yoke = x0, y0')
+                    elif area.is_shaft():
+                        self.content.append(
+                            u'x0_shaft, y0_shaft = x0, y0')
 
                 self.content.append(u"\n")
 
         txt = [u"if x0_iron_yoke > 0.0 then",
                u"  if mcvkey_yoke ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_iron_yoke, y0_iron_yoke, blue, mcvkey_yoke, 100)',
+               u'    def_mat_fm_nlin(x0_iron_yoke, y0_iron_yoke, "blue", mcvkey_yoke, 100)',
                u'  else',
                u'    def_mat_fm(x0_iron_yoke, y0_iron_yoke, ur, 100)',
                u'  end',
                u'end\n']
         self.content.append(u'\n'.join(txt))
 
-        txt = [u"if x0_iron_shaft > 0.0 then",
-               u"  if mcvkey_shaft ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_iron_shaft, y0_iron_shaft, blue, mcvkey_shaft, 100)',
+        txt = [u"if x0_iron_tooth > 0.0 then",
+               u"  if mcvkey_tooth ~= 'dummy' then",
+               u'    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, "blue", mcvkey_tooth, 100)',
                u'  else',
-               u'    def_mat_fm(x0_iron_shaft, y0_iron_shaft, ur, 100)',
+               u'    def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)',
+               u'  end',
+               u'end\n']
+        self.content.append(u'\n'.join(txt))
+
+        txt = [u"if x0_shaft > 0.0 then",
+               u"  if mcvkey_shaft ~= 'dummy' then",
+               u'    def_mat_fm_nlin(x0_shaft, y0_shaft, "lightgrey", mcvkey_shaft, 100)',
+               u'  else',
+               u'    def_mat_fm(x0_shaft, y0_shaft, ur, 100)',
                u'  end',
                u'end\n']
         self.content.append(u'\n'.join(txt))
@@ -301,14 +297,14 @@ class FslRenderer(object):
         self.content += [u'-- rotate',
                          u'x1, y1 = {}, {}'.format(
                              geom.start_corners[0][0],
-                             geom.start_corners[0][1])] # min xy1
+                             geom.start_corners[0][1])]  # min xy1
         if outer:
             self.content.append(u'x2, y2 = pr2c(r1, phi)')
         else:
             self.content.append(u'x2, y2 = {}, {}'.format(
                              geom.start_corners[1][0],
-                             geom.start_corners[1][1])) # max xy1
-            
+                             geom.start_corners[1][1]))  # max xy1
+
         if geom.is_mirrored():
             self.content.append(u'x3, y3 = pr2c(x2, alfa)')
             self.content.append(u'x4, y4 = pr2c(x1, alfa)')
@@ -355,7 +351,7 @@ class FslRenderer(object):
 
         if self.shaft:
             mat = [u'\nif shaft_mat==1 then',
-                   u'  def_mat_fm_nlin(0.1,0.1,lightgrey,fm_nlin_mcvfile_shft,fm_nlin_rlen)',
+                   u'  def_mat_fm_nlin(0.1,0.1,"lightgrey",fm_nlin_mcvfile_shft,fm_nlin_rlen)',
                    u'end']
             self.content.append(u'\n'.join(mat))
 
@@ -383,9 +379,9 @@ class FslRenderer(object):
                 u'      phi = (i*mag_alpha+mag_orient[n])*180/math.pi',
                 u'      if ( i % 2 == 0 ) then',
                 u'        phi = phi - 180',
-                u'        color = red',
+                u'        color = "red"',
                 u'      else',
-                u'        color = green',
+                u'        color = "green"',
                 u'      end',
                 u'      if(m.mcvkey_magnet == nil) then',
                 u'        def_mat_pm(x0, y0, color, m.remanenc, m.relperm,',
@@ -427,6 +423,7 @@ class FslRenderer(object):
         num_layers = min(m_inner.num_of_layers() +
                          m_outer.num_of_layers(),
                          2)
+
         return [
             u'-- generated from DXF by femagtools {}'.format(__version__),
             u'exit_on_error = false',
@@ -459,20 +456,22 @@ class FslRenderer(object):
             u'm.airgap         = 2*ag/3',
             u'm.nodedist       = 1.0',
             u'agndst           = {}'.format(params.get('agndst', 0.1)),
+            u"mcvkey_tooth = 'dummy'",
             u"mcvkey_yoke = 'dummy'",
             u"mcvkey_shaft = 'dummy'",
             u"ur = 1000.0",
             u"ndt(agndst)"] + outer + [
-                "mcvkey_yoke = 'dummy'",
+                u"mcvkey_tooth = 'dummy'",
+                u"mcvkey_yoke = 'dummy'",
                 u"mcvkey_shaft = 'dummy'",
                 u"ndt(agndst)"] + inner + [
                     u'-- airgap',
                     u'ndt(agndst)',
-                    u'r1 = da2/2 + ag/3',
+                    u'r1 = m.fc_radius - ag/6',
                     u'x1, y1 = pr2c(r1, alfa)',
-                    u'n = r1*alfa/agndst + 1',
+                    u'n = math.floor(r1*alfa/agndst + 1.5)',
                     u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
-                    u'r2 = da2/2 + 2*ag/3',
+                    u'r2 = m.fc_radius + ag/6',
                     u'x2, y2 = pr2c(r2, alfa)',
                     u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
                     u'if inner_da_start == nil then',

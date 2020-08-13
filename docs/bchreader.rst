@@ -483,3 +483,23 @@ Leak_dist_wind
   Ldi               Int. Inductance                            H
   Lqi               Int. Inductance                            H
   ================  ========================================== =============
+
+scData (Short Circuit)
+======================
+
+  Dict  values of short circuit calculation (version added 0.9.30)
+
+  ===================    =================================== =========
+  Attribute              Description                            Unit
+  ===================    =================================== =========
+  speed                  Speed                                   1/s
+  ikd                    stationary phase current amplitude      A
+  tkd                    stationary Torque                       Nm
+  iks                    Peak Current                            A
+  tks                    Peak Torque                             Nm
+  time                   Time vector                             s
+  ia                     Phase a Current vector                  A
+  ib                     Phase b Current vector                  A
+  ic                     Phase c Current vector                  A
+  peakWindingCurrents    peak current of each phase              A
+  ===================    =================================== =========

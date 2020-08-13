@@ -3,14 +3,17 @@
  Parameter Variation with Femag
  """
 import os
+import json
 from femagtools.multiproc import Engine
 # instead you can use on of the following
 #
+#from femagtools.docker import Engine
 #from femagtools.condor import Engine
 # from femagtools.amazon import Engine
 # from femagtools.google import Engine
 #
 import femagtools.grid
+import femagtools.poc
 import logging
 import numpy as np
 import matplotlib.pyplot as pl
@@ -27,12 +30,16 @@ parvardef = {
     ],
     "population_size": 25,
     "decision_vars": [
-        {"steps": 4, "bounds": [-50, 0],
+        {"steps": 3, "bounds": [-50, 0],
          "name": "angl_i_up", "label":"Beta"},
         {"steps": 3, "bounds": [100, 200],
          "name": "current", "label":"Current/A"}
     ]
 }
+
+poc = femagtools.poc.HspPoc(harm=[1,5],
+                            amp=[1,0.01],
+                            phi=[0, 0])
 
 operatingConditions = {
     "num_move_steps": 49,
@@ -45,8 +52,10 @@ operatingConditions = {
     "skew_angle": 0.0,
     "num_par_wdgs": 1,
     "num_skew_steps": 0,
+    "period_frac": 6,
     "calc_fe_loss": 1,
     "speed": 50.0,
+    "poc": poc,
     "optim_i_up": 0
 }
 
@@ -79,7 +88,9 @@ machine = {
     "stator": {
         "num_slots": 48,
         "num_slots_gen": 12,
+        "fillfac": 0.96,
         "mcvkey_yoke": "M330-50A",
+        "mcvkey_teeth": "M270-35A",
         "nodedist": 4.0,
         "statorRotor3": {
             "slot_height": 0.0335,
@@ -146,14 +157,18 @@ if __name__ == '__main__':
         os.makedirs(repdir)
     except OSError:
         pass
-    parvar.set_report_directory(repdir)
+#    parvar.set_report_directory(repdir)
 
     # start calculation 
     results = parvar(parvardef, machine, operatingConditions, engine)
-
+    with open('results.json', 'w') as fp:
+        json.dump(results, fp)
+        
     # print results
     x = femagtools.grid.create_parameter_range(results['x'])
+    
     f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0])).T
+    f[f==None] = float('nan')
 
     # print header
     print(' '.join(['{:15}'.format(s)

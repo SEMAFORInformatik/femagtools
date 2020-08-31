@@ -162,7 +162,7 @@ class Area(object):
         if self.type == 3 or self.type == 4:
             return 'Magnet'
         if self.type == 5:
-            return 'Joke'
+            return 'Yoke'
         if self.type == 6:
             return 'Tooth'
         if self.type == 10:
@@ -844,8 +844,15 @@ class Area(object):
         lines_lmcL = [[l, m, c, L] for c, l, a, m, L in lines_clamL]
         lines_lmcL.sort(reverse=True)
 
-        if not np.isclose(lines_lmcL[0][1], lines_lmcL[1][1], atol=0.001):
+        if not np.isclose(lines_lmcL[0][1], lines_lmcL[1][1], atol=0.05):
             # Die Steigungen der zwei längsten Linien müssen gleich sein
+            logger.debug("--- m %s <> %s ---",
+                         lines_lmcL[0][1],
+                         lines_lmcL[1][1])
+            logger.debug("--- l %s, %s, %s ---",
+                         lines_lmcL[0][0],
+                         lines_lmcL[1][0],
+                         lines_lmcL[2][0])
             logger.debug("=== END OF is_mag_rectangle(): NO RECTANGLE #2")
             return False
 
@@ -916,7 +923,10 @@ class Area(object):
         alpha = line_length[0][2]
         if alpha < 0.0:
             alpha += np.pi
-        return alpha + np.pi/2
+        alpha = alpha + np.pi/2
+        if alpha > np.pi:
+            alpha = alpha - np.pi
+        return alpha
 
     def get_mag_orientation(self):
         if self.mag_rectangle:

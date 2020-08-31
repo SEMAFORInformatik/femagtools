@@ -2800,9 +2800,8 @@ class Geometry(object):
                         if not np.isclose(a.phi, max_phi):
                             a.set_type(0)  # air
 
-            for area in self.list_of_areas():
-                if area.type == 3:
-                    area.set_type(1)  # iron
+            # set iron
+            [a.set_type(1) for a in self.list_of_areas() if a.type == 3]
 
         iron_mag_areas = [a for a in self.list_of_areas() if a.type == 9]
         air_mag_areas = [a for a in self.list_of_areas() if a.type == 8]
@@ -2818,12 +2817,21 @@ class Geometry(object):
         [a.set_type(1) for a in iron_mag_areas]
         [a.set_type(0) for a in air_mag_areas]
 
+        if self.is_mirrored():
+            mid_alfa = round(self.alfa, 3)
+        else:
+            mid_alfa = round(self.alfa / 2, 4)
+
         mag_areas = [[round(a.phi, 3), a.id, a] for a in self.list_of_areas()
                      if a.type == 4]
         if len(mag_areas) > 2:
             mag_areas.sort()
             mag_phi = {}
             for phi, id, a in mag_areas:
+                # group around mid_alfa
+                if phi > mid_alfa - 0.33 and phi < mid_alfa + 0.33:
+                    phi = mid_alfa
+
                 x = mag_phi.get(phi, [0, []])
                 x[0] += 1
                 x[1].append(a)
@@ -2831,7 +2839,6 @@ class Geometry(object):
 
             phi_list = [[l[0], p, l[1]] for p, l in mag_phi.items()]
             phi_list.sort(reverse=True)
-
             if len(phi_list) > 1:
                 c0 = phi_list[0][0]
                 c1 = phi_list[1][0]
@@ -2839,8 +2846,7 @@ class Geometry(object):
                 if c0 == c1:
                     first = 2
                 for c, phi, a_lst in phi_list[first:]:
-                    for a in a_lst:
-                        a.set_type(0)
+                    [a.set_type(0) for a in a_lst]
 
         shaft_areas = [a for a in self.list_of_areas() if a.type == 10]
         if shaft_areas:

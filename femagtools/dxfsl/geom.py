@@ -438,6 +438,24 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 block = dwg.blocks[e.name]
                 for l in insert_block(e, lf, rf, block, min_dist=mindist):
                     yield l
+            elif e.dxftype == 'ELLIPSE':
+                w = np.linalg.norm(e.major_axis) * 2
+                h = e.ratio * w
+                rtheta = np.arctan2(e.major_axis[1], e.major_axis[0])
+                angle = rtheta*180/np.pi
+                start_angle = e.start_param*180/np.pi + angle
+                end_angle = e.end_param*180/np.pi + angle
+                arc = Arc(Element(center=e.center,
+                                  radius=w/2,
+                                  start_angle=start_angle,
+                                  end_angle=end_angle,
+                                  width=w,
+                                  height=h,
+                                  rtheta=rtheta,
+                                  start_param=e.start_param,
+                                  end_param=e.end_param))
+                yield arc
+
             elif e.dxftype == 'POINT':
                 logger.debug("Id %d4: type %s ignored", id, e.dxftype)
             else:
@@ -638,9 +656,9 @@ class Geometry(object):
         T = np.array(((np.cos(alpha), -np.sin(alpha)),
                       (np.sin(alpha), np.cos(alpha))))
         for e in self.g.edges(data=True):
-            e[2]['object'].transform(T, ndec)
+            e[2]['object'].transform(T, alpha, ndec)
         for c in self.circles():
-            c.transform(T, ndec)
+            c.transform(T, alpha, ndec)
         rotnodes = np.dot(T, np.asarray(self.g.nodes()).T).T.tolist()
         mapping = {n: (round(r[0], ndec),
                        round(r[1], ndec))
@@ -1566,12 +1584,23 @@ class Geometry(object):
 
                 if not (len(points) > 1 and
                         points_are_close(p1, p2, 1e-3, 1e-3)):
-                    new_elements.append(
-                        Arc(Element(center=e.center,
-                                    radius=e.radius,
-                                    start_angle=alpha_start*180/np.pi,
-                                    end_angle=alpha_end*180/np.pi)))
+                    if len(points) == 1 and e.rtheta is not None:
+                        a = Arc(Element(center=e.center,
+                                        radius=e.radius,
+                                        start_angle=alpha_start*180/np.pi,
+                                        end_angle=alpha_end*180/np.pi,
+                                        width=e.width,
+                                        height=e.height,
+                                        rtheta=e.rtheta,
+                                        start_param=e.start_param,
+                                        end_param=e.end_param))
+                    else:
+                        a = Arc(Element(center=e.center,
+                                        radius=e.radius,
+                                        start_angle=alpha_start*180/np.pi,
+                                        end_angle=alpha_end*180/np.pi))
 
+                    new_elements.append(a)
             alpha_start = alpha_end
             p1 = p2
         return new_elements

@@ -82,6 +82,32 @@ class FslRenderer(object):
                 p1[0], p1[1], p2[0], p2[1],
                 center[0], center[1], num))
 
+    def ellipse(self, center, width, height,
+                rtheta, start_param, end_param, color='blue'):
+        theta = np.arange(start_param, end_param, 0.2)
+        xbegin = 0.5 * width * np.cos(theta)
+        ybegin = 0.5 * height * np.sin(theta)
+        theta = np.arange(end_param, end_param+0.1, 0.3)
+        xend = 0.5 * width * np.cos(theta)
+        yend = 0.5 * height * np.sin(theta)
+
+        x = np.concatenate((xbegin, xend), axis=0)
+        y = np.concatenate((ybegin, yend), axis=0)
+
+        R = np.array([
+            [np.cos(rtheta), -np.sin(rtheta)],
+            [np.sin(rtheta),  np.cos(rtheta)]])
+        x, y = np.dot(R, np.array([x, y]))
+        x += center[0]
+        y += center[1]
+        nodes = list(zip(x, y))
+        n0 = nodes[0]
+        for n1 in nodes[1:]:
+            self.content.append(
+                u"nc_line({}, {}, {}, {}, {}) -- ellipse".format(
+                    n0[0], n0[1], n1[0], n1[1], 0))
+            n0 = n1
+
     def line(self, p1, p2, color='blue', e=None):
         num = 0
         # if self.nodedist > 0:

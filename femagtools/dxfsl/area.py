@@ -8,6 +8,7 @@
   Authors: Ronald Tanner, beat Holm
 """
 from __future__ import print_function
+import sys
 import numpy as np
 import networkx as nx
 import logging
@@ -124,12 +125,14 @@ class Area(object):
         except Exception as e:
             return
 
-    def virtual_nodes(self):
+    def virtual_nodes(self, render=False):
         if len(self.area) < 2:
             return
 
-        prev_nodes = [n for n in self.area[0].get_nodes(parts=64)]
-        next_nodes = [n for n in self.area[1].get_nodes(parts=64)]
+        prev_nodes = [n for n in self.area[0].get_nodes(parts=64,
+                                                        render=render)]
+        next_nodes = [n for n in self.area[1].get_nodes(parts=64,
+                                                        render=render)]
         if points_are_close(prev_nodes[0], next_nodes[0], 1e-03, 1e-01):
             prev_nodes = prev_nodes[::-1]
         elif points_are_close(prev_nodes[0], next_nodes[-1], 1e-03, 1e-01):
@@ -146,7 +149,7 @@ class Area(object):
             yield n
 
         for e in self.area[2::]:
-            next_nodes = [n for n in e.get_nodes(parts=64)]
+            next_nodes = [n for n in e.get_nodes(parts=64, render=render)]
 
             if points_are_close(next_nodes[-1], last_point, 1e-03, 1e-01):
                 next_nodes = next_nodes[::-1]
@@ -617,7 +620,7 @@ class Area(object):
             e = self.area[0]
             renderer.fill_circle(e.center, e.radius, color, alpha)
         else:
-            nodes = [n for n in self.virtual_nodes()]
+            nodes = [n for n in self.virtual_nodes(render=True)]
             x = [n[0] for n in nodes]
             y = [n[1] for n in nodes]
             renderer.fill(x, y, color, alpha)
@@ -918,6 +921,9 @@ class Area(object):
                 l_total = l
                 m_prev = m
                 a_prev = a
+
+        if l_total > 0.0:
+            line_length.append((l_total, m_prev, a_prev))
         line_length.sort(reverse=True)
 
         alpha = line_length[0][2]

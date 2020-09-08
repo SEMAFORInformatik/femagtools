@@ -438,6 +438,24 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 block = dwg.blocks[e.name]
                 for l in insert_block(e, lf, rf, block, min_dist=mindist):
                     yield l
+            elif e.dxftype == 'ELLIPSE':
+                w = np.linalg.norm(e.major_axis) * 2
+                h = e.ratio * w
+                rtheta = np.arctan2(e.major_axis[1], e.major_axis[0])
+                angle = rtheta*180/np.pi
+                start_angle = e.start_param*180/np.pi + angle
+                end_angle = e.end_param*180/np.pi + angle
+                arc = Arc(Element(center=e.center,
+                                  radius=w/2,
+                                  start_angle=start_angle,
+                                  end_angle=end_angle,
+                                  width=w,
+                                  height=h,
+                                  rtheta=rtheta,
+                                  start_param=e.start_param,
+                                  end_param=e.end_param))
+                yield arc
+
             elif e.dxftype == 'POINT':
                 logger.debug("Id %d4: type %s ignored", id, e.dxftype)
             else:
@@ -638,9 +656,9 @@ class Geometry(object):
         T = np.array(((np.cos(alpha), -np.sin(alpha)),
                       (np.sin(alpha), np.cos(alpha))))
         for e in self.g.edges(data=True):
-            e[2]['object'].transform(T, ndec)
+            e[2]['object'].transform(T, alpha, ndec)
         for c in self.circles():
-            c.transform(T, ndec)
+            c.transform(T, alpha, ndec)
         rotnodes = np.dot(T, np.asarray(self.g.nodes()).T).T.tolist()
         mapping = {n: (round(r[0], ndec),
                        round(r[1], ndec))
@@ -1566,12 +1584,23 @@ class Geometry(object):
 
                 if not (len(points) > 1 and
                         points_are_close(p1, p2, 1e-3, 1e-3)):
-                    new_elements.append(
-                        Arc(Element(center=e.center,
-                                    radius=e.radius,
-                                    start_angle=alpha_start*180/np.pi,
-                                    end_angle=alpha_end*180/np.pi)))
+                    if len(points) == 1 and e.rtheta is not None:
+                        a = Arc(Element(center=e.center,
+                                        radius=e.radius,
+                                        start_angle=alpha_start*180/np.pi,
+                                        end_angle=alpha_end*180/np.pi,
+                                        width=e.width,
+                                        height=e.height,
+                                        rtheta=e.rtheta,
+                                        start_param=e.start_param,
+                                        end_param=e.end_param))
+                    else:
+                        a = Arc(Element(center=e.center,
+                                        radius=e.radius,
+                                        start_angle=alpha_start*180/np.pi,
+                                        end_angle=alpha_end*180/np.pi))
 
+                    new_elements.append(a)
             alpha_start = alpha_end
             p1 = p2
         return new_elements
@@ -2800,9 +2829,8 @@ class Geometry(object):
                         if not np.isclose(a.phi, max_phi):
                             a.set_type(0)  # air
 
-            for area in self.list_of_areas():
-                if area.type == 3:
-                    area.set_type(1)  # iron
+            # set iron
+            [a.set_type(1) for a in self.list_of_areas() if a.type == 3]
 
         iron_mag_areas = [a for a in self.list_of_areas() if a.type == 9]
         air_mag_areas = [a for a in self.list_of_areas() if a.type == 8]
@@ -2818,12 +2846,21 @@ class Geometry(object):
         [a.set_type(1) for a in iron_mag_areas]
         [a.set_type(0) for a in air_mag_areas]
 
+        if self.is_mirrored():
+            mid_alfa = round(self.alfa, 3)
+        else:
+            mid_alfa = round(self.alfa / 2, 4)
+
         mag_areas = [[round(a.phi, 3), a.id, a] for a in self.list_of_areas()
                      if a.type == 4]
         if len(mag_areas) > 2:
             mag_areas.sort()
             mag_phi = {}
             for phi, id, a in mag_areas:
+                # group around mid_alfa
+                if phi > mid_alfa - 0.33 and phi < mid_alfa + 0.33:
+                    phi = mid_alfa
+
                 x = mag_phi.get(phi, [0, []])
                 x[0] += 1
                 x[1].append(a)
@@ -2831,7 +2868,6 @@ class Geometry(object):
 
             phi_list = [[l[0], p, l[1]] for p, l in mag_phi.items()]
             phi_list.sort(reverse=True)
-
             if len(phi_list) > 1:
                 c0 = phi_list[0][0]
                 c1 = phi_list[1][0]
@@ -2839,8 +2875,7 @@ class Geometry(object):
                 if c0 == c1:
                     first = 2
                 for c, phi, a_lst in phi_list[first:]:
-                    for a in a_lst:
-                        a.set_type(0)
+                    [a.set_type(0) for a in a_lst]
 
         shaft_areas = [a for a in self.list_of_areas() if a.type == 10]
         if shaft_areas:

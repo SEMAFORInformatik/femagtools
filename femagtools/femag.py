@@ -749,6 +749,8 @@ class ZmqFemag(BaseFemag):
             self.reader.join()
 
         if self.reader or (pub_consumer and pub_consumer != subscribe_dev_null):
+            if not pub_consumer:
+                pub_consumer = subscribe_dev_null
             self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
             self.reader.setDaemon(True)
             self.reader.start()

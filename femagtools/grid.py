@@ -254,8 +254,6 @@ class Grid(object):
             tstart = time.time()
             status = engine.submit()
             logger.info('Started %s', status)
-            if bchMapper and isinstance(engine, femagtools.condor.Engine):
-                return {}  # BatchCalc Mode
             status = engine.join()
             tend = time.time()
             elapsedTime += (tend-tstart)

@@ -188,28 +188,28 @@ class Engine(object):
     def join(self):
         """wait for all tasks to be terminated and return status"""
         ret = []
+        logger.info("CondorEngine.join")
         if self.clusterId:
-            cmd = ["condor_q", self.clusterId]
+            cmd = ["condor_q", "-json", self.clusterId]
             while True:
                 time.sleep(2)
                 cmdout = subprocess.check_output(cmd)
-                tasks = re.findall(self.clusterId+r'\.\d+',
-                                   cmdout.decode('utf-8'))
-                if len(tasks) == 0:
+                if cmdout:
+                    tasks = json.loads(cmdout.decode('utf-8'))
+                if not cmdout or len(tasks) == 0:
                     break
 
             status = dict()
             cmdout = subprocess.check_output(
-                ["condor_history", self.clusterId])
-            for jobinfo in re.findall(
-                    r'^\s*{}\.\d+.+$'.format(
-                        self.clusterId),
-                    cmdout.decode('utf-8'), re.M):
-                l = jobinfo.split()
-                taskid = int(l[0].split('.')[-1])
-                status[taskid] = l[5]
-                logger.info('status %d: %s', taskid, l[5])
-                self.job.setExitStatus(taskid, status[taskid])
+                ["condor_history", '-json', self.clusterId])
+            hist = json.loads(cmdout.decode('utf-8'))
+            for jobinfo in hist:
+                taskid = jobinfo.get('ProcId', 0)
+                status[taskid] = 'C' if jobinfo.get('JobStatus', 1) == 4 else \
+                    'X' if jobinfo.get('JobStatus', 1) == 3 else 'E'
+                logger.info('status %d: %s', taskid, status[taskid])
+                if status[taskid] != 'X':
+                    self.job.setExitStatus(taskid, status[taskid])
 
             for k in sorted(status.keys()):
                 ret.append(status[k])
@@ -288,3 +288,7 @@ class Engine(object):
                     l))
         return results
 
+    def terminate(self):
+        logger.info("terminate Engine, clustId: %s", self.clusterId)
+        proc = subprocess.Popen(['condor_rm', self.clusterId], shell=False)
+        proc.wait()

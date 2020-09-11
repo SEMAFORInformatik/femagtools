@@ -554,6 +554,79 @@ class Area(object):
                 return True
         return False
 
+    def get_best_point_inside(self, geom):
+        mm = self.minmax()
+        px1 = mm[0]-5
+        px2 = mm[1]+5
+
+        y_dist = mm[3] - mm[2]
+        step = y_dist / 6
+        y_list = np.arange(mm[2] + step*0.3, mm[3] - step*0.3, step)
+
+        lines = []
+        for y in y_list:
+            p1 = (px1, y)
+            p2 = (px2, y)
+            line = Line(Element(start=p1, end=p2))
+            lines.append({'line': line,
+                          'pts': [],
+                          'y': y,
+                          'x': []})
+
+        for e in self.area:
+            points = []
+            for line in lines:
+                line['pts'] += e.intersect_line(line['line'],
+                                                geom.rtol,
+                                                geom.atol,
+                                                True)
+        for line in lines:
+            x_sorted = [p[0] for p in line['pts']]
+            x_sorted.sort()
+            if x_sorted:
+                line['start_x'] = x_sorted[0]
+                line['end_x'] = x_sorted[-1]
+
+        for e in geom.elements(Shape):
+            for line in lines:
+                if line.get('start_x', None) is None:
+                    continue
+                points = e.intersect_line(line['line'],
+                                          geom.rtol,
+                                          geom.atol,
+                                          True)
+
+                for p in points:
+                    if greater(p[0],
+                               line['start_x'],
+                               rtol=1e-8):
+                        if less(p[0],
+                                line['end_x'],
+                                rtol=1e-8):
+                            line['x'].append(p[0])
+
+        points = []
+        for line in lines:
+            if line.get('start_x', None) is None:
+                continue
+            line['x'].sort()
+            x1 = line['start_x']
+            x2 = line['end_x']
+            if line['x']:
+                x = line['x'][0]  # first point
+                line['x_dist'] = x - x1
+                points.append((line['x_dist'], (x1+x)/2, line['y']))
+
+                x = line['x'][-1]  # last point
+                line['x_dist'] = x2 - x
+                points.append((line['x_dist'], (x+x2)/2, line['y']))
+            else:
+                line['x_dist'] = x2 - x1  # no points between
+                points.append((line['x_dist'], (x1+x2)/2, line['y']))
+
+        points.sort()
+        return (points[-1][1], points[-1][2])
+
     def get_point_inside(self, geom):
         """return point inside area"""
         mm = self.minmax()
@@ -588,6 +661,8 @@ class Area(object):
 
         if len(all_points_sorted) == 0:
             p_inside = ((my_p1[0]+my_p2[0])/2, y)
+            if self.is_air():
+                return self.get_best_point_inside(geom)
             return p_inside
 
         all_points_sorted.sort()
@@ -599,6 +674,9 @@ class Area(object):
             p_inside = ((my_p1[0]+all_p1[0])/2, y)
         else:
             p_inside = ((my_p2[0]+all_p2[0])/2, y)
+
+        if self.is_air():
+            return self.get_best_point_inside(geom)
         return p_inside
 
     def render(self, renderer, color='black', with_nodes=False, fill=True):

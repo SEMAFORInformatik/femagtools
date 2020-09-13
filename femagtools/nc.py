@@ -41,7 +41,8 @@ class Reader(object):
              grp.variables[k][:-1]
              for k in ('bnd_cnd', 'bnd_cnd', 'per_nod',
                        'co_1', 'co_2', 'co_rad', 'co_phi', 'vp_re', 'vp_im')]
-
+        logger.debug('Nodes: %d', len(self.NODE_ISA_NODE_REC_ND_CO_1))
+        
         grp = ds.groups['node_elements']
         (self.NODE_ELE_ISA_NOD_EL_KEY,
          self.NODE_ELE_ISA_NOD_NXT_EL_PNTR) = [
@@ -67,6 +68,7 @@ class Reader(object):
              grp.variables[k][:-1]
              for k in ('nod_pntr', 'type', 'se_key', 'reluc', 'reluc_2',
                        'mag_1', 'mag_2', 'loss_dens')]
+        logger.debug('Elements: %d', len(self.ELEM_ISA_ELEM_REC_EL_TYP))
              
         grp = ds.groups['element_nodes']
         (self.ELE_NOD_ISA_ND_KEY,
@@ -157,20 +159,28 @@ class Reader(object):
             grp.variables[k][:]
             for k in ('sr_key', 'nxt_sr_pntr')]
 
-        self.FC_RADIUS = float(ds.variables['fc_radius'].getValue().data)
-        self.POLPAAR_ZAHL = int(ds.variables['pole_pairs'].getValue().data)
-        self.NO_POLES_SIM = int(ds.variables['poles_sim'].getValue().data)
+        grp = ds.groups['machine']
+        self.FC_RADIUS = float(grp.variables['fc_radius'].getValue().data)
+        self.POLPAAR_ZAHL = int(grp.variables['pole_pairs'].getValue().data)
+        self.NO_POLES_SIM = int(grp.variables['poles_sim'].getValue().data)
+        self.ARM_LENGTH = int(grp.variables['arm_length'].getValue().data)
 
-        grp = ds.groups['el_fe_induction']
-        (self.pos_el_fe_induction,
-            self.el_fe_induction_1,
-            self.el_fe_induction_2,
-            self.eddy_cu_vpot) = [grp.variables[k][:]
-                                  for k in ('position',
-                                            'induction_1',
-                                            'induction_2',
-                                            'eddy_cu_vpot')]
-
+        try:
+            grp = ds.groups['el_fe_induction']
+            (self.pos_el_fe_induction,
+             self.el_fe_induction_1,
+             self.el_fe_induction_2,
+             self.eddy_cu_vpot) = [grp.variables[k][:]
+                                   for k in ('position',
+                                             'induction_1',
+                                             'induction_2',
+                                             'eddy_cu_vpot')]
+            logger.debug('el_fe_induction %d', len(self.pos_el_fe_induction))
+        except KeyError:
+            self.pos_el_fe_induction = []
+            self.el_fe_induction_1 = []
+            self.el_fe_induction_2 = []
+            self.eddy_cu_vpot = []
 
 def read(filename):
     """
@@ -189,7 +199,7 @@ def read(filename):
 
 if __name__ == "__main__":
     import sys
-    logging.basicConfig(level=logging.INFO,
+    logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(message)s')
     if len(sys.argv) == 2:
         filename = sys.argv[1]

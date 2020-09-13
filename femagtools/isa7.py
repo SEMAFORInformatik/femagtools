@@ -621,9 +621,15 @@ class Isa7(object):
         self.ARM_LENGTH = reader.ARM_LENGTH*1e-3  # in m
         self.pos_el_fe_induction = reader.pos_el_fe_induction
         logger.info('Shape %s', np.asarray(reader.el_fe_induction_1).shape)
-        self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
-        self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000
-        self.eddy_cu_vpot = np.asarray(reader.eddy_cu_vpot).T/1000
+        #self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
+        #self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000
+        #self.eddy_cu_vpot = np.asarray(reader.eddy_cu_vpot).T/1000
+        self.el_fe_induction_1 = np.asarray(
+            [e for e in reader.el_fe_induction_1 if e[0]]).T/1000
+        self.el_fe_induction_2 = np.asarray(
+            [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
+        self.eddy_cu_vpot = np.asarray(
+            [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
         logger.info('Shape %s', np.asarray(reader.el_fe_induction_1).shape)
 
     def get_subregion(self, name):

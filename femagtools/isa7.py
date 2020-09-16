@@ -442,7 +442,7 @@ class Isa7(object):
             point1 = self.points[abs(pk1) - 1]
             point2 = self.points[abs(pk2) - 1]
             self.lines.append(Line(point1, point2))
-
+        logger.info("Nodes")
         self.nodes = [
                 Node(n + 1,
                      reader.NODE_ISA_NODE_REC_ND_BND_CND[n],
@@ -455,6 +455,7 @@ class Isa7(object):
                      reader.NODE_ISA_NODE_REC_ND_VP_IM[n])
             for n in range(len(reader.NODE_ISA_NODE_REC_ND_BND_CND))]
 
+        logger.info("Nodechains")
         self.nodechains = []
         for nc in range(len(reader.NDCHN_ISA_NDCHN_REC_NC_NOD_1)):
             nd1 = reader.NDCHN_ISA_NDCHN_REC_NC_NOD_1[nc]
@@ -479,6 +480,7 @@ class Isa7(object):
                 raise  # preserve the stack trace
                     
         self.elements = []
+        logger.info("Elements")
         for e in range(len(reader.ELEM_ISA_EL_NOD_PNTR)):
             ndkeys = []
             ndk = reader.ELEM_ISA_EL_NOD_PNTR[e]
@@ -503,7 +505,7 @@ class Isa7(object):
                          reader.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
                         loss_dens * 1e3)   # in W/m³
             )
-
+        logger.info("SuperElements")
         self.superelements = []
         for se in range(len(reader.SUPEL_ISA_SE_NDCHN_PNTR)):
             nc_keys = []
@@ -548,6 +550,7 @@ class Isa7(object):
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_RE[se],
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se]))
 
+        logger.info("Subregions")
         self.subregions = []
         for sr in range(len(reader.SR_ISA_SR_SE_PNTR)):
             se_keys = []
@@ -577,11 +580,13 @@ class Isa7(object):
                           reader.SR_ISA_SR_REC_SR_TYP[sr],
                           reader.SR_ISA_SR_REC_SR_COL[sr],
                           reader.SR_ISA_SR_REC_SR_NAME[sr],
+                          reader.SR_ISA_SR_REC_SR_NTURNS[sr],
                           reader.SR_ISA_SR_REC_SR_CUR_DIR[sr],
                           reader.SR_ISA_SR_REC_SR_WB_KEY[sr] - 1,
                           superelements,
                           nodechains))
 
+        logger.info("Windings")
         self.windings = []
         for wd in range(len(reader.WB_ISA_WB_SR_PNTR)):
             sr_keys = []
@@ -620,7 +625,6 @@ class Isa7(object):
         self.NO_POLES_SIM = reader.NO_POLES_SIM
         self.ARM_LENGTH = reader.ARM_LENGTH*1e-3  # in m
         self.pos_el_fe_induction = reader.pos_el_fe_induction
-        logger.info('Shape %s', np.asarray(reader.el_fe_induction_1).shape)
         if len(np.asarray(reader.el_fe_induction_1).shape) > 2:
             self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
             self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000
@@ -632,7 +636,7 @@ class Isa7(object):
                 [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
             self.eddy_cu_vpot = np.asarray(
                 [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
-        logger.info('Shape %s', np.asarray(reader.el_fe_induction_1).shape)
+        logger.info('El Fe Induction %s', np.asarray(reader.el_fe_induction_1).shape)
 
     def get_subregion(self, name):
         """return subregion by name"""
@@ -859,13 +863,14 @@ class SuperElement(BaseEntity):
 
 
 class SubRegion(BaseEntity):
-    def __init__(self, key, sr_type, color, name, curdir, wb_key,
+    def __init__(self, key, sr_type, color, name, nturns, curdir, wb_key,
                  superelements, nodechains):
         super(self.__class__, self).__init__(key)
         self.sr_type = sr_type
         self.color = color
         self.name = name
         self.curdir = curdir
+        self.num_turns = nturns,
         self.wb_key = wb_key
         self.winding = None
         self.superelements = superelements

@@ -25,21 +25,24 @@ def fitsteinmetz(f, B, losses, Bo, fo):
     losses(f,B)=cw*(f/fo)**alfa*(B/Bo)**beta
     returns (cw, alfa, beta)
     """
-    pfe = np.asarray(losses).T
-    z = []
-    for i, fx in enumerate(f):
-        if fx:
-            if isinstance(B[0], float):
-                z += [(fx, bx, y)
-                      for bx, y in zip(B, pfe[i])
-                      if isinstance(y, float)]
-            else:
-                z += [(fx, bx, y)
-                      for bx, y in zip(B[i], pfe[i])
-                      if y]
+    if np.isscalar(f):
+        fbx = [[f]*len(pfe), B]
+        y = losses
+    else:
+        pfe = np.asarray(losses).T
+        z = []
+        for i, fx in enumerate(f):
+            if fx:
+                if isinstance(B[0], float):
+                    z += [(fx, bx, y)
+                          for bx, y in zip(B, pfe[i])
+                          if isinstance(y, float)]
+                else:
+                    z += [(fx, bx, y)
+                          for bx, y in zip(B[i], pfe[i]) if y]
 
-    fbx = np.array(z).T[0:2]
-    y = np.array(z).T[2]
+        fbx = np.array(z).T[0:2]
+        y = np.array(z).T[2]
 
     fitp, cov = so.curve_fit(
         lambda x, cw, alpha, beta: pfe_steinmetz(

@@ -171,14 +171,7 @@ class Builder:
         return []
 
     def create_magnet_model(self, model):
-        mcv = ['m.remanenc       = {}'
-               .format(model.magnet.get('remanenc', 1.2)),
-               'm.relperm        = {}'
-               .format(model.magnet.get('relperm', 1.05)),
-               'm.rlen           = {}'
-               .format(model.magnet.get('rlen', 100)),
-               '',
-               "mcvkey_yoke  = '{}'"
+        mcv = ["mcvkey_yoke  = '{}'"
                .format(model.magnet.get('mcvkey_yoke', 'dummy')),
                "mcvkey_shaft = '{}'"
                .format(model.magnet.get('mcvkey_shaft', 'dummy'))]
@@ -399,7 +392,7 @@ class Builder:
                     self.create_fe_losses(model) +
                     self.create_stator_model(model) +
                     self.create_gen_winding(model) +
-                    self.create_magnet(magnetMat) +
+                    self.create_magnet(model, magnetMat) +
                     self.create_magnet_model(model) +
                     self.mesh_airgap(model) +
                     self.create_connect_models(model))
@@ -412,11 +405,19 @@ class Builder:
     def load_model(self, model):
         return self.__render(model, 'open')
 
-    def create_magnet(self, magnetMat=None):
+    def create_magnet(self, model, magnetMat=None):
         if magnetMat:
             logger.info("Setting magnet properties %s", magnetMat['name'])
+            if 'rlen' in model.magnet:
+                magnetMat['rlen'] = model.magnet['rlen']
             return self.__render(magnetMat, 'magnet-data')
-        return []
+        return ['m.remanenc       = {}'
+                .format(model.magnet.get('remanenc', 1.2)),
+                'm.relperm        = {}'
+                .format(model.magnet.get('relperm', 1.05)),
+                'm.rlen           = {}'
+                .format(model.magnet.get('rlen', 100)),
+                '']
 
     def create_analysis(self, model):
         airgap_induc = (self.create_airgap_induc()

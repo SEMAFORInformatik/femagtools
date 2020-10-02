@@ -1083,7 +1083,33 @@ def main():
         sys.exit(0)
     if not args.filename:
         sys.exit(0)
-    if args.filename.split('.')[-1].startswith('PLT'):
+
+    ext = args.filename.split('.')[-1].upper()
+    if ext.startswith('MC'):
+        import femagtools.mcv
+        mcv = femagtools.mcv.read(sys.argv[1])
+
+        if mcv['mc1_type'] in (femagtools.mcv.MAGCRV, femagtools.mcv.ORIENT_CRV):
+            ncols = 2
+        else:  # Permanent Magnet
+            ncols = 1
+
+        fig, ax = pl.subplots(nrows=1, ncols=ncols)
+        if ncols > 1:
+            pl.subplot(1, ncols, 1)
+            mcv_hbj(mcv)
+            pl.subplot(1, ncols, 2)
+            mcv_muer(mcv)
+        else:
+            pl.subplot(1, ncols, 1)
+            mcv_hbj(mcv, log=False)
+    
+        fig.tight_layout()
+        fig.subplots_adjust(top=0.94)
+        pl.show()
+        return
+    
+    if ext.startswith('PLT'):
         import femagtools.forcedens
         fdens = femagtools.forcedens.read(args.filename)
         cols = 1

@@ -270,8 +270,8 @@ class Builder:
         """return connect_model if rotating machine and incomplete model
         (Note: femag bug with connect model)"
         """
-        if (model.get('move_action') == 0 and
-            model.stator['num_slots'] > model.stator['num_slots_gen']):
+        if (model.get('move_action') == 0 and (model.connect_full or
+            model.stator['num_slots'] > model.stator['num_slots_gen'])):
             return ['pre_models("connect_models")\n']
         return []
 

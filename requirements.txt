@@ -5,3 +5,4 @@ networkx
 meshio
 matplotlib
 lxml
+netCDF4

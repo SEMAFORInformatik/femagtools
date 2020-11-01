@@ -11,7 +11,7 @@
 import numpy as np
 import scipy.interpolate as ip
 import logging
-import logging.config
+
 try:
     import matplotlib
     import matplotlib.pyplot as pl
@@ -21,6 +21,7 @@ try:
 except ImportError:   # ModuleNotFoundError:
     matplotlibversion = 0
 
+logger = logging.getLogger("femagtools.plot")
 
 def _create_3d_axis():
     """creates a subplot with 3d projection if one does not already exist"""
@@ -1060,6 +1061,28 @@ def mesh(isa, with_axis=False):
         ax.axis('off')
 
 
+def demag(isa):
+    """plot demag I7/ISA7 model
+    Args:
+      isa: Isa7/NC object
+    """
+    from matplotlib.patches import Polygon
+    from matplotlib.collections import PatchCollection
+    ax = pl.gca()
+    ax.set_aspect('equal')
+    ax.set_title('Demagnetization at {} °C'.format(isa.MAGN_TEMPERATURE))
+    emag = [e for e in isa.elements if e.demagnetization(isa.MAGN_TEMPERATURE)]
+    patches = [Polygon([v.xy for v in e.vertices]) for e in emag]
+    demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
+    p = PatchCollection(patches) #, cmap=matplotlib.cm.jet, alpha=0.4)
+    p.set_array(demag)
+    ax.add_collection(p)
+    cb = pl.colorbar(p)
+    cb.set_label(label='-H / kA/m')
+    ax.autoscale(enable=True)
+    ax.axis('off')
+    logger.info("Max demagnetization %f", np.max(demag))
+
 def main():
     import io
     import sys
@@ -1163,7 +1186,6 @@ def main():
 
 
 if __name__ == "__main__":
-    logger = logging.getLogger("femagtools.plot")
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
     main()

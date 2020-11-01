@@ -132,48 +132,61 @@ class Reader(object):
          self.SR_SE_ISA_NXT_SE_PNTR) = [
             grp.variables[k][:]
             for k in ('se_key', 'nxt_se_pntr')]
-
-        grp = ds.groups['windings']
-        (self.WB_ISA_WB_SR_PNTR,
-         self.WB_ISA_WB_REC_WB_COL,
-         names,
-         self.WB_ISA_WB_REC_WB_TURN,
-         self.WB_ISA_WB_REC_WB_SR_NUM,
-         self.WB_ISA_WB_REC_WB_WND_KEY,
-         self.WB_ISA_WB_REC_WB_GCUR_RE,
-         self.WB_ISA_WB_REC_WB_GCUR_IM,
-         self.WB_ISA_WB_REC_WB_VOLT_RE,
-         self.WB_ISA_WB_REC_WB_VOLT_IM,
-         self.WB_ISA_WB_REC_WB_IMPDZ_RE,
-         self.WB_ISA_WB_REC_WB_IMPDZ_IM) = [
-            grp.variables[k][:]
-            for k in ('sr_pntr', 'color', 'name', 'turn', 'sr_num',
-                      'wnd_key', 'gcur_re', 'gcur_im',
-                      'volt_re', 'volt_im', 'impdz_re', 'impdz_im')]
-        self.WB_ISA_WB_REC_WB_UNIT_RES = self.WB_ISA_WB_REC_WB_TURN
-        self.WB_ISA_WB_REC_WB_NAME = [''.join(str(n, encoding='utf-8'))
-                                      for n in names]
-        grp = ds.groups['winding_subregions']
-        (self.WB_SR_ISA_SR_KEY,
-         self.WB_SR_ISA_NXT_SR_PNTR) = [
-            grp.variables[k][:]
-            for k in ('sr_key', 'nxt_sr_pntr')]
-
-        grp = ds.groups['machine']
-        self.FC_RADIUS = float(grp.variables['fc_radius'].getValue().data)
-        self.POLPAAR_ZAHL = int(grp.variables['pole_pairs'].getValue().data)
-        self.NO_POLES_SIM = int(grp.variables['poles_sim'].getValue().data)
-        self.ARM_LENGTH = int(grp.variables['arm_length'].getValue().data)
-
         try:
-            grp = ds.groups['el_fe_induction']
+            grp = ds.groups['windings']
+            (self.WB_ISA_WB_SR_PNTR,
+             self.WB_ISA_WB_REC_WB_COL,
+             names,
+             self.WB_ISA_WB_REC_WB_TURN,
+             self.WB_ISA_WB_REC_WB_SR_NUM,
+             self.WB_ISA_WB_REC_WB_WND_KEY,
+             self.WB_ISA_WB_REC_WB_GCUR_RE,
+             self.WB_ISA_WB_REC_WB_GCUR_IM,
+             self.WB_ISA_WB_REC_WB_VOLT_RE,
+             self.WB_ISA_WB_REC_WB_VOLT_IM,
+             self.WB_ISA_WB_REC_WB_IMPDZ_RE,
+             self.WB_ISA_WB_REC_WB_IMPDZ_IM) = [
+                 grp.variables[k][:]
+                 for k in ('sr_pntr', 'color', 'name', 'turn', 'sr_num',
+                           'wnd_key', 'gcur_re', 'gcur_im',
+                           'volt_re', 'volt_im', 'impdz_re', 'impdz_im')]
+            self.WB_ISA_WB_REC_WB_UNIT_RES = self.WB_ISA_WB_REC_WB_TURN
+            self.WB_ISA_WB_REC_WB_NAME = [''.join(str(n, encoding='utf-8'))
+                                          for n in names]
+        except:
+            pass
+        try:
+            grp = ds.groups['winding_subregions']
+            (self.WB_SR_ISA_SR_KEY,
+             self.WB_SR_ISA_NXT_SR_PNTR) = [
+                 grp.variables[k][:]
+                 for k in ('sr_key', 'nxt_sr_pntr')]
+        except:
+            pass
+        try:
+            grp = ds.groups['machine']
+            self.FC_RADIUS = float(grp.variables['fc_radius'].getValue().data)
+            self.pole_pairs = int(grp.variables['pole_pairs'].getValue().data)
+            self.poles_sim = int(grp.variables['poles_sim'].getValue().data)
+            self.num_slots = int(grp.variables['num_slots'].getValue().data)
+            self.arm_length = int(grp.variables['arm_length'].getValue().data)
+        except:
+            pass
+        try:
+            grp = ds.groups['magnet']
+            self.MAGN_TEMPERATURE = float(grp.variables['temperature'].getValue().data)
+            self.BR_TEMP_COEF = float(grp.variables['br_temp_coef'].getValue().data)
+        except:
+            pass
+        try:
+            grp = ds.groups['el_induction']
             (self.pos_el_fe_induction,
              self.el_fe_induction_1,
              self.el_fe_induction_2,
              self.eddy_cu_vpot) = [grp.variables[k][:]
                                    for k in ('position',
-                                             'induction_1',
-                                             'induction_2',
+                                             'fe_induction_1',
+                                             'fe_induction_2',
                                              'eddy_cu_vpot')]
             logger.debug('el_fe_induction %d', len(self.pos_el_fe_induction))
         except KeyError:

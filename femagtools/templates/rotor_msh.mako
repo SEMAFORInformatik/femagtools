@@ -25,7 +25,11 @@ create_mesh_se(x1, y1)
 
 % for y in model['yoke']:
   x, y = ${model[y][0]*1e3}, ${model[y][1]*1e3}
-  def_mat_fm_nlin(x, y, "blue", mcvkey_yoke, 100) -- ${y}
+  if( mcvkey_yoke ~= 'dummy' ) then
+    def_mat_fm_nlin(x, y, "blue", mcvkey_yoke, 100) -- ${y}
+  else
+    def_mat_fm(x, y, "blue", 1000, 100) -- ${y}
+  end  
 % endfor
 % for a in model['air']:
   x, y = ${model[a][0]*1e3}, ${model[a][1]*1e3}

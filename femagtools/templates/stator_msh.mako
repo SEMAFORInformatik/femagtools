@@ -26,17 +26,25 @@ create_mesh_se(x1, y1)
 
 % for y in model['yoke']:
   x, y = ${model[y][0]*1e3}, ${model[y][1]*1e3}
-  def_mat_fm_nlin(x, y, "blue", mcvkey_yoke, 100) -- ${y}
+  if( mcvkey_yoke ~= 'dummy' ) then
+    def_mat_fm_nlin(x, y, "blue", mcvkey_yoke, 100) -- ${y}
+  else
+    def_mat_fm(x, y, "blue", 1000, 100) -- ${y}
+  end
 % endfor
 % for t in model['teeth']:
   x, y = ${model[t][0]*1e3}, ${model[t][1]*1e3}
-  def_mat_fm_nlin(x, y, "blue", mcvkey_teeth, 100) -- ${t}
+  if( mcvkey_yoke ~= 'dummy' ) then
+    def_mat_fm_nlin(x, y, "blue", mcvkey_teeth, 100) -- ${t}
+  else
+    def_mat_fm_nlin(x, y, "blue", 1000, 100) -- ${t}
+  end
 % endfor
 % for a in model['air']:
   x, y = ${model[a][0]*1e3}, ${model[a][1]*1e3}
   def_mat_air(x, y)  -- ${a}
 % endfor
-
+% if 'wdg' in model:
 m.xcoil_1, m.ycoil_1 = ${model['wdg'][0]*1e3}, ${model['wdg'][1]*1e3}
 delete_sreg(m.xcoil_1, m.ycoil_1)
 
@@ -48,3 +56,7 @@ for n = 1, m.num_sl_gen do
   x, y = pd2c(r, n*360/m.tot_num_slot - phi)
   add_to_sreg(x, y, s)
 end
+% else:
+m.xcoil_1, m.ycoil_1 = pd2c(da1/2 + (dy1-da1)/8, 360/m.tot_num_slot/2-0.1)
+create_mesh()
+% endif

@@ -43,7 +43,7 @@ setup(
     version=version,
     platforms="any",
     install_requires=['numpy', 'scipy', 'mako', 'six',
-                      'dxfgrabber', 'networkx'],
+                      'dxfgrabber', 'networkx', 'netCDF4'],
     extras_require={"meshio": ["meshio", "lxml"]},
     packages=['femagtools', 'femagtools.moo', 'femagtools.dxfsl'],
     package_data={'femagtools': ['templates/*.mako']},

@@ -25,6 +25,7 @@ class Reader(object):
     """
 
     def __init__(self, filename):
+        self.BR_TEMP_COEF = 0
         with open(filename, mode="rb") as self.file:
             self.file = self.file.read()
         self.pos = 0
@@ -625,7 +626,7 @@ class Isa7(object):
         self.element_pos = np.array([e.center
                                      for e in self.elements])
 
-        for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim', 'MAGN_TEMPERATURE', 'BR_TEMP_COEF'):
+        for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim', 'MAGN_TEMPERATURE'):
             v = getattr(reader, a, '')
             if v:
                 setattr(self, a, v)

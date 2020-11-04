@@ -1070,7 +1070,7 @@ def demag(isa):
     from matplotlib.collections import PatchCollection
     ax = pl.gca()
     ax.set_aspect('equal')
-    ax.set_title('Demagnetization at {} °C'.format(isa.MAGN_TEMPERATURE))
+    ax.set_title('Demagnetization at {} °C'.format(isa.MAGN_TEMPERATURE), fontsize=18)
     emag = [e for e in isa.elements if e.demagnetization(isa.MAGN_TEMPERATURE)]
     patches = [Polygon([v.xy for v in e.vertices]) for e in emag]
     demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
@@ -1078,10 +1078,33 @@ def demag(isa):
     p.set_array(demag)
     ax.add_collection(p)
     cb = pl.colorbar(p)
-    cb.set_label(label='-H / kA/m')
+    cb.set_label(label='-H / kA/m', fontsize=18)
     ax.autoscale(enable=True)
     ax.axis('off')
     logger.info("Max demagnetization %f", np.max(demag))
+
+def loss_density(isa, subreg):
+    """plot demag I7/ISA7 model
+    Args:
+      isa: Isa7/NC object
+    """
+    from matplotlib.patches import Polygon
+    from matplotlib.collections import PatchCollection
+    ax = pl.gca()
+    ax.set_aspect('equal')
+    ax.set_title('Loss Density kW/m³', fontsize=18)
+    elements = [e for se in isa.get_subregion('StJo').elements() for e in se]
+    patches = [Polygon([v.xy for v in e.vertices]) for e in elements]
+    lossd = np.array([e.loss_density*1e-3 for e in elements])
+    p = PatchCollection(patches) #, cmap=matplotlib.cm.jet, alpha=0.4)
+    p.set_array(lossd)
+    ax.add_collection(p)
+    cb = pl.colorbar(p)
+    #cb.set_label(label='-H / kA/m', fontsize=18)
+    ax.autoscale(enable=True)
+    ax.axis('off')
+    #logger.info("Max demagnetization %f", np.max(demag))
+
 
 def main():
     import io

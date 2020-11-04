@@ -505,7 +505,7 @@ class Isa7(object):
                          reader.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
                         (reader.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
                          reader.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
-                        loss_dens * 1e3, # in W/m³
+                        loss_dens, # in W/m³
                         reader.BR_TEMP_COEF/100)   # in 1/K
             )
         logger.info("SuperElements")
@@ -832,9 +832,6 @@ class Element(BaseEntity):
         if self.reluc[0] < 1:
             return 1 / self.reluc[0]
         return 1
-
-    def loss_density(self):
-        return self.loss_density
 
     def iron_loss_density(self):
         """return loss_density if element in iron (eg. lamination region)"""

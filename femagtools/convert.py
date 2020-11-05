@@ -197,7 +197,7 @@ def _from_isa(isa, filename, target_format,
             magtemp = 20
         physical_ids[cell_type].append(physical_surface(e))
         geometrical_ids[cell_type].append(e.se_key)
-        b[cell_type].append(e.induction())
+        b[cell_type].append(e.flux_density())
         h[cell_type].append(e.demagnetization(magtemp))
         perm[cell_type].append(e.permeability())
         iron_losses[cell_type].append(e.iron_loss_density())

@@ -638,7 +638,7 @@ class Isa7(object):
             self.arm_length = reader.arm_length*1e-3  # in m
         except:
             pass
-        self.pos_el_fe_induction = reader.pos_el_fe_induction
+        self.pos_el_fe_induction = np.asarray(reader.pos_el_fe_induction)
         if len(np.asarray(reader.el_fe_induction_1).shape) > 2:
             self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
             self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000
@@ -678,8 +678,33 @@ class Isa7(object):
         except IndexError:
             return None
     
-
-
+    def flux_density(self, x, y, icur, ibeta, cosys='cartes'):
+        """return pos and flux density (bx, by) or (br, bt)
+        at pos x, y for current and beta"""
+        ekey = self.get_element(x, y).key-1
+        b1 = np.array(self.el_fe_induction_1[ekey, :, icur, ibeta])
+        b2 = np.array(self.el_fe_induction_2[ekey, :, icur, ibeta])
+        if cosys=='cartes':
+            return dict(
+                pos = self.pos_el_fe_induction,
+                bx = b1,
+                by= b2)
+        if cosys == 'polar':
+            e=None
+            for e in self.elements:
+                if e.key == ekey:
+                    break
+            if e.key == ekey:
+                a = np.arctan2(e.center[1], e.center[0])
+                br, bphi = np.array(((np.cos(a), -np.sin(a)),
+                                     (np.sin(a), np.cos(a)))).dot(
+                                         ((b1),(b2)))
+                return dict(
+                    pos = self.pos_el_fe_induction,
+                    br = br,
+                    bt = bphi)
+        return dict()
+        
 class Point(object):
     def __init__(self, x, y):
         self.x = x
@@ -772,9 +797,10 @@ class Element(BaseEntity):
         self.center = np.sum(
             [v.xy for v in vertices], axis=0)/len(vertices)
         
-    def induction(self):
-        """return induction components of this element"""
+    def flux_density(self, cosys='cartes'):
+        """return inductionflux density components of this element converted to cosys: cartes, cylind, polar"""
         ev = self.vertices
+        b1, b2 = 0, 0
         if self.el_type == 1:
             y31 = ev[2].y - ev[0].y
             y21 = ev[1].y - ev[0].y
@@ -784,7 +810,7 @@ class Element(BaseEntity):
             a31 = ev[2].vpot[0] - ev[0].vpot[0]
             delta = self.superelement.length * (y31 * x21 + y21 * x13)
 
-            return ((x13 * a21 + x21 * a31) / delta,
+            b1, b2 = ((x13 * a21 + x21 * a31) / delta,
                     (-y31 * a21 + y21 * a31) / delta)
 
         elif self.el_type == 2:
@@ -808,18 +834,32 @@ class Element(BaseEntity):
             b1_b = (x13 * a24 + x21 * a34) / delta
             b2_b = (y21 * a34 - y31 * a24) / delta
 
-            return ((b1_a + b1_b) / 2,
+            b1, b2 = ((b1_a + b1_b) / 2,
                     (b2_a + b2_b) / 2)
 
-        return (0, 0)
-
+        if cosys == 'cartes':
+            return (b1, b2)
+        if cosys == 'polar':
+            a = np.arctan2(self.center[1], self.center[0])
+            br, bphi = np.array(((np.cos(a), np.sin(a)),
+                                 (-np.sin(a), np.cos(a)))).dot(((b1),(b2)))            
+            return br, bphi
+        if cosys == 'cylind':
+            xm = np.sum([e.x for e in ev])
+            rm = np.sum([e.vpot[0] for e in ev])
+            if np.abs(xm) < 1e-6:
+                rm = 0
+            else:
+                rm = rm/xm
+            return -b1, -b2/rm
+        
     def demagnetization(self, temperature=20):
         """return demagnetization of this element"""
         if abs(self.mag[0]) > 1e-5 or abs(self.mag[1]) > 1e-5:
             br_temp_corr = 1. +  self.br_temp_coef*(temperature - 20.)
             magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)*br_temp_corr
             alfa = np.arctan2(self.mag[1], self.mag[0])
-            b1, b2 = self.induction()
+            b1, b2 = self.flux_density()
             bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
             hpol = bpol - magn
             if hpol < 0:

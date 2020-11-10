@@ -13,6 +13,7 @@ import mako.lookup
 import os
 import re
 import sys
+import math
 from femagtools.dxfsl.converter import convert
 from . import __version__
 logger = logging.getLogger(__name__)
@@ -54,6 +55,30 @@ class Builder:
 
     def prepare_stator(self, model):
         templ = model.statortype()
+        if templ == 'mshfile':
+            import femagtools.gmsh
+
+            g = femagtools.gmsh.Gmsh(model.stator['mshfile']['name'])
+            phi = g.get_section_angles()
+            model.stator['num_slots'] = round(math.pi/(phi[1]-phi[0]))
+            r = g.get_section_radius()
+            model.set_value('outer_diam', 2*r[1])
+            model.set_value('bore_diam', 2*r[0])
+            model.stator['stator_msh'] = dict(
+                name=model.stator['mshfile']['name']
+            )
+            for sr in g.get_subregions():
+                model.stator[sr] = g.get_location(sr)
+            for k in ('yoke', 'teeth', 'air'):
+                model.stator[k] = model.stator['mshfile'].get(k, [])
+            wdg = model.stator['mshfile'].get('wdg', '')
+            if wdg:
+                model.stator['wdg'] = model.stator[wdg]
+            del model.stator['mshfile']
+
+            self.fsl_stator = True
+            return
+
         if templ != 'dxffile':
             return
 
@@ -122,16 +147,22 @@ class Builder:
             return self.render_template(
                 '\n'.join(templ),
                 model.stator['statorFsl'])
-        
+
         statmodel = model.stator.copy()
         statmodel.update(model.stator[templ])
         statmodel.update({
             'zeroangle': model.stator.get('zeroangle', 0),
             'rlength': model.stator.get('rlength', 1),
-            'num_layers': model.windings.get('num_layers', 1)})
-        
+            'num_layers': model.windings.get('num_layers', 1)}
+        )
+
         fslcode = self.__render(statmodel, templ, stator=True)
         if fslcode:
+            if self.fsl_stator:
+                return (['agndst = {}'.format(model.agndst*1e3),
+                         'alfa = 2*math.pi*m.num_sl_gen/m.tot_num_slot',
+                         'num_agnodes = math.floor(m.fc_radius*alfa/agndst + 1.5)'] +
+                        fslcode)
             return (fslcode +
                     ['post_models("nodedistance", "ndst" )',
                      'agndst=ndst[1]*1e3'])
@@ -140,7 +171,7 @@ class Builder:
         return []
 
     def create_magnet_model(self, model):
-        mcv = ["mcvkey_yoke = '{}'"
+        mcv = ["mcvkey_yoke  = '{}'"
                .format(model.magnet.get('mcvkey_yoke', 'dummy')),
                "mcvkey_shaft = '{}'"
                .format(model.magnet.get('mcvkey_shaft', 'dummy'))]
@@ -173,11 +204,37 @@ class Builder:
                 u'ymag = {}',
                 u'mag_orient = {}',
                 u'ndt(agndst)'] + model.magnet['dxf']['fsl']
-            
+
         return mcv + self.render_rotor(magmodel, templ)
 
     def prepare_rotor(self, model):
         templ = model.magnettype()
+        if templ == 'mshfile':
+            import femagtools.gmsh
+            g = femagtools.gmsh.Gmsh(model.magnet['mshfile']['name'])
+            r = g.get_section_radius()
+            phi = g.get_section_angles()
+            p = round(math.pi/(phi[1]-phi[0]))
+            model.set_value('poles', p)
+            model.set_value('inner_diam', 2*r[0])
+            ag = (model.get('bore_diam') - 2*r[1])/2
+            model.set_value('airgap', ag)
+            model.magnet['rotor_msh'] = dict(
+                name=model.magnet['mshfile']['name']
+            )
+            for sr in g.get_subregions():
+                model.magnet[sr] = g.get_location(sr)
+
+            for k in ('yoke', 'air'):
+                model.magnet[k] = model.magnet['mshfile'].get(k, [])
+            model.magnet['mag'] = dict(
+                sreg=model.magnet['mshfile'].get('mag', []),
+                axis=[g.get_axis_angle(s)
+                      for s in model.magnet['mshfile'].get('mag', [])]
+            )
+            del model.magnet['mshfile']
+            return
+
         if templ != 'dxffile':
             return
 
@@ -196,7 +253,7 @@ class Builder:
             logger.info('da2 %f',  model.get('da2')/1e3)
             ag = (model.get('bore_diam') - model.get('da2')/1e3)/2
             model.set_value('airgap', ag)
-            
+
         model.magnet['dxf'] = dict(fsl=conv['fsl'])
         self.fsl_magnet = True
         del model.magnet[templ]
@@ -213,9 +270,9 @@ class Builder:
         """return connect_model if rotating machine and incomplete model
         (Note: femag bug with connect model)"
         """
-        if (model.get('move_action') == 0 and
-            model.stator['num_slots'] > model.stator['num_slots_gen']):
-            return ['pre_models("connect_models")']
+        if (model.get('move_action') == 0 and (model.connect_full or
+            model.stator['num_slots'] > model.stator['num_slots_gen'])):
+            return ['pre_models("connect_models")\n']
         return []
 
     def create_open(self, model):
@@ -234,9 +291,9 @@ class Builder:
         return self.__render(model.windings, 'cu_losses')
 
     def create_fe_losses(self, model):
-        if any(model.get(k,0) for k in ('ffactor','cw', 'ch', 'hyscoef',
-                                        'edycof', 'indcof', 'fillfact',
-                                        'basfreq', 'basind')):
+        if any(model.get(k, 0) for k in ('ffactor', 'cw', 'ch', 'hyscoef',
+                                         'edycof', 'indcof', 'fillfact',
+                                         'basfreq', 'basind')):
             return self.__render(model, 'FE-losses')
         return []
 
@@ -254,7 +311,7 @@ class Builder:
                 self.__render(model.windings['leak_tooth_wind'],
                               'leak_tooth_wind')
         return self.__render(model, 'gen_winding')
-            
+
     def prepare_model_with_dxf(self, model):
         dxfname = model.dxffile.get('name', None)
         if not dxfname:
@@ -310,10 +367,13 @@ class Builder:
                     model.set_value(
                         'agndst',
                         agndst(model.get('bore_diam'),
-                               model.get('bore_diam') - 2*ag))
+                               model.get('bore_diam') - 2*ag,
+                               model.stator.get('num_slots'),
+                               model.get('poles'),
+                               model.stator.get('nodedist') or 1.0))
 
                 model.set_num_slots_gen()
-            
+
             material = model.magnet.get('material', 0)
             magnetMat = {}
             if magnets and material:
@@ -326,16 +386,16 @@ class Builder:
                     magnetMat['magntemp'] = model.magn_temp
                 except AttributeError:
                     magnetMat['magntemp'] = 20
-                
-            return (self.create_new_model(model) + 
-                    self.create_cu_losses(model) + 
+
+            return (self.create_new_model(model) +
+                    self.create_cu_losses(model) +
                     self.create_fe_losses(model) +
-                    self.create_stator_model(model) + 
-                    self.create_gen_winding(model) + 
-                    self.create_magnet(magnetMat) + 
-                    self.create_magnet_model(model) + 
-                    self.mesh_airgap(model) + 
-                    self.create_connect_models(model) )
+                    self.create_stator_model(model) +
+                    self.create_gen_winding(model) +
+                    self.create_magnet(model, magnetMat) +
+                    self.create_magnet_model(model) +
+                    self.mesh_airgap(model) +
+                    self.create_connect_models(model))
 
         return self.open_model(model)
 
@@ -345,12 +405,19 @@ class Builder:
     def load_model(self, model):
         return self.__render(model, 'open')
 
-    def create_magnet(self, magnetMat=None):
+    def create_magnet(self, model, magnetMat=None):
         if magnetMat:
             logger.info("Setting magnet properties %s", magnetMat['name'])
+            if 'rlen' in model.magnet:
+                magnetMat['rlen'] = model.magnet['rlen']
             return self.__render(magnetMat, 'magnet-data')
-        return ['m.remanenc       =  1.2',
-                'm.relperm        =  1.05']
+        return ['m.remanenc       = {}'
+                .format(model.magnet.get('remanenc', 1.2)),
+                'm.relperm        = {}'
+                .format(model.magnet.get('relperm', 1.05)),
+                'm.rlen           = {}'
+                .format(model.magnet.get('rlen', 100)),
+                '']
 
     def create_analysis(self, model):
         airgap_induc = (self.create_airgap_induc()
@@ -358,7 +425,7 @@ class Builder:
 
         fslcalc = (self.__render(model, model.get('calculationMode')) +
                    airgap_induc)
-        
+
         if model.get('calculationMode') in ('cogg_calc',
                                             'ld_lq_fast',
                                             'pm_sym_loss',
@@ -371,7 +438,7 @@ class Builder:
 
     def create_shortcircuit(self, model):
         return self.__render(model, 'shortcircuit')
-    
+
     def create_airgap_induc(self):
             return self.__render(dict(), 'airgapinduc')
 
@@ -398,7 +465,7 @@ class Builder:
             fea.update(model.windings)
         except AttributeError:
             pass
-        
+
         if model.is_complete():
             logger.info("create new model and simulation")
             fslmodel = self.create_model(model, magnets)
@@ -419,15 +486,14 @@ class Builder:
                 fea['phi_start'] = 0.0
             if 'range_phi' not in fea:
                 fea['range_phi'] = 720/model.get('poles')
-            
+
             return (fslmodel + self.create_analysis(fea) +
                     ['save_model("close")'])
-        
+
         logger.info("create open model and simulation")
-        return (self.open_model(model) + 
+        return (self.open_model(model) +
                 self.create_analysis(fea) +
                 ['save_model("close")'])
-                
 
     def __render(self, model, templ, stator=False, magnet=False):
         if templ.split('.')[-1] in ('fsl', 'mako'):

@@ -145,6 +145,7 @@ class MachineModel(Model):
             name = parameters
         elif 'name' in parameters:
             name = parameters['name']
+        self.connect_full = True  # connect model even for complete model (see fsl connect_models)
         # must sanitize name to prevent femag complaints
         self.name = ''.join([n
                              for n in name.strip()

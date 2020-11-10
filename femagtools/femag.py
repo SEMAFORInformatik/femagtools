@@ -26,6 +26,7 @@ import femagtools.config as cfg
 import time
 import platform
 import re
+import traceback
 from threading import Thread
 
 logger = logging.getLogger(__name__)
@@ -748,6 +749,8 @@ class ZmqFemag(BaseFemag):
             self.reader.join()
 
         if self.reader or (pub_consumer and pub_consumer != subscribe_dev_null):
+            if not pub_consumer:
+                pub_consumer = subscribe_dev_null
             self.reader = FemagReadStream(self.__sub_socket(), pub_consumer)
             self.reader.setDaemon(True)
             self.reader.start()
@@ -858,6 +861,8 @@ class FemagReadStream(Thread):
                 continue
             # Any other exception is shown in the error log
             except Exception as e:
-                logger.error("error in reading output from femag: {}".format(e))
+                e_type, e_obj, e_tb = sys.exc_info()
+                logger.error("%s error in reading output from femag: %s\nTraceback %s",
+                             e_type, e, traceback.format_exc())
                 continue
         logger.debug("Exit reader thread")

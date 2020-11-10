@@ -1,10 +1,10 @@
-Models
-******
+**Models**
+**********
 
 The models are dictionaries with the properties of a machine or a calculation.
 
-Machine
-=======
+**Machine**
+===========
 
 Machines have a set of basic parameters, a stator, a magnet and a winding:
 
@@ -20,11 +20,11 @@ inner_diam       Inner diameter (yoke)                  m
 airgap           airgap width                           m
 external_rotor   True, False                            False
 ffactor          processing factor for iron losses      
-dxffile          (see :ref:`Model Creation with DXF`)
+dxffile          (see :ref:'model_creation_with_dxf')
 ==============  ======================================  ======
 
-Stator
-------
+**Stator**
+----------
 
 Stators have basic parameters and slots:
 
@@ -108,8 +108,8 @@ dxffile
 
 .. _stator_slots_fsl:
    
-User defined Stator Slots with FSL
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**User defined Stator Slots with FSL**
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a FSL file that includes the definition of stator geometry exists and is readable it can be used for the model creation.
 
@@ -127,8 +127,8 @@ Example with file mystator.fsl::
   
 .. _stator_slots_dxf:
       
-User defined Slots with DXF
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**User defined Slots with DXF**
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a DXF file that defines the stator geometry exists and is readable 
 it can be used to create the FSL of the model.
@@ -177,8 +177,8 @@ cuconduc        conductivity (S/m)             56e6
 slot_indul      insulation thickness in slot   0.0 
 ============    ============================  =======
 
-End-Winding Leakage
-...................
+**End-Winding Leakage**
+.......................
 
 Windings may contain a leakage dict: leak_dist_wind, leak_evol_wind, leak_tooth_wind (version added 0.9.9)
 
@@ -232,8 +232,8 @@ Windings may contain a leakage dict: leak_dist_wind, leak_evol_wind, leak_tooth_
     )
 
   
-Magnet
-------
+**Magnet**
+----------
 
 Magnets have basic parameters and slots:
 
@@ -251,8 +251,8 @@ nodedist         Factor for node distance         1.0
    * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the magnetizingCurve object.
    * the material parameter references a name of the 'Magnet Material'_ list. 
 
-Rotor Slots
-^^^^^^^^^^^
+**Rotor Slots**
+^^^^^^^^^^^^^^^
 
 ============    ===========================================
 Name             Parameter      
@@ -399,8 +399,8 @@ dxffile         see :ref:`rotor_slots_dxf`
 
 .. _rotor_slots_fsl:
 		 
-User defined Magnet Slots with FSL
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**User defined Magnet Slots with FSL**
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Example**
 
@@ -419,8 +419,8 @@ it can be used for the model creation as an empty dict::
 
 .. _rotor_slots_dxf:
       
-User defined Slots with DXF
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**User defined Slots with DXF**
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a DXF file that defines the magnet geometry exists and is readable 
 it can be used to create the FSL for the model.
@@ -453,8 +453,8 @@ plot         creates the plot              False
 
 -- Note:: The split option is required only if intersecting lines have no common point.
 
-Magnetizing Curve
-=================
+**Magnetizing Curve**
+=====================
 
 The MagnetizingCurve is a container of magnetizing curves (eg. lamination or PM material) that can be referenced by the model mcvkey attributes. It can either point to a directory of MC/MCV-File or hold a list of magnet curves which are identified by name.
 
@@ -538,8 +538,8 @@ Using a magnetizingcurve to write a mcv file::
 
    if the curve data is used in a stator or magnet slot model there is no need to create the file explicitly. Femagtools will take care of that during the model creation.
    
-Magnet Material
-===============
+**Magnet Material**
+===================
 
 list of dict objects each having a unique name (or id) and a set of parameters
 that describe the magnet properties.
@@ -584,8 +584,8 @@ magnlength        Magnet length in z direction   0.0        m
 .. include:: userspec.rst
 
 
-Calculation
-===========
+**FE-Simulation**
+=================
 
 Cogging (cogg_calc)
 
@@ -606,7 +606,7 @@ vtu_movie       Create VTU files                False
 Example::
 
   operatingConditions = dict(
-    calculationMode="cogg_fast",
+    calculationMode="cogg_calc",
     magn_temp=60.0,
     num_move_steps=49,
     speed=50.0)
@@ -825,8 +825,8 @@ Example::
     angl_i_up=0.0,
     speed=50.0)
 
-Calculation with existing model
--------------------------------
+FE-Simulation with existing model
+---------------------------------
 
 FE calculations can be executed for existing models also.
 Since Femag Rel 8.3 there is no need to fully specify the machine model::
@@ -867,9 +867,10 @@ For older FEMAG versions the minimal data is::
       )
   )
 
+.. _model_creation_with_dxf:
   
-Model Creation with DXF
-=======================
+**Model Creation with DXF**
+===========================
 
 The goal of the dxfsl modules is to create a complete FE model for rotating PM and Reluctance Machines on the basis of a DXF file with
 as little restrictions as possible.

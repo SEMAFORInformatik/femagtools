@@ -25,6 +25,7 @@ class Reader(object):
     """
 
     def __init__(self, filename):
+        self.BR_TEMP_COEF = 0
         with open(filename, mode="rb") as self.file:
             self.file = self.file.read()
         self.pos = 0
@@ -172,7 +173,8 @@ class Reader(object):
         self.FC_RADIUS = self.next_block("f")[0]
         self.skip_block(2)
         self.M_POLES = self.next_block("i")[0]
-        self.skip_block(6)
+        self.skip_block(5)
+        MAGN_TEMPERATURE, BR_TEMP_COEF = self.next_block("f")[0:2]
         FC_NUM_CUR_ID, FC_NUM_BETA_ID = self.next_block("i")[0:2]
         if FC_NUM_CUR_ID > 16:
             FC_NUM_CUR_ID = 16
@@ -238,18 +240,18 @@ class Reader(object):
         (tot_num_slot, num_phases, num_layers, 
          self.NUM_WIRES, self.CURRENT,
          coil_span, num_slots) = self.next_block("f")[:7]
-        self.TOT_NUM_SLOT = int(tot_num_slot)
-        self.NUM_PHASES = int(num_phases)
-        self.NUM_LAYERS = int(num_layers)
-        self.NUM_SLOTS = int(num_slots)
-        self.COIL_SPAN = coil_span
+        self.slots = int(tot_num_slot)
+        self.num_phases = int(num_phases)
+        self.layers = int(num_layers)
+        self.slots_gen = int(num_slots)
+        self.coil_span = coil_span
         
         self.skip_block(1)
         (move_action, arm_length, self.SKEW_ANGLE,
          HI, num_move_ar, self.ANGL_I_UP,
          num_par_wdgs, cur_control) = self.next_block("f")[:8]
         self.NUM_PAR_WDGS = int(num_par_wdgs)
-        self.ARM_LENGTH = arm_length*1e-3  # unit is m
+        self.arm_length = arm_length*1e-3  # unit is m
         self.skip_block(2)      
         self.skip_block(30 * 30)
         self.skip_block(30 * 30)
@@ -297,7 +299,7 @@ class Reader(object):
         # MOVE_ARMATURE
         self.skip_block(5)
 
-        self.POLPAAR_ZAHL, self.NO_POLES_SIM = self.next_block("i")[:2]
+        self.pole_pairs, self.poles_sim = self.next_block("i")[:2]
         self.SLOT_WIRE_DIAMETER = self.next_block("f")
         self.SLOT_WIRE_NUMBERS = self.next_block("i")
         self.skip_block(20*(3 + 2 * 20)) # BASE_FREQUENCY ..
@@ -442,7 +444,7 @@ class Isa7(object):
             point1 = self.points[abs(pk1) - 1]
             point2 = self.points[abs(pk2) - 1]
             self.lines.append(Line(point1, point2))
-
+        logger.info("Nodes")
         self.nodes = [
                 Node(n + 1,
                      reader.NODE_ISA_NODE_REC_ND_BND_CND[n],
@@ -455,6 +457,7 @@ class Isa7(object):
                      reader.NODE_ISA_NODE_REC_ND_VP_IM[n])
             for n in range(len(reader.NODE_ISA_NODE_REC_ND_BND_CND))]
 
+        logger.info("Nodechains")
         self.nodechains = []
         for nc in range(len(reader.NDCHN_ISA_NDCHN_REC_NC_NOD_1)):
             nd1 = reader.NDCHN_ISA_NDCHN_REC_NC_NOD_1[nc]
@@ -474,11 +477,12 @@ class Isa7(object):
 
                 self.nodechains.append(
                     NodeChain(nc + 1, nodes))
-            except IndexError as ex:
+            except IndexError:
                 logger.warning('IndexError in nodes')
                 raise  # preserve the stack trace
                     
         self.elements = []
+        logger.info("Elements")
         for e in range(len(reader.ELEM_ISA_EL_NOD_PNTR)):
             ndkeys = []
             ndk = reader.ELEM_ISA_EL_NOD_PNTR[e]
@@ -501,9 +505,10 @@ class Isa7(object):
                          reader.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
                         (reader.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
                          reader.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
-                        loss_dens * 1e3)   # in W/m³
+                        loss_dens, # in W/m³
+                        reader.BR_TEMP_COEF/100)   # in 1/K
             )
-
+        logger.info("SuperElements")
         self.superelements = []
         for se in range(len(reader.SUPEL_ISA_SE_NDCHN_PNTR)):
             nc_keys = []
@@ -548,6 +553,7 @@ class Isa7(object):
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_RE[se],
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se]))
 
+        logger.info("Subregions")
         self.subregions = []
         for sr in range(len(reader.SR_ISA_SR_SE_PNTR)):
             se_keys = []
@@ -577,35 +583,40 @@ class Isa7(object):
                           reader.SR_ISA_SR_REC_SR_TYP[sr],
                           reader.SR_ISA_SR_REC_SR_COL[sr],
                           reader.SR_ISA_SR_REC_SR_NAME[sr],
+                          reader.SR_ISA_SR_REC_SR_NTURNS[sr],
                           reader.SR_ISA_SR_REC_SR_CUR_DIR[sr],
                           reader.SR_ISA_SR_REC_SR_WB_KEY[sr] - 1,
                           superelements,
                           nodechains))
 
+        logger.info("Windings")
         self.windings = []
-        for wd in range(len(reader.WB_ISA_WB_SR_PNTR)):
-            sr_keys = []
-            sr_ptr = reader.WB_ISA_WB_SR_PNTR[wd]
+        try:
+            for wd in range(len(reader.WB_ISA_WB_SR_PNTR)):
+                sr_keys = []
+                sr_ptr = reader.WB_ISA_WB_SR_PNTR[wd]
 
-            while sr_ptr > 0:
-                sr_keys.append(reader.WB_SR_ISA_SR_KEY[sr_ptr - 1])
-                sr_ptr = reader.WB_SR_ISA_NXT_SR_PNTR[sr_ptr - 1]
+                while sr_ptr > 0:
+                    sr_keys.append(reader.WB_SR_ISA_SR_KEY[sr_ptr - 1])
+                    sr_ptr = reader.WB_SR_ISA_NXT_SR_PNTR[sr_ptr - 1]
 
-            subregions = []
-            for srk in sr_keys:
-                subregions.append(self.subregions[srk - 1])
+                subregions = []
+                for srk in sr_keys:
+                    subregions.append(self.subregions[srk - 1])
 
-            self.windings.append(
-                Winding(wd + 1,
-                        reader.WB_ISA_WB_REC_WB_NAME[wd],
-                        subregions,
-                        reader.WB_ISA_WB_REC_WB_TURN[wd],
-                        reader.WB_ISA_WB_REC_WB_GCUR_RE[wd],
-                        reader.WB_ISA_WB_REC_WB_GCUR_IM[wd],
-                        reader.WB_ISA_WB_REC_WB_IMPDZ_RE[wd],
-                        reader.WB_ISA_WB_REC_WB_IMPDZ_IM[wd],
-                        reader.WB_ISA_WB_REC_WB_VOLT_RE[wd],
-                        reader.WB_ISA_WB_REC_WB_VOLT_IM[wd]))
+                self.windings.append(
+                    Winding(wd + 1,
+                            reader.WB_ISA_WB_REC_WB_NAME[wd],
+                            subregions,
+                            reader.WB_ISA_WB_REC_WB_TURN[wd],
+                            reader.WB_ISA_WB_REC_WB_GCUR_RE[wd],
+                            reader.WB_ISA_WB_REC_WB_GCUR_IM[wd],
+                            reader.WB_ISA_WB_REC_WB_IMPDZ_RE[wd],
+                            reader.WB_ISA_WB_REC_WB_IMPDZ_IM[wd],
+                            reader.WB_ISA_WB_REC_WB_VOLT_RE[wd],
+                            reader.WB_ISA_WB_REC_WB_VOLT_IM[wd]))
+        except:
+            pass
         logger.info("Total nodes %d elements %d superelements %d subregions %d",
                     len(self.nodes), len(self.elements),
                     len(self.superelements),
@@ -614,18 +625,32 @@ class Isa7(object):
         # positions of all elements
         self.element_pos = np.array([e.center
                                      for e in self.elements])
-        
-        self.FC_RADIUS = reader.FC_RADIUS
-        self.POLPAAR_ZAHL = reader.POLPAAR_ZAHL
-        self.NO_POLES_SIM = reader.NO_POLES_SIM
-        self.ARM_LENGTH = reader.ARM_LENGTH*1e-3  # in m
+
+        for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim', 'MAGN_TEMPERATURE'):
+            v = getattr(reader, a, '')
+            if v:
+                setattr(self, a, v)
+        if getattr(reader, 'pole_pairs', 0):
+            self.num_poles = 2*self.pole_pairs
+        if getattr(reader, 'slots', 0):
+            self.num_slots = 2*reader.slots
+        try:
+            self.arm_length = reader.arm_length*1e-3  # in m
+        except:
+            pass
         self.pos_el_fe_induction = reader.pos_el_fe_induction
-        self.el_fe_induction_1 = np.asarray(
-            [e for e in reader.el_fe_induction_1 if e[0]]).T/1000
-        self.el_fe_induction_2 = np.asarray(
-            [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
-        self.eddy_cu_vpot = np.asarray(
-            [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
+        if len(np.asarray(reader.el_fe_induction_1).shape) > 2:
+            self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
+            self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000
+            self.eddy_cu_vpot = np.asarray(reader.eddy_cu_vpot).T/1000
+        else:
+            self.el_fe_induction_1 = np.asarray(
+                [e for e in reader.el_fe_induction_1 if e[0]]).T/1000
+            self.el_fe_induction_2 = np.asarray(
+                [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
+            self.eddy_cu_vpot = np.asarray(
+                [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
+        logger.info('El Fe Induction %s', np.asarray(reader.el_fe_induction_1).shape)
 
     def get_subregion(self, name):
         """return subregion by name"""
@@ -707,13 +732,14 @@ class NodeChain(BaseEntity):
 
 class Element(BaseEntity):
     def __init__(self, key, el_type,
-                 se_key, vertices, reluc, mag, loss_density):
+                 se_key, vertices, reluc, mag, loss_density, br_temp_coef=0):
         super(self.__class__, self).__init__(key)
         self.el_type = el_type
         self.se_key = se_key
         self.vertices = vertices
         self.reluc = reluc
         self.mag = mag
+        self.br_temp_coef = br_temp_coef
         self.loss_density = loss_density
         if el_type == 1:    # Linear triangle
             self.area = ((vertices[2].x - vertices[1].x) *
@@ -787,10 +813,11 @@ class Element(BaseEntity):
 
         return (0, 0)
 
-    def demagnetization(self):
+    def demagnetization(self, temperature=20):
         """return demagnetization of this element"""
         if abs(self.mag[0]) > 1e-5 or abs(self.mag[1]) > 1e-5:
-            magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)
+            br_temp_corr = 1. +  self.br_temp_coef*(temperature - 20.)
+            magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)*br_temp_corr
             alfa = np.arctan2(self.mag[1], self.mag[0])
             b1, b2 = self.induction()
             bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
@@ -805,9 +832,6 @@ class Element(BaseEntity):
         if self.reluc[0] < 1:
             return 1 / self.reluc[0]
         return 1
-
-    def loss_density(self):
-        return self.loss_density
 
     def iron_loss_density(self):
         """return loss_density if element in iron (eg. lamination region)"""
@@ -852,13 +876,14 @@ class SuperElement(BaseEntity):
 
 
 class SubRegion(BaseEntity):
-    def __init__(self, key, sr_type, color, name, curdir, wb_key,
+    def __init__(self, key, sr_type, color, name, nturns, curdir, wb_key,
                  superelements, nodechains):
         super(self.__class__, self).__init__(key)
         self.sr_type = sr_type
         self.color = color
         self.name = name
         self.curdir = curdir
+        self.num_turns = nturns,
         self.wb_key = wb_key
         self.winding = None
         self.superelements = superelements

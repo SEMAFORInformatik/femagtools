@@ -41,7 +41,8 @@ class Reader(object):
              grp.variables[k][:-1]
              for k in ('bnd_cnd', 'bnd_cnd', 'per_nod',
                        'co_1', 'co_2', 'co_rad', 'co_phi', 'vp_re', 'vp_im')]
-
+        logger.debug('Nodes: %d', len(self.NODE_ISA_NODE_REC_ND_CO_1))
+        
         grp = ds.groups['node_elements']
         (self.NODE_ELE_ISA_NOD_EL_KEY,
          self.NODE_ELE_ISA_NOD_NXT_EL_PNTR) = [
@@ -67,6 +68,7 @@ class Reader(object):
              grp.variables[k][:-1]
              for k in ('nod_pntr', 'type', 'se_key', 'reluc', 'reluc_2',
                        'mag_1', 'mag_2', 'loss_dens')]
+        logger.debug('Elements: %d', len(self.ELEM_ISA_ELEM_REC_EL_TYP))
              
         grp = ds.groups['element_nodes']
         (self.ELE_NOD_ISA_ND_KEY,
@@ -130,47 +132,68 @@ class Reader(object):
          self.SR_SE_ISA_NXT_SE_PNTR) = [
             grp.variables[k][:]
             for k in ('se_key', 'nxt_se_pntr')]
-
-        grp = ds.groups['windings']
-        (self.WB_ISA_WB_SR_PNTR,
-         self.WB_ISA_WB_REC_WB_COL,
-         names,
-         self.WB_ISA_WB_REC_WB_TURN,
-         self.WB_ISA_WB_REC_WB_SR_NUM,
-         self.WB_ISA_WB_REC_WB_WND_KEY,
-         self.WB_ISA_WB_REC_WB_GCUR_RE,
-         self.WB_ISA_WB_REC_WB_GCUR_IM,
-         self.WB_ISA_WB_REC_WB_VOLT_RE,
-         self.WB_ISA_WB_REC_WB_VOLT_IM,
-         self.WB_ISA_WB_REC_WB_IMPDZ_RE,
-         self.WB_ISA_WB_REC_WB_IMPDZ_IM) = [
-            grp.variables[k][:]
-            for k in ('sr_pntr', 'color', 'name', 'turn', 'sr_num',
-                      'wnd_key', 'gcur_re', 'gcur_im',
-                      'volt_re', 'volt_im', 'impdz_re', 'impdz_im')]
-        self.WB_ISA_WB_REC_WB_UNIT_RES = self.WB_ISA_WB_REC_WB_TURN
-        self.WB_ISA_WB_REC_WB_NAME = [''.join(str(n, encoding='utf-8'))
-                                      for n in names]
-        grp = ds.groups['winding_subregions']
-        (self.WB_SR_ISA_SR_KEY,
-         self.WB_SR_ISA_NXT_SR_PNTR) = [
-            grp.variables[k][:]
-            for k in ('sr_key', 'nxt_sr_pntr')]
-
-        self.FC_RADIUS = float(ds.variables['fc_radius'].getValue().data)
-        self.POLPAAR_ZAHL = int(ds.variables['pole_pairs'].getValue().data)
-        self.NO_POLES_SIM = int(ds.variables['poles_sim'].getValue().data)
-
-        grp = ds.groups['el_fe_induction']
-        (self.pos_el_fe_induction,
-            self.el_fe_induction_1,
-            self.el_fe_induction_2,
-            self.eddy_cu_vpot) = [grp.variables[k][:]
-                                  for k in ('position',
-                                            'induction_1',
-                                            'induction_2',
-                                            'eddy_cu_vpot')]
-
+        try:
+            grp = ds.groups['windings']
+            (self.WB_ISA_WB_SR_PNTR,
+             self.WB_ISA_WB_REC_WB_COL,
+             names,
+             self.WB_ISA_WB_REC_WB_TURN,
+             self.WB_ISA_WB_REC_WB_SR_NUM,
+             self.WB_ISA_WB_REC_WB_WND_KEY,
+             self.WB_ISA_WB_REC_WB_GCUR_RE,
+             self.WB_ISA_WB_REC_WB_GCUR_IM,
+             self.WB_ISA_WB_REC_WB_VOLT_RE,
+             self.WB_ISA_WB_REC_WB_VOLT_IM,
+             self.WB_ISA_WB_REC_WB_IMPDZ_RE,
+             self.WB_ISA_WB_REC_WB_IMPDZ_IM) = [
+                 grp.variables[k][:]
+                 for k in ('sr_pntr', 'color', 'name', 'turn', 'sr_num',
+                           'wnd_key', 'gcur_re', 'gcur_im',
+                           'volt_re', 'volt_im', 'impdz_re', 'impdz_im')]
+            self.WB_ISA_WB_REC_WB_UNIT_RES = self.WB_ISA_WB_REC_WB_TURN
+            self.WB_ISA_WB_REC_WB_NAME = [''.join(str(n, encoding='utf-8'))
+                                          for n in names]
+        except:
+            pass
+        try:
+            grp = ds.groups['winding_subregions']
+            (self.WB_SR_ISA_SR_KEY,
+             self.WB_SR_ISA_NXT_SR_PNTR) = [
+                 grp.variables[k][:]
+                 for k in ('sr_key', 'nxt_sr_pntr')]
+        except:
+            pass
+        try:
+            grp = ds.groups['machine']
+            self.FC_RADIUS = float(grp.variables['fc_radius'].getValue().data)
+            self.pole_pairs = int(grp.variables['pole_pairs'].getValue().data)
+            self.poles_sim = int(grp.variables['poles_sim'].getValue().data)
+            self.num_slots = int(grp.variables['num_slots'].getValue().data)
+            self.arm_length = int(grp.variables['arm_length'].getValue().data)
+        except:
+            pass
+        try:
+            grp = ds.groups['magnet']
+            self.MAGN_TEMPERATURE = float(grp.variables['temperature'].getValue().data)
+            self.BR_TEMP_COEF = float(grp.variables['br_temp_coef'].getValue().data)
+        except:
+            pass
+        try:
+            grp = ds.groups['el_induction']
+            (self.pos_el_fe_induction,
+             self.el_fe_induction_1,
+             self.el_fe_induction_2,
+             self.eddy_cu_vpot) = [grp.variables[k][:]
+                                   for k in ('position',
+                                             'fe_induction_1',
+                                             'fe_induction_2',
+                                             'eddy_cu_vpot')]
+            logger.debug('el_fe_induction %d', len(self.pos_el_fe_induction))
+        except KeyError:
+            self.pos_el_fe_induction = []
+            self.el_fe_induction_1 = []
+            self.el_fe_induction_2 = []
+            self.eddy_cu_vpot = []
 
 def read(filename):
     """
@@ -189,7 +212,7 @@ def read(filename):
 
 if __name__ == "__main__":
     import sys
-    logging.basicConfig(level=logging.INFO,
+    logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(message)s')
     if len(sys.argv) == 2:
         filename = sys.argv[1]

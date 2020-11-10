@@ -8,6 +8,7 @@
 import logging
 import numpy as np
 from femagtools import isa7
+from femagtools import nc
 from collections import defaultdict
 
 logger = logging.getLogger('femagtools.convert')
@@ -20,9 +21,11 @@ output_filetypes = [
 def _from_isa(isa, filename, target_format,
               extrude=0, layers=0, recombine=False):
 
-    if not isa.FC_RADIUS:
-        logger.warning("airgap radius is not set in source file")
-
+    try:
+        if not isa.FC_RADIUS:
+            logger.warning("airgap radius is not set in source file")
+    except AttributeError:
+        isa.FC_RADIUS=0
     airgap_center_elements = []
     for e in isa.elements:
         outside = [np.sqrt(v.x**2 + v.y**2) > isa.FC_RADIUS
@@ -61,11 +64,11 @@ def _from_isa(isa, filename, target_format,
                 airgap_lines.append((v1, v2))
 
     nodechain_links = defaultdict(list)
-    for nc in isa.nodechains:
-        nodechain_links[nc.node1].extend(nc.nodes)
-        nodechain_links[nc.node2].extend(nc.nodes)
-        if nc.nodemid is not None:
-            nodechain_links[nc.nodemid].extend(nc.nodes)
+    for n in isa.nodechains:
+        nodechain_links[n.node1].extend(n.nodes)
+        nodechain_links[n.node2].extend(n.nodes)
+        if n.nodemid is not None:
+            nodechain_links[n.nodemid].extend(n.nodes)
 
     physical_lines = ["v_potential_0",
                       "v_potential_const",
@@ -187,11 +190,15 @@ def _from_isa(isa, filename, target_format,
         elif len(ev) == 4:
             quads.append([n.key - 1 for n in ev])
             cell_type = "quad"
-            
+
+        try:
+            magtemp = isa.MAGN_TEMPERATURE
+        except AttributeError:
+            magtemp = 20
         physical_ids[cell_type].append(physical_surface(e))
         geometrical_ids[cell_type].append(e.se_key)
         b[cell_type].append(e.induction())
-        h[cell_type].append(e.demagnetization())
+        h[cell_type].append(e.demagnetization(magtemp))
         perm[cell_type].append(e.permeability())
         iron_losses[cell_type].append(e.iron_loss_density())
         mag_losses[cell_type].append(e.mag_loss_density())
@@ -257,19 +264,19 @@ def _from_isa(isa, filename, target_format,
     if target_format == "geo":
         import meshio
         geo = []
-        nc_nodes = set([n for nc in isa.nodechains for n in nc.nodes])
+        nc_nodes = set([n for c in isa.nodechains for n in c.nodes])
 
         for n in isa.nodes:
             if n in nc_nodes:
                 geo.append("Point({}) = {{{}, {}, {}}};".format(
                     n.key, n.x, n.y, 0))
 
-        for nc in isa.nodechains:
+        for c in isa.nodechains:
             geo.append("Line({}) = {{{}}};".format(
-                    nc.key, ", ".join([str(n.key) for n in nc.nodes])))
+                c.key, ", ".join([str(n.key) for n in c.nodes])))
         used = set()
-        for nc in isa.nodechains:
-            n1, n2 = nc.nodes[0], nc.nodes[1]
+        for c in isa.nodechains:
+            n1, n2 = c.nodes[0], c.nodes[1]
             if line_on_boundary(n1, n2):
                 id_ = physical_line(n1, n2)
                 name = physical_lines[id_ - 1]
@@ -277,7 +284,7 @@ def _from_isa(isa, filename, target_format,
                     geo.append(
                         "extrusion[] = Extrude {{0, 0, {}}} {{ Line{{{}}}; {}{}}};".format(
                             extrude,
-                            nc.key,
+                            c.key,
                             "Layers{{{}}}; ".format(layers) if layers else "",
                             "Recombine; " if recombine else ""))
 
@@ -290,13 +297,13 @@ def _from_isa(isa, filename, target_format,
                         name,
                         id_,
                         "+=" if name in used else "=",
-                        nc.key))
+                        c.key))
                 used.add(name)
 
         for se in isa.superelements:
             geo.append("Line Loop({}) = {{{}}};".format(
                 se.key,
-                ", ".join([str(nc.key) for nc in se.nodechains])))
+                ", ".join([str(c.key) for c in se.nodechains])))
             geo.append("Plane Surface({0}) = {{{0}}};".format(se.key))
         used = set()
         for se in isa.superelements:
@@ -489,8 +496,8 @@ def to_msh(source, filename, infile_type=None):
         else:
             file_ext = source.split(".")[-1].lower()
 
-        if file_ext in ["isa7", "i7"]:
-            isa = isa7.read(source)
+        if file_ext in ["isa7", "i7", "nc"]:
+            isa = nc.read(source) if file_ext == 'nc' else isa7.read(source)
             _from_isa(isa, filename, "msh")
         elif file_ext == "nas":
             _from_nastran(source, filename)
@@ -524,8 +531,8 @@ def to_geo(source, filename, extrude=0, layers=0,
         else:
             file_ext = source.split(".")[-1].lower()
         
-        if file_ext in ["isa7", "i7"]:
-            isa = isa7.read(source)
+        if file_ext in ["isa7", "i7", "nc"]:
+            isa = nc.read(source) if file_ext == 'nc' else isa7.read(source)
             _from_isa(isa, filename, "geo", extrude, layers, recombine)
         else:
             raise ValueError(
@@ -539,7 +546,7 @@ def to_vtu(source, filename, infile_type=None):
     Convert a femag model to vtu format.
 
     Arguments:
-        source: instance of isa7.Isa7 or name of an I7/ISA7 file
+        source: instance of isa7.Isa7 or name of an I7/ISA7 or nc file
         filename: name of converted file
         infile_type: format of source file
     """
@@ -552,8 +559,8 @@ def to_vtu(source, filename, infile_type=None):
         else:
             file_ext = source.split(".")[-1].lower()
 
-        if file_ext in ["isa7", "i7"]:
-            isa = isa7.read(source)
+        if file_ext in ["isa7", "i7", "nc"]:
+            isa = nc.read(source) if file_ext == 'nc' else isa7.read(source)
             _from_isa(isa, filename, "vtu")
         else:
             raise ValueError(

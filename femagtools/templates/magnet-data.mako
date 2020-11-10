@@ -6,10 +6,10 @@
  m.temcoefhc      =    ${model.get('temcoefhc', -0.001)*100}
  m.magntemp       =    ${model.get('magntemp', 20)}
  m.magncond       =    ${model.get('magncond', 625000.0)}
+ m.rlen           =    ${model.get('rlen', 1.0)*100}   
 %if model.get('mcvkey',0):
  m.mcvkey_magnet = '${model.get('mcvkey')}'
  m.orient     = ${model.get('orient', 'm.cartiso')}
- m.rlen       = ${model.get('rlen', 1.0)*100}   
 %else:
  m.magsegwid      =    ${model.get('magnwidth', 0.0)*1e3}
  m.magseglen     =    ${model.get('magnlength', 0.0)*1e3}

@@ -11,7 +11,7 @@
 import numpy as np
 import scipy.interpolate as ip
 import logging
-import logging.config
+
 try:
     import matplotlib
     import matplotlib.pyplot as pl
@@ -21,6 +21,7 @@ try:
 except ImportError:   # ModuleNotFoundError:
     matplotlibversion = 0
 
+logger = logging.getLogger("femagtools.plot")
 
 def _create_3d_axis():
     """creates a subplot with 3d projection if one does not already exist"""
@@ -177,6 +178,7 @@ def torque_fft(order, torque):
     ax = pl.gca()
     ax.set_title('Torque Harmonics / {}'.format(unit))
     ax.grid(True)
+
     try:
         bw = 2.5E-2*max(order)
         ax.bar(order, [scale*t for t in torque], width=bw, align='center')
@@ -304,6 +306,9 @@ def voltage_fft(title, order, voltage):
     ax = pl.gca()
     ax.set_title('{} / V'.format(title))
     ax.grid(True)
+    if max(order) < 5:
+        order += [5]
+        voltage += [0]
     try:
         bw = 2.5E-2*max(order)
         ax.bar(order, voltage, width=bw, align='center')
@@ -1056,6 +1061,51 @@ def mesh(isa, with_axis=False):
         ax.axis('off')
 
 
+def demag(isa):
+    """plot demag I7/ISA7 model
+    Args:
+      isa: Isa7/NC object
+    """
+    from matplotlib.patches import Polygon
+    from matplotlib.collections import PatchCollection
+    ax = pl.gca()
+    ax.set_aspect('equal')
+    ax.set_title('Demagnetization at {} °C'.format(isa.MAGN_TEMPERATURE), fontsize=18)
+    emag = [e for e in isa.elements if e.demagnetization(isa.MAGN_TEMPERATURE)]
+    patches = [Polygon([v.xy for v in e.vertices]) for e in emag]
+    demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
+    p = PatchCollection(patches) #, cmap=matplotlib.cm.jet, alpha=0.4)
+    p.set_array(demag)
+    ax.add_collection(p)
+    cb = pl.colorbar(p)
+    cb.set_label(label='-H / kA/m', fontsize=18)
+    ax.autoscale(enable=True)
+    ax.axis('off')
+    logger.info("Max demagnetization %f", np.max(demag))
+
+def loss_density(isa, subreg):
+    """plot demag I7/ISA7 model
+    Args:
+      isa: Isa7/NC object
+    """
+    from matplotlib.patches import Polygon
+    from matplotlib.collections import PatchCollection
+    ax = pl.gca()
+    ax.set_aspect('equal')
+    ax.set_title('Loss Density kW/m³', fontsize=18)
+    elements = [e for se in isa.get_subregion('StJo').elements() for e in se]
+    patches = [Polygon([v.xy for v in e.vertices]) for e in elements]
+    lossd = np.array([e.loss_density*1e-3 for e in elements])
+    p = PatchCollection(patches) #, cmap=matplotlib.cm.jet, alpha=0.4)
+    p.set_array(lossd)
+    ax.add_collection(p)
+    cb = pl.colorbar(p)
+    #cb.set_label(label='-H / kA/m', fontsize=18)
+    ax.autoscale(enable=True)
+    ax.axis('off')
+    #logger.info("Max demagnetization %f", np.max(demag))
+
+
 def main():
     import io
     import sys
@@ -1079,7 +1129,33 @@ def main():
         sys.exit(0)
     if not args.filename:
         sys.exit(0)
-    if args.filename.split('.')[-1].startswith('PLT'):
+
+    ext = args.filename.split('.')[-1].upper()
+    if ext.startswith('MC'):
+        import femagtools.mcv
+        mcv = femagtools.mcv.read(sys.argv[1])
+
+        if mcv['mc1_type'] in (femagtools.mcv.MAGCRV, femagtools.mcv.ORIENT_CRV):
+            ncols = 2
+        else:  # Permanent Magnet
+            ncols = 1
+
+        fig, ax = pl.subplots(nrows=1, ncols=ncols)
+        if ncols > 1:
+            pl.subplot(1, ncols, 1)
+            mcv_hbj(mcv)
+            pl.subplot(1, ncols, 2)
+            mcv_muer(mcv)
+        else:
+            pl.subplot(1, ncols, 1)
+            mcv_hbj(mcv, log=False)
+    
+        fig.tight_layout()
+        fig.subplots_adjust(top=0.94)
+        pl.show()
+        return
+    
+    if ext.startswith('PLT'):
         import femagtools.forcedens
         fdens = femagtools.forcedens.read(args.filename)
         cols = 1
@@ -1133,7 +1209,6 @@ def main():
 
 
 if __name__ == "__main__":
-    logger = logging.getLogger("femagtools.plot")
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
     main()

@@ -69,6 +69,16 @@ class PlotRenderer(object):
                                   theta2=endangle*180/np.pi,
                                   color=color))
 
+    def ellipse(self, center, width, height,
+                rtheta, start_param, end_param, color='blue'):
+        self.ax.add_patch(pch.Arc(center,
+                                  width,
+                                  height,
+                                  angle=rtheta*180/np.pi,
+                                  theta1=start_param*180/np.pi,
+                                  theta2=end_param*180/np.pi,
+                                  color=color))
+
     def line(self, p1, p2, color='blue', e=None):
         self.ax.add_line(pl.Line2D((p1[0], p2[0]),
                                    (p1[1], p2[1]), color=color))

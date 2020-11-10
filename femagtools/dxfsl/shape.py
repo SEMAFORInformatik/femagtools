@@ -115,7 +115,7 @@ class Shape(object):
         self.n2 = (round(factor*self.p2[0], ndec),
                    round(factor*self.p2[1], ndec))
 
-    def transform(self, T, ndec):
+    def transform(self, T, alpha, ndec):
         n = T.dot(np.array((self.p1[0], self.p1[1])))
         self.p1 = (n[0], n[1])
         n = T.dot(np.array((self.p2[0], self.p2[1])))
@@ -292,7 +292,7 @@ class Circle(Shape):
         else:
             return (0.0, 0.0)
 
-    def get_nodes(self, parts=8):
+    def get_nodes(self, parts=8, render=False):
         """ returns a list of virtual nodes to create the convex hull
         """
         return (p for p in points_on_arc(self.center, self.radius,
@@ -305,8 +305,8 @@ class Circle(Shape):
         self.center = factor*self.center[0], factor*self.center[1]
         self.radius = factor*self.radius
 
-    def transform(self, T, ndec):
-        super(Circle, self).transform(T, ndec)
+    def transform(self, T, alpha, ndec):
+        super(Circle, self).transform(T, alpha, ndec)
         n = T.dot(np.array((self.center[0], self.center[1])))
         self.center = (n[0], n[1])
         return self
@@ -549,15 +549,31 @@ class Arc(Circle):
         self.n1 = None
         self.n2 = None
 
+        if hasattr(e, 'rtheta'):
+            self.width = e.width
+            self.height = e.height
+            self.rtheta = e.rtheta
+            self.start_param = e.start_param
+            self.end_param = e.end_param
+        else:
+            self.rtheta = None
+
     def render(self, renderer, color='blue', with_nodes=False):
         tmp_color = color
         if hasattr(self, 'my_color'):
             if self.my_color is not None:
                 tmp_color = self.my_color
 
-        renderer.arc(self.startangle, self.endangle,
-                     self.center, self.radius,
-                     color=tmp_color)
+        if self.rtheta is None:
+            renderer.arc(self.startangle, self.endangle,
+                         self.center, self.radius,
+                         color=tmp_color)
+        else:
+            renderer.ellipse(self.center, self.width, self.height,
+                             self.rtheta,
+                             self.start_param,
+                             self.end_param,
+                             color=tmp_color)
         if with_nodes:
             renderer.point(self.p1, 'ro', color)
             renderer.point(self.p2, 'ro', color)
@@ -785,8 +801,8 @@ class Arc(Circle):
         """
         return is_angle_inside(self.startangle, self.endangle, alpha)
 
-    def transform(self, T, ndec):
-        super(Arc, self).transform(T, ndec)
+    def transform(self, T, alpha, ndec):
+        super(Arc, self).transform(T, alpha, ndec)
         p1, p2 = ((self.p1[0]-self.center[0],
                    self.p1[1]-self.center[1]),
                   (self.p2[0]-self.center[0],
@@ -794,6 +810,8 @@ class Arc(Circle):
 
         self.startangle = np.arctan2(p1[1], p1[0])
         self.endangle = np.arctan2(p2[1], p2[0])
+        if self.rtheta is not None:
+            self.rtheta = self.rtheta + alpha
         return self
 
     def minmax(self):
@@ -878,10 +896,26 @@ class Arc(Circle):
 
         return (alpha_min, alpha_max)
 
-    def get_nodes(self, parts=8):
+    def get_nodes(self, parts=8, render=False):
         """ Die Funktion liefert eine Liste von virtuellen Nodes, welche man
             zum Rechnen der convex_hull() benötigt.
         """
+        if render and self.rtheta is not None:
+            theta = np.arange(self.start_param,
+                              self.end_param,
+                              0.1)
+            x = 0.5 * self.width * np.cos(theta)
+            y = 0.5 * self.height * np.sin(theta)
+            R = np.array([
+                [np.cos(self.rtheta), -np.sin(self.rtheta)],
+                [np.sin(self.rtheta),  np.cos(self.rtheta)]])
+            x, y = np.dot(R, np.array([x, y]))
+            x += self.center[0]
+            y += self.center[1]
+            nodes = list(zip(x, y))
+            nodes.append(self.p2)
+            return nodes
+
         return (p for p in points_on_arc(self.center, self.radius,
                                          self.startangle,
                                          self.endangle,
@@ -1117,7 +1151,7 @@ class Line(Shape):
         else:
             return (alpha_p2, alpha_p1)
 
-    def get_nodes(self, parts=8):
+    def get_nodes(self, parts=8, render=False):
         """ Die Funktion liefert eine Liste von virtuellen Nodes, welche man
             zum Rechnen der convex_hull() benötigt.
         """

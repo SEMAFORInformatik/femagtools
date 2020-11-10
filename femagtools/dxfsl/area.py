@@ -8,6 +8,7 @@
   Authors: Ronald Tanner, beat Holm
 """
 from __future__ import print_function
+import sys
 import numpy as np
 import networkx as nx
 import logging
@@ -124,12 +125,14 @@ class Area(object):
         except Exception as e:
             return
 
-    def virtual_nodes(self):
+    def virtual_nodes(self, render=False):
         if len(self.area) < 2:
             return
 
-        prev_nodes = [n for n in self.area[0].get_nodes(parts=64)]
-        next_nodes = [n for n in self.area[1].get_nodes(parts=64)]
+        prev_nodes = [n for n in self.area[0].get_nodes(parts=64,
+                                                        render=render)]
+        next_nodes = [n for n in self.area[1].get_nodes(parts=64,
+                                                        render=render)]
         if points_are_close(prev_nodes[0], next_nodes[0], 1e-03, 1e-01):
             prev_nodes = prev_nodes[::-1]
         elif points_are_close(prev_nodes[0], next_nodes[-1], 1e-03, 1e-01):
@@ -146,7 +149,7 @@ class Area(object):
             yield n
 
         for e in self.area[2::]:
-            next_nodes = [n for n in e.get_nodes(parts=64)]
+            next_nodes = [n for n in e.get_nodes(parts=64, render=render)]
 
             if points_are_close(next_nodes[-1], last_point, 1e-03, 1e-01):
                 next_nodes = next_nodes[::-1]
@@ -154,22 +157,39 @@ class Area(object):
                 yield n
             last_point = next_nodes[-1]
 
+    def legend(self):
+        if self.type == 1:
+            return 'Iron'
+        if self.type == 2:
+            return 'Windings'
+        if self.type == 3 or self.type == 4:
+            return 'Magnet'
+        if self.type == 5:
+            return 'Yoke'
+        if self.type == 6:
+            return 'Tooth'
+        if self.type == 10:
+            return 'Shaft'
+        return ''
+
     def name(self):
         if self.type == 1:
             return 'Iron'
         if self.type == 2:
-            return 'windings'
+            return 'Wndg'
         if self.type == 3 or self.type == 4:
-            return 'magnet'
+            return 'Mag'
         if self.type == 5:
             return 'StJo'
         if self.type == 6:
             return 'StZa'
+        if self.type == 10:
+            return 'Shft'
         return ''
 
     def color(self):
         if self.type == 1:
-            return 'blue'
+            return 'cyan'
         if self.type == 2:
             return 'green'
         if self.type == 3 or self.type == 4:
@@ -177,8 +197,25 @@ class Area(object):
         if self.type == 5:
             return 'cyan'
         if self.type == 6:
-            return 'blue'
+            return 'skyblue'
+        if self.type == 10:
+            return 'lightgrey'
         return 'white'
+
+    def color_alpha(self):
+        if self.type == 1:
+            return 0.3
+        if self.type == 2:
+            return 1.0
+        if self.type == 3 or self.type == 4:
+            return 1.0
+        if self.type == 5:
+            return 0.5
+        if self.type == 6:
+            return 1.0
+        if self.type == 10:
+            return 0.8
+        return 1.0
 
     def is_iron(self):
         return self.type == 1 or self.type == 5 or self.type == 6
@@ -186,7 +223,7 @@ class Area(object):
     def is_stator_iron_yoke(self):
         return self.type == 5
 
-    def is_stator_iron_shaft(self):
+    def is_stator_iron_tooth(self):
         return self.type == 6
 
     def is_rotor_iron(self):
@@ -197,6 +234,9 @@ class Area(object):
 
     def is_magnet(self):
         return self.type == 3 or self.type == 4
+
+    def is_shaft(self):
+        return self.type == 10
 
     def is_air(self):
         return self.type == 0
@@ -514,6 +554,79 @@ class Area(object):
                 return True
         return False
 
+    def get_best_point_inside(self, geom):
+        mm = self.minmax()
+        px1 = mm[0]-5
+        px2 = mm[1]+5
+
+        y_dist = mm[3] - mm[2]
+        step = y_dist / 6
+        y_list = np.arange(mm[2] + step*0.3, mm[3] - step*0.3, step)
+
+        lines = []
+        for y in y_list:
+            p1 = (px1, y)
+            p2 = (px2, y)
+            line = Line(Element(start=p1, end=p2))
+            lines.append({'line': line,
+                          'pts': [],
+                          'y': y,
+                          'x': []})
+
+        for e in self.area:
+            points = []
+            for line in lines:
+                line['pts'] += e.intersect_line(line['line'],
+                                                geom.rtol,
+                                                geom.atol,
+                                                True)
+        for line in lines:
+            x_sorted = [p[0] for p in line['pts']]
+            x_sorted.sort()
+            if x_sorted:
+                line['start_x'] = x_sorted[0]
+                line['end_x'] = x_sorted[-1]
+
+        for e in geom.elements(Shape):
+            for line in lines:
+                if line.get('start_x', None) is None:
+                    continue
+                points = e.intersect_line(line['line'],
+                                          geom.rtol,
+                                          geom.atol,
+                                          True)
+
+                for p in points:
+                    if greater(p[0],
+                               line['start_x'],
+                               rtol=1e-8):
+                        if less(p[0],
+                                line['end_x'],
+                                rtol=1e-8):
+                            line['x'].append(p[0])
+
+        points = []
+        for line in lines:
+            if line.get('start_x', None) is None:
+                continue
+            line['x'].sort()
+            x1 = line['start_x']
+            x2 = line['end_x']
+            if line['x']:
+                x = line['x'][0]  # first point
+                line['x_dist'] = x - x1
+                points.append((line['x_dist'], (x1+x)/2, line['y']))
+
+                x = line['x'][-1]  # last point
+                line['x_dist'] = x2 - x
+                points.append((line['x_dist'], (x+x2)/2, line['y']))
+            else:
+                line['x_dist'] = x2 - x1  # no points between
+                points.append((line['x_dist'], (x1+x2)/2, line['y']))
+
+        points.sort()
+        return (points[-1][1], points[-1][2])
+
     def get_point_inside(self, geom):
         """return point inside area"""
         mm = self.minmax()
@@ -548,6 +661,8 @@ class Area(object):
 
         if len(all_points_sorted) == 0:
             p_inside = ((my_p1[0]+my_p2[0])/2, y)
+            if self.is_air():
+                return self.get_best_point_inside(geom)
             return p_inside
 
         all_points_sorted.sort()
@@ -559,6 +674,9 @@ class Area(object):
             p_inside = ((my_p1[0]+all_p1[0])/2, y)
         else:
             p_inside = ((my_p2[0]+all_p2[0])/2, y)
+
+        if self.is_air():
+            return self.get_best_point_inside(geom)
         return p_inside
 
     def render(self, renderer, color='black', with_nodes=False, fill=True):
@@ -570,23 +688,26 @@ class Area(object):
             e.render(renderer, color, with_nodes)
         return
 
-    def render_fill(self, renderer, alpha=1.0):
+    def render_fill(self, renderer):
         color = self.color()
         if not color:
             return False
+        alpha = self.color_alpha()
 
         if self.is_circle():
             e = self.area[0]
             renderer.fill_circle(e.center, e.radius, color, alpha)
         else:
-            nodes = [n for n in self.virtual_nodes()]
+            nodes = [n for n in self.virtual_nodes(render=True)]
             x = [n[0] for n in nodes]
             y = [n[1] for n in nodes]
             renderer.fill(x, y, color, alpha)
         return True
 
-    def render_legend(self, renderer, alpha=1.0):
-        return renderer.new_legend_handle(self.color(), alpha, self.name())
+    def render_legend(self, renderer):
+        return renderer.new_legend_handle(self.color(),
+                                          self.color_alpha(),
+                                          self.legend())
 
     def remove_edges(self, g, ndec):
         for e in self.area:
@@ -642,6 +763,29 @@ class Area(object):
                 arcs += 1
 
         return arcs > 0
+
+    def is_shaft_area(self, center):
+        logger.debug("Begin of check shaft")
+
+        if not self.is_touching_both_sides():
+            logger.debug("End of check shaft: don't touch both sides")
+            return False
+
+        for n in self.list_of_nodes():
+            a = alpha_line(center, n)
+            if np.isclose(self.min_angle, a):
+                continue
+            if np.isclose(self.max_angle, a):
+                continue
+            d = distance(center, n)
+            if np.isclose(d, self.min_dist, atol=0.05):
+                continue
+            if np.isclose(d, self.max_dist, atol=0.05):
+                continue
+            logger.debug("End of check shaft: no")
+            return False
+        logger.debug("End of check shaft: ok")
+        return True
 
     def is_rectangle(self):
         lines = [[c, e.m(99999.0), e.length()]
@@ -781,8 +925,15 @@ class Area(object):
         lines_lmcL = [[l, m, c, L] for c, l, a, m, L in lines_clamL]
         lines_lmcL.sort(reverse=True)
 
-        if not np.isclose(lines_lmcL[0][1], lines_lmcL[1][1], atol=0.001):
+        if not np.isclose(lines_lmcL[0][1], lines_lmcL[1][1], atol=0.05):
             # Die Steigungen der zwei längsten Linien müssen gleich sein
+            logger.debug("--- m %s <> %s ---",
+                         lines_lmcL[0][1],
+                         lines_lmcL[1][1])
+            logger.debug("--- l %s, %s, %s ---",
+                         lines_lmcL[0][0],
+                         lines_lmcL[1][0],
+                         lines_lmcL[2][0])
             logger.debug("=== END OF is_mag_rectangle(): NO RECTANGLE #2")
             return False
 
@@ -848,12 +999,18 @@ class Area(object):
                 l_total = l
                 m_prev = m
                 a_prev = a
+
+        if l_total > 0.0:
+            line_length.append((l_total, m_prev, a_prev))
         line_length.sort(reverse=True)
 
         alpha = line_length[0][2]
         if alpha < 0.0:
             alpha += np.pi
-        return alpha + np.pi/2
+        alpha = alpha + np.pi/2
+        if alpha > np.pi:
+            alpha = alpha - np.pi
+        return alpha
 
     def get_mag_orientation(self):
         if self.mag_rectangle:
@@ -926,6 +1083,14 @@ class Area(object):
         logger.debug(" - min_dist           : %3.12f", self.min_dist)
         logger.debug(" - max_dist           : %3.12f", self.max_dist)
         logger.debug(" - surface size       : %3.12f", self.surface)
+
+        if is_inner:
+            # looking for shaft
+            if close_to_opposition and not self.close_to_ag:
+                if self.is_shaft_area(center):
+                    self.type = 10  # shaft
+                    logger.debug("***** shaft (close to opposition)\n")
+                    return self.type
 
         if close_to_opposition:
             self.type = 5  # iron yoke (Joch)
@@ -1019,8 +1184,10 @@ class Area(object):
             opposite_radius = r_out
             airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
 
-        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
-        self.close_to_endangle = np.isclose(self.max_angle, alpha)
+        self.close_to_startangle = np.isclose(self.min_angle, 0.0,
+                                              1e-04, 1e-04)
+        self.close_to_endangle = np.isclose(self.max_angle, alpha,
+                                            1e-04, 1e-04)
 
         logger.debug("\n***** mark_rotor_subregions [{}] *****"
                      .format(self.id))
@@ -1035,6 +1202,14 @@ class Area(object):
         logger.debug(" - alpha              : %3.12f", alpha)
         logger.debug(" - min_angle          : %3.12f", self.min_angle)
         logger.debug(" - max_angle          : %3.12f", self.max_angle)
+
+        if is_inner:
+            # looking for shaft
+            if close_to_opposition and not self.close_to_ag:
+                if self.is_shaft_area(center):
+                    self.type = 10  # shaft
+                    logger.debug("***** shaft (close to opposition)\n")
+                    return self.type
 
         if close_to_opposition:
             self.type = 1  # iron

@@ -687,8 +687,8 @@ class Reader(Mcv):
                         self.losses['pfe'].append(res[:njind])
                         self.losses['f'].append(f)
                 (cw, alfa, beta, basefreq, baseind) = self.readBlock([float]*5)
-                self.losses['Bo'] = basefreq
-                self.losses['fo'] = baseind
+                self.losses['fo'] = basefreq
+                self.losses['Bo'] = baseind
                 self.losses['cw'] = cw
                 self.losses['cw_freq'] = alfa
                 self.losses['b_coeff'] = beta

@@ -438,6 +438,24 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 block = dwg.blocks[e.name]
                 for l in insert_block(e, lf, rf, block, min_dist=mindist):
                     yield l
+            elif e.dxftype == 'ELLIPSE':
+                w = np.linalg.norm(e.major_axis) * 2
+                h = e.ratio * w
+                rtheta = np.arctan2(e.major_axis[1], e.major_axis[0])
+                angle = rtheta*180/np.pi
+                start_angle = e.start_param*180/np.pi + angle
+                end_angle = e.end_param*180/np.pi + angle
+                arc = Arc(Element(center=e.center,
+                                  radius=w/2,
+                                  start_angle=start_angle,
+                                  end_angle=end_angle,
+                                  width=w,
+                                  height=h,
+                                  rtheta=rtheta,
+                                  start_param=e.start_param,
+                                  end_param=e.end_param))
+                yield arc
+
             elif e.dxftype == 'POINT':
                 logger.debug("Id %d4: type %s ignored", id, e.dxftype)
             else:
@@ -638,9 +656,9 @@ class Geometry(object):
         T = np.array(((np.cos(alpha), -np.sin(alpha)),
                       (np.sin(alpha), np.cos(alpha))))
         for e in self.g.edges(data=True):
-            e[2]['object'].transform(T, ndec)
+            e[2]['object'].transform(T, alpha, ndec)
         for c in self.circles():
-            c.transform(T, ndec)
+            c.transform(T, alpha, ndec)
         rotnodes = np.dot(T, np.asarray(self.g.nodes()).T).T.tolist()
         mapping = {n: (round(r[0], ndec),
                        round(r[1], ndec))
@@ -1566,12 +1584,23 @@ class Geometry(object):
 
                 if not (len(points) > 1 and
                         points_are_close(p1, p2, 1e-3, 1e-3)):
-                    new_elements.append(
-                        Arc(Element(center=e.center,
-                                    radius=e.radius,
-                                    start_angle=alpha_start*180/np.pi,
-                                    end_angle=alpha_end*180/np.pi)))
+                    if len(points) == 1 and e.rtheta is not None:
+                        a = Arc(Element(center=e.center,
+                                        radius=e.radius,
+                                        start_angle=alpha_start*180/np.pi,
+                                        end_angle=alpha_end*180/np.pi,
+                                        width=e.width,
+                                        height=e.height,
+                                        rtheta=e.rtheta,
+                                        start_param=e.start_param,
+                                        end_param=e.end_param))
+                    else:
+                        a = Arc(Element(center=e.center,
+                                        radius=e.radius,
+                                        start_angle=alpha_start*180/np.pi,
+                                        end_angle=alpha_end*180/np.pi))
 
+                    new_elements.append(a)
             alpha_start = alpha_end
             p1 = p2
         return new_elements
@@ -1984,27 +2013,31 @@ class Geometry(object):
         legend = {}
         for area in self.list_of_areas():
             if area.is_iron():
-                area.render_fill(renderer, 0.3)
+                area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 0.3)
+                    legend[area.name()] = area.render_legend(renderer)
+            if area.is_shaft():
+                area.render_fill(renderer)
+                if area.name() and area.name() not in legend:
+                    legend[area.name()] = area.render_legend(renderer)
 
         for area in self.list_of_areas():
             if area.is_air():
-                area.render_fill(renderer, 1.0)
+                area.render_fill(renderer)
 
         # magnet has no air inside
         for area in self.list_of_areas():
             if area.is_magnet():
                 area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 1.0)
+                    legend[area.name()] = area.render_legend(renderer)
 
         # winding has no air inside
         for area in self.list_of_areas():
             if area.is_winding():
                 area.render_fill(renderer)
                 if area.name() and area.name() not in legend:
-                    legend[area.name()] = area.render_legend(renderer, 1.0)
+                    legend[area.name()] = area.render_legend(renderer)
 
         if legend:
             return [h for (k, h) in legend.items()]
@@ -2620,6 +2653,17 @@ class Geometry(object):
             logger.info("%s tiny elements deleted", deleted)
         return
 
+    def check_shaft_area(self, shaft):
+        for a in self.list_of_areas():
+            if not shaft.is_identical(a):
+                if shaft.is_inside(a):
+                    shaft.type = 6  # iron shaft (Zahn)
+                    return
+                if shaft.is_touching(a):
+                    if not a.is_iron():
+                        shaft.type = 6  # iron shaft (Zahn)
+                        return
+
     def search_subregions(self):
         if self.is_stator():
             return self.search_stator_subregions()
@@ -2728,6 +2772,13 @@ class Geometry(object):
                         if dist_low > dist_up:
                             a.type = 6  # iron shaft (Zahn)
 
+        shaft_areas = [a for a in self.list_of_areas() if a.type == 10]
+        if shaft_areas:
+            if len(shaft_areas) > 1:
+                logger.warn("More than two shafts ?!?")
+                return
+            self.check_shaft_area(shaft_areas[0])
+
     def search_rotor_subregions(self, place=''):
         logger.debug("begin of search_rotor_subregions")
         is_inner = self.is_inner
@@ -2752,6 +2803,9 @@ class Geometry(object):
             else:
                 types[t] = 1
 
+        if 10 in types:
+            logger.debug("Shaft is available")
+
         if 4 in types:  # magnet rectangle
             if types[4] > 1:
                 logger.debug("%s embedded magnets in rotor", types[4])
@@ -2775,9 +2829,8 @@ class Geometry(object):
                         if not np.isclose(a.phi, max_phi):
                             a.set_type(0)  # air
 
-            for area in self.list_of_areas():
-                if area.type == 3:
-                    area.set_type(1)  # iron
+            # set iron
+            [a.set_type(1) for a in self.list_of_areas() if a.type == 3]
 
         iron_mag_areas = [a for a in self.list_of_areas() if a.type == 9]
         air_mag_areas = [a for a in self.list_of_areas() if a.type == 8]
@@ -2793,12 +2846,21 @@ class Geometry(object):
         [a.set_type(1) for a in iron_mag_areas]
         [a.set_type(0) for a in air_mag_areas]
 
+        if self.is_mirrored():
+            mid_alfa = round(self.alfa, 3)
+        else:
+            mid_alfa = round(self.alfa / 2, 4)
+
         mag_areas = [[round(a.phi, 3), a.id, a] for a in self.list_of_areas()
                      if a.type == 4]
         if len(mag_areas) > 2:
             mag_areas.sort()
             mag_phi = {}
             for phi, id, a in mag_areas:
+                # group around mid_alfa
+                if phi > mid_alfa - 0.33 and phi < mid_alfa + 0.33:
+                    phi = mid_alfa
+
                 x = mag_phi.get(phi, [0, []])
                 x[0] += 1
                 x[1].append(a)
@@ -2806,7 +2868,6 @@ class Geometry(object):
 
             phi_list = [[l[0], p, l[1]] for p, l in mag_phi.items()]
             phi_list.sort(reverse=True)
-
             if len(phi_list) > 1:
                 c0 = phi_list[0][0]
                 c1 = phi_list[1][0]
@@ -2814,8 +2875,15 @@ class Geometry(object):
                 if c0 == c1:
                     first = 2
                 for c, phi, a_lst in phi_list[first:]:
-                    for a in a_lst:
-                        a.set_type(0)
+                    [a.set_type(0) for a in a_lst]
+
+        shaft_areas = [a for a in self.list_of_areas() if a.type == 10]
+        if shaft_areas:
+            if len(shaft_areas) > 1:
+                logger.warn("More than two shafts ?!?")
+                return
+            self.check_shaft_area(shaft_areas[0])
+
         logger.debug("end of search_rotor_subregions")
 
     def search_unknown_subregions(self):

@@ -4,6 +4,12 @@ import os
 import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
+                    
+'''
+  Use only pre-defined models as examples.
+  Test if C:user\<windows-user>\femag exists.
+  DXF and FE-calculations have separate examples.
+'''
 
 models = ['statorBG-magnetSector',
           'stator1-magnetIron3',
@@ -14,9 +20,7 @@ models = ['statorBG-magnetSector',
           'stator1-spoke',
           'stator4-magnetSector',
           'statorRotor3-magnetIron',
-          'statorRotor3-ipm-fml',
-          'stator1-magnetSector-pm-sym-fast',
-          'dxf-ipm']
+          'statorRotor3-ipm-fml']
 
 logger = logging.getLogger("fslcreator")
 workdir = os.path.join(os.path.expanduser('~'), 'femag')

@@ -4,6 +4,10 @@ import os
 import matplotlib.pyplot as plt
 import logging
 
+'''
+  Example to perform a single filed calculation and then
+  plot the air gap flux density.
+'''
 
 def gcd(a, b):
     while b:
@@ -79,11 +83,15 @@ r = femag(machine,
 
 # read airgap flux density 
 Q = machine['stator']['num_slots']
-p = machine['poles']//2
-taup = 360/gcd(Q, p)
+p = machine['poles']
+
+'''
+  The function requires the file and the number of 
+  poles in the model.
+'''
 
 rag = femagtools.airgap.read(
-    os.path.join(workdir, 'bag.dat'), taup)
+    os.path.join(workdir, 'bag.dat'), 1)
 
 plt.plot(rag['pos'], rag['B'])
 plt.grid()

@@ -425,8 +425,8 @@ class Writer(Mcv):
                 self.writeBlock(0.0)
 
             self.writeBlock([self.losses['cw'], self.losses['cw_freq'],
-                             self.losses['b_coeff'], self.losses['Bo'],
-                             self.losses['fo']])
+                             self.losses['b_coeff'], self.losses['fo'],
+                             self.losses['Bo']])
             self.writeBlock([1])
             logger.info('Losses n freq %d n ind %d', nfreq, nind)
         except Exception as e:

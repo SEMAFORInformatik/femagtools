@@ -31,7 +31,7 @@ def read(filename, pmod):
     phi = np.linspace(0, 2*np.pi, N)
     nphi = int(round(360/((bag[0][-1] - bag[0][0])/(len(bag[0]) - 1)))) + 1
     ntiles = (nphi-1)//(len(bag[0]) - 1)
-    phitab = np.linspace(0, 2*np.pi, nphi)
+
     if pmod % 2:
         bx = np.append(
             np.concatenate(
@@ -43,6 +43,8 @@ def read(filename, pmod):
         bx = np.append(
             np.tile(bag[1][:-1], ntiles),
             bag[1][0])
+
+    phitab = np.linspace(0, 2 * np.pi, len(bx))
 
     br = np.interp(phi, phitab, bx)
     npoles = ntiles*pmod

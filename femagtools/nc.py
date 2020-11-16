@@ -27,7 +27,20 @@ class Reader(object):
         self.POINT_ISA_POINT_REC_PT_CO_Y = []
         self.LINE_ISA_LINE_REC_LN_PNT_1 = []
         self.LINE_ISA_LINE_REC_LN_PNT_2 = []
-        
+        try:
+            grp = ds.groups['points']
+            (self.POINT_ISA_POINT_REC_PT_CO_X,
+             self.POINT_ISA_POINT_REC_PT_CO_Y) = [
+                 grp.variables[k][:-1] for k in ('co_x', 'co_y')]
+        except KeyError:
+            pass
+        try:
+            grp = ds.groups['lines']
+            (self.LINE_ISA_LINE_REC_LN_PNT_1,
+             self.LINE_ISA_LINE_REC_LN_PNT_2) = [
+                 grp.variables[k][:-1] for k in ('pnt_1', 'pnt_2')]
+        except KeyError:
+            pass
         grp = ds.groups['nodes']
         (self.NODE_ISA_NOD_EL_PNTR,
          self.NODE_ISA_NODE_REC_ND_BND_CND,
@@ -172,6 +185,8 @@ class Reader(object):
             self.arm_length = int(grp.variables['arm_length'].getValue().data)
         except:
             pass
+        self.MAGN_TEMPERATURE = 20
+        self.BR_TEMP_COEF = 0
         try:
             grp = ds.groups['magnet']
             self.MAGN_TEMPERATURE = float(grp.variables['temperature'].getValue().data)

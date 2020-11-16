@@ -441,9 +441,12 @@ class Isa7(object):
         self.lines = []
         for pk1, pk2 in zip(reader.LINE_ISA_LINE_REC_LN_PNT_1,
                             reader.LINE_ISA_LINE_REC_LN_PNT_2):
-            point1 = self.points[abs(pk1) - 1]
-            point2 = self.points[abs(pk2) - 1]
-            self.lines.append(Line(point1, point2))
+            try:
+                point1 = self.points[abs(pk1) - 1]
+                point2 = self.points[abs(pk2) - 1]
+                self.lines.append(Line(point1, point2))
+            except IndexError:
+                pass
         logger.info("Nodes")
         self.nodes = [
                 Node(n + 1,

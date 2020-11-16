@@ -73,7 +73,7 @@ class Reader(object):
         grp = ds.groups['element_nodes']
         (self.ELE_NOD_ISA_ND_KEY,
          self.ELE_NOD_ISA_NXT_ND_PNTR) = [
-             grp.variables[k]
+             grp.variables[k][:]
              for k in ('nd_key', 'nxt_nd_pntr')]
                         
         grp = ds.groups['superelements']

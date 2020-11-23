@@ -80,7 +80,9 @@ class Reader(object):
                 elif l.startswith('f='):
                     fref = numPattern.findall(l.replace(',', '.'))
                     fxref = float(fref[0])
-                    b, p = readlist(content[i+2:])
+                    
+                elif l.startswith('B(T)	P(W/kg)') or l.startswith('B[T]	P[W/kg]'):
+                    b, p = readlist(content[i+1:])
                     self.losses['f'].append(fxref)
                     self.losses['B'].append(b)
                     pfe.append(p)

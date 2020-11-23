@@ -35,6 +35,9 @@ DEMCRV = 2
 ORIENT_CRV = 3
 DEMCRV_BR = 4
 ORIENT_PM_CRV = 5
+PUNCH_CRV = 6
+TENSION_CRV = 7
+TEMP_CRV = 8
 MAG_AC_CRV = -1
 
 logger = logging.getLogger(__name__)

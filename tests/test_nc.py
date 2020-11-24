@@ -10,8 +10,8 @@ def model():
 
 
 def test_read(model):
-    assert len(model.points) == 38
-    assert len(model.lines) == 37  # TODO expected 39
+    assert len(model.points) == 39
+    assert len(model.lines) == 39 
     assert model.points[0].x == pytest.approx(0.008339,
                                             abs=1e-5)
     
@@ -63,8 +63,8 @@ def test_nodechains(model):
 
 
 def test_nodechains_reverse(model):
-    for nc in model.nodechains:
-        assert nc.reverse().nodes == nc.nodes[::-1]
+    for ndc in model.nodechains:
+        assert ndc.reverse().nodes == ndc.nodes[::-1]
 
 
 def test_elements(model):
@@ -83,9 +83,9 @@ def test_superelements(model):
     assert type(se) == isa7.SuperElement
     for el in se.elements:
         assert type(el) == isa7.Element
-    for nc in se.nodechains:
-        assert type(nc) == isa7.NodeChain
-        assert nc.key == se.nc_keys[se.nodechains.index(nc)]
+    for ndc in se.nodechains:
+        assert type(ndc) == isa7.NodeChain
+        assert ndc.key == se.nc_keys[se.nodechains.index(ndc)]
 
         
 @pytest.fixture
@@ -101,8 +101,8 @@ def test_subregions(disp_stat):
     assert sr.name == "Stat"
     for se in sr.superelements:
         assert type(se) == isa7.SuperElement
-    for nc in sr.nodechains:
-        assert type(nc) == isa7.NodeChain
+    for ndc in sr.nodechains:
+        assert type(ndc) == isa7.NodeChain
 
 
 def test_windings(disp_stat):

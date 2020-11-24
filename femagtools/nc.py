@@ -31,14 +31,14 @@ class Reader(object):
             grp = ds.groups['points']
             (self.POINT_ISA_POINT_REC_PT_CO_X,
              self.POINT_ISA_POINT_REC_PT_CO_Y) = [
-                 grp.variables[k][:-1] for k in ('co_x', 'co_y')]
+                 grp.variables[k][:] for k in ('co_x', 'co_y')]
         except KeyError:
             pass
         try:
             grp = ds.groups['lines']
             (self.LINE_ISA_LINE_REC_LN_PNT_1,
              self.LINE_ISA_LINE_REC_LN_PNT_2) = [
-                 grp.variables[k][:-1] for k in ('pnt_1', 'pnt_2')]
+                 grp.variables[k][:] for k in ('pnt_1', 'pnt_2')]
         except KeyError:
             pass
         grp = ds.groups['nodes']
@@ -86,7 +86,7 @@ class Reader(object):
         grp = ds.groups['element_nodes']
         (self.ELE_NOD_ISA_ND_KEY,
          self.ELE_NOD_ISA_NXT_ND_PNTR) = [
-             grp.variables[k][:]
+             grp.variables[k][:-1]
              for k in ('nd_key', 'nxt_nd_pntr')]
                         
         grp = ds.groups['superelements']

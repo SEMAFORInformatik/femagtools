@@ -434,19 +434,13 @@ class Isa7(object):
              16: [0.8274509803921568, 0.8274509803921568, 0.8274509803921568]}
 
     def __init__(self, reader):
-        self.points = [
-            Point(x, y) for x, y in zip(reader.POINT_ISA_POINT_REC_PT_CO_X,
-                                        reader.POINT_ISA_POINT_REC_PT_CO_Y)]
+        self.points = [Point(x, y)
+                       for x, y in zip(reader.POINT_ISA_POINT_REC_PT_CO_X,
+                                       reader.POINT_ISA_POINT_REC_PT_CO_Y)]
 
-        self.lines = []
-        for pk1, pk2 in zip(reader.LINE_ISA_LINE_REC_LN_PNT_1,
-                            reader.LINE_ISA_LINE_REC_LN_PNT_2):
-            try:
-                point1 = self.points[abs(pk1) - 1]
-                point2 = self.points[abs(pk2) - 1]
-                self.lines.append(Line(point1, point2))
-            except IndexError:
-                pass
+        self.lines = [Line(self.points[abs(pk1) - 1], self.points[abs(pk2) - 1])
+                      for pk1, pk2 in zip(reader.LINE_ISA_LINE_REC_LN_PNT_1,
+                                          reader.LINE_ISA_LINE_REC_LN_PNT_2)]
         logger.info("Nodes")
         self.nodes = [
                 Node(n + 1,

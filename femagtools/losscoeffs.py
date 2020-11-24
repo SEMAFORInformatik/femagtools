@@ -20,14 +20,20 @@ def pfe_steinmetz(f, B, cw, fw, fb, fo, Bo):
     return cw*(f/fo)**fw * (B/Bo)**fb
 
 
-def fitsteinmetz(f, B, losses, Bo, fo):
+def fitsteinmetz(f, B, losses, Bo, fo, alpha0=1.0):
     """fit coeffs of
     losses(f,B)=cw*(f/fo)**alfa*(B/Bo)**beta
     returns (cw, alfa, beta)
     """
     if np.isscalar(f):
-        fbx = [[f]*len(pfe), B]
+        fbx = [[f]*len(losses), B]
         y = losses
+        fitp, cov = so.curve_fit(
+            lambda x, cw, beta: pfe_steinmetz(
+                x[0], x[1], cw, alpha0, beta, fo, Bo),
+            fbx, y, (1.0, 2.0))
+        fitp = np.insert(fitp, 1, alpha0)
+        
     else:
         pfe = np.asarray(losses).T
         z = []
@@ -44,10 +50,10 @@ def fitsteinmetz(f, B, losses, Bo, fo):
         fbx = np.array(z).T[0:2]
         y = np.array(z).T[2]
 
-    fitp, cov = so.curve_fit(
-        lambda x, cw, alpha, beta: pfe_steinmetz(
-            x[0], x[1], cw, alpha, beta, fo, Bo),
-        fbx, y, (1.0, 1.0, 2.0))
+        fitp, cov = so.curve_fit(
+            lambda x, cw, alpha, beta: pfe_steinmetz(
+                x[0], x[1], cw, alpha, beta, fo, Bo),
+            fbx, y, (1.0, 1.0, 2.0))
     return fitp
 
 

@@ -64,7 +64,10 @@ class Reader(object):
             content = [l.strip() for l in f.readlines()]
             for i, l in enumerate(content):
                 if l.startswith('H(A/m)	B(T)') or l.startswith('H[A/m]	B[T]'):
-                    h, b, j = readlist(content[i+1:])
+                    if 'J(T)' in l:
+                        h, b, j = readlist(content[i+1:])
+                    else:
+                        h, b = readlist(content[i+1:])
                     self.curve[0]['hi'] = h
                     self.curve[0]['bi'] = b
                     

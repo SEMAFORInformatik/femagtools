@@ -71,6 +71,9 @@ class Reader(object):
                     self.curve[0]['hi'] = h
                     self.curve[0]['bi'] = b
                     
+                elif l.startswith('Material Name'):
+                    self.name = l.split(':')[1].strip()
+
                 elif l.startswith('Comment'):
                     self.mc1_title = l.split(':')[1].strip()
                         

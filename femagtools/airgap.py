@@ -14,59 +14,61 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def read(filename, pmod):
+def read(filename, pmod=0):
     """read dat file with columns (phi, Br, Bphi)
     returns samples, values, amplitude and phase of base harmonic
 
     Args:
       filename: the name of the file to be processed
-      pmod: number of poles in model
+      pmod: number of poles in model (ignored if 0)
     """
     bag = np.loadtxt(filename).T
     if len(bag) < 3:
         logger.warn("%s has incomplete content", filename)
         return(dict())
+    
+    model_angle = bag[0][-1] - bag[0][0]
+    ntiles = int(np.ceil(360/model_angle))-1
 
-    N = 2**10  # The DFT is most efficient when N is a power of 2
-    phi = np.linspace(0, 2*np.pi, N)
-    nphi = int(round(360/((bag[0][-1] - bag[0][0])/(len(bag[0]) - 1)))) + 1
-    ntiles = (nphi-1)//(len(bag[0]) - 1)
+    if pmod:
+        negative_periodic = pmod % 2
+    else:
+        negative_periodic = np.sum(bag[1])/np.max(bag[1]) > 1
 
-    if pmod % 2:
+    if negative_periodic:
         bx = np.append(
             np.concatenate(
                 [n*bag[1][:-1]
                  for n in [m % 2 or -1
-                           for m in range(1, ntiles+1)]]),
+                           for m in range(1, ntiles)]]),
             bag[1][0])
     else:
         bx = np.append(
             np.tile(bag[1][:-1], ntiles),
             bag[1][0])
 
-    phitab = np.linspace(0, 2 * np.pi, len(bx))
-
-    br = np.interp(phi, phitab, bx)
-    npoles = ntiles*pmod
-
+    N = len(bx)
+    
     # compute DFT from induction
-    Y = np.fft.fft(br)
-    freq = np.fft.fftfreq(N, d=phi[1]-phi[0])
+    Y = np.fft.fft(bx)
     
     # find the peak (amplitude of base harmonic)
     i = np.argmax(np.abs(Y[:N//2]))
     a = 2*np.abs(Y[i])/N
+    freq = np.fft.fftfreq(N, d=bag[0][1]-bag[0][0])
     T0 = np.abs(1/freq[i])
+    npoles = 2*int(np.ceil(360/T0))
     logger.info("%s: %s poles B amp %f ",
                 filename, npoles, a)
 
     alfa0 = np.angle(Y[i])
-    alfa = bag[0]/180*np.pi
 
-    return dict(Bamp=a,
+    return dict(Bamp=a, npoles=npoles,
                 phi0=alfa0,
                 pos=bag[0].tolist(),
                 B=bag[1].tolist(),
                 nue=np.arange(0, 9*npoles).tolist(),
                 B_nue=(2*np.abs(Y[:9*npoles])/N).tolist(),
-                B_fft=(a*np.cos(2*np.pi*alfa/T0+alfa0)).tolist())
+                B_fft=(a*np.cos(2*np.pi*bag[0]/T0+alfa0)).tolist(),
+                Bi=bx.tolist(),
+                phi=np.linspace(bag[0][0], 360+bag[0][0], len(bx)).tolist())

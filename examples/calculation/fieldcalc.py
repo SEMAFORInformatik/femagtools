@@ -1,14 +1,9 @@
 import femagtools
 import femagtools.airgap
+import femagtools.plot
 import os
 import matplotlib.pyplot as plt
 import logging
-
-
-def gcd(a, b):
-    while b:
-        a, b = b, a % b
-    return a
 
 
 machine = dict(
@@ -77,14 +72,13 @@ simulation = dict(
 r = femag(machine,
           simulation)
 
-# read airgap flux density 
-Q = machine['stator']['num_slots']
-p = machine['poles']//2
-taup = 360/gcd(Q, p)
-
 rag = femagtools.airgap.read(
-    os.path.join(workdir, 'bag.dat'), taup)
+    os.path.join(workdir, 'bag.dat'))
 
-plt.plot(rag['pos'], rag['B'])
-plt.grid()
+fig, ax = plt.subplots(nrows=2, ncols=1)
+plt.subplot(2,1,1)
+femagtools.plot.airgap(rag)
+plt.subplot(2,1,2)
+femagtools.plot.airgap_fft(rag)
+fig.tight_layout(h_pad=3.5)
 plt.show()

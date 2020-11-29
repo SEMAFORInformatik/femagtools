@@ -145,7 +145,23 @@ def airgap(airgap):
         
     pl.grid()
 
-    
+
+def airgap_fft(airgap):
+    """plot airgap harmonics"""
+    unit = 'T'
+    ax = pl.gca()
+    ax.set_title('Airgap Fluxdensity Harmonics / {}'.format(unit))
+    ax.grid(True)
+    order = airgap['nue']
+    fluxdens = airgap['B_nue']
+    try:
+        bw = 2.5E-2*max(order)
+        ax.bar(order, fluxdens, width=bw, align='center')
+        ax.set_xlim(left=-bw/2)
+    except ValueError:  # empty sequence
+        pass
+
+
 def torque(pos, torque):
     """creates plot from torque vs position"""
     k = 20

@@ -59,6 +59,10 @@ if __name__ == '__main__':
     modelname = os.path.split(__file__)[-1].split('.')[0]
     logger = logging.getLogger(modelname)
     workdir = os.path.join(os.path.expanduser('~'), 'femag')
+    try:
+        os.mkdir(workdir)
+    except FileExistsError:
+        pass
 
     with open(os.path.join(workdir, modelname+'.fsl'), 'w') as f:
         f.write('\n'.join(create_fsl()))

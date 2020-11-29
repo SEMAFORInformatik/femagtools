@@ -8,13 +8,6 @@ import logging
   Example to perform a single filed calculation and then
   plot the air gap flux density.
 '''
-
-def gcd(a, b):
-    while b:
-        a, b = b, a % b
-    return a
-
-
 machine = dict(
     name="PM 130 L4",
     lfe=0.1,

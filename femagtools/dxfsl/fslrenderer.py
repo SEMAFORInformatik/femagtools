@@ -275,8 +275,8 @@ class FslRenderer(object):
         self.content.append(u'\n'.join(txt))
 
         txt = [u"if x0_iron_tooth > 0.0 then",
-               u"  if mcvkey_tooth ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, "blue", mcvkey_tooth, 100)',
+               u"  if (mcvkey_teeth ~= 'dummy' and mcvkey_teeth ~= nil) then",
+               u'    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, "blue", mcvkey_teeth, 100)',
                u'  else',
                u'    def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)',
                u'  end',
@@ -482,12 +482,12 @@ class FslRenderer(object):
             u'm.airgap         = 2*ag/3',
             u'm.nodedist       = 1.0',
             u'agndst           = {}'.format(params.get('agndst', 0.1)),
-            u"mcvkey_tooth = 'dummy'",
+            u"mcvkey_teeth = 'dummy'",
             u"mcvkey_yoke = 'dummy'",
             u"mcvkey_shaft = 'dummy'",
             u"ur = 1000.0",
             u"ndt(agndst)"] + outer + [
-                u"mcvkey_tooth = 'dummy'",
+                u"mcvkey_teeth = 'dummy'",
                 u"mcvkey_yoke = 'dummy'",
                 u"mcvkey_shaft = 'dummy'",
                 u"ndt(agndst)"] + inner + [

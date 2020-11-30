@@ -11,15 +11,15 @@ models = ['statorBG-magnetSector',
           'stator1-magnetIron5',
           'stator1-magnetIronV',
           'stator2-magnetSector',
-          'stator1-spoke',
           'stator4-magnetSector',
-          'statorRotor3-magnetIron',
-          'statorRotor3-ipm-fml',
-          'stator1-magnetSector-pm-sym-fast',
-          'dxf-ipm']
+          'statorRotor3-magnetIron' ]
 
 logger = logging.getLogger("fslcreator")
 workdir = os.path.join(os.path.expanduser('~'), 'femag')
+try:
+    os.mkdir(workdir)
+except FileExistsError:
+    pass
 logger.info("Femagtools Version %s Working Dir %s",
             femagtools.__version__, workdir)
 for m in models:

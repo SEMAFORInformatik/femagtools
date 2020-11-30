@@ -422,7 +422,7 @@ class Builder:
     def create_analysis(self, model):
         airgap_induc = (self.create_airgap_induc()
                         if model.get('airgap_induc', 0) else [])
-
+        felosses = self.create_fe_losses(model)
         fslcalc = (self.__render(model, model.get('calculationMode')) +
                    airgap_induc)
 
@@ -431,9 +431,9 @@ class Builder:
                                             'pm_sym_loss',
                                             'torq_calc',
                                             'psd_psq_fast'):
-            return fslcalc
+            return felosses + fslcalc
 
-        return (fslcalc +
+        return (felosses + fslcalc +
                 self.__render(model, 'plots'))
 
     def create_shortcircuit(self, model):

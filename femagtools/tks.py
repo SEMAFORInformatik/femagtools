@@ -38,7 +38,7 @@ def readlist(section):
 
 class Reader(object):
 
-    def __init__(self, filename):
+    def __init__(self, filename, filecontent=None):
         self.version_mc_curve = 0
         self.mc1_type = femagtools.mcv.MAGCRV
 
@@ -60,8 +60,14 @@ class Reader(object):
         self.losses = dict(f=[], B=[])
         pfe = []
 
-        with codecs.open(filename, encoding='utf-8', errors='ignore') as f:
-            content = [l.strip() for l in f.readlines()]
+        # filecontent is used
+        if filecontent:
+            content = [l.strip() for l in filecontent.split('\n')]
+        else:
+            # only filename
+            with codecs.open(filename, encoding='utf-8', errors='ignore') as f:
+                content = [l.strip() for l in f.readlines()]
+        if content:
             for i, l in enumerate(content):
                 if l.startswith('H(A/m)	B(T)') or l.startswith('H[A/m]	B[T]'):
                     if 'J(T)' in l:
@@ -168,9 +174,9 @@ class Reader(object):
             'losses': self.losses}
 
 
-def read(filename):
+def read(filename, filecontent=None):
     """read Thyssen File TKS and return mc dict"""
-    tks = Reader(filename)
+    tks = Reader(filename, filecontent=filecontent)
     return tks.getValues()
 
 

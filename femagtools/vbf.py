@@ -19,18 +19,25 @@ Bo = 1.5
 
 class Reader(object):
 
-    def __init__(self, filename):
+    def __init__(self, filename, filecontent=None):
         self.losses = {}
-        with open(filename) as f:
-            self.losses['name'] = f.readline().strip()
+        # filecontent is used
+        if filecontent:
+            content = [l.strip() for l in filecontent.split('\n')]
+        else:
+            # only filename
+            with open(filename) as f:
+                content = [l.strip() for l in f.readlines()]
+
+        if content:
+            self.losses['name'] = content[0]
             self.losses['fo'], self.losses['Bo'] = [float(s)
-                                                    for s in f.readline().strip().split()]
+                                                    for s in content[1].split()]
             # Ignore the next line
-            f.readline()
-            self.losses['f'] = [float(s) for s in f.readline().strip().split()]
+            self.losses['f'] = [float(s) for s in content[3].split()]
             self.losses['B'] = []
             self.losses['pfe'] = []
-            for l in f.readlines():
+            for l in content[4:]:
                 values = [float(s) for s in l.strip().split()]
                 if len(values) > 1:
                     self.losses['B'].append(values[0])
@@ -46,9 +53,9 @@ class Reader(object):
         return self.losses
 
 
-def read(filename):
+def read(filename, filecontent=None):
     """read VBF file and return dict of content"""
-    vbf = Reader(filename)
+    vbf = Reader(filename, filecontent=filecontent)
     return vbf.getLossValues()
     
 

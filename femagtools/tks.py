@@ -70,12 +70,9 @@ class Reader(object):
         if content:
             for i, l in enumerate(content):
                 if l.startswith('H(A/m)	B(T)') or l.startswith('H[A/m]	B[T]'):
-                    if 'J(T)' in l:
-                        h, b, j = readlist(content[i+1:])
-                    else:
-                        h, b = readlist(content[i+1:])
-                    self.curve[0]['hi'] = h
-                    self.curve[0]['bi'] = b
+                    hbj = readlist(content[i+1:])
+                    self.curve[0]['hi'] = hbj[0]
+                    self.curve[0]['bi'] = hbj[1]
                     
                 elif l.startswith('Material Name'):
                     self.name = l.split(':')[1].strip()

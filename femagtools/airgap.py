@@ -28,7 +28,7 @@ def read(filename, pmod=0):
         return(dict())
     
     model_angle = bag[0][-1] - bag[0][0]
-    ntiles = int(np.ceil(360/model_angle))-1
+    ntiles = int(np.ceil(360/model_angle))
 
     if pmod:
         negative_periodic = pmod % 2
@@ -40,7 +40,7 @@ def read(filename, pmod=0):
             np.concatenate(
                 [n*bag[1][:-1]
                  for n in [m % 2 or -1
-                           for m in range(1, ntiles)]]),
+                           for m in range(1, ntiles+1)]]),
             bag[1][0])
     else:
         bx = np.append(
@@ -48,7 +48,6 @@ def read(filename, pmod=0):
             bag[1][0])
 
     N = len(bx)
-    
     # compute DFT from induction
     Y = np.fft.fft(bx)
     
@@ -62,7 +61,6 @@ def read(filename, pmod=0):
                 filename, npoles, a)
 
     alfa0 = np.angle(Y[i])
-
     return dict(Bamp=a, npoles=npoles,
                 phi0=alfa0,
                 pos=bag[0].tolist(),

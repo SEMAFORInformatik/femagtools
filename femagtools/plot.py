@@ -146,18 +146,18 @@ def airgap(airgap):
     pl.grid()
 
 
-def airgap_fft(airgap):
+def airgap_fft(airgap, bmin=1e-2):
     """plot airgap harmonics"""
     unit = 'T'
     ax = pl.gca()
-    ax.set_title('Airgap Fluxdensity Harmonics / {}'.format(unit))
+    ax.set_title('Airgap Flux Density Harmonics / {}'.format(unit))
     ax.grid(True)
-    order = airgap['nue']
-    fluxdens = airgap['B_nue']
+    order, fluxdens = np.array([(n, b) for n, b in zip(airgap['nue'],
+                                                     airgap['B_nue']) if b>bmin]).T
     try:
-        bw = 2.5E-2*max(order)
-        ax.bar(order, fluxdens, width=bw, align='center')
-        ax.set_xlim(left=-bw/2)
+        markerline1, stemlines1, _ = ax.stem(order, fluxdens, '-.', basefmt=" ",
+                                             use_line_collection=True)
+        ax.set_xticks(order)
     except ValueError:  # empty sequence
         pass
 

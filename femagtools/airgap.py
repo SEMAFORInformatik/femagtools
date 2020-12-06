@@ -28,12 +28,12 @@ def read(filename, pmod=0):
         return(dict())
     
     model_angle = bag[0][-1] - bag[0][0]
-    ntiles = int(np.ceil(360/model_angle))
+    ntiles = int(round(360/model_angle))
 
     if pmod:
         negative_periodic = pmod % 2
     else:
-        negative_periodic = np.sum(bag[1])/np.max(bag[1]) > 1
+        negative_periodic = np.abs(np.sum(bag[1])/np.max(bag[1])) > 1
 
     if negative_periodic:
         bx = np.append(

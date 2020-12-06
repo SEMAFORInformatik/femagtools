@@ -126,7 +126,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.torque), 1)
         self.assertTrue('torque' in bch.torque[0])
         self.assertAlmostEqual(np.mean(bch.torque[0]['torque']), 5.656, 2)
-        self.assertAlmostEqual(bch.dqPar['u1'][1], 261.0, 1)
+        self.assertAlmostEqual(bch.dqPar['u1'][1], 274.5, 1)
         self.assertAlmostEqual(bch.dqPar['torque'][0], 5.775, 1)
         
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['freq'],

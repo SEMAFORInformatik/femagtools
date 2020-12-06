@@ -1129,7 +1129,7 @@ class Reader:
                                                               'plfe2')])]
         
     def __read_dq_parameter(self, content):
-        if content[1].find('Windings') > -1:
+        if content[1].find('Windings') > -1: # this is the first section
             
             for l in content[1:]:
                 for v in [['Windings Current', 'i1'],
@@ -1194,11 +1194,12 @@ class Reader:
                                       self.dqPar['i1'][-1]]
             except KeyError:
                 pass
-            return
-        
+            return  # end of first section
+
+        # second DQ-Parameter section
         for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'up',
-                  'psid', 'psiq', 'torque', 'torquefe',
-                  'p2', 'u1', 'gamma', 'phi'):
+                  'psid', 'psiq', 'torque', 'torque_fe', 'torque_sim',
+                  'p2', 'u1_fe', 'u1_sim', 'gamma', 'phi'):
             self.dqPar[k] = []
         lfe = 1e3*self.dqPar['lfe']
 
@@ -1214,8 +1215,10 @@ class Reader:
                     if self.dqPar[k]:
                         self.dqPar[k][-1] = lfe * self.dqPar[k][-1]
             elif len(rec) == 7:
-                self.dqPar['torquefe'].append(floatnan(rec[2]))
-                self.dqPar['u1'].append(floatnan(rec[4]))
+                self.dqPar['torque_fe'].append(floatnan(rec[2]))
+                self.dqPar['torque_sim'].append(floatnan(rec[3]))
+                self.dqPar['u1_fe'].append(floatnan(rec[4]))
+                self.dqPar['u1_sim'].append(floatnan(rec[5]))
                 self.dqPar['gamma'].append(floatnan(rec[6]))
                 self.dqPar['phi'].append(floatnan(rec[1]) +
                                          self.dqPar['gamma'][-1])
@@ -1234,10 +1237,26 @@ class Reader:
             self.dqPar.pop('up', None)
         else:
             self.dqPar.pop('psim', None)
-        self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
-                                for phi in self.dqPar['phi']]
-        self.dqPar['i1'].insert(0, 0)
-        self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
+        try:
+            w1 = np.pi*self.dqPar['speed']*self.dqPar['npoles']
+            r1 = self.machine.get('r1', 0.0)
+            beta = np.array(self.dqPar['beta'])/180*np.pi
+            iq = np.cos(beta)*self.dqPar['i1']
+            id = np.sin(beta)*self.dqPar['i1']
+            up = w1*np.array(self.dqPar['psim'])
+            ld = np.array(self.dqPar['ld'])
+            lq = np.array(self.dqPar['lq'])
+            uq = r1*iq + up + id*w1*ld
+            ud = r1*id - iq*w1*lq
+            self.dqPar['u1'] = np.sqrt(uq**2 + ud**2).tolist()
+            self.dqPar['gamma'] = (-np.arctan2(ud, uq)*180/np.pi).tolist()
+            self.dqPar['phi'] = (beta/np.pi*180 + self.dqPar['gamma']).tolist()
+            self.dqPar['cosphi'] = [np.cos(np.pi*phi/180)
+                                    for phi in self.dqPar['phi']]
+            self.dqPar['i1'].insert(0, 0)
+            self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
+        except:
+            pass
         
     def __read_weights(self, content):
         #              Stator-Iron      - Conductors      - Magnets

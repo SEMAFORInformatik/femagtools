@@ -181,7 +181,7 @@ class Reader(object):
             self.FC_RADIUS = float(grp.variables['fc_radius'].getValue().data)
             self.pole_pairs = int(grp.variables['pole_pairs'].getValue().data)
             self.poles_sim = int(grp.variables['poles_sim'].getValue().data)
-            self.num_slots = int(grp.variables['num_slots'].getValue().data)
+            self.slots = int(grp.variables['num_slots'].getValue().data)
             self.arm_length = int(grp.variables['arm_length'].getValue().data)
         except:
             pass

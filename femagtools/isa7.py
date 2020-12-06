@@ -630,7 +630,7 @@ class Isa7(object):
         if getattr(reader, 'pole_pairs', 0):
             self.num_poles = 2*self.pole_pairs
         if getattr(reader, 'slots', 0):
-            self.num_slots = 2*reader.slots
+            self.num_slots = reader.slots
         try:
             self.arm_length = reader.arm_length*1e-3  # in m
         except:

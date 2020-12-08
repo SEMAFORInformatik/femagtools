@@ -353,16 +353,20 @@ class ZmqFemag(BaseFemag):
 
     def close(self):
         if self.reader:
+            logger.debug("stop reader")
             self.reader.continue_loop = False
         if self.proc:
+            logger.debug("quit proc")
             self.quit()
         if self.request_socket:
+            logger.debug("close request_socket")
             self.request_socket.close()
             self.request_socket = None
-            self.request_socket = self.__req_socket()
         if self.subscriber_socket:
+            logger.debug("close sub_socket")
             self.subscriber_socket.close()
             self.subscriber_socket = None
+        logger.debug("done")
 
     def __del__(self):
         self.close()
@@ -372,8 +376,10 @@ class ZmqFemag(BaseFemag):
         """returns a new request client"""
         context = zmq.Context.instance()
         self.request_socket = context.socket(zmq.REQ)
-        self.request_socket.connect('tcp://{0}:{1}'.format(
-            self.host, self.port))
+        url = 'tcp://{0}:{1}'.format(
+            self.host, self.port)
+        logger.debug("connect %s", url)
+        self.request_socket.connect(url)
         return self.request_socket
 
     def __sub_socket(self):
@@ -474,6 +480,7 @@ class ZmqFemag(BaseFemag):
                         self.request_socket.send_string('\n'.join(msg[-1]))
                     else:
                         self.request_socket.send_string(msg[-1])
+                    logger.debug("msg %s", msg[-1])
                     return self.request_socket.recv_multipart()
                 except zmq.error.Again:
                     pass

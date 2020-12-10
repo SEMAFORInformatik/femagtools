@@ -127,11 +127,11 @@ def phasor(bch):
     """create phasor plot from bch"""
     f1 = bch.machine['p']*bch.dqPar['speed']
     w1 = 2*np.pi*f1
-    xd = w1*bch.dqPar['ld'][1]
-    xq = w1*bch.dqPar['lq'][1]
+    xd = w1*bch.dqPar['ld'][-1]
+    xq = w1*bch.dqPar['lq'][-1]
     r1 = bch.machine['r1']
-    i1beta_phasor(bch.dqPar['up0'],
-                  bch.dqPar['i1'][-1], bch.dqPar['beta'][1],
+    i1beta_phasor(bch.dqPar['up'],
+                  bch.dqPar['i1'][-1], bch.dqPar['beta'][-1],
                   r1, xd, xq)
     
 

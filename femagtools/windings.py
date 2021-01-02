@@ -87,7 +87,7 @@ class Windings(object):
         return dict(
             pos = [i*taus/NY for i in range(len(y))],
             current_linkage=yy[:NY*self.Q//t].tolist(),
-            alfa0=alfa0/self.p,
+            alfa0=-alfa0/self.p,
             pos_fft = pos_fft.tolist(),
             current_linkage_fft=D.tolist())
 
@@ -130,5 +130,12 @@ if __name__ == "__main__":
     plt.title('Q={0}, p={1}, alfa0={2:6.3f}'.format(wdgs.Q, wdgs.p, c['alfa0']/np.pi*180))
     plt.plot(np.array(c['pos'])/np.pi*180, c['current_linkage'])
     plt.plot(np.array(c['pos_fft'])/np.pi*180, c['current_linkage_fft'])
+
+    phi = [c['alfa0']/np.pi*180, c['alfa0']/np.pi*180]
+    y = [min(c['current_linkage_fft']), 1.1*max(c['current_linkage_fft'])]
+    plt.plot(phi, y, '--')
+    plt.annotate("", xy=(phi[0], y[0]), 
+                 xytext=(0, y[0]), arrowprops=dict(arrowstyle="->"))
+
     plt.grid()
     plt.show()

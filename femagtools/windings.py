@@ -58,16 +58,16 @@ class Windings(object):
     def current_linkage(self, k=1):
         taus = 2*np.pi/self.Q
         t = np.gcd(self.Q, self.p)
-        slots = self.slots(k)
+        slots = self.slots(k)[0]
         dirs = self.windings[k]['dir']
         curr = np.concatenate([np.array(dirs)*(1 - 2*(n % 2)) 
-                               for n in range(len(slots[0])//len(dirs))])
-        s = np.array(slots[0])
+                               for n in range(len(slots)//len(dirs))])
+
         NY=4096
         y = np.zeros(NY*self.Q//t)
         for i in range(self.Q//t):
-            if i in set(s):
-                y[NY*i+NY//2] = np.sum(curr[s==i])
+            if i in set(slots):
+                y[NY*i+NY//2] = np.sum(curr[slots==i])
         yy = [np.sum(y[:i+1]) for i in range(0, len(y))]                
         yy[:NY//2] = yy[-NY//2:]
         yy = np.tile(yy-np.mean(yy),t)

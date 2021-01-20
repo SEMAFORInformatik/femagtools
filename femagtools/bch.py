@@ -1248,6 +1248,7 @@ class Reader:
             lq = np.array(self.dqPar['lq'])
             uq = r1*iq + up + id*w1*ld
             ud = r1*id - iq*w1*lq
+            self.dqPar['up'] = up.tolist()
             self.dqPar['u1'] = np.sqrt(uq**2 + ud**2).tolist()
             self.dqPar['gamma'] = (-np.arctan2(ud, uq)*180/np.pi).tolist()
             self.dqPar['phi'] = (beta/np.pi*180 + self.dqPar['gamma']).tolist()

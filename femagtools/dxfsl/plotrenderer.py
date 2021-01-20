@@ -137,7 +137,8 @@ class PlotRenderer(object):
                 pl.plot([c[0]], [c[1]], 'gs')
 
         geom.render_cut_lines(self)
-        self.ax.axis('scaled', aspect='equal')
+        self.ax.axis('scaled')
+        self.ax.set_aspect('equal')
         if filename:
             pl.savefig(filename)
         else:
@@ -197,7 +198,8 @@ class PlotRenderer(object):
                 print("Render Element {}".format(e))
                 if count == 0:
                     self.ax = self.figure().add_subplot(111)
-                    self.ax.axis('scaled', aspect='equal')
+                    self.ax.axis('scaled')
+                    self.ax.set_aspect('equal')
                     self.ax.set_xlim(x_min, x_max)
                     self.ax.set_ylim(y_min, y_max)
                 e.render(self, 'blue', True)
@@ -273,7 +275,9 @@ class PlotRenderer(object):
             y_min = min(y_min, geom.center[1]-5)
             y_max = max(y_max, geom.center[1]+5)
 
-        self.ax.axis('scaled', aspect='equal')
+        self.ax.axis('scaled')
+        self.ax.set_aspect('equal')
+        
         self.ax.set_xlim(x_min, x_max)
         self.ax.set_ylim(y_min, y_max)
 
@@ -326,13 +330,16 @@ class PlotRenderer(object):
                     self.point(p, 'ro', color='magenta')
 
                 if single_view:
-                    self.ax.axis('scaled', aspect='equal')
+                    self.ax.axis('scaled')
+                    self.ax.set_aspect('equal')
+
                     mytitle = "Area {} of {} in {}".format(n, a, title)
                     self.ax.set_title(mytitle, size=14)
                     pl.show()
 
         if not single_view:
-            self.ax.axis('scaled', aspect='equal')
+            self.ax.axis('scaled')
+            self.ax.set_aspect('equal')
             if show:
                 self.show_plot()
 
@@ -342,7 +349,8 @@ class PlotRenderer(object):
 
         area.render(self, 'red', with_nodes=True)
 
-        self.ax.axis('scaled', aspect='equal')
+        self.ax.axis('scaled')
+        self.ax.set_aspect('equal')       
         pl.show()
 
     def draw_slot(self, id, slot, ax):

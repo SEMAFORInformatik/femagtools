@@ -10,8 +10,7 @@ import femagtools.mcv
 import femagtools.plot
 import sys
 
-mcv = femagtools.mcv.Reader()
-mcv.readMcv(sys.argv[1])
+mcv = femagtools.mcv.read(sys.argv[1])
 
 if mcv['mc1_type'] in (femagtools.mcv.MAGCRV, femagtools.mcv.ORIENT_CRV):
     ncols = 2

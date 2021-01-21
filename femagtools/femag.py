@@ -408,7 +408,7 @@ class ZmqFemag(BaseFemag):
                                              magnetizingCurves, magnets)
         self.host = host
         self.port = port
-        self.pubhost = ''
+        self.femaghost = ''
         self.logdir = logdir if logdir else os.path.join(workdir,'log')
         if not os.path.exists(self.logdir):
             os.makedirs(self.logdir)
@@ -442,9 +442,9 @@ class ZmqFemag(BaseFemag):
 
     def subscribe(self, notify):
         """attaches a notify function"""
-        logger.info("Subscribe on '%s'", self.pubhost)
+        logger.info("Subscribe on '%s'", self.femaghost)
         if self.subscriber is None:
-            self.subscriber = SubscriberTask(self.port+1, self.pubhost, notify)
+            self.subscriber = SubscriberTask(self.port+1, self.femaghost, notify)
             self.subscriber.start()
         else:
             # reattach?
@@ -459,6 +459,8 @@ class ZmqFemag(BaseFemag):
         return False
          
     def send_request(self, msg, pub_consumer=None, timeout=None):
+        if not msg:
+            return [b'{"status":"ignored",{}}']
         if timeout:
             self.request_socket.setsockopt(zmq.RCVTIMEO, timeout)
             self.request_socket.setsockopt(zmq.LINGER, 0)
@@ -474,7 +476,7 @@ class ZmqFemag(BaseFemag):
                     self.request_socket.send_string('\n'.join(msg[-1]))
                 else:
                     self.request_socket.send_string(msg[-1])
-                logger.debug("msg %s", msg[-1])
+
                 return self.request_socket.recv_multipart()
             except zmq.error.Again:
                 pass
@@ -677,12 +679,14 @@ class ZmqFemag(BaseFemag):
         response = [r.decode('latin1')
                     for r in self.send_request(['CONTROL', 'info'],
                                                timeout=timeout)]
-        try:
-            self.pubhost = json.loads(response[1])['addr']
-            logger.info("Set pubhost %s", self.pubhost)
-        except KeyError:
-            # ignore pubhost setting if no addr is returned (Windows only)
-            pass
+        status = json.loads(response[0])['status']
+        if status == 'ok':
+            try:
+                self.femaghost = json.loads(response[1])['addr']
+                logger.info("Set femaghost %s", self.femaghost)
+            except KeyError:
+                # ignore femaghost setting if no addr is returned (Windows only)
+                pass
         return response
 
     def publishLevel(self, level):
@@ -710,12 +714,12 @@ class ZmqFemag(BaseFemag):
     def interrupt(self):
         """send push message to control port to stop current calculation"""
         context = zmq.Context.instance()
-        if not self.pubhost:
-            self.pubhost = '127.0.0.1'
+        if not self.femaghost:
+            self.femaghost = '127.0.0.1'
         ctrl = context.socket(zmq.PUSH)
         ctrl.connect('tcp://{0}:{1}'.format(
-                self.pubhost, self.port+2))
-        logger.info("Interrupt %s", self.pubhost)
+                self.femaghost, self.port+2))
+        logger.info("Interrupt %s", self.femaghost)
         ctrl.send_string('interrupt')
         ctrl.close()
 

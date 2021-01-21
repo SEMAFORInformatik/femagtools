@@ -149,10 +149,15 @@ class Grid(object):
         logger.info('STEPS %s', str(steps))
 
         model = femagtools.model.MachineModel(pmMachine)
+        builder = femagtools.fsl.Builder()
         # check if this model needs to be modified
         immutable_model = len([d for d in decision_vars
                                if hasattr(model,
                                           d['name'].split('.')[0])]) == 0
+        if immutable_model:
+            modelfiles = self.setup_model(builder, model)
+            logger.info("Files %s", modelfiles)
+
         operatingConditions['lfe'] = model.lfe
         operatingConditions['move_action'] = model.move_action
         operatingConditions['phi_start'] = 0.0
@@ -164,7 +169,6 @@ class Grid(object):
                                                    objective_vars)
 
         job = engine.create_job(self.femag.workdir)
-        builder = femagtools.fsl.Builder()
 
         # build x value array
         
@@ -176,10 +180,6 @@ class Grid(object):
         p = 1
         calcid = 0
         logger.debug(par_range)
-
-        if immutable_model:
-            modelfiles = self.setup_model(builder, model)
-            logger.info("Files %s", modelfiles)
 
         if hasattr(fea, 'poc'):
             fea.poc.pole_pitch = 2*360/model.get('poles')

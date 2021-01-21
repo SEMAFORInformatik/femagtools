@@ -49,7 +49,17 @@ mcv = femagtools.mcv.MagnetizingCurve(mcvData)
 magnetmat = [
     dict(name='BM38H',
          mcvkey='BM38H',
-         orient='mpolaniso')]
+         orient='mpolaniso'),
+
+    dict(
+        name='M45',
+        remanenc=1.1,
+        relperm=1.04,
+        spmaweight=7.4,
+        temcoefbr=-0.0015,
+        temcoefhc=-0.0013,
+        magncond=625000.0
+    )]
 
 machine = dict(
     name="PM 225 8",
@@ -80,7 +90,7 @@ machine = dict(
     
     magnet=dict(
         mcvkey_shaft="dummy",
-        material='BM38H',
+        material='M45',
         mcvkey_yoke="m270-35a",
         magnetSector=dict(
             magn_num=1,
@@ -121,6 +131,8 @@ operatingConditions = dict(
     calculationMode="cogg_calc",
     magn_temp=60.0,
     num_move_steps=49,
+    vtu_movie = True,
+#    period_frac = 6,
     speed=50.0)
 
 r = femag(machine,

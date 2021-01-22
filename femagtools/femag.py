@@ -215,7 +215,7 @@ class Femag(BaseFemag):
         Raises:
             FemagError
         """
-        if self.cmd.startswith('wfemag') and \
+        if self.cmd.find('wfemag') > -1 and \
            '-b' in options and \
            '-m' not in options:
             options.insert(0, '-m')
@@ -554,7 +554,7 @@ class ZmqFemag(BaseFemag):
             else:
                 return self.femagTask.proc.pid
 
-        if self.cmd.startswith('wfemag') and \
+        if self.cmd.find('wfemag') > -1 and \
            '-b' in options and \
            '-m' not in options:
             options.insert(0, '-m')

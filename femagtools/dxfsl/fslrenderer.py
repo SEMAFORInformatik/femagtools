@@ -15,17 +15,17 @@ logger = logging.getLogger(__name__)
 
 
 def agndst(da1, da2, Q, p, nodedist=1):
-    """ build agndst from set of useful node angles:  
-        4°, 2°, 1.5°, 1°, 0.75°, 0.5°, 0.25, 0.1, 0.05° """
-    divisors = [1,2,4,8,10,16,20,40,80,160,200,400]
-    dagset = [2*np.pi/Q/i for i in divisors]
+    """ build agndst from set of useful number of nodes"""
+    num_nodes = [30, 48, 60, 96, 120, 144, 180, 240, 288, 336, 360,
+                 432, 480]
     r = (da1 + da2)/4
+    dagset = [2*np.pi/p/i for i in num_nodes]
     ag = abs(da1 - da2)/6
     i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
     nd = min(round(nodedist), i)
     try:
-        logger.info("Num nodes/slot %g nodedist %g",
-                    divisors[i-1], nodedist)
+        logger.info("Num nodes/p %d Num nodes/slot %g nodedist %g",
+                    num_nodes[i-1], p*num_nodes[i-1]/Q, nodedist)
         if nodedist > 1:
             return dagset[i-nd]*r
         elif nodedist < 1 or i == 0:

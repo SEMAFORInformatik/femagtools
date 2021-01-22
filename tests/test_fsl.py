@@ -313,7 +313,7 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel('data/magnsec')
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create(model, feapars)
-        self.assertEqual(len(fsl), 65)
+        self.assertEqual(len(fsl), 60)
         
     def test_create_plots(self):
         pars = copy.deepcopy(feapars)
@@ -463,7 +463,7 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel(machine)
         magnets = femagtools.magnet.Magnet(magnetmat)
         fsl = self.builder.create_model(model, magnets)
-        self.assertEqual(len(fsl), 182)
+        self.assertEqual(len(fsl), 174)
         brem = [l.strip() for l in fsl
                 if l.split('=')[0].strip() == 'm.remanenc'][0]
         self.assertEqual(brem.split('=')[-1].strip(), '1.1')

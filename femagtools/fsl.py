@@ -161,7 +161,7 @@ class Builder:
             if self.fsl_stator:
                 return (['agndst = {}'.format(model.agndst*1e3),
                          'alfa = 2*math.pi*m.num_sl_gen/m.tot_num_slot',
-                         'num_agnodes = math.floor(m.fc_radius*alfa/agndst + 1.5)'] +
+                         'num_agnodes = math.floor(m.fc_radius*alfa/agndst + 0.5)'] +
                         fslcode)
             return (fslcode +
                     ['post_models("nodedistance", "ndst" )',
@@ -278,15 +278,28 @@ class Builder:
     def create_open(self, model):
         return (['-- created by femagtools {}'.format(__version__), ''] +
                 self.__render(model, 'open') +
-                self.__render(model, 'basic_modpar'))
+                self.set_modpar(model) +
+                self.create_fe_contr(model))                
 
     def set_modpar(self, model):
         return self.__render(model, 'basic_modpar')
 
     def create_new_model(self, model):
-        return (['-- created by femagtools {}'.format(__version__), ''] +
-                self.__render(model, 'new_model'))
+        if isinstance(model.get(['bore_diam']), list):
+            tail = ['m.airgap   = 2*ag[2]/3']
+        else:
+            tail = ['m.airgap   = 2*ag/3']
+        tail += [f"m.nodedist = {model.stator.get('nodedist',1)}"]
 
+        return (['-- created by femagtools {}'.format(__version__), ''] + 
+                self.__render(model, 'new_model') +
+                self.set_modpar(model) +
+                self.create_fe_contr(model) +
+                tail)
+
+    def create_fe_contr(self, model):
+        return self.__render(model, 'fe-contr.mako')
+        
     def create_cu_losses(self, model):
         return self.__render(model.windings, 'cu_losses')
 
@@ -419,14 +432,14 @@ class Builder:
                 .format(model.magnet.get('rlen', 100)),
                 '']
 
-    def create_analysis(self, model):
+    def create_analysis(self, sim):
         airgap_induc = (self.create_airgap_induc()
-                        if model.get('airgap_induc', 0) else [])
-        felosses = self.create_fe_losses(model)
-        fslcalc = (self.__render(model, model.get('calculationMode')) +
+                        if sim.get('airgap_induc', 0) else [])
+        felosses = self.create_fe_losses(sim)
+        fslcalc = (self.__render(sim, sim.get('calculationMode')) +
                    airgap_induc)
 
-        if model.get('calculationMode') in ('cogg_calc',
+        if sim.get('calculationMode') in ('cogg_calc',
                                             'ld_lq_fast',
                                             'pm_sym_loss',
                                             'torq_calc',
@@ -434,7 +447,7 @@ class Builder:
             return felosses + fslcalc
 
         return (felosses + fslcalc +
-                self.__render(model, 'plots'))
+                self.__render(sim, 'plots'))
 
     def create_shortcircuit(self, model):
         return self.__render(model, 'shortcircuit')
@@ -451,18 +464,18 @@ class Builder:
         else:
             return []
 
-    def create(self, model, fea, magnets=None):
+    def create(self, model, sim, magnets=None):
         "create model and analysis function"
         try:
-            fea['lfe'] = model.get('lfe')
+            sim['lfe'] = model.get('lfe')
         except AttributeError:
             pass
         try:
-            fea['move_action'] = model.get('move_action')
+            sim['move_action'] = model.get('move_action')
         except AttributeError:
             pass
         try:
-            fea.update(model.windings)
+            sim.update(model.windings)
         except AttributeError:
             pass
 
@@ -473,26 +486,26 @@ class Builder:
                 num_poles = model.windings['num_poles']
             else:
                 num_poles = model.get('poles')
-            if 'poc' in fea:
-                poc = fea['poc']
+            if 'poc' in sim:
+                poc = sim['poc']
                 poc.pole_pitch = 2*360/num_poles
-                fea['pocfilename'] = poc.filename()
+                sim['pocfilename'] = poc.filename()
             else:
-                fea['pocfilename'] = (model.get('name') +
+                sim['pocfilename'] = (model.get('name') +
                                       '_' + str(num_poles) +
                                       'p.poc')
 
-            if 'phi_start' not in fea:
-                fea['phi_start'] = 0.0
-            if 'range_phi' not in fea:
-                fea['range_phi'] = 720/model.get('poles')
+            if 'phi_start' not in sim:
+                sim['phi_start'] = 0.0
+            if 'range_phi' not in sim:
+                sim['range_phi'] = 720/model.get('poles')
 
-            return (fslmodel + self.create_analysis(fea) +
+            return (fslmodel + self.create_analysis(sim) +
                     ['save_model("close")'])
 
         logger.info("create open model and simulation")
         return (self.open_model(model) +
-                self.create_analysis(fea) +
+                self.create_analysis(sim) +
                 ['save_model("close")'])
 
     def __render(self, model, templ, stator=False, magnet=False):
@@ -501,14 +514,14 @@ class Builder:
                 template = self.lookup.get_template(templ)
                 logger.info('use file {}'.format(templ))
                 return template.render_unicode(model=model).split('\n')
-            except mako.exceptions.TopLevelLookupException as ex:
+            except mako.exceptions.TopLevelLookupException:
                 logger.error('File {} not found'.format(templ))
                 sys.exit(1)
 
         try:
             template = self.lookup.get_template(templ+".mako")
             logger.debug('use template {}.mako'.format(templ))
-        except mako.exceptions.TopLevelLookupException as ex:
+        except mako.exceptions.TopLevelLookupException:
             template = self.lookup.get_template(templ+".fsl")
             logger.debug('use FSL {}.fsl'.format(templ))
             if stator:

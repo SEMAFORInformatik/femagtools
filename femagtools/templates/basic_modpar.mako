@@ -1,9 +1,3 @@
-  global_unit("mm")
-  pickdist(0.001)
-  cosys("polar")
-
-<%include file="fe-contr.mako" />
-
 % if hasattr(model, 'stator'):
 % if hasattr(model, 'airgap'):
 % if isinstance(model.get(['airgap']), list):

@@ -1,4 +1,7 @@
 
+
+m.cood_system     = ${model['coord_system'])} -- 1: x/y or 2: r/z 
+
 m.l_corner_x0     = 0.0
 m.l_corner_y0     = 0.0
 m.slot_height     = ${model['slot_height']*1e3}

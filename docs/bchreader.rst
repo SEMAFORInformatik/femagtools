@@ -336,7 +336,7 @@ Magnet
   Attribute          Description                               Unit
   ================  ========================================== =============
   Br                 Remanence                                 T 
-  Hc                 Coercitivity                              A/m
+  Hc                 Coercitivity                              kA/m
   muer               rel Permeability                            
   Tmag               Temperature                               °C
   alpha              Temperature coefficient of Br             1/K

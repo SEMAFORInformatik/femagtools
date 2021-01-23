@@ -341,7 +341,7 @@ Magnet
   Tmag               Temperature                               °C
   alpha              Temperature coefficient of Br             1/K
   demag_pc           Demag Limit                               %
-  demag_hx           Demag Limit                               A/m
+  demag_hx           Demag Limit                               kA/m
   area               Area                                      mm²
   sigma_PM           El. Conductivity                          S/m
   ================  ========================================== =============

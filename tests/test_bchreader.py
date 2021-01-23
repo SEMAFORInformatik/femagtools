@@ -99,7 +99,7 @@ class BchReaderTest(unittest.TestCase):
 
         self.assertAlmostEqual(bch.lossPar['fo'][0], 50.0, 1)
         
-        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order'],
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order_el'],
                                        [1, 3, 5, 7, 9, 11, 13, 15])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['freq'],
                                        [100.0, 300.0, 500.0, 700.0, 900.0,
@@ -111,7 +111,7 @@ class BchReaderTest(unittest.TestCase):
                                        [15.804, 142.234, 395.094, 774.383,
                                         455.591, 603.881, 419.063, 333.395])
                                
-        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['order'],
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['order_el'],
                                        [1, 3, 5, 7, 9, 11, 13, 15])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['freq'],
                                        [100.0, 300.0, 500.0, 700.0, 900.0, 1100.0, 1300.0, 1500.0])
@@ -119,6 +119,24 @@ class BchReaderTest(unittest.TestCase):
                                        [8.641, 7.774, 7.774, 7.748, 3.679, 2.915, 1.303, 0.626])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['eddy'],
                                        [13.065, 117.587, 326.631, 637.999, 500.663, 592.805, 370.023, 236.594])
+
+    def test_read_pmsim_9(self):
+        bch = self.read_bch('pmsim-9.BATCH')
+
+        self.assertAlmostEqual(bch.machine['plfe'][0], 2540.2, 1)
+        self.assertAlmostEqual(bch.machine['plfe'][1], 2020.5, 1)
+        self.assertAlmostEqual(bch.dqPar['up'][0], 259.4, 1)
+
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order_mech'],
+                                       [6, 18, 30, 42, 54, 90, 114])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order_el'],
+                                       [1.0, 3.0, 5.0, 7.0, 9.0, 15.0, 19.0])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['freq'],
+                                       [400.0, 1200.0, 2000.0, 2800.0, 3600.0, 6000.0, 7600.0])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['hyst'],
+                                       [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['eddy'],
+                                       [1637.884, 225.861, 93.969, 19.904, 6.661, 3.043, 1.752])
 
     def test_read_relsim(self):
         bch = self.read_bch('relsim.BATCH')
@@ -146,7 +164,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.dqPar['u1'][1], 2409.142, 2)
         self.assertAlmostEqual(bch.dqPar['torque'][0], 1137.92, 1)
 
-        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order'],
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order_el'],
                                        [1, 3])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['freq'],
                                        [800.0, 2400.0])
@@ -155,7 +173,7 @@ class BchReaderTest(unittest.TestCase):
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['eddy'],
                                        [15512.529, 1186.523])
                                
-        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['order'],
+        np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['order_el'],
                                        [1, 3, 5])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['freq'],
                                        [800.0, 2400.0, 4000.0])

@@ -153,7 +153,7 @@ class Reader:
             'Losses for speed [1/min]': Reader.__read_losses_tab,
             'Losses from PSID-Psiq-Identification for speed [1/min]':
             Reader.__read_losses_tab,
-            'Magnet loss data': Reader.__read_dummy,
+            'Magnet loss data': Reader.__read_magnet_loss_data,
             'Project File name': Reader.__read_project_filename,
             'File name': Reader.__read_filename,
             'Windings input data': Reader.__read_windings,
@@ -328,6 +328,11 @@ class Reader:
                     
     def __read_dummy(self, content):
         return
+    
+    def __read_magnet_loss_data(self, content):  
+        for line in content:
+            if line.startswith('El.Conductivity Magnet'):
+                self.magnet['sigma_PM'] = float(line.split()[-1])
     
     def __read_calctime(self, content):
         try:
@@ -509,7 +514,9 @@ class Reader:
                 self.machine['qs_sim'] = int(l.split()[-1])
             elif l.find('POC-File used in calculation') > -1:
                 self.machine['pocfile'] = l.split(':')[-1].strip().replace('\\','\\\\')
-                
+            elif l.find('MC-File used in calculation') > -1:
+                self.machine['mcfile'] = l.split()[-1].strip().replace('\\','\\\\')
+            
     def __read_characteristics(self, content):
         characteristics={}
         for i, l in enumerate(content):
@@ -1388,16 +1395,19 @@ class Reader:
         k = ''
         for i, l in enumerate(content):
             if l.startswith('*************'):
+                self.losses[-1]['fft']=dict()
                 for k in losses:
                     for x in losses[k]:
                         x[0] = int(x[0])
-                self.losses[-1]['fft'] = {k: {k1: l
-                                              for k1, l in zip(['order',
-                                                                'freq',
-                                                                'hyst',
-                                                                'eddy'],
-                                                               zip(*losses[k]))}
-                                          for k in losses}
+                    if(losses[k]):
+                        if len(losses[k][0]) == 4:
+                            cols=('order_el', 'freq', 'hyst', 'eddy')
+                        else:
+                            cols=('order_mech', 'order_el', 'freq', 'hyst', 'eddy')
+                    
+                        self.losses[-1]['fft'][k] = {k1: l
+                                                     for k1, l in zip(cols,
+                                                                      zip(*losses[k]))}
                 self.__read_losses(content[i+1:])
                 break
             if l.find('StJo') > -1 or \
@@ -1431,8 +1441,7 @@ class Reader:
                         losses[k].append([floatnan(x) for x in rec])
                     elif len(rec) == 5:  # FEMAG Rel 8.3 with el/mech order
                         losses[k].append([floatnan(x)
-                                          for i, x in enumerate(rec)
-                                          if not i == 1])
+                                          for i, x in enumerate(rec)])
                 except:
                     pass
     
@@ -1483,6 +1492,8 @@ class Reader:
                                            'type',
                                            'filename',
                                            'date',
+					   'areas',
+					   'inertia',
                                            'torque',
                                            'torque_fft',
                                            'psidq',

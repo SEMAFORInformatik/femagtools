@@ -516,6 +516,8 @@ class Reader:
                 self.machine['pocfile'] = l.split(':')[-1].strip().replace('\\','\\\\')
             elif l.find('MC-File used in calculation') > -1:
                 self.machine['mcfile'] = l.split()[-1].strip().replace('\\','\\\\')
+            elif l.find('Rotation Fraction') > -1:
+                self.machine['period_frac'] = int(l.split()[-1])
             
     def __read_characteristics(self, content):
         characteristics={}

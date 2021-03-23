@@ -453,7 +453,7 @@ class ZmqFemag(BaseFemag):
 
     def __is_running(self):
         try:
-            return self.femagTask.returncode is None
+            return self.femagTask.proc and self.femagTask.returncode is None
         except:
             pass
         return False

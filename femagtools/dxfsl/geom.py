@@ -2604,7 +2604,7 @@ class Geometry(object):
                             points = inner_gap_list[0][1]
                             line = Line(Element(start=points[0],
                                                 end=points[1]),
-                                        color='black',
+                                        color='orange',
                                         attr='auxline')
                             logger.debug("   --- new auxiliary line")
 

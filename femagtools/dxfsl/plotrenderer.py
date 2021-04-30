@@ -87,14 +87,14 @@ class PlotRenderer(object):
         self.ax.add_patch(pch.Circle(center, radius,
                                      fill=False, color=color))
 
-    def point(self, p, col, color='blue'):
-        pl.plot([p[0]], [p[1]], col, color=color)
+    def point(self, p, marker, color='blue'):
+        pl.plot([p[0]], [p[1]], marker, color=color)
 
     def text(self, p, txt):
         pl.text(p[0], p[1], txt)
 
     def fill(self, x, y, color, alpha):
-        self.ax.fill(x, y, 'b', alpha=alpha, color=color, edgecolor='blue')
+        self.ax.fill(x, y, color, alpha=alpha, edgecolor='blue')
 
     def fill_circle(self, center, radius, color, alpha):
         circle = pl.Circle(center, radius, color=color, alpha=alpha)
@@ -158,7 +158,7 @@ class PlotRenderer(object):
         print("=== Print Convex Hull ===")
         lower = []
         for p in points:
-            self.point(p, 'go')
+            self.point(p, 'o', 'green')
             while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
                 lower.pop()
             lower.append(p)
@@ -226,9 +226,9 @@ class PlotRenderer(object):
 
         if with_corners:
             for c in geom.start_corners:
-                self.point(c, 'rs')
+                self.point(c, 's')
             for c in geom.end_corners:
-                self.point(c, 'rs')
+                self.point(c, 's')
 
         if draw_center:
             for area in geom.list_of_areas():
@@ -240,7 +240,7 @@ class PlotRenderer(object):
             for area in geom.list_of_areas():
                 p = area.get_point_inside(geom)
                 if p:
-                    pl.plot([p[0]], [p[1]], 'ro', color='magenta')
+                    pl.plot([p[0]], [p[1]], 'o', color='magenta')
                     if write_id:
                         self.text(p, area.identifier())
 
@@ -266,10 +266,10 @@ class PlotRenderer(object):
 
         if len(points) > 0:
             for p in points:
-                self.point(p, 'ro', color='red')
+                self.point(p, 'o', color='red')
 
         if with_center and geom.center:
-            self.point(geom.center, 'ro', color='darkgreen')
+            self.point(geom.center, 'o', color='darkgreen')
             x_min = min(x_min, geom.center[0]-5)
             x_max = max(x_max, geom.center[0]+5)
             y_min = min(y_min, geom.center[1]-5)
@@ -327,7 +327,7 @@ class PlotRenderer(object):
                 area.render(self, colors[c], with_nodes)
                 p = area.get_point_inside(geom)
                 if p:
-                    self.point(p, 'ro', color='magenta')
+                    self.point(p, 'o', color='magenta')
 
                 if single_view:
                     self.ax.axis('scaled')

@@ -1144,49 +1144,72 @@ def mesh(isa, with_axis=False):
         ax.axis('off')
 
 
+def _contour(title, elements, values, label=''):
+    from matplotlib.patches import Polygon
+    from matplotlib.collections import PatchCollection
+    ax = pl.gca()
+    ax.set_aspect('equal')
+    ax.set_title(title, fontsize=18)
+    patches = [Polygon([v.xy for v in e.vertices]) for e in elements]
+    p = PatchCollection(patches) #, cmap=matplotlib.cm.jet, alpha=0.4)
+    p.set_array(values)
+    ax.add_collection(p)
+    cb = pl.colorbar(p)
+    if label:
+        cb.set_label(label=label, fontsize=18)
+    ax.autoscale(enable=True)
+    ax.axis('off')
+
+
 def demag(isa):
     """plot demag I7/ISA7 model
     Args:
       isa: Isa7/NC object
     """
-    from matplotlib.patches import Polygon
-    from matplotlib.collections import PatchCollection
-    ax = pl.gca()
-    ax.set_aspect('equal')
-    ax.set_title('Demagnetization at {} °C'.format(isa.MAGN_TEMPERATURE), fontsize=18)
     emag = [e for e in isa.elements if e.demagnetization(isa.MAGN_TEMPERATURE)]
-    patches = [Polygon([v.xy for v in e.vertices]) for e in emag]
     demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
-    p = PatchCollection(patches) #, cmap=matplotlib.cm.jet, alpha=0.4)
-    p.set_array(demag)
-    ax.add_collection(p)
-    cb = pl.colorbar(p)
-    cb.set_label(label='-H / kA/m', fontsize=18)
-    ax.autoscale(enable=True)
-    ax.axis('off')
+    _contour(f'Demagnetization at {isa.MAGN_TEMPERATURE} °C', emag, demag, '-H / kA/m')
     logger.info("Max demagnetization %f", np.max(demag))
 
-def loss_density(isa, subreg):
+
+def flux_density(isa, subreg=[]):
     """plot demag I7/ISA7 model
     Args:
       isa: Isa7/NC object
     """
-    from matplotlib.patches import Polygon
-    from matplotlib.collections import PatchCollection
-    ax = pl.gca()
-    ax.set_aspect('equal')
-    ax.set_title('Loss Density kW/m³', fontsize=18)
-    elements = [e for se in isa.get_subregion('StJo').elements() for e in se]
-    patches = [Polygon([v.xy for v in e.vertices]) for e in elements]
+    if subreg:
+        if isinstance(subreg, list):
+            sr = subreg
+        else:
+            sr = [subreg]
+        elements = [e for s in sr for se in isa.get_subregion(s).elements()
+                        for e in se]
+    else:
+        elements = [e for e in isa.elements]
+        
+    fluxd = np.array([np.linalg.norm(e.flux_density()) for e in elements])
+    _contour(f'Flux Density T', elements, fluxd)
+    logger.info("Max flux dens %f", np.max(fluxd))
+
+
+def loss_density(isa, subreg=[]):
+    """plot demag I7/ISA7 model
+    Args:
+      isa: Isa7/NC object
+    """
+    if subreg:
+        if isinstance(subreg, list):
+            sr = subreg
+        else:
+            sr = [subreg]
+        elements = [e for s in sr for se in isa.get_subregion(s).elements()
+                        for e in se]
+    else:
+        elements = [e for e in isa.elements]
+
     lossd = np.array([e.loss_density*1e-3 for e in elements])
-    p = PatchCollection(patches) #, cmap=matplotlib.cm.jet, alpha=0.4)
-    p.set_array(lossd)
-    ax.add_collection(p)
-    cb = pl.colorbar(p)
-    #cb.set_label(label='-H / kA/m', fontsize=18)
-    ax.autoscale(enable=True)
-    ax.axis('off')
-    #logger.info("Max demagnetization %f", np.max(demag))
+    _contour('Loss Density kW/m³', elements, lossd)
+     #logger.info("Max demagnetization %f", np.max(demag))
 
 
 def main():

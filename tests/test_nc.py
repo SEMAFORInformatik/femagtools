@@ -113,3 +113,8 @@ def test_windings(disp_stat):
     for sr in wd.subregions:
         assert type(sr) == isa7.SubRegion
     assert wd.num_turns == 100
+
+
+def test_magnet_super_elements(disp_stat):
+    sekeys = [se.key for se in disp_stat.magnet_super_elements()]
+    assert sekeys == [98, 101, 74, 77, 80, 83, 86, 89, 92, 95]

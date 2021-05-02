@@ -661,6 +661,15 @@ class Isa7(object):
         return [el for el in self.elements
                 if self.superelement.condtype != 0]
 
+    def magnet_super_elements(self):
+        """return superelements which are magnets"""
+        return [self.superelements[i]
+                    for i in set([el.se_key for el in self.magnet_elements()])]
+
+    def magnet_elements(self):
+        """return elements which are magnets"""
+        return [e for e in self.elements if e.is_magnet()]
+
     def get_element(self, x, y):
         """return element at pos x,y"""
         k = np.argmin(np.linalg.norm(self.element_pos - (x, y), axis=1))
@@ -674,7 +683,7 @@ class Isa7(object):
                     if e.key in [se.key for se in s.elements]][0]
         except IndexError:
             return None
-    
+
     def flux_density(self, x, y, icur, ibeta, cosys='cartes'):
         """return pos and flux density (bx, by) or (br, bt)
         at pos x, y for current and beta"""
@@ -944,10 +953,7 @@ class SubRegion(BaseEntity):
 
     def elements(self):
         """return elements of this subregion"""
-        e = []
-        for s in self.superelements:
-            e.append(s.elements)
-        return e
+        return [e for s in self.superelements for e in s.elements]
 
 
 class Winding(BaseEntity):
@@ -965,10 +971,7 @@ class Winding(BaseEntity):
 
     def elements(self):
         """return elements of this winding"""
-        e = []
-        for s in self.subregions:
-            e.append(s.elements)
-        return e
+        return [e for s in self.subregions for e in s.elements]
 
 
 def read(filename):

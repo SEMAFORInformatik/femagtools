@@ -679,14 +679,9 @@ class Isa7(object):
         """return pos and flux density (bx, by) or (br, bt)
         at pos x, y for current and beta"""
         el = self.get_element(x, y)
-        ekey = e.key-1
+        ekey = el.key-1
         b1 = np.array(self.el_fe_induction_1[ekey, :, icur, ibeta])
         b2 = np.array(self.el_fe_induction_2[ekey, :, icur, ibeta])
-        if cosys=='cartes':
-            return dict(
-                pos = self.pos_el_fe_induction,
-                bx = b1,
-                by= b2)
         if cosys == 'polar':
             a = np.arctan2(el.center[1], el.center[0])
             br, bphi = np.array(((np.cos(a), -np.sin(a)),
@@ -696,16 +691,22 @@ class Isa7(object):
                 pos = self.pos_el_fe_induction,
                 br = br,
                 bt = bphi)
-        return dict()
+        return dict(
+            pos = self.pos_el_fe_induction,
+            bx = b1,
+            by= b2)
 
     def flux_densit(self, x, y, icur, ibeta, cosys='cartes'):
         return self.flux_density(x, y, icur, ibeta, cosys)
     
-    def demagnization(self, x, y, icur, ibeta):
-        flxdens = flux_density(x,y, icur, ibeta, 'cartes')
+    def demagnetization(self, x, y, icur, ibeta, cosys='cartes'):
         el = self.get_element(x, y)
-        return el.__demag((flxdens['b1'], flxdens['b2']),
-                              self.MAGN_TEMPERATURE)
+        flxdens = self.flux_density(x,y, icur, ibeta, cosys)
+        if cosys == 'polar':
+            return (flxdens['pos'], el.demag_b((flxdens['br'], flxdens['bt']),
+                                self.MAGN_TEMPERATURE))
+        return (flxdens['pos'], el.demag_b((flxdens['bx'], flxdens['by']),
+                                    self.MAGN_TEMPERATURE))
         
 class Point(object):
     def __init__(self, x, y):
@@ -854,23 +855,27 @@ class Element(BaseEntity):
             else:
                 rm = rm/xm
             return -b1, -b2/rm
-        
+
+    def is_magnet(self):
+        """return True if the element is a permanent magnet"""
+        return abs(self.mag[0]) > 1e-5 or abs(self.mag[1]) > 1e-5
+    
     def demagnetization(self, temperature=20):
         """return demagnetization of this element"""
-        return self.__demag(self.flux_density(), temperature)
+        return self.demag_b(self.flux_density(), temperature)
 
-    def __demag(self, b, temperature):
+    def demag_b(self, b, temperature):
         """return demagnetization of this element at flux density b"""
-        if abs(self.mag[0]) > 1e-5 or abs(self.mag[1]) > 1e-5:
+        if self.is_magnet():
             br_temp_corr = 1. +  self.br_temp_coef*(temperature - 20.)
             magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)*br_temp_corr
             alfa = np.arctan2(self.mag[1], self.mag[0])
             b1, b2 = b
             bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
             hpol = bpol - magn
-            if hpol < 0:
-                reluc = abs(self.reluc[0]) / (4*np.pi*1e-7 * 1000)
-                return abs(hpol * reluc)
+            #if hpol < 0:
+            reluc = abs(self.reluc[0]) / (4*np.pi*1e-7 * 1000)
+            return abs(hpol * reluc)
         return 0
 
     def permeability(self):

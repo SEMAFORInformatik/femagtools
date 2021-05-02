@@ -1166,7 +1166,7 @@ def demag(isa):
     Args:
       isa: Isa7/NC object
     """
-    emag = [e for e in isa.elements if e.demagnetization(isa.MAGN_TEMPERATURE)]
+    emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
     _contour(f'Demagnetization at {isa.MAGN_TEMPERATURE} °C', emag, demag, '-H / kA/m')
     logger.info("Max demagnetization %f", np.max(demag))

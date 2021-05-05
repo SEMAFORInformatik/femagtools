@@ -512,7 +512,7 @@ class Builder:
         if templ.split('.')[-1] in ('fsl', 'mako'):
             try:
                 template = self.lookup.get_template(templ)
-                logger.info('use file {}'.format(templ))
+                logger.debug('use file {}'.format(templ))
                 return template.render_unicode(model=model).split('\n')
             except mako.exceptions.TopLevelLookupException:
                 logger.error('File {} not found'.format(templ))

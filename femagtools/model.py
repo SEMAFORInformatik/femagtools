@@ -104,7 +104,10 @@ class Model(object):
         except KeyError as e:
             logger.error(e)
             raise MCerror(e)
-
+        
+    def __getitem__(self, name):
+        return getattr(self, name)
+    
     def __str__(self):
         "return string format of this object"
         return repr(self.__dict__)

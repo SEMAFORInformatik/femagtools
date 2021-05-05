@@ -115,13 +115,14 @@ class Grid(object):
         # get and write mag curves
         mc_files = self.femag.copy_magnetizing_curves(model)
         
-        filename = 'femag.fsl'
-        logger.info("setup model in %s", self.femag.workdir)
-        with open(os.path.join(self.femag.workdir, filename), 'w') as f:
-            f.write('\n'.join(builder.create_model(model, self.femag.magnets) +
-                              ['save_model("close")']))
+        if model.is_complete():
+            logger.info("setup model in %s", self.femag.workdir)
+            filename = 'femag.fsl'
+            with open(os.path.join(self.femag.workdir, filename), 'w') as f:
+                f.write('\n'.join(builder.create_model(model, self.femag.magnets) +
+                                ['save_model("close")']))
 
-        self.femag.run(filename, options=['-b'])
+            self.femag.run(filename, options=['-b'])
         model_files = [os.path.join(self.femag.workdir, m)
                        for m in mc_files] + [f
                                              for sublist in [
@@ -133,12 +134,19 @@ class Grid(object):
                                                              '.nc', '.[IA]*7')]
                                              for f in sublist]
         
-        logger.info("model %s created", model.name)
         return model_files
     
-    def __call__(self, opt, pmMachine, operatingConditions,
-                 engine, bchMapper=None):
-        """calculate objective vars for all decision vars"""
+    def __call__(self, opt, machine, simulation,
+                 engine, bchMapper=None, extra_files=[]):
+        """calculate objective vars for all decision vars
+        Args:
+          opt: variation parameter dict (decision_vars, objective_vars)
+          machine: parameter dict of machine
+          simulation: parameter dict of simulation
+          engine: calculation runner (MultiProc, Condor ..)
+          bchMapper: bch result transformation function
+          files: list of additional file names to be copied
+        """
 
         self.stop = False  # make sure the calculation will start. thomas.maier/OSWALD
 
@@ -148,7 +156,7 @@ class Grid(object):
         steps = [d.get('steps', 10) for d in decision_vars]
         logger.info('STEPS %s', str(steps))
 
-        model = femagtools.model.MachineModel(pmMachine)
+        model = femagtools.model.MachineModel(machine)
         builder = femagtools.fsl.Builder()
         # check if this model needs to be modified
         immutable_model = len([d for d in decision_vars
@@ -156,14 +164,14 @@ class Grid(object):
                                           d['name'].split('.')[0])]) == 0
         if immutable_model:
             modelfiles = self.setup_model(builder, model)
-            logger.info("Files %s", modelfiles)
+            logger.info("Files %s", modelfiles+extra_files)
 
-        operatingConditions['lfe'] = model.lfe
-        operatingConditions['move_action'] = model.move_action
-        operatingConditions['phi_start'] = 0.0
-        operatingConditions['range_phi'] = 720/model.get('poles')
-        operatingConditions.update(model.windings)
-        fea = femagtools.model.FeaModel(operatingConditions)
+        simulation['lfe'] = model.lfe
+        simulation['move_action'] = model.move_action
+        simulation['phi_start'] = 0.0
+        simulation['range_phi'] = 720/model.get('poles')
+        simulation.update(model.windings)
+        fea = femagtools.model.FeaModel(simulation)
 
         prob = femagtools.moproblem.FemagMoProblem(decision_vars,
                                                    objective_vars)
@@ -218,11 +226,13 @@ class Grid(object):
                     pass
 
             logger.info('........ %d / %d results: %s',
-                        p, len(par_range)//len(population)+1,
+                        p, int(np.ceil(len(par_range)/len(population))),
                         np.shape(f))
             job.cleanup()
             for k, x in enumerate(population):
                 task = job.add_task(self.result_func)
+                for fn in extra_files:
+                    task.add_file(fn)
                 if immutable_model:
                     prob.prepare(x, fea)
                     for m in modelfiles:

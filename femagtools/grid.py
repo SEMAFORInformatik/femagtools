@@ -196,6 +196,7 @@ class Grid(object):
         elapsedTime = 0
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:
+        popsize=0
         for population in baskets(par_range, opt['population_size']):
             if self.stop:  # try to return the results so far. thomas.maier/OSWALD
                 logger.info(
@@ -224,9 +225,9 @@ class Grid(object):
                 except:
                     return {}
                     pass
-
+            popsize = max(len(population), popsize)
             logger.info('........ %d / %d results: %s',
-                        p, int(np.ceil(len(par_range)/len(population))),
+                        p, int(np.ceil(len(par_range)/popsize)),
                         np.shape(f))
             job.cleanup()
             for k, x in enumerate(population):

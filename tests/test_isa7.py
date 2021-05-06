@@ -22,7 +22,7 @@ def test_objects(isa):
     assert len(isa.nodechains) == 98
     assert len(isa.elements) == 822
     assert len(isa.superelements) == 3
-    assert len(isa.get_subregion('asdf').elements()) == 1
+    assert len(isa.get_subregion('asdf').elements()) == 756
 
 
 def test_no_such_subregion(isa):

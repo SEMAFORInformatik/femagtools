@@ -21,8 +21,7 @@ def test_objects(model):
     assert len(model.nodechains) == 98
     assert len(model.elements) == 822
     assert len(model.superelements) == 3
-    assert len(model.get_subregion('asdf').elements()) == 1
-
+    assert len(model.get_subregion('asdf').elements()) == 756
 
 def test_no_such_subregion(model):
     with pytest.raises(ValueError) as excinfo:

@@ -15,6 +15,7 @@ import re
 import sys
 import math
 from femagtools.dxfsl.converter import convert
+from femagtools.poc import Poc
 from . import __version__
 logger = logging.getLogger(__name__)
 
@@ -468,6 +469,7 @@ class Builder:
         "create model and analysis function"
         try:
             sim['lfe'] = model.get('lfe')
+            num_poles = model.get('poles')
         except AttributeError:
             pass
         try:
@@ -476,34 +478,38 @@ class Builder:
             pass
         try:
             sim.update(model.windings)
+            if 'num_poles' in model.windings:
+                num_poles = model.windings['num_poles']
         except AttributeError:
             pass
 
-        if model.is_complete():
-            logger.info("create new model and simulation")
-            fslmodel = self.create_model(model, magnets)
-            if 'num_poles' in model.windings:
-                num_poles = model.windings['num_poles']
-            else:
-                num_poles = model.get('poles')
-            if 'poc' in sim:
-                poc = sim['poc']
-                poc.pole_pitch = 2*360/num_poles
+        if 'poc' in sim:
+            poc = sim['poc']
+            poc.pole_pitch = 2*360/num_poles
+            sim['pocfilename'] = poc.filename()
+        elif 'pocfilename' not in sim:
+            try:
+                sim['poc'] = Poc(2*360/num_poles)
                 sim['pocfilename'] = poc.filename()
-            else:
-                sim['pocfilename'] = (model.get('name') +
-                                      '_' + str(num_poles) +
-                                      'p.poc')
-
-            if 'phi_start' not in sim:
-                sim['phi_start'] = 0.0
-            if 'range_phi' not in sim:
-                sim['range_phi'] = 720/model.get('poles')
+            except UnboundLocalError:
+                pass
+            
+        if 'phi_start' not in sim:
+            sim['phi_start'] = 0.0
+        if 'range_phi' not in sim:
+            try:
+                sim['range_phi'] = 720/num_poles
+            except UnboundLocalError:
+                pass
+                
+        if model.is_complete():
+            logger.info(f"create new model '{model.name}' and simulation {sim['calculationMode']}")
+            fslmodel = self.create_model(model, magnets)
 
             return (fslmodel + self.create_analysis(sim) +
                     ['save_model("close")'])
 
-        logger.info("create open model and simulation")
+        logger.info(f"create open model '{model.name}' and simulation {sim['calculationMode']}")
         return (self.open_model(model) +
                 self.create_analysis(sim) +
                 ['save_model("close")'])

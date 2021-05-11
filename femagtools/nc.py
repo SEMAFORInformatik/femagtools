@@ -195,11 +195,13 @@ class Reader(object):
             pass
         try:
             grp = ds.groups['el_induction']
-            (self.pos_el_fe_induction,
+            (self.curr_loss,
+             self.beta_loss,
+             self.pos_el_fe_induction,
              self.el_fe_induction_1,
              self.el_fe_induction_2,
              self.eddy_cu_vpot) = [grp.variables[k][:]
-                                   for k in ('position',
+                                   for k in ('cur', 'beta', 'position',
                                              'fe_induction_1',
                                              'fe_induction_2',
                                              'eddy_cu_vpot')]

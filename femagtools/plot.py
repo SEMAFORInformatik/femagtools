@@ -40,6 +40,7 @@ def _create_3d_axis():
 def _plot_surface(ax, x, y, z, labels, azim=None):
     """helper function for surface plots"""
     #ax.tick_params(axis='both', which='major', pad=-3)
+    assert np.size(x) > 1 and np.size(y) > 1 and np.size(z) > 1
     if azim is not None:
         ax.azim = azim
     X, Y = np.meshgrid(x, y)
@@ -1162,18 +1163,39 @@ def _contour(title, elements, values, label=''):
 
 
 def demag(isa):
-    """plot demag I7/ISA7 model
+    """plot demag of NC/I7/ISA7 model
     Args:
       isa: Isa7/NC object
     """
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
-    _contour(f'Demagnetization at {isa.MAGN_TEMPERATURE} °C', emag, demag, '-H / kA/m')
+    _contour(f'Demagnetization at {isa.MAGN_TEMPERATURE} °C',
+                 emag, demag, '-H / kA/m')
+    logger.info("Max demagnetization %f", np.max(demag))
+
+
+def demag_pos(isa, pos, icur, ibeta):
+    """plot demag of NC/I7/ISA7 model at rotor position
+    Args:
+      isa: Isa7/NC object
+      pos: rotor position in degree
+      icur: cur amplitude index
+      ibeta: beta angle index
+    """
+    emag = [e for e in isa.elements if e.is_magnet()]
+    demag = np.array([isa.demagnetization(*e.center, icur, ibeta)[1]
+                          for e in emag])
+    for i, x in enumerate(isa.pos_el_fe_induction):
+        if x >= pos/180*np.pi:
+            break
+    
+    _contour(f'Demagnetization at {pos}° (Temp={isa.MAGN_TEMPERATURE} °C)',
+                 emag, demag[:, i], '-H / kA/m')
     logger.info("Max demagnetization %f", np.max(demag))
 
 
 def flux_density(isa, subreg=[]):
-    """plot demag I7/ISA7 model
+    """plot flux density of NC/I7/ISA7 model
     Args:
       isa: Isa7/NC object
     """
@@ -1193,7 +1215,7 @@ def flux_density(isa, subreg=[]):
 
 
 def loss_density(isa, subreg=[]):
-    """plot demag I7/ISA7 model
+    """plot loss density of NC/I7/ISA7 model
     Args:
       isa: Isa7/NC object
     """
@@ -1202,14 +1224,13 @@ def loss_density(isa, subreg=[]):
             sr = subreg
         else:
             sr = [subreg]
-        elements = [e for s in sr for se in isa.get_subregion(s).elements()
-                        for e in se]
+        elements = [e for s in sr for sre in isa.get_subregion(s).elements()
+                        for e in sre]
     else:
         elements = [e for e in isa.elements]
 
     lossd = np.array([e.loss_density*1e-3 for e in elements])
     _contour('Loss Density kW/m³', elements, lossd)
-     #logger.info("Max demagnetization %f", np.max(demag))
 
 
 def main():

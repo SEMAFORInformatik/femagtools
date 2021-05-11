@@ -174,7 +174,7 @@ class Reader(object):
         self.skip_block(2)
         self.M_POLES = self.next_block("i")[0]
         self.skip_block(5)
-        MAGN_TEMPERATURE, BR_TEMP_COEF = self.next_block("f")[0:2]
+        self.MAGN_TEMPERATURE, self.BR_TEMP_COEF = self.next_block("f")[0:2]
         FC_NUM_CUR_ID, FC_NUM_BETA_ID = self.next_block("i")[0:2]
         if FC_NUM_CUR_ID > 16:
             FC_NUM_CUR_ID = 16
@@ -256,7 +256,9 @@ class Reader(object):
         self.skip_block(30 * 30)
         self.skip_block(30 * 30)
         self.skip_block(1 * 20)
-        self.skip_block(10)
+        self.skip_block(8)
+        self.beta_loss=self.next_block("h")[:FC_NUM_BETA_ID] # BETA_LOSS_EVAL_STEP
+        self.curr_loss=self.next_block("h")[:FC_NUM_CUR_ID] # CURR_LOSS_EVAL_STEP
         FC_NUM_MOVE_LOSSES = self.next_block("i")[0]
 
         if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
@@ -623,7 +625,8 @@ class Isa7(object):
         self.element_pos = np.array([e.center
                                      for e in self.elements])
 
-        for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim', 'MAGN_TEMPERATURE'):
+        for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim',
+                      'MAGN_TEMPERATURE', 'BR_TEMP_COEF'):
             v = getattr(reader, a, '')
             if v:
                 setattr(self, a, v)
@@ -636,6 +639,11 @@ class Isa7(object):
         except:
             pass
         self.pos_el_fe_induction = np.asarray(reader.pos_el_fe_induction)
+        try:
+            self.beta_loss = np.asarray(reader.beta_loss)
+            self.curr_loss = np.array([c/np.sqrt(2) for c in reader.curr_loss]).tolist()
+        except AttributeError:
+                pass
         if len(np.asarray(reader.el_fe_induction_1).shape) > 2:
             self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
             self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000
@@ -705,18 +713,46 @@ class Isa7(object):
             bx = b1,
             by= b2)
 
-    def flux_densit(self, x, y, icur, ibeta, cosys='cartes'):
+    def flux_dens(self, x, y, icur, ibeta, cosys='cartes'):
         return self.flux_density(x, y, icur, ibeta, cosys)
     
     def demagnetization(self, x, y, icur, ibeta, cosys='cartes'):
         el = self.get_element(x, y)
+        alfa = np.arctan2(y, x)
         flxdens = self.flux_density(x,y, icur, ibeta, cosys)
         if cosys == 'polar':
-            return (flxdens['pos'], el.demag_b((flxdens['br'], flxdens['bt']),
+            return (flxdens['pos'], el.demag_b(flxdens['pos'],
+                                                   (flxdens['br'], flxdens['bt']),
                                 self.MAGN_TEMPERATURE))
-        return (flxdens['pos'], el.demag_b((flxdens['bx'], flxdens['by']),
+        return (flxdens['pos'], el.demag_b(alfa,
+                                               (flxdens['bx'], flxdens['by']),
                                     self.MAGN_TEMPERATURE))
         
+    def demag_situation(self, icur, ibeta, hlim):
+        """return h max, h avg, area, pos for demag situation for
+        each magnet
+        Arguments:
+          icur: cur amplitude index
+          ibeta: beta angle index 
+          hlim: limit of demagnetization (kA/m)
+        """
+        results=[]
+        for se in self.magnet_super_elements():
+            elements = np.array(se.elements)
+            demag = np.array([self.demagnetization(*el.center, icur, ibeta)[1]
+                        for el in elements])
+            ind = np.unravel_index(np.argmax(demag, axis=None), demag.shape)
+            dmax = demag[:, ind[1]]
+            area_tot = np.sum([e.area for e in elements])
+            area_demag = np.sum([e.area for e in elements[-dmax<hlim]])
+            results.append(dict(
+                h_max=demag[ind],
+                h_avg=np.average(dmax),
+                area_tot=area_tot,
+                area_demag=area_demag,
+                pos=self.pos_el_fe_induction[ind[1]]))
+        return results
+
 class Point(object):
     def __init__(self, x, y):
         self.x = x
@@ -810,7 +846,7 @@ class Element(BaseEntity):
             [v.xy for v in vertices], axis=0)/len(vertices)
         
     def flux_density(self, cosys='cartes'):
-        """return inductionflux density components of this element converted to cosys: cartes, cylind, polar"""
+        """return flux density components of this element converted to cosys: cartes, cylind, polar"""
         ev = self.vertices
         b1, b2 = 0, 0
         if self.el_type == 1:
@@ -871,14 +907,14 @@ class Element(BaseEntity):
     
     def demagnetization(self, temperature=20):
         """return demagnetization of this element"""
-        return self.demag_b(self.flux_density(), temperature)
+        return self.demag_b(0.0, self.flux_density(), temperature)
 
-    def demag_b(self, b, temperature):
+    def demag_b(self, pos, b, temperature):
         """return demagnetization of this element at flux density b"""
         if self.is_magnet():
             br_temp_corr = 1. +  self.br_temp_coef*(temperature - 20.)
             magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)*br_temp_corr
-            alfa = np.arctan2(self.mag[1], self.mag[0])
+            alfa = np.arctan2(self.mag[1], self.mag[0]) - pos
             b1, b2 = b
             bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
             hpol = bpol - magn

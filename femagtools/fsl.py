@@ -208,7 +208,23 @@ class Builder:
 
         return mcv + self.render_rotor(magmodel, templ)
 
-    def prepare_rotor(self, model):
+    def create_rotor_model(self, model):
+        mcv = ["mcvkey_yoke  = '{}'"
+               .format(model.rotor.get('mcvkey_yoke', 'dummy')),
+               "mcvkey_shaft = '{}'"
+               .format(model.rotor.get('mcvkey_shaft', 'dummy'))]
+
+        templ = model.rotortype()
+        rotmodel = model.rotor.copy()
+        rotmodel.update(model.rotor[templ])
+        return mcv + self.render_rotor(rotmodel, templ)
+
+    def create_rotor_winding(self, model):
+        if hasattr(model, 'rotor'):
+            return self.render_rotor(model.rotor, 'rotor_winding')
+        return []
+    
+    def prepare_magnet(self, model):
         templ = model.magnettype()
         if templ == 'mshfile':
             import femagtools.gmsh
@@ -373,7 +389,8 @@ class Builder:
                 self.prepare_model_with_dxf(model)
             else:
                 self.prepare_stator(model)
-                self.prepare_rotor(model)
+                if hasattr(model, 'magnet'):
+                    self.prepare_magnet(model)
                 self.prepare_diameter(model)
                 if self.fsl_stator:
                     from femagtools.dxfsl.fslrenderer import agndst
@@ -387,29 +404,33 @@ class Builder:
                                model.stator.get('nodedist') or 1.0))
 
                 model.set_num_slots_gen()
-
-            material = model.magnet.get('material', 0)
-            magnetMat = {}
-            if magnets and material:
-                magnetMat = magnets.find(material)
-                if not magnetMat:
-                    raise FslBuilderError(
-                        'magnet material {} not found'.format(
-                            material))
-                try:
-                    magnetMat['magntemp'] = model.magn_temp
-                except AttributeError:
-                    magnetMat['magntemp'] = 20
-
+            if hasattr(model, 'magnet'):
+                material = model.magnet.get('material', 0)
+                magnetMat = {}
+                if magnets and material:
+                    magnetMat = magnets.find(material)
+                    if not magnetMat:
+                        raise FslBuilderError(
+                            'magnet material {} not found'.format(
+                                material))
+                    try:
+                        magnetMat['magntemp'] = model.magn_temp
+                    except AttributeError:
+                        magnetMat['magntemp'] = 20
+                rotor = (self.create_magnet(model, magnetMat) +
+                        self.create_magnet_model(model))
+            else:
+                rotor = self.create_rotor_model(model)
+                
             return (self.create_new_model(model) +
                     self.create_cu_losses(model) +
                     self.create_fe_losses(model) +
                     self.create_stator_model(model) +
                     self.create_gen_winding(model) +
-                    self.create_magnet(model, magnetMat) +
-                    self.create_magnet_model(model) +
+                        rotor +
                     self.mesh_airgap(model) +
-                    self.create_connect_models(model))
+                    self.create_connect_models(model) +
+                        self.create_rotor_winding(model))
 
         return self.open_model(model)
 
@@ -489,11 +510,13 @@ class Builder:
             sim['pocfilename'] = poc.filename()
         elif 'pocfilename' not in sim:
             try:
-                sim['poc'] = Poc(2*360/num_poles)
+                poc = Poc(2*360/num_poles)
+                sim['poc'] = poc
                 sim['pocfilename'] = poc.filename()
             except UnboundLocalError:
+                logger.warn("unknown number of poles")
                 pass
-            
+
         if 'phi_start' not in sim:
             sim['phi_start'] = 0.0
         if 'range_phi' not in sim:
@@ -503,13 +526,15 @@ class Builder:
                 pass
                 
         if model.is_complete():
-            logger.info(f"create new model '{model.name}' and simulation {sim['calculationMode']}")
+            logger.info("create new model '%s' and simulation '%s'",
+                            model.name, sim['calculationMode'])
             fslmodel = self.create_model(model, magnets)
 
             return (fslmodel + self.create_analysis(sim) +
                     ['save_model("close")'])
 
-        logger.info(f"create open model '{model.name}' and simulation {sim['calculationMode']}")
+        logger.info("create open model '%s' and simulation '%s'",
+                            model.name, sim['calculationMode'])
         return (self.open_model(model) +
                 self.create_analysis(sim) +
                 ['save_model("close")'])

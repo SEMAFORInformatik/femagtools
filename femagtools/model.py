@@ -321,6 +321,13 @@ class MachineModel(Model):
         raise AttributeError("Missing stator slot model in {}".format(
             self.stator))
 
+    def rotortype(self):
+        """return type of rotor slot"""
+        for k in self.rotor:
+            if isinstance(self.rotor[k], dict):
+                return k
+        raise AttributeError("Missing rotor model in {}".format(self.magnet))
+    
     def magnettype(self):
         """return type of magnet slot"""
         for k in self.magnet:
@@ -334,7 +341,10 @@ class MachineModel(Model):
             return True
         try:
             self.statortype()
-            self.magnettype()
+            if hasattr(self, 'rotor'):
+                self.rotortype()
+            else:
+                self.magnettype()
             return True
         except AttributeError:
             return False

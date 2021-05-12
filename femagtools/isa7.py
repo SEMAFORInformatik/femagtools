@@ -718,13 +718,12 @@ class Isa7(object):
     
     def demagnetization(self, x, y, icur, ibeta, cosys='cartes'):
         el = self.get_element(x, y)
-        alfa = np.arctan2(y, x)
         flxdens = self.flux_density(x,y, icur, ibeta, cosys)
         if cosys == 'polar':
             return (flxdens['pos'], el.demag_b(flxdens['pos'],
                                                    (flxdens['br'], flxdens['bt']),
                                 self.MAGN_TEMPERATURE))
-        return (flxdens['pos'], el.demag_b(alfa,
+        return (flxdens['pos'], el.demag_b(np.arctan2(y, x),
                                                (flxdens['bx'], flxdens['by']),
                                     self.MAGN_TEMPERATURE))
         
@@ -917,10 +916,15 @@ class Element(BaseEntity):
             alfa = np.arctan2(self.mag[1], self.mag[0]) - pos
             b1, b2 = b
             bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
-            hpol = bpol - magn
-            #if hpol < 0:
             reluc = abs(self.reluc[0]) / (4*np.pi*1e-7 * 1000)
-            return abs(hpol * reluc)
+            hpol = (bpol - magn)*reluc
+            if np.isscalar(hpol):
+                if hpol>0:
+                    return 0
+            else:
+                hpol[hpol>0] = 0.0
+            return -hpol
+            
         return 0
 
     def permeability(self):

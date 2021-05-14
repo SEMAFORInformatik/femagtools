@@ -277,6 +277,26 @@ class FslBuilderTest(unittest.TestCase):
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 25)
 
+    def test_rot_hsm(self):
+        self.m['rotor'] = dict(
+            rot_hsm=dict(
+                gap_pol_shaft = 1e-3,
+                core_height   = 0.02,
+                pole_height   = 0.016,
+                pole_rad      = 0.042,
+                core_width2   = 0.04,
+                core_width1   = 0.04,
+                pole_width_r  = 0.05,
+                pole_width    = 0.052,
+                slot_width    = 0.002,
+                slot_height   = 0.002,
+                damper_diam   = 0.004,
+                damper_div    = 0.007
+                ))
+        model = femagtools.MachineModel(self.m)
+        fsl = self.builder.create_rotor_model(model)
+        self.assertEqual(len(fsl), 33)
+
     def test_fe_losses(self):
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_fe_losses(model)

@@ -41,9 +41,10 @@ This command creates the file TEST_002.xml
 
 Read I7/ISA7 File
 +++++++++++++++++
-Read an ISA7/I7 File (filename extension is optional):
+Read an ISA7/I7 or NC File (filename extension is optional):
 
-  >>> isa = isa7.read('foo')
+  >>> isa = femagtools.isa7.read('foo')
+  >>> nc = femagtools.nc.read('foo')
 
 Print Node coordinates::
   

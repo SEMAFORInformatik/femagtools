@@ -9,7 +9,7 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 
 * run Femag with a FSL file anywhere:
   locally (single and multi-core), remote (ZMQ), HT Condor, Cloud (Amazon AWS, Google Cloud)
-* read BCH/BATCH, I7/ISA7, PLT, ERG files
+* read BCH/BATCH, I7/ISA7, NC, PLT, ERG files
 * read and write MCV files (magnetizing curves)
 * create FSL files from model and calculation templates and/or user specific FSL or from DXF
 * create a variety of plots
@@ -90,6 +90,6 @@ Indices and tables
 Copyright
 =========
 
-Copyright: 2017-2018 Semafor Informatik & Energie AG, Basel
+Copyright: 2017-2021 Semafor Informatik & Energie AG, Basel
 
 License: BSD, see LICENSE for more details.

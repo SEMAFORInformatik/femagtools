@@ -108,8 +108,8 @@ dxffile
 
 .. _stator_slots_fsl:
    
-**User defined Stator Slots with FSL**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Stator Slots with FSL
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a FSL file that includes the definition of stator geometry exists and is readable it can be used for the model creation.
 
@@ -127,8 +127,8 @@ Example with file mystator.fsl::
   
 .. _stator_slots_dxf:
       
-**User defined Slots with DXF**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Slots with DXF
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a DXF file that defines the stator geometry exists and is readable 
 it can be used to create the FSL of the model.
@@ -251,8 +251,8 @@ nodedist         Factor for node distance         1.0
    * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the magnetizingCurve object.
    * the material parameter references a name of the 'Magnet Material'_ list. 
 
-**Rotor Slots**
-^^^^^^^^^^^^^^^
+Magnet Slots
+^^^^^^^^^^^^
 
 ============    ===========================================
 Name             Parameter      
@@ -399,8 +399,8 @@ dxffile         see :ref:`rotor_slots_dxf`
 
 .. _rotor_slots_fsl:
 		 
-**User defined Magnet Slots with FSL**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Magnet Slots with FSL
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Example**
 
@@ -419,8 +419,8 @@ it can be used for the model creation as an empty dict::
 
 .. _rotor_slots_dxf:
       
-**User defined Slots with DXF**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Slots with DXF
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a DXF file that defines the magnet geometry exists and is readable 
 it can be used to create the FSL for the model.
@@ -452,6 +452,44 @@ plot         creates the plot              False
 ==========   ============================  =======
 
 -- Note:: The split option is required only if intersecting lines have no common point.
+
+**Rotor**
+---------
+Rotors have a excitation winding
+and following basic parameters and slots:
+
+==============  ================================  =======  
+Parameter        Description                      Default  
+==============  ================================  =======  
+mcvkey_yoke      Name of lamination material      dummy
+mcvkey_shaft     Name of shaft material           dummy
+nodedist         Factor for node distance         1.0
+==============  ================================  =======
+
+.. Note::
+
+   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the magnetizingCurve object.
+
+Rotor Slots
+^^^^^^^^^^^
+
+========    ===========================================
+Name             Parameter      
+========    ===========================================
+rot_hsm     gap_pol_shaft,
+            core_height,
+	    pole_height,
+	    pole_rad,
+	    core_width1,
+	    core_width2,
+	    pole_width_r,
+	    pole_width,
+            slot_width,
+            slot_height,
+            damper_diam,
+            damper_div
+========    ===========================================
+
 
 **Magnetizing Curve**
 =====================
@@ -605,7 +643,7 @@ vtu_movie       Create VTU files                False
    
 Example::
 
-  operatingConditions = dict(
+  simulation = dict(
     calculationMode="cogg_calc",
     magn_temp=60.0,
     num_move_steps=49,
@@ -624,7 +662,6 @@ wind_temp       Winding Temperature                     20         °C
 num_move_steps  Number of move steps                    49
 num_par_wdgs    Number of parallel windings             1      
 eval_force      Evaluate force                          0
-explicit_mode   Activates/deactivates step adjustments  0
 current         Phase current                                      A (RMS)
 angl_i_up       Angle I vs. Up                          0          deg
 optim_i_up      Optimize Current                        0
@@ -645,7 +682,7 @@ vtu_movie       Create VTU files                        False
 
 Example::
 
-  operatingConditions = dict(
+  simulation = dict(
     calculationMode="pm_sym_fast",
     wind_temp=60.0,
     magn_temp=60.0,
@@ -706,8 +743,7 @@ if shortCircuit is set True. (version added 0.9.30). The results are included in
         allow_demagn=0,
         sim_demagn=1)
 
-     r = femag(machine,
-            pmRelSim)
+     r = femag(machine, pmRelSim)
 
      print('Torque [Nm] = {}'.format(r.machine['torque']))
      print('''
@@ -728,6 +764,32 @@ if shortCircuit is set True. (version added 0.9.30). The results are included in
    
 .. image:: img/shortcircuit.png
   :height: 290pt
+
+SM Machine Simulation (pm_sym_f_cur)
+
+==============  ======================================= ========  ============
+Parameter        Description                            Default      Unit
+==============  ======================================= ========  ============
+speed           Speed                                              1/s
+skew_angle      Skewing angle                           0          deg
+num_skew_steps  Number of skew steps                    0
+wind_temp       Winding Temperature                     20         °C
+num_move_steps  Number of move steps                    49
+num_par_wdgs    Number of parallel windings             1      
+eval_force      Evaluate force                          0
+current         Phase current                                      A (RMS)
+nload_ex_cur    No-Load excitation current              0          A
+load_ex_cur     Load excitation current                 0          A
+angl_i_up       Angle I vs. Up                          0          deg
+optim_i_up      Optimize Current                        0
+phi_start       Start angle of rotation                 0          deg
+range_phi       Rotation angle                          360/p      deg
+explicit_mode   Deactivate rotation correction          0
+plots           Create plots                            []
+airgap_induc    calculate airgap induction              False
+period_frac     Rotate Fraction of Period               1
+vtu_movie       Create VTU files                        False
+==============  ======================================= ========  ============
 
 Ld-Lq Identification (ld_lq_fast)
 
@@ -751,7 +813,7 @@ period_frac     Rotate Fraction of Period       1
 
 Example::
 
-  feapars = dict(
+  simulation = dict(
     num_move_steps=25,
     calculationMode="ld_lq_fast",
     magn_temp=60.0,
@@ -786,7 +848,7 @@ period_frac     Rotate Fraction of Period       1
 
 Example::
 
-  feapars = dict(
+  simulation = dict(
     num_move_steps=25,
     calculationMode="psd_psq_fast",
     magn_temp=60.0,
@@ -817,7 +879,7 @@ angl_i_up       Angle I vs. Up                  0         deg
 
 Example::
 
-  operatingConditions = dict(
+  simulation = dict(
     calculationMode="torq_calc",
     wind_temp=60.0,
     magn_temp=60.0,
@@ -838,7 +900,7 @@ Since Femag Rel 8.3 there is no need to fully specify the machine model::
 
   femag = femagtools.Femag(workdir)
 
-  operatingConditions = dict(
+  simulation = dict(
     angl_i_up=-38.7,
     calculationMode="pm_sym_fast",
     magn_temp=60.0,
@@ -847,8 +909,7 @@ Since Femag Rel 8.3 there is no need to fully specify the machine model::
     wind_temp=60.0,
     current=108.0)
 
-  r = femag(machine,
-            operatingConditions)
+  r = femag(machine, simulation)
 
 For older FEMAG versions the minimal data is::
 

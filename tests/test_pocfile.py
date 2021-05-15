@@ -89,11 +89,20 @@ funcPars = dict(
         ,harmonic_id=[1,3,5,7,9,11,13,15,17,19])
 
 
+def test_default():
+    poles = 4
+    pole_pitch = 2*360/poles
+    poc = femagtools.poc.Poc(pole_pitch)
+    assert poc.filename() == f'sin_{poles}p.poc'
+    expected = ['3','1','2','3','0.0','120.0','240.0',f'{pole_pitch}','sin','0.0','0','']
+    assert poc.content() == expected
+
+
 def test_write_poc(tmpdir):
     poc = femagtools.poc.Poc(360, sinPars)
     filename = tmpdir / 'sin.poc'
-    poc.write(filename)
 
+    poc.write(filename)
     expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n360\nsin\n30.0\n3\n'
     assert filename.read() == expected
 
@@ -120,7 +129,7 @@ def test_rec(tmpdir):
                                   shape_current='rec'))
     filename = tmpdir / 'rec.poc'
     poc.write(filename)
-    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nrec\n'
+    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nrec\n0.0\n0\n'
     assert filename.read() == expected
 
 def test_har(tmpdir):
@@ -135,7 +144,7 @@ def test_har(tmpdir):
                                   pocType='har'))
     filename = tmpdir / 'har.poc'
     poc.write(filename)
-    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nhar\n5\n1, 0\n0, 0\n0.3, 0\n0, 0\n0.1, 0\n'
+    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nhar\n5\n1, 0\n0, 0\n0.3, 0\n0, 0\n0.1, 0\n0.0\n0\n'
     assert filename.read() == expected
 
 def test_hsp(tmpdir):
@@ -151,7 +160,7 @@ def test_hsp(tmpdir):
     filename = tmpdir / 'hsp.poc'
     poc.write(filename)
 
-    expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n180.0\nhsp\n2\n1, 1, 0\n21, 0.01, 0\n'
+    expected = '3\n1\n2\n3\n0.0\n120.0\n240.0\n180.0\nhsp\n2\n1, 1, 0\n21, 0.01, 0\n0.0\n0\n'
     assert filename.read() == expected
 
 def test_fun(tmpdir):
@@ -166,4 +175,4 @@ def test_fun(tmpdir):
                                   pocType='fun'))
     filename = tmpdir / 'fun.poc'
     poc.write(filename)
-    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nfun\n4\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n'
+    expected = '3\n1\n2\n3\n30\n150\n270\n180.0\nfun\n4\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n0, 0\n45, 1\n135, -1\n180, 0\n0.0\n0\n'

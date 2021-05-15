@@ -17,6 +17,8 @@ class Poc:
         Args:
             arg filename or pole_pitch
         """
+        self.skew_angle = 0.0
+        self.num_skew_steps=0
         for k in parameters.keys():
             self.__setattr__(k, parameters[k])
 
@@ -25,14 +27,8 @@ class Poc:
                 self.readfile(f)
         else:
             self.pole_pitch = arg
-            self.pocType = parameters.get('pocType', '')
-            self.shape_current = parameters.get('shape_current', '')
-            if not self.pocType:
-                if self.shape_current:
-                    self.pocType='Function'
-                else:
-                    self.shape_current = 'sin'
-            
+            self.pocType = parameters.get('pocType', 'Function')
+            self.shape_current = parameters.get('shape_current', 'sin')
             self.key_winding = parameters.get('key_winding',
                                           [str(i+1) for i in range(3)])
             b = parameters.get('offset', 0)
@@ -73,8 +69,7 @@ class Poc:
             content.append("{0}".format(self.pole_pitch))
         if self.pocType in ['fun', 'har', 'hsp']:
             func_steps = len(self.func_current)
-            content.append("{0}\n{1}".format(
-                self.pocType, func_steps))
+            content += [f"{self.pocType}", f"{func_steps}"]
             if (self.pocType == 'fun' and
                 num_winding*func_steps > len(self.func_current)):
                 self.func_current = num_winding * self.func_current
@@ -95,10 +90,8 @@ class Poc:
         if self.pocType == 'Function':
             content.append("{0}".format(self.shape_current))
 
-        if 'skew_angle' in self.__dict__:
-            content.append("{0}".format(self.skew_angle))
-        if 'num_skew_steps' in self.__dict__:
-            content.append("{0}".format(self.num_skew_steps))
+        content.append(f"{self.skew_angle}")
+        content.append(f"{int(self.num_skew_steps)}")
         content.append('')
         return content
 

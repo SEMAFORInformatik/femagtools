@@ -18,7 +18,7 @@ class Poc:
             arg filename or pole_pitch
         """
         self.skew_angle = 0.0
-        self.num_skew_steps=0
+        self.num_skew_steps = 0
         for k in parameters.keys():
             self.__setattr__(k, parameters[k])
 
@@ -30,7 +30,7 @@ class Poc:
             self.pocType = parameters.get('pocType', 'Function')
             self.shape_current = parameters.get('shape_current', 'sin')
             self.key_winding = parameters.get('key_winding',
-                                          [str(i+1) for i in range(3)])
+                                              [str(i+1) for i in range(3)])
             b = parameters.get('offset', 0)
             num_winding = len(self.key_winding)
             self.phi_voltage_winding = parameters.get('phi_voltage_winding',
@@ -46,7 +46,7 @@ class Poc:
             prefix = self.shape_current
         return '{}_{}p.poc'.format(
             prefix, round(720/self.pole_pitch))
-        
+
     def write(self, pocfilename):
         """create a new pocfile and write the data"""
         with open(pocfilename, mode='w') as pocfile:
@@ -71,7 +71,7 @@ class Poc:
             func_steps = len(self.func_current)
             content += [f"{self.pocType}", f"{func_steps}"]
             if (self.pocType == 'fun' and
-                num_winding*func_steps > len(self.func_current)):
+                    num_winding*func_steps > len(self.func_current)):
                 self.func_current = num_winding * self.func_current
                 self.func_phi = num_winding * self.func_phi
                 func_steps = num_winding*func_steps
@@ -90,9 +90,9 @@ class Poc:
         if self.pocType == 'Function':
             content.append("{0}".format(self.shape_current))
 
-        content.append(f"{self.skew_angle}")
-        content.append(f"{int(self.num_skew_steps)}")
-        content.append('')
+        content += [f"{self.skew_angle}",
+                    f"{int(self.num_skew_steps)}",
+                    '']
         return content
 
     def readfile(self, pocfile):

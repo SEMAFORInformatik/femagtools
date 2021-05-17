@@ -217,7 +217,7 @@ class Reader:
                         title = title2[:len(k)]
             if title in self.dispatch:
                 self.dispatch[title](self, s)
-                
+
         if len(self.weights) > 0:
             w = list(zip(*self.weights))
             self.weight['iron'] = sum(w[0])
@@ -225,7 +225,7 @@ class Reader:
             self.weight['magnet'] = sum(w[2])
             self.weight['total'] = sum([sum(l) for l in w])
         return self
-        
+
     def __findNums(self, l):
         rec = self._numPattern.findall(l)
         if 3 * '*' in l:  # min 3 '*'
@@ -238,8 +238,8 @@ class Reader:
 
     def __read_version(self, content):
         rec = content[0].split(':')
-        self.version = rec[-1].replace(' Version ','').strip()
-            
+        self.version = rec[-1].replace(' Version ', '').strip()
+
     def __read_project_filename(self, content):
         self.project = content[1].strip()
 
@@ -310,7 +310,7 @@ class Reader:
             self.windings[w[0]]['N'].append(w[2])
             self.windings[w[0]]['R'].append(w[3]/1e3)
             self.windings[w[0]]['PHI'].append(w[4])
-         
+
     def __read_winding_factors(self, content):
         "read winding factors section"
         self.wdgfactors = []
@@ -325,21 +325,21 @@ class Reader:
                     self.wdgfactors[-1]['wfac'].append(float(rec[1]))
                     self.wdgfactors[-1]['skewf'].append(float(rec[2]))
                     self.wdgfactors[-1]['total'].append(float(rec[3]))
-                    
+
     def __read_dummy(self, content):
         return
-    
-    def __read_magnet_loss_data(self, content):  
+
+    def __read_magnet_loss_data(self, content):
         for line in content:
             if line.startswith('El.Conductivity Magnet'):
                 self.magnet['sigma_PM'] = float(line.split()[-1])
-    
+
     def __read_calctime(self, content):
         try:
             self.calctime = float(content[1])
         except (IndexError, ValueError):
             pass
-        
+
     def __read_simulation_data(self, content):
         for i, line in enumerate(content):
             if line.startswith('Number of Phases m'):
@@ -372,7 +372,7 @@ class Reader:
             'Internal inductance L0i/winding [H]': 'L0i',
             'Ldi/winding [H]': 'Ldi',
             'Lqi/winding [H]': 'Lqi'}
-        
+
         for line in content:
             rec = [l.strip() for l in line.split()]
             try:
@@ -440,7 +440,7 @@ class Reader:
                  'H_max', 'H_av', 'area'),
                 ('displ', 'current', 'beta',
                  'H_max', 'H_av', 'area')]
-        
+
         demag = dict()
         for l in content:
             rec = self.__findNums(l)
@@ -448,7 +448,7 @@ class Reader:
                 i = 0 if len(rec) == 7 else 1
                 self.demag.append(
                     {k: floatnan(r) for r, k in zip(rec, keys[i])})
-                
+
                 if demag and 'segment' in demag:
                     self.demag[-1].update(demag)
             else:
@@ -467,7 +467,7 @@ class Reader:
         if demag:
             if not 'segment' in demag:
                 self.demag.append(demag)
-                
+
     def __read_short_circuit(self, content):
         "read short circuit section"
         if content[2].startswith('Time'):
@@ -484,7 +484,7 @@ class Reader:
             self.scData['ic'] = m[3].tolist()
             self.scData['torque'] = m[4].tolist()
             return
-    
+
         l = content[-1]
         rec = l.split()
         self.scData['speed'] = floatnan(rec[0])
@@ -497,7 +497,7 @@ class Reader:
         self.scData['peakWindingCurrents'] = [float(x)
                                               for x in re.findall(r'[-0-9.]+',
                                                                   ''.join(content))]
-        
+
     def __read_general_machine_data(self, content):
         for l in content:
             if l.find('Armature Length [mm]:') > -1:
@@ -513,14 +513,16 @@ class Reader:
             elif l.find('Number of Slot-Sides sim.') > -1:
                 self.machine['qs_sim'] = int(l.split()[-1])
             elif l.find('POC-File used in calculation') > -1:
-                self.machine['pocfile'] = l.split(':')[-1].strip().replace('\\','\\\\')
+                self.machine['pocfile'] = l.split(
+                    ':')[-1].strip().replace('\\', '\\\\')
             elif l.find('MC-File used in calculation') > -1:
-                self.machine['mcfile'] = l.split()[-1].strip().replace('\\','\\\\')
+                self.machine['mcfile'] = l.split(
+                )[-1].strip().replace('\\', '\\\\')
             elif l.find('Rotation Fraction') > -1:
                 self.machine['period_frac'] = int(l.split()[-1])
-            
+
     def __read_characteristics(self, content):
-        characteristics={}
+        characteristics = {}
         for i, l in enumerate(content):
             if l.startswith('[[***'):
                 break
@@ -620,7 +622,7 @@ class Reader:
                 if not areas:
                     continue
 
-                self.wdg = areas[0] if len(areas)==1 else '{}-{}'.format(
+                self.wdg = areas[0] if len(areas) == 1 else '{}-{}'.format(
                     areas[0], areas[1])
                 if self.wdg not in self.flux:
                     self.flux[self.wdg] = []
@@ -656,7 +658,7 @@ class Reader:
             f['ripple_x'] = ripple_x
             f['ripple_y'] = ripple_y
             self.linearForce.append(f)
-        
+
         self._fft = Reader.__read_linearForce_fft
 
     def __read_linearForce_fft(self, content):
@@ -680,7 +682,7 @@ class Reader:
 
         if linearForce_fft['order']:
             self.linearForce_fft.append(linearForce_fft)
-       
+
     def __read_fft(self, content):
         if self._fft:
             self._fft(self, content)
@@ -797,7 +799,7 @@ class Reader:
             self.airgapInduction['Bm'] = np.reshape(Bm[:nrows*ncols],
                                                     (nrows, ncols)).T.tolist()
             self.airgapInduction['Ba'] = np.reshape(Ba[:nrows*ncols],
-                                                (nrows, ncols)).T.tolist()
+                                                    (nrows, ncols)).T.tolist()
             # check for nan:
             if len(self.airgapInduction['an'][0]) > 1 and \
                len(self.airgapInduction['an'][0][0]) != len(self.airgapInduction['an'][0][1]):
@@ -807,7 +809,7 @@ class Reader:
                                               for i in range(3)]
                 self.airgapInduction['Ba'] = self.airgapInduction['Ba'][1:]
                 self.airgapInduction['Bm'] = self.airgapInduction['Bm'][1:]
-                
+
                 if len(self.airgapInduction['an'][0]) > 1 and \
                    len(list(filter(lambda x: np.isnan(x),
                                    list(zip(*self.airgapInduction['an'][0]))[0]))) > 0:
@@ -821,7 +823,7 @@ class Reader:
                                                      [1:])
         except ValueError:
             print(self.airgapInduction['i1'])
-    
+
     def __read_torque_force(self, content):
         "read and append force/torque section"
 
@@ -847,7 +849,7 @@ class Reader:
             torque['ripple'] = ripple
             self.torque.append(torque)
         self._fft = Reader.__read_torque_force_fft
-        
+
     def __read_torque_force_fft(self, content):
         "read and append force/torque fft section"
         columns = content[3].split()
@@ -893,7 +895,7 @@ class Reader:
             self.powerSituation = dict(windings=ps)
             if beta:
                 self.powerSituation['beta'] = float(beta)
-            
+
     def __removeTrailingZero(self, idList):
         '''if id list is inhomogeneous, remove a trailing '0'
         e.g. : idList[-450, -350, -250, -150, -50, 0]
@@ -934,11 +936,11 @@ class Reader:
         mlen = nrows*ncols
         self.psidq = {k: (self.armatureLength*np.reshape(
             v[:mlen], (nrows, ncols))).T.tolist()
-                      for k, v in zip(('psid', 'psiq', 'torque_fe', 'torque'),
-                                      m[3:])}
+            for k, v in zip(('psid', 'psiq', 'torque_fe', 'torque'),
+                            m[3:])}
         self.psidq['iq'] = iq[:ncols].tolist()
         self.psidq['id'] = id[:nrows].tolist()
-        
+
     def __read_psidq_ldq(self, content):
         "read ldq from psid-psiq section"
         for i, l in enumerate(content):
@@ -977,7 +979,7 @@ class Reader:
                 m[4][:mlen], (nrows, ncols)).T).tolist(),
             'torque': (self.armatureLength*np.reshape(
                 m[6][:mlen], (nrows, ncols)).T).tolist()}
-        
+
     def __read_ldq(self, content):
         "read ld-lq section"
         for i, l in enumerate(content):
@@ -992,7 +994,7 @@ class Reader:
             elif rec and rec[0].startswith('Curr Id'):
                 break
             k += 1
-            
+
         m = np.array(m).T
         ncols = len(set(m[1]))
         i1 = np.reshape(m[0], (-1, ncols)).T[0]
@@ -1040,10 +1042,15 @@ class Reader:
             else:
                 nrows = nrows-1
 
-        ls = {k: np.reshape(v,
-                            (nrows, ncols)).T[::-1].tolist()
-              for k, v in zip(('styoke', 'stteeth', 'rotor', 'magnet'),
-                              m[2:])}
+        cols = ('styoke', 'stteeth', 'rotor', 'magnet')
+        if self.ldq:
+            ls = {k: np.reshape(v,
+                                (nrows, ncols)).T[::-1].tolist()
+                  for k, v in zip(cols, m[2:])}
+        else:
+            ls = {k: np.reshape(v,
+                                (nrows, ncols)).T.tolist()
+                  for k, v in zip(cols, m[2:])}
         m = []
         for l in content[nl+3:]:
             rec = l.split('\t')
@@ -1051,14 +1058,20 @@ class Reader:
                 m.append([floatnan(x) for x in rec])
             elif not rec and m:
                 break
+
+        cols = ('styoke_hyst', 'styoke_eddy',
+                'stteeth_hyst', 'stteeth_eddy',
+                'rotor_hyst', 'rotor_eddy')
         if m:
             m = np.array(m).T
-            ls.update({k: np.reshape(v,
-                                     (nrows, ncols)).T[::-1].tolist()
-                       for k, v in zip(('styoke_hyst', 'styoke_eddy',
-                                        'stteeth_hyst', 'stteeth_eddy',
-                                        'rotor_hyst', 'rotor_eddy'),
-                                       m[2:])})
+            if self.ldq:
+                ls.update({k: np.reshape(v,
+                                         (nrows, ncols)).T[::-1].tolist()
+                           for k, v in zip(cols, m[2:])})
+            else:
+                ls.update({k: np.reshape(v,
+                                         (nrows, ncols)).T.tolist()
+                           for k, v in zip(cols, m[2:])})
         ls['speed'] = speed
         if self.ldq:
             self.ldq['losses'] = ls

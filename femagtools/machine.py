@@ -105,6 +105,8 @@ def create(bch, r1, ls, lfe=1, wdg=1):
             psiq = wdg*lfe*np.array(bch.psidq['psiq'])
             try:
                 losses = __scale_losses(bch.psidq['losses'], wdg, lfe)
+                losses['ef'] = bch.lossPar.get('ef', [2.0, 2.0])
+                losses['eh'] = bch.lossPar.get('eh', [1.0, 1.0])
             except KeyError:
                 losses = {}
             return PmRelMachinePsidq(m, p, psid, psiq, r1*lfe*wdg**2,
@@ -117,6 +119,8 @@ def create(bch, r1, ls, lfe=1, wdg=1):
             psiq = wdg*lfe*np.array(bch.ldq['psiq'])
             try:
                 losses = __scale_losses(bch.ldq['losses'], wdg, lfe)
+                losses['ef'] = bch.lossPar.get('ef', [2.0, 2.0])
+                losses['eh'] = bch.lossPar.get('eh', [1.0, 1.0])
             except KeyError:
                 losses = {}
             return PmRelMachineLdq(m, p, psid=psid, psiq=psiq,
@@ -360,20 +364,20 @@ class PmRelMachine(object):
     def betai1_plcu(self, i1):
         return self.m*self.r1*i1**2
 
-    def iqd_plcu(self, i1):
+    def iqd_plcu(self, iq, id):
         return self.m*self.r1*(iq**2+id**2)/2
 
     def betai1_losses(self, beta, i1, f):
         return np.sum([self.betai1_plfe1(beta, i1, f),
                        self.betai1_plfe2(beta, i1, f),
                        self.betai1_plmag(beta, i1, f),
-                       self.betai1_plcu(i1)])
+                       self.betai1_plcu(i1)], axis=0)
 
     def iqd_losses(self, iq, id, f):
         return np.sum([self.iqd_plfe1(iq, id, f),
                        self.iqd_plfe2(iq, id, f),
                        self.iqd_plmag(iq, id, f),
-                       self.iqd_plcu(iq, id)])
+                       self.iqd_plcu(iq, id)], axis=0)
 
     def characteristics(self, T, n, u1max, nsamples=36):
         """calculate torque speed characteristics.
@@ -387,7 +391,7 @@ class PmRelMachine(object):
         u1max -- the maximum voltage in V rms
         nsamples -- (optional) number of speed samples
         """
-        r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[], losses=[],
+        r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
         if np.isscalar(T):
             iq, id = self.iqd_torque(T)
@@ -484,9 +488,12 @@ class PmRelMachine(object):
 
             r['phi'].append(r['beta'][-1] - r['gamma'][-1])
             r['cosphi'].append(np.cos(r['phi'][-1]/180*np.pi))
+            #r['losses'].append(self.iqd_losses(iq, id, nx*self.p))
 
-        for nx, tq in zip(r['n'], r['T']):
-            r['pmech'].append((2*np.pi*nx*tq))
+        r['pmech'] = [2*np.pi*nx*tq for nx, tq in zip(r['n'], r['T'])]
+
+        r['losses'] = self.iqd_losses(np.array(r['iq']), np.array(r['iq']),
+                                      np.array(r['n'])*self.p).tolist()
 
         return r
 
@@ -527,6 +534,10 @@ class PmRelMachine(object):
             r['phi'].append(r['beta'][-1]-r['gamma'][-1])
             r['cosphi'].append(np.cos(r['phi'][-1]/180*np.pi))
             r['pmech'].append(w1/self.p*r['T'][-1])
+
+        r['losses'] = self.iqd_losses(np.array(beta_list)/180*np.pi,
+                                      np.array(i1_list),
+                                      np.array(n_list)*self.p).tolist()
         return r
 
     def _inrange(self, iqd):
@@ -602,7 +613,7 @@ class PmRelMachineLdq(PmRelMachine):
                 self._set_losspar(pfe)
                 self._losses = {k: ip.RectBivariateSpline(
                     beta, i1, np.array(pfe[k]),
-                    kx=kx, ky=ky) for k in (
+                    kx=kx, ky=ky).ev for k in (
                         'styoke_hyst', 'stteeth_hyst',
                         'styoke_eddy', 'stteeth_eddy',
                     'rotor_hyst', 'rotor_eddy',
@@ -685,7 +696,7 @@ class PmRelMachineLdq(PmRelMachine):
         return np.sum([
             self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k] for
             k in ('styoke_eddy', 'styoke_hyst',
-                  'stteeth_eddy', 'stteeth_hyst')])
+                  'stteeth_eddy', 'stteeth_hyst')], axis=0)
 
     def iqd_plfe1(self, iq, id, f1):
         return self.betai1_plfe1(*betai1(iq, id), f1)
@@ -693,7 +704,7 @@ class PmRelMachineLdq(PmRelMachine):
     def betai1_plfe2(self, beta, i1, f1):
         return np.sum([
             self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k] for
-            k in ('rotor_eddy', 'rotor_hyst',)])
+            k in ('rotor_eddy', 'rotor_hyst',)], axis=0)
 
     def iqd_plfe2(self, iq, id, f1):
         return self.betai1_plfe2(*betai1(iq, id), f1)
@@ -765,7 +776,7 @@ class PmRelMachinePsidq(PmRelMachine):
             pfe = kwargs['losses']
             self._set_losspar(pfe)
             self._losses = {k: ip.RectBivariateSpline(
-                iq, id, np.array(pfe[k])) for k in (
+                iq, id, np.array(pfe[k])).ev for k in (
                 'styoke_hyst', 'stteeth_hyst',
                 'styoke_eddy', 'stteeth_eddy',
                 'rotor_hyst', 'rotor_eddy',
@@ -820,7 +831,7 @@ class PmRelMachinePsidq(PmRelMachine):
         return np.sum([
             self._losses[k](iq, id)*(f1/self.fo)**self.plexp[k] for
             k in ('styoke_eddy', 'styoke_hyst',
-                  'stteeth_eddy', 'stteeth_hyst')])
+                  'stteeth_eddy', 'stteeth_hyst')], axis=0)
 
     def betai1_plfe1(self, beta, i1, f1):
         return self.iqd_plfe1(*iqd(beta, i1), f1)
@@ -828,7 +839,7 @@ class PmRelMachinePsidq(PmRelMachine):
     def iqd_plfe2(self, iq, id, f1):
         return np.sum([
             self._losses[k](iq, id)*(f1/self.fo)**self.plexp[k] for
-            k in ('rotor_eddy', 'rotor_hyst',)])
+            k in ('rotor_eddy', 'rotor_hyst',)], axis=0)
 
     def betai1_plfe2(self, beta, i1, f1):
         return self.iqd_plfe2(*iqd(beta, i1), f1)

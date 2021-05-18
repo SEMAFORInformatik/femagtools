@@ -50,16 +50,16 @@ def log_pop(pop, ngen):
 
 class Optimizer(object):
     # tasktype='Task'):
-    def __init__(self, workdir, magnetizingCurves, magnetMat, result_func=None, cmd=''):
+    def __init__(self, workdir, magnetizingCurves, magnetMat, result_func=None):
         #self.tasktype = tasktype
         self.result_func = result_func
         self.femag = femagtools.Femag(workdir,
                                       magnetizingCurves=magnetizingCurves,
-                                      magnets=magnetMat, cmd=cmd)
-
+                                      magnets=magnetMat)
+        
     def _update_population(self, generation, pop, engine):
         self.job.cleanup()
-
+        
         for k, i in enumerate(pop.individuals):
             task = self.job.add_task(self.result_func)
             pop.problem.prepare(i.cur_x, self.model)
@@ -84,8 +84,7 @@ class Optimizer(object):
                     logger.warn("Task %s failed: %s", t.id, r['error'])
                 else:
                     if isinstance(r, dict):
-                        pop.problem.setResult(
-                            femagtools.getset.GetterSetter(r))
+                        pop.problem.setResult(femagtools.getset.GetterSetter(r))
                     else:
                         pop.problem.setResult(r)
 
@@ -99,19 +98,19 @@ class Optimizer(object):
 
         pop.update()
         return tend - tstart
-
+    
     def __call__(self, num_generations, opt, pmMachine,
                  operatingConditions, engine):
         return self.optimize(num_generations, opt, pmMachine,
                              operatingConditions, engine)
-
+        
     def optimize(self, num_generations, opt, pmMachine,
                  operatingConditions, engine):
         """execute optimization"""
         decision_vars = opt['decision_vars']
         objective_vars = opt['objective_vars']
         population_size = opt['population_size']
-
+                    
         problem = femagtools.moproblem.FemagMoProblem(decision_vars,
                                                       objective_vars)
         self.builder = femagtools.fsl.Builder()
@@ -123,11 +122,11 @@ class Optimizer(object):
         self.fea['phi_start'] = 0.0
         self.fea['range_phi'] = 720/self.model.get('poles')
         self.pop = Population(problem, population_size)
-
+        
         algo = Nsga2()
 
         self.job = engine.create_job(self.femag.workdir)
-
+        
         logger.info("Optimize x:%d f:%d generations:%d population size:%d",
                     len(self.pop.problem.decision_vars),
                     len(self.pop.problem.objective_vars),
@@ -170,7 +169,7 @@ class Optimizer(object):
                          for s, v in zip(objective_vars,
                                          self.pop.compute_worst())]
         results['dist'] = self.pop.compute_norm_dist()
-
+        
         def label(d):
             for n in ('desc', 'label', 'name'):
                 if n in d:
@@ -180,14 +179,14 @@ class Optimizer(object):
         results['decision'] = [label(d) for d in decision_vars]
         results['population'] = [i.results for i in self.pop.individuals]
         return results
-
+    
     #print("\nChampion: {}\n".format(pop.champion['f']))
-        # if flast != None:
+        #if flast != None:
         #    print("Fitness Comparison:")
         #    for f1, f2 in zip(pop.champion['f'], flast):
         #        print( "{:10.2f} {:10.2f}      {:10.2f}".format(f1, f2, f1-f2))
         #flast = list(pop.champion['f'])
-        # print("")
+        #print("")
 #    except:
 #        print "Unexpected error:", sys.exc_info()
 
@@ -199,5 +198,5 @@ class Optimizer(object):
 #        l2_norm = sqrt(l2_norm)
 #        print(l2_norm)
 
-# pf=pop.plot_pareto_fronts()
-# savefig('pf0.png')
+#pf=pop.plot_pareto_fronts()
+#savefig('pf0.png')

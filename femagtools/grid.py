@@ -77,15 +77,14 @@ class Grid(object):
     """Parameter variation calculation"""
 
     def __init__(self, workdir,
-                 magnetizingCurves=None, magnets=None, result_func=None, cmd=''):  # tasktype='Task'):
+                 magnetizingCurves=None, magnets=None, result_func=None): # tasktype='Task'):
         #self.tasktype = tasktype
         self.result_func = result_func
         self.femag = femagtools.Femag(workdir,
                                       magnetizingCurves=magnetizingCurves,
-                                      magnets=magnets, cmd=cmd)
-        # rudimentary: gives the ability to stop a running parameter variation. thomas.maier/OSWALD
-        self.stop = False
-        self.reportdir = ''
+                                      magnets=magnets)
+        self.stop = False  # rudimentary: gives the ability to stop a running parameter variation. thomas.maier/OSWALD
+        self.reportdir=''
         """
         the "owner" of the Grid have to take care to terminate all running xfemag64 or wfemagw64
         processes after setting stop to True
@@ -111,32 +110,33 @@ class Grid(object):
             raise ValueError("directory {} is not empty".format(dirname))
         self.reportdir = dirname
 
+        
     def setup_model(self, builder, model):
         """builds model in current workdir and returns its filenames"""
         # get and write mag curves
         mc_files = self.femag.copy_magnetizing_curves(model)
-
+        
         if model.is_complete():
             logger.info("setup model in %s", self.femag.workdir)
             filename = 'femag.fsl'
             with open(os.path.join(self.femag.workdir, filename), 'w') as f:
                 f.write('\n'.join(builder.create_model(model, self.femag.magnets) +
-                                  ['save_model("close")']))
+                                ['save_model("close")']))
 
             self.femag.run(filename, options=['-b'])
         model_files = [os.path.join(self.femag.workdir, m)
                        for m in mc_files] + [f
                                              for sublist in [
-                                                 glob.glob(os.path.join(
-                                                     self.femag.workdir,
-                                                     model.name+e))
-                                                 for e in (
-                                                     '_*.poc',
-                                                     '.nc', '.[IA]*7')]
+                                                     glob.glob(os.path.join(
+                                                         self.femag.workdir,
+                                                         model.name+e))
+                                                     for e in (
+                                                             '_*.poc',
+                                                             '.nc', '.[IA]*7')]
                                              for f in sublist]
-
+        
         return model_files
-
+    
     def __call__(self, opt, machine, simulation,
                  engine, bchMapper=None, extra_files=[]):
         """calculate objective vars for all decision vars
@@ -180,7 +180,7 @@ class Grid(object):
         job = engine.create_job(self.femag.workdir)
 
         # build x value array
-
+        
         domain = [list(np.linspace(l, u, s))
                   for s, l, u in zip(steps, prob.lower, prob.upper)]
 
@@ -197,7 +197,7 @@ class Grid(object):
         elapsedTime = 0
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:
-        popsize = 0
+        popsize=0
         for population in baskets(par_range, opt['population_size']):
             if self.stop:  # try to return the results so far. thomas.maier/OSWALD
                 logger.info(
@@ -245,7 +245,7 @@ class Grid(object):
                         builder.create_fe_losses(model) +
                         builder.create_analysis(fea) +
                         ['save_model("close")'])
-
+                        
                 else:
                     prob.prepare(x, [model, fea])
                     logger.info("prepare %s", x)
@@ -319,7 +319,7 @@ class Grid(object):
         except ValueError as v:
             logger.error(v)
             return dict(f=f, x=domain)
-
+        
     def addBchMapperData(self, bchData):
         self.bchmapper_data.append(bchData)
 
@@ -332,3 +332,4 @@ class Grid(object):
                                    objectives, domain):
                 f.write(';'.join([str(v) for v in line]))
                 f.write('\n')
+                

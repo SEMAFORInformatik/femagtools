@@ -1,5 +1,6 @@
 import femagtools
 
+
 def create_fsl():
     machine = dict(
         name="PM 130 L4",
@@ -28,7 +29,7 @@ def create_fsl():
                 iron_hs=1e-3,
                 iron_height=2e-3,
                 gap_ma_iron=1e-3,
-                air_triangle=2e-3,
+                air_triangle=1,
                 condshaft_r=12e-3,
                 magn_rem=1.2,
                 magn_num=2,
@@ -59,4 +60,3 @@ if __name__ == '__main__':
 
     logger.info("FSL %s created",
                 os.path.join(workdir, modelname+'.fsl'))
-

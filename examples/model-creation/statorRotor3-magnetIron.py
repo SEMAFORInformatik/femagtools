@@ -32,7 +32,7 @@ def create_fsl():
                 magn_width=39e-3,
                 magn_height=4e-3,
                 gap_ma_iron=0.0,
-                air_triangle=5e-3,
+                air_triangle=1,
                 iron_height=0.8e-3,
                 magn_rem=1.2,
                 condshaft_r=5e-3,
@@ -50,7 +50,7 @@ def create_fsl():
     )
 
     return femagtools.create_fsl(machine)
-    
+
 
 if __name__ == '__main__':
     import os

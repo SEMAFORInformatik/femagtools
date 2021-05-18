@@ -1,5 +1,6 @@
 import femagtools
 
+
 def create_fsl():
     machine = dict(
         name="PM 130 L4",
@@ -25,7 +26,7 @@ def create_fsl():
                 magn_height=4e-3,
                 iron_bfe=3e-3,
                 gap_ma_iron=1e-3,
-                air_triangle=1e-3,
+                air_triangle=1,
                 iron_height=1e-3,
                 gap_ma_right=0.0,
                 gap_ma_left=0.0,

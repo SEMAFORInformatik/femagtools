@@ -23,6 +23,7 @@ except ImportError:   # ModuleNotFoundError:
 
 logger = logging.getLogger("femagtools.plot")
 
+
 def _create_3d_axis():
     """creates a subplot with 3d projection if one does not already exist"""
     from matplotlib.projections import get_projection_class
@@ -36,7 +37,7 @@ def _create_3d_axis():
         pl.figure()
         pl.subplot(111, projection='3d')
 
-        
+
 def _plot_surface(ax, x, y, z, labels, azim=None):
     """helper function for surface plots"""
     #ax.tick_params(axis='both', which='major', pad=-3)
@@ -50,14 +51,15 @@ def _plot_surface(ax, x, y, z, labels, azim=None):
                     vmin=np.nanmin(z), vmax=np.nanmax(z),
                     linewidth=0, antialiased=True)
 #                    edgecolor=(0, 0, 0, 0))
-    #ax.set_xticks(xticks)
-    #ax.set_yticks(yticks)
-    #ax.set_zticks(zticks)
+    # ax.set_xticks(xticks)
+    # ax.set_yticks(yticks)
+    # ax.set_zticks(zticks)
     ax.set_xlabel(labels[0])
     ax.set_ylabel(labels[1])
     ax.set_title(labels[2])
 
     #pl.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+
 
 def __phasor_plot(up, idq, uxdq):
     uref = max(up, uxdq[0])
@@ -71,8 +73,9 @@ def __phasor_plot(up, idq, uxdq):
     qhw = 6   # width arrow head
     qhl = 15  # length arrow head
     qlw = 2   # line width
-    qts = 10  # textsize  
-    curfac = max(0.9, 1.5*i1q/up)  # Length of the Current adjust to Ud: Initally 0.9, Maier(Oswald) = 0.5
+    qts = 10  # textsize
+    # Length of the Current adjust to Ud: Initally 0.9, Maier(Oswald) = 0.5
+    curfac = max(0.9, 1.5*i1q/up)
 
     def label_line(ax, X, Y, U, V, label, color='k', size=8):
         """Add a label to a line, at the proper angle.
@@ -122,41 +125,31 @@ def __phasor_plot(up, idq, uxdq):
     ax = pl.gca()
     ax.axes.xaxis.set_ticklabels([])
     ax.axes.yaxis.set_ticklabels([])
-    #ax.set_aspect('equal')
-    
+    # ax.set_aspect('equal')
+
     ax.set_title(
         r'$U_1$={0} V, $I_1$={1} A, $U_p$={2} V'.format(
             round(u1, 1), round(i1, 1), round(up, 1)), fontsize=14)
 
     up /= uref
-    ax.quiver(0, 0, 0, up
-              , angles='xy', scale_units='xy', scale=1, units='dots'
-              , headwidth=qhw/2, headlength=qhl/2, headaxislength=qhl/2, width=qlw*2
-              , color='k')
+    ax.quiver(0, 0, 0, up, angles='xy', scale_units='xy', scale=1, units='dots',
+              headwidth=qhw/2, headlength=qhl/2, headaxislength=qhl/2, width=qlw*2, color='k')
     label_line(ax, 0, 0, 0, up, '$U_p$', 'k', qts)
 
-    ax.quiver(0, 0, u1d, u1q
-              , angles='xy', scale_units='xy', scale=1, units='dots'
-              , headwidth=qhw, headlength=qhl, headaxislength=qhl, width=qlw
-              , color='r')
+    ax.quiver(0, 0, u1d, u1q, angles='xy', scale_units='xy', scale=1, units='dots',
+              headwidth=qhw, headlength=qhl, headaxislength=qhl, width=qlw, color='r')
     label_line(ax, 0, 0, u1d, u1q, '$U_1$', 'r', qts)
-    
-    ax.quiver(0, 1, uxd, 0
-              , angles='xy', scale_units='xy', scale=1, units='dots'
-              , headwidth=qhw, headlength=qhl, headaxislength=qhl, width=qlw
-              , color='g')
+
+    ax.quiver(0, 1, uxd, 0, angles='xy', scale_units='xy', scale=1, units='dots',
+              headwidth=qhw, headlength=qhl, headaxislength=qhl, width=qlw, color='g')
     label_line(ax, 0, 1, uxd, 0, '$U_d$', 'g', qts)
-    
-    ax.quiver(uxd, 1, 0, uxq
-              , angles='xy', scale_units='xy', scale=1, units='dots'
-              , headwidth=qhw, headlength=qhl, headaxislength=qhl, width=qlw
-              , color='g')
+
+    ax.quiver(uxd, 1, 0, uxq, angles='xy', scale_units='xy', scale=1, units='dots',
+              headwidth=qhw, headlength=qhl, headaxislength=qhl, width=qlw, color='g')
     label_line(ax, uxd, 1, 0, uxq, '$U_q$', 'g', qts)
 
-    ax.quiver(0, 0, curfac*i1d, curfac*i1q
-              , angles='xy', scale_units='xy', scale=1, units='dots'
-              , headwidth=qhw, headlength=qhl, headaxislength=qhl, width=qlw
-              , color='b')
+    ax.quiver(0, 0, curfac*i1d, curfac*i1q, angles='xy', scale_units='xy', scale=1,
+              units='dots', headwidth=qhw, headlength=qhl, headaxislength=qhl, width=qlw, color='b')
     label_line(ax, 0, 0, curfac*i1d, curfac*i1q, '$I_1$', 'b', qts)
 
     xmin, xmax = (min(0, uxd, i1d), max(0, i1d, uxd))
@@ -201,16 +194,18 @@ def phasor(bch):
     i1beta_phasor(bch.dqPar['up'][-1],
                   bch.dqPar['i1'][-1], bch.dqPar['beta'][-1],
                   r1, xd, xq)
-    
+
 
 def airgap(airgap):
     """creates plot of flux density in airgap"""
     pl.title('Airgap Flux Density [T]')
-    pl.plot(airgap['pos'], airgap['B'], label='Max {:4.2f} T'.format(max(airgap['B'])))
-    pl.plot(airgap['pos'], airgap['B_fft'], label='Base Ampl {:4.2f} T'.format(airgap['Bamp']))
+    pl.plot(airgap['pos'], airgap['B'],
+            label='Max {:4.2f} T'.format(max(airgap['B'])))
+    pl.plot(airgap['pos'], airgap['B_fft'],
+            label='Base Ampl {:4.2f} T'.format(airgap['Bamp']))
     pl.xlabel('Position/°')
     pl.legend()
-        
+
     pl.grid()
 
 
@@ -221,7 +216,7 @@ def airgap_fft(airgap, bmin=1e-2):
     ax.set_title('Airgap Flux Density Harmonics / {}'.format(unit))
     ax.grid(True)
     order, fluxdens = np.array([(n, b) for n, b in zip(airgap['nue'],
-                                                     airgap['B_nue']) if b>bmin]).T
+                                                       airgap['B_nue']) if b > bmin]).T
     try:
         markerline1, stemlines1, _ = ax.stem(order, fluxdens, '-.', basefmt=" ",
                                              use_line_collection=True)
@@ -311,7 +306,7 @@ def forcedens(title, pos, fdens):
     ax = pl.gca()
     ax.set_title(title)
     ax.grid(True)
-        
+
     ax.plot(pos, [1e-3*ft for ft in fdens[0]], label='F tang')
     ax.plot(pos, [1e-3*fn for fn in fdens[1]], label='F norm')
     ax.legend()
@@ -326,7 +321,7 @@ def forcedens_surface(fdens):
     ypos = [p['position'] for p in fdens.positions]
     z = 1e-3*np.array([p['FN']
                        for p in fdens.positions])
-    _plot_surface(ax, xpos, ypos, z,             
+    _plot_surface(ax, xpos, ypos, z,
                   (u'Rotor pos/°', u'Pos/°', u'F N / kN/m²'))
 
 
@@ -348,7 +343,7 @@ def forcedens_fft(title, fdens):
     z_pos = np.zeros_like(z_size)
     x_size = 2
     y_size = 2
-  
+
     ax.bar3d(x_pos, y_pos, z_pos, x_size, y_size, z_size)
     ax.view_init(azim=120)
     ax.set_xlim(0, num_bars+1)
@@ -383,7 +378,7 @@ def voltage(title, pos, voltage):
     ax.set_title('{} / V'.format(title))
     ax.grid(True)
     ax.plot(pos, voltage)
-    
+
 
 def voltage_fft(title, order, voltage):
     """plot FFT harmonics of voltage"""
@@ -484,14 +479,14 @@ def mtpa(pmrel, i1max, title='', projection=''):
         x, y = np.meshgrid(id, iq)
         CS = ax.contour(x, y, torque_iqd, 6, colors='k')
         ax.clabel(CS, fmt='%d', inline=1)
-            
+
         ax.set_xlabel('Id/A')
         ax.set_ylabel('Iq/A')
         ax.plot(iopt[1], iopt[0],
                 color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
                     np.max(iopt[2][-1])))
         ax.grid()
-        
+
     if title:
         ax.set_title(title)
     ax.legend()
@@ -503,7 +498,7 @@ def mtpv(pmrel, u1max, i1max, title='', projection=''):
     nsamples = 20
     if projection == '3d':
         nsamples = 50
-        
+
     iqmax, idmax = pmrel.iqdmax(i1max)
     iqmin, idmin = pmrel.iqdmin(i1max)
     id = np.linspace(idmin, idmax, nsamples)
@@ -514,7 +509,7 @@ def mtpv(pmrel, u1max, i1max, title='', projection=''):
     u1 = np.mean(u1_iqd)
     imtpv = np.array([pmrel.mtpv(wx, u1, i1max)
                       for wx in np.linspace(w1, 20*w1, nsamples)]).T
-    
+
     if projection == '3d':
         torque_iqd = np.array(
             [[pmrel.torque_iqd(x, y)
@@ -536,7 +531,7 @@ def mtpv(pmrel, u1max, i1max, title='', projection=''):
         #beta = np.arctan2(imtpv[1][0], imtpv[0][0])
         #b = np.linspace(beta, 0)
         #ax.plot(np.sqrt(2)*i1max*np.sin(b), np.sqrt(2)*i1max*np.cos(b), 'r-')
-        
+
         ax.grid()
         ax.legend()
     ax.set_xlabel('Id/A')
@@ -588,7 +583,7 @@ def pmrelsim(bch, title=''):
         force_fft(bch.linearForce_fft[-1]['order'],
                   bch.linearForce_fft[-1]['force'])
         row += 3
-        
+
     pl.subplot(rows, cols, row+1)
     flux = [bch.flux[k][-1] for k in bch.flux]
     pos = [f['displ'] for f in flux]
@@ -666,7 +661,7 @@ def multcal(bch, title=''):
         force_fft(bch.linearForce_fft[-1]['order'],
                   bch.linearForce_fft[-1]['force'])
         row += 3
-        
+
     pl.subplot(rows, cols, row+1)
     flux = [bch.flux[k][-1] for k in bch.flux]
     pos = [f['displ'] for f in flux]
@@ -741,11 +736,11 @@ def fasttorque(bch, title=''):
         force_fft(bch.linearForce_fft[-1]['order'],
                   bch.linearForce_fft[-1]['force'])
         row += 3
-        
+
     pl.subplot(rows, cols, row+1)
     flux = [bch.flux[k][-1] for k in bch.flux]
     pos = [f['displ'] for f in flux]
-    winding_flux(pos,[f['flux_k'] for f in flux])
+    winding_flux(pos, [f['flux_k'] for f in flux])
     pl.subplot(rows, cols, row+2)
     winding_current(pos, [f['current_k'] for f in flux])
     pl.subplot(rows, cols, row+3)
@@ -786,7 +781,7 @@ def cogging(bch, title=''):
                           figsize=(10, 3*rows + htitle))
     if title:
         fig.suptitle(title, fontsize=16)
-        
+
     row = 1
     pl.subplot(rows, cols, row)
     if bch.torque:
@@ -814,7 +809,7 @@ def cogging(bch, title=''):
         force_fft(bch.linearForce_fft[-1]['order'],
                   bch.linearForce_fft[-1]['force'])
         row += 3
-        
+
     pl.subplot(rows, cols, row+1)
     voltage('Voltage',
             bch.flux['1'][0]['displ'],
@@ -886,7 +881,7 @@ def i1beta_ld(i1, beta, ld):
     _plot_surface(ax, i1, beta, np.asarray(ld)*1e3,
                   (u'I1/A', u'Beta/°', u'Ld/mH'),
                   azim=60)
-    
+
 
 def i1beta_lq(i1, beta, lq):
     """creates a surface plot of ld vs i1, beta"""
@@ -972,7 +967,7 @@ def idq_psim(id, iq, psim):
     _plot_surface(ax, id, iq, psim,
                   (u'Id/A', u'Iq/A', u'Psi m [Vs]'),
                   azim=120)
-    
+
 
 def idq_ld(id, iq, ld):
     """creates a surface plot of ld vs. id, iq"""
@@ -981,7 +976,7 @@ def idq_ld(id, iq, ld):
     _plot_surface(ax, id, iq, np.asarray(ld)*1e3,
                   (u'Id/A', u'Iq/A', u'L d/mH'),
                   azim=120)
-    
+
 
 def idq_lq(id, iq, lq):
     """creates a surface plot of lq vs. id, iq"""
@@ -990,7 +985,7 @@ def idq_lq(id, iq, lq):
     _plot_surface(ax, id, iq, np.asarray(lq)*1e3,
                   (u'Id/A', u'Iq/A', u'L q/mH'),
                   azim=120)
-    
+
 
 def ldlq(bch):
     """creates the surface plots of a BCH reader object
@@ -1012,7 +1007,7 @@ def ldlq(bch):
 
     fig.add_subplot(rows, 2, 2, projection='3d')
     i1beta_psid(i1, beta, psid)
-    
+
     fig.add_subplot(rows, 2, 3, projection='3d')
     i1beta_psiq(i1, beta, psiq)
 
@@ -1045,19 +1040,19 @@ def psidq(bch):
 
     fig.add_subplot(rows, 2, 1, projection='3d')
     idq_torque(id, iq, torque)
-    
+
     fig.add_subplot(rows, 2, 2, projection='3d')
     idq_psid(id, iq, psid)
-    
+
     fig.add_subplot(rows, 2, 3, projection='3d')
     idq_psiq(id, iq, psiq)
 
     fig.add_subplot(rows, 2, 4, projection='3d')
     idq_psim(id, iq, psim)
-    
+
     fig.add_subplot(rows, 2, 5, projection='3d')
     idq_ld(id, iq, ld)
-    
+
     fig.add_subplot(rows, 2, 6, projection='3d')
     idq_lq(id, iq, lq)
 
@@ -1079,7 +1074,7 @@ def felosses(losses, coeffs, title='', log=True):
     Bo = losses['Bo']
     B = pl.np.linspace(0.9*np.min(losses['B']),
                        1.1*0.9*np.max(losses['B']))
-                                  
+
     for i, f in enumerate(losses['f']):
         pfe = [p for p in np.array(losses['pfe'])[i] if p]
         if f > 0:
@@ -1097,7 +1092,7 @@ def felosses(losses, coeffs, title='', log=True):
     ax.set_xlabel("Flux Density [T]")
     #pl.ylabel("Pfe [W/kg]")
     ax.legend()
-    ax.grid(True) 
+    ax.grid(True)
 
 
 def spel(isa, with_axis=False):
@@ -1131,15 +1126,15 @@ def mesh(isa, with_axis=False):
         pts = [list(i) for i in zip(*[v.xy for v in el.vertices])]
         ax.add_line(Line2D(pts[0], pts[1], color='b', ls='-', lw=0.25))
 
-    #for nc in isa.nodechains:
+    # for nc in isa.nodechains:
     #    pts = [list(i) for i in zip(*[(n.x, n.y) for n in nc.nodes])]
-    #    ax.add_line(Line2D(pts[0], pts[1], color="b", ls="-", lw=0.25, 
+    #    ax.add_line(Line2D(pts[0], pts[1], color="b", ls="-", lw=0.25,
     #                       marker=".", ms="2", mec="None"))
-    
-    #for nc in isa.nodechains:
+
+    # for nc in isa.nodechains:
     #    if nc.nodemid is not None:
     #        plt.plot(*nc.nodemid.xy, "rx")
-    
+
     ax.autoscale(enable=True)
     if not with_axis:
         ax.axis('off')
@@ -1154,19 +1149,20 @@ def _contour(title, elements, values, label='', isa=None):
     if isa:
         for se in isa.superelements:
             ax.add_patch(Polygon([n.xy
-                                for nc in se.nodechains
-                                for n in nc.nodes],
-                                color='gray', alpha=0.1, lw=0))
+                                  for nc in se.nodechains
+                                  for n in nc.nodes],
+                                 color='gray', alpha=0.1, lw=0))
     valid_values = np.logical_not(np.isnan(values))
     patches = np.array([Polygon([v.xy for v in e.vertices])
-                            for e in elements])[valid_values]
-    p = PatchCollection(patches, alpha=1.0, match_original=False) #, cmap=matplotlib.cm.jet, alpha=0.4)
+                        for e in elements])[valid_values]
+    # , cmap=matplotlib.cm.jet, alpha=0.4)
+    p = PatchCollection(patches, alpha=1.0, match_original=False)
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
     cb = pl.colorbar(p)
     for patch in np.array([Polygon([v.xy for v in e.vertices],
-                                       fc='white', alpha=1.0)
-                            for e in elements])[np.isnan(values)]:
+                                   fc='white', alpha=1.0)
+                           for e in elements])[np.isnan(values)]:
         ax.add_patch(patch)
     if label:
         cb.set_label(label=label, fontsize=18)
@@ -1182,7 +1178,7 @@ def demag(isa):
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
     _contour(f'Demagnetization at {isa.MAGN_TEMPERATURE} °C',
-                 emag, demag, '-H / kA/m', isa)
+             emag, demag, '-H / kA/m', isa)
     logger.info("Max demagnetization %f", np.max(demag))
 
 
@@ -1196,15 +1192,15 @@ def demag_pos(isa, pos, icur=-1, ibeta=-1):
     """
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([isa.demagnetization(*e.center, icur, ibeta)[1]
-                          for e in emag])
+                      for e in emag])
     for i, x in enumerate(isa.pos_el_fe_induction):
         if x >= pos/180*np.pi:
             break
 
     hpol = demag[:, i]
-    hpol[hpol==0] = np.nan
+    hpol[hpol == 0] = np.nan
     _contour(f'Demagnetization at Pos. {round(x/np.pi*180)}° ({isa.MAGN_TEMPERATURE} °C)',
-                 emag, hpol, '-H / kA/m', isa)
+             emag, hpol, '-H / kA/m', isa)
     logger.info("Max demagnetization %f kA/m", np.nanmax(hpol))
 
 
@@ -1219,10 +1215,10 @@ def flux_density(isa, subreg=[]):
         else:
             sr = [subreg]
         elements = [e for s in sr for se in isa.get_subregion(s).elements()
-                        for e in se]
+                    for e in se]
     else:
         elements = [e for e in isa.elements]
-        
+
     fluxd = np.array([np.linalg.norm(e.flux_density()) for e in elements])
     _contour(f'Flux Density T', elements, fluxd)
     logger.info("Max flux dens %f", np.max(fluxd))
@@ -1239,7 +1235,7 @@ def loss_density(isa, subreg=[]):
         else:
             sr = [subreg]
         elements = [e for s in sr for sre in isa.get_subregion(s).elements()
-                        for e in sre]
+                    for e in sre]
     else:
         elements = [e for e in isa.elements]
 
@@ -1250,10 +1246,10 @@ def loss_density(isa, subreg=[]):
 def main():
     import io
     import sys
-    import argparse    
+    import argparse
     from .__init__ import __version__
     from femagtools.bch import Reader
-    
+
     argparser = argparse.ArgumentParser(
         description='Read BCH/BATCH/PLT file and create a plot')
     argparser.add_argument('filename',

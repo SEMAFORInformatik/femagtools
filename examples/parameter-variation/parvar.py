@@ -4,12 +4,12 @@
  """
 import os
 import json
-from femagtools.multiproc import Engine
+#from femagtools.multiproc import Engine
 # instead you can use on of the following
 #
-#from femagtools.docker import Engine
+from femagtools.docker import Engine
 #from femagtools.condor import Engine
-# from femagtools.amazon import Engine
+# fr
 # from femagtools.google import Engine
 #
 import femagtools.grid
@@ -138,7 +138,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
 if __name__ == '__main__':
-    engine = Engine()
+    engine = Engine(num_threads=3)
 
     userdir = os.path.expanduser('~')
     workdir = os.path.join(userdir, 'parvar')

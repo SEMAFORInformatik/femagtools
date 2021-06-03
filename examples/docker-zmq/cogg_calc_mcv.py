@@ -31,7 +31,7 @@ mcvData = [
             15000, 20000, 25000, 30000, 35000, 40000])],
          name='m270-35a',
          desc=u"Demo Steel",
-         ch=4.0,
+         ch=0.0,
          cw_freq=2.0,
          cw=1.68),
 
@@ -132,7 +132,7 @@ femag = femagtools.ZmqFemag(5555, workdir=workdir,
 simulation = dict(
     calculationMode="cogg_calc",
     magn_temp=60.0,
-    num_move_steps=49,
+    period_frac=6,
     speed=50.0)
 
 r = femag(machine, simulation, show_progress)
@@ -140,5 +140,7 @@ r = femag(machine, simulation, show_progress)
 print("Order    T/Nm      %")
 tq = r.torque_fft[-1]
 for l in zip(tq['order'], tq['torque'], tq['torque_perc']):
-    print('{0:<5} {1:9.2f} {2:6.1f}'.format(*l))
-
+    if(l[2] > 1):
+        print('{0:<5} {1:9.2f} {2:6.1f}'.format(*l))
+# remove temp files
+femag.cleanup()

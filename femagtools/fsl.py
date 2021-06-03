@@ -514,7 +514,7 @@ class Builder:
                 sim['poc'] = poc
                 sim['pocfilename'] = poc.filename()
             except UnboundLocalError:
-                logger.warn("unknown number of poles")
+                logger.warning("unknown number of poles")
                 pass
 
         if 'phi_start' not in sim:

@@ -77,14 +77,15 @@ class Grid(object):
     """Parameter variation calculation"""
 
     def __init__(self, workdir,
-                 magnetizingCurves=None, magnets=None, result_func=None): # tasktype='Task'):
+                 magnetizingCurves=None, magnets=None, result_func=None):  # tasktype='Task'):
         #self.tasktype = tasktype
         self.result_func = result_func
         self.femag = femagtools.Femag(workdir,
                                       magnetizingCurves=magnetizingCurves,
                                       magnets=magnets)
-        self.stop = False  # rudimentary: gives the ability to stop a running parameter variation. thomas.maier/OSWALD
-        self.reportdir=''
+        # rudimentary: gives the ability to stop a running parameter variation. thomas.maier/OSWALD
+        self.stop = False
+        self.reportdir = ''
         """
         the "owner" of the Grid have to take care to terminate all running xfemag64 or wfemagw64
         processes after setting stop to True
@@ -110,31 +111,30 @@ class Grid(object):
             raise ValueError("directory {} is not empty".format(dirname))
         self.reportdir = dirname
 
-        
     def setup_model(self, builder, model):
         """builds model in current workdir and returns its filenames"""
         # get and write mag curves
         mc_files = self.femag.copy_magnetizing_curves(model)
-        
+
         if model.is_complete():
             logger.info("setup model in %s", self.femag.workdir)
             filename = 'femag.fsl'
             with open(os.path.join(self.femag.workdir, filename), 'w') as f:
                 f.write('\n'.join(builder.create_model(model, self.femag.magnets) +
-                                ['save_model("close")']))
+                                  ['save_model("close")']))
 
             self.femag.run(filename, options=['-b'])
         model_files = [os.path.join(self.femag.workdir, m)
                        for m in mc_files] + [f
                                              for sublist in [
-                                                     glob.glob(os.path.join(
-                                                         self.femag.workdir,
-                                                         model.name+e))
-                                                     for e in (
-                                                             '_*.poc',
-                                                             '.nc', '.[IA]*7')]
+                                                 glob.glob(os.path.join(
+                                                     self.femag.workdir,
+                                                     model.name+e))
+                                                 for e in (
+                                                     '_*.poc',
+                                                     '.nc', '.[IA]*7')]
                                              for f in sublist]
-        
+
         return model_files
     
     def __call__(self, opt, machine, simulation,
@@ -307,14 +307,13 @@ class Grid(object):
 
         logger.info('Total elapsed time %d s ...... DONE', elapsedTime)
 
-        shape = [len(objective_vars)] + [len(d) for d in reversed(domain)]
-        logger.info("f shape %s --> %s", np.shape(np.array(f).T), shape)
+        # Note results f must be transposed but may have different shapes
         try:
-            objectives = np.reshape(np.array(f).T, shape)
+            objectives = list(zip(*f))
             if self.reportdir:
                 self._write_report(decision_vars, objective_vars,
                                    objectives, domain)
-            return dict(f=objectives.tolist(),
+            return dict(f=objectives,
                         x=domain)
         except ValueError as v:
             logger.error(v)

@@ -112,8 +112,9 @@ class Poc:
             func_steps = int(pocfile.readline())
             if self.pocType == 'hsp':
                 self.harmonic_id = []
-            for i in range(func_steps):
-                l = pocfile.readline().strip().split(',')
+            import re
+            for i in range(func_steps-1):
+                l = re.split(';|\t|,| ', pocfile.readline().strip())
                 if len(l) > 2:
                     self.harmonic_id.append(int(l[0]))
                     self.func_current.append(float(l[1]))

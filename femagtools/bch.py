@@ -713,6 +713,7 @@ class Reader:
     def __read_airgapInduction(self, content):
         "read and append airgapInduction section"
         import scipy.integrate as si
+        import math
 
         logger.debug('read airgapInduction')
         i1beta = False  # format is either i1/beta or id/iq
@@ -755,12 +756,12 @@ class Reader:
                     bn[3].append(f[9])
 
                     a = (an[0][-1], an[1][-1], an[2][-1], an[3][-1])
-                    b = (bn[0][-1], bn[1][-1], bn[2][-1], an[3][-1])
+                    b = (bn[0][-1], bn[1][-1], bn[2][-1], bn[3][-1])
 
                     def B(x):
                         return sum(a[i] * np.cos((2 * i + 1) * x) +
                                    b[i] * np.sin((2 * i + 1) * x)
-                                   for i in (0, 1, 2, 3))
+                                   for i in (0, 1, 2, 3) if not math.isnan(a[i]) and not math.isnan(b[i]))
 
                     def Bdc(x):
                         return abs(B(x))

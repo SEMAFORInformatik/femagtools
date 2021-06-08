@@ -115,6 +115,12 @@ def test_read_poc():
     expected['pocType'] = 'Function'
     assert poc.getProps() == expected
 
+def test_read_func_poc():
+    datadir = pathlib.Path(__file__).resolve().parent.joinpath('data')
+    poc = femagtools.poc.Poc(str(datadir / 'test_func.poc'))
+    assert poc.getProps()['pole_pitch'] == 18.0
+    assert poc.getProps()['pocType'] == 'fun'
+
 #    def test_read_poc_with_fun( self ):
 #        poc=self._createPoc('2p_sin.poc')
 #        self.assertEqual(poc.getProps(), funPars)

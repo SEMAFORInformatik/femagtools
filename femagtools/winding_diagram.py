@@ -18,7 +18,7 @@ def _winding_data(Q, p, m):
     return keys
 
 
-def winding_diagram(Q, p, m):
+def winding_diagram(Q, p, m, filename):
 
     def color(key):
         colors = {
@@ -159,4 +159,4 @@ def winding_diagram(Q, p, m):
     ax.set_axis_off()
     fig.tight_layout()
 
-    plt.show()
+    plt.savefig(filename)

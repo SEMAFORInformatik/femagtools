@@ -8,6 +8,7 @@
 
 
 """
+import pathlib
 import logging
 import logging.config
 
@@ -61,7 +62,6 @@ def _read_sections(f):
                 section = []
         else:
             section.append(line.strip())
-
     yield section
 
 
@@ -91,26 +91,47 @@ def read_input_data(content):
 
 
 def read_simulation_results(content):
-    r = dict(s=[], T=[], un=[], i1=[], p1=[], cosphi=[], f1=[])
+    unit = 1e3
+    resmap = {
+        'Torque = P2/(s.omega) [Nm]': 'Tp',
+        'Rotor-Losses P2 [kW]': 'p2',
+        'Stator FE  Pfe1 [kW]': 'pfe1'}
+    r = dict(s=[], T=[], un=[], i1=[], p1=[], cosphi=[],
+             f1=[], pfe1=[], p2=[], Tp=[])
     for l in content:
+        if l.startswith('S LIP'):
+            if l.find('POWER[W]') > -1:
+                unit = 1
+                continue
         a = l.split()
         if len(a) == 7:
             for k, v in zip(('s', 'T', 'un', 'i1', 'p1', 'cosphi', 'f1'), a):
                 r[k].append(float(v))
+        elif a:
+            a = l.split(':')[-1].split()
+            if len(a) == 1:
+                try:
+                    k = resmap[l.split(':')[0]]
+                    r[k].append(float(a[0]))
+                except KeyError:
+                    logger.warning('Key %s ignored', l.split(':')[0])
+    if unit > 1:
+        for k in ('p1', 'p2', 'pfe1'):
+            r[k] = [x*unit for x in r[k]]
     return r
 
 
-def read(content):
+def read(arg):
     """read asm file
 
         Args:
-          content (str or list of str) the text lines of the ASM file
+          filename or content (list of str) the text lines of the ASM file
     """
     r = {}
-    if isinstance(content, str):
-        lines = content.split('\n')
+    if isinstance(arg, str):
+        lines = pathlib.Path(arg).read_text().split('\n')
     else:
-        lines = content
+        lines = arg
     for s in _read_sections(lines):
         if not s:
             continue
@@ -138,10 +159,8 @@ def read(content):
 
 
 if __name__ == "__main__":
-    import pathlib
     import sys
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
-    content = pathlib.Path(sys.argv[1]).read_text()
-    r = read(content)
+    r = read(argv[1])
     print(r)

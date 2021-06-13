@@ -3,6 +3,7 @@
 import logging
 import json
 import femagtools
+import pathlib
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
@@ -65,11 +66,13 @@ machine = dict(
     )
 )
 
-workdir = '.'
-femag = femagtools.Femag(workdir, magnetizingCurves='.')
-#                         cmd='xfemag64.sh')
+workdir = pathlib.Path.home() / 'femag'
+workdir.mkdir(parents=True, exist_ok=True)
 
-# set TS simulation
+femag = femagtools.Femag(str(workdir),
+                         magnetizingCurves='../magnetcurves')
+
+# set AC simulation
 simulation = dict(
     calculationMode="asyn_motor",
     wind_temp=60,

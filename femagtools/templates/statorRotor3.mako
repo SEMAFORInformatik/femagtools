@@ -45,9 +45,6 @@ for i=2, m.num_sl_gen do
   x,y=pr2c(r,phi)
   add_to_subreg( x, y )
  end
--- sigma1, sigma2 = get_dev_data("cond_conduct")
-sigma2 = ${model.get('conductivity', 56e6)}
-set_mat_cond(x,y, sigma2, 100.0 )
 
 % else:
 if mcvkey_teeth ~= nil then

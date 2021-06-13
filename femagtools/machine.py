@@ -156,10 +156,10 @@ class PmRelMachine(object):
         self.ls = ls
         self.io = (1, -1)
         self.fo = 50.0
-        self.plexp = {'styoke_hyst': [1.0, 1.0],
-                      'stteeth_hyst': [1.0, 1.0],
-                      'styoke_eddy': [2.0, 2.0],
-                      'stteeth_eddy': [2.0, 2.0],
+        self.plexp = {'styoke_hyst': 1.0,
+                      'stteeth_hyst': 1.0,
+                      'styoke_eddy': 2.0,
+                      'stteeth_eddy': 2.0,
                       'rotor_hyst': 1.0,
                       'rotor_eddy': 2.0}
         self._losses = {k: lambda x, y: 0 for k in (
@@ -438,7 +438,7 @@ class PmRelMachine(object):
                 r['n'].append(nx)
                 r['T'].append(T)
 
-            if nx < n3:
+            if n1 < n2:
                 for nx in np.linspace(nx+dn/2, n2, int(n2/dn)):
                     w1 = 2*np.pi*nx*self.p
                     iq, id = self.iqd_imax_umax(i1max, w1, u1max,
@@ -451,7 +451,7 @@ class PmRelMachine(object):
                     if T > 0 and tq < 0:
                         logger.info("2: n %g T %g i1max %g w1 %g u1 %g",
                                     nx*60, tq, i1max, w1, u1max)
-            if nx < n3:
+            if n2 < n3:
                 for nx in np.linspace(nx+dn/2, n3, int(n3/dn)):
                     w1 = 2*np.pi*nx*self.p
                     try:
@@ -492,7 +492,7 @@ class PmRelMachine(object):
 
         r['pmech'] = [2*np.pi*nx*tq for nx, tq in zip(r['n'], r['T'])]
 
-        r['losses'] = self.iqd_losses(np.array(r['iq']), np.array(r['iq']),
+        r['losses'] = self.iqd_losses(np.array(r['iq']), np.array(r['id']),
                                       np.array(r['n'])*self.p).tolist()
 
         return r
@@ -535,9 +535,10 @@ class PmRelMachine(object):
             r['cosphi'].append(np.cos(r['phi'][-1]/180*np.pi))
             r['pmech'].append(w1/self.p*r['T'][-1])
 
-        r['losses'] = self.iqd_losses(np.array(beta_list)/180*np.pi,
-                                      np.array(i1_list),
-                                      np.array(n_list)*self.p).tolist()
+        r['losses'] = self.iqd_losses(
+            iqd(np.array(beta_list)/180*np.pi,
+                np.array(i1_list)),
+            np.array(n_list)*self.p).tolist()
         return r
 
     def _inrange(self, iqd):

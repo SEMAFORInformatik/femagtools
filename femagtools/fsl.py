@@ -217,13 +217,14 @@ class Builder:
         templ = model.rotortype()
         rotmodel = model.rotor.copy()
         rotmodel.update(model.rotor[templ])
+        rotmodel['is_rotor'] = True  # just in case for the template
         return mcv + self.render_rotor(rotmodel, templ)
 
     def create_rotor_winding(self, model):
-        if hasattr(model, 'rotor'):
+        if hasattr(model, 'rotor') and model.rotortype() == 'rot_hsm':
             return self.render_rotor(model.rotor, 'rotor_winding')
         return []
-    
+
     def prepare_magnet(self, model):
         templ = model.magnettype()
         if templ == 'mshfile':
@@ -288,7 +289,7 @@ class Builder:
         (Note: femag bug with connect model)"
         """
         if (model.get('move_action') == 0 and (model.connect_full or
-            model.stator['num_slots'] > model.stator['num_slots_gen'])):
+                                               model.stator['num_slots'] > model.stator['num_slots_gen'])):
             return ['pre_models("connect_models")\n']
         return []
 
@@ -296,7 +297,7 @@ class Builder:
         return (['-- created by femagtools {}'.format(__version__), ''] +
                 self.__render(model, 'open') +
                 self.set_modpar(model) +
-                self.create_fe_contr(model))                
+                self.create_fe_contr(model))
 
     def set_modpar(self, model):
         return self.__render(model, 'basic_modpar')
@@ -308,7 +309,7 @@ class Builder:
             tail = ['m.airgap   = 2*ag/3']
         tail += [f"m.nodedist = {model.stator.get('nodedist',1)}"]
 
-        return (['-- created by femagtools {}'.format(__version__), ''] + 
+        return (['-- created by femagtools {}'.format(__version__), ''] +
                 self.__render(model, 'new_model') +
                 self.set_modpar(model) +
                 self.create_fe_contr(model) +
@@ -316,7 +317,7 @@ class Builder:
 
     def create_fe_contr(self, model):
         return self.__render(model, 'fe-contr.mako')
-        
+
     def create_cu_losses(self, model):
         return self.__render(model.windings, 'cu_losses')
 
@@ -418,19 +419,19 @@ class Builder:
                     except AttributeError:
                         magnetMat['magntemp'] = 20
                 rotor = (self.create_magnet(model, magnetMat) +
-                        self.create_magnet_model(model))
+                         self.create_magnet_model(model))
             else:
                 rotor = self.create_rotor_model(model)
-                
+
             return (self.create_new_model(model) +
                     self.create_cu_losses(model) +
                     self.create_fe_losses(model) +
                     self.create_stator_model(model) +
                     self.create_gen_winding(model) +
-                        rotor +
+                    rotor +
                     self.mesh_airgap(model) +
                     self.create_connect_models(model) +
-                        self.create_rotor_winding(model))
+                    self.create_rotor_winding(model))
 
         return self.open_model(model)
 
@@ -462,10 +463,10 @@ class Builder:
                    airgap_induc)
 
         if sim.get('calculationMode') in ('cogg_calc',
-                                            'ld_lq_fast',
-                                            'pm_sym_loss',
-                                            'torq_calc',
-                                            'psd_psq_fast'):
+                                          'ld_lq_fast',
+                                          'pm_sym_loss',
+                                          'torq_calc',
+                                          'psd_psq_fast'):
             return felosses + fslcalc
 
         return (felosses + fslcalc +
@@ -475,10 +476,10 @@ class Builder:
         return self.__render(model, 'shortcircuit')
 
     def create_airgap_induc(self):
-            return self.__render(dict(), 'airgapinduc')
+        return self.__render(dict(), 'airgapinduc')
 
     def create_colorgrad(self, model):
-            return self.__render(model, 'colorgrad')
+        return self.__render(model, 'colorgrad')
 
     def mesh_airgap(self, model):
         if self.fsl_stator and self.fsl_magnet:
@@ -524,17 +525,17 @@ class Builder:
                 sim['range_phi'] = 720/num_poles
             except UnboundLocalError:
                 pass
-                
+
         if model.is_complete():
             logger.info("create new model '%s' and simulation '%s'",
-                            model.name, sim['calculationMode'])
+                        model.name, sim['calculationMode'])
             fslmodel = self.create_model(model, magnets)
 
             return (fslmodel + self.create_analysis(sim) +
                     ['save_model("close")'])
 
         logger.info("create open model '%s' and simulation '%s'",
-                            model.name, sim['calculationMode'])
+                    model.name, sim['calculationMode'])
         return (self.open_model(model) +
                 self.create_analysis(sim) +
                 ['save_model("close")'])

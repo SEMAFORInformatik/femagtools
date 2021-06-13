@@ -14,6 +14,7 @@ __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2016-2018 SEMAFOR Informatik & Energie AG'
 
+from .asm import read
 from .bch import Reader
 from .model import MachineModel
 from .fsl import Builder
@@ -34,14 +35,14 @@ def create_fsl(machine,
                operatingconditions={},
                magnetmat=[]):
     """create FSL command list from model parameters
-    
+
     Args:
         machine: dict with parameters
         operatuingConditions: dict with parameters
         magnetmat: list fo dict with parameters
 """
     model = MachineModel(machine)
-    
+
     builder = Builder()
     magnets = []
     if magnetmat:

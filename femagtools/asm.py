@@ -19,6 +19,7 @@ valmap = {
     'Wdgs-connection: 0': 'wdgconn',
     'Nominal frequency': 'f1',
     'Stator phase winding resistamce': 'r1',
+    'Stator phase winding resistance': 'r1',
     'Stator phase end-winding reactance': 'xs1',
     'Stator phase winding wires/slot side': 'num_wires',
     'Effect. air gap  length          [mm]': 'lfe',
@@ -93,11 +94,11 @@ def read_input_data(content):
 def read_simulation_results(content):
     unit = 1e3
     resmap = {
-        'Torque = P2/(s.omega) [Nm]': 'Tp',
+        'Torque = P2/(s.omega) [Nm]': 'Tp2',
         'Rotor-Losses P2 [kW]': 'p2',
         'Stator FE  Pfe1 [kW]': 'pfe1'}
-    r = dict(s=[], T=[], un=[], i1=[], p1=[], cosphi=[],
-             f1=[], pfe1=[], p2=[], Tp=[])
+    r = dict(s=[], T=[], u1=[], i1=[], p1=[], cosphi=[],
+             f1=[], pfe1=[], p2=[], Tp2=[])
     for l in content:
         if l.startswith('S LIP'):
             if l.find('POWER[W]') > -1:
@@ -105,7 +106,7 @@ def read_simulation_results(content):
                 continue
         a = l.split()
         if len(a) == 7:
-            for k, v in zip(('s', 'T', 'un', 'i1', 'p1', 'cosphi', 'f1'), a):
+            for k, v in zip(r.keys(), a):
                 r[k].append(float(v))
         elif a:
             a = l.split(':')[-1].split()
@@ -155,6 +156,11 @@ def read(arg):
             r.update(read_input_data(s))
         else:
             r.update(read_simulation_results(s))
+    r['pcu'] = [3*x**2*r['r1'] for x in r['i1']]
+    if r['pfe1']:
+        r['pltotal'] = [sum(x) for x in zip(r['pcu'], r['pfe1'], r['p2'])]
+    else:
+        r['pltotal'] = [sum(x) for x in zip(r['pcu'], r['p2'])]
     return r
 
 

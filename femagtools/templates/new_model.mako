@@ -1,7 +1,7 @@
 
   exit_on_error=${model.get('exit_on_error', 'false')}
   exit_on_end=${model.get('exit_on_end', 'false')}
-  verbosity=${model.get('verbosity', 2)}
+  verbosity=${model.get('verbosity', 1)}
 
 model = '${model.get('name')}'
 description = '${model.get('description','')}'

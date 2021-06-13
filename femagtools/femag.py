@@ -25,22 +25,25 @@ import femagtools.ntib as ntib
 import femagtools.config as cfg
 import time
 import re
-import  threading
+import threading
 
 logger = logging.getLogger(__name__)
 
 
-BCHEXT = '.BATCH' if sys.platform.startswith('linux') else '.BCH'  # win32
+BCHEXT = 'BATCH' if sys.platform.startswith('linux') else 'BCH'  # win32
+
 
 def get_shortCircuit_parameters(bch, nload):
     try:
-        if nload < 0: nload=0
-        if nload > 2: nload=2
+        if nload < 0:
+            nload = 0
+        if nload > 2:
+            nload = 2
         if nload > 0:
             dqld = bch.dqPar['ld']
             dqlq = bch.dqPar['lq']
             dqpsim = bch.dqPar['psim']
-            if len(dqld) <= nload or len(dqlq) <= nload or len (dqpsim) <= nload:
+            if len(dqld) <= nload or len(dqlq) <= nload or len(dqpsim) <= nload:
                 ld = dqld[-1]/bch.armatureLength
                 lq = dqlq[-1]/bch.armatureLength
                 psim = dqpsim[-1]/bch.armatureLength
@@ -53,19 +56,20 @@ def get_shortCircuit_parameters(bch, nload):
             lq = bch.machine['lq']/bch.armatureLength
             psim = bch.machine['psim']/bch.armatureLength
         return dict(
-                r1 = bch.machine['r1'],
-                ld = ld,
-                lq = lq,
-                psim = psim,
-                num_pol_pair = bch.machine['p'],
-                fc_radius = bch.machine['fc_radius'],
-                lfe = bch.armatureLength/1e3,
-                pocfilename = bch.machine['pocfile'],
-                num_par_wdgs = bch.machine['num_par_wdgs'],
-                calculationMode = 'shortcircuit')
+            r1=bch.machine['r1'],
+            ld=ld,
+            lq=lq,
+            psim=psim,
+            num_pol_pair=bch.machine['p'],
+            fc_radius=bch.machine['fc_radius'],
+            lfe=bch.armatureLength/1e3,
+            pocfilename=bch.machine['pocfile'],
+            num_par_wdgs=bch.machine['num_par_wdgs'],
+            calculationMode='shortcircuit')
     except (KeyError, AttributeError, IndexError):
         raise FemagError("missing pm/Rel-Sim results")
-    
+
+
 class FemagError(Exception):
     pass
 
@@ -104,7 +108,7 @@ class BaseFemag(object):
         dest = dir if dir else self.workdir
         return [self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
                 for m in model.set_magcurves(
-                        self.magnetizingCurves, self.magnets)]
+            self.magnetizingCurves, self.magnets)]
 
     def create_fsl(self, pmMachine, simulation):
         """create list of fsl commands"""
@@ -116,7 +120,6 @@ class BaseFemag(object):
         if simulation:
             return builder.create(self.model, simulation, self.magnets)
         return builder.create_model(self.model, self.magnets) + ['save_model("cont")']
-        
 
     def get_log_value(self, pattern, modelname='FEMAG-FSL.log'):
         result = []
@@ -129,13 +132,30 @@ class BaseFemag(object):
         return result
 
     def get_bch_file(self, modelname, offset=0):
-        """return latest bch file (if any)"""
-        bchfile_list = sorted(glob.glob(os.path.join(
-            self.workdir, modelname+'_[0-9][0-9][0-9]'+BCHEXT)))
-        if(bchfile_list):
-            return bchfile_list[-1-offset]
+        return self.get_result_file(modelname, BCHEXT, offset)
+
+    def get_asm_file(self, modelname, offset=0):
+        return self.get_result_file(modelname, 'ASM', offset)
+
+    def get_result_file(self, modelname, ext, offset=0):
+        """return latest result (bch, asm) file (if any)"""
+        filelist = sorted(glob.glob(os.path.join(
+            self.workdir, modelname+'_[0-9][0-9][0-9].'+ext)))
+        if(filelist):
+            return filelist[-1-offset]
         return ''
-    
+
+    def read_asm(self, modelname=None, offset=0):
+        "read most recent ASM file and return result"
+        if not modelname:
+            modelname = self._get_modelname_from_log()
+
+        asmfile = self.get_asm_file(modelname, offset)
+        if asmfile:
+            logger.info("Read ASM {}".format(asmfile))
+            return femagtools.asm.read(asmfile)
+        return {}
+
     def read_bch(self, modelname=None, offset=0):
         "read most recent BCH/BATCH file and return result"
         # read latest bch file if any
@@ -199,6 +219,7 @@ class Femag(BaseFemag):
         magnetizingCurves: collection of lamination material curves
         magnets: collection of magnet material
     """
+
     def __init__(self, workdir, cmd=None,
                  magnetizingCurves=None, magnets=None):
         super(self.__class__, self).__init__(workdir, cmd,
@@ -248,7 +269,7 @@ class Femag(BaseFemag):
                     errs.append(l.strip())
             errs.insert(0, 'Exit code {}'.format(rc))
             raise FemagError(errs)
-        
+
     def cleanup(self):
         "removes all created files in workdir"
         if not os.path.exists(self.workdir):
@@ -270,8 +291,8 @@ class Femag(BaseFemag):
                                               simulation)))
         if simulation:
             if 'poc' in simulation:
-                 with open(os.path.join(self.workdir,
-                                        simulation['pocfilename']), 'w') as f:
+                with open(os.path.join(self.workdir,
+                                       simulation['pocfilename']), 'w') as f:
                     f.write('\n'.join(simulation['poc'].content()))
             if simulation['calculationMode'] == "pm_sym_loss":
                 with open(os.path.join(self.workdir,
@@ -281,11 +302,14 @@ class Femag(BaseFemag):
                         simulation['current'],
                         simulation['angl_i_up'])))
                 # TODO: add r1, m
- 
+
         self.run(fslfile, options, fsl_args)
         if simulation:
             if simulation['calculationMode'] == "pm_sym_loss":
                 return self.read_los(self.modelname)
+
+            if simulation['calculationMode'] == 'asyn_motor':
+                return self.read_asm(self.modelname)
 
             bch = self.read_bch(self.modelname)
             if simulation['calculationMode'] == 'pm_sym_fast':
@@ -293,7 +317,7 @@ class Femag(BaseFemag):
                     logger.info("short circuit simulation")
                     simulation.update(
                         get_shortCircuit_parameters(bch,
-                                                    simulation.get('initial',2)))
+                                                    simulation.get('initial', 2)))
                     builder = femagtools.fsl.Builder()
                     fslcmds = (builder.open_model(self.model) +
                                builder.create_shortcircuit(simulation))
@@ -313,7 +337,8 @@ class Femag(BaseFemag):
                             bch.flux[w] += bchsc.flux[w]
                             bch.flux_fft[w] += bchsc.flux_fft[w]
                         except (KeyError, IndexError):
-                            logging.debug("No additional flux data in sc simulation")
+                            logging.debug(
+                                "No additional flux data in sc simulation")
                             break
 
                     bch.torque += bchsc.torque
@@ -324,13 +349,13 @@ class Femag(BaseFemag):
 
 class FemagTask(threading.Thread):
     def __init__(self, port, args, workdir, logdir):
-        threading.Thread.__init__ (self)
+        threading.Thread.__init__(self)
         self.port = port
         self.args = args + [str(self.port)]
         self.returncode = None
         self.workdir = workdir
         self.logdir = logdir
-        
+
     def run(self):
         logger.info("femag is ready on port %d workdir %s",
                     self.port, self.workdir)
@@ -340,13 +365,13 @@ class FemagTask(threading.Thread):
             self.proc = subprocess.Popen(
                 self.args,
                 stdout=out, stderr=err, cwd=self.workdir)
-        
+
         self.returncode = self.proc.wait()
 
 
 class SubscriberTask(threading.Thread):
     def __init__(self, port, host, notify):
-        threading.Thread.__init__ (self)
+        threading.Thread.__init__(self)
         context = zmq.Context.instance()
         self.subscriber = context.socket(zmq.SUB)
         if not host:
@@ -361,13 +386,13 @@ class SubscriberTask(threading.Thread):
         self.poller.register(self.controller, zmq.POLLIN)
         self.logger = logger
         self.notify = notify
-    
+
     def stop(self):
         socket = zmq.Context.instance().socket(zmq.PUSH)
         socket.connect(self.controller_url)
         socket.send(b"quit")
         socket.close()
-        
+
     def run(self):
         self.logger.info("subscriber is ready")
         while True:

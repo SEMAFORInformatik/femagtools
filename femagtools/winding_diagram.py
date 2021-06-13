@@ -1,7 +1,5 @@
 
-from matplotlib import pyplot as plt
-from matplotlib.patches import Rectangle
-from matplotlib.lines import Line2D
+from xml.etree import ElementTree as ET
 
 
 def _winding_data(Q, p, m):
@@ -31,132 +29,196 @@ def winding_diagram(Q, p, m, filename):
         except KeyError:
             return "blue"
 
-    coil_height = 2.5
-    thingy_height = 0.5
-    thingy2_height = 0.3
-    base_gap = 0.3
-    arrow_head_length = .2
+    coilspan = int(Q / p / 2) * 10
+    coil_height = 25
+    top_height = 5
+    neck_height = 3
+    base_gap = 3
+    arrow_head_length = 2
+    arrow_head_width = 2
+
+    width = Q * 10 + coilspan / 4 + 10
+    min_x = -(coilspan / 4)
+
+    svg = ET.Element("svg", dict(xmlns="http://www.w3.org/2000/svg", viewBox=f"{min_x} -40 {width} 70"))
 
     data = _winding_data(Q, p, m)
 
-    fig, ax = plt.subplots()
-
     for i, key in enumerate(data):
 
-        coil_pos = i
-        coilspan = int(Q / p / 2)
-        base = -(abs(key) * base_gap + thingy_height + thingy2_height)
+        coil_pos = i * 10
+        base = abs(key) * base_gap + top_height + neck_height
 
         out = key > 0
         coil_color = color(abs(key))
 
         if out:
             xdata = [
-                coil_pos + coilspan / 2 - 0.1,
+                coil_pos + coilspan / 2 - 1,
                 coil_pos,
                 coil_pos,
                 coil_pos + coilspan / 2,
             ]
             ydata = [
-                -thingy_height,
+                top_height,
                 0,
-                coil_height,
-                coil_height + thingy_height
+                -coil_height,
+                -coil_height - top_height
             ]
-            up_or_down = arrow_head_length
-            arrow_y_pos = coil_height * .8
+            up_or_down = -arrow_head_length
+            arrow_y_pos = coil_height * .88
         else:
             xdata = [
                 coil_pos - coilspan / 2,
                 coil_pos,
                 coil_pos,
-                coil_pos - coilspan / 2 + 0.1,
+                coil_pos - coilspan / 2 + 1,
             ]
             ydata = [
-                coil_height + thingy_height,
-                coil_height,
+                -coil_height - top_height,
+                -coil_height,
                 0,
-                -thingy_height,
+                top_height,
             ]
-            up_or_down = -arrow_head_length
-            arrow_y_pos = coil_height * .2
+            up_or_down = arrow_head_length
+            arrow_y_pos = coil_height * .12
 
-        ax.arrow(coil_pos, arrow_y_pos, 0, up_or_down,
-                 length_includes_head=True,
-                 head_starts_at_zero=False,
-                 head_length=arrow_head_length,
-                 head_width=.2,
-                 fc=coil_color,
-                 lw=0,
-                 )
+        ET.SubElement(svg, "rect", {
+            "x": f"{coil_pos + 2.5}",
+            "y": f"{-coil_height + 1}",
+            "width": f"5",
+            "height": f"{coil_height - 2}",
+            "fill": "lightblue",
+        })
 
-        ax.add_line(Line2D(xdata, ydata, color=coil_color, lw=.8))
-        ax.text(coil_pos, coil_height / 2,
-                str(coil_pos + 1),
-                fontsize=6,
-                horizontalalignment="center",
-                verticalalignment="center",
-                backgroundcolor="white",
-                bbox=dict(boxstyle='circle,pad=0', fc="white", lw=0),
-                )
+        ET.SubElement(svg, "path", {
+            "d": f"M {xdata[0]} {ydata[0]} "
+                 + " ".join([f"L {x} {y}" for (x, y) in zip(xdata[1:], ydata[1:])]),
+            "fill": "none",
+            "stroke": f"{coil_color}",
+            "stroke-width": ".25px",
+            "stroke-linejoin": "round",
+            "stroke-linecap": "round",
+        })
 
-        ax.add_patch(Rectangle((coil_pos + 0.25, 0.1), 0.5, coil_height - 0.2, fc="lightblue"))
+        arrow_points = [
+            (coil_pos, -arrow_y_pos),
+            (coil_pos - arrow_head_width / 2, -arrow_y_pos - up_or_down),
+            (coil_pos + arrow_head_width / 2, -arrow_y_pos - up_or_down),
+        ]
+
+        ET.SubElement(svg, "polygon", {
+            "points": " ".join([f"{x},{y}" for (x, y) in arrow_points]),
+            "fill": f"{coil_color}",
+            "stroke": "none",
+        })
+
+        ET.SubElement(svg, "circle", {
+            "cx": f"{coil_pos}",
+            "cy": f"{-coil_height / 2}",
+            "r": ".1em",
+            "fill": "white",
+        })
+
+        ET.SubElement(svg, "text", {
+            "x": f"{coil_pos}",
+            "y": f"{-coil_height / 2}",
+            "text-anchor": "middle",
+            "dominant-baseline": "middle",
+            "style": "font-size: .15em; font-family: sans-serif;",
+        }).text = str(i + 1)
 
         if i == data.index(abs(key)) and abs(key) != 2:
             if out:
-                x = coil_pos + coilspan / 2 - 0.1
+                x = coil_pos + coilspan / 2 - 1
                 name = str(abs(key))
             else:
-                x = coil_pos - coilspan / 2 + 0.1
+                x = coil_pos - coilspan / 2 + 1
                 name = str(abs(key)) + "'"
 
-            ax.add_line(Line2D([x, x], [-thingy_height, -2], color=coil_color, lw=.8))
-            ax.text(x + 0.1, -2.2, name, color=coil_color)
+            ET.SubElement(svg, "path", {
+                "d": f"M {x} {top_height} L {x} {20}",
+                "stroke": f"{coil_color}",
+                "stroke-width": ".25px",
+                "stroke-linecap": "round",
+            })
+
+            ET.SubElement(svg, "text", {
+                "x": f"{x + 1}",
+                "y": f"22",
+                "fill": f"{coil_color}",
+                "style": "font-size: .25em; font-family: sans-serif;",
+            }).text = name
 
         elif i == len(data) - 1 - data[::-1].index(-abs(key)) and abs(key) != 2:
             if out:
-                x = coil_pos + coilspan / 2 - 0.1
+                x = coil_pos + coilspan / 2 - 1
             else:
-                x = coil_pos - coilspan / 2 + 0.1
+                x = coil_pos - coilspan / 2 + 1
 
-            ax.add_line(Line2D([x, x], [-thingy_height, -2], color=coil_color, lw=.8))
-            ax.text(x + 0.1, -2.2, str(abs(key)) + "'", color=coil_color)
+            ET.SubElement(svg, "path", {
+                "d": f"M {x} {top_height} L {x} {20}",
+                "stroke": f"{coil_color}",
+                "stroke-width": ".25px",
+                "stroke-linecap": "round",
+            })
+
+            ET.SubElement(svg, "text", {
+                "x": f"{x + 1}",
+                "y": f"22",
+                "fill": f"{coil_color}",
+                "style": "font-size: .25em; font-family: sans-serif;",
+            }).text = str(abs(key)) + "'"
 
         elif abs(key) == 2 and (i == data.index(key) or data[data.index(key):].index(key)):
             if out:
-                x = coil_pos + coilspan / 2 - 0.1
+                x = coil_pos + coilspan / 2 - 1
                 name = str(abs(key))
             else:
-                x = coil_pos - coilspan / 2 + 0.1
+                x = coil_pos - coilspan / 2 + 1
                 name = str(abs(key)) + "'"
 
-            ax.add_line(Line2D([x, x], [-thingy_height, -2], color=coil_color, lw=.8))
-            ax.text(x + 0.1, -2.2, name, color=coil_color)
+            ET.SubElement(svg, "path", {
+                "d": f"M {x} {top_height} L {x} {20}",
+                "stroke": f"{coil_color}",
+                "stroke-width": ".25px",
+                "stroke-linecap": "round",
+            })
+
+            ET.SubElement(svg, "text", {
+                "x": f"{x + 1}",
+                "y": f"22",
+                "fill": f"{coil_color}",
+                "style": "font-size: .25em; font-family: sans-serif;",
+            }).text = name
 
         else:
             if out:
                 xdata = [
-                    coil_pos + coilspan / 2 - 0.1,
-                    coil_pos + coilspan / 2 - 0.1,
+                    coil_pos + coilspan / 2 - 1,
+                    coil_pos + coilspan / 2 - 1,
                     coil_pos - coilspan / 2,
                 ]
             else:
                 xdata = [
-                    coil_pos - coilspan / 2 + 0.1,
-                    coil_pos - coilspan / 2 + 0.1,
+                    coil_pos - coilspan / 2 + 1,
+                    coil_pos - coilspan / 2 + 1,
                     coil_pos + coilspan / 2,
                 ]
 
             ydata = [
-                -thingy_height,
+                top_height,
                 base,
                 base
             ]
-            ax.add_line(Line2D(xdata, ydata, color=coil_color, lw=.8))
 
-    ax.autoscale(enable=True)
-    ax.set_aspect("equal")
-    ax.set_axis_off()
-    fig.tight_layout()
+            ET.SubElement(svg, "path", {
+                "d": f"M {xdata[0]} {ydata[0]} " + " ".join([f"L {x} {y}" for (x, y) in zip(xdata[1:], ydata[1:])]),
+                "fill": "none",
+                "stroke": f"{coil_color}",
+                "stroke-width": ".25px",
+                "stroke-linejoin": "round",
+                "stroke-linecap": "round",
+            })
 
-    plt.savefig(filename)
+    ET.ElementTree(svg).write(filename)

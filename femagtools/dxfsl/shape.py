@@ -349,9 +349,11 @@ class Circle(Shape):
             elif p2_is_left:
                 # right
                 # TODO points.append(half_circle.p1)
+                pass
             else:
                 # left
                 # TODO points.append(half_circle.p2)
+                pass
         else:
             if not p2_is_up:
                 # up
@@ -359,9 +361,11 @@ class Circle(Shape):
             elif p1_is_left:
                 # right
                 # TODO points.append(half_circle.p1)
+                pass
             else:
                 # left
                 # TODO points.append(half_circle.p2)
+                pass
 
             points.append(e.p1)
             return self.create_arcs(points)

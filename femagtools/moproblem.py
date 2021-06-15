@@ -21,7 +21,8 @@ class FemagMoProblem(Problem):
 
     def __init__(self, decision_vars, objective_vars):
         Problem.__init__(self, len(decision_vars), 0, len(objective_vars))
-        lbounds, ubounds = zip(*[d['bounds'] for d in decision_vars])
+        lbounds, ubounds = zip(*[d['bounds'] if 'bounds' in d else (None, None)
+                                 for d in decision_vars])
         self.set_bounds(lbounds, ubounds)
         self.decision_vars = decision_vars
         logger.info("Decision Vars: %s", [d['name'] for d in decision_vars])
@@ -46,7 +47,7 @@ class FemagMoProblem(Problem):
 
     def setResult(self, result):
         self.result = result
-            
+
     def objfun(self, x):
         for o in self.objective_vars:
             logger.debug("%d=====> %s", len(self.objective_vars), str(o))

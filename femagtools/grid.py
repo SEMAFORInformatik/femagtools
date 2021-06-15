@@ -136,7 +136,7 @@ class Grid(object):
                                              for f in sublist]
 
         return model_files
-    
+
     def __call__(self, opt, machine, simulation,
                  engine, bchMapper=None, extra_files=[]):
         """calculate objective vars for all decision vars
@@ -153,9 +153,6 @@ class Grid(object):
 
         decision_vars = opt['decision_vars']
         objective_vars = opt.get('objective_vars', {})
-
-        steps = [d.get('steps', 10) for d in decision_vars]
-        logger.info('STEPS %s', str(steps))
 
         model = femagtools.model.MachineModel(machine)
         builder = femagtools.fsl.Builder()
@@ -180,9 +177,11 @@ class Grid(object):
         job = engine.create_job(self.femag.workdir)
 
         # build x value array
-        
-        domain = [list(np.linspace(l, u, s))
-                  for s, l, u in zip(steps, prob.lower, prob.upper)]
+
+        domain = [list(np.linspace(d['bounds'][0],
+                                   d['bounds'][1],
+                                   d['steps'])) if 'bounds' in d else d['values']
+                  for d in decision_vars]
 
         par_range = create_parameter_range(domain)
         f = []
@@ -197,7 +196,7 @@ class Grid(object):
         elapsedTime = 0
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:
-        popsize=0
+        popsize = 0
         for population in baskets(par_range, opt['population_size']):
             if self.stop:  # try to return the results so far. thomas.maier/OSWALD
                 logger.info(
@@ -245,7 +244,7 @@ class Grid(object):
                         builder.create_fe_losses(model) +
                         builder.create_analysis(fea) +
                         ['save_model("close")'])
-                        
+
                 else:
                     prob.prepare(x, [model, fea])
                     logger.info("prepare %s", x)
@@ -318,7 +317,7 @@ class Grid(object):
         except ValueError as v:
             logger.error(v)
             return dict(f=f, x=domain)
-        
+
     def addBchMapperData(self, bchData):
         self.bchmapper_data.append(bchData)
 
@@ -331,4 +330,3 @@ class Grid(object):
                                    objectives, domain):
                 f.write(';'.join([str(v) for v in line]))
                 f.write('\n')
-                

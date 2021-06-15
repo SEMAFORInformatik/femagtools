@@ -62,6 +62,7 @@ m.fc_radius2 = 	m.fc_radius1
 % else:
 m.fc_radius       =   (da1+da2)/4
 m.fc_radius1      =   m.fc_radius
+m.sl_radius       =   m.fc_radius      -- radius of sliding area 
 % endif
 % endif
 m.arm_length      =   ${model.get(['lfe'])*1e3}

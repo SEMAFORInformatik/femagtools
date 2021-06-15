@@ -704,6 +704,11 @@ class ZmqFemag(BaseFemag):
         request_socket.send_string(f'casedir -{dirname}')
         return [r.decode() for r in request_socket.recv_multipart()]
         
+    def clear(self, timeout=2000):
+        """clear lua script session"""
+        return [r.decode('latin1')
+                for r in self.send_request(['CONTROL', 'clear'], timeout=timeout)]
+
     def cleanup(self, timeout=2000):
         """remove all FEMAG files in working directory 
         (FEMAG 8.5 Rev 3282 or greater only)"""

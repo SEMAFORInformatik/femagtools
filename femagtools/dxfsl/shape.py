@@ -24,6 +24,7 @@ logger = logging.getLogger('femagtools.geom')
 
 class Element(object):
     """value object class"""
+
     def __init__(self, **kwargs):
         for k in kwargs.keys():
             setattr(self, k, kwargs[k])
@@ -59,6 +60,7 @@ class Shape(object):
             self.n1 = n2
 
     """an abstract geometry with 2 points"""
+
     def start(self):
         return self.p1
 
@@ -231,6 +233,7 @@ class Shape(object):
 
 class Circle(Shape):
     """a circle with center and radius"""
+
     def __init__(self, e, lf=1, color=None, attr=None):
         self.init_attributes(color, attr)
         self.center = lf*e.center[0], lf*e.center[1]
@@ -345,20 +348,20 @@ class Circle(Shape):
                 points.append((self.center[0], self.center[1] - 10.0))
             elif p2_is_left:
                 # right
-                points.append(half_circle.p1)
+                # TODO points.append(half_circle.p1)
             else:
                 # left
-                points.append(half_circle.p2)
+                # TODO points.append(half_circle.p2)
         else:
             if not p2_is_up:
                 # up
                 points.append((self.center[0], self.center[1] + 10.0))
             elif p1_is_left:
                 # right
-                points.append(half_circle.p1)
+                # TODO points.append(half_circle.p1)
             else:
-                #left
-                points.append(half_circle.p2)
+                # left
+                # TODO points.append(half_circle.p2)
 
             points.append(e.p1)
             return self.create_arcs(points)
@@ -529,6 +532,7 @@ class Circle(Shape):
 
 class Arc(Circle):
     """a counter clockwise segment of a circle with start and end point"""
+
     def __init__(self, e, lf=1, rf=np.pi/180, color=None, attr=None):
         super(self.__class__, self).__init__(e, lf)
         self.init_attributes(color, attr)
@@ -957,6 +961,7 @@ class Arc(Circle):
 
 class Line(Shape):
     """straight connection between start and end point"""
+
     def __init__(self, e, lf=1, color=None, attr=None):
         self.init_attributes(color, attr)
         self.p1 = lf*e.start[0], lf*e.start[1]
@@ -1189,6 +1194,7 @@ class Line(Shape):
 
 class Point(Shape):
     """ used for plotting only """
+
     def __init__(self, p):
         self.p1 = p
 

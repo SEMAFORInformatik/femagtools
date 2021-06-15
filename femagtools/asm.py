@@ -92,7 +92,7 @@ class InductionMotor(object):
         u1 = self.u1(w1, psi, wm)
         self.psi = psi
         if abs(u1) > u1max:  # must adjust flux
-            self.psi = scipy.optimize.bisect(
+            self.psi = so.bisect(
                 lambda psi: u1max - abs(self.u1(w1, psi, wm)),
                 psi, 0.01 * psi)
         return self.torque(w1, self.psi, wm)
@@ -116,7 +116,7 @@ class InductionMotor(object):
         x1 = w1 * (self.Lh + self.Lls)
         x2 = w1 * (self.Lh + self.lrot(0.))
         r1 = self.rstat(w1)
-        return r2 / x2 * math.sqrt((r1**2 + x1**2) / (self.sigma(w1)**2 * x1**2 + r1**2))
+        return r2 / x2 * np.sqrt((r1**2 + x1**2) / (self.sigma(w1)**2 * x1**2 + r1**2))
 
     def torque(self, w1, psi, wm):
         """motor torque (in airgap)"""
@@ -135,7 +135,7 @@ class InductionMotor(object):
             sign = -1
         wsync = wm * self.p
 
-        return scipy.optimize.bisect(
+        return so.bisect(
             lambda w1: self.torqueu(w1, u1max, psi, wm) - tload,
             wsync, wsync * (1 + sign * self.sk(wsync)))
 
@@ -368,5 +368,5 @@ if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
-    r = read(argv[1])
+    r = read(sys.argv[1])
     print(r)

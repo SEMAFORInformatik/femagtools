@@ -18,7 +18,7 @@ class Individual:
         self.rank = 0
         self.crowd_d = 0
         self.idx = 0
-        
+
     def __str__(self):
         return "f {} x {} rank {} crowd_d {}".format(self.cur_f, self.cur_x,
                                                      self.rank, self.crowd_d)
@@ -44,7 +44,7 @@ class Population:
 #                f.append((i*0.8/kmax +0.1, k*0.8/kmax +0.1))
 #        for k,i in enumerate(self.individuals):
 #            i.cur_f = f[k]
-            
+
     def size(self):
         return len(self.individuals)
 
@@ -77,13 +77,13 @@ class Population:
                 i.crowd_d = 1/i.crowd_d
             else:
                 i.crowd_d = sys.float_info.max
-                
+
         best = sorted(self.individuals,
                       key=op.attrgetter('rank',
                                         'crowd_d'))
         self.individuals = best[:pop.size()]
         self.update()
-        
+
     def init_velocity(self):
         for i, j in enumerate(self.individuals[-1].cur_x):
             w = (self.problem.upper[i] - self.problem.lower[i])/2
@@ -99,7 +99,7 @@ class Population:
             i.cur_f = [v*sign
                        for v, sign in zip(f[:, k], s)]
         self.update()
-        
+
     def get_ranked_decisions(self):
         px = dict()
         for i in self.individuals:
@@ -109,7 +109,7 @@ class Population:
             else:
                 px[k] = [i.cur_x]
         return px
-    
+
     def get_ranked_objectives(self, s):
         po = dict()
         for i in self.individuals:
@@ -121,7 +121,7 @@ class Population:
             else:
                 po[k] = [cur_f]
         return po
-    
+
     def update(self):
         size = len(self.individuals)
         self.dom_count = []
@@ -170,7 +170,7 @@ class Population:
                     self.individuals[I[j]].crowd_d += (
                         self.individuals[I[j+1]].cur_f[i] -
                         self.individuals[I[j-1]].cur_f[i])/df
-            
+
     def update_pareto_information(self):
         size = len(self.individuals)
         self.pareto_rank = [0]*size
@@ -223,17 +223,17 @@ class Population:
         return np.sqrt(((znad-zi)**2).sum() / ((zw-zi)**2).sum())
 
     def plot_pareto_fronts(
-        self,
-        rgb=(
-            0,
-            0,
-            0),
-        comp = [
-            0,
-            1],
-        symbol = 'o',
-        size = 6,
-        fronts = []):
+            self,
+            rgb=(
+                0,
+                0,
+                0),
+            comp=[
+                0,
+                1],
+            symbol='o',
+            size=6,
+            fronts=[]):
         """
         Plots the population pareto front in a 2-D graph
 
@@ -277,12 +277,12 @@ class Population:
 
         for id_f, f in enumerate(p_list):
             for ind in f:
-                plt.plot([pop[ind].cur_f[comp[0]]],
-                         [pop[ind].cur_f[comp[1]]],
+                plt.plot([ind.cur_f[comp[0]]],
+                         [ind.cur_f[comp[1]]],
                          symbol,
                          color=cl[id_f], markersize=size)
-            x = [pop[ind].cur_f[comp[0]] for ind in f]
-            y = [pop[ind].cur_f[comp[1]] for ind in f]
+            x = [ind.cur_f[comp[0]] for ind in f]
+            y = [ind.cur_f[comp[1]] for ind in f]
             tmp = [(a, b) for a, b in zip(x, y)]
             tmp = sorted(tmp, key=lambda k: k[0])
             plt.step([c[0] for c in tmp], [c[1]

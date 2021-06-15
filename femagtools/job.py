@@ -28,6 +28,8 @@ femagfile_error = ['ms_error',
                    'Exception system errors']
 
 # https://python-3-patterns-idioms-test.readthedocs.io/en/latest/Factory.html
+
+
 class TaskFactory:
     factories = {}
 
@@ -51,6 +53,7 @@ class TaskFactory:
 
 class Task(object):
     """represents a single execution unit that may include data files"""
+
     def __init__(self, id, directory, result_func=None):
         self.result_func = result_func
         self.directory = directory
@@ -65,7 +68,7 @@ class Task(object):
         self.status = None
         self.fsl_file = None
         self.id = id
-        
+
     def add_file(self, fname, content=None):
         """adds a file required by this task
 
@@ -91,7 +94,7 @@ class Task(object):
         """returns result of most recent BCH file (or project specific results if result_func is set)"""
         if self.result_func:
             return self.result_func(self)
-        
+
         result = femagtools.bch.Reader()
         # read latest bch file if any
         bchfile_list = sorted(glob.glob(os.path.join(
@@ -122,14 +125,15 @@ class Task(object):
         errstr += sepIn.format(self.directory)
 
         # read latest prot file
-        protfile_list = sorted(glob.glob(os.path.join(self.directory, '*.PROT')))
+        protfile_list = sorted(
+            glob.glob(os.path.join(self.directory, '*.PROT')))
         if protfile_list:
             with open(protfile_list[-1], encoding='latin1') as f:
                 e = [em in l for em in protfile_error for l in f.readlines()]
                 if sum(e):
                     logger.info("Prot Files Message.\n '%s'\n\nDirectory '%s'.",
-                                l, self.directory)
-                    errstr += "ProtFile: {}{}".format(l, newLine)
+                                e, self.directory)
+                    errstr += "ProtFile: {}{}".format(e, newLine)
 
         # read femag.err file
         try:
@@ -137,8 +141,8 @@ class Task(object):
                 e = [em in l for em in femagfile_error for l in file.readlines()]
                 if sum(e):
                     logger.error("Femag Error detected\n '%s'\n\nDirectory '%s'.",
-                                 l, self.directory)
-                    errstr += "{}{}".format(l, newLine)
+                                 e, self.directory)
+                    errstr += "{}{}".format(e, newLine)
         except Exception as e:
             logger.debug("Exception: %s", e)
             pass
@@ -150,8 +154,9 @@ class Task(object):
             self.directory == other.directory
 
     class Factory:
-        def create(self, id, dir, result_func): return Task(id, dir, result_func)
-        
+        def create(self, id, dir, result_func): return Task(
+            id, dir, result_func)
+
 
 class CloudTask(Task):
     def __init__(self, id, directory, result_func=None):
@@ -181,16 +186,17 @@ class CloudTask(Task):
         info.size = len(content)
         data = io.BytesIO(str.encode(content))
         self.tar_file.addfile(info, data)
-        
+
     class Factory:
         def create(self, id, dir, result_func): return CloudTask(
-                id, dir, result_func)
+            id, dir, result_func)
 
 
 class Job(object):
     """represents a FEMAG job consisting of one or more tasks
     each to be executed by a dedicated process
     """
+
     def __init__(self, basedir):
         self.runDirPrefix = ''
         self.basedir = basedir
@@ -213,7 +219,7 @@ class Job(object):
         t = TaskFactory.createTask('Task', taskid, dir, result_func)
         self.tasks.append(t)
         return t
-    
+
     def setExitStatus(self, taskid, status):
         "set exit status of task"
         self.tasks[taskid].status = status
@@ -225,9 +231,10 @@ class Job(object):
 
 class CondorJob(Job):
     """represents a femag job that is to be run in HT Condor"""
+
     def __init__(self, basedir):
         super(self.__class__, self).__init__(basedir)
-    
+
     def prepareDescription(self):
         # create a flatten list of all files to be transferred
         transfer_files = [item for sublist in
@@ -269,6 +276,7 @@ class CloudJob(Job):
     """Inheritance of :py:class:`Job`
 
     Represents a femag amazon job"""
+
     def __init__(self, basedir):
         super(self.__class__, self).__init__(basedir)
 
@@ -281,4 +289,3 @@ class CloudJob(Job):
         t = TaskFactory.createTask('CloudTask', taskid, dir, result_func)
         self.tasks.append(t)
         return t
-

@@ -754,12 +754,12 @@ class Area(object):
     def has_round_edges(self):
         arcs = 0
         for e in self.area:
-            if isinstance(e, Line):
-                if not np.isclose(angle, alpha_line(center, e.p1)):
-                    return False
-                if not np.isclose(angle, alpha_line(center, e.p2)):
-                    return False
-            elif isinstance(e, Arc):
+            # if isinstance(e, Line):
+            #    if not np.isclose(angle, alpha_line(center, e.p1)):
+            #        return False
+            #    if not np.isclose(angle, alpha_line(center, e.p2)):
+            #        return False
+            if isinstance(e, Arc):
                 arcs += 1
 
         return arcs > 0
@@ -859,7 +859,7 @@ class Area(object):
         e1_p2 = e1.p2
 
         if (points_are_close(e0_p2, e1_p1, atol=1e-02) or
-            points_are_close(e0_p2, e1_p2, atol=1e-02)):
+                points_are_close(e0_p2, e1_p2, atol=1e-02)):
             a_prev = alpha_line(e0_p1, e0_p2)
             p = e0_p2
         elif (points_are_close(e0_p1, e1_p1, atol=1e-02) or
@@ -867,7 +867,8 @@ class Area(object):
             a_prev = alpha_line(e0_p2, e0_p1)
             p = e0_p1
         else:
-            logger.error("ERROR: is_mag_rectangle(): points are not close together")
+            logger.error(
+                "ERROR: is_mag_rectangle(): points are not close together")
             logger.error("       e0 p1={}, p2={}".format(e0_p1, e0_p2))
             logger.error("       e1 p1={}, p2={}".format(e1_p1, e1_p2))
             return False
@@ -877,7 +878,8 @@ class Area(object):
                 return e.p2, alpha_line(e.p1, e.p2), isinstance(e, Line)
             if points_are_close(p, e.p2, atol=1e-02):
                 return e.p1, alpha_line(e.p2, e.p1), isinstance(e, Line)
-            logger.error("ERROR: is_mag_rectangle(): points are not close together")
+            logger.error(
+                "ERROR: is_mag_rectangle(): points are not close together")
             logger.error("       p={}, p1={}, p2={}".format(p, e.p1, e.p2))
             return None, None, False
 

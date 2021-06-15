@@ -1,5 +1,17 @@
 # Run AC Simulation
 # Ronald Tanner Semafor Informatik & Energie AG Basel
+# Motor from example 2D IM modelling in Elmer.
+# by  Pavel Ponomarev (2017)
+#
+# pnom = 5e3  -- nominal power W
+# f1nom = 50.0  -- Frequency Hz
+# speed = 1450 -- speed 1/min  (s=3.33%)
+# u1nom = 400  -- nominal line voltage V
+# i1nom = 10.4 -- nominal line current A
+# i10  = 6.7 -- no load current A
+# conn = star
+# tnom = 32.9 -- Nm
+
 import logging
 import json
 import femagtools
@@ -38,7 +50,7 @@ machine = dict(
     rotor=dict(
         num_slots=40,
         mcvkey_yoke="M800-65A",
-        sigma=24e6,  # Al conductivity S/m
+        conductivity=24e6  # Al in S/m
         statorRotor3=dict(
             slot_height=0.0156,
             slot_h1=0.5e-3,
@@ -49,8 +61,7 @@ machine = dict(
             wedge_width2=0,
             tooth_width=0.0,
             slot_top_sh=0.0,
-            slot_width=1e-3,
-            conductivity=24e6  # Al
+            slot_width=1e-3
         )
 
     ),
@@ -76,7 +87,7 @@ femag = femagtools.Femag(str(workdir),
 simulation = dict(
     calculationMode="asyn_motor",
     wind_temp=60,
-    bar_temp=120,
+    bar_temp=90,
     speed=1450/60,
     f1=50.0,
     num_par_wdgs=2,

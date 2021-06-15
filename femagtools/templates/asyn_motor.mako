@@ -57,7 +57,7 @@ m.nphases         = m.num_phases          --   Number of Phases (poc.file)   (>=
 m.num_par_wdgs    = a  --   Number of parallel windings   (>= 0)    
 m.slip1           = 0.0            --   Slip 1 [%] (If s1=s2=s3 : s1 )          
 m.slip2           = (1-p*${model.get('speed',0)}/m.frequency)*100 --   Slip 2 [%]                              
-m.slip3           = 0.0           --   Slip 3 [%]                              
+m.slip3           = 2*m.slip2           --   Slip 3 [%]                              
 m.move_action     =          0.000 --   Rot-Motor:0.0; Lin-Motor:2xTaupol[mm]   
 m.fc_radius1      = m.fc_radius     --   position [mm] of move path in air gap   
 

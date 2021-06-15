@@ -1,5 +1,6 @@
 import femagtools.asm
 import pathlib
+import pytest
 
 expected = {'version': '9.2.x-202-geff049a1',
             'project': './LS4p.nc', 'filename': 'TEST_001', 'date': '2021-05-27T13:23',
@@ -13,12 +14,10 @@ expected = {'version': '9.2.x-202-geff049a1',
             'Tp2': [0.0, 45.5, 84.7], 'p2': [0.0, 179.0, 665.0], 'pfe1': [],
             'i1': [8.52, 14.9, 25.3], 'p1': [0.0, 7230.0, 13600.0],
             'cosphi': [0.0, 0.738, 0.818],
-            'pcu': [261.32543999999996, 799.2360000000001, 2304.324],
-            'pltotal': [261.32543999999996, 978.2360000000001, 2969.324],
-            'lh': 0.0795149685948046,
-            'ls1': 0.002450986123615188,
-            'ls2': -0.001842611869512095,
-            'r2': 0.37476220149289113, 'sk': 0.30894436952059323}
+            'pcu': [261.32544, 799.236, 2304.324],
+            'pltotal': [261.32544, 978.236, 2969.324],
+            'lh': 0.079515, 'ls1': 0.00245,
+            'ls2': -0.0018426, 'r2': 0.3747622, 'sk': 0.31}
 
 
 def test_read_asm():
@@ -26,4 +25,9 @@ def test_read_asm():
 
     content = (datadir / 'test.ASM').read_text()
     r = femagtools.asm.read(content.split('\n'))
-    assert r == expected
+    assert r.keys() == expected.keys()
+    for k in r.keys():
+        if isinstance(r[k], float) or isinstance(r[k], list):
+            assert pytest.approx(r[k], rel=0.01) == expected[k]
+        else:
+            assert r[k] == expected[k]

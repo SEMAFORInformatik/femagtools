@@ -21,6 +21,41 @@ import numpy as np
 import femagtools.bch
 
 
+def q1q2yk(Q, p, m, l=1):
+    """returns q1, q2, Yk, k1, k2"""
+    if l == 1:  # single layer
+        t = np.gcd(Q//2, p)
+    else:
+        t = np.gcd(Q, p)
+    Qb = Q//t
+    pb = p//t
+    if Qb % 2:  # odd
+        q2 = (Qb + m)//(2*m) - 1
+        q1 = q2 + 1
+    else:
+        q2 = (Qb)//(2*m)
+        q1 = q2
+    if l == 2:
+        n = 1
+        while (n*Qb + 1) % pb:
+            n += 1
+        Yk = (n*Qb + 1)//pb
+    else:
+        n = 1
+        while (n*Qb//2 + 1) % pb:
+            n += 1
+        Yk = (n*Qb//2 + 1)//pb
+
+    k1 = [(q1 + q2)*i for i in range(m)]
+    k2 = (q1*(m+1) + q2*(m-1))//2
+    return q1, q2, Yk, k1, k2, Qb
+
+#         pos = [sorted([Yk*(k + n) % Qb
+#                       for n in range(q1)]) for k in k1]
+#         neg = [sorted([Yk*(k + n + k2) % Qb
+#                       for n in range(q2)]) for k in k1]
+
+
 class Windings(object):
 
     def __init__(self, arg):
@@ -32,6 +67,47 @@ class Windings(object):
         else:
             for k in arg.keys():
                 setattr(self, k, arg[k])
+
+        if hasattr(self, 'windings'):
+            return
+
+        l = 1
+        if hasattr(self, 'l'):
+            l = self.l
+        if l == 1:  # single layer
+            t = np.gcd(self.Q//2, self.p)
+        else:
+            t = np.gcd(self.Q, self.p)
+        numslots = self.Q//np.gcd(self.Q, 2*self.p)
+        Qb = self.Q//t
+        pb = self.p//t
+        if Qb % 2*pb*self.m:
+            raise ValueError("Fractional Slot Winding")
+        q = Qb//(2*pb*self.m)
+        keys = [w+1 if w >= 0 else w-1
+                for w in [(1-2*(t % 2))*k
+                          for k in [(1-2*(i % 2))*(i*2*Qb//self.m % Qb//pb//2)//2
+                                    for i in range(self.m) for _ in range(q)]]]
+        keyscopy = []
+        f = 1
+        for t in range(numslots//len(keys)):
+            keyscopy += [f*k for k in keys]
+            f = -f
+        wkeys = []
+        for k in keys:
+            if abs(k) not in wkeys:
+                wkeys.append(abs(k))
+
+        taus = 360/self.Q
+        PHI = np.reshape([taus/2 + i*taus
+                          for i in range(numslots)], (self.m, -1))
+        DIR = np.reshape([1 if k > 0 else -1
+                          for k in keyscopy], (self.m, -1))
+        N = np.reshape([1]*numslots, (self.m, -1))
+        self.windings = {w: dict(dir=DIR[w-1].tolist(),
+                                 N=N[w-1].tolist(),
+                                 PHI=PHI[w-1].tolist())
+                         for w in wkeys}
 
     def sequence(self):
         """returns sequence of winding keys"""

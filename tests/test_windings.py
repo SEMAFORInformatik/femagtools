@@ -17,22 +17,29 @@ def wdg():
 
 def test_slots(wdg):
     assert wdg.slots(1).tolist() == [
-        [0,  0,  1,  4,  5,  5],
-        [9,  9, 10, 13, 14, 14],
-        [18, 18, 19, 22, 23, 23],
-        [27, 27, 28, 31, 32, 32],
-        [36, 36, 37, 40, 41, 41],
-        [45, 45, 46, 49, 50, 50]]
+        [1,  1,  2,  5,  6,  6],
+        [10, 10, 11, 14, 15, 15],
+        [19, 19, 20, 23, 24, 24],
+        [28, 28, 29, 32, 33, 33],
+        [37, 37, 38, 41, 42, 42],
+        [46, 46, 47, 50, 51, 51]]
 
 
 def test_axis(wdg):
     assert round(wdg.axis(), 3) == 0.349
 
 
-def test_winding_creation():
+def test_winding_creation_1():
+    wdg = femagtools.windings.Windings(dict(Q=12, p=2, m=3, l=1))
+    assert wdg.slots(1).tolist() == [
+        [1,  4], [7, 10]]
+    assert wdg.zoneplan() == ([[1, -4], [3, -6], [-2, 5]], [])
+
+
+def test_winding_creation_2():
     wdg = femagtools.windings.Windings(dict(Q=48, p=4, m=3, l=1))
     assert wdg.slots(1).tolist() == [
-        [0,  1,  6,  7],
-        [12, 13, 18, 19],
-        [24, 25, 30, 31],
-        [36, 37, 42, 43]]
+        [1,  2,  7,  8],
+        [13, 14, 19, 20],
+        [25, 26, 31, 32],
+        [37, 38, 43, 44]]

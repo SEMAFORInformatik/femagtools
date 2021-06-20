@@ -74,40 +74,36 @@ class Windings(object):
         l = 1
         if hasattr(self, 'l'):
             l = self.l
-        if l == 1:  # single layer
-            t = np.gcd(self.Q//2, self.p)
-        else:
-            t = np.gcd(self.Q, self.p)
-        numslots = self.Q//np.gcd(self.Q, 2*self.p)
-        Qb = self.Q//t
-        pb = self.p//t
-        if Qb % 2*pb*self.m:
-            raise ValueError("Fractional Slot Winding")
-        q = Qb//(2*pb*self.m)
-        keys = [w+1 if w >= 0 else w-1
-                for w in [(1-2*(t % 2))*k
-                          for k in [(1-2*(i % 2))*(i*2*Qb//self.m % Qb//pb//2)//2
-                                    for i in range(self.m) for _ in range(q)]]]
-        keyscopy = []
-        f = 1
-        for t in range(numslots//len(keys)):
-            keyscopy += [f*k for k in keys]
-            f = -f
-        wkeys = []
-        for k in keys:
-            if abs(k) not in wkeys:
-                wkeys.append(abs(k))
+        coilwidth = 0
+        if l > 1:
+            coilwidth = self.Q//self.p//2
 
+        if hasattr(self, 'coilwidth'):
+            coilwidth = self.coilwidth
+
+        q1, q2, Yk, k1, k2, Qb = q1q2yk(self.Q, self.p, self.m, l)
+        pos = [sorted([(Yk*(k + n)) % Qb for n in range(q1)]) for k in k1]
+        neg = [sorted([Yk*(k + n + k2) % Qb for n in range(q2)]) for k in k1]
         taus = 360/self.Q
-        PHI = np.reshape([taus/2 + i*taus
-                          for i in range(numslots)], (self.m, -1))
-        DIR = np.reshape([1 if k > 0 else -1
-                          for k in keyscopy], (self.m, -1))
-        N = np.reshape([1]*numslots, (self.m, -1))
-        self.windings = {w: dict(dir=DIR[w-1].tolist(),
-                                 N=N[w-1].tolist(),
-                                 PHI=PHI[w-1].tolist())
-                         for w in wkeys}
+        taup = self.Q//self.p//2
+        if coilwidth:
+            slots = [[(k, 1, 1) for k in s] for s in pos]
+            for i, s in enumerate(neg):
+                slots[i] = sorted(slots[i] + [(k, -1, 1)
+                                              for k in s], key=lambda x: x[0])
+        else:
+            slots = [[(k % (Qb//2), -1 if k % (Qb//2) < i*Qb//3 else 1, 1)
+                      for k in s] for i, s in enumerate(pos)]
+            for i, s in enumerate(slots):
+                slots[i] = sorted(s + [((k[0]+taup) % Qb, -k[1], 1)
+                                       for k in s], key=lambda x: x[0])
+        if coilwidth:
+            slots = [sorted(s + [((k[0]+coilwidth) % (Qb), -1*k[1], 0)
+                                 for k in s], key=lambda x:x[0]) for s in slots]
+        self.windings = {i+1:  dict(dir=[k[1] for k in s],
+                                    N=[1]*len(s), R=[k[2] for k in s],
+                                    PHI=[taus/2+k[0]*taus for k in s])
+                         for i, s in enumerate(slots)}
 
     def sequence(self):
         """returns sequence of winding keys"""
@@ -119,14 +115,15 @@ class Windings(object):
         """returns slot indexes of winding key"""
         ngen = self.m*self.Q//np.gcd(self.Q, self.m*2*self.p)
         taus = 360/self.Q
-        startpos = int(self.windings[key]['PHI'][0]/taus)
-        s = [int(x/taus) for x in self.windings[key]['PHI']]
+        s = [round((x-taus/2)/taus)
+             for x in self.windings[key]['PHI']]
         layers = 1 if len(s) == len(set(s)) else 2
 
         dim = int(layers*ngen/self.m)
-        slots = [int(x/taus) + ngen*n for n in range(self.Q//ngen)
+        slots = [round((x-taus/2)/taus) + 1 + ngen*n
+                 for n in range(self.Q//ngen)
                  for x in self.windings[key]['PHI'][:dim]]
-        return np.array(slots).reshape((np.gcd(self.Q, self.p), -1)) - startpos
+        return np.array(slots).reshape((np.gcd(self.Q, self.p), -1))
 
     def axis(self):
         """returns axis angle of winding 1 in mechanical system"""
@@ -142,9 +139,9 @@ class Windings(object):
 
         NY = 4096
         y = np.zeros(NY*self.Q//t)
-        for i in range(self.Q//t):
+        for i in range(1, self.Q//t+1):
             if i in set(slots):
-                y[NY*i+NY//2] = np.sum(curr[slots == i])
+                y[NY*(i-1)+NY//2] = np.sum(curr[slots == i])
         yy = [np.sum(y[:i+1]) for i in range(0, len(y))]
         yy[:NY//2] = yy[-NY//2:]
         yy = np.tile(yy-np.mean(yy), t)
@@ -159,7 +156,7 @@ class Windings(object):
         T0 = np.abs(1/freq[i])
         alfa0 = np.angle(Y[i])
         #if alfa0 < 0: alfa0 += 2*np.pi
-        pos_fft = np.linspace(0, self.Q/t*taus)
+        pos_fft = np.linspace(0, self.Q/t*taus, self.p//t*60)
         D = (a*np.cos(2*np.pi*pos_fft/T0+alfa0))
         return dict(
             pos=[i*taus/NY for i in range(len(y))],
@@ -167,6 +164,71 @@ class Windings(object):
             alfa0=-alfa0/self.p,
             pos_fft=pos_fft.tolist(),
             current_linkage_fft=D.tolist())
+
+    def zoneplan(self):
+        taus = 360/self.Q
+        dphi = 1e-3
+        q = self.Q/self.p/self.m/2
+        t = np.gcd(self.Q, self.p)
+        Qb = self.Q//t
+        slots = {k: [round((x-taus/2)/taus)
+                     for x in self.windings[k]['PHI']]
+                 for k in self.windings}
+        layers = 1
+        avgr = 0
+        maxr, minr = max(self.windings[1]['R']), min(self.windings[1]['R'])
+        if maxr-minr > 1e-6:
+            layers = 2
+            avgr = (maxr+minr)/2
+
+            def is_upper(r, phi):
+                return r > avgr
+        elif len(slots[1]) > len(set(slots[1])):
+            layers = 2
+
+            def is_upper(r, phi):
+                return phi < -dphi
+        else:
+            def is_upper(r, phi):
+                return True
+
+        upper = [[s+1 for s, x, r in zip(
+            slots[key],
+            self.windings[key]['PHI'],
+            self.windings[key]['R'])
+            if is_upper(r, s*taus - (x-taus/2))]
+            for key in self.windings]
+        udirs = [[d for s, d, x, r in zip(
+            slots[key],
+            self.windings[key]['dir'],
+            self.windings[key]['PHI'],
+            self.windings[key]['R'])
+            if is_upper(r, s*taus - (x-taus/2))]
+            for key in self.windings]
+        lower = []
+        ldirs = []
+        if layers > 1:
+            lower = [[s+1 for s, x, r in zip(
+                slots[key],
+                self.windings[key]['PHI'],
+                self.windings[key]['R'])
+                if not is_upper(r, s*taus - (x-taus/2))]
+                for key in self.windings]
+            ldirs = [[d for s, d, x, r in zip(
+                slots[key],
+                self.windings[key]['dir'],
+                self.windings[key]['PHI'],
+                self.windings[key]['R'])
+                if not is_upper(r, s*taus - (x-taus/2))]
+                for key in self.windings]
+        if len([n for l in upper for n in l]) < Qb:
+            upper = [m + [n+Qb//2 for n in m] for m in upper]
+            lower = [m + [n+Qb//2 for n in m] for m in lower]
+            udirs = [m + [-d for d in m] for m in udirs]
+            ldirs = [m + [-d for d in m] for m in ldirs]
+
+        return ([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
+                [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
 
 
 if __name__ == "__main__":

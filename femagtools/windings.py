@@ -22,7 +22,7 @@ import femagtools.bch
 
 
 def q1q2yk(Q, p, m, l=1):
-    """returns q1, q2, Yk, k1, k2"""
+    """returns q1, q2, Yk, Qb"""
     if l == 1:  # single layer
         t = np.gcd(Q//2, p)
     else:
@@ -46,14 +46,7 @@ def q1q2yk(Q, p, m, l=1):
             n += 1
         Yk = (n*Qb//2 + 1)//pb
 
-    k1 = [(q1 + q2)*i for i in range(m)]
-    k2 = (q1*(m+1) + q2*(m-1))//2
-    return q1, q2, Yk, k1, k2, Qb
-
-#         pos = [sorted([Yk*(k + n) % Qb
-#                       for n in range(q1)]) for k in k1]
-#         neg = [sorted([Yk*(k + n + k2) % Qb
-#                       for n in range(q2)]) for k in k1]
+    return q1, q2, Yk, Qb
 
 
 class Windings(object):
@@ -69,41 +62,79 @@ class Windings(object):
                 setattr(self, k, arg[k])
 
         if hasattr(self, 'windings'):
+            # calculate coil width yd
+            taus = 360/self.Q
+            try:
+                k = self.windings[1]['dir'].index(
+                    -self.windings[1]['dir'][0])
+                self.yd = round(
+                    (self.windings[1]['PHI'][k]-taus/2)/taus)
+            except ValueError:
+                self.yd = max(self.Q//self.p//2, 1)
+            slots1 = [round((x-taus/2)/taus)
+                      for x in self.windings[1]['PHI']]
+            self.l = 2
+            if len(slots1) == len(set(slots1)):
+                self.l = 1
+
             return
 
         l = 1
         if hasattr(self, 'l'):
             l = self.l
-        coilwidth = 0
-        if l > 1:
-            coilwidth = self.Q//self.p//2
-
+        else:
+            self.l = l
+        coilwidth = max(self.Q//self.p//2, 1)
         if hasattr(self, 'coilwidth'):
             coilwidth = self.coilwidth
 
-        q1, q2, Yk, k1, k2, Qb = q1q2yk(self.Q, self.p, self.m, l)
+        q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
+        k1 = [(q1 + q2)*i for i in range(self.m)]
+        k2 = (q1*(self.m+1) + q2*(self.m-1))//2
         pos = [sorted([(Yk*(k + n)) % Qb for n in range(q1)]) for k in k1]
         neg = [sorted([Yk*(k + n + k2) % Qb for n in range(q2)]) for k in k1]
         taus = 360/self.Q
         taup = self.Q//self.p//2
-        if coilwidth:
+        if self.l == 2:
             slots = [[(k, 1, 1) for k in s] for s in pos]
             for i, s in enumerate(neg):
-                slots[i] = sorted(slots[i] + [(k, -1, 1)
-                                              for k in s], key=lambda x: x[0])
+                slots[i] = slots[i] + [(k, -1, 1) for k in s]
+            slots = [sorted(s + [((k[0]+coilwidth) % (Qb), -1*k[1], 0)
+                                 for k in s], key=lambda x:x[0]) for s in slots]
         else:
             slots = [[(k % (Qb//2), -1 if k % (Qb//2) < i*Qb//3 else 1, 1)
                       for k in s] for i, s in enumerate(pos)]
             for i, s in enumerate(slots):
                 slots[i] = sorted(s + [((k[0]+taup) % Qb, -k[1], 1)
                                        for k in s], key=lambda x: x[0])
-        if coilwidth:
-            slots = [sorted(s + [((k[0]+coilwidth) % (Qb), -1*k[1], 0)
-                                 for k in s], key=lambda x:x[0]) for s in slots]
+
         self.windings = {i+1:  dict(dir=[k[1] for k in s],
                                     N=[1]*len(s), R=[k[2] for k in s],
                                     PHI=[taus/2+k[0]*taus for k in s])
                          for i, s in enumerate(slots)}
+        self.yd = coilwidth
+
+    def kwp(self, n=0):
+        """pitch factor"""
+        nue = self.p if n == 0 else n
+        return np.sin(nue*self.yd*np.pi/self.Q)
+
+    def kwd(self, n=0):
+        """zone (distribution) factor"""
+        q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
+        nue = self.p if n == 0 else n
+        if q1 == q2:
+            x = nue*np.pi/self.Q
+            return np.sin(q1*x)/(q1*np.sin(x))
+        x = nue*np.pi*Yk/self.Q
+        k = 2 if self.l == 1 else 1
+        return abs((np.sin(k*x*q1) -
+                    np.cos(x*Qb)*np.sin(k*x*q2))/((q1+q2)*np.sin(k*x)))
+
+    def kw(self, n=0):
+        """return winding factor"""
+        nue = self.p if n == 0 else n
+        return self.kwp(nue) * self.kwd(nue)
 
     def sequence(self):
         """returns sequence of winding keys"""

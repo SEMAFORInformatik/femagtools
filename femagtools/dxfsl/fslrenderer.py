@@ -207,11 +207,21 @@ class FslRenderer(object):
                 u'outer_da_end = {}'.format(
                     geom.dist_end_min_corner())]
 
-        self.content.append(u'\n')
-        self.content.append(u'x0_iron_tooth, y0_iron_tooth = 0.0, 0.0')
-        self.content.append(u'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0')
-        self.content.append(u'x0_shaft, y0_shaft = 0.0, 0.0')
-        self.content.append(u'\n')
+        self.content += [u'\n',
+                         u'xmag = {}',
+                         u'ymag = {}',
+                         u'mag_orient = {}',
+                         u'mag_exists = 0',
+                         u'if agndst == nil then',
+                         u'  agndst=1',
+                         u'end',
+                         u'if mcvkey_yoke == nil then',
+                         u'  mcvkey_yoke = "dummy"',
+                         u'end',
+                         u'x0_iron_tooth, y0_iron_tooth = 0.0, 0.0',
+                         u'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0',
+                         u'x0_shaft, y0_shaft = 0.0, 0.0',
+                         u'\n']
 
         subregions = {}
         num_windings = 0
@@ -459,10 +469,6 @@ class FslRenderer(object):
             u'global_unit(mm)',
             u'pickdist(0.001)',
             u'cosys(polar)\n',
-            u'xmag = {}',
-            u'ymag = {}',
-            u'mag_orient = {}',
-            u'mag_exists = 0',
             u'dy1 = {}'.format(params.get('dy1', 0.0)),
             u'da1 = {}'.format(params.get('da1', 0.0)),
             u'dy2 = {}'.format(params.get('dy2', 0.0)),

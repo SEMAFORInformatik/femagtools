@@ -1078,7 +1078,7 @@ class Reader:
             self.ldq['losses'] = ls
         elif self.psidq:
             self.psidq['losses'] = ls
-        
+
     def __read_machine_data(self, content):
         "read machine data section"
         for k in ('beta', 'plfe1', 'plfe2', 'plmag', 'plcu'):
@@ -1150,10 +1150,10 @@ class Reader:
                                     for pl in zip(*[self.machine[k]
                                                     for k in ('plfe1',
                                                               'plfe2')])]
-        
+
     def __read_dq_parameter(self, content):
-        if content[1].find('Windings') > -1: # this is the first section
-            
+        if content[1].find('Windings') > -1:  # this is the first section
+
             for l in content[1:]:
                 for v in [['Windings Current', 'i1'],
                           ['Angle I vs. Up', 'beta'],
@@ -1222,7 +1222,7 @@ class Reader:
         # second DQ-Parameter section
         for k in ('i1', 'beta', 'ld', 'lq', 'psim', 'up',
                   'psid', 'psiq', 'torque', 'torque_fe', 'torque_sim',
-                  'p2', 'u1_fe', 'u1_sim', 'gamma', 'phi'):
+                  'p2', 'u1_fe', 'u1_sim', 'gamma', 'phi', 'Lho', 'Lh2'):
             self.dqPar[k] = []
         lfe = 1e3*self.dqPar['lfe']
 
@@ -1245,6 +1245,9 @@ class Reader:
                 self.dqPar['gamma'].append(floatnan(rec[6]))
                 self.dqPar['phi'].append(floatnan(rec[1]) +
                                          self.dqPar['gamma'][-1])
+            elif len(rec) == 5:  #  self and mutual inductances
+                self.dqPar['Lho'].append(lfe*floatnan(rec[2]))
+                self.dqPar['Lh2'].append(lfe*floatnan(rec[3]))
             else:
                 headers = l.split()
                 try:  # must distinguish ee and pm

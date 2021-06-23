@@ -18,7 +18,7 @@ class BchReaderTest(unittest.TestCase):
                   encoding='latin1') as f:
             r.read(f)
         return r
-        
+
     def test_read_cogging(self):
         bch = self.read_bch('cogging.BATCH')
         self.assertEqual(bch.version, '7.9.147 November 2012')
@@ -58,7 +58,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.lossPar['fo'][1], 50.0, 1)
         self.assertEqual(bch.get(('machine', 'p')), 2)
         np.testing.assert_almost_equal(bch.inertia, [0.230195e-3, 0.011774e-3])
-        
+
     def test_read_sctest(self):
         bch = self.read_bch('sctest.BATCH')
 
@@ -98,7 +98,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.machine['i1'], 50.0)
 
         self.assertAlmostEqual(bch.lossPar['fo'][0], 50.0, 1)
-        
+
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order_el'],
                                        [1, 3, 5, 7, 9, 11, 13, 15])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['freq'],
@@ -137,6 +137,9 @@ class BchReaderTest(unittest.TestCase):
                                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['eddy'],
                                        [1637.884, 225.861, 93.969, 19.904, 6.661, 3.043, 1.752])
+
+        assert [round(l*1e3, 4) for l in bch.dqPar['Lho']] == [0.5908, 0.6583]
+
 
     def test_read_relsim(self):
         bch = self.read_bch('relsim.BATCH')

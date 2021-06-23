@@ -138,6 +138,8 @@ class Builder:
                 return self.render_template(
                     model.stator['statorFsl']['content_template'],
                     model.stator['statorFsl']['parameter'])
+            elif model.stator['statorFsl'].get('content'):
+                return model.stator['statorFsl']['content'].split('\n')
             if isinstance(model.stator['statorFsl']
                           ['content_template'], str):
                 with open(model.stator['statorFsl']
@@ -183,6 +185,8 @@ class Builder:
                 return mcv + self.render_template(
                     model.magnet['magnetFsl']['content_template'],
                     model.magnet['magnetFsl']['parameter'])
+            elif model.magnet['magnetFsl'].get('content'):
+                return model.magnet['magnetFsl']['content'].split('\n')
             if isinstance(model.magnet['magnetFsl']
                           ['content_template'], str):
                 with open(model.magnet['magnetFsl']

@@ -80,6 +80,9 @@ class Builder:
             self.fsl_stator = True
             return
 
+        if templ == 'statorFsl':
+            self.fsl_stator = True
+
         if templ != 'dxffile':
             return
 
@@ -139,7 +142,9 @@ class Builder:
                     model.stator['statorFsl']['content_template'],
                     model.stator['statorFsl']['parameter'])
             elif model.stator['statorFsl'].get('content'):
-                return model.stator['statorFsl']['content'].split('\n')
+                return (['agndst = {}'.format(model.get('agndst', 1e-3)*1e3),
+                        'ndt(agndst)'] +
+                        model.stator['statorFsl']['content'].split('\n'))
             if isinstance(model.stator['statorFsl']
                           ['content_template'], str):
                 with open(model.stator['statorFsl']
@@ -148,8 +153,8 @@ class Builder:
             else:
                 templ = model.stator['statorFsl']['content_template']
             return self.render_template(
-                '\n'.join(templ),
-                model.stator['statorFsl'])
+                '\n'.join(['agndst = {}'.format(model.agndst*1e3),
+                           'ndt(agndst)'] + templ), model.stator['statorFsl'])
 
         statmodel = model.stator.copy()
         statmodel.update(model.stator[templ])

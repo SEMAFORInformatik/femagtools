@@ -8,6 +8,8 @@ ag = ${ag}
 % else:
 ag  = ${model.get(['airgap'])*1e3}
 % endif
+% else:
+ag = 0
 % endif
 % if model.move_action == 0:
 % if model.external_rotor:

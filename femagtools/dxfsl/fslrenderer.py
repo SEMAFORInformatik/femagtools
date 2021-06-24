@@ -137,7 +137,9 @@ class FslRenderer(object):
         machine.set_alfa_and_corners()
         geom = machine.geom
         geom.split_lines_longer_than(geom.max_radius/4)
-        self.content = []
+        self.content = [u'if agndst == nil then',
+                        u'  agndst=1',
+                        u'end']
 
         ndt_list = [(0.2, 1.5), (0.45, 2), (0.7, 3.0), (1.1, 3.0)]
         dist = geom.max_radius - geom.min_radius
@@ -212,9 +214,6 @@ class FslRenderer(object):
                          u'ymag = {}',
                          u'mag_orient = {}',
                          u'mag_exists = 0',
-                         u'if agndst == nil then',
-                         u'  agndst=1',
-                         u'end',
                          u'if mcvkey_yoke == nil then',
                          u'  mcvkey_yoke = "dummy"',
                          u'end',
@@ -338,8 +337,8 @@ class FslRenderer(object):
             self.content.append(u'x2, y2 = pr2c(r1, phi)')
         else:
             self.content.append(u'x2, y2 = {}, {}'.format(
-                             geom.start_corners[1][0],
-                             geom.start_corners[1][1]))  # max xy1
+                geom.start_corners[1][0],
+                geom.start_corners[1][1]))  # max xy1
 
         if geom.is_mirrored():
             self.content.append(u'x3, y3 = pr2c(x2, alfa)')

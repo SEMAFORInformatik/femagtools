@@ -28,24 +28,18 @@ def q1q2yk(Q, p, m, l=1):
     else:
         t = np.gcd(Q, p)
     Qb = Q//t
+    qqb = Qb if l == 2 else Qb//2
     pb = p//t
-    if Qb % 2:  # odd
-        q2 = (Qb + m)//(2*m) - 1
+    if qqb//m % 2:  # odd
+        q2 = (qqb + m)//(2*m) - 1
         q1 = q2 + 1
     else:
-        q2 = (Qb)//(2*m)
+        q2 = (qqb)//(2*m)
         q1 = q2
-    if l == 2:
-        n = 1
-        while (n*Qb + 1) % pb:
-            n += 1
-        Yk = (n*Qb + 1)//pb
-    else:
-        n = 1
-        while (n*Qb//2 + 1) % pb:
-            n += 1
-        Yk = (n*Qb//2 + 1)//pb
-
+    n = 1
+    while (n*qqb + 1) % pb:
+        n += 1
+    Yk = (n*qqb + 1)//pb
     return q1, q2, Yk, Qb
 
 
@@ -62,7 +56,7 @@ class Windings(object):
                 setattr(self, k, arg[k])
 
         if hasattr(self, 'windings'):
-            # calculate coil width yd
+            # calculate coil width yd and num layers l
             taus = 360/self.Q
             try:
                 k = self.windings[1]['dir'].index(
@@ -79,40 +73,48 @@ class Windings(object):
 
             return
 
-        l = 1
+        layers = 1
         if hasattr(self, 'l'):
-            l = self.l
+            layers = self.l
         else:
-            self.l = l
+            self.l = layers
         coilwidth = max(self.Q//self.p//2, 1)
         if hasattr(self, 'coilwidth'):
             coilwidth = self.coilwidth
 
+        self.yd = coilwidth
+
         q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
         k1 = [(q1 + q2)*i for i in range(self.m)]
         k2 = (q1*(self.m+1) + q2*(self.m-1))//2
-        pos = [sorted([(Yk*(k + n)) % Qb for n in range(q1)]) for k in k1]
-        neg = [sorted([Yk*(k + n + k2) % Qb for n in range(q2)]) for k in k1]
-        taus = 360/self.Q
-        taup = self.Q//self.p//2
-        if self.l == 2:
-            slots = [[(k, 1, 1) for k in s] for s in pos]
-            for i, s in enumerate(neg):
-                slots[i] = slots[i] + [(k, -1, 1) for k in s]
-            slots = [sorted(s + [((k[0]+coilwidth) % (Qb), -1*k[1], 0)
-                                 for k in s], key=lambda x:x[0]) for s in slots]
+        j = 2 if layers == 1 else 1
+        pos = [[(j*Yk*(k + n)) % Qb for n in range(q1)] for k in k1]
+        neg = [[j*Yk*(k + n + k2) % Qb for n in range(q2)] for k in k1]
+        if layers > 1:
+            slots = [sorted([(k, 1, 1) for k in p] + [(k, -1, 1) for k in n])
+                     for n, p in zip(neg, pos)]
+            for i, p in enumerate(slots):
+                slots[i] = sorted(slots[i] +
+                                  [((k[0]+coilwidth) % Qb, -k[1], 0)
+                                   for k in slots[i]], key=lambda s: s[0])
         else:
-            slots = [[(k % (Qb//2), -1 if k % (Qb//2) < i*Qb//3 else 1, 1)
-                      for k in s] for i, s in enumerate(pos)]
-            for i, s in enumerate(slots):
-                slots[i] = sorted(s + [((k[0]+taup) % Qb, -k[1], 1)
-                                       for k in s], key=lambda x: x[0])
+            if (coilwidth + 1) % 2:
+                coilwidth += 1
+            xneg = [sorted([s for s in n if s+1 % 2] +
+                           [(s + coilwidth) % Qb for s in p if s+1 % 2])
+                    for n, p in zip(neg, pos)]
+            xpos = [sorted([s for s in p if s+1 % 2] +
+                           [(s + coilwidth) % Qb for s in n if s+1 % 2])
+                    for n, p in zip(neg, pos)]
 
+            slots = [sorted([(k, 1, 1) for k in p] + [(k, -1, 1) for k in n])
+                     for n, p in zip(xneg, xpos)]
+
+        taus = 360/self.Q
         self.windings = {i+1:  dict(dir=[k[1] for k in s],
                                     N=[1]*len(s), R=[k[2] for k in s],
                                     PHI=[taus/2+k[0]*taus for k in s])
                          for i, s in enumerate(slots)}
-        self.yd = coilwidth
 
     def kwp(self, n=0):
         """pitch factor"""
@@ -177,7 +179,7 @@ class Windings(object):
         yy[:NY//2] = yy[-NY//2:]
         yy = np.tile(yy-np.mean(yy), t)
         yy /= np.max(yy)
-        #y = np.tile(y,t)
+        # y = np.tile(y,t)
 
         N = len(yy)
         Y = np.fft.fft(yy)
@@ -186,7 +188,7 @@ class Windings(object):
         freq = np.fft.fftfreq(N, d=taus/NY)
         T0 = np.abs(1/freq[i])
         alfa0 = np.angle(Y[i])
-        #if alfa0 < 0: alfa0 += 2*np.pi
+        # if alfa0 < 0: alfa0 += 2*np.pi
         pos_fft = np.linspace(0, self.Q/t*taus, self.p//t*60)
         D = (a*np.cos(2*np.pi*pos_fft/T0+alfa0))
         return dict(
@@ -199,9 +201,6 @@ class Windings(object):
     def zoneplan(self):
         taus = 360/self.Q
         dphi = 1e-3
-        q = self.Q/self.p/self.m/2
-        t = np.gcd(self.Q, self.p)
-        Qb = self.Q//t
         slots = {k: [round((x-taus/2)/taus)
                      for x in self.windings[k]['PHI']]
                  for k in self.windings}
@@ -252,11 +251,6 @@ class Windings(object):
                 self.windings[key]['R'])
                 if not is_upper(r, s*taus - (x-taus/2))]
                 for key in self.windings]
-        if len([n for l in upper for n in l]) < Qb:
-            upper = [m + [n+Qb//2 for n in m] for m in upper]
-            lower = [m + [n+Qb//2 for n in m] for m in lower]
-            udirs = [m + [-d for d in m] for m in udirs]
-            ldirs = [m + [-d for d in m] for m in ldirs]
 
         return ([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
                 [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])

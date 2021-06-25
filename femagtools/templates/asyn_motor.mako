@@ -2,7 +2,7 @@
 --
 T = ${model.get('bar_temp',20)-20}  --Temperature rise of rotor bar
 sigma1, sigma2 = get_dev_data( "cond_conduct" )
-sigma2 = 30.36e6 -- ? conductivity of aluminium at 20°
+sigma2 = 30.36e6 -- ? conductivity of aluminium at 20�
 tcoeff = 3.9e-3
 get_sreg_keys("srkeys") -- get all valid subregions
 for j=1, #srkeys do
@@ -38,7 +38,7 @@ a = ${model.get('num_par_wdgs',1)}  -- parallel winding groups
 rl1,rl2 = get_dev_data( "rel_cond_length" )
 A_wire = m.dia_wire^2/4*math.pi -- A_ns*m.cufilfactor/m.num_wires
  T = ${model.get('wind_temp',20)-20}  --Temperature rise of stator winding
-tcoeff = 3.93e-3 -- temp coeff K⁻1
+tcoeff = 3.93e-3 -- temp coeff 1/K
 
 sigma = sigma1/(1+tcoeff*T) -- conductivity 
 R_s = Q1/m.num_phases*m.num_wires*(rl1/100)*(m.arm_length/1000)/(sigma*A_wire/1.0e6)/a

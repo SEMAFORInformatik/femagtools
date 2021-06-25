@@ -73,7 +73,7 @@ machine = dict(
         num_wires=32,
         coil_span=12,
         fillfac=0.42,  #
-        rellength=1.4  #
+        culength=1.4  #
     )
 )
 

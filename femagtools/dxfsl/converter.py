@@ -116,8 +116,7 @@ def convert(dxfile,
     conv = {}
 
     basename = os.path.basename(dxfile).split('.')[0]
-    logger.info("start reading %s", basename)
-    logger.info("BEGIN of work")
+    logger.info("start processing %s", basename)
 
     if part:
         if part[0] not in ('rotor', 'stator'):

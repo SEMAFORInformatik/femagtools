@@ -2,7 +2,7 @@
 --
 T = ${model.get('bar_temp',20)-20}  --Temperature rise of rotor bar
 sigma1, sigma2 = get_dev_data( "cond_conduct" )
-sigma2 = 30.36e6 -- ? conductivity of aluminium at 20°
+sigma2 = 30.36e6 -- ? conductivity of aluminium at 20 deg C
 tcoeff = 3.9e-3
 get_sreg_keys("srkeys") -- get all valid subregions
 for j=1, #srkeys do

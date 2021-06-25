@@ -3,11 +3,12 @@
  Multiobjective Optimization with Femag
  """
 import sys
-import os
 import json
 import femagtools.opt
 import logging
 import glob
+import pathlib
+
 
 from femagtools.multiproc import Engine
 # instead you can use on of the following
@@ -64,7 +65,7 @@ machine = dict(
     bore_diam=0.07,
     inner_diam=0.015,
     airgap=0.001,
-    
+
     stator=dict(
         num_slots=12,
         mcvkey_yoke="M270-35A",
@@ -84,7 +85,7 @@ machine = dict(
             slot_r1=0.003,
             slot_width=0.003)
     ),
-    
+
     magnet=dict(
         nodedist=1.0,
         mcvkey_shaft="M270-35A",
@@ -103,7 +104,7 @@ machine = dict(
             bridge_width=0.0,
             magn_len=1.0)
     ),
-        
+
     windings=dict(
         num_phases=3,
         num_wires=100,
@@ -112,9 +113,12 @@ machine = dict(
         cufilfact=0.45,
         culength=1.4,
         num_layers=1)
-    )
+)
+
 
 def get_losses(task):
+    """adds extra results for optimization:
+         total losses and efficiency"""
     bch = femagtools.bch.read(
         glob.glob(os.path.join(task.directory, '*.B*CH'))[-1])
 
@@ -126,29 +130,26 @@ def get_losses(task):
 
     bch.machine['pltotal'] = [pltot]
     bch.machine['eff'] = eff
-    
+
     return bch
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(message)s')
 
-logger = logging.getLogger('pmopt')
-engine = Engine()
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
 
-userdir = os.path.expanduser('~')
-workdir = os.path.join(userdir, 'opti')
-try:
-    os.makedirs(workdir)
-except OSError:
-    pass
+    logger = logging.getLogger('pmopt')
+    engine = Engine()
 
-o = femagtools.opt.Optimizer(workdir,
-                             magnetizingCurve, magnetMat,
-                             result_func=get_losses)
-                             
-num_generations = 3
-results = o.optimize(num_generations,
-                     opt, machine, operatingConditions, engine)
+    workdir = pathlib.Path.home() / 'opti'
+    workdir.mkdir(parents=True, exist_ok=True)
 
-json.dump(results, sys.stdout)
+    o = femagtools.opt.Optimizer(workdir,
+                                 magnetizingCurve, magnetMat,
+                                 result_func=get_losses)
 
+    num_generations = 3
+    results = o.optimize(num_generations,
+                         opt, machine, operatingConditions, engine)
+
+    json.dump(results, sys.stdout)

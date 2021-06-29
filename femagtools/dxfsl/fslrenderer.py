@@ -284,11 +284,15 @@ class FslRenderer(object):
         self.content.append(u'\n'.join(txt))
 
         txt = [u"if x0_iron_tooth > 0.0 then",
-               u"  if (mcvkey_teeth ~= 'dummy' and mcvkey_teeth ~= nil) then",
-               u'    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, "blue", mcvkey_teeth, 100)',
-               u'  else',
-               u'    def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)',
-               u'  end',
+               u"  if(x0_iron_yoke == 0 and mcvkey_yoke ~= 'dummy') then",
+               u"    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_yoke, 100)",
+               u"  else",
+               u"    if (mcvkey_teeth ~= 'dummy' and mcvkey_teeth ~= nil) then",
+               u"      def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_teeth, 100)",
+               u"    else",
+               u"      def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)",
+               u"    end",
+               u"  end",
                u'end\n']
         self.content.append(u'\n'.join(txt))
 

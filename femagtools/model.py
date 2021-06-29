@@ -104,10 +104,10 @@ class Model(object):
         except KeyError as e:
             logger.error(e)
             raise MCerror(e)
-        
+
     def __getitem__(self, name):
         return getattr(self, name)
-    
+
     def __str__(self):
         "return string format of this object"
         return repr(self.__dict__)
@@ -141,6 +141,7 @@ class MachineModel(Model):
 
         if parameters is string it is interpreted as the model name.
     """
+
     def __init__(self, parameters):
         super(self.__class__, self).__init__(parameters)
         name = 'DRAFT'
@@ -148,7 +149,8 @@ class MachineModel(Model):
             name = parameters
         elif 'name' in parameters:
             name = parameters['name']
-        self.connect_full = True  # connect model even for complete model (see fsl connect_models)
+        # connect model even for complete model (see fsl connect_models)
+        self.connect_full = True
         # must sanitize name to prevent femag complaints
         self.name = ''.join([n
                              for n in name.strip()
@@ -175,6 +177,10 @@ class MachineModel(Model):
         try:
             self.set_num_slots_gen()
         except (AttributeError):
+            pass
+        try:
+            self.windings['cufilfact'] = self.windings['fillfac']
+        except (KeyError, AttributeError):
             pass
 
     def set_num_slots_gen(self):
@@ -239,12 +245,12 @@ class MachineModel(Model):
 
                 else:  # mcvname in self.stator:
                     names.append((self.stator[mcvname], fillfac))
-                    
+
         if 'magnet' in self.__dict__:
             fillfac = self.magnet.get('fillfac', 1.0)
             try:
                 if (self.magnet['mcvkey_yoke'] != 'dummy' and
-                    'mcvkey_yoke_name' not in self.magnet):
+                        'mcvkey_yoke_name' not in self.magnet):
                     if magcurves:
                         mcv = magcurves.find(self.magnet['mcvkey_yoke'])
                     if mcv:
@@ -265,7 +271,7 @@ class MachineModel(Model):
 
             try:
                 if (self.magnet['mcvkey_shaft'] != 'dummy' and
-                    'mcvkey_shaft_name' not in self.magnet):
+                        'mcvkey_shaft_name' not in self.magnet):
                     if magcurves:
                         mcv = magcurves.find(self.magnet['mcvkey_shaft'])
                     if mcv:
@@ -327,7 +333,7 @@ class MachineModel(Model):
             if isinstance(self.rotor[k], dict):
                 return k
         raise AttributeError("Missing rotor model in {}".format(self.magnet))
-    
+
     def magnettype(self):
         """return type of magnet slot"""
         for k in self.magnet:

@@ -14,7 +14,8 @@ m.thcap           =      ${model.get('thcap', 480.0)}
 m.slot_indul      =      ${model.get('slot_indul',0.0)*1e3}
 m.dia_wire        =      ${model.get('dia_wire',0.0)*1e3}
 m.num_wire        =      ${model.get('num_wire',0.0)}
- 
-pre_models("CU-Losses-1") -- outside
+% if model.get('winding_inside', False):
 pre_models("CU-Losses-2") -- inside
-
+% else:
+pre_models("CU-Losses-1") -- outside
+% endif

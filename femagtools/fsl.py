@@ -185,13 +185,14 @@ class Builder:
                .format(model.magnet.get('mcvkey_shaft', 'dummy'))]
 
         if 'magnetFsl' in model.magnet:
+            self.fsl_magnet = True
             #  obsolete
             if 'parameter' in model.magnet['magnetFsl']:
                 return mcv + self.render_template(
                     model.magnet['magnetFsl']['content_template'],
                     model.magnet['magnetFsl']['parameter'])
             elif model.magnet['magnetFsl'].get('content'):
-                return model.magnet['magnetFsl']['content'].split('\n')
+                return mcv + model.magnet['magnetFsl']['content'].split('\n')
             if isinstance(model.magnet['magnetFsl']
                           ['content_template'], str):
                 with open(model.magnet['magnetFsl']
@@ -225,9 +226,15 @@ class Builder:
 
         templ = model.rotortype()
         rotmodel = model.rotor.copy()
+        if 'conductivity' in rotmodel:
+            culosses = self.create_cu_losses(
+                dict(cuconduct=rotmodel['conductivity'],
+                     winding_inside=not model.external_rotor))
+        else:
+            culosses = []
         rotmodel.update(model.rotor[templ])
         rotmodel['is_rotor'] = True  # just in case for the template
-        return mcv + self.render_rotor(rotmodel, templ)
+        return mcv + culosses + self.render_rotor(rotmodel, templ)
 
     def create_rotor_winding(self, model):
         if hasattr(model, 'rotor') and model.rotortype() == 'rot_hsm':
@@ -327,8 +334,8 @@ class Builder:
     def create_fe_contr(self, model):
         return self.__render(model, 'fe-contr.mako')
 
-    def create_cu_losses(self, model):
-        return self.__render(model.windings, 'cu_losses')
+    def create_cu_losses(self, windings):
+        return self.__render(windings, 'cu_losses')
 
     def create_fe_losses(self, model):
         if any(model.get(k, 0) for k in ('ffactor', 'cw', 'ch', 'hyscoef',
@@ -431,9 +438,10 @@ class Builder:
                          self.create_magnet_model(model))
             else:
                 rotor = self.create_rotor_model(model)
-
+            windings = model.windings
+            windings['winding_inside'] = model.external_rotor
             return (self.create_new_model(model) +
-                    self.create_cu_losses(model) +
+                    self.create_cu_losses(windings) +
                     self.create_fe_losses(model) +
                     self.create_stator_model(model) +
                     self.create_gen_winding(model) +

@@ -165,18 +165,20 @@ def torque(p, w1, u1, s, r1, ls1, lh, ls2, r2):
 
 
 def fit_current(w1, u1, slip, r1, ls1, lh, i1):
+    r20 = u1/i1[1]*slip[1]
     fitp, cov = so.curve_fit(
         lambda x, ls2, r2: [np.linalg.norm(
             imcur(w1, u1, s, r1, ls1, lh, ls2, r2)[:2]) for s in x],
-        slip, i1, (0.0, 1.0))
+        slip, i1, (0.0, r20))
     return fitp
 
 
 def fit_torque(p, w1, u1, slip, r1, ls1, lh, T):
+    r20 = u1/i1[1]*slip[1]
     fitp, cov = so.curve_fit(
         lambda x, ls2, r2: [torque(p, w1, u1, s, r1, ls1, lh, ls2, r2)
                             for s in x],
-        slip, T, (0.01, 1.0))
+        slip, T, (0.0, r20))
     return fitp
 
 

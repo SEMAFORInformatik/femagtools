@@ -536,8 +536,8 @@ class PmRelMachine(object):
             r['pmech'].append(w1/self.p*r['T'][-1])
 
         r['losses'] = self.iqd_losses(
-            iqd(np.array(beta_list)/180*np.pi,
-                np.array(i1_list)),
+            *iqd(np.array(beta_list)/180*np.pi,
+                 np.array(i1_list)),
             np.array(n_list)*self.p).tolist()
         return r
 

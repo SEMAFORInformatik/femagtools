@@ -428,7 +428,6 @@ def convert(dxfile,
                 conv.update(params)
 
     conv['name'] = basename
-    logger.info("done")
     return conv
 
 

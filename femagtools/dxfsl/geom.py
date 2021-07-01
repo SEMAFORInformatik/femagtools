@@ -68,6 +68,7 @@ def plot_area(area):
 #            geom           #
 #############################
 
+
 ndec = 6  # number of decimals to round to
 
 
@@ -77,7 +78,6 @@ def intersect_and_split(inp_elements, rtol, atol):
     for e in inp_elements:
         out_size = len(out_elements)
         intersect_and_split_element(e, out_elements, 0, out_size, rtol, atol)
-    logger.info(" ... loaded")
     return out_elements
 
 
@@ -123,7 +123,8 @@ def add_or_join(geom, n1, n2, entity, rtol, atol):
     entity
     """
     if n1 == n2:
-        logger.debug("Tiny element with same node on both sides ignored: %s", n1)
+        logger.debug(
+            "Tiny element with same node on both sides ignored: %s", n1)
     else:
         geom.add_edge(n1, n2, entity)
 
@@ -420,7 +421,7 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
     # dwg.header['$LUNITS']
     lf = 1
     if dwg.header.get('$LUNITS', 0) == 1:
-        #conv = [1, 2.54e-2, 10.12, 633.0, 1e-3, 1e-2, 1] 
+        #conv = [1, 2.54e-2, 10.12, 633.0, 1e-3, 1e-2, 1]
         lf = 2.54e3
 
     rf = np.pi/180
@@ -470,7 +471,8 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
             elif e.dxftype == 'POINT':
                 logger.debug("Id %d4: type %s ignored", id, e.dxftype)
             elif e.dxftype == '3DFACE':
-                logger.warning("Id %d4: type %s not implemented", id, e.dxftype)
+                logger.warning(
+                    "Id %d4: type %s not implemented", id, e.dxftype)
                 # for l in face3d(e, lf):
                 #     yield l
             else:
@@ -675,6 +677,7 @@ nodes_filecount = 0
 
 class Geometry(object):
     """collection of connected shapes"""
+
     def __init__(self, elements=[],
                  rtol=1e-03,
                  atol=1e-03,
@@ -2959,7 +2962,8 @@ class Geometry(object):
 
                 for a in emb_mag_areas:
                     if a.surface < max_surface * 0.20:  # too small
-                        logger.debug("embedded magnet too small: convert to air")
+                        logger.debug(
+                            "embedded magnet too small: convert to air")
                         logger.debug("max surface : %s", max_surface)
                         logger.debug("area surface: %s", a.surface)
                         logger.debug("max phi     : %s", max_phi)
@@ -3317,8 +3321,8 @@ class Geometry(object):
         rtol = 1e-03
         atol = 1e-03
         line = Line(
-                Element(start=center,
-                        end=point(center, outer_radius+1, angle)))
+            Element(start=center,
+                    end=point(center, outer_radius+1, angle)))
         points = []
         for e in self.elements(Shape):
             pts = e.intersect_line(line,
@@ -3345,7 +3349,8 @@ class Geometry(object):
                     for e in elements:
                         n = self.find_nodes(e.start(), e.end())
                         if distance(n[0], n[1]) == 0.0:
-                            logger.debug("=== OMIT ELEMENT WITH SAME NODES ===")
+                            logger.debug(
+                                "=== OMIT ELEMENT WITH SAME NODES ===")
                         else:
                             self.add_edge(n[0], n[1], e)
                 points += pts_real

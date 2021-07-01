@@ -43,6 +43,7 @@ class FslRenderer(object):
         self.mirror_axis = None
         self.fm_nlin = None
         self.shaft = None
+        self.agndst = 1
 
     def mirror_nodechains(self, p0, p1):
         self.mirror_axis = np.array((p0, p1)).ravel().tolist()
@@ -62,16 +63,10 @@ class FslRenderer(object):
 
     def arc(self, startangle, endangle, center, radius, color='blue'):
         num = 0
-#        if self.nodedist > 0:
-#            s = startangle
-#            d = endangle - s
-#            n = int(d/(2*np.pi))
-#            if n < 0:
-#                n -= 1
-#            d -= n*2*np.pi
-#            num = int(radius*d/self.nodedist + 1)
-#            if num < 3 and radius*d > self.nodedist:
-#                num = 3
+        d = (endangle - startangle) % 2*np.pi
+        num = int(radius*d/self.agndst + 1)
+        if num < 3:
+            num = 3 if d > np.pi/6 else 0
 
         p1 = (center[0] + radius*np.cos(startangle),
               center[1] + radius*np.sin(startangle))
@@ -149,6 +144,7 @@ class FslRenderer(object):
         for d, e in el_sorted:
             d_percent = d / dist
             if ndt_list[n][0] < d_percent:
+                self.agndst = ndt_list[n][1] * self.agndst
                 self.content.append(u'\nndt({}*agndst)\n'.
                                     format(ndt_list[n][1]))
                 while len(ndt_list) and ndt_list[n][0] < d_percent:
@@ -462,7 +458,7 @@ class FslRenderer(object):
         num_layers = min(m_inner.num_of_layers() +
                          m_outer.num_of_layers(),
                          2)
-
+        self.agndst = params.get('agndst', 0.1)
         return [
             u'-- generated from DXF by femagtools {}'.format(__version__),
             u'exit_on_error = false',
@@ -490,7 +486,7 @@ class FslRenderer(object):
             u'pre_models("basic_modpar")\n',
             u'm.airgap         = 2*ag/3',
             u'm.nodedist       = 1.0',
-            u'agndst           = {}'.format(params.get('agndst', 0.1)),
+            u'agndst           = {}'.format(self.agndst),
             u"mcvkey_teeth = 'dummy'",
             u"mcvkey_yoke = 'dummy'",
             u"mcvkey_shaft = 'dummy'",

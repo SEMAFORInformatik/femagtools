@@ -64,9 +64,11 @@ class FslRenderer(object):
     def arc(self, startangle, endangle, center, radius, color='blue'):
         num = 0
         d = (endangle - startangle) % 2*np.pi
-        num = int(radius*d/self.agndst + 1)
-        if num < 3:
-            num = 3 if d > np.pi/6 else 0
+        #num = int(radius*d/self.agndst + 1)
+        # if num < 3 and d > np.pi/6:
+        #    num = 3
+        # else:
+        #    num = 0
 
         p1 = (center[0] + radius*np.cos(startangle),
               center[1] + radius*np.sin(startangle))
@@ -132,9 +134,7 @@ class FslRenderer(object):
         machine.set_alfa_and_corners()
         geom = machine.geom
         geom.split_lines_longer_than(geom.max_radius/4)
-        self.content = [u'if agndst == nil then',
-                        u'  agndst=1',
-                        u'end']
+        self.content = []
 
         ndt_list = [(0.2, 1.5), (0.45, 2), (0.7, 3.0), (1.1, 3.0)]
         dist = geom.max_radius - geom.min_radius

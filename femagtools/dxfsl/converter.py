@@ -29,8 +29,7 @@ def symmetry_search(machine,
                     rows=1,
                     cols=1,
                     num=1):
-    logger.info(" ")
-    logger.info("*** Begin of symmetry search for %s ***", kind)
+    logger.info("symmetry search for %s", kind)
 
     machine.clear_cut_lines()
     if show_plots and debug_mode:
@@ -55,7 +54,6 @@ def symmetry_search(machine,
         if machine_slice is None:
             machine.kind = kind
             logger.info(" - no slice extracted ?!?")
-            logger.info("*** End of symmetry search for %s ***", kind)
             return machine
 
         machine_mirror = machine_slice.get_symmetry_mirror()

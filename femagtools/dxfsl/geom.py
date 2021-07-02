@@ -1941,9 +1941,7 @@ class Geometry(object):
 
     def find_symmetry(self, center, radius,
                       startangle, endangle, sym_tolerance):
-        logger.info("find symmetry")
         arealist = self.list_of_areas()
-
         logger.info(" - %s areas available", len(arealist))
         if len(arealist) == 0:
             return False

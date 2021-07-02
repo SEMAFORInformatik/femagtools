@@ -160,9 +160,10 @@ class Windings(object):
 
     def axis(self):
         """returns axis angle of winding 1 in mechanical system"""
-        return self.current_linkage()['alfa0']
+        return self.mmf()['alfa0']
 
-    def current_linkage(self, k=1):
+    def mmf(self, k=1):
+        """returns the magnetomotive force and winding angle of phase k"""
         taus = 2*np.pi/self.Q
         t = np.gcd(self.Q, self.p)
         slots = self.slots(k)[0]
@@ -183,26 +184,27 @@ class Windings(object):
 
         N = len(yy)
         Y = np.fft.fft(yy)
-        i = np.argmax(np.abs(Y[:N//2]))
-        a = 2*np.abs(Y[i])/N
+        imax = np.argmax(np.abs(Y[:N//2]))
+        a = 2*np.abs(Y[imax])/N
         freq = np.fft.fftfreq(N, d=taus/NY)
-        T0 = np.abs(1/freq[i])
-        alfa0 = np.angle(Y[i])
+        T0 = np.abs(1/freq[imax])
+        alfa0 = np.angle(Y[imax])
         # if alfa0 < 0: alfa0 += 2*np.pi
         pos_fft = np.linspace(0, self.Q/t*taus, self.p//t*60)
         D = (a*np.cos(2*np.pi*pos_fft/T0+alfa0))
         return dict(
             pos=[i*taus/NY for i in range(len(y))],
-            current_linkage=yy[:NY*self.Q//t].tolist(),
+            mmf=yy[:NY*self.Q//t].tolist(),
             alfa0=-alfa0/self.p,
             pos_fft=pos_fft.tolist(),
-            current_linkage_fft=D.tolist())
+            nue=np.arange(0, 9*self.p).tolist(),
+            mmf_nue=(2*np.abs(Y[:9*self.p])/N).tolist(),
+            mmf_fft=D.tolist())
 
     def zoneplan(self):
         taus = 360/self.Q
         dphi = 1e-3
-        slots = {k: [round((x-taus/2)/taus)
-                     for x in self.windings[k]['PHI']]
+        slots = {k: [s-1 for s in self.slots(k)[0]]
                  for k in self.windings}
         layers = 1
         avgr = 0
@@ -288,16 +290,16 @@ if __name__ == "__main__":
                                'PHI': [5.3572, 7.5, 9.6429, 9.6429, 11.7857, 11.7857, 13.9286, 16.0715]}})]
         wdgs = Windings(testdata[0])
 
-    c = wdgs.current_linkage()
+    c = wdgs.mmf()
     # print('alfa0={0:6.3f}'.format(wdgs.axis()/np.pi*180))
 
     plt.title('Q={0}, p={1}, alfa0={2:6.3f}'.format(
         wdgs.Q, wdgs.p, c['alfa0']/np.pi*180))
-    plt.plot(np.array(c['pos'])/np.pi*180, c['current_linkage'])
-    plt.plot(np.array(c['pos_fft'])/np.pi*180, c['current_linkage_fft'])
+    plt.plot(np.array(c['pos'])/np.pi*180, c['mmf'])
+    plt.plot(np.array(c['pos_fft'])/np.pi*180, c['mmf_fft'])
 
     phi = [c['alfa0']/np.pi*180, c['alfa0']/np.pi*180]
-    y = [min(c['current_linkage_fft']), 1.1*max(c['current_linkage_fft'])]
+    y = [min(c['mmf_fft']), 1.1*max(c['mmf_fft'])]
     plt.plot(phi, y, '--')
     plt.annotate("", xy=(phi[0], y[0]),
                  xytext=(0, y[0]), arrowprops=dict(arrowstyle="->"))

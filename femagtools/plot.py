@@ -1243,22 +1243,42 @@ def loss_density(isa, subreg=[]):
     _contour('Loss Density kW/m³', elements, lossd)
 
 
-def current_linkage(wdg):
-    """plot current linkage of winding wdg"""
-    c = wdg.current_linkage()
+def mmf(f, title=''):
+    """plot magnetomotive force (mmf) of winding"""
     ax = plt.gca()
-    ax.set_title('Q={0}, p={1}, alfa0={2:6.3f}'.format(
-        wdg.Q, wdg.p, round(c['alfa0']/np.pi*180, 3)))
-    ax.plot(np.array(c['pos'])/np.pi*180, c['current_linkage'])
-    ax.plot(np.array(c['pos_fft'])/np.pi*180, c['current_linkage_fft'])
+    if title:
+        ax.set_title(title)
+    ax.plot(np.array(f['pos'])/np.pi*180, f['mmf'])
+    ax.plot(np.array(f['pos_fft'])/np.pi*180, f['mmf_fft'])
+    ax.set_xlabel('Position / Deg')
 
-    phi = [c['alfa0']/np.pi*180, c['alfa0']/np.pi*180]
-    y = [min(c['current_linkage_fft']), 1.1*max(c['current_linkage_fft'])]
+    phi = [f['alfa0']/np.pi*180, f['alfa0']/np.pi*180]
+    y = [min(f['mmf_fft']), 1.1*max(f['mmf_fft'])]
     ax.plot(phi, y, '--')
-    ax.annotate("", xy=(phi[0], y[0]),
+    alfa0 = round(f['alfa0']/np.pi*180, 3)
+    ax.text(phi[0]/2, y[0]+0.05, f"{alfa0}°",
+            ha="center", va="bottom")
+    ax.annotate(f"", xy=(phi[0], y[0]),
                 xytext=(0, y[0]), arrowprops=dict(arrowstyle="->"))
-
     ax.grid()
+
+
+def mmf_fft(f, title='', mmfmin=1e-2):
+    """plot winding mmf harmonics"""
+    ax = plt.gca()
+    if title:
+        ax.set_title(title)
+    else:
+        ax.set_title('MMF Harmonics')
+    ax.grid(True)
+    order, mmf = np.array([(n, m) for n, m in zip(f['nue'],
+                                                  f['mmf_nue']) if m > mmfmin]).T
+    try:
+        markerline1, stemlines1, _ = ax.stem(order, mmf, '-.', basefmt=" ",
+                                             use_line_collection=True)
+        ax.set_xticks(order)
+    except ValueError:  # empty sequence
+        pass
 
 
 def zoneplan(wdg):
@@ -1268,14 +1288,19 @@ def zoneplan(wdg):
     Qb = len([n for l in upper for n in l])
     q = wdg.Q/2/wdg.p/wdg.m  # number of coils per pole and phase
     color = ['blue', 'green', 'red']
+    rh = 0.5
+    if lower:
+        yl = rh
+        ymax = 2*rh + 0.2
+    else:
+        yl = 0
+        ymax = rh + 0.2
     ax = plt.gca()
     ax.axis('off')
     ax.set_xlim([-0.5, Qb-0.5])
-    ymax = 2
     ax.set_ylim([0, ymax])
-    # ax.set_aspect(0.5)
-    rh = 0.5
-    yl = 2*rh if lower else rh
+    ax.set_aspect(Qb/6+0.3)
+
     for i, p in enumerate(upper):
         for x in p:
             ax.add_patch(Rectangle((abs(x)-1.5, yl), 1, rh,

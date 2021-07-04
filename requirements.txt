@@ -6,3 +6,4 @@ meshio
 matplotlib
 lxml
 netCDF4
+lmfit

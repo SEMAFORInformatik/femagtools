@@ -13,6 +13,7 @@ import logging
 import logging.config
 import numpy as np
 import scipy.optimize as so
+import lmfit
 
 logger = logging.getLogger('femagtools.asm')
 
@@ -140,7 +141,7 @@ class InductionMotor(object):
             wsync, wsync * (1 + sign * self.sk(wsync)))
 
 
-def imcur(w1, u1, s, r1, ls1, lh, ls2, r2):
+def imcur(s, w1, u1, r1, ls1, lh, ls2, r2):
     """return currents i1r, i1i, i2r, i2i"""
     xs1 = w1*ls1
     xh = w1*lh
@@ -153,33 +154,32 @@ def imcur(w1, u1, s, r1, ls1, lh, ls2, r2):
         (x1, r1, xh, 0),
         (0, -s*xh, r2, -s*x2),
         (s*xh, 0, s*x2, r2)))
-    return np.linalg.solve(A, np.array(((u1), (0), (0), (0))))
+    return np.linalg.solve(A, np.array((u1, 0, 0, 0)))
 
 
 def torque(p, w1, u1, s, r1, ls1, lh, ls2, r2):
     """return torque"""
     if s == 0:
         return 0
-    i = imcur(w1, u1, s, r1, ls1, lh, ls2, r2)
-    return 3*p*r2/s/w1*(i[2]**2 + i[3]**2)
+    i2 = imcur(s, w1, u1, r1, ls1, lh, ls2, r2)[2:]
+    return 3*p*r2/s/w1*(i2[0]**2 + i2[1]**2)
 
 
-def fit_current(w1, u1, slip, r1, ls1, lh, i1):
-    r20 = u1/i1[1]*slip[1]
-    fitp, cov = so.curve_fit(
-        lambda x, ls2, r2: [np.linalg.norm(
-            imcur(w1, u1, s, r1, ls1, lh, ls2, r2)[:2]) for s in x],
-        slip, i1, (0.0, r20))
-    return fitp
-
-
-def fit_torque(p, w1, u1, slip, r1, ls1, lh, T):
-    r20 = u1/i1[1]*slip[1]
-    fitp, cov = so.curve_fit(
-        lambda x, ls2, r2: [torque(p, w1, u1, s, r1, ls1, lh, ls2, r2)
-                            for s in x],
-        slip, T, (0.0, r20))
-    return fitp
+def fit_current(w1, u1, slip, r1, ls1, lh, i1, cosphi):
+    def imcurr(s, ls2, r2):
+        return np.array([x + 1j*y
+                         for x, y in [imcur(sx, w1, u1, r1, ls1, lh, ls2, r2)[:2]
+                                      for sx in s]])
+    model = lmfit.model.Model(imcurr)
+    ls2_guess = 0.0
+    r2_guess = np.mean([u1/i1x*sx
+                        for i1x, sx in zip(i1, slip) if abs(i1x) > 1e-6])
+    params = model.make_params(r2=r2_guess, ls2=ls2_guess)
+    guess = lmfit.models.update_param_vals(params, model.prefix)
+    i1c = np.array([x*pf - 1j*x*np.sqrt(1-pf**2)
+                    for x, pf in zip(i1, cosphi)])
+    r = model.fit(i1c, params=guess, s=slip, verbose=True)
+    return r.params['ls2'].value, r.params['r2'].value
 
 
 valmap = {
@@ -293,19 +293,15 @@ def read_simulation_results(content):
     return r
 
 
-def parident(m, u1, i1, torq_fit=False):
+def parident(m, u1, i1, cosphi):
     """returns equivalent circuit parameters: r2, ls"""
     w1 = 2*np.pi*m['f1'][0]
     ls1, lh = m['ls1'], m['lh']
     #ls1 = 0
     r1 = m['r1']
     p = m['p']
-    if torq_fit:
-        ls2, r2 = fit_torque(p, w1, u1, m['s'],
-                             r1, ls1, lh, m['T'])
-    else:
-        ls2, r2 = fit_current(w1, u1, m['s'],
-                              r1, ls1, lh, m['i1'])
+    ls2, r2 = fit_current(w1, u1, m['s'],
+                          r1, ls1, lh, m['i1'], cosphi)
 
     xi = w1*(ls1+lh - lh**2/(ls2+lh))
     return dict(r2=r2, ls2=ls2, sk=r2/np.sqrt(xi**2 + r1**2))
@@ -362,7 +358,7 @@ def read(arg):
 
     r['lh'] = u1/i1[0]/w1 - r['ls1']
 
-    r.update(parident(r, u1, i1))
+    r.update(parident(r, u1, i1, r['cosphi']))
     return r
 
 

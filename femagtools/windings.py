@@ -135,6 +135,7 @@ class Windings(object):
 
     def kw(self, n=0):
         """return winding factor"""
+        # nue = [self.p + g * m *t for g in range(0, 5)]
         nue = self.p if n == 0 else n
         return self.kwp(nue) * self.kwd(nue)
 

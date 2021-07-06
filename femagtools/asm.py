@@ -5,7 +5,12 @@
 
     Reading ASM files
 
+Slots Qr:
 
+  Qr <= 1.25 Qs
+  Qr != Qs +/- 2p
+  Qr != Qs
+  Qr != Qs +/- 1
 
 """
 import pathlib
@@ -293,15 +298,10 @@ def read_simulation_results(content):
     return r
 
 
-def parident(m, u1, i1, cosphi):
+def parident(w1, u1, i1, cosphi, s, r1, ls1, lh):
     """returns equivalent circuit parameters: r2, ls"""
-    w1 = 2*np.pi*m['f1'][0]
-    ls1, lh = m['ls1'], m['lh']
-    #ls1 = 0
-    r1 = m['r1']
-    p = m['p']
-    ls2, r2 = fit_current(w1, u1, m['s'],
-                          r1, ls1, lh, m['i1'], cosphi)
+    ls2, r2 = fit_current(w1, u1, s,
+                          r1, ls1, lh, i1, cosphi)
 
     xi = w1*(ls1+lh - lh**2/(ls2+lh))
     return dict(r2=r2, ls2=ls2, sk=r2/np.sqrt(xi**2 + r1**2))
@@ -358,7 +358,8 @@ def read(arg):
 
     r['lh'] = u1/i1[0]/w1 - r['ls1']
 
-    r.update(parident(r, u1, i1, r['cosphi']))
+    r.update(parident(w1, u1, i1, r['cosphi'],
+                      r['s'], r['r1'], r['ls1'], r['lh']))
     return r
 
 

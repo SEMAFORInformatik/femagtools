@@ -641,6 +641,7 @@ class Reader:
 
     def __read_linear_force(self, content):
         "read and append linear force section"
+        cosys = 'xy'
         f = {'displ': [], 'magnet_1': [], 'force_x': [],
              'force_y': [], 'f_idpsi': []}
 
@@ -652,14 +653,28 @@ class Reader:
                 f['force_x'].append(floatnan(rec[3].strip()))
                 f['force_y'].append(floatnan(rec[4].strip()))
                 # TODO f['f_idpsi'].append(floatnan(rec[5].strip()))
+            elif l.split()[-1] == 'Force_Z':
+                cosys = 'rz'
+
+        if cosys == 'rz':
+            f['force_r'] = f.pop('force_x')
+            f['force_z'] = f.pop('force_y')
+
         if len(f['displ']) > 0:
-            ripple_x = max(f['force_x']) - min(f['force_x'])
-            ripple_y = max(f['force_y']) - min(f['force_y'])
-            f['ripple_x'] = ripple_x
-            f['ripple_y'] = ripple_y
+            if cosys == 'xy':
+                ripple = [max(f['force_x']) - min(f['force_x']),
+                          max(f['force_y']) - min(f['force_y'])]
+                f['ripple_x'] = ripple[0]
+                f['ripple_y'] = ripple[1]
+            else:
+                ripple = [max(f['force_r']) - min(f['force_r']),
+                          max(f['force_z']) - min(f['force_z'])]
+                f['ripple_r'] = ripple[0]
+                f['ripple_z'] = ripple[1]
+
             self.linearForce.append(f)
 
-        self._fft = Reader.__read_linearForce_fft
+            self._fft = Reader.__read_linearForce_fft
 
     def __read_linearForce_fft(self, content):
         "read and append linear force fft section"
@@ -1245,7 +1260,7 @@ class Reader:
                 self.dqPar['gamma'].append(floatnan(rec[6]))
                 self.dqPar['phi'].append(floatnan(rec[1]) +
                                          self.dqPar['gamma'][-1])
-            elif len(rec) == 5:  #  self and mutual inductances
+            elif len(rec) == 5:  # self and mutual inductances
                 self.dqPar['Lho'].append(lfe*floatnan(rec[2]))
                 self.dqPar['Lh2'].append(lfe*floatnan(rec[3]))
             else:
@@ -1284,7 +1299,7 @@ class Reader:
             self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
         except:
             pass
-        
+
     def __read_weights(self, content):
         #              Stator-Iron      - Conductors      - Magnets
         #                105.408	     22.542	      0.000
@@ -1294,7 +1309,7 @@ class Reader:
             return
         scale = 1  # assume kg unit
         if content[0].split()[-1] == '[gr]':
-                scale = 1e-3
+            scale = 1e-3
         for line in content[2:]:
             rec = line.split()
             if rec[0] != 'Stator-Iron' and rec[0] != 'Rotor-Iron':
@@ -1324,7 +1339,7 @@ class Reader:
             x = line.split()
             if x:
                 self.inertia.append(f*floatnan(x[-1]))
-                
+
     def __read_losses(self, content):
         losses = {}
         # find results for angle:
@@ -1337,7 +1352,7 @@ class Reader:
                           'magnetJ', 'magnetB', 'r1', 'total'):
                     losses[k] = 0.0
                 continue
-            
+
             if l.find('Cu-losses') > -1:
                 rec = self.__findNums(content[i+1])
                 if len(rec) > 0:
@@ -1346,7 +1361,7 @@ class Reader:
                 if len(rec) > 2:
                     losses['r1'] += floatnan(rec[2])
                 continue
-                    
+
             elif l.startswith('StZa') or l.startswith('RoZa'):
                 rec = self.__findNums(content[i+2])
                 if len(rec) == 2:
@@ -1354,7 +1369,7 @@ class Reader:
                     losses['staza'] = floatnan(rec[0])
                     losses['total'] += losses['staza']+losses['stajo']
                 continue
-                
+
             if l.startswith('StJo') or l.startswith('RoJo') or \
                _statloss.search(l):
                 rec = self.__findNums(content[i+2])
@@ -1370,7 +1385,7 @@ class Reader:
                         losses['stajo'] += floatnan(rec[0])
                     losses['total'] += losses['staza']+losses['stajo']
                 continue
-                            
+
             if _rotloss.search(l):
                 rec = self.__findNums(content[i+2])
                 if len(rec) == 1:
@@ -1378,7 +1393,7 @@ class Reader:
                     losses['rotfe'] += rotfe
                     losses['total'] += rotfe
                 continue
-                    
+
             if l.find('Fe-Losses-Rotor') > -1:
                 rec = self.__findNums(content[i+3])
                 if len(rec) == 2:
@@ -1392,7 +1407,7 @@ class Reader:
                         losses['rotfe'] = floatnan(rec[1])
                         losses['total'] += losses['rotfe']
                 continue
-                    
+
             if l.find('Magnet-Losses') > -1:
                 rec = self.__findNums(content[i+1])
                 if len(rec) == 1:
@@ -1402,7 +1417,7 @@ class Reader:
                     losses['magnetJ'] = float(rec[0])
                     losses['magnetB'] = float(rec[1])
                 losses['total'] += losses['magnetJ']
-                
+
         if 'total' in losses:
             losses['totalfe'] = sum([losses[k] for k in ('staza',
                                                          'stajo',
@@ -1414,16 +1429,17 @@ class Reader:
         k = ''
         for i, l in enumerate(content):
             if l.startswith('*************'):
-                self.losses[-1]['fft']=dict()
+                self.losses[-1]['fft'] = dict()
                 for k in losses:
                     for x in losses[k]:
                         x[0] = int(x[0])
                     if(losses[k]):
                         if len(losses[k][0]) == 4:
-                            cols=('order_el', 'freq', 'hyst', 'eddy')
+                            cols = ('order_el', 'freq', 'hyst', 'eddy')
                         else:
-                            cols=('order_mech', 'order_el', 'freq', 'hyst', 'eddy')
-                    
+                            cols = ('order_mech', 'order_el',
+                                    'freq', 'hyst', 'eddy')
+
                         self.losses[-1]['fft'][k] = {k1: l
                                                      for k1, l in zip(cols,
                                                                       zip(*losses[k]))}
@@ -1433,11 +1449,11 @@ class Reader:
                l.find('RoJo') > -1:
                 k = 'stajo'
             elif l.find('StZa') > -1 or \
-                 l.find('StatorIron') > -1 or \
-                 l.find('RoZa') > -1:
+                    l.find('StatorIron') > -1 or \
+                    l.find('RoZa') > -1:
                 k = 'staza'
             elif l.find('Iron') > -1 and l.find('Stator') > -1:
-                    k = 'staza'                
+                k = 'staza'
             elif l.find('Iron') > -1:
                 if self.external_rotor:
                     k = 'staza'
@@ -1463,7 +1479,7 @@ class Reader:
                                           for i, x in enumerate(rec)])
                 except:
                     pass
-    
+
     def get(self, name, r=None):
         """return value of key name
         name can be a list such as ['torque[1]', 'ripple']
@@ -1502,7 +1518,7 @@ class Reader:
             return self.__getattr__(lname).__getitem__(indx)
         except (KeyError, IndexError, AttributeError):
             return None
-        
+
     def __getattr__(self, k):
         return self.__dict__[k]
 
@@ -1511,8 +1527,8 @@ class Reader:
                                            'type',
                                            'filename',
                                            'date',
-					   'areas',
-					   'inertia',
+                                           'areas',
+                                           'inertia',
                                            'torque',
                                            'torque_fft',
                                            'psidq',
@@ -1540,10 +1556,10 @@ class Reader:
             return "\n".join([
                 'FEMAG {}: {}'.format(self.version, self.type),
                 'File: {}  {}'.format(self.filename, self.date)] +
-                             ['{}: {}'.format(k, v)
-                              for k, v in self.items()])
+                ['{}: {}'.format(k, v)
+                 for k, v in self.items()])
         return "{}"
-    
+
     def __repr__(self):
         "representation of this object"
         return self.__str__()
@@ -1567,5 +1583,4 @@ if __name__ == "__main__":
 
     b = read(filename)
     json.dump({k: v for k, v in b.items()}, sys.stdout)
-    #print(b)
-    
+    # print(b)

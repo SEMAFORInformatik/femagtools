@@ -2,6 +2,10 @@
 
 This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+
+- added Bch reader and plto for tubular machines (R/Z Coordinate System)
+- fixed asm parameter ident for delta connected windings
+	
 ## Release 1.0.16
 - windings with zoneplan and mmf
 - AC simulation with EEC parameter identification

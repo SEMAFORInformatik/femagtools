@@ -20,29 +20,22 @@ for j=1, #srkeys do
   end
 end
 
-m.dia_wire  = 7.0
-m.nseg            = m.num_poles/m.npols_gen  --  Number of segments
-m.npolsim         = m.npols_gen       --  Number of poles simulated             
-m.perimrad        = (da1+dy1)/2 --  Radius of perimeter [mm]              	
-m.vbendrad        =          5.000 --  Bending radius vertical [mm]          
-m.endheight       =         20.000 --  End winding height [mm]               
-m.wiredia         = m.dia_wire --  Wire diameter [mm]                    
-
- pre_models("leak_dist_wind")
-
  post_models("end_wind_leak","leak")
-
  L_end = math.sqrt(leak[2]^2+leak[3]^2)
 
+-- stator winding resistance per phase
 a = ${model.get('num_par_wdgs',1)}  -- parallel winding groups
 rl1,rl2 = get_dev_data( "rel_cond_length" )
+--[[ TODO: fix m.dia_wire != 0
 A_wire = m.dia_wire^2/4*math.pi -- A_ns*m.cufilfactor/m.num_wires
  T = ${model.get('wind_temp',20)-20}  --Temperature rise of stator winding
 tcoeff = 3.93e-3 -- temp coeff 1/K
-
 sigma = sigma1/(1+tcoeff*T) -- conductivity 
 R_s = Q1/m.num_phases*m.num_wires*(rl1/100)*(m.arm_length/1000)/(sigma*A_wire/1.0e6)/a
+--]]
+R_s = 0
 
+-- effective rotor bar length (including ring segment)
 p = m.num_poles/2
 Dr = da2-m.slot_height
 length_eff = rl2/100*m.arm_length+math.pi*Dr/Q2/math.sin(math.pi*p/Q2)
@@ -50,8 +43,8 @@ length_eff = rl2/100*m.arm_length+math.pi*Dr/Q2/math.sin(math.pi*p/Q2)
 m.stator_volt     = ${model.get('u1')}       --   Stator windgs (Ph) voltage (RMS) [V]    
 m.connect         = ${model.get('wdgcon',0)} --   Wdgs-connect: 0=open;1=star;2=delta     
 m.frequency       = ${model.get('f1')}      --   Nominal Stator frequency [Hz]           
-m.re_winding      = 0 --R_s            --   Stator phase winding resistamce [Ohm]   
-m.l_endwindg      = 0 --2*math.pi*m.frequency*L_end          --   Stator ph. end-winding reactance[Ohm]   
+m.re_winding      = R_s            --   Stator phase winding resistamce [Ohm]   
+m.l_endwindg      = 2*math.pi*m.frequency*L_end          --   Stator ph. end-winding reactance[Ohm]   
 m.eff_arm_len     = length_eff     --   Effect. rotor bar length (+endr) [mm]   
 m.nphases         = m.num_phases          --   Number of Phases (poc.file)   (>= 2)    
 m.num_par_wdgs    = a  --   Number of parallel windings   (>= 0)    

@@ -63,7 +63,7 @@ class FslRenderer(object):
 
     def arc(self, startangle, endangle, center, radius, color='blue'):
         num = 0
-        d = (endangle - startangle) % 2*np.pi
+        #d = (endangle - startangle) % 2*np.pi
         #num = int(radius*d/self.agndst + 1)
         # if num < 3 and d > np.pi/6:
         #    num = 3

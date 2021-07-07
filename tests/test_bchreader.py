@@ -52,7 +52,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.losses[0]['stajo'], 0.458, 2)
         self.assertAlmostEqual(bch.losses[0]['staza'], 0.344, 3)
         self.assertAlmostEqual(bch.losses[0]['magnetJ'], 0.006, 3)
-        #self.assertAlmostEqual(bch.losses[0]['rotfe'], 0.000, 3)
+        # self.assertAlmostEqual(bch.losses[0]['rotfe'], 0.000, 3)
 
         self.assertAlmostEqual(bch.lossPar['fo'][0], 50.0, 1)
         self.assertAlmostEqual(bch.lossPar['fo'][1], 50.0, 1)
@@ -110,7 +110,7 @@ class BchReaderTest(unittest.TestCase):
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['eddy'],
                                        [15.804, 142.234, 395.094, 774.383,
                                         455.591, 603.881, 419.063, 333.395])
-                               
+
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['order_el'],
                                        [1, 3, 5, 7, 9, 11, 13, 15])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['freq'],
@@ -140,7 +140,6 @@ class BchReaderTest(unittest.TestCase):
 
         assert [round(l*1e3, 4) for l in bch.dqPar['Lho']] == [0.5908, 0.6583]
 
-
     def test_read_relsim(self):
         bch = self.read_bch('relsim.BATCH')
 
@@ -149,14 +148,14 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(np.mean(bch.torque[0]['torque']), 5.656, 2)
         self.assertAlmostEqual(bch.dqPar['u1'][1], 274.5, 1)
         self.assertAlmostEqual(bch.dqPar['torque'][0], 5.775, 1)
-        
+
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['freq'],
                                        [50.0])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['hyst'],
                                        [0.152])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['hyst'],
                                        [0.066])
-        
+
     def test_read_pmsim_external(self):
         bch = self.read_bch('pmsim-external.BATCH')
 
@@ -175,7 +174,7 @@ class BchReaderTest(unittest.TestCase):
                                        [2619.555, 49.438])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['eddy'],
                                        [15512.529, 1186.523])
-                               
+
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['order_el'],
                                        [1, 3, 5])
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['staza']['freq'],
@@ -207,7 +206,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.psidq_ldq), 6)
         self.assertEqual(len(bch.psidq['psid']), 3)
         self.assertEqual(len(bch.psidq_ldq['ld']), 3)
-        
+
         self.assertEqual(len(bch.psidq['losses']), 11)
         self.assertEqual(len(bch.psidq['losses']['styoke']), 3)
         self.assertTrue('id' in bch.airgapInduction)
@@ -236,7 +235,7 @@ class BchReaderTest(unittest.TestCase):
 
         self.assertEqual(len(bch.ldq['losses']), 5)
         self.assertEqual(len(bch.ldq['losses']['styoke']), 4)
-        
+
         self.assertTrue('i1' in bch.airgapInduction)
         self.assertEqual(len(bch.airgapInduction['i1']), 3)
         self.assertEqual(len(bch.airgapInduction['an']), 4)
@@ -246,7 +245,7 @@ class BchReaderTest(unittest.TestCase):
         bch = self.read_bch('PM_270_L8_001.BATCH')
         self.assertAlmostEqual(bch.dqPar['i1'][1], 70.0, 1)
         self.assertAlmostEqual(bch.dqPar['beta'][0], -38.0, 1)
-        
+
     def test_read_linearforce(self):
         bch = self.read_bch('linearForce.BATCH')
 
@@ -261,6 +260,11 @@ class BchReaderTest(unittest.TestCase):
 
         self.assertEqual(len(bch.linearForce_fft), 2)
         self.assertEqual(len(bch.flux_fft), 3)
+
+    def test_read_linmot_z(self):
+        bch = self.read_bch('linmot_z.BATCH')
+        self.assertEqual(len(bch.linearForce), 2)
+        self.assertEqual(max(bch.linearForce[1]['force_z']), 4074.0)
 
     def test_dq(self):
         bch = self.read_bch('dq.BATCH')

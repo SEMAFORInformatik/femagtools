@@ -8,7 +8,7 @@ import femagtools.opt
 import logging
 import glob
 import pathlib
-
+import os
 
 from femagtools.multiproc import Engine
 # instead you can use on of the following

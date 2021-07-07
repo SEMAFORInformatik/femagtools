@@ -40,7 +40,7 @@ def _create_3d_axis():
 
 def _plot_surface(ax, x, y, z, labels, azim=None):
     """helper function for surface plots"""
-    #ax.tick_params(axis='both', which='major', pad=-3)
+    # ax.tick_params(axis='both', which='major', pad=-3)
     assert np.size(x) > 1 and np.size(y) > 1 and np.size(z) > 1
     if azim is not None:
         ax.azim = azim
@@ -58,7 +58,7 @@ def _plot_surface(ax, x, y, z, labels, azim=None):
     ax.set_ylabel(labels[1])
     ax.set_title(labels[2])
 
-    #plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+    # plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
 
 
 def __phasor_plot(up, idq, uxdq):
@@ -528,9 +528,9 @@ def mtpv(pmrel, u1max, i1max, title='', projection=''):
         ax.plot(imtpv[1], imtpv[0],
                 color='red', linewidth=2,
                 label='MTPV: {0:5.0f} Nm'.format(np.max(imtpv[2])))
-        #beta = np.arctan2(imtpv[1][0], imtpv[0][0])
-        #b = np.linspace(beta, 0)
-        #ax.plot(np.sqrt(2)*i1max*np.sin(b), np.sqrt(2)*i1max*np.cos(b), 'r-')
+        # beta = np.arctan2(imtpv[1][0], imtpv[0][0])
+        # b = np.linspace(beta, 0)
+        # ax.plot(np.sqrt(2)*i1max*np.sin(b), np.sqrt(2)*i1max*np.cos(b), 'r-')
 
         ax.grid()
         ax.legend()
@@ -538,6 +538,12 @@ def mtpv(pmrel, u1max, i1max, title='', projection=''):
     ax.set_ylabel('Iq/A')
     if title:
         ax.set_title(title)
+
+
+def __get_linearForce_title_keys(lf):
+    if 'force_r' in lf:
+        return ['Force r', 'Force z'], ['force_r', 'force_z']
+    return ['Force x', 'Force y'], ['force_x', 'force_y']
 
 
 def pmrelsim(bch, title=''):
@@ -571,14 +577,15 @@ def pmrelsim(bch, title=''):
               bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
         row += 3
     elif bch.linearForce:
-        force('Force x', bch.linearForce[-1]['displ'],
-              bch.linearForce[-1]['force_x'], 'Displt. / mm')
+        title, keys = __get_linearForce_title_keys(bch.linearForce[-1])
+        force(title[0], bch.linearForce[-1]['displ'],
+              bch.linearForce[-1][keys[0]], 'Displt. / mm')
         plt.subplot(rows, cols, row+1)
         force_fft(bch.linearForce_fft[-2]['order'],
                   bch.linearForce_fft[-2]['force'])
         plt.subplot(rows, cols, row+2)
-        force('Force y', bch.linearForce[-1]['displ'],
-              bch.linearForce[-1]['force_y'], 'Displt. / mm')
+        force(title[1], bch.linearForce[-1]['displ'],
+              bch.linearForce[-1][keys[1]], 'Displt. / mm')
         plt.subplot(rows, cols, row+3)
         force_fft(bch.linearForce_fft[-1]['order'],
                   bch.linearForce_fft[-1]['force'])
@@ -649,14 +656,15 @@ def multcal(bch, title=''):
               bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
         row += 3
     elif bch.linearForce:
-        force('Force x', bch.linearForce[-1]['displ'],
-              bch.linearForce[-1]['force_x'], 'Displt. / mm')
+        title, keys = __get_linearForce_title_keys(bch.linearForce[-1])
+        force(title[0], bch.linearForce[-1]['displ'],
+              bch.linearForce[-1][keys[0]], 'Displt. / mm')
         plt.subplot(rows, cols, row+1)
         force_fft(bch.linearForce_fft[-2]['order'],
                   bch.linearForce_fft[-2]['force'])
         plt.subplot(rows, cols, row+2)
-        force('Force y', bch.linearForce[-1]['displ'],
-              bch.linearForce[-1]['force_y'], 'Displt. / mm')
+        force(title[1], bch.linearForce[-1]['displ'],
+              bch.linearForce[-1][keys[1]], 'Displt. / mm')
         plt.subplot(rows, cols, row+3)
         force_fft(bch.linearForce_fft[-1]['order'],
                   bch.linearForce_fft[-1]['force'])
@@ -724,14 +732,15 @@ def fasttorque(bch, title=''):
               bch.torque[-1]['angle'], bch.torque[-1]['force_y'])
         row += 3
     elif bch.linearForce:
-        force('Force x', bch.linearForce[-1]['displ'],
-              bch.linearForce[-1]['force_x'], 'Displt. / mm')
+        title, keys = __get_linearForce_title_keys(bch.linearForce[-1])
+        force(title[0], bch.linearForce[-1]['displ'],
+              bch.linearForce[-1][keys[0]], 'Displt. / mm')
         plt.subplot(rows, cols, row+1)
         force_fft(bch.linearForce_fft[-2]['order'],
                   bch.linearForce_fft[-2]['force'])
         plt.subplot(rows, cols, row+2)
-        force('Force y', bch.linearForce[-1]['displ'],
-              bch.linearForce[-1]['force_y'], 'Displt. / mm')
+        force(title[1], bch.linearForce[-1]['displ'],
+              bch.linearForce[-1][keys[1]], 'Displt. / mm')
         plt.subplot(rows, cols, row+3)
         force_fft(bch.linearForce_fft[-1]['order'],
                   bch.linearForce_fft[-1]['force'])
@@ -797,14 +806,15 @@ def cogging(bch, title=''):
               bch.torque[0]['angle'], bch.torque[0]['force_y'])
         row += 3
     elif bch.linearForce:
-        force('Force x', bch.linearForce[-1]['displ'],
-              bch.linearForce[-1]['force_x'], 'Displt. / mm')
+        title, keys = __get_linearForce_title_keys(bch.linearForce[-1])
+        force(title[0], bch.linearForce[-1]['displ'],
+              bch.linearForce[-1][keys[0]], 'Displt. / mm')
         plt.subplot(rows, cols, row+1)
         force_fft(bch.linearForce_fft[-2]['order'],
                   bch.linearForce_fft[-2]['force'])
         plt.subplot(rows, cols, row+2)
-        force('Force y', bch.linearForce[-1]['displ'],
-              bch.linearForce[-1]['force_y'], 'Displt. / mm')
+        force(title[1], bch.linearForce[-1]['displ'],
+              bch.linearForce[-1][keys[1]], 'Displt. / mm')
         plt.subplot(rows, cols, row+3)
         force_fft(bch.linearForce_fft[-1]['order'],
                   bch.linearForce_fft[-1]['force'])
@@ -836,7 +846,7 @@ def transientsc(bch, title=''):
 
     row = 1
     plt.subplot(rows, cols, row)
-    ax = plt.gca()
+    ax= plt.gca()
     ax.set_title('Currents / A')
     ax.grid(True)
     for i in ('ia', 'ib', 'ic'):
@@ -844,9 +854,9 @@ def transientsc(bch, title=''):
     ax.set_xlabel('Time / s')
     ax.legend()
 
-    row = 2
+    row= 2
     plt.subplot(rows, cols, row)
-    ax = plt.gca()
+    ax= plt.gca()
     ax.set_title('Torque / Nm')
     ax.grid(True)
     ax.plot(bch.scData['time'], bch.scData['torque'])
@@ -860,15 +870,15 @@ def transientsc(bch, title=''):
 def i1beta_torque(i1, beta, torque):
     """creates a surface plot of torque vs i1, beta"""
     _create_3d_axis()
-    ax = plt.gca()
-    azim = 210
+    ax= plt.gca()
+    azim= 210
     if 0 < np.mean(beta) or -90 > np.mean(beta):
-        azim = -60
-    unit = 'Nm'
-    scale = 1
+        azim= -60
+    unit= 'Nm'
+    scale= 1
     if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
-        scale = 1e-3
-        unit = 'kNm'
+        scale= 1e-3
+        unit= 'kNm'
     _plot_surface(ax, i1, beta, scale*np.asarray(torque),
                   (u'I1/A', u'Beta/°', u'Torque/{}'.format(unit)),
                   azim=azim)
@@ -877,7 +887,7 @@ def i1beta_torque(i1, beta, torque):
 def i1beta_ld(i1, beta, ld):
     """creates a surface plot of ld vs i1, beta"""
     _create_3d_axis()
-    ax = plt.gca()
+    ax= plt.gca()
     _plot_surface(ax, i1, beta, np.asarray(ld)*1e3,
                   (u'I1/A', u'Beta/°', u'Ld/mH'),
                   azim=60)
@@ -886,10 +896,10 @@ def i1beta_ld(i1, beta, ld):
 def i1beta_lq(i1, beta, lq):
     """creates a surface plot of ld vs i1, beta"""
     _create_3d_axis()
-    ax = plt.gca()
-    azim = 60
+    ax= plt.gca()
+    azim= 60
     if 0 < np.mean(beta) or -90 > np.mean(beta):
-        azim = -120
+        azim= -120
     _plot_surface(ax, i1, beta, np.asarray(lq)*1e3,
                   (u'I1/A', u'Beta/°', u'Lq/mH'),
                   azim=azim)
@@ -898,7 +908,7 @@ def i1beta_lq(i1, beta, lq):
 def i1beta_psim(i1, beta, psim):
     """creates a surface plot of psim vs i1, beta"""
     _create_3d_axis()
-    ax = plt.gca()
+    ax= plt.gca()
     _plot_surface(ax, i1, beta, psim,
                   (u'I1/A', u'Beta/°', u'Psi m/Vs'),
                   azim=60)
@@ -907,10 +917,10 @@ def i1beta_psim(i1, beta, psim):
 def i1beta_psid(i1, beta, psid):
     """creates a surface plot of psid vs i1, beta"""
     _create_3d_axis()
-    ax = plt.gca()
-    azim = -60
+    ax= plt.gca()
+    azim= -60
     if 0 < np.mean(beta) or -90 > np.mean(beta):
-        azim = 60
+        azim= 60
     _plot_surface(ax, i1, beta, psid,
                   (u'I1/A', u'Beta/°', u'Psi d/Vs'),
                   azim=azim)
@@ -919,10 +929,10 @@ def i1beta_psid(i1, beta, psid):
 def i1beta_psiq(i1, beta, psiq):
     """creates a surface plot of psiq vs i1, beta"""
     _create_3d_axis()
-    ax = plt.gca()
-    azim = 210
+    ax= plt.gca()
+    azim= 210
     if 0 < np.mean(beta) or -90 > np.mean(beta):
-        azim = -60
+        azim= -60
     _plot_surface(ax, i1, beta, psiq,
                   (u'I1/A', u'Beta/°', u'Psi q/Vs'),
                   azim=azim)
@@ -931,12 +941,12 @@ def i1beta_psiq(i1, beta, psiq):
 def idq_torque(id, iq, torque):
     """creates a surface plot of torque vs id, iq"""
     _create_3d_axis()
-    ax = plt.gca()
-    unit = 'Nm'
-    scale = 1
+    ax= plt.gca()
+    unit= 'Nm'
+    scale= 1
     if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
-        scale = 1e-3
-        unit = 'kNm'
+        scale= 1e-3
+        unit= 'kNm'
     _plot_surface(ax, id, iq, scale*np.asarray(torque),
                   (u'Id/A', u'Iq/A', u'Torque/{}'.format(unit)),
                   azim=-60)
@@ -945,7 +955,7 @@ def idq_torque(id, iq, torque):
 def idq_psid(id, iq, psid):
     """creates a surface plot of psid vs id, iq"""
     _create_3d_axis()
-    ax = plt.gca()
+    ax= plt.gca()
     _plot_surface(ax, id, iq, psid,
                   (u'Id/A', u'Iq/A', u'Psi d/Vs'),
                   azim=210)
@@ -954,7 +964,7 @@ def idq_psid(id, iq, psid):
 def idq_psiq(id, iq, psiq):
     """creates a surface plot of psiq vs id, iq"""
     _create_3d_axis()
-    ax = plt.gca()
+    ax= plt.gca()
     _plot_surface(ax, id, iq, psiq,
                   (u'Id/A', u'Iq/A', u'Psi q/Vs'),
                   azim=210)
@@ -963,7 +973,7 @@ def idq_psiq(id, iq, psiq):
 def idq_psim(id, iq, psim):
     """creates a surface plot of psim vs. id, iq"""
     _create_3d_axis()
-    ax = plt.gca()
+    ax= plt.gca()
     _plot_surface(ax, id, iq, psim,
                   (u'Id/A', u'Iq/A', u'Psi m [Vs]'),
                   azim=120)
@@ -972,7 +982,7 @@ def idq_psim(id, iq, psim):
 def idq_ld(id, iq, ld):
     """creates a surface plot of ld vs. id, iq"""
     _create_3d_axis()
-    ax = plt.gca()
+    ax= plt.gca()
     _plot_surface(ax, id, iq, np.asarray(ld)*1e3,
                   (u'Id/A', u'Iq/A', u'L d/mH'),
                   azim=120)
@@ -981,7 +991,7 @@ def idq_ld(id, iq, ld):
 def idq_lq(id, iq, lq):
     """creates a surface plot of lq vs. id, iq"""
     _create_3d_axis()
-    ax = plt.gca()
+    ax= plt.gca()
     _plot_surface(ax, id, iq, np.asarray(lq)*1e3,
                   (u'Id/A', u'Iq/A', u'L q/mH'),
                   azim=120)
@@ -990,17 +1000,17 @@ def idq_lq(id, iq, lq):
 def ldlq(bch):
     """creates the surface plots of a BCH reader object
     with a ld-lq identification"""
-    beta = bch.ldq['beta']
-    i1 = bch.ldq['i1']
-    torque = bch.ldq['torque']
-    ld = np.array(bch.ldq['ld'])
-    lq = np.array(bch.ldq['lq'])
-    psid = bch.ldq['psid']
-    psiq = bch.ldq['psiq']
-    psim = bch.ldq['psim']
+    beta= bch.ldq['beta']
+    i1= bch.ldq['i1']
+    torque= bch.ldq['torque']
+    ld= np.array(bch.ldq['ld'])
+    lq= np.array(bch.ldq['lq'])
+    psid= bch.ldq['psid']
+    psiq= bch.ldq['psiq']
+    psim= bch.ldq['psim']
 
-    rows = 3
-    fig = plt.figure(figsize=(10, 4*rows))
+    rows= 3
+    fig= plt.figure(figsize=(10, 4*rows))
     fig.suptitle('Ld-Lq Identification {}'.format(bch.filename), fontsize=16)
     fig.add_subplot(rows, 2, 1, projection='3d')
     i1beta_torque(i1, beta, torque)
@@ -1024,17 +1034,17 @@ def ldlq(bch):
 def psidq(bch):
     """creates the surface plots of a BCH reader object
     with a psid-psiq identification"""
-    id = bch.psidq['id']
-    iq = bch.psidq['iq']
-    torque = bch.psidq['torque']
-    ld = np.array(bch.psidq_ldq['ld'])
-    lq = np.array(bch.psidq_ldq['lq'])
-    psim = bch.psidq_ldq['psim']
-    psid = bch.psidq['psid']
-    psiq = bch.psidq['psiq']
+    id= bch.psidq['id']
+    iq= bch.psidq['iq']
+    torque= bch.psidq['torque']
+    ld= np.array(bch.psidq_ldq['ld'])
+    lq= np.array(bch.psidq_ldq['lq'])
+    psim= bch.psidq_ldq['psim']
+    psid= bch.psidq['psid']
+    psiq= bch.psidq['psiq']
 
-    rows = 3
-    fig = plt.figure(figsize=(10, 4*rows))
+    rows= 3
+    fig= plt.figure(figsize=(10, 4*rows))
     fig.suptitle('Psid-Psiq Identification {}'.format(
         bch.filename), fontsize=16)
 
@@ -1068,15 +1078,15 @@ def felosses(losses, coeffs, title='', log=True):
 
     """
     import femagtools.losscoeffs as lc
-    ax = plt.gca()
+    ax= plt.gca()
 
-    fo = losses['fo']
-    Bo = losses['Bo']
-    B = plt.np.linspace(0.9*np.min(losses['B']),
+    fo= losses['fo']
+    Bo= losses['Bo']
+    B= plt.np.linspace(0.9*np.min(losses['B']),
                         1.1*0.9*np.max(losses['B']))
 
     for i, f in enumerate(losses['f']):
-        pfe = [p for p in np.array(losses['pfe'])[i] if p]
+        pfe= [p for p in np.array(losses['pfe'])[i] if p]
         if f > 0:
             if len(coeffs) == 5:
                 ax.plot(B, lc.pfe_jordan(f, B, *coeffs, fo=fo, Bo=Bo))
@@ -1090,7 +1100,7 @@ def felosses(losses, coeffs, title='', log=True):
         ax.set_yscale('log')
         ax.set_xscale('log')
     ax.set_xlabel("Flux Density [T]")
-    #plt.ylabel("Pfe [W/kg]")
+    # plt.ylabel("Pfe [W/kg]")
     ax.legend()
     ax.grid(True)
 
@@ -1101,7 +1111,7 @@ def spel(isa, with_axis=False):
       isa: Isa7 object
     """
     from matplotlib.patches import Polygon
-    ax = plt.gca()
+    ax= plt.gca()
     ax.set_aspect('equal')
     for se in isa.superelements:
         ax.add_patch(Polygon([n.xy
@@ -1120,10 +1130,10 @@ def mesh(isa, with_axis=False):
       isa: Isa7 object
     """
     from matplotlib.lines import Line2D
-    ax = plt.gca()
+    ax= plt.gca()
     ax.set_aspect('equal')
     for el in isa.elements:
-        pts = [list(i) for i in zip(*[v.xy for v in el.vertices])]
+        pts= [list(i) for i in zip(*[v.xy for v in el.vertices])]
         ax.add_line(Line2D(pts[0], pts[1], color='b', ls='-', lw=0.25))
 
     # for nc in isa.nodechains:
@@ -1143,7 +1153,7 @@ def mesh(isa, with_axis=False):
 def _contour(title, elements, values, label='', isa=None):
     from matplotlib.patches import Polygon
     from matplotlib.collections import PatchCollection
-    ax = plt.gca()
+    ax= plt.gca()
     ax.set_aspect('equal')
     ax.set_title(title, fontsize=18)
     if isa:
@@ -1152,14 +1162,14 @@ def _contour(title, elements, values, label='', isa=None):
                                   for nc in se.nodechains
                                   for n in nc.nodes],
                                  color='gray', alpha=0.1, lw=0))
-    valid_values = np.logical_not(np.isnan(values))
-    patches = np.array([Polygon([v.xy for v in e.vertices])
+    valid_values= np.logical_not(np.isnan(values))
+    patches= np.array([Polygon([v.xy for v in e.vertices])
                         for e in elements])[valid_values]
     # , cmap=matplotlib.cm.jet, alpha=0.4)
-    p = PatchCollection(patches, alpha=1.0, match_original=False)
+    p= PatchCollection(patches, alpha=1.0, match_original=False)
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
-    cb = plt.colorbar(p)
+    cb= plt.colorbar(p)
     for patch in np.array([Polygon([v.xy for v in e.vertices],
                                    fc='white', alpha=1.0)
                            for e in elements])[np.isnan(values)]:
@@ -1175,8 +1185,8 @@ def demag(isa):
     Args:
       isa: Isa7/NC object
     """
-    emag = [e for e in isa.elements if e.is_magnet()]
-    demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
+    emag= [e for e in isa.elements if e.is_magnet()]
+    demag= np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
     _contour(f'Demagnetization at {isa.MAGN_TEMPERATURE} °C',
              emag, demag, '-H / kA/m', isa)
     logger.info("Max demagnetization %f", np.max(demag))
@@ -1190,15 +1200,15 @@ def demag_pos(isa, pos, icur=-1, ibeta=-1):
       icur: cur amplitude index or last index if -1
       ibeta: beta angle index or last index if -1
     """
-    emag = [e for e in isa.elements if e.is_magnet()]
-    demag = np.array([isa.demagnetization(*e.center, icur, ibeta)[1]
+    emag= [e for e in isa.elements if e.is_magnet()]
+    demag= np.array([isa.demagnetization(*e.center, icur, ibeta)[1]
                       for e in emag])
     for i, x in enumerate(isa.pos_el_fe_induction):
         if x >= pos/180*np.pi:
             break
 
-    hpol = demag[:, i]
-    hpol[hpol == 0] = np.nan
+    hpol= demag[:, i]
+    hpol[hpol == 0]= np.nan
     _contour(f'Demagnetization at Pos. {round(x/np.pi*180)}° ({isa.MAGN_TEMPERATURE} °C)',
              emag, hpol, '-H / kA/m', isa)
     logger.info("Max demagnetization %f kA/m", np.nanmax(hpol))
@@ -1211,10 +1221,10 @@ def flux_density(isa, subreg=[]):
     """
     if subreg:
         if isinstance(subreg, list):
-            sr = subreg
+            sr= subreg
         else:
-            sr = [subreg]
-        elements = [e for s in sr for se in isa.get_subregion(s).elements()
+            sr= [subreg]
+        elements= [e for s in sr for se in isa.get_subregion(s).elements()
                     for e in se]
     else:
         elements = [e for e in isa.elements]
@@ -1243,22 +1253,42 @@ def loss_density(isa, subreg=[]):
     _contour('Loss Density kW/m³', elements, lossd)
 
 
-def current_linkage(wdg):
-    """plot current linkage of winding wdg"""
-    c = wdg.current_linkage()
+def mmf(f, title=''):
+    """plot magnetomotive force (mmf) of winding"""
     ax = plt.gca()
-    ax.set_title('Q={0}, p={1}, alfa0={2:6.3f}'.format(
-        wdg.Q, wdg.p, round(c['alfa0']/np.pi*180, 3)))
-    ax.plot(np.array(c['pos'])/np.pi*180, c['current_linkage'])
-    ax.plot(np.array(c['pos_fft'])/np.pi*180, c['current_linkage_fft'])
+    if title:
+        ax.set_title(title)
+    ax.plot(np.array(f['pos'])/np.pi*180, f['mmf'])
+    ax.plot(np.array(f['pos_fft'])/np.pi*180, f['mmf_fft'])
+    ax.set_xlabel('Position / Deg')
 
-    phi = [c['alfa0']/np.pi*180, c['alfa0']/np.pi*180]
-    y = [min(c['current_linkage_fft']), 1.1*max(c['current_linkage_fft'])]
+    phi = [f['alfa0']/np.pi*180, f['alfa0']/np.pi*180]
+    y = [min(f['mmf_fft']), 1.1*max(f['mmf_fft'])]
     ax.plot(phi, y, '--')
-    ax.annotate("", xy=(phi[0], y[0]),
+    alfa0 = round(f['alfa0']/np.pi*180, 3)
+    ax.text(phi[0]/2, y[0]+0.05, f"{alfa0}°",
+            ha="center", va="bottom")
+    ax.annotate(f"", xy=(phi[0], y[0]),
                 xytext=(0, y[0]), arrowprops=dict(arrowstyle="->"))
-
     ax.grid()
+
+
+def mmf_fft(f, title='', mmfmin=1e-2):
+    """plot winding mmf harmonics"""
+    ax = plt.gca()
+    if title:
+        ax.set_title(title)
+    else:
+        ax.set_title('MMF Harmonics')
+    ax.grid(True)
+    order, mmf = np.array([(n, m) for n, m in zip(f['nue'],
+                                                  f['mmf_nue']) if m > mmfmin]).T
+    try:
+        markerline1, stemlines1, _ = ax.stem(order, mmf, '-.', basefmt=" ",
+                                             use_line_collection=True)
+        ax.set_xticks(order)
+    except ValueError:  # empty sequence
+        pass
 
 
 def zoneplan(wdg):
@@ -1268,14 +1298,19 @@ def zoneplan(wdg):
     Qb = len([n for l in upper for n in l])
     q = wdg.Q/2/wdg.p/wdg.m  # number of coils per pole and phase
     color = ['blue', 'green', 'red']
+    rh = 0.5
+    if lower:
+        yl = rh
+        ymax = 2*rh + 0.2
+    else:
+        yl = 0
+        ymax = rh + 0.2
     ax = plt.gca()
     ax.axis('off')
     ax.set_xlim([-0.5, Qb-0.5])
-    ymax = 2
     ax.set_ylim([0, ymax])
-    # ax.set_aspect(0.5)
-    rh = 0.5
-    yl = 2*rh if lower else rh
+    ax.set_aspect(Qb/6+0.3)
+
     for i, p in enumerate(upper):
         for x in p:
             ax.add_patch(Rectangle((abs(x)-1.5, yl), 1, rh,

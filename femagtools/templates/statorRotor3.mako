@@ -1,6 +1,7 @@
 % if model.get('is_rotor', False):
 m.yoke_diam   = dy2
 m.inside_diam = da2
+m.nodedist        =   ${model.get('nodedist',1)}
 Q2 = ${int(model['num_slots'])}
 Q1 = m.tot_num_sl
 m.tot_num_sl  =   Q2

@@ -2605,19 +2605,19 @@ class Geometry(object):
         logger.debug("end of create_auxiliary_lines")
 
     def create_aux_lines(self, area, rightangle, leftangle):
-        logger.debug("begin of create_aux_lines()")
+        logger.debug("begin of create_aux_lines(%s)", area.get_id())
 
         areas_inside = area.areas_inside.values()
         if not areas_inside:
             logger.debug("end create_aux_lines() for %s (no areas inside)",
-                         area.identifier())
+                         area.get_id())
             return
 
-        logger.debug(" !!! areas found inside %s", area.identifier())
+        logger.debug(" !!! areas found inside %s", area.get_id())
 
-        areas_border = {a.identifier(): a for a in areas_inside
+        areas_border = {a.get_id(): a for a in areas_inside
                         if area.has_connection(self, a, ndec)}
-        areas_notouch = {a.identifier(): a for a in areas_inside
+        areas_notouch = {a.get_id(): a for a in areas_inside
                          if not area.has_connection(self, a, ndec)}
 
         for id, a in areas_notouch.items():
@@ -2630,11 +2630,15 @@ class Geometry(object):
             if id in areas_notouch:
                 del areas_notouch[id]
 
+        logger.debug("--- build notouch list ---")
+
         notouch_list = []
+        notouch_area_list = [a for id, a in areas_notouch.items()]
+
         for id, a in areas_notouch.items():
             logger.debug(" --> areas_notouch: %s", id)
             if not notouch_list:
-                logger.debug("   * append %s (%s)", id, a.identifier())
+                logger.debug("   * append %s (%s)", id, a.get_id())
                 notouch_list.append({id: a})
             else:
                 touched = False
@@ -2642,82 +2646,121 @@ class Geometry(object):
                     for id2, a2 in l.items():
                         if a.has_connection(self, a2, ndec):
                             logger.debug("   . %s and %s are connected",
-                                         a.identifier(),
-                                         a2.identifier())
+                                         a.get_id(),
+                                         a2.get_id())
                             l[id] = a
                             touched = True
                             break
                     if touched:
                         break
                 if not touched:
-                    logger.debug("   + append %s (%s)", id, a.identifier())
+                    logger.debug("   + append %s (%s)", id, a.get_id())
                     notouch_list.append({id: a})
 
+        logger.debug("--- search lowest gaps ---")
+        created_lines = []
+
         for lst in notouch_list:
-            if lst:
-                my_keys = lst.keys()
-                my_areas = lst.values()
-                gap_list = []
-                for a in my_areas:
-                    logger.debug("   ==> get lowest gap to %s",
-                                 a.identifier())
-                    gap_list += area.get_lowest_gap_list(a,
-                                                         self.center,
-                                                         self.max_radius,
-                                                         rightangle,
-                                                         leftangle)
-                gap_list.sort()
-                assert(len(gap_list) > 0)
+            my_keys = list(lst.keys())
+            my_areas = lst.values()
+            logger.debug("search gap for %s", my_keys)
+            gap_list = []
+            gap_nearest_list = []
+            for a in my_areas:
+                logger.debug("   ==> get lowest gap to %s",
+                             a.get_id())
+                gap_list += area.get_lowest_gap_list(a,
+                                                     self.center,
+                                                     self.max_radius,
+                                                     rightangle,
+                                                     leftangle)
+                for a1 in notouch_area_list:
+                    if not a1.get_id() in my_keys:
+                        gap_nearest_list += \
+                            a1.get_lowest_gap_list(a,
+                                                   self.center,
+                                                   self.max_radius,
+                                                   rightangle,
+                                                   leftangle)
+                    else:
+                        logger.debug(" %s in %s",
+                                     a1.get_id(),
+                                     my_keys)
 
-                my_notouch = [a for i, a in areas_notouch.items()
-                              if i not in my_keys]
+            gap_list.sort()
+            gap_nearest_list.sort()
+            assert(len(gap_list) > 0)
 
-                for g in gap_list:
-                    points = g[1]
-                    logger.debug("   ==> try line from %s to %s",
-                                 points[0],
-                                 points[1])
-                    line = Line(Element(start=points[0],
-                                        end=points[1]),
-                                color='orange',
-                                attr='auxline')
+            if gap_nearest_list:
+                g_nearest = gap_nearest_list[0]
+                dist_1 = gap_list[0][0]
+                dist_2 = g_nearest[0]
 
-                    intersection = False
-                    inner_gap_list = []
-                    for no_a in my_notouch:
-                        if no_a.intersect_line(line):
-                            intersection = True
-                            logger.debug("   --> intersection with %s",
-                                         no_a.identifier())
-                            inner_gap_list += no_a.get_lowest_gap_list(
-                                a,
-                                self.center,
-                                self.max_radius,
-                                rightangle,
-                                leftangle
-                            )
-
-                    if intersection:
-                        inner_gap_list.sort()
-                        points = inner_gap_list[0][1]
+                if dist_2 < dist_1:
+                    if g_nearest[2] not in created_lines:
+                        points = g_nearest[1]
                         line = Line(Element(start=points[0],
                                             end=points[1]),
                                     color='orange',
                                     attr='auxline')
-                        logger.debug("   --- new auxiliary line")
+                        add_or_join(self,
+                                    points[0],
+                                    points[1],
+                                    line,
+                                    self.rtol,
+                                    self.atol)
+                        created_lines.append(g_nearest[2])
+                        continue
 
-                    logger.debug("   +++ auxiliary line from %s to %s",
-                                 points[0], points[1])
-                    add_or_join(self,
-                                points[0],
-                                points[1],
-                                line,
-                                self.rtol,
-                                self.atol)
-                    break
+            my_notouch = [a for i, a in areas_notouch.items()
+                          if i not in my_keys]
+
+            for g in gap_list:
+                points = g[1]
+                logger.debug("   ==> try line from %s to %s",
+                             points[0],
+                             points[1])
+                line = Line(Element(start=points[0],
+                                    end=points[1]),
+                            color='orange',
+                            attr='auxline')
+
+                intersection = False
+                inner_gap_list = []
+                for no_a in my_notouch:
+                    if no_a.intersect_line(line):
+                        intersection = True
+                        logger.debug("   --> intersection with %s",
+                                     no_a.get_id())
+                        inner_gap_list += no_a.get_lowest_gap_list(
+                            a,
+                            self.center,
+                            self.max_radius,
+                            rightangle,
+                            leftangle
+                        )
+
+                if intersection:
+                    inner_gap_list.sort()
+                    points = inner_gap_list[0][1]
+                    line = Line(Element(start=points[0],
+                                        end=points[1]),
+                                color='orange',
+                                attr='auxline')
+                    logger.debug("   --- new auxiliary line")
+
+                logger.debug("   +++ auxiliary line from %s to %s",
+                             points[0], points[1])
+                add_or_join(self,
+                            points[0],
+                            points[1],
+                            line,
+                            self.rtol,
+                            self.atol)
+                break
 
         logger.debug("end create_aux_lines() for %s",
-                     area.identifier())
+                     area.get_id())
 
     def set_rotor(self):
         self.sym_counterpart = 1

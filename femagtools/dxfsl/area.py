@@ -65,6 +65,9 @@ class Area(object):
     def identifier(self):
         return "{}-{}".format(self.id, self.type)
 
+    def get_id(self):
+        return self.id
+
     def number_of_elements(self):
         return len(self.area)
 
@@ -328,15 +331,20 @@ class Area(object):
 
     def get_lowest_gap_list(self, a, center, radius, rightangle, leftangle):
         gap_list = []
+        if a.get_id() < self.get_id():
+            dist_id = '{}-{}'.format(a.get_id(), self.get_id())
+        else:
+            dist_id = '{}-{}'.format(self.get_id(), a.get_id())
+
         for p1 in self.list_of_nodes():
             for p2 in a.list_of_nodes():
                 d = distance(p1, p2)
-                gap_list.append((d, (p1, p2)))
+                gap_list.append((d, (p1, p2), dist_id))
 
         d, p1, p2 = a.get_nearest_point(center, radius, rightangle)
-        gap_list.append((d, (p1, p2)))
+        gap_list.append((d, (p1, p2), dist_id))
         d, p1, p2 = a.get_nearest_point(center, radius, leftangle)
-        gap_list.append((d, (p1, p2)))
+        gap_list.append((d, (p1, p2), dist_id))
         gap_list.sort()
         return [gap_list[0]]
 

@@ -3,6 +3,8 @@
 This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
 
+## Release 1.0.17
+- improved meshing with auxiliary lines in dxf fsl conversion
 - added Bch reader and plot for tubular machines (R/Z Coordinate System)
 - fixed asm parameter ident for delta connected windings
 	

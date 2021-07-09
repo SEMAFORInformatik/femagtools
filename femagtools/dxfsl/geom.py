@@ -2100,21 +2100,21 @@ class Geometry(object):
                 renderer.line(g.p1, g.p2,
                               color='red')
             elif isinstance(g, Point):
-                renderer.point(g.p1, 'ro')
+                renderer.point(g.p1, 'o', color='red')
 
     def render_neighbors(self, renderer):
         for n in self.g.nodes():
             nbr_list = [nbr for nbr in self.g.neighbors(n)]
             if len(nbr_list) == 1:
-                renderer.point(n, 'ro', color='orange')
+                renderer.point(n, 'o', color='orange')
             elif len(nbr_list) == 2:
-                renderer.point(n, 'ro', color='green')
+                renderer.point(n, 'o', color='green')
             elif len(nbr_list) == 3:
-                renderer.point(n, 'ro', color='red')
+                renderer.point(n, 'o', color='red')
             elif len(nbr_list) == 4:
-                renderer.point(n, 'ro', color='blue')
+                renderer.point(n, 'o', color='blue')
             elif len(nbr_list) > 4:
-                renderer.point(n, 'ro', color='black')
+                renderer.point(n, 'o', color='black')
 
     def render_area_fill(self, renderer):
         legend = {}

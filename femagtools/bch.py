@@ -105,6 +105,7 @@ class Reader:
         # Fast Psid-Psiq-Identification
         # Fast PM-Synchronous-Motor Simulation
         # Characteristics of Permanent-Magnet-Motors
+        # T(n) simulation from Ld-Lq-Psim values
         self.wdg = None
         self.wdgfactors = []
         self.torque = []

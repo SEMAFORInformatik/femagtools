@@ -492,15 +492,9 @@ class ZmqFemag(BaseFemag):
         if timeout:
             self.request_socket.setsockopt(zmq.RCVTIMEO, timeout)
             self.request_socket.setsockopt(zmq.LINGER, 0)
-            self.request_socket.setsockopt(zmq.REQ_CORRELATE, 1)
-            self.request_socket.setsockopt(zmq.REQ_RELAXED, 1)
         else:
             self.request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
-            self.request_socket.setsockopt(zmq.LINGER, 30000)  # default value
-            self.request_socket.setsockopt(zmq.REQ_RELAXED, 0)
 
-        import datetime
-        startTime = datetime.datetime.now() if timeout else None
         while True:
             try:
                 for m in msg[:-1]:
@@ -512,16 +506,7 @@ class ZmqFemag(BaseFemag):
 
                 return self.request_socket.recv_multipart()
             except zmq.error.Again:
-                if not startTime:
-                    continue
-
-                diffTime = datetime.datetime.now() - startTime
-                logger.debug("Diff msec[%d]", diffTime.microseconds)
-                if diffTime.microseconds < timeout:
-                    continue
-
-                logger.info("Again, timeout reached")
-                return [b'{"status":"error", "message":"Timeout reached, Femag-classic is not responding."}']
+                pass
 
             except Exception as e:
                 # logger.exception("send_request")
@@ -550,12 +535,8 @@ class ZmqFemag(BaseFemag):
         if timeout:
             self.request_socket.setsockopt(zmq.RCVTIMEO, timeout)
             self.request_socket.setsockopt(zmq.LINGER, 0)
-            self.request_socket.setsockopt(zmq.REQ_CORRELATE, 1)
-            self.request_socket.setsockopt(zmq.REQ_RELAXED, 1)
         else:
             self.request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
-            self.request_socket.setsockopt(zmq.LINGER, 30000)  # default value
-            self.request_socket.setsockopt(zmq.REQ_RELAXED, 0)
         import datetime
         startTime = datetime.datetime.now() if timeout else None
         while True:

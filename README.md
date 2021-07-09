@@ -33,6 +33,7 @@ The package provides following modules:
 * __femag__: manage the FEMAG calculation
 * __airgap__: read airgap induction file created by a previous calculation
 * __machine__: analytical machine models
+* __windings__: create and analyze windings
 * __grid__: running parameter variations
 * __opt__: running multi objective optimizations
 * __plot__: creating a variety of plots
@@ -43,7 +44,7 @@ The package provides following modules:
 
 The following modules can be executed as script:
 
-* __bch__: print content in json format if invoked witha BCH/BATCH file as argument
+* __bch__: print content in json format if invoked with a BCH/BATCH file as argument
 * __bchxml__: produces an XML file when invoked with a BCH/BATCH file as argument
 * __plot__: produces a graphical report of a BCH/BATCH file
 * __airgap__: prints the base harmonic amplitude of the radial component of the airgap induction when invoked with the file name of an airgap induction file

@@ -43,7 +43,12 @@ end
 da1 = ${model.get(['bore_diam'])*1e3}
 da2 = da1 - 2*ag 
 % endif
+% if hasattr(model, 'shaft_diam'):
+dy2 = ${model.get(['shaft_diam'])*1e3}
+dsh = ${model.get(['inner_diam'])*1e3}
+% else:
 dy2 = ${model.get(['inner_diam'])*1e3}
+% endif
 % endif
 % endif
 % endif

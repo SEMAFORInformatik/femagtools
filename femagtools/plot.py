@@ -846,7 +846,7 @@ def transientsc(bch, title=''):
 
     row = 1
     plt.subplot(rows, cols, row)
-    ax= plt.gca()
+    ax = plt.gca()
     ax.set_title('Currents / A')
     ax.grid(True)
     for i in ('ia', 'ib', 'ic'):
@@ -854,9 +854,9 @@ def transientsc(bch, title=''):
     ax.set_xlabel('Time / s')
     ax.legend()
 
-    row= 2
+    row = 2
     plt.subplot(rows, cols, row)
-    ax= plt.gca()
+    ax = plt.gca()
     ax.set_title('Torque / Nm')
     ax.grid(True)
     ax.plot(bch.scData['time'], bch.scData['torque'])
@@ -870,15 +870,15 @@ def transientsc(bch, title=''):
 def i1beta_torque(i1, beta, torque):
     """creates a surface plot of torque vs i1, beta"""
     _create_3d_axis()
-    ax= plt.gca()
-    azim= 210
+    ax = plt.gca()
+    azim = 210
     if 0 < np.mean(beta) or -90 > np.mean(beta):
-        azim= -60
-    unit= 'Nm'
-    scale= 1
+        azim = -60
+    unit = 'Nm'
+    scale = 1
     if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
-        scale= 1e-3
-        unit= 'kNm'
+        scale = 1e-3
+        unit = 'kNm'
     _plot_surface(ax, i1, beta, scale*np.asarray(torque),
                   (u'I1/A', u'Beta/°', u'Torque/{}'.format(unit)),
                   azim=azim)
@@ -887,7 +887,7 @@ def i1beta_torque(i1, beta, torque):
 def i1beta_ld(i1, beta, ld):
     """creates a surface plot of ld vs i1, beta"""
     _create_3d_axis()
-    ax= plt.gca()
+    ax = plt.gca()
     _plot_surface(ax, i1, beta, np.asarray(ld)*1e3,
                   (u'I1/A', u'Beta/°', u'Ld/mH'),
                   azim=60)
@@ -896,10 +896,10 @@ def i1beta_ld(i1, beta, ld):
 def i1beta_lq(i1, beta, lq):
     """creates a surface plot of ld vs i1, beta"""
     _create_3d_axis()
-    ax= plt.gca()
-    azim= 60
+    ax = plt.gca()
+    azim = 60
     if 0 < np.mean(beta) or -90 > np.mean(beta):
-        azim= -120
+        azim = -120
     _plot_surface(ax, i1, beta, np.asarray(lq)*1e3,
                   (u'I1/A', u'Beta/°', u'Lq/mH'),
                   azim=azim)
@@ -908,7 +908,7 @@ def i1beta_lq(i1, beta, lq):
 def i1beta_psim(i1, beta, psim):
     """creates a surface plot of psim vs i1, beta"""
     _create_3d_axis()
-    ax= plt.gca()
+    ax = plt.gca()
     _plot_surface(ax, i1, beta, psim,
                   (u'I1/A', u'Beta/°', u'Psi m/Vs'),
                   azim=60)
@@ -917,10 +917,10 @@ def i1beta_psim(i1, beta, psim):
 def i1beta_psid(i1, beta, psid):
     """creates a surface plot of psid vs i1, beta"""
     _create_3d_axis()
-    ax= plt.gca()
-    azim= -60
+    ax = plt.gca()
+    azim = -60
     if 0 < np.mean(beta) or -90 > np.mean(beta):
-        azim= 60
+        azim = 60
     _plot_surface(ax, i1, beta, psid,
                   (u'I1/A', u'Beta/°', u'Psi d/Vs'),
                   azim=azim)
@@ -929,10 +929,10 @@ def i1beta_psid(i1, beta, psid):
 def i1beta_psiq(i1, beta, psiq):
     """creates a surface plot of psiq vs i1, beta"""
     _create_3d_axis()
-    ax= plt.gca()
-    azim= 210
+    ax = plt.gca()
+    azim = 210
     if 0 < np.mean(beta) or -90 > np.mean(beta):
-        azim= -60
+        azim = -60
     _plot_surface(ax, i1, beta, psiq,
                   (u'I1/A', u'Beta/°', u'Psi q/Vs'),
                   azim=azim)
@@ -941,12 +941,12 @@ def i1beta_psiq(i1, beta, psiq):
 def idq_torque(id, iq, torque):
     """creates a surface plot of torque vs id, iq"""
     _create_3d_axis()
-    ax= plt.gca()
-    unit= 'Nm'
-    scale= 1
+    ax = plt.gca()
+    unit = 'Nm'
+    scale = 1
     if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
-        scale= 1e-3
-        unit= 'kNm'
+        scale = 1e-3
+        unit = 'kNm'
     _plot_surface(ax, id, iq, scale*np.asarray(torque),
                   (u'Id/A', u'Iq/A', u'Torque/{}'.format(unit)),
                   azim=-60)
@@ -955,7 +955,7 @@ def idq_torque(id, iq, torque):
 def idq_psid(id, iq, psid):
     """creates a surface plot of psid vs id, iq"""
     _create_3d_axis()
-    ax= plt.gca()
+    ax = plt.gca()
     _plot_surface(ax, id, iq, psid,
                   (u'Id/A', u'Iq/A', u'Psi d/Vs'),
                   azim=210)
@@ -964,7 +964,7 @@ def idq_psid(id, iq, psid):
 def idq_psiq(id, iq, psiq):
     """creates a surface plot of psiq vs id, iq"""
     _create_3d_axis()
-    ax= plt.gca()
+    ax = plt.gca()
     _plot_surface(ax, id, iq, psiq,
                   (u'Id/A', u'Iq/A', u'Psi q/Vs'),
                   azim=210)
@@ -973,7 +973,7 @@ def idq_psiq(id, iq, psiq):
 def idq_psim(id, iq, psim):
     """creates a surface plot of psim vs. id, iq"""
     _create_3d_axis()
-    ax= plt.gca()
+    ax = plt.gca()
     _plot_surface(ax, id, iq, psim,
                   (u'Id/A', u'Iq/A', u'Psi m [Vs]'),
                   azim=120)
@@ -982,7 +982,7 @@ def idq_psim(id, iq, psim):
 def idq_ld(id, iq, ld):
     """creates a surface plot of ld vs. id, iq"""
     _create_3d_axis()
-    ax= plt.gca()
+    ax = plt.gca()
     _plot_surface(ax, id, iq, np.asarray(ld)*1e3,
                   (u'Id/A', u'Iq/A', u'L d/mH'),
                   azim=120)
@@ -991,7 +991,7 @@ def idq_ld(id, iq, ld):
 def idq_lq(id, iq, lq):
     """creates a surface plot of lq vs. id, iq"""
     _create_3d_axis()
-    ax= plt.gca()
+    ax = plt.gca()
     _plot_surface(ax, id, iq, np.asarray(lq)*1e3,
                   (u'Id/A', u'Iq/A', u'L q/mH'),
                   azim=120)
@@ -1000,17 +1000,17 @@ def idq_lq(id, iq, lq):
 def ldlq(bch):
     """creates the surface plots of a BCH reader object
     with a ld-lq identification"""
-    beta= bch.ldq['beta']
-    i1= bch.ldq['i1']
-    torque= bch.ldq['torque']
-    ld= np.array(bch.ldq['ld'])
-    lq= np.array(bch.ldq['lq'])
-    psid= bch.ldq['psid']
-    psiq= bch.ldq['psiq']
-    psim= bch.ldq['psim']
+    beta = bch.ldq['beta']
+    i1 = bch.ldq['i1']
+    torque = bch.ldq['torque']
+    ld = np.array(bch.ldq['ld'])
+    lq = np.array(bch.ldq['lq'])
+    psid = bch.ldq['psid']
+    psiq = bch.ldq['psiq']
+    psim = bch.ldq['psim']
 
-    rows= 3
-    fig= plt.figure(figsize=(10, 4*rows))
+    rows = 3
+    fig = plt.figure(figsize=(10, 4*rows))
     fig.suptitle('Ld-Lq Identification {}'.format(bch.filename), fontsize=16)
     fig.add_subplot(rows, 2, 1, projection='3d')
     i1beta_torque(i1, beta, torque)
@@ -1034,17 +1034,17 @@ def ldlq(bch):
 def psidq(bch):
     """creates the surface plots of a BCH reader object
     with a psid-psiq identification"""
-    id= bch.psidq['id']
-    iq= bch.psidq['iq']
-    torque= bch.psidq['torque']
-    ld= np.array(bch.psidq_ldq['ld'])
-    lq= np.array(bch.psidq_ldq['lq'])
-    psim= bch.psidq_ldq['psim']
-    psid= bch.psidq['psid']
-    psiq= bch.psidq['psiq']
+    id = bch.psidq['id']
+    iq = bch.psidq['iq']
+    torque = bch.psidq['torque']
+    ld = np.array(bch.psidq_ldq['ld'])
+    lq = np.array(bch.psidq_ldq['lq'])
+    psim = bch.psidq_ldq['psim']
+    psid = bch.psidq['psid']
+    psiq = bch.psidq['psiq']
 
-    rows= 3
-    fig= plt.figure(figsize=(10, 4*rows))
+    rows = 3
+    fig = plt.figure(figsize=(10, 4*rows))
     fig.suptitle('Psid-Psiq Identification {}'.format(
         bch.filename), fontsize=16)
 
@@ -1078,15 +1078,15 @@ def felosses(losses, coeffs, title='', log=True):
 
     """
     import femagtools.losscoeffs as lc
-    ax= plt.gca()
+    ax = plt.gca()
 
-    fo= losses['fo']
-    Bo= losses['Bo']
-    B= plt.np.linspace(0.9*np.min(losses['B']),
+    fo = losses['fo']
+    Bo = losses['Bo']
+    B = plt.np.linspace(0.9*np.min(losses['B']),
                         1.1*0.9*np.max(losses['B']))
 
     for i, f in enumerate(losses['f']):
-        pfe= [p for p in np.array(losses['pfe'])[i] if p]
+        pfe = [p for p in np.array(losses['pfe'])[i] if p]
         if f > 0:
             if len(coeffs) == 5:
                 ax.plot(B, lc.pfe_jordan(f, B, *coeffs, fo=fo, Bo=Bo))
@@ -1111,7 +1111,7 @@ def spel(isa, with_axis=False):
       isa: Isa7 object
     """
     from matplotlib.patches import Polygon
-    ax= plt.gca()
+    ax = plt.gca()
     ax.set_aspect('equal')
     for se in isa.superelements:
         ax.add_patch(Polygon([n.xy
@@ -1130,10 +1130,10 @@ def mesh(isa, with_axis=False):
       isa: Isa7 object
     """
     from matplotlib.lines import Line2D
-    ax= plt.gca()
+    ax = plt.gca()
     ax.set_aspect('equal')
     for el in isa.elements:
-        pts= [list(i) for i in zip(*[v.xy for v in el.vertices])]
+        pts = [list(i) for i in zip(*[v.xy for v in el.vertices])]
         ax.add_line(Line2D(pts[0], pts[1], color='b', ls='-', lw=0.25))
 
     # for nc in isa.nodechains:
@@ -1153,7 +1153,7 @@ def mesh(isa, with_axis=False):
 def _contour(title, elements, values, label='', isa=None):
     from matplotlib.patches import Polygon
     from matplotlib.collections import PatchCollection
-    ax= plt.gca()
+    ax = plt.gca()
     ax.set_aspect('equal')
     ax.set_title(title, fontsize=18)
     if isa:
@@ -1162,14 +1162,14 @@ def _contour(title, elements, values, label='', isa=None):
                                   for nc in se.nodechains
                                   for n in nc.nodes],
                                  color='gray', alpha=0.1, lw=0))
-    valid_values= np.logical_not(np.isnan(values))
-    patches= np.array([Polygon([v.xy for v in e.vertices])
-                        for e in elements])[valid_values]
+    valid_values = np.logical_not(np.isnan(values))
+    patches = np.array([Polygon([v.xy for v in e.vertices])
+                       for e in elements])[valid_values]
     # , cmap=matplotlib.cm.jet, alpha=0.4)
-    p= PatchCollection(patches, alpha=1.0, match_original=False)
+    p = PatchCollection(patches, alpha=1.0, match_original=False)
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
-    cb= plt.colorbar(p)
+    cb = plt.colorbar(p)
     for patch in np.array([Polygon([v.xy for v in e.vertices],
                                    fc='white', alpha=1.0)
                            for e in elements])[np.isnan(values)]:
@@ -1185,8 +1185,8 @@ def demag(isa):
     Args:
       isa: Isa7/NC object
     """
-    emag= [e for e in isa.elements if e.is_magnet()]
-    demag= np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
+    emag = [e for e in isa.elements if e.is_magnet()]
+    demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
     _contour(f'Demagnetization at {isa.MAGN_TEMPERATURE} °C',
              emag, demag, '-H / kA/m', isa)
     logger.info("Max demagnetization %f", np.max(demag))
@@ -1200,15 +1200,15 @@ def demag_pos(isa, pos, icur=-1, ibeta=-1):
       icur: cur amplitude index or last index if -1
       ibeta: beta angle index or last index if -1
     """
-    emag= [e for e in isa.elements if e.is_magnet()]
-    demag= np.array([isa.demagnetization(*e.center, icur, ibeta)[1]
-                      for e in emag])
+    emag = [e for e in isa.elements if e.is_magnet()]
+    demag = np.array([isa.demagnetization(*e.center, icur, ibeta)[1]
+                     for e in emag])
     for i, x in enumerate(isa.pos_el_fe_induction):
         if x >= pos/180*np.pi:
             break
 
-    hpol= demag[:, i]
-    hpol[hpol == 0]= np.nan
+    hpol = demag[:, i]
+    hpol[hpol == 0] = np.nan
     _contour(f'Demagnetization at Pos. {round(x/np.pi*180)}° ({isa.MAGN_TEMPERATURE} °C)',
              emag, hpol, '-H / kA/m', isa)
     logger.info("Max demagnetization %f kA/m", np.nanmax(hpol))
@@ -1221,10 +1221,10 @@ def flux_density(isa, subreg=[]):
     """
     if subreg:
         if isinstance(subreg, list):
-            sr= subreg
+            sr = subreg
         else:
-            sr= [subreg]
-        elements= [e for s in sr for se in isa.get_subregion(s).elements()
+            sr = [subreg]
+        elements = [e for s in sr for se in isa.get_subregion(s).elements()
                     for e in se]
     else:
         elements = [e for e in isa.elements]
@@ -1297,7 +1297,7 @@ def zoneplan(wdg):
     upper, lower = wdg.zoneplan()
     Qb = len([n for l in upper for n in l])
     q = wdg.Q/2/wdg.p/wdg.m  # number of coils per pole and phase
-    color = ['blue', 'green', 'red']
+    from femagtools.windings import coil_color
     rh = 0.5
     if lower:
         yl = rh
@@ -1314,18 +1314,18 @@ def zoneplan(wdg):
     for i, p in enumerate(upper):
         for x in p:
             ax.add_patch(Rectangle((abs(x)-1.5, yl), 1, rh,
-                                   facecolor=color[i],
+                                   facecolor=coil_color[i],
                                    edgecolor='white', fill=True))
             s = f'+{i+1}' if x > 0 else f'-{i+1}'
-            ax.text(abs(x)-1, yl+rh/2, s, color='white',
+            ax.text(abs(x)-1, yl+rh/2, s, color='black',
                     ha="center", va="center")
     for i, p in enumerate(lower):
         for x in p:
             ax.add_patch(Rectangle((abs(x)-1.5, yl-rh), 1, rh,
-                                   facecolor=color[i],
+                                   facecolor=coil_color[i],
                                    edgecolor='white', fill=True))
             s = f'+{i+1}' if x > 0 else f'-{i+1}'
-            ax.text(abs(x)-1, yl-rh/2, s, color='white',
+            ax.text(abs(x)-1, yl-rh/2, s, color='black',
                     ha="center", va="center")
 
     yu = yl+rh
@@ -1337,6 +1337,73 @@ def zoneplan(wdg):
             ha='left', va='bottom', size=15)
     for i in range(0, Qb, step):
         ax.text(i, yl-margin, f'{i+1}', ha="center", va="top")
+
+
+def winding(wdg):
+    from matplotlib.patches import Rectangle
+    from matplotlib.lines import Line2D
+    from femagtools.windings import coil_color
+
+    coil_len = 25
+    coil_height = 3
+    tooth_width = 5
+    dslot = 10
+    arrow_head_length = 2
+    arrow_head_width = 2
+
+    ax = plt.gca()
+    z = wdg.zoneplan()
+    xoff = 0
+    yoff = 0
+    if z[-1]:
+        xoff = 0.5
+        yoff = 0.25
+    yd = dslot*wdg.yd
+    slots = sorted([abs(n) for m in z[0] for n in m])
+    for n in slots:
+        x = n*dslot
+        ax.add_patch(Rectangle((x + dslot/4, 1), dslot /
+                     2, coil_len - 2, fc="lightblue"))
+        ax.text(x, coil_len / 2,
+                str(n),
+                fontsize=6,
+                horizontalalignment="center",
+                verticalalignment="center",
+                backgroundcolor="white",
+                bbox=dict(boxstyle='circle,pad=0', fc="white", lw=0))
+    for i, layer in enumerate(z):
+        for m, mslots in enumerate(layer):
+            for k in mslots:
+                x = abs(k) * dslot
+                if i:
+                    x -= xoff
+                else:
+                    x += xoff
+                if k > 0:
+                    ax.add_line(Line2D([x + yd/2, x, x, x + yd/2],
+                                       [-coil_height, 0, coil_len,
+                                           coil_len+coil_height],
+                                       color=coil_color[m], lw=.8))
+                    h = arrow_head_length
+                    y = coil_len * 0.8
+                else:
+                    ax.add_line(Line2D([x - yd/2, x, x, x - yd/2],
+                                       [-coil_height, 0, coil_len,
+                                           coil_len+coil_height],
+                                       color=coil_color[m], lw=.8))
+                    h = -arrow_head_length
+                    y = coil_len * 0.2
+
+                ax.arrow(x, y, 0, h,
+                         length_includes_head=True,
+                         head_starts_at_zero=False,
+                         head_length=arrow_head_length,
+                         head_width=arrow_head_width,
+                         fc=coil_color[m], lw=0)
+
+        ax.autoscale(enable=True)
+        ax.set_aspect("equal")
+        ax.set_axis_off()
 
 
 def main():

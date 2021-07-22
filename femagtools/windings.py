@@ -19,6 +19,9 @@
 """
 import numpy as np
 import femagtools.bch
+from xml.etree import ElementTree as ET
+
+coil_color = ['lime', 'gold', 'magenta']
 
 
 def q1q2yk(Q, p, m, l=1):
@@ -257,6 +260,98 @@ class Windings(object):
 
         return ([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
                 [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
+
+    def diagram(self):
+        """return winding diagram as svg element"""
+        coil_len = 25
+        coil_height = 3
+        tooth_width = 5
+        dslot = 10
+        arrow_head_length = 2
+        arrow_head_width = 2
+
+        z = self.zoneplan()
+        xoff = 0
+        yoff = 0
+        if z[-1]:
+            xoff = 0.5
+            yoff = 0.25
+        yd = dslot*self.yd
+        slots = sorted([abs(n) for m in z[0] for n in m])
+        svg = ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
+                                     viewBox=f"0, -10, {slots[-1] * dslot + 15}, 30"))
+        g = ET.SubElement(svg, "g", {"id": "teeth", "fill": "lightblue"})
+        for n in slots:
+            e = ET.SubElement(g, "rect", {
+                "x": f"{n * dslot + dslot/4}",
+                "y": f"{-coil_len + 1}",
+                "width": f"{tooth_width}",
+                "height": f"{coil_len - 2}"})
+
+        g = ET.SubElement(svg, "g", {"id": "labels",
+                                     "text-anchor": "middle",
+                                     "dominant-baseline": "middle",
+                                     "style": "font-size: 0.15em; font-family: sans-serif;"})
+        for n in slots:
+            t = ET.SubElement(g, "text", {
+                "x": f"{n*dslot}",
+                "y": f"{-coil_len / 2}"}).text = str(n)
+
+        g = ET.SubElement(svg, "g", {"id": "coils",
+                                     "fill": "none",
+                                     "stroke-width": ".25px",
+                                     "stroke-linejoin": "round",
+                                     "stroke-linecap": "round"})
+
+        for i, layer in enumerate(z):
+            for m, mslots in enumerate(layer):
+                for k in mslots:
+                    slotpos = abs(k) * dslot
+                    if i:
+                        slotpos -= xoff
+                    else:
+                        slotpos += xoff
+
+                    p = [
+                        "", f"L {slotpos} {-coil_len//2+1} M {slotpos} {-coil_len//2-1} L {slotpos} {-coil_len}"]
+                    if k > 0 and abs(k):
+                        if not p[0]:
+                            p[0] = f"M {slotpos+yd//2-1} {coil_height + 4} L {slotpos+yd//2-1} {coil_height} L {slotpos} 0"
+                        p.append(f"L {slotpos+yd//2} {-coil_len-coil_height}")
+                    else:
+                        if not p[0]:
+                            p[0] = f"M {slotpos-yd//2+1} {coil_height + 4} L {slotpos-yd//2+1} {coil_height} L {slotpos} 0"
+                        p.append(f"L {slotpos-yd//2} {-coil_len-coil_height}")
+                    e = ET.SubElement(g, "path", {
+                        "d": ' '.join(p),
+                        "stroke": coil_color[m]})
+
+        for i, layer in enumerate(z):
+            for m, mslots in enumerate(layer):
+                for k in mslots:
+                    x = abs(k) * dslot
+                    if i:
+                        x -= xoff
+                    else:
+                        x += xoff
+                    if k > 0:
+                        y = coil_len * .88
+                        points = [
+                            (x, -y),
+                            (x - arrow_head_width / 2, -y + arrow_head_length),
+                            (x + arrow_head_width / 2, -y + arrow_head_length)]
+                    else:
+                        y = coil_len * .12
+                        points = [
+                            (x, -y),
+                            (x - arrow_head_width / 2, -y - arrow_head_length),
+                            (x + arrow_head_width / 2, -y - arrow_head_length)]
+                    ET.SubElement(svg, "polygon", {
+                        "points": " ".join([f"{x},{y}" for (x, y) in points]),
+                        "fill": f"{coil_color[m]}",
+                        "stroke": "none"})
+
+        return svg  # string: ET.tostring(svg)
 
 
 if __name__ == "__main__":

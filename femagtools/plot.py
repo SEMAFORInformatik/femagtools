@@ -1340,6 +1340,7 @@ def zoneplan(wdg):
 
 
 def winding(wdg):
+    """plot coils of winding wdg"""
     from matplotlib.patches import Rectangle
     from matplotlib.lines import Line2D
     from femagtools.windings import coil_color

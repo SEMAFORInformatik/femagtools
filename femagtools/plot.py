@@ -1364,28 +1364,24 @@ def winding(wdg):
                      2, coil_len - 2, fc="lightblue"))
         ax.text(x, coil_len / 2,
                 str(n),
-                fontsize=6,
                 horizontalalignment="center",
                 verticalalignment="center",
                 backgroundcolor="white",
                 bbox=dict(boxstyle='circle,pad=0', fc="white", lw=0))
     for i, layer in enumerate(z):
+        b = -xoff if i else xoff
         for m, mslots in enumerate(layer):
             for k in mslots:
-                x = abs(k) * dslot
-                if i:
-                    x -= xoff
-                else:
-                    x += xoff
+                x = abs(k) * dslot + b
                 if (k > 0 and i == 0) or (k < 0 and i == 0 and wdg.l > 1):
-                    ax.add_line(Line2D([x + yd/2, x, x, x + yd/2],
+                    ax.add_line(Line2D([x + yd/2 - xoff, x, x, x + yd/2-xoff],
                                        [-coil_height, 0, coil_len,
                                            coil_len+coil_height],
                                        color=coil_color[m], lw=.8))
                     h = arrow_head_length
                     y = coil_len * 0.8
                 else:
-                    ax.add_line(Line2D([x - yd/2, x, x, x - yd/2],
+                    ax.add_line(Line2D([x - yd/2+xoff, x, x, x - yd/2+xoff],
                                        [-coil_height, 0, coil_len,
                                            coil_len+coil_height],
                                        color=coil_color[m], lw=.8))
@@ -1400,7 +1396,7 @@ def winding(wdg):
                          fc=coil_color[m], lw=0)
 
         ax.autoscale(enable=True)
-        ax.set_aspect("equal")
+        # ax.set_aspect("equal")
         ax.set_axis_off()
 
 

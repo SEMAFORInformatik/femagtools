@@ -301,26 +301,24 @@ class Windings(object):
                                      "stroke-linecap": "round"})
 
         for i, layer in enumerate(z):
+            b = -xoff if i else xoff
             for m, mslots in enumerate(layer):
                 for k in mslots:
-                    slotpos = abs(k) * dslot
-                    if i:
-                        slotpos -= xoff
-                    else:
-                        slotpos += xoff
-
+                    slotpos = abs(k) * dslot + b
                     p = [
                         "", f"L {slotpos} {-coil_len//2+1} M {slotpos} {-coil_len//2-1} L {slotpos} {-coil_len}"]
                     if (k > 0 and i == 0) or (k < 0 and i == 0 and self.l > 1):
                         if not p[0]:
                             #p[0] = f"M {slotpos+yd//2-1} {coil_height + 4} L {slotpos+yd//2-1} {coil_height} L {slotpos} 0"
-                            p[0] = f"M {slotpos+yd//2} {coil_height} L {slotpos} 0"
-                        p.append(f"L {slotpos+yd//2} {-coil_len-coil_height}")
+                            p[0] = f"M {slotpos+yd//2-xoff} {coil_height} L {slotpos} 0"
+                        p.append(
+                            f"L {slotpos+yd//2-xoff} {-coil_len-coil_height}")
                     else:
                         if not p[0]:
                             #p[0] = f"M {slotpos-yd//2+1} {coil_height + 4} L {slotpos-yd//2+1} {coil_height} L {slotpos} 0"
-                            p[0] = f"M {slotpos-yd//2} {coil_height} L {slotpos} 0"
-                        p.append(f"L {slotpos-yd//2} {-coil_len-coil_height}")
+                            p[0] = f"M {slotpos-yd//2+xoff} {coil_height} L {slotpos} 0"
+                        p.append(
+                            f"L {slotpos-yd//2+xoff} {-coil_len-coil_height}")
                     e = ET.SubElement(g, "path", {
                         "d": ' '.join(p),
                         "stroke": coil_color[m]})

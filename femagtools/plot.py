@@ -1346,18 +1346,15 @@ def winding(wdg):
 
     coil_len = 25
     coil_height = 3
-    tooth_width = 5
-    dslot = 10
+    dslot = 8
     arrow_head_length = 2
     arrow_head_width = 2
 
     ax = plt.gca()
     z = wdg.zoneplan()
     xoff = 0
-    yoff = 0
     if z[-1]:
         xoff = 0.5
-        yoff = 0.25
     yd = dslot*wdg.yd
     slots = sorted([abs(n) for m in z[0] for n in m])
     for n in slots:
@@ -1379,7 +1376,7 @@ def winding(wdg):
                     x -= xoff
                 else:
                     x += xoff
-                if k > 0:
+                if (k > 0 and i == 0) or (k < 0 and i == 0 and wdg.l > 1):
                     ax.add_line(Line2D([x + yd/2, x, x, x + yd/2],
                                        [-coil_height, 0, coil_len,
                                            coil_len+coil_height],

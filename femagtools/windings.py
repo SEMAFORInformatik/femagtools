@@ -265,8 +265,8 @@ class Windings(object):
         """return winding diagram as svg element"""
         coil_len = 25
         coil_height = 3
-        tooth_width = 5
-        dslot = 10
+        tooth_width = 4
+        dslot = 8
         arrow_head_length = 2
         arrow_head_width = 2
 
@@ -279,7 +279,7 @@ class Windings(object):
         yd = dslot*self.yd
         slots = sorted([abs(n) for m in z[0] for n in m])
         svg = ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
-                                     viewBox=f"0, -10, {slots[-1] * dslot + 15}, 30"))
+                                     viewBox=f"0, -30, {slots[-1] * dslot + 15}, 30"))
         g = ET.SubElement(svg, "g", {"id": "teeth", "fill": "lightblue"})
         for n in slots:
             e = ET.SubElement(g, "rect", {
@@ -314,7 +314,7 @@ class Windings(object):
 
                     p = [
                         "", f"L {slotpos} {-coil_len//2+1} M {slotpos} {-coil_len//2-1} L {slotpos} {-coil_len}"]
-                    if k > 0 and abs(k):
+                    if (k > 0 and i == 0) or (k < 0 and i == 0 and self.l > 1):
                         if not p[0]:
                             p[0] = f"M {slotpos+yd//2-1} {coil_height + 4} L {slotpos+yd//2-1} {coil_height} L {slotpos} 0"
                         p.append(f"L {slotpos+yd//2} {-coil_len-coil_height}")

@@ -440,7 +440,6 @@ class ZmqFemag(BaseFemag):
         if not os.path.exists(self.logdir):
             os.makedirs(self.logdir)
 
-        self.request_socket = self.__req_socket()
         self.subscriber = None
 
     def close(self):
@@ -460,12 +459,12 @@ class ZmqFemag(BaseFemag):
     def __req_socket(self):
         """returns a new request client"""
         context = zmq.Context.instance()
-        self.request_socket = context.socket(zmq.REQ)
+        request_socket = context.socket(zmq.REQ)
         url = 'tcp://{0}:{1}'.format(
             self.host, self.port)
         logger.debug("connect %s", url)
-        self.request_socket.connect(url)
-        return self.request_socket
+        request_socket.connect(url)
+        return request_socket
 
     def subscribe(self, notify):
         """attaches a notify function"""

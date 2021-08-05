@@ -105,6 +105,7 @@ class Reader:
         # Fast Psid-Psiq-Identification
         # Fast PM-Synchronous-Motor Simulation
         # Characteristics of Permanent-Magnet-Motors
+        # T(n) simulation from Ld-Lq-Psim values
         self.wdg = None
         self.wdgfactors = []
         self.torque = []
@@ -1425,26 +1426,29 @@ class Reader:
             self.losses.append(losses)
 
     def __read_hysteresis_eddy_current_losses(self, content):
-        losses = dict(staza=[], stajo=[])
+        losses = dict(fft=dict(), stator=dict(), rotor=dict())
+        part = 'fft'  # either stator or rotor or fft
         k = ''
         for i, l in enumerate(content):
             if l.startswith('*************'):
-                self.losses[-1]['fft'] = dict()
-                for k in losses:
-                    for x in losses[k]:
-                        x[0] = int(x[0])
-                    if(losses[k]):
-                        if len(losses[k][0]) == 4:
-                            cols = ('order_el', 'freq', 'hyst', 'eddy')
-                        else:
-                            cols = ('order_mech', 'order_el',
-                                    'freq', 'hyst', 'eddy')
+                for part in losses:
+                    self.losses[-1][part] = dict()
+                    for k in losses[part]:
+                        for x in losses[part][k]:
+                            x[0] = int(x[0])
+                            if(losses[part][k]):
+                                if len(losses[part][k][0]) == 4:
+                                    cols = ('order_el', 'freq', 'hyst', 'eddy')
+                                else:
+                                    cols = ('order_mech', 'order_el',
+                                            'freq', 'hyst', 'eddy')
 
-                        self.losses[-1]['fft'][k] = {k1: l
-                                                     for k1, l in zip(cols,
-                                                                      zip(*losses[k]))}
+                                self.losses[-1][part][k] = {k1: l
+                                                            for k1, l in zip(cols,
+                                                                             zip(*losses[part][k]))}
                 self.__read_losses(content[i+1:])
                 break
+
             if l.find('StJo') > -1 or \
                l.find('RoJo') > -1:
                 k = 'stajo'
@@ -1463,20 +1467,29 @@ class Reader:
                 k = 'rotor'
             elif l.find(': Ring') > -1:
                 k = 'ring'
-            elif l.find('Stat') > -1:
+            elif l.find('Stat') > -1 and l.find('Stator: ') < 0:
                 k = 'stajo'
+            elif l.find('Stator: ') > -1:
+                part = 'stator'
+                k = l.split(':')[-1].strip()
+            elif l.find('Rotor: ') > -1:
+                part = 'rotor'
+                k = l.split(':')[-1].strip()
             else:
-                if k and k not in losses:
-                    losses[k] = []
+                if k and k not in losses[part]:
+                    losses[part][k] = []
                 try:
                     rec = self.__findNums(l)
                     if 'nan' in rec:
                         continue
                     if len(rec) == 4:
-                        losses[k].append([floatnan(x) for x in rec])
+                        losses[part][k].append([floatnan(x) for x in rec])
                     elif len(rec) == 5:  # FEMAG Rel 8.3 with el/mech order
-                        losses[k].append([floatnan(x)
-                                          for i, x in enumerate(rec)])
+                        losses[part][k].append([floatnan(x)
+                                                for i, x in enumerate(rec)])
+                    else:
+                        part = 'fft'
+
                 except:
                     pass
 

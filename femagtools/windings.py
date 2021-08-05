@@ -19,14 +19,21 @@
 """
 import numpy as np
 import femagtools.bch
+from xml.etree import ElementTree as ET
+
+coil_color = ['lime', 'gold', 'magenta']
+
+
+def num_basic_windings(Q, p, l):
+    """return number of basic windings"""
+    if l == 1:  # single layer
+        return np.gcd(Q//2, p)
+    return np.gcd(Q, p)
 
 
 def q1q2yk(Q, p, m, l=1):
     """returns q1, q2, Yk, Qb"""
-    if l == 1:  # single layer
-        t = np.gcd(Q//2, p)
-    else:
-        t = np.gcd(Q, p)
+    t = num_basic_windings(Q, p, l)
     Qb = Q//t
     qqb = Qb if l == 2 else Qb//2
     pb = p//t
@@ -88,10 +95,14 @@ class Windings(object):
         k1 = [(q1 + q2)*i for i in range(self.m)]
         k2 = (q1*(self.m+1) + q2*(self.m-1))//2
         j = 2 if layers == 1 else 1
-        pos = [[(j*Yk*(k + n)) % Qb for n in range(q1)] for k in k1]
-        neg = [[j*Yk*(k + n + k2) % Qb for n in range(q2)] for k in k1]
+        pos = [[(j*Yk*(k + n)) % Qb
+                for n in range(q1)] for k in k1]
+        neg = [[j*Yk*(k + n + k2) % Qb
+                for n in range(q2)] for k in k1]
         if layers > 1:
-            slots = [sorted([(k, 1, 1) for k in p] + [(k, -1, 1) for k in n])
+            slots = [sorted([(k, 1, 1)
+                             for k in p] + [(k, -1, 1)
+                                            for k in n])
                      for n, p in zip(neg, pos)]
             for i, p in enumerate(slots):
                 slots[i] = sorted(slots[i] +
@@ -116,28 +127,35 @@ class Windings(object):
                                     PHI=[taus/2+k[0]*taus for k in s])
                          for i, s in enumerate(slots)}
 
+    def kw_order(self, n):
+        """return winding factor harmonics"""
+        if n == 0:
+            return self.p
+        g = np.arange(0, n, 1)
+        t = num_basic_windings(self.Q, self.p, self.l)
+        return self.p + g * self.m*t
+
     def kwp(self, n=0):
         """pitch factor"""
-        nue = self.p if n == 0 else n
+        nue = self.kw_order(n)
         return np.sin(nue*self.yd*np.pi/self.Q)
 
     def kwd(self, n=0):
         """zone (distribution) factor"""
         q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
-        nue = self.p if n == 0 else n
+        nue = self.kw_order(n)
         if q1 == q2:
             x = nue*np.pi/self.Q
             return np.sin(q1*x)/(q1*np.sin(x))
         x = nue*np.pi*Yk/self.Q
         k = 2 if self.l == 1 else 1
-        return abs((np.sin(k*x*q1) -
-                    np.cos(x*Qb)*np.sin(k*x*q2))/((q1+q2)*np.sin(k*x)))
+        # TODO: check sign
+        return -((np.sin(k*x*q1) - np.cos(x*Qb)*np.sin(k*x*q2)) /
+                 ((q1+q2)*np.sin(k*x)))
 
     def kw(self, n=0):
         """return winding factor"""
-        # nue = [self.p + g * m *t for g in range(0, 5)]
-        nue = self.p if n == 0 else n
-        return self.kwp(nue) * self.kwd(nue)
+        return self.kwp(n) * self.kwd(n)
 
     def sequence(self):
         """returns sequence of winding keys"""
@@ -258,15 +276,104 @@ class Windings(object):
         return ([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
                 [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
 
+    def diagram(self):
+        """return winding diagram as svg element"""
+        coil_len = 25
+        coil_height = 3
+        dslot = 8
+        arrow_head_length = 2
+        arrow_head_width = 2
+
+        z = self.zoneplan()
+        xoff = 0
+        if z[-1]:
+            xoff = 0.5
+        yd = dslot*self.yd
+        slots = sorted([abs(n) for m in z[0] for n in m])
+        svg = ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
+                                     viewBox=f"0, -30, {slots[-1] * dslot + 15}, 40"))
+        g = ET.SubElement(svg, "g", {"id": "teeth", "fill": "lightblue"})
+        for n in slots:
+            e = ET.SubElement(g, "rect", {
+                "x": f"{n * dslot + dslot/4}",
+                "y": f"{-coil_len + 1}",
+                "width": f"{dslot/2}",
+                "height": f"{coil_len - 2}"})
+
+        g=ET.SubElement(svg, "g", {"id": "labels",
+                                     "text-anchor": "middle",
+                                     "dominant-baseline": "middle",
+                                     "style": "font-size: 0.15em; font-family: sans-serif;"})
+        for n in slots:
+            t=ET.SubElement(g, "text", {
+                "x": f"{n*dslot}",
+                "y": f"{-coil_len / 2}"}).text=str(n)
+
+        g=ET.SubElement(svg, "g", {"id": "coils",
+                                     "fill": "none",
+                                     "stroke-width": ".25px",
+                                     "stroke-linejoin": "round",
+                                     "stroke-linecap": "round"})
+
+        for i, layer in enumerate(z):
+            b=-xoff if i else xoff
+            for m, mslots in enumerate(layer):
+                for k in mslots:
+                    slotpos=abs(k) * dslot + b
+                    p=[
+                        "", f"L {slotpos} {-coil_len//2+1} M {slotpos} {-coil_len//2-1} L {slotpos} {-coil_len}"]
+                    if (k > 0 and i == 0) or (k < 0 and i == 0 and self.l > 1):
+                        if not p[0]:
+                            # p[0] = f"M {slotpos+yd//2-1} {coil_height + 4} L {slotpos+yd//2-1} {coil_height} L {slotpos} 0"
+                            p[0]=f"M {slotpos+yd//2-xoff} {coil_height} L {slotpos} 0"
+                        p.append(
+                            f"L {slotpos+yd//2-xoff} {-coil_len-coil_height}")
+                    else:
+                        if not p[0]:
+                            # p[0] = f"M {slotpos-yd//2+1} {coil_height + 4} L {slotpos-yd//2+1} {coil_height} L {slotpos} 0"
+                            p[0]=f"M {slotpos-yd//2+xoff} {coil_height} L {slotpos} 0"
+                        p.append(
+                            f"L {slotpos-yd//2+xoff} {-coil_len-coil_height}")
+                    e=ET.SubElement(g, "path", {
+                        "d": ' '.join(p),
+                        "stroke": coil_color[m]})
+
+        for i, layer in enumerate(z):
+            for m, mslots in enumerate(layer):
+                for k in mslots:
+                    x=abs(k) * dslot
+                    if i:
+                        x -= xoff
+                    else:
+                        x += xoff
+                    if k > 0:
+                        y=coil_len * .88
+                        points=[
+                            (x, -y),
+                            (x - arrow_head_width / 2, -y + arrow_head_length),
+                            (x + arrow_head_width / 2, -y + arrow_head_length)]
+                    else:
+                        y=coil_len * .12
+                        points=[
+                            (x, -y),
+                            (x - arrow_head_width / 2, -y - arrow_head_length),
+                            (x + arrow_head_width / 2, -y - arrow_head_length)]
+                    ET.SubElement(svg, "polygon", {
+                        "points": " ".join([f"{x},{y}" for (x, y) in points]),
+                        "fill": f"{coil_color[m]}",
+                        "stroke": "none"})
+
+        return svg  # string: ET.tostring(svg)
+
 
 if __name__ == "__main__":
     import sys
     import matplotlib.pyplot as plt
     if sys.argv[1:]:
-        bch = femagtools.bch.read(sys.argv[1])
-        wdgs = Windings(bch)
+        bch=femagtools.bch.read(sys.argv[1])
+        wdgs=Windings(bch)
     else:
-        testdata = [
+        testdata=[
             dict(Q=90, p=12, m=3,
                  windings={1: {
                      'dir': [-1, 1, 1, -1, -1, -1, 1, 1, -1, -1],
@@ -289,9 +396,9 @@ if __name__ == "__main__":
                            3: {'dir': [-1, -1, -1, -1, -1, -1, -1, -1],
                                'N': [7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0],
                                'PHI': [5.3572, 7.5, 9.6429, 9.6429, 11.7857, 11.7857, 13.9286, 16.0715]}})]
-        wdgs = Windings(testdata[0])
+        wdgs=Windings(testdata[0])
 
-    c = wdgs.mmf()
+    c=wdgs.mmf()
     # print('alfa0={0:6.3f}'.format(wdgs.axis()/np.pi*180))
 
     plt.title('Q={0}, p={1}, alfa0={2:6.3f}'.format(
@@ -299,8 +406,8 @@ if __name__ == "__main__":
     plt.plot(np.array(c['pos'])/np.pi*180, c['mmf'])
     plt.plot(np.array(c['pos_fft'])/np.pi*180, c['mmf_fft'])
 
-    phi = [c['alfa0']/np.pi*180, c['alfa0']/np.pi*180]
-    y = [min(c['mmf_fft']), 1.1*max(c['mmf_fft'])]
+    phi=[c['alfa0']/np.pi*180, c['alfa0']/np.pi*180]
+    y=[min(c['mmf_fft']), 1.1*max(c['mmf_fft'])]
     plt.plot(phi, y, '--')
     plt.annotate("", xy=(phi[0], y[0]),
                  xytext=(0, y[0]), arrowprops=dict(arrowstyle="->"))

@@ -406,13 +406,14 @@ class SubscriberTask(threading.Thread):
                     self.notify([s.decode('latin1') for s in response])
 
                 except Exception:
-                    self.logger.error("error in subscription messag processing", exc_info=True)
+                    self.logger.error(
+                        "error in subscription messag processing", exc_info=True)
 
             if socks.get(self.controller) == zmq.POLLIN:
                 req = self.controller.recv()
                 self.logger.info(req)
                 break
-            
+
         self.logger.debug("subscriber stopped")
 
 
@@ -426,6 +427,7 @@ class ZmqFemag(BaseFemag):
         logdir: name of logging directory (default is workdir/log)
         cmd: name of femag program
     """
+
     def __init__(self, port, host='localhost', workdir='', logdir='',
                  cmd=None,
                  magnetizingCurves=None, magnets=None):
@@ -434,7 +436,7 @@ class ZmqFemag(BaseFemag):
         self.host = host
         self.port = port
         self.femaghost = ''
-        self.logdir = logdir if logdir else os.path.join(workdir,'log')
+        self.logdir = logdir if logdir else os.path.join(workdir, 'log')
         if not os.path.exists(self.logdir):
             os.makedirs(self.logdir)
 
@@ -444,7 +446,7 @@ class ZmqFemag(BaseFemag):
     def close(self):
         if self.subscriber:
             self.subscriber.stop()
-            
+
         if self.request_socket:
             logger.debug("close request_socket")
             self.request_socket.close()
@@ -469,12 +471,13 @@ class ZmqFemag(BaseFemag):
         """attaches a notify function"""
         logger.info("Subscribe on '%s'", self.femaghost)
         if self.subscriber is None:
-            self.subscriber = SubscriberTask(self.port+1, self.femaghost, notify)
+            self.subscriber = SubscriberTask(
+                self.port+1, self.femaghost, notify)
             self.subscriber.start()
         else:
             # reattach?
             self.subscriber.notify = notify
-        return 
+        return
 
     def __is_running(self):
         try:
@@ -482,7 +485,7 @@ class ZmqFemag(BaseFemag):
         except:
             pass
         return False
-         
+
     def send_request(self, msg, pub_consumer=None, timeout=None):
         if not msg:
             return [b'{"status":"ignored",{}}']
@@ -491,7 +494,7 @@ class ZmqFemag(BaseFemag):
             self.request_socket.setsockopt(zmq.LINGER, 0)
         else:
             self.request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
- 
+
         while True:
             try:
                 for m in msg[:-1]:
@@ -504,9 +507,9 @@ class ZmqFemag(BaseFemag):
                 return self.request_socket.recv_multipart()
             except zmq.error.Again:
                 pass
-                
+
             except Exception as e:
-                #logger.exception("send_request")
+                # logger.exception("send_request")
                 logger.info("send_request: %s Message %s", str(e), msg)
                 return [b'{"status":"error", "message":"' + str(e).encode() + b'"}']
 
@@ -539,7 +542,8 @@ class ZmqFemag(BaseFemag):
         while True:
             try:
                 response = self.request_socket.recv_multipart()
-                return [s.decode('latin1') for s in response]  # NOTE: femag encoding is old school
+                # NOTE: femag encoding is old school
+                return [s.decode('latin1') for s in response]
             except zmq.error.Again as e:
                 logger.info("Again [%s], timeout: %d", str(e), timeout)
                 if not startTime:
@@ -596,7 +600,7 @@ class ZmqFemag(BaseFemag):
                     logger.info("femag (pid: '{}') is listening".format(
                         self.femagTask.proc.pid))
                 break
-            
+
         return self.femagTask.proc.pid
 
     def quit(self, save_model=False):
@@ -609,7 +613,7 @@ class ZmqFemag(BaseFemag):
         if self.subscriber:
             self.subscriber.stop()
             self.subscriber = None
-            
+
         # send exit flags
         f = '\n'.join(['exit_on_end = true',
                        'exit_on_error = true'])
@@ -619,7 +623,7 @@ class ZmqFemag(BaseFemag):
         try:
             response = [r.decode('latin1')
                         for r in self.send_request(
-                                ['CONTROL', 'quit'], timeout=10000)]
+                ['CONTROL', 'quit'], timeout=10000)]
         except Exception as e:
             logger.error("Femag Quit zmq message %s", e)
 
@@ -634,7 +638,7 @@ class ZmqFemag(BaseFemag):
             # Only send one msg
             response = self.request_socket.send_string(
                 'Ok' if save_model else 'Cancel')
-        
+
     def upload(self, files):
         """upload file or files
         returns number of transferred bytes
@@ -663,28 +667,28 @@ class ZmqFemag(BaseFemag):
             ret += [s.decode('latin1')
                     for s in self.request_socket.recv_multipart()]
         return ret
-    
+
     def copyfile(self, filename, dirname):
         """copy filename to dirname (FEMAG 9.2)"""
         request_socket = self.__req_socket()
         request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
         request_socket.send_string(f'copyfile {filename} {dirname}')
         return [r.decode() for r in request_socket.recv_multipart()]
-        
+
     def change_case(self, dirname):
         """change case to dirname (FEMAG 9.2)"""
         request_socket = self.__req_socket()
         request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
         request_socket.send_string(f'casedir {dirname}')
         return [r.decode() for r in request_socket.recv_multipart()]
-        
+
     def delete_case(self, dirname):
         """delete case dir (FEMAG 9.2)"""
         request_socket = self.__req_socket()
         request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
         request_socket.send_string(f'casedir -{dirname}')
         return [r.decode() for r in request_socket.recv_multipart()]
-        
+
     def clear(self, timeout=2000):
         """clear lua script session"""
         return [r.decode('latin1')
@@ -695,7 +699,7 @@ class ZmqFemag(BaseFemag):
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
                 for r in self.send_request(['CONTROL', 'cleanup'], timeout=timeout)]
-    
+
     def release(self):
         """signal finish calculation task to load balancer to free resources
         (Docker Cloud environment only)
@@ -731,7 +735,7 @@ class ZmqFemag(BaseFemag):
             ['CONTROL', 'getfile = {}'.format(filename)])
         return [response[0].decode('latin1'),
                 response[1] if len(response) else b'']
-        
+
     def exportsvg(self, fslcmds):
         """get svg format from fsl commands (if any graphic created)
         (since FEMAG 8.5 Rev 3343) """
@@ -748,7 +752,7 @@ class ZmqFemag(BaseFemag):
             self.femaghost = '127.0.0.1'
         ctrl = context.socket(zmq.PUSH)
         ctrl.connect('tcp://{0}:{1}'.format(
-                self.femaghost, self.port+2))
+            self.femaghost, self.port+2))
         logger.info("Interrupt %s", self.femaghost)
         ctrl.send_string('interrupt')
         ctrl.close()
@@ -765,7 +769,7 @@ class ZmqFemag(BaseFemag):
                 self.magnetizingCurves, self.magnets):
             f = self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
             self.upload(os.path.join(dest, f))
-    
+
     def __call__(self, pmMachine, simulation):
         """setup fsl file, run calculation and return BCH results
         Args:
@@ -806,7 +810,8 @@ class ZmqFemag(BaseFemag):
                         get_shortCircuit_parameters(bch,
                                                     simulation.get('initial', 2)))
                     builder = femagtools.fsl.Builder()
-                    response = self.send_fsl(builder.create_shortcircuit(simulation))
+                    response = self.send_fsl(
+                        builder.create_shortcircuit(simulation))
                     r = json.loads(response[0])
                     if r['status'] != 'ok':
                         raise FemagError(r['message'])
@@ -815,6 +820,6 @@ class ZmqFemag(BaseFemag):
                     r = json.loads(status)
                     if r['status'] == 'ok':
                         bch.read(content.decode('latin1'))
-                    
+
             return bch
         raise FemagError(r['message'])

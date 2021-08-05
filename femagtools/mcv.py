@@ -29,7 +29,7 @@ types = {1: 'Soft iron B(H)',
          6: 'Soft iron Punching',
          7: 'Soft iron Tension',
          8: 'Soft iron Temperature'}
-         
+
 MAGCRV = 1
 DEMCRV = 2
 ORIENT_CRV = 3
@@ -120,7 +120,7 @@ def approx(db2, curve):
     b.append(MUE0*curve['hi'][-1]-curve['bi'][-1])
     return dict(nuer=nuer, a=a, b=b, bi2=bi2)
 
-    
+
 def findNotNone(l):
     """return lower and upper indexes of not none values in list"""
     for i in range(len(l)):
@@ -158,7 +158,7 @@ class Mcv(object):
         self.mc1_induction_factor = self.MC1_INDUCTION_FACTOR
         self.mc1_fe_spez_weigth = self.MC1_FE_SPEZ_WEIGTH
         self.mc1_fe_sat_magnetization = self.MC1_FE_SAT_MAGNETIZATION
-        
+
         self.mc1_title = ''
         self.version_mc_curve = self.ACT_VERSION_MC_CURVE
         self.mc1_type = MAGCRV    # Soft Iron B(H)
@@ -190,7 +190,7 @@ class Mcv(object):
             if vlist[i] != 0.:
                 break
         return list(vlist[:i+1])
-    
+
     def __getitem__(self, key):
         if key == 'ctype':  # for compatibility purposes
             return self.mc1_type
@@ -287,7 +287,7 @@ class Writer(Mcv):
             self.version_mc_curve = self.ORIENTED_VERSION_MC_CURVE
         elif self.mc1_type == DEMCRV_BR:
             self.version_mc_curve = self.PARAMETER_PM_CURVE
-            
+
         curve = copy.deepcopy(self.curve)
         if fillfac:
             alpha = fillfac/self.mc1_fillfac
@@ -312,7 +312,7 @@ class Writer(Mcv):
         return curve
 
     def transpose(self, m):
-        maxLen =  max([len(l) for l in m])
+        maxLen = max([len(l) for l in m])
         for mi in m:
             for i in range(len(mi)):
                 mi[i] = mi[i] if mi[i] != None else 0.0
@@ -326,7 +326,7 @@ class Writer(Mcv):
 
         # write line, text '    *** File with magnetic curve ***    '
         self.writeBlock('    *** File with magnetic curve ***    ')
-                    
+
         # write line, mc1_title
         self.writeBlock(self.mc1_title.ljust(40)[:40])
         # write line, mc1_ni(1),mc1_mi(1),mc1_type,mc1_recalc,mc1_db2(1)
@@ -348,7 +348,7 @@ class Writer(Mcv):
             self.writeBlock([float(self.mc1_remz), float(self.mc1_bsat),
                              float(self.mc1_bref), float(self.mc1_fillfac),
                              self.mc1_curves])
-            
+
         if self.mc1_type == DEMCRV_BR:
             self.mc1_angle[self.mc1_curves-1] = self.mc1_remz
 
@@ -402,7 +402,7 @@ class Writer(Mcv):
 
         if not hasattr(self, 'losses') or not self.losses:
             return
-        
+
         try:
             nfreq = len([1 for x in self.losses['f'] if x > 0])
             nind = len(self.losses['B'])
@@ -412,7 +412,7 @@ class Writer(Mcv):
             cw = self.losses['cw']
             alpha = self.losses['cw_freq']
             beta = self.losses['b_coeff']
-            
+
             for f, p in zip(self.losses['f'], self.losses['pfe']):
                 if f != None:
                     pl = [px if px != None else lc.pfe_steinmetz(f, b, cw, alpha, beta,
@@ -545,11 +545,11 @@ class Reader(Mcv):
              self.mc1_db2[0]) = self.readBlock([int, int, int, int, float])
         else:
             line = self.fp.readline().split()
-            self.mc1_ni[0]  = int (line[0])   # mc1_ni (INTEGER)
-            self.mc1_mi[0]  = int (line[1])   # mc1_mi (INTEGER)
-            self.mc1_type   = int (line[2])   # mc1_type (INTEGER)
-            self.mc1_recalc = int (line[3])   # mc1_recalc (INTEGER)
-            self.mc1_db2[0] = float (line[4]) # mc1_db2 (REAL)
+            self.mc1_ni[0] = int(line[0])   # mc1_ni (INTEGER)
+            self.mc1_mi[0] = int(line[1])   # mc1_mi (INTEGER)
+            self.mc1_type = int(line[2])   # mc1_type (INTEGER)
+            self.mc1_recalc = int(line[3])   # mc1_recalc (INTEGER)
+            self.mc1_db2[0] = float(line[4])  # mc1_db2 (REAL)
 
         # read line 5
         if binary:
@@ -567,7 +567,7 @@ class Reader(Mcv):
         else:
             line = self.fp.readline()
             (self.mc1_remz, self.mc1_bsat, self.mc1_bref, self.mc1_fillfac) = \
-                            map(float, line.split())
+                map(float, line.split())
 
             if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
                self.version_mc_curve == self.PARAMETER_PM_CURVE:
@@ -701,7 +701,7 @@ class Reader(Mcv):
             if self.losses and 'B' in self.losses:
                 if not self.losses['f'] or not self.losses['pfe']:
                     self.losses = {}
-    
+
     def get_results(self):
         result = {
             'name': self.name,
@@ -733,7 +733,7 @@ class Reader(Mcv):
         if (self.ORIENTED_VERSION_MC_CURVE or self.PARAMETER_PM_CURVE):
             for i in range(len(self.curve)):
                 result['curve'][i]['angle'] = self.mc1_angle[i]
-            
+
         return result
 
     def keys(self):
@@ -767,14 +767,14 @@ class MagnetizingCurve(object):
                 return
             except Exception:
                 pass
-            
+
             self.mcv['0'] = mcvpar
             return
-        
+
         elif isinstance(mcvpar, Reader):
             self.mcv[mcvpar['name']] = mcvpar.get_results()
             return
-            
+
         elif isinstance(mcvpar, string_types):
             self.mcdirectory = os.path.abspath(mcvpar)
             logger.info("MC Dir %s", self.mcdirectory)
@@ -835,7 +835,7 @@ class MagnetizingCurve(object):
             curve['muer'] = [b/MUE0/h
                              for b, h in zip(curve['bi'],
                                              curve['hi'])]
-            
+
             # extend bh-curve into saturation
             while dmue_d > 1.01*MUE0 and dmue > 1.5*MUE0:
                 dmue_d = MUE0 + (dmue_d-MUE0)/np.sqrt(n3)
@@ -850,9 +850,9 @@ class MagnetizingCurve(object):
             nuek0 = (curve['hi'][1] - curve['hi'][0]) / \
                     (curve['bi'][1]-curve['bi'][0])
             for j1 in range(len(curve['bi'])):
-                    bk02 = curve['bi'][j1]**2
-                    if bk02 > 0:
-                        break
+                bk02 = curve['bi'][j1]**2
+                if bk02 > 0:
+                    break
             curve['nuer'] = [MUE0*nuek0]
             curve['bi2'] = [bk02]
             curve['a'] = []
@@ -898,7 +898,7 @@ class MagnetizingCurve(object):
                 int(100*fillfac))
         return functools.reduce(lambda a, kv: a.replace(*kv),
                                 repls.items(), name)
-    
+
     def writefile(self, name, directory='.', fillfac=None):
         """find magnetic curve by name or id and write binary file
         Arguments:
@@ -915,7 +915,7 @@ class MagnetizingCurve(object):
             bname = name
             filename = ''.join((name, ext))
             # check fillfac and readmcv
-            if not fillfac or fillfac==1.0:
+            if not fillfac or fillfac == 1.0:
                 try:
                     import shutil
                     logger.info("Copy file %s", filename)
@@ -958,7 +958,7 @@ class MagnetizingCurve(object):
             losses['beta'] = beta
             losses['Bo'] = self.mcv[m]['Bo']
             losses['fo'] = self.mcv[m]['fo']
-            
+
 
 def read(filename):
     """read MC/MCV file and return mc dict"""
@@ -975,4 +975,3 @@ if __name__ == "__main__":
 
     mcv = read(filename)
     json.dump(mcv.get_results(), sys.stdout)
-

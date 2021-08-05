@@ -180,6 +180,8 @@ class PmRelMachine(object):
                           constraints=({'type': 'eq',
                                         'fun': lambda iqd:
                                         self.torque_iqd(*iqd) - torque}))
+        if not res.success:
+            raise ValueError(f'Torque {torque} out of current range')
         return res.x
 
     def uqd(self, w1, iq, id):

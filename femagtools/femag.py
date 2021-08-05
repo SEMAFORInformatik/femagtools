@@ -585,6 +585,7 @@ class ZmqFemag(BaseFemag):
         args = [self.cmd] + options
         self.femagTask = FemagTask(self.port, args, self.workdir, self.logdir)
         self.femagTask.start()
+        self.request_socket = self.__req_socket()
 
         # check if mq is ready for listening
         lcount = 10

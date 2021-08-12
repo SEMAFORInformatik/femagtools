@@ -337,7 +337,7 @@ class Reader(object):
         self.skip_block()
         self.skip_block(2 * 4)
         self.skip_block(3)
-        self.skip_block(1 * 64) # bnodes_mech
+        self.skip_block(1 * 64)  # bnodes_mech
         self.skip_block(6)
             
         self.ELEM_ISA_ELEM_REC_LOSS_DENS = self.next_block("f")
@@ -695,9 +695,13 @@ class Isa7(object):
             return None
 
     def flux_density(self, x, y, icur, ibeta, cosys='cartes'):
-        """return pos and flux density (bx, by) at pos x, y 
-        for current and beta
+        """return move pos and flux density (bx, by) 
+        of element at pos x, y for current and beta
 
+        Arguments:
+          x,y: position of element
+          icur, ibeta: current and beta (load) index
+          cosys: coordinate system of model ('cartes', 'polar', 'cylind')
         """
         el = self.get_element(x, y)
         ekey = el.key-1

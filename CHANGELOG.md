@@ -4,7 +4,8 @@ This document lists the major changes in femagtools. Please clone this project t
 
 ## Release 1.0.18
 - added losses parts stator, rotor for model specific iron subregions
-	
+- fixed cosys bug in isa/nc flux_density
+
 ## Release 1.0.17
 - improved meshing with auxiliary lines in dxf fsl conversion
 - added Bch reader and plot for tubular machines (R/Z Coordinate System)

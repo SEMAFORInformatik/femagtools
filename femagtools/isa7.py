@@ -186,12 +186,12 @@ class Reader(object):
         NUM_FE_EVAL_MOVE_STEP = self.next_block("i")[0]
         if NUM_FE_EVAL_MOVE_STEP < 0:
             NUM_FE_EVAL_MOVE_STEP = 0
-            
+
         self.el_fe_induction_1 = [[[]], [[]], [[]]]
         self.el_fe_induction_2 = [[[]], [[]], [[]]]
         self.eddy_cu_vpot = [[[]], [[]], [[]]]
         self.pos_el_fe_induction = []
-        
+
         if NUM_FE_EVAL_MOVE_STEP > 1:
             self.pos_el_fe_induction = self.next_block("f")
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
@@ -226,8 +226,8 @@ class Reader(object):
         # stator 3
         self.skip_block(4)
         (yoke_diam, inside_diam,
-         slot_height,slot_h1,slot_h2,
-         slot_width,slot_r1,slot_r2) = self.next_block("f")[:8]
+         slot_height, slot_h1, slot_h2,
+         slot_width, slot_r1, slot_r2) = self.next_block("f")[:8]
         self.skip_block(3)
         # magnet sector
         magn_rad, yoke_rad, magn_height = self.next_block("f")[:3]
@@ -237,7 +237,7 @@ class Reader(object):
         self.dy1 = yoke_diam
         self.skip_block(3)
         # windings generation
-        (tot_num_slot, num_phases, num_layers, 
+        (tot_num_slot, num_phases, num_layers,
          self.NUM_WIRES, self.CURRENT,
          coil_span, num_slots) = self.next_block("f")[:7]
         self.slots = int(tot_num_slot)
@@ -245,20 +245,22 @@ class Reader(object):
         self.layers = int(num_layers)
         self.slots_gen = int(num_slots)
         self.coil_span = coil_span
-        
+
         self.skip_block(1)
         (move_action, arm_length, self.SKEW_ANGLE,
          HI, num_move_ar, self.ANGL_I_UP,
          num_par_wdgs, cur_control) = self.next_block("f")[:8]
         self.NUM_PAR_WDGS = int(num_par_wdgs)
         self.arm_length = arm_length*1e-3  # unit is m
-        self.skip_block(2)      
+        self.skip_block(2)
         self.skip_block(30 * 30)
         self.skip_block(30 * 30)
         self.skip_block(1 * 20)
         self.skip_block(8)
-        self.beta_loss=self.next_block("h")[:FC_NUM_BETA_ID] # BETA_LOSS_EVAL_STEP
-        self.curr_loss=self.next_block("h")[:FC_NUM_CUR_ID] # CURR_LOSS_EVAL_STEP
+        self.beta_loss = self.next_block(
+            "h")[:FC_NUM_BETA_ID]  # BETA_LOSS_EVAL_STEP
+        self.curr_loss = self.next_block(
+            "h")[:FC_NUM_CUR_ID]  # CURR_LOSS_EVAL_STEP
         FC_NUM_MOVE_LOSSES = self.next_block("i")[0]
 
         if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
@@ -267,7 +269,7 @@ class Reader(object):
                 self.el_fe_induction_2[1][0].append(self.next_block("h"))
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
                 self.eddy_cu_vpot[1][0].append(self.next_block("h"))
-            
+
         # VIRGIN_PM_SYN
         self.skip_block(3)
         # magnet iron 4
@@ -304,18 +306,18 @@ class Reader(object):
         self.pole_pairs, self.poles_sim = self.next_block("i")[:2]
         self.SLOT_WIRE_DIAMETER = self.next_block("f")
         self.SLOT_WIRE_NUMBERS = self.next_block("i")
-        self.skip_block(20*(3 + 2 * 20)) # BASE_FREQUENCY ..
-        self.skip_block(2) # R_TORQUE .. NUM_NOLOAD_EX_CURRENT_STEPS
+        self.skip_block(20*(3 + 2 * 20))  # BASE_FREQUENCY ..
+        self.skip_block(2)  # R_TORQUE .. NUM_NOLOAD_EX_CURRENT_STEPS
         (self.R_CURRENT,
          self.R_LOAD_VOLTAGE,
          self.R_NOLOAD_VOLTAGE) = self.next_block("f")
         x = self.next_block("f")
         self.R_COSPHI = x[0]
         self.R_BETA_OPT = x[1:]
-        self.skip_block(10) # R_FLUX_LOAD. NUM_NOLOAD_EX_CURRENT_STEPS
+        self.skip_block(10)  # R_FLUX_LOAD. NUM_NOLOAD_EX_CURRENT_STEPS
 
         if (FC_NUM_MOVE_LOSSES > 2 and NUM_FE_EVAL_MOVE_STEP > 1
-            and FC_NUM_BETA_ID > 1):
+                and FC_NUM_BETA_ID > 1):
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
                 self.el_fe_induction_1[2][0].append(self.next_block("h"))
                 self.el_fe_induction_2[2][0].append(self.next_block("h"))
@@ -327,10 +329,10 @@ class Reader(object):
         self.Q_SLOTS_NUMBER, self.M_PHASE_NUMBER = self.next_block("i")[:2]
         self.N_LAYERS_SLOT, self.N_WIRES_PER_SLOT = self.next_block("i")[:2]
         self.skip_block(1)
-        self.skip_block(10 * 100) # num_index_cad
+        self.skip_block(10 * 100)  # num_index_cad
         self.skip_block(1 * 100)
-        self.skip_block() # index_cad
-        self.skip_block(1 * 4) # heat_tranfer_coeff
+        self.skip_block()  # index_cad
+        self.skip_block(1 * 4)  # heat_tranfer_coeff
         self.skip_block(2 * 2)
         self.skip_block()
         self.skip_block(2 * 4)
@@ -693,21 +695,24 @@ class Isa7(object):
             return None
 
     def flux_density(self, x, y, icur, ibeta, cosys='cartes'):
-        """return pos and flux density (bx, by) or (br, bt)
-        at pos x, y for current and beta"""
+        """return pos and flux density (bx, by) at pos x, y 
+        for current and beta
+
+        """
         el = self.get_element(x, y)
         ekey = el.key-1
         b1 = np.array(self.el_fe_induction_1[ekey, :, icur, ibeta])
         b2 = np.array(self.el_fe_induction_2[ekey, :, icur, ibeta])
         if cosys == 'polar':
+            # 
             a = np.arctan2(el.center[1], el.center[0])
-            br, bphi = np.array(((np.cos(a), -np.sin(a)),
+            bx, by = np.array(((np.cos(a), -np.sin(a)),
                                      (np.sin(a), np.cos(a)))).dot(
                                          ((b1),(b2)))
             return dict(
                 pos = self.pos_el_fe_induction,
-                br = br,
-                bt = bphi)
+                bx = bx,
+                by = by)
         return dict(
             pos = self.pos_el_fe_induction,
             bx = b1,
@@ -717,12 +722,13 @@ class Isa7(object):
         return self.flux_density(x, y, icur, ibeta, cosys)
     
     def demagnetization(self, x, y, icur, ibeta, cosys='cartes'):
+        """return demagnetization Hx, Hy at pos (x,y) 
+        Arguments:
+          x, y : position
+          icur, ibeta: current, beta index
+          cosys: coodinate system of model ('polar', 'cartes', 'cylind')"""
         el = self.get_element(x, y)
         flxdens = self.flux_density(x,y, icur, ibeta, cosys)
-        if cosys == 'polar':
-            return (flxdens['pos'], el.demag_b(flxdens['pos'],
-                                                   (flxdens['br'], flxdens['bt']),
-                                self.MAGN_TEMPERATURE))
         return (flxdens['pos'], el.demag_b(np.arctan2(y, x),
                                                (flxdens['bx'], flxdens['by']),
                                     self.MAGN_TEMPERATURE))
@@ -905,11 +911,12 @@ class Element(BaseEntity):
         return abs(self.mag[0]) > 1e-5 or abs(self.mag[1]) > 1e-5
     
     def demagnetization(self, temperature=20):
-        """return demagnetization of this element"""
+        """return demagnetization Hx, Hy of this element"""
         return self.demag_b(0.0, self.flux_density(), temperature)
 
     def demag_b(self, pos, b, temperature):
-        """return demagnetization of this element at flux density b"""
+        """return demagnetization Hx, Hy of this element at flux density b
+          and temperature"""
         if self.is_magnet():
             br_temp_corr = 1. +  self.br_temp_coef*(temperature - 20.)
             magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)*br_temp_corr

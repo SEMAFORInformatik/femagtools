@@ -1340,7 +1340,11 @@ def zoneplan(wdg):
 
 
 def winding(wdg):
-    """plot coils of winding wdg"""
+    windings(wdg)
+
+
+def windings(wdg):
+    """plot coils of windings wdg"""
     from matplotlib.patches import Rectangle
     from matplotlib.lines import Line2D
     from femagtools.windings import coil_color
@@ -1370,6 +1374,7 @@ def winding(wdg):
                 bbox=dict(boxstyle='circle,pad=0', fc="white", lw=0))
     for i, layer in enumerate(z):
         b = -xoff if i else xoff
+        lw = 1.2 if i else 0.6  # line thickness
         for m, mslots in enumerate(layer):
             for k in mslots:
                 x = abs(k) * dslot + b
@@ -1377,27 +1382,36 @@ def winding(wdg):
                     ax.add_line(Line2D([x + yd/2 - xoff, x, x, x + yd/2-xoff],
                                        [-coil_height, 0, coil_len,
                                            coil_len+coil_height],
-                                       color=coil_color[m], lw=.8))
-                    h = arrow_head_length
-                    y = coil_len * 0.8
+                                       color=coil_color[m], lw=lw))
                 else:
                     ax.add_line(Line2D([x - yd/2+xoff, x, x, x - yd/2+xoff],
                                        [-coil_height, 0, coil_len,
                                            coil_len+coil_height],
-                                       color=coil_color[m], lw=.8))
+                                       color=coil_color[m], lw=lw))
+                if k > 0:
+                    h = arrow_head_length
+                    y = coil_len * 0.8
+                else:
                     h = -arrow_head_length
                     y = coil_len * 0.2
-
                 ax.arrow(x, y, 0, h,
                          length_includes_head=True,
                          head_starts_at_zero=False,
                          head_length=arrow_head_length,
                          head_width=arrow_head_width,
                          fc=coil_color[m], lw=0)
-
-        ax.autoscale(enable=True)
-        # ax.set_aspect("equal")
-        ax.set_axis_off()
+    if False:  # TODO show winding connections
+        m = 0
+        for k in [n*wdg.Q/wdg.p/wdg.m + 1 for n in range(wdg.m)]:
+            if k < len(slots):
+                x = k * dslot + b + yd/2 - xoff
+                ax.add_line(Line2D([x, x],
+                                   [-2*coil_height, -coil_height],
+                                   color=coil_color[m], lw=lw))
+                ax.text(x, -2*coil_height+0.5, str(m+1), color=coil_color[m])
+            m += 1
+    ax.autoscale(enable=True)
+    ax.set_axis_off()
 
 
 def main():

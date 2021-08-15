@@ -273,8 +273,14 @@ class Windings(object):
                 if not is_upper(r, s*taus - (x-taus/2))]
                 for key in self.windings]
 
-        return ([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
-                [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
+        z = ([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
+             [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
+        # complete if not  basic winding:
+        Qb = self.Q//num_basic_windings(self.Q, self.p, self.l)
+        if max([abs(n) for m in z[0] for n in m]) < Qb:
+            return [[k + [-n+Qb//2 if n < 0 else -(n+Qb//2) for n in k]
+                     for k in m] for m in z]
+        return z
 
     def diagram(self):
         """return winding diagram as svg element"""
@@ -300,61 +306,61 @@ class Windings(object):
                 "width": f"{dslot/2}",
                 "height": f"{coil_len - 2}"})
 
-        g=ET.SubElement(svg, "g", {"id": "labels",
+        g = ET.SubElement(svg, "g", {"id": "labels",
                                      "text-anchor": "middle",
                                      "dominant-baseline": "middle",
                                      "style": "font-size: 0.15em; font-family: sans-serif;"})
         for n in slots:
-            t=ET.SubElement(g, "text", {
+            t = ET.SubElement(g, "text", {
                 "x": f"{n*dslot}",
-                "y": f"{-coil_len / 2}"}).text=str(n)
+                "y": f"{-coil_len / 2}"}).text = str(n)
 
-        g=ET.SubElement(svg, "g", {"id": "coils",
+        g = ET.SubElement(svg, "g", {"id": "coils",
                                      "fill": "none",
                                      "stroke-width": ".25px",
                                      "stroke-linejoin": "round",
                                      "stroke-linecap": "round"})
 
         for i, layer in enumerate(z):
-            b=-xoff if i else xoff
+            b = -xoff if i else xoff
             for m, mslots in enumerate(layer):
                 for k in mslots:
-                    slotpos=abs(k) * dslot + b
-                    p=[
+                    slotpos = abs(k) * dslot + b
+                    p = [
                         "", f"L {slotpos} {-coil_len//2+1} M {slotpos} {-coil_len//2-1} L {slotpos} {-coil_len}"]
                     if (k > 0 and i == 0) or (k < 0 and i == 0 and self.l > 1):
                         if not p[0]:
                             # p[0] = f"M {slotpos+yd//2-1} {coil_height + 4} L {slotpos+yd//2-1} {coil_height} L {slotpos} 0"
-                            p[0]=f"M {slotpos+yd//2-xoff} {coil_height} L {slotpos} 0"
+                            p[0] = f"M {slotpos+yd//2-xoff} {coil_height} L {slotpos} 0"
                         p.append(
                             f"L {slotpos+yd//2-xoff} {-coil_len-coil_height}")
                     else:
                         if not p[0]:
                             # p[0] = f"M {slotpos-yd//2+1} {coil_height + 4} L {slotpos-yd//2+1} {coil_height} L {slotpos} 0"
-                            p[0]=f"M {slotpos-yd//2+xoff} {coil_height} L {slotpos} 0"
+                            p[0] = f"M {slotpos-yd//2+xoff} {coil_height} L {slotpos} 0"
                         p.append(
                             f"L {slotpos-yd//2+xoff} {-coil_len-coil_height}")
-                    e=ET.SubElement(g, "path", {
+                    e = ET.SubElement(g, "path", {
                         "d": ' '.join(p),
                         "stroke": coil_color[m]})
 
         for i, layer in enumerate(z):
             for m, mslots in enumerate(layer):
                 for k in mslots:
-                    x=abs(k) * dslot
+                    x = abs(k) * dslot
                     if i:
                         x -= xoff
                     else:
                         x += xoff
                     if k > 0:
-                        y=coil_len * .88
-                        points=[
+                        y = coil_len * .88
+                        points = [
                             (x, -y),
                             (x - arrow_head_width / 2, -y + arrow_head_length),
                             (x + arrow_head_width / 2, -y + arrow_head_length)]
                     else:
-                        y=coil_len * .12
-                        points=[
+                        y = coil_len * .12
+                        points = [
                             (x, -y),
                             (x - arrow_head_width / 2, -y - arrow_head_length),
                             (x + arrow_head_width / 2, -y - arrow_head_length)]
@@ -370,10 +376,10 @@ if __name__ == "__main__":
     import sys
     import matplotlib.pyplot as plt
     if sys.argv[1:]:
-        bch=femagtools.bch.read(sys.argv[1])
-        wdgs=Windings(bch)
+        bch = femagtools.bch.read(sys.argv[1])
+        wdgs = Windings(bch)
     else:
-        testdata=[
+        testdata = [
             dict(Q=90, p=12, m=3,
                  windings={1: {
                      'dir': [-1, 1, 1, -1, -1, -1, 1, 1, -1, -1],
@@ -396,9 +402,9 @@ if __name__ == "__main__":
                            3: {'dir': [-1, -1, -1, -1, -1, -1, -1, -1],
                                'N': [7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0],
                                'PHI': [5.3572, 7.5, 9.6429, 9.6429, 11.7857, 11.7857, 13.9286, 16.0715]}})]
-        wdgs=Windings(testdata[0])
+        wdgs = Windings(testdata[0])
 
-    c=wdgs.mmf()
+    c = wdgs.mmf()
     # print('alfa0={0:6.3f}'.format(wdgs.axis()/np.pi*180))
 
     plt.title('Q={0}, p={1}, alfa0={2:6.3f}'.format(
@@ -406,8 +412,8 @@ if __name__ == "__main__":
     plt.plot(np.array(c['pos'])/np.pi*180, c['mmf'])
     plt.plot(np.array(c['pos_fft'])/np.pi*180, c['mmf_fft'])
 
-    phi=[c['alfa0']/np.pi*180, c['alfa0']/np.pi*180]
-    y=[min(c['mmf_fft']), 1.1*max(c['mmf_fft'])]
+    phi = [c['alfa0']/np.pi*180, c['alfa0']/np.pi*180]
+    y = [min(c['mmf_fft']), 1.1*max(c['mmf_fft'])]
     plt.plot(phi, y, '--')
     plt.annotate("", xy=(phi[0], y[0]),
                  xytext=(0, y[0]), arrowprops=dict(arrowstyle="->"))

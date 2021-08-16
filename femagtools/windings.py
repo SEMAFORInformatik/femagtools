@@ -289,6 +289,7 @@ class Windings(object):
         dslot = 8
         arrow_head_length = 2
         arrow_head_width = 2
+        strokewidth = [f"{w}px" for w in [0.25, 0.5]]
 
         z = self.zoneplan()
         xoff = 0
@@ -317,17 +318,17 @@ class Windings(object):
 
         g = ET.SubElement(svg, "g", {"id": "coils",
                                      "fill": "none",
-                                     "stroke-width": ".25px",
                                      "stroke-linejoin": "round",
                                      "stroke-linecap": "round"})
 
         for i, layer in enumerate(z):
             b = -xoff if i else xoff
+            w = i if self.yd > 1 else 0
             for m, mslots in enumerate(layer):
                 for k in mslots:
                     slotpos = abs(k) * dslot + b
                     p = [
-                        "", f"L {slotpos} {-coil_len//2+1} M {slotpos} {-coil_len//2-1} L {slotpos} {-coil_len}"]
+                        "", f"L {slotpos} {-coil_len//2+2} M {slotpos} {-coil_len//2-1} L {slotpos} {-coil_len}"]
                     if (k > 0 and i == 0) or (k < 0 and i == 0 and self.l > 1):
                         if not p[0]:
                             # p[0] = f"M {slotpos+yd//2-1} {coil_height + 4} L {slotpos+yd//2-1} {coil_height} L {slotpos} 0"
@@ -342,6 +343,7 @@ class Windings(object):
                             f"L {slotpos-yd//2+xoff} {-coil_len-coil_height}")
                     e = ET.SubElement(g, "path", {
                         "d": ' '.join(p),
+                        "stroke-width": strokewidth[w],
                         "stroke": coil_color[m]})
 
         for i, layer in enumerate(z):
@@ -375,34 +377,18 @@ class Windings(object):
 if __name__ == "__main__":
     import sys
     import matplotlib.pyplot as plt
+    from xml.etree import ElementTree as ET
+
     if sys.argv[1:]:
         bch = femagtools.bch.read(sys.argv[1])
         wdgs = Windings(bch)
     else:
         testdata = [
-            dict(Q=90, p=12, m=3,
-                 windings={1: {
-                     'dir': [-1, 1, 1, -1, -1, -1, 1, 1, -1, -1],
-                     'N': [8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
-                     'PHI': [2.0, 6.0, 6.0, 18.0, 18.0, 22.0, 34.0, 34.0, 50.0, 50.0]}}),
+            dict(Q=90, p=12, m=3, l=2, coilwidth=1),
+            dict(Q=54, p=6, m=3, l=2, coilwidth=5),
+            dict(Q=168, p=7, m=3, l=2, coilwidth=10)]
 
-            dict(Q=54, p=6, m=3,
-                 windings={1: {
-                     'dir': [1, 1, 1, -1, -1, -1],
-                     'N': [15.0, 15.0, 15.0, 15.0, 15.0, 15.0],
-                     'PHI': [3.3333, 3.3333, 10.0, 30.0, 36.6666, 36.6666]}}),
-
-            dict(Q=168, p=7, m=3,
-                 windings={1: {'dir': [1, 1, 1, 1, 1, 1, -1, -1],
-                               'N': [7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0],
-                               'PHI': [1.0714, 1.0714, 3.2143, 3.2143, 5.3572, 7.5, 22.5001, 24.6429]},
-                           2: {'dir': [1, 1, 1, 1, 1, 1, 1, 1],
-                               'N': [7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0],
-                               'PHI': [13.9286, 16.0715, 18.2143,  18.2143,  20.3572, 20.3572, 22.5001, 24.6429]},
-                           3: {'dir': [-1, -1, -1, -1, -1, -1, -1, -1],
-                               'N': [7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0],
-                               'PHI': [5.3572, 7.5, 9.6429, 9.6429, 11.7857, 11.7857, 13.9286, 16.0715]}})]
-        wdgs = Windings(testdata[0])
+        wdgs = Windings(testdata[1])
 
     c = wdgs.mmf()
     # print('alfa0={0:6.3f}'.format(wdgs.axis()/np.pi*180))
@@ -420,3 +406,7 @@ if __name__ == "__main__":
 
     plt.grid()
     plt.show()
+
+    svg = wdgs.diagram()
+    ET.ElementTree(svg).write('wind.svg')
+    print('SVG file "wind.svg" created')

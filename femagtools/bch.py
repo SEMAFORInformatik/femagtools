@@ -902,10 +902,10 @@ class Reader:
                 ps[w] = dict(
                     voltage=floatnan(rec[1].strip()),
                     current_1=floatnan(rec[2].strip()),
-                    beta=floatnan(rec[2].strip()),
-                    cosphi=floatnan(rec[2].strip()),
-                    powerp=floatnan(rec[2].strip()),
-                    powerq=floatnan(rec[2].strip()))
+                    beta=floatnan(rec[3].strip()),
+                    cosphi=floatnan(rec[4].strip()),
+                    powerp=1e3*floatnan(rec[5].strip()),
+                    powerq=1e3*floatnan(rec[6].strip()))
             elif l.startswith('Angle current'):
                 beta = rec[0]
         if ps:

@@ -1296,7 +1296,6 @@ def zoneplan(wdg):
     from matplotlib.patches import Rectangle
     upper, lower = wdg.zoneplan()
     Qb = len([n for l in upper for n in l])
-    q = wdg.Q/2/wdg.p/wdg.m  # number of coils per pole and phase
     from femagtools.windings import coil_color
     rh = 0.5
     if lower:
@@ -1333,10 +1332,36 @@ def zoneplan(wdg):
     if lower:
         yl -= rh
     margin = 0.05
-    ax.text(-0.5, yu+margin, f'Q={wdg.Q}, p={wdg.p}, q={round(q,4)}',
+    ax.text(-0.5, yu+margin, f'Q={wdg.Q}, p={wdg.p}, q={round(wdg.q,4)}',
             ha='left', va='bottom', size=15)
     for i in range(0, Qb, step):
         ax.text(i, yl-margin, f'{i+1}', ha="center", va="top")
+
+
+def winding_factors(wdg, n=8):
+    """plot winding factors"""
+    ax = plt.gca()
+    ax.set_title(f'Winding factors Q={wdg.Q}, p={wdg.p}, q={round(wdg.q,4)}')
+    ax.grid(True)
+    order, kwp, kwd, kw = np.array([(n, k1, k2, k3)
+                                    for n, k1, k2, k3 in zip(wdg.kw_order(n),
+                                                             wdg.kwp(n),
+                                                             wdg.kwd(n),
+                                                             wdg.kw(n))]).T
+    try:
+        markerline1, stemlines1, _ = ax.stem(order-1, kwp, 'C1:', basefmt=" ",
+                                             markerfmt='C1.',
+                                             use_line_collection=True, label='Pitch')
+        markerline2, stemlines2, _ = ax.stem(order+1, kwd, 'C2:', basefmt=" ",
+                                             markerfmt='C2.',
+                                             use_line_collection=True, label='Distribution')
+        markerline3, stemlines3, _ = ax.stem(order, kw, 'C0-', basefmt=" ",
+                                             markerfmt='C0o',
+                                             use_line_collection=True, label='Total')
+        ax.set_xticks(order)
+        ax.legend()
+    except ValueError:  # empty sequence
+        pass
 
 
 def winding(wdg):
@@ -1359,7 +1384,7 @@ def windings(wdg):
     z = wdg.zoneplan()
     xoff = 0
     if z[-1]:
-        xoff = 0.5
+        xoff = 0.75
     yd = dslot*wdg.yd
     slots = sorted([abs(n) for m in z[0] for n in m])
     for n in slots:

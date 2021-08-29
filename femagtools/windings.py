@@ -62,6 +62,8 @@ class Windings(object):
             for k in arg.keys():
                 setattr(self, k, arg[k])
 
+        self.q = self.Q/2/self.p/self.m  # number of coils per pole and phase
+
         if hasattr(self, 'windings'):
             # calculate coil width yd and num layers l
             taus = 360/self.Q
@@ -138,7 +140,7 @@ class Windings(object):
     def kwp(self, n=0):
         """pitch factor"""
         nue = self.kw_order(n)
-        return np.sin(nue*self.yd*np.pi/self.Q)
+        return np.abs(np.sin(nue*self.yd*np.pi/self.Q))
 
     def kwd(self, n=0):
         """zone (distribution) factor"""
@@ -149,9 +151,8 @@ class Windings(object):
             return np.sin(q1*x)/(q1*np.sin(x))
         x = nue*np.pi*Yk/self.Q
         k = 2 if self.l == 1 else 1
-        # TODO: check sign
-        return -((np.sin(k*x*q1) - np.cos(x*Qb)*np.sin(k*x*q2)) /
-                 ((q1+q2)*np.sin(k*x)))
+        return np.abs(((np.sin(k*x*q1) - np.cos(x*Qb)*np.sin(k*x*q2)) /
+                       ((q1+q2)*np.sin(k*x))))
 
     def kw(self, n=0):
         """return winding factor"""
@@ -182,11 +183,13 @@ class Windings(object):
         return self.mmf()['alfa0']
 
     def mmf(self, k=1):
-        """returns the magnetomotive force and winding angle of phase k"""
+        """returns the dimensionless magnetomotive force (ampere-turns/turns/ampere) and 
+        winding angle of phase k (rad)"""
         taus = 2*np.pi/self.Q
         t = np.gcd(self.Q, self.p)
         slots = self.slots(k)[0]
         dirs = self.windings[k]['dir']
+        #turns = self.windings[k]['N']
         curr = np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
                                for n in range(len(slots)//len(dirs))])
 
@@ -282,7 +285,7 @@ class Windings(object):
                      for k in m] for m in z]
         return z
 
-    def diagram(self):
+    def diagram(self) -> ET.Element:
         """return winding diagram as svg element"""
         coil_len = 25
         coil_height = 3
@@ -294,9 +297,10 @@ class Windings(object):
         z = self.zoneplan()
         xoff = 0
         if z[-1]:
-            xoff = 0.5
+            xoff = 0.75
         yd = dslot*self.yd
         slots = sorted([abs(n) for m in z[0] for n in m])
+        ET.register_namespace("", "http://www.w3.org/2000/svg")
         svg = ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
                                      viewBox=f"0, -30, {slots[-1] * dslot + 15}, 40"))
         g = ET.SubElement(svg, "g", {"id": "teeth", "fill": "lightblue"})

@@ -22,11 +22,19 @@ class FemagMoProblem(Problem):
 
     def __init__(self, decision_vars, objective_vars):
         Problem.__init__(self, len(decision_vars), 0, len(objective_vars))
-        lbounds, ubounds = zip(*[d['bounds'] if 'bounds' in d else (None, None)
-                                 for d in decision_vars])
+        if isinstance(decision_vars, dict):
+            self.decision_vars = [{'name': n}
+                                  for n in decision_vars['columns']]
+            lbounds = [None]*len(self.decision_vars)
+            ubounds = [None]*len(self.decision_vars)
+        else:
+            self.decision_vars = decision_vars
+            lbounds, ubounds = zip(*[d['bounds'] if 'bounds' in d else (None, None)
+                                     for d in decision_vars])
         self.set_bounds(lbounds, ubounds)
-        self.decision_vars = decision_vars
-        logger.info("Decision Vars: %s", [d['name'] for d in decision_vars])
+
+        logger.info("Decision Vars: %s", [
+            d['name'] for d in self.decision_vars])
         logger.info("bounds lower: %s  upper: %s", lbounds, ubounds)
         self.objective_vars = objective_vars
 

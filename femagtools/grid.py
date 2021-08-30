@@ -157,9 +157,13 @@ class Grid(object):
         model = femagtools.model.MachineModel(machine)
         builder = femagtools.fsl.Builder()
         # check if this model needs to be modified
-        immutable_model = len([d for d in decision_vars
+        if isinstance(decision_vars, dict):
+            dvarnames = decision_vars['columns']
+        else:
+            dvarnames = [d['name'] for d in decision_vars]
+        immutable_model = len([d for d in dvarnames
                                if hasattr(model,
-                                          d['name'].split('.')[0])]) == 0
+                                          d.split('.')[0])]) == 0
         if immutable_model:
             modelfiles = self.setup_model(builder, model)
             logger.info("Files %s", modelfiles+extra_files)
@@ -177,13 +181,16 @@ class Grid(object):
         job = engine.create_job(self.femag.workdir)
 
         # build x value array
+        if isinstance(decision_vars, dict):
+            par_range = decision_vars['list']
+            domain = par_range
+        else:
+            domain = [list(np.linspace(d['bounds'][0],
+                                       d['bounds'][1],
+                                       d['steps'])) if 'bounds' in d else d['values']
+                      for d in decision_vars]
 
-        domain = [list(np.linspace(d['bounds'][0],
-                                   d['bounds'][1],
-                                   d['steps'])) if 'bounds' in d else d['values']
-                  for d in decision_vars]
-
-        par_range = create_parameter_range(domain)
+            par_range = create_parameter_range(domain)
         f = []
         p = 1
         calcid = 0
@@ -235,7 +242,7 @@ class Grid(object):
                 for fn in extra_files:
                     task.add_file(fn)
                 if immutable_model:
-                    prob.prepare(x, fea)
+                    prob.prepare(x, [fea, self.femag.magnets])
                     for m in modelfiles:
                         task.add_file(m)
                     task.add_file(

@@ -8,6 +8,7 @@
 
 """
 from .moo.problem import Problem
+import femagtools.magnet
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class FemagMoProblem(Problem):
 
     # prepare model
     def prepare(self, x, model):
-        # list of dicts (model, feaModel)
+        # list of dicts (model, feaModel, ..)
         if isinstance(model, list):
             for o in model:
                 self.prepare(x, o)
@@ -41,8 +42,13 @@ class FemagMoProblem(Problem):
         for d, v in zip(self.decision_vars, x):
             logger.debug("Prepare: %s = %s",  d['name'], v)
             attr = d['name'].split('.')
-            # only if model has such an attr
-            if hasattr(model, attr[0]):
+            if (attr[0] == 'magnetMat' and
+                    isinstance(model, femagtools.magnet.Magnet)):
+                try:
+                    model.find(attr[1])[attr[2]] = v
+                except TypeError:  # None
+                    raise ValueError(f'Magnet material {attr[1]} not found')
+            elif hasattr(model, attr[0]):
                 model.set_value(attr, v)
 
     def setResult(self, result):

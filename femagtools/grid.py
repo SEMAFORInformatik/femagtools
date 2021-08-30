@@ -246,7 +246,7 @@ class Grid(object):
                         ['save_model("close")'])
 
                 else:
-                    prob.prepare(x, [model, fea])
+                    prob.prepare(x, [model, fea, self.femag.magnets])
                     logger.info("prepare %s", x)
                     for mc in self.femag.copy_magnetizing_curves(
                             model,

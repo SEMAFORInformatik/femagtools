@@ -439,7 +439,7 @@ class ZmqFemag(BaseFemag):
         self.logdir = logdir if logdir else os.path.join(workdir, 'log')
         if not os.path.exists(self.logdir):
             os.makedirs(self.logdir)
-
+        self.request_socket = None
         self.subscriber = None
 
     def close(self):
@@ -462,7 +462,7 @@ class ZmqFemag(BaseFemag):
         request_socket = context.socket(zmq.REQ)
         url = 'tcp://{0}:{1}'.format(
             self.host, self.port)
-        logger.debug("connect %s", url)
+        logger.debug("connect req socket %s", url)
         request_socket.connect(url)
         return request_socket
 
@@ -486,6 +486,8 @@ class ZmqFemag(BaseFemag):
         return False
 
     def send_request(self, msg, pub_consumer=None, timeout=None):
+        if not self.request_socket:
+            self.request_socket = self.__req_socket()
         if not msg:
             return [b'{"status":"ignored",{}}']
         if timeout:
@@ -588,7 +590,8 @@ class ZmqFemag(BaseFemag):
         args = [self.cmd] + options
         self.femagTask = FemagTask(self.port, args, self.workdir, self.logdir)
         self.femagTask.start()
-        self.request_socket = self.__req_socket()
+        if not self.request_socket:
+            self.request_socket = self.__req_socket()
 
         # check if mq is ready for listening
         lcount = 10

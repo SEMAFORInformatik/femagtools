@@ -9,6 +9,7 @@
 
 """
 import time
+import pathlib
 import femagtools
 import femagtools.fsl
 import femagtools.moproblem
@@ -33,10 +34,10 @@ def log_pop(pop, ngen):
                     for d in decisions])]
 
     for i in pop.individuals:
-        log.append(''.join(["{},".format(i.rank)] +
-                           ["{:10.2f},".format(f) for f in i.cur_f] +
+        log.append(''.join(["{} ".format(i.rank)] +
+                           ["{:10.2f}".format(f) for f in i.cur_f] +
                            ["   "] +
-                           ["{:10.4f},".format(x) for x in i.cur_x]))
+                           ["{:10.4f}".format(x) for x in i.cur_x]))
 
     log.append(
         '--------------------------------------------------------------------')
@@ -144,9 +145,12 @@ class Optimizer(object):
                 self.pop.merge(newpop)
             else:
                 deltat = self._update_population(i, self.pop, engine)
-            logger.info('\n'.join(log_pop(self.pop, i) +
-                                  ['', '  Elapsed Time: {} s'.format(
-                                      int(deltat))]))
+            pop_report = '\n'.join(log_pop(self.pop, i) +
+                                   ['', '  Elapsed Time: {} s'.format(
+                                       int(deltat))])
+            repfile = pathlib.Path(self.femag.workdir) / f'population-{i}.dat'
+            repfile.write_text(pop_report)
+            logger.info(pop_report)
             elapsedTime += deltat
         logger.info("TOTAL Elapsed Time: %d s", elapsedTime)
         ft = []

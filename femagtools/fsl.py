@@ -401,7 +401,21 @@ class Builder:
             model.magnet['dxf'] = dict(fsl=conv['fsl_magnet'])
 
     def create_model(self, model, magnets=[]):
+        magnetMat = {}
+        if hasattr(model, 'magnet'):
+            material = model.magnet.get('material', 0)
+            if magnets and material:
+                magnetMat = magnets.find(material)
+                if not magnetMat:
+                    raise FslBuilderError(
+                        'magnet material {} not found'.format(
+                            material))
+                try:
+                    magnetMat['magntemp'] = model.magn_temp
+                except AttributeError:
+                    magnetMat['magntemp'] = 20
         if model.is_complete():
+            logger.info("create new model '%s'", model.name)
             if model.is_dxffile():
                 self.prepare_model_with_dxf(model)
             else:
@@ -422,20 +436,8 @@ class Builder:
 
                 model.set_num_slots_gen()
             if hasattr(model, 'magnet'):
-                material = model.magnet.get('material', 0)
-                magnetMat = {}
-                if magnets and material:
-                    magnetMat = magnets.find(material)
-                    if not magnetMat:
-                        raise FslBuilderError(
-                            'magnet material {} not found'.format(
-                                material))
-                    try:
-                        magnetMat['magntemp'] = model.magn_temp
-                    except AttributeError:
-                        magnetMat['magntemp'] = 20
-                rotor = (self.create_magnet(model, magnetMat) +
-                         self.create_magnet_model(model))
+                rotor = (self.create_magnet_model(model) +
+                         self.create_magnet(model, magnetMat))
             else:
                 rotor = self.create_rotor_model(model)
             windings = model.windings
@@ -450,7 +452,8 @@ class Builder:
                     self.create_connect_models(model) +
                     self.create_rotor_winding(model))
 
-        return self.open_model(model)
+        return (self.open_model(model) +
+                self.create_magnet(model, magnetMat))
 
     def open_model(self, model):
         return self.create_open(model)
@@ -459,18 +462,21 @@ class Builder:
         return self.__render(model, 'open')
 
     def create_magnet(self, model, magnetMat=None):
-        if magnetMat:
-            logger.info("Setting magnet properties %s", magnetMat['name'])
-            if 'rlen' in model.magnet:
-                magnetMat['rlen'] = model.magnet['rlen']
-            return self.__render(magnetMat, 'magnet-data')
-        return ['m.remanenc       = {}'
-                .format(model.magnet.get('remanenc', 1.2)),
-                'm.relperm        = {}'
-                .format(model.magnet.get('relperm', 1.05)),
-                'm.rlen           = {}'
-                .format(model.magnet.get('rlen', 100)),
-                '']
+        try:
+            if magnetMat:
+                logger.info("Setting magnet properties %s", magnetMat['name'])
+                if 'rlen' in model.magnet:
+                    magnetMat['rlen'] = model.magnet['rlen']
+                return self.__render(magnetMat, 'magnet-data')
+            return ['m.remanenc       = {}'
+                    .format(model.magnet.get('remanenc', 1.2)),
+                    'm.relperm        = {}'
+                    .format(model.magnet.get('relperm', 1.05)),
+                    'm.rlen           = {}'
+                    .format(model.magnet.get('rlen', 100)),
+                    '']
+        except:
+            return []
 
     def create_analysis(self, sim):
         airgap_induc = (self.create_airgap_induc()
@@ -543,18 +549,10 @@ class Builder:
             except UnboundLocalError:
                 pass
 
-        if model.is_complete():
-            logger.info("create new model '%s' and simulation '%s'",
-                        model.name, sim['calculationMode'])
-            fslmodel = self.create_model(model, magnets)
+        fslmodel = self.create_model(model, magnets)
+        logger.info("create simulation '%s'", sim['calculationMode'])
 
-            return (fslmodel + self.create_analysis(sim) +
-                    ['save_model("close")'])
-
-        logger.info("create open model '%s' and simulation '%s'",
-                    model.name, sim['calculationMode'])
-        return (self.open_model(model) +
-                self.create_analysis(sim) +
+        return (fslmodel + self.create_analysis(sim) +
                 ['save_model("close")'])
 
     def __render(self, model, templ, stator=False, magnet=False):

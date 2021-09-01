@@ -183,7 +183,7 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
         self.assertEqual(len(fsl), 28)
-        
+
     def test_magnetIron3(self):
         self.m['magnet'] = dict(
             magnetIron3=dict(
@@ -280,19 +280,19 @@ class FslBuilderTest(unittest.TestCase):
     def test_rot_hsm(self):
         self.m['rotor'] = dict(
             rot_hsm=dict(
-                gap_pol_shaft = 1e-3,
-                core_height   = 0.02,
-                pole_height   = 0.016,
-                pole_rad      = 0.042,
-                core_width2   = 0.04,
-                core_width1   = 0.04,
-                pole_width_r  = 0.05,
-                pole_width    = 0.052,
-                slot_width    = 0.002,
-                slot_height   = 0.002,
-                damper_diam   = 0.004,
-                damper_div    = 0.007
-                ))
+                gap_pol_shaft=1e-3,
+                core_height=0.02,
+                pole_height=0.016,
+                pole_rad=0.042,
+                core_width2=0.04,
+                core_width1=0.04,
+                pole_width_r=0.05,
+                pole_width=0.052,
+                slot_width=0.002,
+                slot_height=0.002,
+                damper_diam=0.004,
+                damper_div=0.007
+            ))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_rotor_model(model)
         self.assertEqual(len(fsl), 33)
@@ -328,13 +328,13 @@ class FslBuilderTest(unittest.TestCase):
         feapars['calculationMode'] = "torq_calc"
         fsl = self.builder.create_analysis(feapars)
         self.assertEqual(len(fsl), 26)
-        
+
     def test_run_existing_model(self):
         model = femagtools.MachineModel('data/magnsec')
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create(model, feapars)
         self.assertEqual(len(fsl), 60)
-        
+
     def test_create_plots(self):
         pars = copy.deepcopy(feapars)
         pars['calculationMode'] = "pm_sym_fast"
@@ -343,25 +343,25 @@ class FslBuilderTest(unittest.TestCase):
         field_lines = re.findall(r'field_lines\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         self.assertEqual(int(field_lines[0].split(',')[-1]), 20)
-        
+
         colorgrad = re.findall(r'color_gradation\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         min, max = [int(l) for l in colorgrad[0].split(',')[4:6]]
         self.assertEqual(min, 0)
         self.assertEqual(max, 0)
-        
+
         pars['plots'] = [('field_lines', 10), ('Babs', 0.0, 2.0)]
         fsl = self.builder.create_analysis(pars)
         field_lines = re.findall(r'field_lines\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         self.assertEqual(int(field_lines[0].split(',')[-1]), 10)
-        
+
         colorgrad = re.findall(r'color_gradation\(([^)]*)\)', ''.join(fsl))
         self.assertEqual(len(field_lines), 1)
         min, max = [float(l) for l in colorgrad[0].split(',')[4:6]]
         self.assertEqual(min, 0.0)
         self.assertEqual(max, 2.0)
-        
+
     def test_readfsl(self):
         content = [
             'dshaft = 360 --shaft diameter',
@@ -396,7 +396,7 @@ class FslBuilderTest(unittest.TestCase):
             perimrad=1,
             vbendrad=1,
             endheight=1,
-            wiredia=1) 
+            wiredia=1)
         fsl = self.builder.create_gen_winding(model)
         self.assertEqual(len(fsl), 30)
 
@@ -483,10 +483,11 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel(machine)
         magnets = femagtools.magnet.Magnet(magnetmat)
         fsl = self.builder.create_model(model, magnets)
-        self.assertEqual(len(fsl), 172)
+        self.assertEqual(len(fsl), 168)
         brem = [l.strip() for l in fsl
                 if l.split('=')[0].strip() == 'm.remanenc'][0]
         self.assertEqual(brem.split('=')[-1].strip(), '1.1')
-        
+
+
 if __name__ == '__main__':
     unittest.main()

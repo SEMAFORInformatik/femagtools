@@ -449,6 +449,7 @@ class ZmqFemag(BaseFemag):
         if self.request_socket:
             logger.debug("close request_socket")
             self.request_socket.close()
+            self.request_socket = None
 
         logger.debug("done")
 
@@ -672,24 +673,27 @@ class ZmqFemag(BaseFemag):
 
     def copyfile(self, filename, dirname):
         """copy filename to dirname (FEMAG 9.2)"""
-        request_socket = self.__req_socket()
-        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-        request_socket.send_string(f'copyfile {filename} {dirname}')
-        return [r.decode() for r in request_socket.recv_multipart()]
+        if not self.request_socket:
+            self.request_socket = self.__req_socket()
+        self.request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+        self.request_socket.send_string(f'copyfile {filename} {dirname}')
+        return [r.decode() for r in self.request_socket.recv_multipart()]
 
     def change_case(self, dirname):
         """change case to dirname (FEMAG 9.2)"""
-        request_socket = self.__req_socket()
-        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-        request_socket.send_string(f'casedir {dirname}')
-        return [r.decode() for r in request_socket.recv_multipart()]
+        if not self.request_socket:
+            self.request_socket = self.__req_socket()
+        self.request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+        self.request_socket.send_string(f'casedir {dirname}')
+        return [r.decode() for r in self.request_socket.recv_multipart()]
 
     def delete_case(self, dirname):
         """delete case dir (FEMAG 9.2)"""
-        request_socket = self.__req_socket()
-        request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
-        request_socket.send_string(f'casedir -{dirname}')
-        return [r.decode() for r in request_socket.recv_multipart()]
+        if not self.request_socket:
+            self.request_socket = self.__req_socket()
+        self.request_socket.send_string('CONTROL', flags=zmq.SNDMORE)
+        self.request_socket.send_string(f'casedir -{dirname}')
+        return [r.decode() for r in self.request_socket.recv_multipart()]
 
     def clear(self, timeout=2000):
         """clear lua script session"""

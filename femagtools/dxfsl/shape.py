@@ -346,25 +346,13 @@ class Circle(Shape):
             if p2_is_up:
                 # down
                 points.append((self.center[0], self.center[1] - 10.0))
-            elif p2_is_left:
-                # right
-                # TODO points.append(half_circle.p1)
-                pass
             else:
-                # left
-                # TODO points.append(half_circle.p2)
                 pass
         else:
             if not p2_is_up:
                 # up
                 points.append((self.center[0], self.center[1] + 10.0))
-            elif p1_is_left:
-                # right
-                # TODO points.append(half_circle.p1)
-                pass
             else:
-                # left
-                # TODO points.append(half_circle.p2)
                 pass
 
             points.append(e.p1)

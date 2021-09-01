@@ -41,8 +41,8 @@ class AsyncFemag(threading.Thread):
             port, host)
 
     def _do_task(self, task):
-        logger.info('Docker task %s %s',
-                    task.id, task.fsl_file)
+        logger.debug('Docker task %s %s',
+                     task.id, task.fsl_file)
         resend = True
         num_tries = 0
         while resend:
@@ -93,8 +93,8 @@ class AsyncFemag(threading.Thread):
                     task.status = 'C'
                     bchfile = r[0]['result_file'][0]
                     status, content = self.container.getfile(bchfile)
-                    logging.info("get results %s: status %s len %d",
-                                 task.id, status, len(content))
+                    logging.debug("get results %s: status %s len %d",
+                                  task.id, status, len(content))
                     with open(os.path.join(task.directory,
                                            bchfile), 'wb') as f:
                         f.write(content)
@@ -104,8 +104,8 @@ class AsyncFemag(threading.Thread):
             except (KeyError, IndexError):
                 task.status = 'X'
 
-            logger.info("Task %s end status %s",
-                        task.id, task.status)
+            logger.debug("Task %s end status %s",
+                         task.id, task.status)
             ret = self.container.release()
             self.queue.task_done()
         self.container.close()
@@ -174,14 +174,14 @@ class Engine(object):
         self.queue.join()
 
         # stop workers
-        logger.info("join: stop workers")
+        logger.debug("join: stop workers")
         for _ in self.async_femags:
             self.queue.put(None)
 
         # wait for all workers
-        logger.info("join: join workers")
+        logger.debug("join: join workers")
         for async_femag in self.async_femags:
             async_femag.join()
 
-        logger.info("join: done")
+        logger.debug("join: done")
         return [t.status for t in self.job.tasks]

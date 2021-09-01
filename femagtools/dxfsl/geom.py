@@ -2915,19 +2915,26 @@ class Geometry(object):
 
         windings = [a for a in self.list_of_areas()
                     if a.type == 2]
-        if len(windings) > 2:
+        windings_found = len(windings)
+        logger.info("%d windings found", windings_found)
+
+        if windings_found > 1:
             windings_surface = [[w.surface, w] for w in windings]
             windings_surface.sort(reverse=True)
-            [w.set_type(0) for w in windings]
             max_size = windings_surface[0][0]
-            if windings_surface[1][0] / max_size > 0.95:
-                windings = [windings_surface[0][1],
-                            windings_surface[1][1]]
-                [w.set_type(2) for w in windings]
-            else:
+            for sz, w in windings_surface:
+                if sz / max_size < 0.95:
+                    w.set_type(0)
+
+            windings = [a for a in self.list_of_areas()
+                        if a.is_winding()]
+            if windings_found > 2 and len(windings) == 1:
+                # no windings
                 [w.set_type(0) for w in windings]
                 [a.set_type(1) for a in self.list_of_areas() if a.is_iron()]
                 windings = []
+            elif len(windings) < windings_found:
+                logger.info("%d windings remaining", len(windings))
 
         wdg_min_angle = 99
         wdg_max_angle = 0

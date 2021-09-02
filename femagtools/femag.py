@@ -499,7 +499,6 @@ class ZmqFemag(BaseFemag):
 
         errmsg = ''
         try:
-            logger.info("send")
             for m in msg[:-1]:
                 self.request_socket.send_string(m, flags=zmq.SNDMORE)
             if isinstance(msg[-1], list):
@@ -507,7 +506,6 @@ class ZmqFemag(BaseFemag):
             else:
                 self.request_socket.send_string(msg[-1])
 
-            logger.info("reveive")
             return self.request_socket.recv_multipart()
         except zmq.error.Again as e:
             # logger.exception("send_request")
@@ -745,7 +743,7 @@ class ZmqFemag(BaseFemag):
         return [response[0].decode('latin1'),
                 response[1] if len(response) else b'']
 
-    def exportsvg(self, fslcmds, timeout=10000):
+    def exportsvg(self, fslcmds, timeout=2000):
         """get svg format from fsl commands (if any graphic created)
         (since FEMAG 8.5 Rev 3343) """
         response = self.send_request(['SVG', fslcmds], timeout=timeout)

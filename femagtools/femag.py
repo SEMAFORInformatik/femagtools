@@ -497,23 +497,24 @@ class ZmqFemag(BaseFemag):
         else:
             self.request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
 
-        while True:
-            try:
-                for m in msg[:-1]:
-                    self.request_socket.send_string(m, flags=zmq.SNDMORE)
-                if isinstance(msg[-1], list):
-                    self.request_socket.send_string('\n'.join(msg[-1]))
-                else:
-                    self.request_socket.send_string(msg[-1])
+        errmsg = ''
+        try:
+            logger.info("send")
+            for m in msg[:-1]:
+                self.request_socket.send_string(m, flags=zmq.SNDMORE)
+            if isinstance(msg[-1], list):
+                self.request_socket.send_string('\n'.join(msg[-1]))
+            else:
+                self.request_socket.send_string(msg[-1])
 
-                return self.request_socket.recv_multipart()
-            except zmq.error.Again:
-                pass
-
-            except Exception as e:
-                # logger.exception("send_request")
-                logger.info("send_request: %s Message %s", str(e), msg)
-                return [b'{"status":"error", "message":"' + str(e).encode() + b'"}']
+            logger.info("reveive")
+            return self.request_socket.recv_multipart()
+        except zmq.error.Again as e:
+            # logger.exception("send_request")
+            errmsg = str(e)
+            logger.warning("send_request: %s Message %s", str(e), msg)
+        logger.info("oops")
+        return [b'{"status":"error", "message":"' + errmsg.encode() + b'"}']
 
     def send_fsl(self, fsl, timeout=None):
         """sends FSL commands in ZMQ mode and blocks until commands are processed
@@ -698,20 +699,22 @@ class ZmqFemag(BaseFemag):
     def clear(self, timeout=2000):
         """clear lua script session"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'clear'], timeout=timeout)]
+                for r in self.send_request(['CONTROL', 'clear'],
+                                           timeout=timeout)]
 
     def cleanup(self, timeout=2000):
         """remove all FEMAG files in working directory 
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
-                for r in self.send_request(['CONTROL', 'cleanup'], timeout=timeout)]
+                for r in self.send_request(['CONTROL', 'cleanup'],
+                                           timeout=timeout)]
 
     def release(self):
         """signal finish calculation task to load balancer to free resources
         (Docker Cloud environment only)
         """
         return [r.decode('latin1')
-                for r in self.send_request(['close'])]
+                for r in self.send_request(['close'], timeout=1000)]
 
     def info(self, timeout=2000):
         """get various resource information 
@@ -738,14 +741,14 @@ class ZmqFemag(BaseFemag):
     def getfile(self, filename=''):
         """get file (FEMAG 8.5 Rev 3282 or greater only)"""
         response = self.send_request(
-            ['CONTROL', 'getfile = {}'.format(filename)])
+            ['CONTROL', f'getfile = {filename}'], timeout=1000)
         return [response[0].decode('latin1'),
                 response[1] if len(response) else b'']
 
-    def exportsvg(self, fslcmds):
+    def exportsvg(self, fslcmds, timeout=10000):
         """get svg format from fsl commands (if any graphic created)
         (since FEMAG 8.5 Rev 3343) """
-        response = self.send_request(['SVG', fslcmds])
+        response = self.send_request(['SVG', fslcmds], timeout=timeout)
         rc = json.loads(response[0].decode('latin1'))
         if rc['status'] == 'ok':
             return self.getfile(rc['result_file'][0])

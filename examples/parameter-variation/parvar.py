@@ -12,7 +12,7 @@ from femagtools.multiproc import Engine
 # fr
 # from femagtools.google import Engine
 #
-import femagtools.grid
+import femagtools.lhs
 import femagtools.poc
 import logging
 import numpy as np
@@ -21,7 +21,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 parvardef = {
     "objective_vars": [
-        {"name": "dqPar.torque[-1]",
+        {"name": "machine.torque",
          "label": "Load Torque/Nm"},
         {"name": "torque[-1].ripple",
          "label": "Torque Ripple/Nm"},
@@ -37,8 +37,8 @@ parvardef = {
     ]
 }
 
-poc = femagtools.poc.HspPoc(harm=[1,5],
-                            amp=[1,0.01],
+poc = femagtools.poc.HspPoc(harm=[1, 5],
+                            amp=[1, 0.01],
                             phi=[0, 0])
 
 operatingConditions = {
@@ -147,28 +147,28 @@ if __name__ == '__main__':
     except OSError:
         pass
 
-    parvar = femagtools.grid.Grid(workdir,
-                                  magnetizingCurves=magnetizingCurve,
-                                  magnets=magnetMat)
+    parvar = femagtools.lhs.LatinHypercube(workdir,
+                                           magnetizingCurves=magnetizingCurve,
+                                           magnets=magnetMat)
 
-    # keep the BCH/BATCH files of each run 
+    # keep the BCH/BATCH files of each run
     repdir = os.path.join(workdir, 'report')
     try:
         os.makedirs(repdir)
     except OSError:
         pass
-#    parvar.set_report_directory(repdir)
+    parvar.set_report_directory(repdir)
 
-    # start calculation 
-    results = parvar(parvardef, machine, operatingConditions, engine)
+    # start calculation
+    results = parvar(parvardef, machine, operatingConditions,
+                     engine, num_samples=8)
+    print(results)
     with open('results.json', 'w') as fp:
         json.dump(results, fp)
-        
+
     # print results
-    x = femagtools.grid.create_parameter_range(results['x'])
-    
-    f = np.reshape(results['f'], (np.shape(results['f'])[0], np.shape(x)[0])).T
-    f[f==None] = float('nan')
+    x = results['x']
+    f = results['f']
 
     # print header
     print(' '.join(['{:15}'.format(s)
@@ -178,14 +178,14 @@ if __name__ == '__main__':
                      for o in parvardef['objective_vars']]]))
     print()
     # print values in table format
-    for l in np.hstack((x, f)):
+    for l in np.vstack((x, f)).T:
         print(' '.join(['{:15.2f}'.format(y) for y in l]))
 
     # create scatter plot
     #
     fig = pl.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(x[:, 0], x[:, 1], np.array(f[:, 0]))
+    ax.scatter(x[0], x[1], np.array(f[0]))
     ax.set_xlabel(parvardef['decision_vars'][0]['label'])
     ax.set_ylabel(parvardef['decision_vars'][1]['label'])
     ax.set_zlabel(parvardef['objective_vars'][0]['label'])

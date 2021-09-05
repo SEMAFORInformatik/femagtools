@@ -42,7 +42,7 @@ setup(
     author_email='tar@semafor.ch',
     version=version,
     platforms="any",
-    install_requires=['numpy', 'scipy', 'mako', 'six', 'lmfit',
+    install_requires=['numpy', 'scipy>=1.7', 'mako', 'six', 'lmfit',
                       'dxfgrabber', 'networkx', 'netCDF4'],
     extras_require={"meshio": ["meshio", "lxml"]},
     packages=['femagtools', 'femagtools.moo', 'femagtools.dxfsl'],

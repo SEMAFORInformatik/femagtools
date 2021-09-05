@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    femagtools.grid
-    ~~~~~~~~~~~~~~~
+    femagtools.sobol
+    ~~~~~~~~~~~~~~~~
 
     Parameter range calculation using Sobol sampling
 

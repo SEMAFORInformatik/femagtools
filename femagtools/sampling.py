@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    femagtools.grid
-    ~~~~~~~~~~~~~~~
+    femagtools.sampling
+    ~~~~~~~~~~~~~~~~~~~
 
     Parameter range calculation
 

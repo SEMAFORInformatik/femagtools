@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    femagtools.grid
-    ~~~~~~~~~~~~~~~
+    femagtools.lhs
+    ~~~~~~~~~~~~~~
 
     Parameter range calculation using LatoinHypercube sampling
 

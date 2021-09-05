@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 #
+import pytest
 import femagtools.grid
+import femagtools.sampling
 import numpy as np
 import functools
 
@@ -24,16 +26,26 @@ def test_create_parameter_range():
                           [3, 5, 7]]
 
 
+@pytest.fixture
+def decision_vars():
+    return [
+        {"steps": 3, "bounds": [-50, 0],
+         "name": "angl_i_up", "label":"Beta"},
+        {"steps": 3, "bounds": [100, 200],
+         "name": "current", "label":"Current/A"}
+    ]
+
+
 def test_baskets():
     x = list(range(5))*5
-    baskets = femagtools.grid.baskets(x, 5)
+    baskets = femagtools.sampling.baskets(x, 5)
 
     for i, p in enumerate(baskets):
         assert p == [0, 1, 2, 3, 4]
     assert i == 4
 
-        
-def test_report():
+
+def test_report(decision_vars):
     objective_vars = [
         {"name": "dqPar.torque[-1]",
          "label": "Load Torque/Nm"},
@@ -43,22 +55,15 @@ def test_report():
          "label": "Iron Losses/W"}
     ]
 
-    decision_vars = [
-        {"steps": 3, "bounds": [-50, 0],
-         "name": "angl_i_up", "label":"Beta"},
-        {"steps": 3, "bounds": [100, 200],
-         "name": "current", "label":"Current/A"}
-    ]
+    shape = [len(objective_vars)] + [d['steps'] for d in decision_vars]
+    a = [0]*len(objective_vars)*functools.reduce(
+        (lambda x, y: x * y), [d['steps'] for d in decision_vars])
+    objectives = np.reshape(a, shape)
 
-    domain = [list(np.linspace(d['bounds'][0], d['bounds'][1], d['steps']))
-              for d in decision_vars]
-    objectives = np.reshape([0]*len(objective_vars)*functools.reduce(
-        (lambda x, y: x * y),
-        [d['steps'] for d in decision_vars]),
-                            [len(objective_vars)] + [d['steps']
-                                                     for d in decision_vars])
-    expected = [[d['label'] for d in decision_vars] + [o['label'] for o in objective_vars] +['Directory'],
-                [d['name'] for d in decision_vars] + [o['name'] for o in objective_vars], 
+    expected = [[d['label'] for d in decision_vars] +
+                [o['label'] for o in objective_vars] + ['Directory'],
+                [d['name'] for d in decision_vars] +
+                [o['name'] for o in objective_vars],
                 [-50.0, 100.0, 0.0, 0.0, 0.0, 0],
                 [-25.0, 100.0, 0.0, 0.0, 0.0, 1],
                 [-0.0,  100.0, 0.0, 0.0, 0.0, 2],
@@ -68,7 +73,28 @@ def test_report():
                 [-50.0, 200.0, 0.0, 0.0, 0.0, 6],
                 [-25.0, 200.0, 0.0, 0.0, 0.0, 7],
                 [-0.0, 200.0, 0.0, 0.0, 0.0, 8]]
-    assert expected == femagtools.grid.get_report(decision_vars,
-                                                  objective_vars, objectives, domain)
 
-    
+    domain = [list(np.linspace(d['bounds'][0], d['bounds'][1], d['steps']))
+              for d in decision_vars]
+    par_range = femagtools.grid.create_parameter_range(domain)
+    assert expected == femagtools.sampling.get_report(decision_vars,
+                                                      objective_vars, objectives,
+                                                      par_range)
+
+
+def test_sobol(decision_vars):
+    import femagtools.sobol
+    parvar = femagtools.sobol.Sobol('.')
+    N = 4
+    n, d, r = parvar._get_names_and_range(decision_vars, N)
+    assert [d['name'] for d in decision_vars] == n
+    assert r.shape == (N, len(decision_vars))
+
+
+def test_lhs(decision_vars):
+    import femagtools.lhs
+    parvar = femagtools.lhs.LatinHypercube('.')
+    N = 4
+    n, d, r = parvar._get_names_and_range(decision_vars, N)
+    assert [d['name'] for d in decision_vars] == n
+    assert r.shape == (N, len(decision_vars))

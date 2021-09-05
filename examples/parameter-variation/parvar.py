@@ -12,7 +12,10 @@ from femagtools.multiproc import Engine
 # fr
 # from femagtools.google import Engine
 #
+import femagtools.sobol
+import femagtools.grid
 import femagtools.lhs
+
 import femagtools.poc
 import logging
 import numpy as np
@@ -147,9 +150,10 @@ if __name__ == '__main__':
     except OSError:
         pass
 
-    parvar = femagtools.lhs.LatinHypercube(workdir,
-                                           magnetizingCurves=magnetizingCurve,
-                                           magnets=magnetMat)
+    # try grid.Grid, sobol.Sobol, lhs.LatinHypercube
+    parvar = femagtools.sobol.Sobol(workdir,
+                                    magnetizingCurves=magnetizingCurve,
+                                    magnets=magnetMat)
 
     # keep the BCH/BATCH files of each run
     repdir = os.path.join(workdir, 'report')
@@ -157,7 +161,7 @@ if __name__ == '__main__':
         os.makedirs(repdir)
     except OSError:
         pass
-    parvar.set_report_directory(repdir)
+    # parvar.set_report_directory(repdir)
 
     # start calculation
     results = parvar(parvardef, machine, operatingConditions,

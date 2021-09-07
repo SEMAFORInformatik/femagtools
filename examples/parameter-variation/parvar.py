@@ -2,7 +2,7 @@
 """
  Parameter Variation with Femag
  """
-import os
+import pathlib
 import json
 from femagtools.multiproc import Engine
 # instead you can use on of the following
@@ -142,12 +142,8 @@ logging.basicConfig(level=logging.INFO,
 if __name__ == '__main__':
     engine = Engine()
 
-    userdir = os.path.expanduser('~')
-    workdir = os.path.join(userdir, 'parvar')
-    try:
-        os.makedirs(workdir)
-    except OSError:
-        pass
+    workdir = pathlib.Path.home() / 'parvar'
+    workdir.mkdir(parents=True, exist_ok=True)
 
     # try List, Grid, Sobol, LatinHypercube
     parvar = femagtools.parstudy.LatinHypercube(workdir,
@@ -155,11 +151,8 @@ if __name__ == '__main__':
                                                 magnets=magnetMat)
 
     # keep the BCH/BATCH files of each run
-    repdir = os.path.join(workdir, 'report')
-    try:
-        os.makedirs(repdir)
-    except OSError:
-        pass
+    repdir = workdir / 'report'
+    workdir.mkdir(parents=True, exist_ok=True)
     # parvar.set_report_directory(repdir)
 
     # start calculation

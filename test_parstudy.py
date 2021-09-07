@@ -2,7 +2,7 @@
 #
 import pytest
 import femagtools.grid
-import femagtools.sampling
+import femagtools.parstudy
 import numpy as np
 import functools
 
@@ -38,7 +38,7 @@ def decision_vars():
 
 def test_baskets():
     x = list(range(5))*5
-    baskets = femagtools.sampling.baskets(x, 5)
+    baskets = femagtools.parstudy.baskets(x, 5)
 
     for i, p in enumerate(baskets):
         assert p == [0, 1, 2, 3, 4]
@@ -77,14 +77,13 @@ def test_report(decision_vars):
     domain = [list(np.linspace(d['bounds'][0], d['bounds'][1], d['steps']))
               for d in decision_vars]
     par_range = femagtools.grid.create_parameter_range(domain)
-    assert expected == femagtools.sampling.get_report(decision_vars,
+    assert expected == femagtools.parstudy.get_report(decision_vars,
                                                       objective_vars, objectives,
                                                       par_range)
 
 
 def test_sobol(decision_vars):
-    import femagtools.sobol
-    parvar = femagtools.sobol.Sobol('.')
+    parvar = femagtools.parstudy.Sobol('.')
     N = 4
     n, d, r = parvar._get_names_and_range(decision_vars, N)
     assert [d['name'] for d in decision_vars] == n
@@ -92,8 +91,7 @@ def test_sobol(decision_vars):
 
 
 def test_lhs(decision_vars):
-    import femagtools.lhs
-    parvar = femagtools.lhs.LatinHypercube('.')
+    parvar = femagtools.parstudy.LatinHypercube('.')
     N = 4
     n, d, r = parvar._get_names_and_range(decision_vars, N)
     assert [d['name'] for d in decision_vars] == n

@@ -12,9 +12,8 @@ from femagtools.multiproc import Engine
 # fr
 # from femagtools.google import Engine
 #
-import femagtools.sobol
-import femagtools.grid
-import femagtools.lhs
+# chose sampling method
+import femagtools.parstudy
 
 import femagtools.poc
 import logging
@@ -44,7 +43,7 @@ poc = femagtools.poc.HspPoc(harm=[1, 5],
                             amp=[1, 0.01],
                             phi=[0, 0])
 
-operatingConditions = {
+simulation = {
     "num_move_steps": 49,
     "angl_i_up": 0.0,
     "calculationMode": "pm_sym_fast",
@@ -150,10 +149,10 @@ if __name__ == '__main__':
     except OSError:
         pass
 
-    # try grid.Grid, sobol.Sobol, lhs.LatinHypercube
-    parvar = femagtools.sobol.Sobol(workdir,
-                                    magnetizingCurves=magnetizingCurve,
-                                    magnets=magnetMat)
+    # try List, Grid, Sobol, LatinHypercube
+    parvar = femagtools.parstudy.LatinHypercube(workdir,
+                                                magnetizingCurves=magnetizingCurve,
+                                                magnets=magnetMat)
 
     # keep the BCH/BATCH files of each run
     repdir = os.path.join(workdir, 'report')
@@ -164,9 +163,9 @@ if __name__ == '__main__':
     # parvar.set_report_directory(repdir)
 
     # start calculation
-    results = parvar(parvardef, machine, operatingConditions,
+    results = parvar(parvardef, machine, simulation,
                      engine, num_samples=8)
-    print(results)
+
     with open('results.json', 'w') as fp:
         json.dump(results, fp)
 

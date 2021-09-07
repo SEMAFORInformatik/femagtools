@@ -3,8 +3,7 @@
 This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
 ## Release 1.1
-- additional sampling methods for parameter variation: Sobol, LatinHypercube
-  Incompatible Changes: report filename sampling-report.csv, result dict: f, x orthognal tables
+- new module parstudy with sampling methods for parameter variation: List, Grid, Sobol, LatinHypercube
 
 ## Release 1.0.18
 - added losses parts stator, rotor for model specific iron subregions

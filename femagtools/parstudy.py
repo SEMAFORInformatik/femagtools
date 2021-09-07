@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-    femagtools.sampling
+    femagtools.parstudy
     ~~~~~~~~~~~~~~~~~~~
 
-    Parameter range calculation
+    Parameter study simulation
 
 
 
 """
+import scipy as sc
 import logging
 import glob
 import os
 import time
 import numpy as np
+import scipy as sc
 import femagtools
 import femagtools.model
 import femagtools.fsl
@@ -58,11 +60,12 @@ def chunks(l, n):
         yield l[i:i+n]
 
 
-class Sampling(object):
+class ParameterStudy(object):
     """abstract base class for parameter variation calculation"""
 
     def __init__(self, workdir,
-                 magnetizingCurves=None, magnets=None, result_func=None):  # tasktype='Task'):
+                 magnetizingCurves=None, magnets=None, result_func=None,
+                 repname='grid'):  # tasktype='Task'):
         #self.tasktype = tasktype
         self.result_func = result_func
         self.femag = femagtools.Femag(workdir,
@@ -71,6 +74,7 @@ class Sampling(object):
         # rudimentary: gives the ability to stop a running parameter variation. thomas.maier/OSWALD
         self.stop = False
         self.reportdir = ''
+        self.repname = repname  # prefix for report filename ..-report.csv
         """
         the "owner" of the Grid have to take care to terminate all running xfemag64 or wfemagw64
         processes after setting stop to True
@@ -295,7 +299,7 @@ class Sampling(object):
                 self._write_report(decision_vars, objective_vars,
                                    objectives, par_range)
             return dict(f=objectives,
-                        x=par_range.T.tolist())
+                        x=domain)
         except ValueError as v:
             logger.error(v)
             return dict(f=f, x=domain)
@@ -307,8 +311,105 @@ class Sampling(object):
         return self.bchmapper_data
 
     def _write_report(self, decision_vars, objective_vars, objectives, par_range):
-        with open(os.path.join(self.reportdir, 'sampling-report.csv'), 'w') as f:
+        with open(os.path.join(self.reportdir, f'{self.repname}-report.csv'), 'w') as f:
             for line in get_report(decision_vars, objective_vars,
                                    objectives, par_range):
                 f.write(';'.join([str(v) for v in line]))
                 f.write('\n')
+
+
+class List(ParameterStudy):
+    """List Parameter variation calculation"""
+
+    def __init__(self, workdir,
+                 magnetizingCurves=None, magnets=None, result_func=None):  # tasktype='Task'):
+        super(self.__class__, self).__init__(workdir,
+                                             magnetizingCurves, magnets, result_func,
+                                             repname='list')
+
+    def _get_names_and_range(self, dvars, num_samples):
+        if 'list' in dvars:
+            par_range = dvars['list']
+            domain = [r for r in zip(*par_range)]
+            dnames = dvars['columns']
+        else:
+            domain = [d['values'] for d in dvars]
+            par_range = [r for r in zip(*domain)]
+            dnames = [d['name'] for d in dvars]
+        return dnames, domain, par_range
+
+
+class LatinHypercube(ParameterStudy):
+    """Latin Hypercube sampling parameter variation calculation"""
+
+    def __init__(self, workdir,
+                 magnetizingCurves=None, magnets=None, result_func=None):  # tasktype='Task'):
+        super(self.__class__, self).__init__(workdir,
+                                             magnetizingCurves, magnets, result_func,
+                                             repname='lhs')
+
+    def _get_names_and_range(self, dvars, num_samples):
+        dvarnames = [d['name'] for d in dvars]
+        l_bounds = [d['bounds'][0] for d in dvars]
+        u_bounds = [d['bounds'][1] for d in dvars]
+
+        N = num_samples
+        sampler = sc.stats.qmc.LatinHypercube(d=len(l_bounds), centered=True)
+        sample = sampler.random(n=N)
+        par_range = sc.stats.qmc.scale(sample, l_bounds, u_bounds)
+        domain = par_range.T.tolist()
+        return dvarnames, domain, par_range
+
+
+class Sobol(ParameterStudy):
+    """Sobol sampling parameter variation calculation"""
+
+    def __init__(self, workdir,
+                 magnetizingCurves=None, magnets=None, result_func=None):  # tasktype='Task'):
+        super(self.__class__, self).__init__(workdir,
+                                             magnetizingCurves, magnets, result_func,
+                                             repname='sobol')
+
+    def _get_names_and_range(self, dvars, num_samples):
+        dvarnames = [d['name'] for d in dvars]
+        l_bounds = [d['bounds'][0] for d in dvars]
+        u_bounds = [d['bounds'][1] for d in dvars]
+
+        N = num_samples
+        sampler = sc.stats.qmc.Sobol(d=len(l_bounds), scramble=False)
+        sample = sampler.random_base2(m=round(np.log(N)/np.log(2)))
+        par_range = sc.stats.qmc.scale(sample, l_bounds, u_bounds)
+        domain = par_range.T.tolist()
+        return dvarnames, domain, par_range
+
+
+class Grid(ParameterStudy):
+    """Grid Parameter variation calculation"""
+
+    def __init__(self, workdir,
+                 magnetizingCurves=None, magnets=None, result_func=None):  # tasktype='Task'):
+        super(self.__class__, self).__init__(workdir,
+                                             magnetizingCurves, magnets, result_func)
+
+        def __create_parameter_range(self, domain):
+            """returns the transposed array of the combined domain values"""
+            L = [len(d) for d in domain]
+            LS = np.prod(L)
+            s = []
+            e = 1
+            for d in domain:
+                LS = LS//len(d)
+                s.append(np.repeat(d*LS, e))
+                e = e*L[0]
+                L = L[1:]
+            return np.array(s).T
+
+    def _get_names_and_range(self, dvars, num_samples):
+        dvarnames = [d['name'] for d in dvars]
+        domain = [list(np.linspace(d['bounds'][0],
+                                   d['bounds'][1],
+                                   d['steps']))
+                  for d in dvars]
+
+        par_range = self.create_parameter_range(domain)
+        return dvarnames, [r for r in zip(*par_range)], par_range

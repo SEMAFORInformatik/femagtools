@@ -9,7 +9,7 @@
 
 """
 import logging
-import femagtools.sampling
+import femagtools.parstudy
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def create_parameter_range(domain):
     return np.array(s).T
 
 
-class Grid(femagtools.sampling.Sampling):
+class Grid(femagtools.parstudy.ParameterStudy):
     """Grid Parameter variation calculation"""
 
     def __init__(self, workdir,
@@ -41,7 +41,7 @@ class Grid(femagtools.sampling.Sampling):
         if isinstance(dvars, dict):
             dvarnames = dvars['columns']
             par_range = dvars['list']
-            domain = par_range
+            domain = [r for r in zip(*par_range)]
         else:
             dvarnames = [d['name'] for d in dvars]
             domain = [list(np.linspace(d['bounds'][0],

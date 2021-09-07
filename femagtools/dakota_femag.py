@@ -90,10 +90,10 @@ if __name__ == '__main__':
             try:
                 if l.strip():
                     k, n = l.split('=')
-                    if k.strip() in ('num_prosses', 'num_threads', 'port'):
+                    if k.strip() in ('process_count', 'num_threads', 'port'):
                         config[k.strip()] = int(n.strip())
                     else:
-                        config[k.strip()] = int(n.strip())
+                        config[k.strip()] = n.strip()
             except ValueError as e:
                 logging.warning(e)
 

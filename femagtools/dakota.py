@@ -59,9 +59,15 @@ class Dakota(object):
             logger.error('File {} not found'.format(templ))
             raise FileNotFoundError(templ)
 
+    def _write_engine_conf(self, engine):
+        # env f'ENGINE_{k.upper()}={engine[k]}' for k in engine]))
+        (self.femag.workdir / 'engine.conf').write_text(
+            '\n'.join([f'{k}={engine[k]}' for k in engine])+'\n')
+
     def __call__(self, study, machine, simulation,
                  engine, num_samples=0):
         """prepare input files and run dakota"""
+        self._write_engine_conf(engine)
         (self.femag.workdir / 'model.py').write_text(
             '\n'.join([
                 f'magnetMat={self.femag.magnets}',
@@ -80,13 +86,13 @@ class Dakota(object):
 
         with open(outname, 'w') as out, open(errname, 'w') as err:
             logger.info('invoking %s', ' '.join(args))
-#            proc = subprocess.Popen(
-#                args,
-#                stdout=out, stderr=err, cwd=self.femag.workdir)
+            proc = subprocess.Popen(
+                args,
+                stdout=out, stderr=err, cwd=self.femag.workdir)
 
-#        ret = proc.wait()
-#        if ret:
-#            raise RuntimeError(errname.read_text())
+        ret = proc.wait()
+        if ret:
+            raise RuntimeError(errname.read_text())
         varnames = ([d['name'] for d in study['decision_vars']] +
                     [o['name'] for o in study['objective_vars']])
         data = np.loadtxt(self.femag.workdir / 'femag.dat',

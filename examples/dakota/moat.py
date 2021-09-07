@@ -127,8 +127,11 @@ if __name__ == '__main__':
 
     # start calculation
     results = moat(parvardef, machine, simulation,
+                   # engine=dict(module='femagtools.docker',
+                   #            num_threads=8, port=5555
+                   #            dispatcher='localhost'))
                    engine=dict(module='femagtools.multiproc',
-                               num_samples=8))
+                               process_count=8))
 
     with open('results.json', 'w') as fp:
         json.dump(results, fp)

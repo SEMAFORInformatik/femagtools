@@ -4,6 +4,7 @@ This document lists the major changes in femagtools. Please clone this project t
 
 ## Release 1.1
 - new module parstudy with sampling methods for parameter variation: List, Grid, Sobol, LatinHypercube
+- dakota integration
 
 ## Release 1.0.18
 - added losses parts stator, rotor for model specific iron subregions
@@ -13,7 +14,7 @@ This document lists the major changes in femagtools. Please clone this project t
 - improved meshing with auxiliary lines in dxf fsl conversion
 - added Bch reader and plot for tubular machines (R/Z Coordinate System)
 - fixed asm parameter ident for delta connected windings
-	
+
 ## Release 1.0.16
 - windings with zoneplan and mmf
 - AC simulation with EEC parameter identification

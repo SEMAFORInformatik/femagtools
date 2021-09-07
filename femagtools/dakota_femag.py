@@ -87,11 +87,20 @@ if __name__ == '__main__':
     cfg = pathlib.Path('engine.conf')
     if cfg.exists():
         for l in cfg.read_text().split('\n'):
-            k, n = l.split('=')
-            config[k.strip()] = n.strip()
+            try:
+                if l.strip():
+                    k, n = l.split('=')
+                    if k.strip() in ('num_prosses', 'num_threads', 'port'):
+                        config[k.strip()] = int(n.strip())
+                    else:
+                        config[k.strip()] = int(n.strip())
+            except ValueError as e:
+                logging.warning(e)
 
-    module = importlib.import_module(config['module'])
+    modname = config['module']
+    module = importlib.import_module(modname)
     config.pop('module')
+    logging.info("Engine %s config %s", modname, config)
     engine = module.Engine(**config)
     results = parvar(parvardef, model.machine, model.simulation, engine)
 

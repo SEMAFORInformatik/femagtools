@@ -252,47 +252,55 @@ class MachineModel(Model):
                     names.append((self.stator[mcvname], fillfac))
 
         if 'magnet' in self.__dict__:
-            fillfac = self.magnet.get('fillfac', 1.0)
-            try:
-                if (self.magnet['mcvkey_yoke'] != 'dummy' and
-                        'mcvkey_yoke_name' not in self.magnet):
-                    if magcurves:
-                        mcv = magcurves.find(self.magnet['mcvkey_yoke'])
-                    if mcv:
-                        logger.debug('magnet mcv %s', mcv)
-                        self.magnet['mcvkey_yoke'] = magcurves.fix_name(
-                            mcv, fillfac)
-                        self.magnet['mcvkey_yoke_name'] = mcv
-                        names.append((mcv, fillfac))
-                    else:
-                        missing.append(self.magnet['mcvkey_yoke'])
-                        logger.error('magnet mcv %s not found',
-                                     self.magnet['mcvkey_yoke'])
-                elif 'mcvkey_yoke_name' in self.magnet:
-                    names.append((self.magnet['mcvkey_yoke_name'], fillfac))
+            rotor = self.magnet
+            subregion = 'magnet'
+        else:
+            rotor = self.rotor
+            subregion = 'rotor'
 
-            except KeyError:
-                pass
+        fillfac = rotor.get('fillfac', 1.0)
+        try:
+            if (rotor['mcvkey_yoke'] != 'dummy' and
+                    'mcvkey_yoke_name' not in rotor):
+                if magcurves:
+                    mcv = magcurves.find(rotor['mcvkey_yoke'])
+                if mcv:
+                    logger.debug('%s mcv %s',
+                                 subregion, mcv)
+                    rotor['mcvkey_yoke'] = magcurves.fix_name(
+                        mcv, fillfac)
+                    rotor['mcvkey_yoke_name'] = mcv
+                    names.append((mcv, fillfac))
+                else:
+                    missing.append(rotor['mcvkey_yoke'])
+                    logger.error('%s mcv %s not found',
+                                 subregion,
+                                 rotor['mcvkey_yoke'])
+            elif 'mcvkey_yoke_name' in rotor:
+                names.append((rotor['mcvkey_yoke_name'], fillfac))
 
-            try:
-                if (self.magnet['mcvkey_shaft'] != 'dummy' and
-                        'mcvkey_shaft_name' not in self.magnet):
-                    if magcurves:
-                        mcv = magcurves.find(self.magnet['mcvkey_shaft'])
-                    if mcv:
-                        logger.debug('shaft mcv %s', mcv)
-                        self.magnet['mcvkey_shaft'] = magcurves.fix_name(mcv)
-                        self.stator['mcvkey_shaft_name'] = mcv
-                        names.append((mcv, 1.0))
-                    else:
-                        missing.append(self.magnet['mcvkey_shaft'])
-                        logger.error('magnet shaft %s not found',
-                                     self.magnet['mcvkey_shaft'])
-                elif 'mcvkey_shaft_name' in self.magnet:
-                    names.append((self.stator['mcvkey_shaft_name'], 1.0))
+        except KeyError:
+            pass
 
-            except KeyError:
-                pass
+        try:
+            if (rotor['mcvkey_shaft'] != 'dummy' and
+                    'mcvkey_shaft_name' not in rotor):
+                if magcurves:
+                    mcv = magcurves.find(rotor['mcvkey_shaft'])
+                if mcv:
+                    logger.debug('shaft mcv %s', mcv)
+                    rotor['mcvkey_shaft'] = magcurves.fix_name(mcv)
+                    self.stator['mcvkey_shaft_name'] = mcv
+                    names.append((mcv, 1.0))
+                else:
+                    missing.append(rotor['mcvkey_shaft'])
+                    logger.error(' shaft %s not found',
+                                 rotor['mcvkey_shaft'])
+            elif 'mcvkey_shaft_name' in rotor:
+                names.append((self.stator['mcvkey_shaft_name'], 1.0))
+
+        except KeyError:
+            pass
 
         if 'magnet' in self.__dict__:
             magnet = 0
@@ -365,6 +373,9 @@ class MachineModel(Model):
             if isinstance(self.dxffile, dict):
                 return True
         return False
+
+    def has_magnet(self):  # either rotor or magnet
+        return hasattr(self, 'magnet')
 
 
 class FeaModel(Model):

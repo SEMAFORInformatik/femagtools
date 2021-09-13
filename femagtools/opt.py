@@ -182,7 +182,8 @@ class Optimizer(object):
             return '<?>'
         results['objective'] = [label(o) for o in objective_vars]
         results['decision'] = [label(d) for d in decision_vars]
-        results['population'] = [i.results for i in self.pop.individuals]
+        results['population'] = [i.results
+                                 for i in self.pop.individuals if hasattr(i, 'results')]
         return results
 
     #print("\nChampion: {}\n".format(pop.champion['f']))

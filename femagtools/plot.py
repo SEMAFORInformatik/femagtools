@@ -1402,10 +1402,6 @@ def winding_factors(wdg, n=8, ax=0):
 
 
 def winding(wdg, ax=0):
-    windings(wdg, ax)
-
-
-def winding(wdg, ax=0):
     """plot coils of windings wdg"""
     from matplotlib.patches import Rectangle
     from matplotlib.lines import Line2D

@@ -15,7 +15,7 @@
  Number of slots per pole and phase: q = Q/p/2/m
  Number of coils per phase: c = Q * l/2/m
  Number of parallel circuits (coil groups): g
- Number of windings per phase: w1 = Q * n * l/2/m/g
+ Number of turns per phase: w1 = Q * n * l/2/m/g
 """
 import numpy as np
 import femagtools.bch
@@ -401,14 +401,14 @@ if __name__ == "__main__":
 
     if sys.argv[1:]:
         bch = femagtools.bch.read(sys.argv[1])
-        wdgs = Windings(bch)
+        wdgs = Winding(bch)
     else:
         testdata = [
             dict(Q=90, p=12, m=3, l=2, coilwidth=1),
             dict(Q=54, p=6, m=3, l=2, coilwidth=5),
             dict(Q=168, p=7, m=3, l=2, coilwidth=10)]
 
-        wdgs = Windings(testdata[1])
+        wdgs = Winding(testdata[1])
 
     c = wdgs.mmf()
     # print('alfa0={0:6.3f}'.format(wdgs.axis()/np.pi*180))

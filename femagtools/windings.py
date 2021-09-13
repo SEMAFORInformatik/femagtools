@@ -50,7 +50,7 @@ def q1q2yk(Q, p, m, l=1):
     return q1, q2, Yk, Qb
 
 
-class Windings(object):
+class Winding(object):
 
     def __init__(self, arg):
         if isinstance(arg, femagtools.bch.Reader):
@@ -140,7 +140,7 @@ class Windings(object):
     def kwp(self, n=0):
         """pitch factor"""
         nue = self.kw_order(n)
-        return np.abs(np.sin(nue*self.yd*np.pi/self.Q))
+        return np.sin(nue*self.yd*np.pi/self.Q)
 
     def kwd(self, n=0):
         """zone (distribution) factor"""
@@ -151,8 +151,8 @@ class Windings(object):
             return np.sin(q1*x)/(q1*np.sin(x))
         x = nue*np.pi*Yk/self.Q
         k = 2 if self.l == 1 else 1
-        return np.abs(((np.sin(k*x*q1) - np.cos(x*Qb)*np.sin(k*x*q2)) /
-                       ((q1+q2)*np.sin(k*x))))
+        return -((np.sin(k*x*q1) - np.cos(x*Qb)*np.sin(k*x*q2)) /
+                 ((q1+q2)*np.sin(k*x)))
 
     def kw(self, n=0):
         """return winding factor"""
@@ -288,7 +288,7 @@ class Windings(object):
     def diagram(self) -> ET.Element:
         """return winding diagram as svg element"""
         coil_len = 25
-        coil_height = 3
+        coil_height = 4
         dslot = 8
         arrow_head_length = 2
         arrow_head_width = 2
@@ -299,7 +299,9 @@ class Windings(object):
         if z[-1]:
             xoff = 0.75
         yd = dslot*self.yd
+        mh = 2*coil_height/yd
         slots = sorted([abs(n) for m in z[0] for n in m])
+        smax = slots[-1]*dslot
         ET.register_namespace("", "http://www.w3.org/2000/svg")
         svg = ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
                                      viewBox=f"0, -30, {slots[-1] * dslot + 15}, 40"))
@@ -331,22 +333,36 @@ class Windings(object):
             for m, mslots in enumerate(layer):
                 for k in mslots:
                     slotpos = abs(k) * dslot + b
-                    p = [
-                        "", f"L {slotpos} {-coil_len//2+2} M {slotpos} {-coil_len//2-1} L {slotpos} {-coil_len}"]
+                    pc = [f"L {slotpos} {-coil_len//2+2} M {slotpos} {-coil_len//2-1}",
+                          f"L {slotpos} {-coil_len}"]
                     if (k > 0 and i == 0) or (k < 0 and i == 0 and self.l > 1):
-                        if not p[0]:
-                            # p[0] = f"M {slotpos+yd//2-1} {coil_height + 4} L {slotpos+yd//2-1} {coil_height} L {slotpos} 0"
-                            p[0] = f"M {slotpos+yd//2-xoff} {coil_height} L {slotpos} 0"
-                        p.append(
-                            f"L {slotpos+yd//2-xoff} {-coil_len-coil_height}")
+                        # from right bottom
+                        if slotpos + yd > smax+b:
+                            dx = dslot if yd > dslot else yd/4
+                            ph = [f"M {slotpos+yd//2-xoff+dx} {coil_height-mh*dx}",
+                                  f"L {slotpos+yd//2-xoff} {coil_height} L {slotpos} 0"]
+                            pt = [f"L {slotpos+yd//2-xoff} {-coil_len-coil_height}",
+                                  f"L {slotpos+yd//2-xoff+dx} {-coil_len-coil_height+mh*dx}"]
+                        else:
+                            ph = [
+                                f"M {slotpos+yd//2-xoff} {coil_height} L {slotpos} 0"]
+                            pt = [
+                                f"L {slotpos+yd//2-xoff} {-coil_len-coil_height}"]
                     else:
-                        if not p[0]:
-                            # p[0] = f"M {slotpos-yd//2+1} {coil_height + 4} L {slotpos-yd//2+1} {coil_height} L {slotpos} 0"
-                            p[0] = f"M {slotpos-yd//2+xoff} {coil_height} L {slotpos} 0"
-                        p.append(
-                            f"L {slotpos-yd//2+xoff} {-coil_len-coil_height}")
+                        # from left bottom
+                        if slotpos - yd < 0:  # and slotpos - yd > -3*dslot:
+                            dx = dslot if yd > dslot else yd/4
+                            ph = [f"M {slotpos-yd//2+xoff-dx} {coil_height-mh*dx}",
+                                  f"L {slotpos-yd//2+xoff} {coil_height} L {slotpos} 0"]
+                            pt = [f"L {slotpos-yd//2+xoff} {-coil_len-coil_height}",
+                                  f"L {slotpos-yd//2+xoff-dx} {-coil_len-coil_height+mh*dx}"]
+                        else:
+                            ph = [
+                                f"M {slotpos-yd//2+xoff} {coil_height} L {slotpos} 0"]
+                            pt = [
+                                f"L {slotpos-yd//2+xoff} {-coil_len-coil_height}"]
                     e = ET.SubElement(g, "path", {
-                        "d": ' '.join(p),
+                        "d": ' '.join(ph + pc + pt),
                         "stroke-width": strokewidth[w],
                         "stroke": coil_color[m]})
 

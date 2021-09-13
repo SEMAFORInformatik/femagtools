@@ -178,6 +178,13 @@ class BaseFemag(object):
         import femagtools.isa7
         return femagtools.isa7.read(os.path.join(self.workdir, modelname))
 
+    def read_nc(self, modelname=None):
+        "read most recent NC file and return result"
+        if not modelname:
+            modelname = self._get_modelname_from_log()
+        import femagtools.nc
+        return femagtools.nc.read(os.path.join(self.workdir, modelname))
+
     def read_los(self, modelname=None):
         "read most recent LOS file and return result"
         # read latest los file if any

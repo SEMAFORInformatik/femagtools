@@ -254,9 +254,12 @@ class MachineModel(Model):
         if 'magnet' in self.__dict__:
             rotor = self.magnet
             subregion = 'magnet'
-        else:
+        elif 'rotor' in self.__dict__:
             rotor = self.rotor
             subregion = 'rotor'
+        else:
+            # no magnet no rotor
+            return set(names)
 
         fillfac = rotor.get('fillfac', 1.0)
         try:

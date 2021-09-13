@@ -436,8 +436,10 @@ class Builder:
 
                 model.set_num_slots_gen()
             if hasattr(model, 'magnet'):
-                rotor = (self.create_magnet_model(model) +
-                         self.create_magnet(model, magnetMat))
+                rotor = (self.create_magnet(model) +
+                         self.create_magnet_model(model))
+                if magnetMat:
+                    rotor += self.create_magnet(model, magnetMat)
             else:
                 rotor = self.create_rotor_model(model)
             windings = model.windings

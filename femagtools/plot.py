@@ -1529,12 +1529,14 @@ def main():
         else:  # Permanent Magnet
             ncols = 1
 
-        fig, ax = plt.subplots(nrows=1, ncols=ncols)
+        fig, ax = plt.subplots(nrows=1, ncols=ncols, figsize=(10, 6))
         if ncols > 1:
-            mcv_hbj(mcv, ax[0, 0])
-            mcv_muer(mcv, ax[0, 1])
+            plt.subplot(1, 2, 1)
+            mcv_hbj(mcv)
+            plt.subplot(1, 2, 2)
+            mcv_muer(mcv)
         else:
-            mcv_hbj(mcv, log=False, ax=ax)
+            mcv_hbj(mcv, log=False)
 
         fig.tight_layout()
         fig.subplots_adjust(top=0.94)

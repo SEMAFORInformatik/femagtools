@@ -483,10 +483,10 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel(machine)
         magnets = femagtools.magnet.Magnet(magnetmat)
         fsl = self.builder.create_model(model, magnets)
-        self.assertEqual(len(fsl), 168)
+        self.assertEqual(len(fsl), 172)
         brem = [l.strip() for l in fsl
-                if l.split('=')[0].strip() == 'm.remanenc'][0]
-        self.assertEqual(brem.split('=')[-1].strip(), '1.1')
+                if l.split('=')[0].strip() == 'm.remanenc']
+        self.assertEqual(brem[-1].split('=')[-1].strip(), '1.1')
 
 
 if __name__ == '__main__':

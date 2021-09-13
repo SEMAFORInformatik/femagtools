@@ -391,18 +391,18 @@ class Grid(ParameterStudy):
         super(self.__class__, self).__init__(workdir,
                                              magnetizingCurves, magnets, result_func)
 
-        def __create_parameter_range(self, domain):
-            """returns the transposed array of the combined domain values"""
-            L = [len(d) for d in domain]
-            LS = np.prod(L)
-            s = []
-            e = 1
-            for d in domain:
-                LS = LS//len(d)
-                s.append(np.repeat(d*LS, e))
-                e = e*L[0]
-                L = L[1:]
-            return np.array(s).T
+    def __create_parameter_range(self, domain):
+        """returns the transposed array of the combined domain values"""
+        L = [len(d) for d in domain]
+        LS = np.prod(L)
+        s = []
+        e = 1
+        for d in domain:
+            LS = LS//len(d)
+            s.append(np.repeat(d*LS, e))
+            e = e*L[0]
+            L = L[1:]
+        return np.array(s).T
 
     def _get_names_and_range(self, dvars, num_samples):
         dvarnames = [d['name'] for d in dvars]
@@ -411,5 +411,5 @@ class Grid(ParameterStudy):
                                    d['steps']))
                   for d in dvars]
 
-        par_range = self.create_parameter_range(domain)
+        par_range = self.__create_parameter_range(domain)
         return dvarnames, [r for r in zip(*par_range)], par_range

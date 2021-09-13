@@ -30,7 +30,7 @@ wpar = dict(Q=54, p=6, m=3,
 
 @ pytest.fixture()
 def wdg():
-    return femagtools.windings.Windings(wpar)
+    return femagtools.windings.Winding(wpar)
 
 
 def test_slots(wdg):
@@ -56,14 +56,14 @@ def test_winding_factor(wdg):
 
 
 def test_winding_creation_1():
-    wdg = femagtools.windings.Windings(dict(Q=12, p=2, m=3, l=1))
+    wdg = femagtools.windings.Winding(dict(Q=12, p=2, m=3, l=1))
     assert wdg.slots(1).tolist() == [
         [1,  4], [7, 10]]
     assert wdg.zoneplan() == ([[1, -4], [3, -6], [-2, 5]], [])
 
 
 def test_winding_creation_2():
-    wdg = femagtools.windings.Windings(dict(Q=48, p=4, m=3, l=1))
+    wdg = femagtools.windings.Winding(dict(Q=48, p=4, m=3, l=1))
     assert wdg.slots(1).tolist() == [
         [1,  2,  7,  8],
         [13, 14, 19, 20],

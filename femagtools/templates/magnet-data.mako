@@ -31,9 +31,13 @@
 %else:
 %if model.get('magnwidth',0):
  m.magsegwid      =    ${model.get('magnwidth')*1e3}
+%elif model.get('magnsegwidth',0):
+ m.magsegwid      =    ${model.get('magnsegwidth')*1e3}
 %endif
-%if model.get('magseglen',0):
+%if model.get('magnlength',0):
  m.magseglen     =    ${model.get('magnlength')*1e3}
+%if model.get('magnseglength',0):
+ m.magseglen     =    ${model.get('magnseglength')*1e3}
 %endif
 %endif
 

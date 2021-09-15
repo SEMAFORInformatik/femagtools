@@ -596,8 +596,10 @@ temcoefbr         Temperature Coefficient of Br  -0.001     1/K
 temcoefhc         Temperature Coefficient of Hc  -0.001     A/m/K
 magntemp          Magnet Temperature             20         °C      
 magncond          Electr. Conductivity           625000      S/m    
-magnwidth         Magnet width                    0.0       m     
-magnlength        Magnet length in z direction   0.0        m      
+magnwidth         Magnet segment width (obsol.)  0.0         m     
+magnlength        Magn. segment length (obsol.)  0.0         m      
+magnsegwidth      Magnet segment width           0.0         m     
+magnseglength     Magnet segment length          0.0         m      
 ==============   ============================== ==========  ========
 
 .. Note::

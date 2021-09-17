@@ -402,7 +402,7 @@ def insert_block(dwg, insert_entity, lf, rf, block, min_dist=0.001):
                             rotation=insert_entity.rotation):
                 yield l
         elif e.dxftype == 'INSERT':
-            logger.warn("Nested Insert of Block %s", e.name)
+            logger.debug("Nested Insert of Block %s", e.name)
             block = dwg.blocks[e.name]
             for l in insert_block(dwg, e, lf, rf, block, min_dist=min_dist):
                 yield l
@@ -488,7 +488,7 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 for l in spline(e, lf, min_dist=mindist):
                     yield l
             elif e.dxftype == 'INSERT':
-                logger.warn("Insert of Block %s", e.name)
+                logger.debug("Insert of Block %s", e.name)
                 block = dwg.blocks[e.name]
                 for l in insert_block(dwg, e, lf, rf, block, min_dist=mindist):
                     yield l

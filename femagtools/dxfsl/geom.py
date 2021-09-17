@@ -199,7 +199,7 @@ def intersect(a, b):
         ccw(b.p1, b.p2, a.p1) != ccw(b.p1, b.p2, a.p2)
 
 
-def polylines(entity, lf, rf):
+def polylines(entity, lf, rf, xoff=0.0, yoff=0.0, rotation=0.0):
     """returns a collection of bulged vertices
     http://www.afralisp.net/archive/lisp/Bulges1.htm
     """
@@ -245,13 +245,17 @@ def polylines(entity, lf, rf):
                               radius=np.abs(r),
                               start_angle=sa/rf,
                               end_angle=ea/rf),
-                      lf, rf)
+                      lf, rf,
+                      xoff=xoff, yoff=yoff,
+                      rotation=rotation)
         else:
-            yield Line(Element(start=p1, end=p2), lf)
+            yield Line(Element(start=p1, end=p2), lf,
+                       xoff=xoff, yoff=yoff,
+                       rotation=rotation)
         i += 1
 
 
-def lw_polyline(entity, lf):
+def lw_polyline(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
     """returns a collection of bulged vertices
     http://www.afralisp.net/archive/lisp/Bulges1.htm
     """
@@ -263,23 +267,31 @@ def lw_polyline(entity, lf):
     if points:
         p1 = points[0]
         for p2 in points[1:]:
-            yield Line(Element(start=p1, end=p2), lf)
+            yield Line(Element(start=p1, end=p2), lf,
+                       xoff=xoff, yoff=yoff,
+                       rotation=rotation)
             p1 = p2
     if entity.is_closed:
-        yield Line(Element(start=p1, end=points[0]), lf)
+        yield Line(Element(start=p1, end=points[0]), lf,
+                   xoff=xoff, yoff=yoff,
+                   rotation=rotation)
 
 
-def spline(entity, lf, min_dist=0.001):
+def spline(entity, lf, min_dist=0.001, xoff=0.0, yoff=0.0, rotation=0.0):
     if False:
         yield Line(Element(start=entity.control_points[0],
-                           end=entity.control_points[-1]), lf)
+                           end=entity.control_points[-1]), lf,
+                   xoff=xoff, yoff=yoff,
+                   rotation=rotation)
         return
 
     if False:
         p_prev = None
         for p in entity.control_points:
             if p_prev:
-                yield Line(Element(start=p_prev, end=p), lf)
+                yield Line(Element(start=p_prev, end=p), lf,
+                           xoff=xoff, yoff=yoff,
+                           rotation=rotation)
             p_prev = p
         return
 
@@ -291,16 +303,22 @@ def spline(entity, lf, min_dist=0.001):
         dist_2e = distance(p2, pe)
         if dist_2e < min_dist:
             logger.debug("SPLINE: ignor small end-distance %s", dist_2e)
-            yield Line(Element(start=p1, end=pe), lf)
+            yield Line(Element(start=p1, end=pe), lf,
+                       xoff=xoff, yoff=yoff,
+                       rotation=rotation)
             return
 
         if dist_12 > min_dist:
-            yield Line(Element(start=p1, end=p2), lf)
+            yield Line(Element(start=p1, end=p2), lf,
+                       xoff=xoff, yoff=yoff,
+                       rotation=rotation)
             p1 = p2
         else:
             logger.debug("SPLINE: ignor small distance %s", dist_12)
 
-    yield Line(Element(start=p1, end=pe), lf)
+    yield Line(Element(start=p1, end=pe), lf,
+               xoff=xoff, yoff=yoff,
+               rotation=rotation)
 
 
 def face3d(entity, lf):
@@ -314,7 +332,7 @@ def face3d(entity, lf):
                                     entity.points[ip][2])))
 
 
-def insert_block(insert_entity, lf, rf, block, min_dist=0.001):
+def insert_block(dwg, insert_entity, lf, rf, block, min_dist=0.001):
     logger.debug('Insert %s entities from block %s',
                  len(block),
                  insert_entity.name)
@@ -327,13 +345,18 @@ def insert_block(insert_entity, lf, rf, block, min_dist=0.001):
     logger.debug('Col spacing = %s', insert_entity.col_spacing)
 
     if insert_entity.insert != (0.0, 0.0, 0.0):
-        logger.error('Different Location in Insert not supported')
-        return
+        logger.debug('Different Location in Insert')
 
-    if not (insert_entity.scale == (1.0, 1.0, 1.0) or
-            insert_entity.scale == (1.0, 1.0, 0.0)):
+    xoff = insert_entity.insert[0]
+    yoff = insert_entity.insert[1]
+
+    scale = (round(insert_entity.scale[0], 8),
+             round(insert_entity.scale[1], 8),
+             round(insert_entity.scale[2], 8))
+    if not (scale == (1.0, 1.0, 1.0) or
+            scale == (1.0, 1.0, 0.0)):
         logger.error('Block scaling in Insert not supported')
-        logger.error('  scale = {}'.format(insert_entity.scale))
+        logger.error('  scale = {}'.format(scale))
         return
 
     if(insert_entity.row_count > 1 or
@@ -343,29 +366,47 @@ def insert_block(insert_entity, lf, rf, block, min_dist=0.001):
         logger.error('Multi Block references in Insert not supported')
         return
 
-    if insert_entity.rotation != 0.0:
-        logger.error('Block Insert with rotation not supported')
-        return
-
     for e in block:
         if e.dxftype == 'ARC':
-            yield Arc(e, lf, rf)
+            logger.debug("Block Arc")
+            yield Arc(e, lf, rf,
+                      xoff=xoff, yoff=yoff,
+                      rotation=insert_entity.rotation)
         elif e.dxftype == 'CIRCLE':
-            logger.debug("Circle %s, Radius %f", e.center[:2], e.radius)
-            yield Circle(e, lf)
+            logger.debug("Block Circle %s, Radius %f", e.center[:2], e.radius)
+            yield Circle(e, lf,
+                         xoff=xoff, yoff=yoff,
+                         rotation=insert_entity.rotation)
         elif e.dxftype == 'LINE':
-            yield Line(e, lf)
+            logger.debug("Block Line")
+            yield Line(e, lf,
+                       xoff=xoff, yoff=yoff,
+                       rotation=insert_entity.rotation)
         elif e.dxftype == 'POLYLINE':
-            for p in polylines(e, lf, rf):
+            logger.debug("Block Polyline")
+            for p in polylines(e, lf, rf,
+                               xoff=xoff, yoff=yoff,
+                               rotation=insert_entity.rotation):
                 yield p
         elif e.dxftype == 'LWPOLYLINE':
-            for p in lw_polyline(e, lf):
+            logger.debug("Block lwPolyline")
+            for p in lw_polyline(e, lf,
+                                 xoff=xoff, yoff=yoff,
+                                 rotation=insert_entity.rotation):
                 yield p
         elif e.dxftype == 'SPLINE':
-            for l in spline(e, lf, min_dist=min_dist):
+            logger.debug("Block spline")
+            for l in spline(e, lf,
+                            min_dist=min_dist,
+                            xoff=xoff, yoff=yoff,
+                            rotation=insert_entity.rotation):
                 yield l
         elif e.dxftype == 'INSERT':
-            logger.warn("Nested Insert of Blocks not supported")
+            logger.warn("Nested Insert of Block %s", e.name)
+            block = dwg.blocks[e.name]
+            for l in insert_block(dwg, e, lf, rf, block, min_dist=min_dist):
+                yield l
+
         else:
             logger.warn("unknown type %s in block %s",
                         e.dxftype, insert_entity.name)
@@ -447,8 +488,9 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 for l in spline(e, lf, min_dist=mindist):
                     yield l
             elif e.dxftype == 'INSERT':
+                logger.warn("Insert of Block %s", e.name)
                 block = dwg.blocks[e.name]
-                for l in insert_block(e, lf, rf, block, min_dist=mindist):
+                for l in insert_block(dwg, e, lf, rf, block, min_dist=mindist):
                     yield l
             elif e.dxftype == 'ELLIPSE':
                 w = np.linalg.norm(e.major_axis) * 2
@@ -2770,11 +2812,12 @@ class Geometry(object):
 
             if aux_lines:
                 aux_lines['keys'] = my_keys
-                notouch_dist_list.append([dist_to_parent, aux_lines])
+                x = len(notouch_dist_list)
+                notouch_dist_list.append([dist_to_parent, x, aux_lines])
 
         # sort over distances to parent
         notouch_dist_list.sort(reverse=True)
-        for d, aux in notouch_dist_list:
+        for d, x, aux in notouch_dist_list:
             aux_line = aux.get('int', None)
             if aux_line:
                 if aux_line['pattern'] in created_lines:

@@ -217,6 +217,10 @@ class Shape(object):
     def concatenate_arc(self, n1, n2, el):
         return None
 
+    def rotate(self, T, p):
+        n = T.dot(np.array((p[0], p[1])))
+        return (n[0], n[1])
+
     def print_nodes(self):
         return " n1={}/n2={}".format(self.n1, self.n2)
 
@@ -234,9 +238,17 @@ class Shape(object):
 class Circle(Shape):
     """a circle with center and radius"""
 
-    def __init__(self, e, lf=1, color=None, attr=None):
+    def __init__(self, e, lf=1, color=None, attr=None,
+                 xoff=0.0, yoff=0.0, rotation=0.0):
         self.init_attributes(color, attr)
-        self.center = lf*e.center[0], lf*e.center[1]
+        if rotation != 0.0:
+            alpha = rotation * np.pi/180
+            T = np.array(((np.cos(alpha), -np.sin(alpha)),
+                          (np.sin(alpha), np.cos(alpha))))
+            center = self.rotate(T, e.center)
+        else:
+            center = e.center
+        self.center = lf*center[0] + xoff, lf*center[1] + yoff
         self.radius = lf*e.radius
         self.p1 = self.center[0]-self.radius, self.center[1]
         self.p2 = self.center[0]+self.radius, self.center[1]
@@ -525,11 +537,14 @@ class Circle(Shape):
 class Arc(Circle):
     """a counter clockwise segment of a circle with start and end point"""
 
-    def __init__(self, e, lf=1, rf=np.pi/180, color=None, attr=None):
-        super(self.__class__, self).__init__(e, lf)
+    def __init__(self, e, lf=1, rf=np.pi/180, color=None, attr=None,
+                 xoff=0.0, yoff=0.0, rotation=0.0):
+        super(self.__class__, self).__init__(e, lf,
+                                             xoff=xoff, yoff=yoff,
+                                             rotation=rotation)
         self.init_attributes(color, attr)
-        self.startangle = e.start_angle*rf
-        self.endangle = e.end_angle*rf
+        self.startangle = (e.start_angle + rotation) * rf
+        self.endangle = (e.end_angle + rotation) * rf
         if self.endangle < self.startangle:
             if self.endangle < 0:
                 self.endangle += 2*np.pi
@@ -954,10 +969,20 @@ class Arc(Circle):
 class Line(Shape):
     """straight connection between start and end point"""
 
-    def __init__(self, e, lf=1, color=None, attr=None):
+    def __init__(self, e, lf=1, color=None, attr=None,
+                 xoff=0.0, yoff=0.0, rotation=0.0):
         self.init_attributes(color, attr)
-        self.p1 = lf*e.start[0], lf*e.start[1]
-        self.p2 = lf*e.end[0], lf*e.end[1]
+        if rotation != 0.0:
+            alpha = rotation * np.pi/180
+            T = np.array(((np.cos(alpha), -np.sin(alpha)),
+                          (np.sin(alpha), np.cos(alpha))))
+            start = self.rotate(T, e.start)
+            end = self.rotate(T, e.end)
+        else:
+            start = e.start
+            end = e.end
+        self.p1 = lf*start[0] + xoff, lf*start[1] + yoff
+        self.p2 = lf*end[0] + xoff, lf*end[1] + yoff
         self.n1 = None
         self.n2 = None
 

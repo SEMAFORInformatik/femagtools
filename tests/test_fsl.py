@@ -110,7 +110,7 @@ class FslBuilderTest(unittest.TestCase):
             wedge_width3=333e-5)
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 36)
+        self.assertEqual(len(fsl), 37)
 
     def test_statorBG(self):
         self.m['stator']['statorBG'] = dict(
@@ -483,7 +483,7 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel(machine)
         magnets = femagtools.magnet.Magnet(magnetmat)
         fsl = self.builder.create_model(model, magnets)
-        self.assertEqual(len(fsl), 172)
+        self.assertEqual(len(fsl), 173)
         brem = [l.strip() for l in fsl
                 if l.split('=')[0].strip() == 'm.remanenc']
         self.assertEqual(brem[-1].split('=')[-1].strip(), '1.1')

@@ -50,6 +50,7 @@ x2, y2 = pd2c(dy2/2, taup)
 rotate_copy_nodechains(P1.x, P1.y, P2.x, P2.y, x1, y1, x2, y2, m.npols_gen-1)
 
 if mcvkey_yoke ~= nil and mcvkey_yoke ~= 'dummy' then
+  m.rlength         =     ${model.get('rlength', 1)*100}  
   def_mat_fm_nlin((P3.x + P5.x)/2, (P2.y + P3.y)/2, "blue", mcvkey_yoke, m.rlength)
 else
   def_mat_fm((P3.x + P5.x)/2, (P2.y + P3.y)/2, 1000, m.rlength)

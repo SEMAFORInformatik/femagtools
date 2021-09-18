@@ -444,6 +444,17 @@ class Builder:
                 rotor = self.create_rotor_model(model)
             windings = model.windings
             windings['winding_inside'] = model.external_rotor
+            if model.commutator:
+                return (self.create_new_model(model) +
+                        self.create_cu_losses(windings) +
+                        self.create_fe_losses(model) +
+                        rotor +
+                        self.create_stator_model(model) +
+                        self.create_gen_winding(model) +
+                        self.mesh_airgap(model) +
+                        self.create_connect_models(model) +
+                        self.create_rotor_winding(model))
+
             return (self.create_new_model(model) +
                     self.create_cu_losses(windings) +
                     self.create_fe_losses(model) +

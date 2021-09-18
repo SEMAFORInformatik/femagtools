@@ -179,6 +179,16 @@ class MachineModel(Model):
         except (AttributeError):
             pass
         try:
+            if 'wdgtype' not in self.windings:
+                self.windings['wdgtype'] = 'SYM'
+        except AttributeError:
+            pass
+
+        try:
+            self.commutator = self.windings['wdgtype'] == 'CMM'
+        except AttributeError:
+            self.commutator = False
+        try:
             self.windings['cufilfact'] = self.windings['fillfac']
         except (KeyError, AttributeError):
             pass

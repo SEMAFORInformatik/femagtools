@@ -1,3 +1,24 @@
+% if model.windings['wdgtype'] == 'CMM':
+--  GEN_CMM_WDG
+
+m.s_or_w_windg    = ${model.windings.get('s_or_w_windg', 1)} --   Lap/wave/frog-leg winding = 1/2/3       
+m.numpl_sw        = ${model.windings.get('numpl_sw', 1)} --   Number of plex of lap winding: m_l      
+m.numpl_ww        = ${model.windings.get('numpl_ww', 1)} --   Number of plex of wave winding: m_w     
+m.foreward        = ${model.windings.get('foreward', 1)} --   Progressive = 1 / retrogressive = 2     
+m.num_wires       = ${model.windings.get('num_wires', 1)} --   Number of wires per slot side w_sp      
+m.current         =       0.00     --   Armat.-Wdg-Current[A] or flux[Vs/mm]    
+m.wind_type       =       1.00     --   Wdg-coil:1=w&cur;2=w&flux;3=bar&cur     
+m.num_layers      = ${model.windings.get('num_layers', 1)} --   Number of coil sides per slot layer:u   
+m.pitch_fact      = ${model.windings.get('pitch_fact', 1)} --   Short pitch factor : beta_v             
+m.dc_ac           = ${model.windings.get('dc_ac', 0)}     --   Current: DC: 0; AC: 1                   
+m.xcoil_1         =         35.767 --   center coordinate of 1. coil side [mm]  
+m.ycoil_1         =          4.49 --   center coordinate of 1. coil side [mm]  
+m.xcoil_2         =         27.0 --   center coordinate of 2. coil side [mm]  
+m.ycoil_2         =          3.2 --   center coordinate of 2. coil side [mm]  
+ 
+ pre_models("GEN_CMM_WDG")
+
+% else:
 --  Gen_winding
 if m.xcoil_1 ~= nil then
   m.wdg_location = 1 --stator
@@ -90,4 +111,5 @@ io.close(f);
 %endif
 % if 'num_poles' in model.windings:
 m.num_poles       =  ${model.poles}
+% endif
 % endif

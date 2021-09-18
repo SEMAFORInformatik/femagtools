@@ -54,8 +54,13 @@ dy2 = ${model.get(['inner_diam'])*1e3}
 % endif
 
 % if hasattr(model, 'stator'):
+% if 'magnetShell' in model.stator: # DC motor with CMM
+m.tot_num_slot    =   ${int(model.get(['rotor','num_slots']))}
+m.num_sl_gen      =   ${int(model.get(['rotor','num_slots_gen']))}
+% else:
 m.tot_num_slot    =   ${int(model.get(['stator','num_slots']))}
 m.num_sl_gen      =   ${int(model.get(['stator','num_slots_gen']))}
+% endif
 m.num_poles       =   ${int(model.get(['poles']))}
 m.num_pol_pair    =   m.num_poles/2
 m.num_slots       =   m.num_sl_gen 

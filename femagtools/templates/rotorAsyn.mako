@@ -29,6 +29,7 @@ pre_models("ROTOR_ASYN")
 -- yoke material
 
 if mcvkey_yoke ~= 'dummy' then
+   m.rlength         =     ${model.get('rlength', 1)*100}  
    x0, y0 = pd2c(dy2/2+0.1, 360/m.num_sl_gen/2+m.zeroangl)
    def_mat_fm_nlin(x0, y0, "blue", mcvkey_yoke, m.rlength)
 end

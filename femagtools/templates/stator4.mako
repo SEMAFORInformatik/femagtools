@@ -21,6 +21,7 @@ m.zeroangl        =     ${model['zeroangle']}
 pre_models( "STATOR_4")
 
 if mcvkey_teeth ~= nil then
+  m.rlength         =     ${model.get('rlength', 1)*100}  
   if da1 > da2 then
      r = (da1 + m.slot_height)/2
   else

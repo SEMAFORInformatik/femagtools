@@ -1573,9 +1573,11 @@ def main():
         bchresults.read(f.readlines())
 
     if (bchresults.type.lower().find(
-            'pm-synchronous-motor simulation') >= 0 or
+        'pm-synchronous-motor simulation') >= 0 or
         bchresults.type.lower().find(
-            'permanet-magnet-synchronous-motor') >= 0):
+            'permanet-magnet-synchronous-motor') >= 0 or
+        bchresults.type.lower().find(
+            'simulation pm/universal-motor') >= 0):
         pmrelsim(bchresults, bchresults.filename)
     elif bchresults.type.lower().find(
             'multiple calculation of forces and flux') >= 0:

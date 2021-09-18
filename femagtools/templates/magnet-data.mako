@@ -36,6 +36,7 @@
 %endif
 %if model.get('magnlength',0):
  m.magseglen     =    ${model.get('magnlength')*1e3}
+%endif
 %if model.get('magnseglength',0):
  m.magseglen     =    ${model.get('magnseglength')*1e3}
 %endif

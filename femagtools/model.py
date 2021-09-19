@@ -228,7 +228,7 @@ class MachineModel(Model):
         mcv = 0
         try:
             if magnetmat:
-                magnet = magnetmat.find(self.magnet['material'])
+                magnet = magnetmat.find(comp['material'])
             if magnet and 'mcvkey' in magnet:
                 if magcurves:
                     mcv = magcurves.find(magnet['mcvkey'])

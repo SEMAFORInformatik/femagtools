@@ -404,16 +404,18 @@ class Builder:
         magnetMat = {}
         if hasattr(model, 'magnet'):
             material = model.magnet.get('material', 0)
-            if magnets and material:
-                magnetMat = magnets.find(material)
-                if not magnetMat:
-                    raise FslBuilderError(
-                        'magnet material {} not found'.format(
-                            material))
-                try:
-                    magnetMat['magntemp'] = model.magn_temp
-                except AttributeError:
-                    magnetMat['magntemp'] = 20
+        elif hasattr(model, 'stator'):
+            material = model.stator.get('material', 0)
+        if magnets and material:
+            magnetMat = magnets.find(material)
+            if not magnetMat:
+                raise FslBuilderError(
+                    'magnet material {} not found'.format(
+                        material))
+            try:
+                magnetMat['magntemp'] = model.magn_temp
+            except AttributeError:
+                magnetMat['magntemp'] = 20
         if model.is_complete():
             logger.info("create new model '%s'", model.name)
             if model.is_dxffile():
@@ -445,11 +447,16 @@ class Builder:
             windings = model.windings
             windings['winding_inside'] = model.external_rotor
             if model.commutator:
+                magdata = []
+                if magnetMat:
+                    magdata = self.create_magnet(model, magnetMat)
+
                 return (self.create_new_model(model) +
                         self.create_cu_losses(windings) +
                         self.create_fe_losses(model) +
                         rotor +
                         self.create_stator_model(model) +
+                        magdata +
                         self.create_gen_winding(model) +
                         self.mesh_airgap(model) +
                         self.create_connect_models(model) +
@@ -478,8 +485,12 @@ class Builder:
         try:
             if magnetMat:
                 logger.info("Setting magnet properties %s", magnetMat['name'])
-                if 'rlen' in model.magnet:
-                    magnetMat['rlen'] = model.magnet['rlen']
+                if hasattr(model, 'magnet'):
+                    if 'rlen' in model.magnet:
+                        magnetMat['rlen'] = model.magnet['rlen']
+                elif hasattr(model, 'stator'):
+                    if 'magn_rlen' in model.stator:
+                        magnetMat['rlen'] = model.magnet['magn_rlen']
                 return self.__render(magnetMat, 'magnet-data')
             return ['m.remanenc       = {}'
                     .format(model.magnet.get('remanenc', 1.2)),

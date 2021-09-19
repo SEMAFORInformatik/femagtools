@@ -221,6 +221,34 @@ class MachineModel(Model):
         except AttributeError:
             return ''
 
+    def _set_magnet_material(comp):
+        names = []
+        missing = []
+        magnet = 0
+        mcv = 0
+        try:
+            if magnetmat:
+                magnet = magnetmat.find(self.magnet['material'])
+            if magnet and 'mcvkey' in magnet:
+                if magcurves:
+                    mcv = magcurves.find(magnet['mcvkey'])
+                if mcv:
+                    logger.debug('magnet mcv %s', mcv)
+                    comp['mcvkey_magnet'] = mcv
+                    names.append((mcv, 1.0))
+                else:
+                    missing.append(magnet['mcvkey'])
+                    logger.error('magnet mcv %s not found',
+                                 magnet['mcvkey'])
+        except KeyError:
+            pass
+        except AttributeError:
+            if 'material' in comp:
+                missing.append(comp['material'])
+                logger.error('magnet material %s not found',
+                             comp['material'])
+        return names, missing
+
     def set_magcurves(self, magcurves, magnetmat={}):
         """set and return real names of magnetizing curve material
 
@@ -260,6 +288,9 @@ class MachineModel(Model):
 
                 else:  # mcvname in self.stator:
                     names.append((self.stator[mcvname], fillfac))
+            n, m = self._set_magnet_material(self.stator)
+            names += n
+            missing += m
 
         if 'magnet' in self.__dict__:
             rotor = self.magnet
@@ -316,30 +347,9 @@ class MachineModel(Model):
             pass
 
         if 'magnet' in self.__dict__:
-            magnet = 0
-            mcv = 0
-            try:
-                if magnetmat:
-                    magnet = magnetmat.find(self.magnet['material'])
-                if magnet and 'mcvkey' in magnet:
-                    if magcurves:
-                        mcv = magcurves.find(magnet['mcvkey'])
-                    if mcv:
-                        logger.debug('magnet mcv %s', mcv)
-                        self.magnet['mcvkey_magnet'] = mcv
-                        names.append((mcv, 1.0))
-                    else:
-                        missing.append(magnet['mcvkey'])
-                        logger.error('magnet mcv %s not found',
-                                     magnet['mcvkey'])
-            except KeyError:
-                pass
-            except AttributeError:
-                if 'material' in self.magnet:
-                    missing.append(self.magnet['material'])
-                    logger.error('magnet material %s not found',
-                                 self.magnet['material'])
-
+            n, m = self._set_magnet_material(self.magnet)
+            missing += m
+            names += n
         if missing:
             raise MCerror("MC pars missing: {}".format(
                 ', '.join(set(missing))))

@@ -6,6 +6,9 @@ This document lists the major changes in femagtools. Please clone this project t
 - new module parstudy with sampling methods for parameter variation: List, Grid, Sobol, LatinHypercube
 - dakota integration
 
+## Release 1.0.19
+- added templates: srm, rotorKs2, magnetShell, com_motor_sim
+
 ## Release 1.0.18
 - added losses parts stator, rotor for model specific iron subregions
 - fixed cosys bug in isa/nc flux_density

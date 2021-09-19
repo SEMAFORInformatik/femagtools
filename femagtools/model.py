@@ -221,7 +221,7 @@ class MachineModel(Model):
         except AttributeError:
             return ''
 
-    def _set_magnet_material(comp):
+    def _set_magnet_material(comp, magnetmat):
         names = []
         missing = []
         magnet = 0
@@ -288,7 +288,7 @@ class MachineModel(Model):
 
                 else:  # mcvname in self.stator:
                     names.append((self.stator[mcvname], fillfac))
-            n, m = self._set_magnet_material(self.stator)
+            n, m = self._set_magnet_material(self.stator, magnetmat)
             names += n
             missing += m
 

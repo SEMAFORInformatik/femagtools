@@ -221,7 +221,7 @@ class MachineModel(Model):
         except AttributeError:
             return ''
 
-    def _set_magnet_material(comp, magcurves, magnetmat):
+    def _set_magnet_material(self, comp, magcurves, magnetmat):
         names = []
         missing = []
         magnet = 0

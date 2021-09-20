@@ -133,19 +133,19 @@ class Winding(object):
         """return winding factor harmonics"""
         if n == 0:
             return self.p
-        g = np.arange(0, n, 1)
+        g = np.arange(-n, n, 1)
         t = num_basic_windings(self.Q, self.p, self.l)
         return self.p + g * self.m*t
 
     def kwp(self, n=0):
         """pitch factor"""
-        nue = self.kw_order(n)
+        nue = n if not np.isscalar(n) else self.kw_order(n)
         return np.sin(nue*self.yd*np.pi/self.Q)
 
     def kwd(self, n=0):
         """zone (distribution) factor"""
         q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
-        nue = self.kw_order(n)
+        nue = n if not np.isscalar(n) else self.kw_order(n)
         if q1 == q2:
             x = nue*np.pi/self.Q
             return np.sin(q1*x)/(q1*np.sin(x))

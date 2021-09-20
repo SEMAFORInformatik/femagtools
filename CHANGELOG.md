@@ -2,6 +2,10 @@
 
 This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.1
+- new module parstudy with sampling methods for parameter variation: List, Grid, Sobol, LatinHypercube
+- dakota integration
+
 ## Release 1.0.19
 - added templates: srm, rotorKs2, magnetShell, com_motor_sim
 

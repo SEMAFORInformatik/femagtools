@@ -9,9 +9,8 @@ m.brush_width  = ${model.get('brush_width',1e-2)} -- Rel. brush width (Ref:taupe
 
 m.num_arm_bar  =  ${model.get('num_arm_bar',0)}  --ZA : number of armature bars
 m.num_fi_turn  =  ${model.get('num_fi_turn',0)}  --ZF : number of field windings
-m.num_pol_pai  =  m.num_poles/2    --Number of Pole Pairs :  p     (>= 1)
-m.num_par_wdg  =  ${model.get('num_par_wdg',1)}  --N.par.arm.circ: LapW:2a=2p WaveW:2a=2
-m.ex_conditio  =  ${model.get('ex_conditio',1)}
+m.num_par_wdg  =  ${model.get('num_par_wdg',2)}  --N.par.arm.circ: LapW:2a=2p WaveW:2a=2
+m.ex_condition  =  ${model.get('ex_condition',1)}
 m.speed      = ${model.get('speed',25)*60}
 m.forcedens = ${model.get('forcedens',0)}
 m.calc_react = ${model.get('calc_react',0)}

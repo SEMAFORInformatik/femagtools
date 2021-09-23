@@ -347,7 +347,7 @@ class MachineModel(Model):
             pass
 
         if 'magnet' in self.__dict__:
-            n, m = self._set_magnet_material(self.magnet)
+            n, m = self._set_magnet_material(self.magnet, magcurves, magnetmat)
             missing += m
             names += n
         if missing:

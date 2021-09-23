@@ -464,6 +464,16 @@ class ZmqFemag(BaseFemag):
         self.close()
         logger.debug("Destructor ZmqFemag")
 
+    def stopFemag(self):
+        if self.femagTask and self.femagTask.proc:
+            logger.info("stopFemagTask")
+            self.femagTask.proc.kill()
+            self.femagTask = None
+            self.request_socket = None
+            logger.info("stopFemagTask Done")
+        else:
+            logger.warning("stopFemag not implemented")
+
     def __req_socket(self):
         """returns a new request client"""
         context = zmq.Context.instance()
@@ -750,7 +760,7 @@ class ZmqFemag(BaseFemag):
         return [response[0].decode('latin1'),
                 response[1] if len(response) else b'']
 
-    def exportsvg(self, fslcmds, timeout=2000):
+    def exportsvg(self, fslcmds, timeout=10000):
         """get svg format from fsl commands (if any graphic created)
         (since FEMAG 8.5 Rev 3343) """
         response = self.send_request(['SVG', fslcmds], timeout=timeout)

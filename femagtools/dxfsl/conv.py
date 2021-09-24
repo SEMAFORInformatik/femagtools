@@ -179,6 +179,13 @@ def main():
         if part[1] not in ('in', 'out'):
             logger.info('{} has to be defined in/out'.format(part[0]))
             sys.exit(1)
+    if args.sym_part > 0:
+        if not part:
+            logger.error("Argument sympart only with Stator or Rotor")
+            sys.exit(1)
+        if args.sym_part not in (3, 4, 6, 8):
+            logger.error("Argument sympart not in (3, 4, 6, 8)")
+            sys.exit(1)
 
     if not args.write_fsl:
         if not (args.show_plots or args.show_areas or args.view):

@@ -37,6 +37,11 @@ def main():
                            help='stator without airgap in/out',
                            dest='stator',
                            default='')
+    argparser.add_argument('--sympart',
+                           help='forced symmetry part',
+                           dest='sym_part',
+                           type=int,
+                           default=0)
     argparser.add_argument('-a', '--airgap',
                            help='correct airgap',
                            dest='airgap',
@@ -183,6 +188,7 @@ def main():
                   rtol=args.rtol,    # relative pickdist toleranz
                   atol=args.atol,    # absolute pickdist toleranz
                   symtol=args.sym_tolerance,
+                  sympart=args.sym_part,
                   mindist=args.mindist,
                   split=args.split,
                   inner_name=args.inner,

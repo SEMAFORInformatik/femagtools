@@ -550,6 +550,21 @@ class Machine(object):
                              self.geom.symmetry_endangle()))
         return machine_slice
 
+    def get_forced_symmetry(self, part):
+        logger.debug("begin get_forced_symmetry")
+        if not self.is_full():
+            logger.error("it's not a full machine")
+            return None
+
+        startangle = 0.0
+        endangle = np.pi*2 / part
+        machine = self.copy(startangle, endangle)
+        machine.clear_cut_lines()
+        machine.repair_hull()
+        machine.set_alfa_and_corners()
+        logger.debug("end get_forced_symmetry")
+        return machine
+
     def get_third_symmetry_mirror(self):
         logger.debug("begin get_third_symmetry_mirror")
         first_thirdangle = third_angle(self.startangle, self.endangle)

@@ -14,6 +14,7 @@ from femagtools.dxfsl.plotrenderer import PlotRenderer
 import logging
 import logging.config
 import numpy as np
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ def symmetry_search(machine,
                     plt,  # plotter
                     kind,
                     symtol=0.0,
+                    sympart=0,
                     is_inner=False,
                     is_outer=False,
                     show_plots=True,
@@ -35,6 +37,17 @@ def symmetry_search(machine,
     if show_plots and debug_mode:
         plt.render_elements(machine.geom, Shape,
                             neighbors=True, title=kind)
+
+    if sympart > 0:
+        if not machine.is_full():
+            logger.error("force symmetry failed")
+            sys.exit(1)
+        machine_ok = machine.get_forced_symmetry(sympart)
+        machine_ok.set_minmax_radius()
+        machine_ok.create_auxiliary_lines()
+        machine_ok.set_kind(kind)
+        logger.info("*** End of symmetry search for %s ***", kind)
+        return machine_ok
 
     if not machine.find_symmetry(symtol):
         logger.info(" - {}: no symmetry axis found".format(kind))
@@ -94,6 +107,7 @@ def convert(dxfile,
             atol=0.005,
             mindist=0.0,
             symtol=0.001,
+            sympart=0,
             split=False,
             inner_name='inner',
             outer_name='outer',
@@ -349,6 +363,7 @@ def convert(dxfile,
                                   p,  # plot
                                   name,
                                   symtol=symtol,
+                                  sympart=sympart,
                                   show_plots=show_plots,
                                   rows=3,  # rows
                                   cols=2,  # cols

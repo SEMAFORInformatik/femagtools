@@ -339,7 +339,7 @@ class Reader(object):
         self.skip_block(3)
         self.skip_block(1 * 64)  # bnodes_mech
         self.skip_block(6)
-            
+
         self.ELEM_ISA_ELEM_REC_LOSS_DENS = self.next_block("f")
         self.skip_block(3)
         self.skip_block(1 * 64)
@@ -347,7 +347,7 @@ class Reader(object):
         self.skip_block(20)  # mcmax = 20
         self.skip_block(4)
         self.NUM_SE_MAGN_KEYS = self.next_block("i")[0]
-        
+
     def next_block(self, fmt):
         """
         Read binary data and return unpacked values according to format string.
@@ -447,15 +447,15 @@ class Isa7(object):
                                           reader.LINE_ISA_LINE_REC_LN_PNT_2)]
         logger.info("Nodes")
         self.nodes = [
-                Node(n + 1,
-                     reader.NODE_ISA_NODE_REC_ND_BND_CND[n],
-                     reader.NODE_ISA_NODE_REC_ND_PER_NOD[n],
-                     reader.NODE_ISA_ND_CO_RAD[n],
-                     reader.NODE_ISA_ND_CO_PHI[n],
-                     reader.NODE_ISA_NODE_REC_ND_CO_1[n],
-                     reader.NODE_ISA_NODE_REC_ND_CO_2[n],
-                     reader.NODE_ISA_NODE_REC_ND_VP_RE[n],
-                     reader.NODE_ISA_NODE_REC_ND_VP_IM[n])
+            Node(n + 1,
+                 reader.NODE_ISA_NODE_REC_ND_BND_CND[n],
+                 reader.NODE_ISA_NODE_REC_ND_PER_NOD[n],
+                 reader.NODE_ISA_ND_CO_RAD[n],
+                 reader.NODE_ISA_ND_CO_PHI[n],
+                 reader.NODE_ISA_NODE_REC_ND_CO_1[n],
+                 reader.NODE_ISA_NODE_REC_ND_CO_2[n],
+                 reader.NODE_ISA_NODE_REC_ND_VP_RE[n],
+                 reader.NODE_ISA_NODE_REC_ND_VP_IM[n])
             for n in range(len(reader.NODE_ISA_NODE_REC_ND_BND_CND))]
 
         logger.info("Nodechains")
@@ -481,7 +481,7 @@ class Isa7(object):
             except IndexError:
                 logger.warning('IndexError in nodes')
                 raise  # preserve the stack trace
-                    
+
         self.elements = []
         logger.info("Elements")
         for e in range(len(reader.ELEM_ISA_EL_NOD_PNTR)):
@@ -506,7 +506,7 @@ class Isa7(object):
                          reader.ELEM_ISA_ELEM_REC_EL_RELUC_2[e]),
                         (reader.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
                          reader.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
-                        loss_dens, # in W/m³
+                        loss_dens,  # in W/m³
                         reader.BR_TEMP_COEF/100)   # in 1/K
             )
         logger.info("SuperElements")
@@ -628,7 +628,7 @@ class Isa7(object):
                                      for e in self.elements])
 
         for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim',
-                      'MAGN_TEMPERATURE', 'BR_TEMP_COEF'):
+                  'MAGN_TEMPERATURE', 'BR_TEMP_COEF'):
             v = getattr(reader, a, '')
             if v:
                 setattr(self, a, v)
@@ -643,12 +643,14 @@ class Isa7(object):
         self.pos_el_fe_induction = np.asarray(reader.pos_el_fe_induction)
         try:
             self.beta_loss = np.asarray(reader.beta_loss)
-            self.curr_loss = np.array([c/np.sqrt(2) for c in reader.curr_loss]).tolist()
+            self.curr_loss = np.array([c/np.sqrt(2) for c in reader.curr_loss])
         except AttributeError:
-                pass
+            pass
         if len(np.asarray(reader.el_fe_induction_1).shape) > 2:
-            self.el_fe_induction_1 = np.asarray(reader.el_fe_induction_1).T/1000
-            self.el_fe_induction_2 = np.asarray(reader.el_fe_induction_2).T/1000
+            self.el_fe_induction_1 = np.asarray(
+                reader.el_fe_induction_1).T/1000
+            self.el_fe_induction_2 = np.asarray(
+                reader.el_fe_induction_2).T/1000
             self.eddy_cu_vpot = np.asarray(reader.eddy_cu_vpot).T/1000
         else:
             self.el_fe_induction_1 = np.asarray(
@@ -657,7 +659,8 @@ class Isa7(object):
                 [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
             self.eddy_cu_vpot = np.asarray(
                 [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
-        logger.info('El Fe Induction %s', np.asarray(reader.el_fe_induction_1).shape)
+        logger.info('El Fe Induction %s', np.asarray(
+            reader.el_fe_induction_1).shape)
 
     def get_subregion(self, name):
         """return subregion by name"""
@@ -674,7 +677,7 @@ class Isa7(object):
     def magnet_super_elements(self):
         """return superelements which are magnets"""
         return [self.superelements[i]
-                    for i in set([el.se_key for el in self.magnet_elements()])]
+                for i in set([el.se_key for el in self.magnet_elements()])]
 
     def magnet_elements(self):
         """return elements which are magnets"""
@@ -694,73 +697,61 @@ class Isa7(object):
         except IndexError:
             return None
 
-    def flux_density(self, x, y, icur, ibeta, cosys='cartes'):
-        """return move pos and flux density (bx, by) 
-        of element at pos x, y for current and beta
+    def flux_density(self, el, icur, ibeta):
+        """return move pos and flux density (bx, by) or (br, bt)
+        of element for current and beta 
 
         Arguments:
-          x,y: position of element
-          icur, ibeta: current and beta (load) index
-          cosys: coordinate system of model ('cartes', 'polar', 'cylind')
+          el: element
+          icur, ibeta: current and beta (load) index (0: noload, 1: zero, 2: as specified)
         """
-        el = self.get_element(x, y)
         ekey = el.key-1
         b1 = np.array(self.el_fe_induction_1[ekey, :, icur, ibeta])
         b2 = np.array(self.el_fe_induction_2[ekey, :, icur, ibeta])
-        if cosys == 'polar':
-            # 
-            a = np.arctan2(el.center[1], el.center[0])
-            bx, by = np.array(((np.cos(a), -np.sin(a)),
-                                     (np.sin(a), np.cos(a)))).dot(
-                                         ((b1),(b2)))
-            return dict(
-                pos = self.pos_el_fe_induction,
-                bx = bx,
-                by = by)
         return dict(
-            pos = self.pos_el_fe_induction,
-            bx = b1,
-            by= b2)
+            pos=self.pos_el_fe_induction,
+            bx=b1,
+            by=b2)
 
-    def flux_dens(self, x, y, icur, ibeta, cosys='cartes'):
-        return self.flux_density(x, y, icur, ibeta, cosys)
-    
-    def demagnetization(self, x, y, icur, ibeta, cosys='cartes'):
-        """return demagnetization Hx, Hy at pos (x,y) 
+    def flux_dens(self, x, y, icur, ibeta):
+        el = self.get_element(x, y)
+        return self.flux_density(x, y, icur, ibeta)
+
+    def demagnetization(self, el, icur, ibeta):
+        """return demagnetization Hx, Hy at element
         Arguments:
-          x, y : position
+          el: element
           icur, ibeta: current, beta index
           cosys: coodinate system of model ('polar', 'cartes', 'cylind')"""
-        el = self.get_element(x, y)
-        flxdens = self.flux_density(x,y, icur, ibeta, cosys)
-        return (flxdens['pos'], el.demag_b(np.arctan2(y, x),
-                                               (flxdens['bx'], flxdens['by']),
-                                    self.MAGN_TEMPERATURE))
-        
+        flxdens = self.flux_density(el, icur, ibeta)
+        return (flxdens['pos'], el.demag_b((flxdens['bx'], flxdens['by']),
+                                           self.MAGN_TEMPERATURE))
+
     def demag_situation(self, icur, ibeta, hlim):
         """return h max, h avg, area, pos for demag situation for
         each magnet
         Arguments:
           icur: cur amplitude index
-          ibeta: beta angle index 
+          ibeta: beta angle index (load)
           hlim: limit of demagnetization (kA/m)
         """
-        results=[]
+        results = []
         for se in self.magnet_super_elements():
             elements = np.array(se.elements)
-            demag = np.array([self.demagnetization(*el.center, icur, ibeta)[1]
-                        for el in elements])
+            demag = np.array([self.demagnetization(el, icur, ibeta)[1]
+                              for el in elements])
             ind = np.unravel_index(np.argmax(demag, axis=None), demag.shape)
             dmax = demag[:, ind[1]]
             area_tot = np.sum([e.area for e in elements])
-            area_demag = np.sum([e.area for e in elements[-dmax<hlim]])
+            area_demag = np.sum([e.area for e in elements[-dmax < hlim]])
             results.append(dict(
-                h_max=demag[ind],
-                h_avg=np.average(dmax),
+                h_max=-demag[ind],
+                h_avg=-np.average(dmax),
                 area_tot=area_tot,
                 area_demag=area_demag,
                 pos=self.pos_el_fe_induction[ind[1]]))
         return results
+
 
 class Point(object):
     def __init__(self, x, y):
@@ -853,7 +844,7 @@ class Element(BaseEntity):
                          (vertices[0].x - vertices[4].x))/2
         self.center = np.sum(
             [v.xy for v in vertices], axis=0)/len(vertices)
-        
+
     def flux_density(self, cosys='cartes'):
         """return flux density components of this element converted to cosys: cartes, cylind, polar"""
         ev = self.vertices
@@ -868,7 +859,7 @@ class Element(BaseEntity):
             delta = self.superelement.length * (y31 * x21 + y21 * x13)
 
             b1, b2 = ((x13 * a21 + x21 * a31) / delta,
-                    (-y31 * a21 + y21 * a31) / delta)
+                      (-y31 * a21 + y21 * a31) / delta)
 
         elif self.el_type == 2:
             y31 = ev[2].y - ev[0].y
@@ -892,14 +883,14 @@ class Element(BaseEntity):
             b2_b = (y21 * a34 - y31 * a24) / delta
 
             b1, b2 = ((b1_a + b1_b) / 2,
-                    (b2_a + b2_b) / 2)
+                      (b2_a + b2_b) / 2)
 
         if cosys == 'cartes':
             return (b1, b2)
         if cosys == 'polar':
             a = np.arctan2(self.center[1], self.center[0])
             br, bphi = np.array(((np.cos(a), np.sin(a)),
-                                 (-np.sin(a), np.cos(a)))).dot(((b1),(b2)))            
+                                 (-np.sin(a), np.cos(a)))).dot(((b1), (b2)))
             return br, bphi
         if cosys == 'cylind':
             xm = np.sum([e.x for e in ev])
@@ -913,16 +904,17 @@ class Element(BaseEntity):
     def is_magnet(self):
         """return True if the element is a permanent magnet"""
         return abs(self.mag[0]) > 1e-5 or abs(self.mag[1]) > 1e-5
-    
+
     def demagnetization(self, temperature=20):
         """return demagnetization Hx, Hy of this element"""
-        return self.demag_b(0.0, self.flux_density(), temperature)
+        return self.demag_b(self.flux_density(), temperature)
 
-    def demag_b(self, pos, b, temperature):
+    def demag_b(self, b, temperature):
         """return demagnetization Hx, Hy of this element at flux density b
           and temperature"""
         if self.is_magnet():
-            br_temp_corr = 1. +  self.br_temp_coef*(temperature - 20.)
+            pos = np.arctan2(self.center[1], self.center[0])
+            br_temp_corr = 1. + self.br_temp_coef*(temperature - 20.)
             magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)*br_temp_corr
             alfa = np.arctan2(self.mag[1], self.mag[0]) - pos
             b1, b2 = b
@@ -930,12 +922,12 @@ class Element(BaseEntity):
             reluc = abs(self.reluc[0]) / (4*np.pi*1e-7 * 1000)
             hpol = (bpol - magn)*reluc
             if np.isscalar(hpol):
-                if hpol>0:
+                if hpol > 0:
                     return 0
             else:
-                hpol[hpol>0] = 0.0
+                hpol[hpol > 0] = 0.0
             return -hpol
-            
+
         return 0
 
     def permeability(self):
@@ -949,20 +941,20 @@ class Element(BaseEntity):
         if self.reluc != (1.0, 1.0) and self.mag == (0.0, 0.0):
             return self.loss_density
         return 0
-                
+
     def mag_loss_density(self):
         """return loss_density if element in magnet region"""
         if np.any(self.mag):
             return self.loss_density
         return 0
-    
+
     def wdg_loss_density(self):
         """return loss_density if element in winding region"""
         if self.superelement.subregion:
             if self.superelement.subregion.winding:
                 return self.loss_density
         return 0
-        
+
 
 class SuperElement(BaseEntity):
     def __init__(self, key, sr_key, elements, nodechains, color,

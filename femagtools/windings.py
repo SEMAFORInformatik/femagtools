@@ -67,19 +67,24 @@ class Winding(object):
         if hasattr(self, 'windings'):
             # calculate coil width yd and num layers l
             taus = 360/self.Q
+            if 'slots' in self.windings[1]:  # custom winding def
+                for k in self.windings:
+                    w = self.windings[k]
+                    w['dir'] = [1 if s > 0 else -1 for s in w['slots']]
+                    w['PHI'] = [(2*abs(s)-1)*taus/2 for s in w['slots']]
+                    w['R'] = [0 if l == 1 else 1 for l in w['layer']]
             try:
-                k = self.windings[1]['dir'].index(
-                    -self.windings[1]['dir'][0])
-                self.yd = round(
-                    (self.windings[1]['PHI'][k]-taus/2)/taus)
+                k = self.windings[2]['dir'].index(
+                    -self.windings[2]['dir'][0])
+                self.yd = round((self.windings[2]['PHI'][k] -
+                                 self.windings[2]['PHI'][0])/taus)
             except ValueError:
                 self.yd = max(self.Q//self.p//2, 1)
-            slots1 = [round((x-taus/2)/taus)
-                      for x in self.windings[1]['PHI']]
+            slots = [round((x-taus/2)/taus)
+                     for x in self.windings[1]['PHI']]
             self.l = 2
-            if len(slots1) == len(set(slots1)):
+            if len(slots) == max(slots):
                 self.l = 1
-
             return
 
         layers = 1
@@ -139,13 +144,13 @@ class Winding(object):
 
     def kwp(self, n=0):
         """pitch factor"""
-        nue = n if not np.isscalar(n) else self.kw_order(n)
+        nue = n if n and not np.isscalar(n) else self.kw_order(n)
         return np.sin(nue*self.yd*np.pi/self.Q)
 
     def kwd(self, n=0):
         """zone (distribution) factor"""
         q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
-        nue = n if not np.isscalar(n) else self.kw_order(n)
+        nue = n if n and not np.isscalar(n) else self.kw_order(n)
         if q1 == q2:
             x = nue*np.pi/self.Q
             return np.sin(q1*x)/(q1*np.sin(x))
@@ -183,37 +188,37 @@ class Winding(object):
         return self.mmf()['alfa0']
 
     def mmf(self, k=1):
-        """returns the dimensionless magnetomotive force (ampere-turns/turns/ampere) and 
+        """returns the dimensionless magnetomotive force (ampere-turns/turns/ampere) and
         winding angle of phase k (rad)"""
         taus = 2*np.pi/self.Q
         t = np.gcd(self.Q, self.p)
         slots = self.slots(k)[0]
         dirs = self.windings[k]['dir']
-        #turns = self.windings[k]['N']
-        curr = np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
+        # turns = self.windings[k]['N']
+        curr=np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
                                for n in range(len(slots)//len(dirs))])
 
-        NY = 4096
-        y = np.zeros(NY*self.Q//t)
+        NY=4096
+        y=np.zeros(NY*self.Q//t)
         for i in range(1, self.Q//t+1):
             if i in set(slots):
-                y[NY*(i-1)+NY//2] = np.sum(curr[slots == i])
-        yy = [np.sum(y[:i+1]) for i in range(0, len(y))]
-        yy[:NY//2] = yy[-NY//2:]
-        yy = np.tile(yy-np.mean(yy), t)
+                y[NY*(i-1)+NY//2]=np.sum(curr[slots == i])
+        yy=[np.sum(y[:i+1]) for i in range(0, len(y))]
+        yy[:NY//2]=yy[-NY//2:]
+        yy=np.tile(yy-np.mean(yy), t)
         yy /= np.max(yy)
         # y = np.tile(y,t)
 
-        N = len(yy)
-        Y = np.fft.fft(yy)
-        imax = np.argmax(np.abs(Y[:N//2]))
-        a = 2*np.abs(Y[imax])/N
-        freq = np.fft.fftfreq(N, d=taus/NY)
-        T0 = np.abs(1/freq[imax])
-        alfa0 = np.angle(Y[imax])
+        N=len(yy)
+        Y=np.fft.fft(yy)
+        imax=np.argmax(np.abs(Y[:N//2]))
+        a=2*np.abs(Y[imax])/N
+        freq=np.fft.fftfreq(N, d=taus/NY)
+        T0=np.abs(1/freq[imax])
+        alfa0=np.angle(Y[imax])
         # if alfa0 < 0: alfa0 += 2*np.pi
-        pos_fft = np.linspace(0, self.Q/t*taus, self.p//t*60)
-        D = (a*np.cos(2*np.pi*pos_fft/T0+alfa0))
+        pos_fft=np.linspace(0, self.Q/t*taus, self.p//t*60)
+        D=(a*np.cos(2*np.pi*pos_fft/T0+alfa0))
         return dict(
             pos=[i*taus/NY for i in range(len(y))],
             mmf=yy[:NY*self.Q//t].tolist(),
@@ -224,21 +229,21 @@ class Winding(object):
             mmf_fft=D.tolist())
 
     def zoneplan(self):
-        taus = 360/self.Q
-        dphi = 1e-3
-        slots = {k: [s-1 for s in self.slots(k)[0]]
+        taus=360/self.Q
+        dphi=1e-3
+        slots={k: [s-1 for s in self.slots(k)[0]]
                  for k in self.windings}
-        layers = 1
-        avgr = 0
-        maxr, minr = max(self.windings[1]['R']), min(self.windings[1]['R'])
+        layers=1
+        avgr=0
+        maxr, minr=max(self.windings[1]['R']), min(self.windings[1]['R'])
         if maxr-minr > 1e-6:
-            layers = 2
-            avgr = (maxr+minr)/2
+            layers=2
+            avgr=(maxr+minr)/2
 
             def is_upper(r, phi):
                 return r > avgr
         elif len(slots[1]) > len(set(slots[1])):
-            layers = 2
+            layers=2
 
             def is_upper(r, phi):
                 return phi < -dphi
@@ -246,29 +251,29 @@ class Winding(object):
             def is_upper(r, phi):
                 return True
 
-        upper = [[s+1 for s, x, r in zip(
+        upper=[[s+1 for s, x, r in zip(
             slots[key],
             self.windings[key]['PHI'],
             self.windings[key]['R'])
             if is_upper(r, s*taus - (x-taus/2))]
             for key in self.windings]
-        udirs = [[d for s, d, x, r in zip(
+        udirs=[[d for s, d, x, r in zip(
             slots[key],
             self.windings[key]['dir'],
             self.windings[key]['PHI'],
             self.windings[key]['R'])
             if is_upper(r, s*taus - (x-taus/2))]
             for key in self.windings]
-        lower = []
-        ldirs = []
+        lower=[]
+        ldirs=[]
         if layers > 1:
-            lower = [[s+1 for s, x, r in zip(
+            lower=[[s+1 for s, x, r in zip(
                 slots[key],
                 self.windings[key]['PHI'],
                 self.windings[key]['R'])
                 if not is_upper(r, s*taus - (x-taus/2))]
                 for key in self.windings]
-            ldirs = [[d for s, d, x, r in zip(
+            ldirs=[[d for s, d, x, r in zip(
                 slots[key],
                 self.windings[key]['dir'],
                 self.windings[key]['PHI'],
@@ -276,10 +281,10 @@ class Winding(object):
                 if not is_upper(r, s*taus - (x-taus/2))]
                 for key in self.windings]
 
-        z = ([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
+        z=([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
              [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
         # complete if not  basic winding:
-        Qb = self.Q//num_basic_windings(self.Q, self.p, self.l)
+        Qb=self.Q//num_basic_windings(self.Q, self.p, self.l)
         if max([abs(n) for m in z[0] for n in m]) < Qb:
             return [[k + [-n+Qb//2 if n < 0 else -(n+Qb//2) for n in k]
                      for k in m] for m in z]
@@ -287,49 +292,49 @@ class Winding(object):
 
     def diagram(self) -> ET.Element:
         """return winding diagram as svg element"""
-        coil_len = 25
-        coil_height = 4
-        dslot = 8
-        arrow_head_length = 2
-        arrow_head_width = 2
-        strokewidth = [f"{w}px" for w in [0.25, 0.5]]
+        coil_len=25
+        coil_height=4
+        dslot=8
+        arrow_head_length=2
+        arrow_head_width=2
+        strokewidth=[f"{w}px" for w in [0.25, 0.5]]
 
-        z = self.zoneplan()
-        xoff = 0
+        z=self.zoneplan()
+        xoff=0
         if z[-1]:
-            xoff = 0.75
-        yd = dslot*self.yd
-        mh = 2*coil_height/yd
-        slots = sorted([abs(n) for m in z[0] for n in m])
-        smax = slots[-1]*dslot
+            xoff=0.75
+        yd=dslot*self.yd
+        mh=2*coil_height/yd
+        slots=sorted([abs(n) for m in z[0] for n in m])
+        smax=slots[-1]*dslot
         ET.register_namespace("", "http://www.w3.org/2000/svg")
-        svg = ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
+        svg=ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
                                      viewBox=f"0, -30, {slots[-1] * dslot + 15}, 40"))
-        g = ET.SubElement(svg, "g", {"id": "teeth", "fill": "lightblue"})
+        g=ET.SubElement(svg, "g", {"id": "teeth", "fill": "lightblue"})
         for n in slots:
-            e = ET.SubElement(g, "rect", {
+            e=ET.SubElement(g, "rect", {
                 "x": f"{n * dslot + dslot/4}",
                 "y": f"{-coil_len + 1}",
                 "width": f"{dslot/2}",
                 "height": f"{coil_len - 2}"})
 
-        g = ET.SubElement(svg, "g", {"id": "labels",
+        g=ET.SubElement(svg, "g", {"id": "labels",
                                      "text-anchor": "middle",
                                      "dominant-baseline": "middle",
                                      "style": "font-size: 0.15em; font-family: sans-serif;"})
         for n in slots:
-            t = ET.SubElement(g, "text", {
+            t=ET.SubElement(g, "text", {
                 "x": f"{n*dslot}",
-                "y": f"{-coil_len / 2}"}).text = str(n)
+                "y": f"{-coil_len / 2}"}).text=str(n)
 
-        g = ET.SubElement(svg, "g", {"id": "coils",
+        g=ET.SubElement(svg, "g", {"id": "coils",
                                      "fill": "none",
                                      "stroke-linejoin": "round",
                                      "stroke-linecap": "round"})
 
         for i, layer in enumerate(z):
-            b = -xoff if i else xoff
-            w = i if self.yd > 1 else 0
+            b=-xoff if i else xoff
+            w=i if self.yd > 1 else 0
             for m, mslots in enumerate(layer):
                 for k in mslots:
                     slotpos = abs(k) * dslot + b

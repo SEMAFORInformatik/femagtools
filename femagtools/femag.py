@@ -121,17 +121,19 @@ class BaseFemag(object):
         self.model = femagtools.model.MachineModel(pmMachine)
         self.modelname = self.model.name
         self.copy_magnetizing_curves(self.model)
-        if 'wdgdef' in self.model.windings:
-            name = 'winding'
-            w = femagtools.windings.Winding(
-                dict(
-                    Q=self.model.stator['num_slots'],
-                    p=self.model.poles//2,
-                    m=len(self.model.windings['wdgdef']),
-                    windings=self.model.windings['wdgdef']))
-            self.copy_winding_file(name, w)
-            self.model.windings['wdgfile'] = name
-
+        try:
+            if 'wdgdef' in self.model.windings:
+                name = 'winding'
+                w = femagtools.windings.Winding(
+                    dict(
+                        Q=self.model.stator['num_slots'],
+                        p=self.model.poles//2,
+                        m=len(self.model.windings['wdgdef']),
+                        windings=self.model.windings['wdgdef']))
+                self.copy_winding_file(name, w)
+                self.model.windings['wdgfile'] = name
+        except AttributeError:
+            pass
         builder = femagtools.fsl.Builder()
         if simulation:
             return builder.create(self.model, simulation, self.magnets)
@@ -811,7 +813,7 @@ class ZmqFemag(BaseFemag):
         dest = dir if dir else self.workdir
         for m in model.set_magcurves(
                 self.magnetizingCurves, self.magnets):
-            f=self.magnetizingCurves.writefile(m[0], dest, fillfac = m[1])
+            f = self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
             self.upload(os.path.join(dest, f))
 
     def __call__(self, pmMachine, simulation):
@@ -824,9 +826,9 @@ class ZmqFemag(BaseFemag):
            FemagError
         """
         if isinstance(pmMachine, str):
-            modelpars=dict(name = pmMachine)
+            modelpars = dict(name=pmMachine)
         else:
-            modelpars=pmMachine
+            modelpars = pmMachine
         if 'exit_on_end' not in modelpars:
             modelpars['exit_on_end']='false'
         if 'exit_on_error' not in modelpars:

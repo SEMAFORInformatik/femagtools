@@ -108,9 +108,21 @@ class ParameterStudy(object):
         if model.is_complete():
             logger.info("setup model in %s", self.femag.workdir)
             filename = 'femag.fsl'
+            if 'wdgdef' in self.model.windings:
+                name = 'winding'
+                w = femagtools.windings.Winding(
+                    dict(
+                        Q=self.model.stator['num_slots'],
+                        p=self.model.poles//2,
+                        m=len(self.model.windings['wdgdef']),
+                        windings=self.model.windings['wdgdef']))
+                self.femag.copy_winding_file(name, w)
+                self.model.windings['wdgfile'] = name
+
             with open(os.path.join(self.femag.workdir, filename), 'w') as f:
-                f.write('\n'.join(builder.create_model(model, self.femag.magnets) +
-                                  ['save_model("close")']))
+                f.write('\n'.join(builder.create_model(
+                    model, self.femag.magnets) +
+                    ['save_model("close")']))
 
             self.femag.run(filename, options=['-b'])
         model_files = [os.path.join(self.femag.workdir, m)

@@ -24,7 +24,8 @@ for i = 1, m.num_slots+1 do
 end
 data:write("0.0\n0\n")
 io.close(data)
-
+% elif 'wdgfile' in model.windings:
+def_new_wdg('${model.windings.get("wdgfile")}')
 % else:
 --  Gen_winding
 if m.xcoil_1 ~= nil then

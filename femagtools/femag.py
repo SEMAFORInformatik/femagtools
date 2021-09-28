@@ -18,6 +18,9 @@ except ImportError:
 import sys
 import json
 import io
+import femagtools.model
+import femagtools.magnet
+import femagtools.windings
 import femagtools.mcv
 import femagtools.airgap as ag
 import femagtools.fsl
@@ -92,12 +95,15 @@ class BaseFemag(object):
         else:
             self.magnetizingCurves = []
         if magnets:
-            if isinstance(magnets, femagtools.Magnet):
+            if isinstance(magnets, femagtools.magnet.Magnet):
                 self.magnets = magnets
             else:
-                self.magnets = femagtools.Magnet(magnets)
+                self.magnets = femagtools.magnet.Magnet(magnets)
         else:
             self.magnets = []
+
+    def copy_winding_file(self, name, wdg):
+        wdg.write(name, self.workdir)
 
     def copy_magnetizing_curves(self, model, dir=None):
         """extract mc names from model and write files into workdir or dir if given
@@ -112,9 +118,19 @@ class BaseFemag(object):
 
     def create_fsl(self, pmMachine, simulation):
         """create list of fsl commands"""
-        self.model = femagtools.MachineModel(pmMachine)
+        self.model = femagtools.model.MachineModel(pmMachine)
         self.modelname = self.model.name
         self.copy_magnetizing_curves(self.model)
+        if 'wdgdef' in self.model.windings:
+            name = 'winding'
+            w = femagtools.windings.Winding(
+                dict(
+                    Q=self.model.stator['num_slots'],
+                    p=self.model.poles//2,
+                    m=len(self.model.windings['wdgdef']),
+                    windings=self.model.windings['wdgdef']))
+            self.copy_winding_file(name, w)
+            self.model.windings['wdgfile'] = name
 
         builder = femagtools.fsl.Builder()
         if simulation:
@@ -290,7 +306,7 @@ class Femag(BaseFemag):
 
     def __call__(self, pmMachine, simulation={},
                  options=['-b'], fsl_args=[]):
-        """setup fsl file, run calculation and return 
+        """setup fsl file, run calculation and return
         BCH or LOS results if any."""
         fslfile = 'femag.fsl'
         with open(os.path.join(self.workdir, fslfile), 'w') as f:
@@ -718,7 +734,7 @@ class ZmqFemag(BaseFemag):
                                            timeout=timeout)]
 
     def cleanup(self, timeout=2000):
-        """remove all FEMAG files in working directory 
+        """remove all FEMAG files in working directory
         (FEMAG 8.5 Rev 3282 or greater only)"""
         return [r.decode('latin1')
                 for r in self.send_request(['CONTROL', 'cleanup'],
@@ -732,7 +748,7 @@ class ZmqFemag(BaseFemag):
                 for r in self.send_request(['close'], timeout=1000)]
 
     def info(self, timeout=2000):
-        """get various resource information 
+        """get various resource information
         (FEMAG 8.5 Rev 3282 or greater only)"""
         response = [r.decode('latin1')
                     for r in self.send_request(['CONTROL', 'info'],
@@ -781,6 +797,10 @@ class ZmqFemag(BaseFemag):
         ctrl.send_string('interrupt')
         ctrl.close()
 
+    def copy_winding_file(self, name, wdg):
+        wdg.write(name, self.workdir)
+        self.upload(os.path.join(self.workdir, name+'.WID'))
+
     def copy_magnetizing_curves(self, model, dir=None):
         """extract mc names from model and write files into workdir or dir if given
            and upload to Femag
@@ -791,7 +811,7 @@ class ZmqFemag(BaseFemag):
         dest = dir if dir else self.workdir
         for m in model.set_magcurves(
                 self.magnetizingCurves, self.magnets):
-            f = self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
+            f=self.magnetizingCurves.writefile(m[0], dest, fillfac = m[1])
             self.upload(os.path.join(dest, f))
 
     def __call__(self, pmMachine, simulation):
@@ -804,28 +824,28 @@ class ZmqFemag(BaseFemag):
            FemagError
         """
         if isinstance(pmMachine, str):
-            modelpars = dict(name=pmMachine)
+            modelpars=dict(name = pmMachine)
         else:
-            modelpars = pmMachine
+            modelpars=pmMachine
         if 'exit_on_end' not in modelpars:
-            modelpars['exit_on_end'] = 'false'
+            modelpars['exit_on_end']='false'
         if 'exit_on_error' not in modelpars:
-            modelpars['exit_on_error'] = 'false'
-        response = self.send_fsl(['save_model("close")'] +
+            modelpars['exit_on_error']='false'
+        response=self.send_fsl(['save_model("close")'] +
                                  self.create_fsl(modelpars,
                                                  simulation))
-        r = json.loads(response[0])
+        r=json.loads(response[0])
         if r['status'] != 'ok':
             raise FemagError(r['message'])
 
-        result_file = r['result_file'][0]
+        result_file=r['result_file'][0]
         if simulation['calculationMode'] == "pm_sym_loss":
             return self.read_los(self.modelname)
 
-        status, content = self.getfile(result_file)
-        r = json.loads(status)
+        status, content=self.getfile(result_file)
+        r=json.loads(status)
         if r['status'] == 'ok':
-            bch = femagtools.bch.Reader()
+            bch=femagtools.bch.Reader()
             bch.read(content.decode('latin1'))
             if simulation['calculationMode'] == 'pm_sym_fast':
                 if simulation.get('shortCircuit', False):

@@ -195,30 +195,30 @@ class Winding(object):
         slots = self.slots(k)[0]
         dirs = self.windings[k]['dir']
         # turns = self.windings[k]['N']
-        curr=np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
+        curr = np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
                                for n in range(len(slots)//len(dirs))])
 
-        NY=4096
-        y=np.zeros(NY*self.Q//t)
+        NY = 4096
+        y = np.zeros(NY*self.Q//t)
         for i in range(1, self.Q//t+1):
             if i in set(slots):
-                y[NY*(i-1)+NY//2]=np.sum(curr[slots == i])
-        yy=[np.sum(y[:i+1]) for i in range(0, len(y))]
-        yy[:NY//2]=yy[-NY//2:]
-        yy=np.tile(yy-np.mean(yy), t)
+                y[NY*(i-1)+NY//2] = np.sum(curr[slots == i])
+        yy = [np.sum(y[:i+1]) for i in range(0, len(y))]
+        yy[:NY//2] = yy[-NY//2:]
+        yy = np.tile(yy-np.mean(yy), t)
         yy /= np.max(yy)
         # y = np.tile(y,t)
 
-        N=len(yy)
-        Y=np.fft.fft(yy)
-        imax=np.argmax(np.abs(Y[:N//2]))
-        a=2*np.abs(Y[imax])/N
-        freq=np.fft.fftfreq(N, d=taus/NY)
-        T0=np.abs(1/freq[imax])
-        alfa0=np.angle(Y[imax])
+        N = len(yy)
+        Y = np.fft.fft(yy)
+        imax = np.argmax(np.abs(Y[:N//2]))
+        a = 2*np.abs(Y[imax])/N
+        freq = np.fft.fftfreq(N, d=taus/NY)
+        T0 = np.abs(1/freq[imax])
+        alfa0 = np.angle(Y[imax])
         # if alfa0 < 0: alfa0 += 2*np.pi
-        pos_fft=np.linspace(0, self.Q/t*taus, self.p//t*60)
-        D=(a*np.cos(2*np.pi*pos_fft/T0+alfa0))
+        pos_fft = np.linspace(0, self.Q/t*taus, self.p//t*60)
+        D = (a*np.cos(2*np.pi*pos_fft/T0+alfa0))
         return dict(
             pos=[i*taus/NY for i in range(len(y))],
             mmf=yy[:NY*self.Q//t].tolist(),
@@ -229,21 +229,21 @@ class Winding(object):
             mmf_fft=D.tolist())
 
     def zoneplan(self):
-        taus=360/self.Q
-        dphi=1e-3
-        slots={k: [s-1 for s in self.slots(k)[0]]
+        taus = 360/self.Q
+        dphi = 1e-3
+        slots = {k: [s-1 for s in self.slots(k)[0]]
                  for k in self.windings}
-        layers=1
-        avgr=0
-        maxr, minr=max(self.windings[1]['R']), min(self.windings[1]['R'])
+        layers = 1
+        avgr = 0
+        maxr, minr = max(self.windings[1]['R']), min(self.windings[1]['R'])
         if maxr-minr > 1e-6:
-            layers=2
-            avgr=(maxr+minr)/2
+            layers = 2
+            avgr = (maxr+minr)/2
 
             def is_upper(r, phi):
                 return r > avgr
         elif len(slots[1]) > len(set(slots[1])):
-            layers=2
+            layers = 2
 
             def is_upper(r, phi):
                 return phi < -dphi
@@ -251,29 +251,29 @@ class Winding(object):
             def is_upper(r, phi):
                 return True
 
-        upper=[[s+1 for s, x, r in zip(
+        upper = [[s+1 for s, x, r in zip(
             slots[key],
             self.windings[key]['PHI'],
             self.windings[key]['R'])
             if is_upper(r, s*taus - (x-taus/2))]
             for key in self.windings]
-        udirs=[[d for s, d, x, r in zip(
+        udirs = [[d for s, d, x, r in zip(
             slots[key],
             self.windings[key]['dir'],
             self.windings[key]['PHI'],
             self.windings[key]['R'])
             if is_upper(r, s*taus - (x-taus/2))]
             for key in self.windings]
-        lower=[]
-        ldirs=[]
+        lower = []
+        ldirs = []
         if layers > 1:
-            lower=[[s+1 for s, x, r in zip(
+            lower = [[s+1 for s, x, r in zip(
                 slots[key],
                 self.windings[key]['PHI'],
                 self.windings[key]['R'])
                 if not is_upper(r, s*taus - (x-taus/2))]
                 for key in self.windings]
-            ldirs=[[d for s, d, x, r in zip(
+            ldirs = [[d for s, d, x, r in zip(
                 slots[key],
                 self.windings[key]['dir'],
                 self.windings[key]['PHI'],
@@ -281,10 +281,10 @@ class Winding(object):
                 if not is_upper(r, s*taus - (x-taus/2))]
                 for key in self.windings]
 
-        z=([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
+        z = ([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
              [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
         # complete if not  basic winding:
-        Qb=self.Q//num_basic_windings(self.Q, self.p, self.l)
+        Qb = self.Q//num_basic_windings(self.Q, self.p, self.l)
         if max([abs(n) for m in z[0] for n in m]) < Qb:
             return [[k + [-n+Qb//2 if n < 0 else -(n+Qb//2) for n in k]
                      for k in m] for m in z]
@@ -292,49 +292,49 @@ class Winding(object):
 
     def diagram(self) -> ET.Element:
         """return winding diagram as svg element"""
-        coil_len=25
-        coil_height=4
-        dslot=8
-        arrow_head_length=2
-        arrow_head_width=2
-        strokewidth=[f"{w}px" for w in [0.25, 0.5]]
+        coil_len = 25
+        coil_height = 4
+        dslot = 8
+        arrow_head_length = 2
+        arrow_head_width = 2
+        strokewidth = [f"{w}px" for w in [0.25, 0.5]]
 
-        z=self.zoneplan()
-        xoff=0
+        z = self.zoneplan()
+        xoff = 0
         if z[-1]:
-            xoff=0.75
-        yd=dslot*self.yd
-        mh=2*coil_height/yd
-        slots=sorted([abs(n) for m in z[0] for n in m])
-        smax=slots[-1]*dslot
+            xoff = 0.75
+        yd = dslot*self.yd
+        mh = 2*coil_height/yd
+        slots = sorted([abs(n) for m in z[0] for n in m])
+        smax = slots[-1]*dslot
         ET.register_namespace("", "http://www.w3.org/2000/svg")
-        svg=ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
+        svg = ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
                                      viewBox=f"0, -30, {slots[-1] * dslot + 15}, 40"))
-        g=ET.SubElement(svg, "g", {"id": "teeth", "fill": "lightblue"})
+        g = ET.SubElement(svg, "g", {"id": "teeth", "fill": "lightblue"})
         for n in slots:
-            e=ET.SubElement(g, "rect", {
+            e = ET.SubElement(g, "rect", {
                 "x": f"{n * dslot + dslot/4}",
                 "y": f"{-coil_len + 1}",
                 "width": f"{dslot/2}",
                 "height": f"{coil_len - 2}"})
 
-        g=ET.SubElement(svg, "g", {"id": "labels",
+        g = ET.SubElement(svg, "g", {"id": "labels",
                                      "text-anchor": "middle",
                                      "dominant-baseline": "middle",
                                      "style": "font-size: 0.15em; font-family: sans-serif;"})
         for n in slots:
-            t=ET.SubElement(g, "text", {
+            t = ET.SubElement(g, "text", {
                 "x": f"{n*dslot}",
-                "y": f"{-coil_len / 2}"}).text=str(n)
+                "y": f"{-coil_len / 2}"}).text = str(n)
 
-        g=ET.SubElement(svg, "g", {"id": "coils",
+        g = ET.SubElement(svg, "g", {"id": "coils",
                                      "fill": "none",
                                      "stroke-linejoin": "round",
                                      "stroke-linecap": "round"})
 
         for i, layer in enumerate(z):
-            b=-xoff if i else xoff
-            w=i if self.yd > 1 else 0
+            b = -xoff if i else xoff
+            w = i if self.yd > 1 else 0
             for m, mslots in enumerate(layer):
                 for k in mslots:
                     slotpos = abs(k) * dslot + b
@@ -397,6 +397,56 @@ class Winding(object):
                         "stroke": "none"})
 
         return svg  # string: ET.tostring(svg)
+
+    def write(self, name, workdir='.'):
+        """creates WID file"""
+        import pathlib
+        with open(pathlib.Path(workdir) / (name + '.WID'), 'w') as fp:
+            if 'slots' in self.windings[1]:
+                inp = sorted([(k if s > 0 else -k, abs(s), l, n)
+                              for k in self.windings
+                              for s, l, n in zip(
+                    self.windings[k]['slots'],
+                    self.windings[k]['layer'],
+                    self.windings[k]['N'])],
+                    key=lambda x: (x[1], x[2]))
+                fp.write('\n'.join([
+                    f'Windings input data: {name}',
+                    ' Number of coil sides:',
+                    f'          {len(inp)}',
+                    'Type of machine: 1 = Rot, 21 = Lin-x, 22 = Lin-y',
+                    '           1',
+                    'Index  w-keys     N-turns         Layer', '']))
+
+                for i, t in enumerate(inp):
+                    fp.write(f'{i+1:5d} {t[0]:8d} {t[3]:10.3f} {t[2]:10d}\n')
+            else:
+                inp = sorted([(k if d > 0 else -k, r, phi, n)
+                              for k in self.windings
+                              for d, r, phi, n in zip(
+                    self.windings[k]['dir'],
+                    self.windings[k]['R'],
+                    self.windings[k]['PHI'],
+                    self.windings[k]['N'])],
+                    key=lambda x: (x[1], x[2]))
+                fp.write('\n'.join([
+                    f'Windings input data: {name}',
+                    ' Number of coil sides:',
+                    f'          {len(inp)}',
+                    'Type of machine: 1 = Rot, 21 = Lin-x, 22 = Lin-y',
+                    '           1',
+                    'Index  w-keys     N-turns         R[mm]     PHI[deg]', '']))
+                for i, t in enumerate(inp):
+                    fp.write(
+                        f'{i+1:5d} {t[0]:8d} {t[3]:10.3f} {t[1]:8.3f} {t[2]:8.3f}\n')
+            fp.write('\n'.join([
+                'Number of windings saved :',
+                f'         {len(self.windings)}',
+                'W-Key Coil-Current [A]   W-Types: (=1 :wire&cur)'
+            ] + [
+                f'   {k}          0.00000000       0.00000000                            1'
+                for k in self.windings
+            ] + ['   0', '']))
 
 
 if __name__ == "__main__":

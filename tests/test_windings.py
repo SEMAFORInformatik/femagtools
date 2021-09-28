@@ -38,11 +38,11 @@ def wdg1():
     wpar = dict(Q=12, p=5, m=3,
                 windings={
                     1: {'N': [100.0, 100.0, 100.0, 100.0],
-                        'layer': [1, 2, 1, 2], 'slots': [1, 1, -2, -6]},
+                        'layer': [1, 2, 1, 2], 'slots': [1, 1, -2, 6]},
                     2: {'N': [100.0, 100.0, 100.0, 100.0],
-                        'layer': [1, 2, 1, 2], 'slots': [2, -3, -3, 4]},
+                        'layer': [2, 1, 2, 1], 'slots': [-4, 5, 5, -6]},
                     3: {'N': [100.0, 100.0, 100.0, 100.0],
-                        'layer': [1, 2, 1, 2], 'slots': [-4, 5, 5, -6]}})
+                        'layer': [2, 1, 2, 1], 'slots': [2, -3, -3, 4]}})
     return femagtools.windings.Winding(wpar)
 
 
@@ -89,4 +89,15 @@ def test_custom_winding(wdg1):
     assert wdg1.slots(1).tolist() == [
         [1,  1,  2,  6,  7,  7,  8, 12]
     ]
+    assert wdg1.zoneplan() == [
+        [[1, 6, -7, -12], [-4, 5, 10, -11], [2, -3, -8, 9]],
+        [[1, -2, -7, 8], [5, -6, -11, 12], [-3, 4, 9, -10]]]
+
     assert wdg1.yd == 1
+
+
+def test_custom_winding_write(wdg1, tmp_path):
+    name = 'winding'
+    wdg1.write(name, tmp_path)
+    p = tmp_path / (name + '.WID')
+    assert 26 == len(p.read_text().split('\n'))

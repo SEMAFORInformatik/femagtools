@@ -26,6 +26,7 @@ data:write("0.0\n0\n")
 io.close(data)
 % elif 'wdgfile' in model.windings:
 def_new_wdg('${model.windings.get("wdgfile")}')
+pre_models("gen_pocfile") 
 % else:
 --  Gen_winding
 if m.xcoil_1 ~= nil then

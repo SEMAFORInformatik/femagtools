@@ -1235,7 +1235,7 @@ def demag_pos(isa, pos, icur=-1, ibeta=-1, ax=0):
       ibeta: beta angle index or last index if -1
     """
     emag = [e for e in isa.elements if e.is_magnet()]
-    demag = np.array([isa.demagnetization(*e.center, icur, ibeta)[1]
+    demag = np.array([isa.demagnetization(e, icur, ibeta)[1]
                      for e in emag])
     for i, x in enumerate(isa.pos_el_fe_induction):
         if x >= pos/180*np.pi:

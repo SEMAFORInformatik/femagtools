@@ -116,6 +116,17 @@ class BaseFemag(object):
                 for m in model.set_magcurves(
             self.magnetizingCurves, self.magnets)]
 
+    def create_wdg_def(self, model):
+        name = 'winding'
+        w = femagtools.windings.Winding(
+            dict(
+                Q=model.stator['num_slots'],
+                p=model.poles//2,
+                m=len(model.windings['wdgdef']),
+                windings=model.windings['wdgdef']))
+        self.copy_winding_file(name, w)
+        return name
+
     def create_fsl(self, pmMachine, simulation):
         """create list of fsl commands"""
         self.model = femagtools.model.MachineModel(pmMachine)
@@ -123,15 +134,8 @@ class BaseFemag(object):
         self.copy_magnetizing_curves(self.model)
         try:
             if 'wdgdef' in self.model.windings:
-                name = 'winding'
-                w = femagtools.windings.Winding(
-                    dict(
-                        Q=self.model.stator['num_slots'],
-                        p=self.model.poles//2,
-                        m=len(self.model.windings['wdgdef']),
-                        windings=self.model.windings['wdgdef']))
-                self.copy_winding_file(name, w)
-                self.model.windings['wdgfile'] = name
+                self.model.windings['wdgfile'] = self.create_wdg_def(
+                    self.model)
         except AttributeError:
             pass
         builder = femagtools.fsl.Builder()
@@ -830,24 +834,24 @@ class ZmqFemag(BaseFemag):
         else:
             modelpars = pmMachine
         if 'exit_on_end' not in modelpars:
-            modelpars['exit_on_end']='false'
+            modelpars['exit_on_end'] = 'false'
         if 'exit_on_error' not in modelpars:
-            modelpars['exit_on_error']='false'
-        response=self.send_fsl(['save_model("close")'] +
+            modelpars['exit_on_error'] = 'false'
+        response = self.send_fsl(['save_model("close")'] +
                                  self.create_fsl(modelpars,
                                                  simulation))
-        r=json.loads(response[0])
+        r = json.loads(response[0])
         if r['status'] != 'ok':
             raise FemagError(r['message'])
 
-        result_file=r['result_file'][0]
+        result_file = r['result_file'][0]
         if simulation['calculationMode'] == "pm_sym_loss":
             return self.read_los(self.modelname)
 
-        status, content=self.getfile(result_file)
-        r=json.loads(status)
+        status, content = self.getfile(result_file)
+        r = json.loads(status)
         if r['status'] == 'ok':
-            bch=femagtools.bch.Reader()
+            bch = femagtools.bch.Reader()
             bch.read(content.decode('latin1'))
             if simulation['calculationMode'] == 'pm_sym_fast':
                 if simulation.get('shortCircuit', False):

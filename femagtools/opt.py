@@ -68,15 +68,8 @@ class Optimizer(object):
                                                          task.directory):
                 task.add_file(mc)
             if 'wdgdef' in self.model.windings:
-                name = 'winding'
-                w = femagtools.windings.Winding(
-                    dict(
-                        Q=self.model.stator['num_slots'],
-                        p=self.model.poles//2,
-                        m=len(self.model.windings['wdgdef']),
-                        windings=self.model.windings['wdgdef']))
-                self.femag.copy_winding_file(name, w)
-                self.model.windings['wdgfile'] = name
+                self.model.windings['wdgfile'] = self.femag.create_wdg_def(
+                    self.model)
             task.add_file('femag.fsl',
                           self.builder.create(self.model, self.fea,
                                               self.femag.magnets))

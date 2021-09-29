@@ -436,7 +436,7 @@ class SubscriberTask(threading.Thread):
 
                 except Exception:
                     self.logger.error(
-                        "error in subscription messag processing", exc_info=True)
+                        "error in subscription message processing", exc_info=True)
 
             if socks.get(self.controller) == zmq.POLLIN:
                 req = self.controller.recv()

@@ -492,6 +492,8 @@ class ZmqFemag(BaseFemag):
             self.femagTask.proc.kill()
             self.femagTask = None
             self.request_socket = None
+            self.subscriber.stop()
+            self.subscriber = None
             logger.info("stopFemagTask Done")
         else:
             logger.warning("stopFemag not implemented")
@@ -536,20 +538,22 @@ class ZmqFemag(BaseFemag):
         else:
             self.request_socket.setsockopt(zmq.RCVTIMEO, -1)  # default value
 
-        errmsg = ''
-        try:
-            for m in msg[:-1]:
-                self.request_socket.send_string(m, flags=zmq.SNDMORE)
-            if isinstance(msg[-1], list):
-                self.request_socket.send_string('\n'.join(msg[-1]))
-            else:
-                self.request_socket.send_string(msg[-1])
+        for m in msg[:-1]:
+            self.request_socket.send_string(m, flags=zmq.SNDMORE)
+        if isinstance(msg[-1], list):
+            self.request_socket.send_string('\n'.join(msg[-1]))
+        else:
+            self.request_socket.send_string(msg[-1])
 
-            return self.request_socket.recv_multipart()
-        except zmq.error.Again as e:
-            # logger.exception("send_request")
-            errmsg = str(e)
-            logger.warning("send_request: %s Message %s", str(e), msg)
+        errmsg = ''
+        while True:
+            try:
+                return self.request_socket.recv_multipart()
+            except zmq.error.Again as e:
+                # logger.exception("send_request")
+                errmsg = str(e)
+                logger.warning("send_request: %s Message %s", str(e), msg)
+                continue
         logger.info("oops")
         return [b'{"status":"error", "message":"' + errmsg.encode() + b'"}']
 
@@ -664,7 +668,7 @@ class ZmqFemag(BaseFemag):
         try:
             response = [r.decode('latin1')
                         for r in self.send_request(
-                ['CONTROL', 'quit'], timeout=10000)]
+                ['CONTROL', 'quit'], timeout=2000)]
         except Exception as e:
             logger.error("Femag Quit zmq message %s", e)
 
@@ -719,6 +723,7 @@ class ZmqFemag(BaseFemag):
 
     def change_case(self, dirname):
         """change case to dirname (FEMAG 9.2)"""
+        logger.info("change_case to :  %s", dirname)
         if not self.request_socket:
             self.request_socket = self.__req_socket()
         self.request_socket.send_string('CONTROL', flags=zmq.SNDMORE)

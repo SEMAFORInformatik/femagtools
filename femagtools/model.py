@@ -204,9 +204,10 @@ class MachineModel(Model):
                 Q1 = self.stator['num_slots']
                 g = gcd(Q1, m*self.poles)//m
                 if hasattr(self, 'rotor'):
-                    Q2 = self.rotor['num_slots']
-                    if Q2 % g:
-                        g = gcd(g, gcd(self.poles, Q2))
+                    if 'num_slots' in self.rotor:
+                        Q2 = self.rotor['num_slots']
+                        if Q2 % g:
+                            g = gcd(g, gcd(self.poles, Q2))
 
                 self.stator['num_slots_gen'] = Q1 // g
             except KeyError:

@@ -40,7 +40,6 @@ phi=math.pi/Q2+m.zeroangl
 x,y=pr2c(r,phi)
 delete_sreg(x, y)
 x,y=pr2c(r,0.99*phi)
-print(r, phi)
 def_new_subreg( x,y, 'Bar', violet )
 x,y = pr2c(r,1.01*phi)	
 add_to_subreg( x, y )
@@ -51,23 +50,3 @@ for i=2, m.num_sl_gen do
     add_to_subreg( x, y )
   end
  end
-
---[[
-slip = 0.0     -- Schlupf [%]
-speed= (slip/100)*50*2*math.pi
-ro_tau = 360.0/m.tot_num_sl
-
-x,y = pd2c(m.stator_diam/2-m.airgap - m.slot_hs2 - m.slot_height/2,
-           ro_tau/2.0)	
-def_mat_fm(x,y, 1, 100)
-for i = 1,ro_slots_gen do
-  for j = -1,1,2 do
-    x,y = pd2c(dy2/2.0-m.slot_height,(i-0.5)*ro_tau+j*0.1)	
-    key_ro = get_spel_key(x,y)
-    set_spel_data("conduc",key_ro,rho_Al)
-    set_spel_data("velsys",key_ro,polar)
-    set_spel_data("velo",key_ro,0,speed)
-  end
-end
-
---]]

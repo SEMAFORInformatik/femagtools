@@ -46,7 +46,7 @@ m.fc_mult_move_type =  1.0 --  Type of move path in air gap
 m.nu_move_steps   =    ${model.get('num_move_steps', 49)}
 
 m.num_par_wdgs    =    ${model.get('num_par_wdgs',1)}
-
+m.wdcon           =    ${model.get('wdgcon', 0)}   --    Connection: 0=open, 1=star, 2=delta
 m.eval_force      =    ${model.get('eval_force', 0)}
 m.current         =    ${model.get('current')}*math.sqrt(2.0)/m.num_par_wdgs
 m.angl_i_up       =    ${model.get('angl_i_up', 0)}

@@ -1,7 +1,7 @@
 --
 -- SM Simulation with excitation current
 --
-m.wdcon           =       1.000   --    Connection: 0=open, 1=star, 2=delta
+m.wdcon           = ${model.get('wdgcon', 1)}   --    Connection: 0=open, 1=star, 2=delta
 m.move_action     = ${model.get('move_action', 0)}
 m.speed           = ${model.get('speed')*60}
 m.skew_angle      = ${model.get('skew_angle',0)}

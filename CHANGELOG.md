@@ -7,7 +7,7 @@ This document lists the major changes in femagtools. Please clone this project t
 - dakota integration
 
 ## Release 1.0.20
-- femag: run femag with machine only
+- femag: run femag with model par only
 - winding: custom winding def
 - isa7.flux_density, demagnetization: changed parameter x,y to el, removed cosys
 

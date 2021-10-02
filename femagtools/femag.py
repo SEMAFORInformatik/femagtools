@@ -127,9 +127,9 @@ class BaseFemag(object):
         self.copy_winding_file(name, w)
         return name
 
-    def create_fsl(self, pmMachine, simulation):
+    def create_fsl(self, machine, simulation):
         """create list of fsl commands"""
-        self.model = femagtools.model.MachineModel(pmMachine)
+        self.model = femagtools.model.MachineModel(machine)
         self.modelname = self.model.name
         self.copy_magnetizing_curves(self.model)
         try:
@@ -310,13 +310,13 @@ class Femag(BaseFemag):
             for f in glob.glob(os.path.join(self.workdir, p)):
                 os.remove(f)
 
-    def __call__(self, pmMachine, simulation={},
+    def __call__(self, machine, simulation={},
                  options=['-b'], fsl_args=[]):
         """setup fsl file, run calculation and return
         BCH or LOS results if any."""
         fslfile = 'femag.fsl'
         with open(os.path.join(self.workdir, fslfile), 'w') as f:
-            f.write('\n'.join(self.create_fsl(pmMachine,
+            f.write('\n'.join(self.create_fsl(machine,
                                               simulation)))
         if simulation:
             if 'poc' in simulation:
@@ -820,19 +820,19 @@ class ZmqFemag(BaseFemag):
             f = self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
             self.upload(os.path.join(dest, f))
 
-    def __call__(self, pmMachine, simulation):
+    def __call__(self, machine, simulation):
         """setup fsl file, run calculation and return BCH results
         Args:
-          pmMachine: dict with machine parameters or name of model
+          machine: dict with machine parameters or name of model
           simulation; dict with simulation parameters
 
         Raises:
            FemagError
         """
-        if isinstance(pmMachine, str):
-            modelpars = dict(name=pmMachine)
+        if isinstance(machine, str):
+            modelpars = dict(name=machine)
         else:
-            modelpars = pmMachine
+            modelpars = machine
         if 'exit_on_end' not in modelpars:
             modelpars['exit_on_end'] = 'false'
         if 'exit_on_error' not in modelpars:
@@ -844,11 +844,14 @@ class ZmqFemag(BaseFemag):
         if r['status'] != 'ok':
             raise FemagError(r['message'])
 
+        if not simulation:
+            return [r, dict(name=machine['name'])]
+
         result_file = r['result_file'][0]
         if simulation['calculationMode'] == "pm_sym_loss":
             return self.read_los(self.modelname)
 
-        status, content = self.getfile(result_file)
+            status, content = self.getfile(result_file)
         r = json.loads(status)
         if r['status'] == 'ok':
             bch = femagtools.bch.Reader()

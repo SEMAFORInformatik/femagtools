@@ -27,5 +27,9 @@ m.calc_noload     =    ${model.get('calc_noload', 1)}
 m.period_frac     =    ${model.get('period_frac', 1)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
-
+% if model.get('load_ex_cur',0):
+m.load_ex_cur    =     ${model.get('load_ex_cur',0)}
+run_models("ld_lq_f_cur")
+%else:
 run_models("ld_lq_fast")
+%endif

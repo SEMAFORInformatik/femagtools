@@ -24,7 +24,9 @@ m.maxiq           =    ${model['maxiq']}/m.num_par_wdgs
 m.miniq           =    ${model['miniq']}/m.num_par_wdgs
 m.delta_id        =    ${model['delta_id']}/m.num_par_wdgs
 m.delta_iq        =    ${model['delta_iq']}/m.num_par_wdgs
-
+% if model.get('load_ex_cur',0):
+m.load_ex_cur     =    ${model['load_ex_cur']}
+%endif
 m.pm_eff_aktiv    =    0.0
 m.calc_noload     =    ${model.get('calc_noload', 1)}
 m.period_frac     =    ${model.get('period_frac', 1)}

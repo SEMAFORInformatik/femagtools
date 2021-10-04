@@ -21,7 +21,7 @@ import numpy as np
 import femagtools.bch
 from xml.etree import ElementTree as ET
 
-coil_color = ['lime', 'gold', 'magenta']
+coil_color = ['lime', 'gold', 'magenta', 'skyblue']
 
 
 def num_basic_windings(Q, p, l):
@@ -53,6 +53,9 @@ def q1q2yk(Q, p, m, l=1):
 class Winding(object):
 
     def __init__(self, arg):
+        """create winding either from bch winding section or winding dict()
+
+        """
         if isinstance(arg, femagtools.bch.Reader):
             self.m = arg.machine['m']
             self.Q = arg.machine['Q']
@@ -93,8 +96,10 @@ class Winding(object):
         else:
             self.l = layers
         coilwidth = max(self.Q//self.p//2, 1)
-        if hasattr(self, 'coilwidth'):
+        if hasattr(self, 'coilwidth'):   # obsolete, use yd instead
             coilwidth = self.coilwidth
+        elif hasattr(self, 'yd'):
+            coilwidth = self.yd
 
         self.yd = coilwidth
 
@@ -175,9 +180,8 @@ class Winding(object):
         taus = 360/self.Q
         s = [round((x-taus/2)/taus)
              for x in self.windings[key]['PHI']]
-        layers = 1 if len(s) == len(set(s)) else 2
 
-        dim = int(layers*ngen/self.m)
+        dim = int(self.l*ngen/self.m)
         slots = [round((x-taus/2)/taus) + 1 + ngen*n
                  for n in range(self.Q//ngen)
                  for x in self.windings[key]['PHI'][:dim]]
@@ -195,9 +199,12 @@ class Winding(object):
         slots = self.slots(k)[0]
         dirs = self.windings[k]['dir']
         # turns = self.windings[k]['N']
-        curr = np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
-                               for n in range(len(slots)//len(dirs))])
-
+        r = len(slots)//len(dirs)
+        if r > 0:
+            curr = np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
+                                   for n in range(r)])
+        else:
+            curr = np.array(dirs)
         NY = 4096
         y = np.zeros(NY*self.Q//t)
         for i in range(1, self.Q//t+1):
@@ -396,7 +403,7 @@ class Winding(object):
                         "fill": f"{coil_color[m]}",
                         "stroke": "none"})
 
-        return svg  # string: ET.tostring(svg)
+        return ET.tostring(svg, encoding='unicode')
 
     def write(self, name, workdir='.'):
         """creates WID file"""

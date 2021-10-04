@@ -200,11 +200,9 @@ class Winding(object):
         dirs = self.windings[k]['dir']
         # turns = self.windings[k]['N']
         r = len(slots)//len(dirs)
-        if r > 0:
-            curr = np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
-                                   for n in range(r)])
-        else:
-            curr = np.array(dirs)
+        curr = np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
+                               for n in range(r)])
+
         NY = 4096
         y = np.zeros(NY*self.Q//t)
         for i in range(1, self.Q//t+1):

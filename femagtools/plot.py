@@ -1433,16 +1433,18 @@ def winding(wdg, ax=0):
                 verticalalignment="center",
                 backgroundcolor="white",
                 bbox=dict(boxstyle='circle,pad=0', fc="white", lw=0))
+    line_thickness = [0.6, 1.2]
     for i, layer in enumerate(z):
         b = -xoff if i else xoff
-        lw = 1.2 if i else 0.6  # line thickness
+        lw = line_thickness[i]
         for m, mslots in enumerate(layer):
             for k in mslots:
                 x = abs(k) * dslot + b
                 xpoints = []
                 ypoints = []
-                if (k > 0 and i == 0) or (k < 0 and i == 0 and wdg.l > 1):
-                    # from right bottom
+                if (i == 0 and (k > 0 or (k < 0 and wdg.l > 1))):
+                    # first layer, positive dir or neg. dir and 2-layers:
+                    #   from right bottom
                     if x + yd > smax+b:
                         dx = dslot if yd > dslot else yd/4
                         xpoints = [x + yd//2 + dx - xoff]

@@ -21,7 +21,8 @@ import numpy as np
 import femagtools.bch
 from xml.etree import ElementTree as ET
 
-coil_color = ['lime', 'gold', 'magenta', 'skyblue']
+coil_color = ['lime', 'gold', 'magenta',
+              'blue', 'brown', 'blueviolet']
 
 
 def num_basic_windings(Q, p, l):
@@ -76,17 +77,24 @@ class Winding(object):
                     w['dir'] = [1 if s > 0 else -1 for s in w['slots']]
                     w['PHI'] = [(2*abs(s)-1)*taus/2 for s in w['slots']]
                     w['R'] = [0 if l == 1 else 1 for l in w['layer']]
-            try:
-                k = self.windings[2]['dir'].index(
-                    -self.windings[2]['dir'][0])
-                self.yd = round((self.windings[2]['PHI'][k] -
-                                 self.windings[2]['PHI'][0])/taus)
-            except ValueError:
+            k = 0
+            for w in self.windings:
+                try:
+                    k = self.windings[w]['dir'].index(
+                        -self.windings[w]['dir'][0])
+                    wk = w
+                except ValueError:
+                    pass
+            if k == 0:
                 self.yd = max(self.Q//self.p//2, 1)
+            else:
+                self.yd = round((self.windings[wk]['PHI'][k] -
+                                 self.windings[wk]['PHI'][0])/taus)
+
             slots = [round((x-taus/2)/taus)
                      for x in self.windings[1]['PHI']]
             self.l = 2
-            if len(slots) == max(slots):
+            if len(slots) == len(set(slots)):
                 self.l = 1
             return
 
@@ -133,11 +141,16 @@ class Winding(object):
             slots = [sorted([(k, 1, 1) for k in p] + [(k, -1, 1) for k in n])
                      for n, p in zip(xneg, xpos)]
 
+        if self.m > 3:  # TODO: check this hack
+            slots = slots[:self.m//2] + [[((k[0]+1) % self.Q, k[1], k[2])
+                                          for k in s]
+                                         for s in slots[:self.m//2]]
         taus = 360/self.Q
-        self.windings = {i+1:  dict(dir=[k[1] for k in s],
-                                    N=[1]*len(s), R=[k[2] for k in s],
-                                    PHI=[taus/2+k[0]*taus for k in s])
-                         for i, s in enumerate(slots)}
+        self.windings = {
+            i+1:  dict(dir=[k[1] for k in s],
+                       N=[1]*len(s), R=[k[2] for k in s],
+                       PHI=[taus/2+k[0]*taus for k in s])
+            for i, s in enumerate(slots)}
 
     def kw_order(self, n):
         """return winding factor harmonics"""
@@ -182,7 +195,7 @@ class Winding(object):
              for x in self.windings[key]['PHI']]
 
         dim = int(self.l*ngen/self.m)
-        slots = [round((x-taus/2)/taus) + 1 + ngen*n
+        slots = [(round((x-taus/2)/taus) + ngen*n) % self.Q + 1
                  for n in range(self.Q//ngen)
                  for x in self.windings[key]['PHI'][:dim]]
         return np.array(slots).reshape((np.gcd(self.Q, self.p), -1))
@@ -313,8 +326,9 @@ class Winding(object):
         slots = sorted([abs(n) for m in z[0] for n in m])
         smax = slots[-1]*dslot
         ET.register_namespace("", "http://www.w3.org/2000/svg")
-        svg = ET.Element("svg", dict(version="1.1", xmlns="http://www.w3.org/2000/svg",
-                                     viewBox=f"0, -30, {slots[-1] * dslot + 15}, 40"))
+        svg = ET.Element("svg", dict(
+            version="1.1", xmlns="http://www.w3.org/2000/svg",
+            viewBox=f"0, -30, {slots[-1] * dslot + 15}, 40"))
         g = ET.SubElement(svg, "g", {"id": "teeth", "fill": "lightblue"})
         for n in slots:
             e = ET.SubElement(g, "rect", {
@@ -323,10 +337,11 @@ class Winding(object):
                 "width": f"{dslot/2}",
                 "height": f"{coil_len - 2}"})
 
-        g = ET.SubElement(svg, "g", {"id": "labels",
-                                     "text-anchor": "middle",
-                                     "dominant-baseline": "middle",
-                                     "style": "font-size: 0.15em; font-family: sans-serif;"})
+        g = ET.SubElement(svg, "g",
+                          {"id": "labels",
+                           "text-anchor": "middle",
+                           "dominant-baseline": "middle",
+                           "style": "font-size: 0.15em; font-family: sans-serif;"})
         for n in slots:
             t = ET.SubElement(g, "text", {
                 "x": f"{n*dslot}",
@@ -345,8 +360,9 @@ class Winding(object):
                     slotpos = abs(k) * dslot + b
                     pc = [f"L {slotpos} {-coil_len//2+2} M {slotpos} {-coil_len//2-1}",
                           f"L {slotpos} {-coil_len}"]
-                    if (k > 0 and i == 0) or (k < 0 and i == 0 and self.l > 1):
-                        # from right bottom
+                    if (i == 0 and (k > 0 or (k < 0 and self.l > 1))):
+                        # first layer, positive dir or neg. dir and 2-layers:
+                        #   from right bottom
                         if slotpos + yd > smax+b:
                             dx = dslot if yd > dslot else yd/4
                             ph = [f"M {slotpos+yd//2-xoff+dx} {coil_height-mh*dx}",

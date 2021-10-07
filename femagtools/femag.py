@@ -856,7 +856,7 @@ class ZmqFemag(BaseFemag):
         if simulation['calculationMode'] == "pm_sym_loss":
             return self.read_los(self.modelname)
 
-            status, content = self.getfile(result_file)
+        status, content = self.getfile(result_file)
         r = json.loads(status)
         if r['status'] == 'ok':
             bch = femagtools.bch.Reader()

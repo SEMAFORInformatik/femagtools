@@ -345,7 +345,7 @@ class Builder:
             if not cond:
                 raise FslBuilderError(
                     'conductor material {} not found'.format(
-                        material))
+                        windings['material']))
             windings['cuconduct'] = cond['elconduct']
         return self.__render(windings, 'cu_losses')
 

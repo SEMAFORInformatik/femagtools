@@ -10,6 +10,7 @@ This document lists the major changes in femagtools. Please clone this project t
 - femag: run femag with model par only
 - winding: custom winding def
 - isa7.flux_density, demagnetization: changed parameter x,y to el, removed cosys
+- conductor: material properties added
 
 ## Release 1.0.19
 - added templates: srm, rotorKs2, magnetShell, com_motor_sim

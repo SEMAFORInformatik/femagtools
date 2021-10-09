@@ -1600,6 +1600,61 @@ def main():
     plt.show()
 
 
+def characteristics(char, title=''):
+    fig, axs = plt.subplots(2, 2, figsize=(10, 8), sharex=True)
+    if title:
+        fig.suptitle(title)
+
+    n = np.array(char['n'])*60
+    pmech = np.array(char['pmech'])*1e-3
+
+    axs[0, 0].plot(n, np.array(char['T']), 'C0-', label='Torque')
+    axs[0, 0].set_ylabel("Torque / Nm")
+    axs[0, 0].grid()
+    axs[0, 0].legend(loc='center left')
+    ax1 = axs[0, 0].twinx()
+    ax1.plot(n, pmech, 'C1-', label='P mech')
+    ax1.set_ylabel("Power / kW")
+    ax1.legend(loc='lower center')
+
+    axs[0, 1].plot(n[1:], np.array(char['u1'][1:]), 'C0-', label='Voltage')
+    axs[0, 1].set_ylabel("Voltage / V",)
+    axs[0, 1].grid()
+    axs[0, 1].legend(loc='center left')
+    ax2 = axs[0, 1].twinx()
+    ax2.plot(n[1:], char['cosphi'][1:], 'C1-', label='Cos Phi')
+    ax2.set_ylabel("Cos Phi")
+    ax2.legend(loc='lower right')
+
+    axs[1, 0].plot(n, np.array(char['id']), label='Id')
+    axs[1, 0].plot(n, np.array(char['iq']), label='Iq')
+    axs[1, 0].plot(n, np.array(char['i1']), label='I1')
+    axs[1, 0].set_xlabel("Speed / rpm")
+    axs[1, 0].set_ylabel("Current / A")
+    axs[1, 0].legend(loc='center left')
+    ax3 = axs[1, 0].twinx()
+    ax3.plot(n, char['beta'], 'C3-', label='Beta')
+    ax3.set_ylabel("Beta / °")
+    ax3.legend(loc='center right')
+    axs[1, 0].grid()
+
+    plfe = np.array(char['plfe'])*1e-3
+    plcu = np.array(char['plcu'])*1e-3
+    pl = np.array(char['losses'])*1e-3
+    axs[1, 1].plot(n, plcu, 'C0-', label='Cu Losses')
+    axs[1, 1].plot(n, plfe, 'C1-', label='Fe Losses')
+    axs[1, 1].set_ylabel("Losses / kW")
+    axs[1, 1].legend(loc='center left')
+    axs[1, 1].grid()
+    axs[1, 1].set_xlabel("Speed / rpm")
+    ax4 = axs[1, 1].twinx()
+    ax4.plot(n[1:-1], char['eta'][1:-1], 'C3-', label="Eta")
+    ax4.legend(loc='upper center')
+    ax4.set_ylabel("Efficiency")
+
+    fig.tight_layout()
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')

@@ -341,7 +341,7 @@ class Builder:
         if 'material' in windings:
             cond = 0
             if condMat:
-                cond = condMat.find_by_name(windings['material'])
+                cond = condMat.find(windings['material'])
             if not cond:
                 raise FslBuilderError(
                     'conductor material {} not found'.format(

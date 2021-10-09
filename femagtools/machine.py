@@ -89,7 +89,7 @@ def puconv(dqpar, p, NR, UR, IR):
         dqp = dict(beta=dqpar['beta'], losses=dict())
         dqp['i1'] = np.array(dqpar['i1'])/IR
     elif 'iq' in dqpar:
-        dqp = dict(iq=np.array(dqpar['iq)'])/IB*np.sqrt(2), losses=dict())
+        dqp = dict(iq=np.array(dqpar['iq)'])/IR*np.sqrt(2), losses=dict())
         dqp['id'] = np.array(dqpar['id'])/IR*np.sqrt(2)
     else:
         raise ValueError('invalid dqpar')

@@ -20,6 +20,7 @@ import json
 import io
 import femagtools.model
 import femagtools.magnet
+import femagtools.conductor
 import femagtools.windings
 import femagtools.mcv
 import femagtools.airgap as ag
@@ -78,8 +79,11 @@ class FemagError(Exception):
 
 
 class BaseFemag(object):
-    def __init__(self, workdir, cmd, magnetizingCurves, magnets):
+    def __init__(self, workdir, cmd, magnetizingCurves, magnets, condMat):
         self.workdir = workdir
+        self.magnets = []
+        self.magnetizingCurves = []
+        self.condMat = []
         if cmd:
             self.cmd = cmd
         else:
@@ -92,15 +96,18 @@ class BaseFemag(object):
             else:
                 self.magnetizingCurves = femagtools.mcv.MagnetizingCurve(
                     magnetizingCurves)
-        else:
-            self.magnetizingCurves = []
+
         if magnets:
             if isinstance(magnets, femagtools.magnet.Magnet):
                 self.magnets = magnets
             else:
                 self.magnets = femagtools.magnet.Magnet(magnets)
-        else:
-            self.magnets = []
+
+        if condMat:
+            if isinstance(condMat, femagtools.conductor.Conductor):
+                self.condMat = condMat
+            else:
+                self.condMat = femagtools.conductor.Conductor(condMat)
 
     def copy_winding_file(self, name, wdg):
         wdg.write(name, self.workdir)
@@ -141,7 +148,7 @@ class BaseFemag(object):
         builder = femagtools.fsl.Builder()
         if simulation:
             return builder.create(self.model, simulation, self.magnets)
-        return builder.create_model(self.model, self.magnets) + ['save_model("cont")']
+        return builder.create_model(self.model, self.magnets, self.condMat) + ['save_model("cont")']
 
     def get_log_value(self, pattern, modelname='FEMAG-FSL.log'):
         result = []
@@ -247,12 +254,13 @@ class Femag(BaseFemag):
         cmd: name of femag program (default wfemag64 on windows, xfemag64 on linux)
         magnetizingCurves: collection of lamination material curves
         magnets: collection of magnet material
+        condMat: collection of conductor material
     """
 
     def __init__(self, workdir, cmd=None,
-                 magnetizingCurves=None, magnets=None):
+                 magnetizingCurves=None, magnets=None, condMat=[]):
         super(self.__class__, self).__init__(workdir, cmd,
-                                             magnetizingCurves, magnets)
+                                             magnetizingCurves, magnets, condMat)
 
     def run(self, filename, options=['-b'], fsl_args=[]):
         """invoke FEMAG in current workdir
@@ -459,9 +467,9 @@ class ZmqFemag(BaseFemag):
 
     def __init__(self, port, host='localhost', workdir='', logdir='',
                  cmd=None,
-                 magnetizingCurves=None, magnets=None):
+                 magnetizingCurves=None, magnets=None, condMat=[]):
         super(self.__class__, self).__init__(workdir, cmd,
-                                             magnetizingCurves, magnets)
+                                             magnetizingCurves, magnets, condMat)
         self.host = host
         self.port = port
         self.femaghost = ''

@@ -218,20 +218,23 @@ class Builder:
 
         return mcv + self.render_rotor(magmodel, templ)
 
-    def create_rotor_model(self, model):
+    def create_rotor_model(self, model, condMat):
         mcv = ["mcvkey_yoke  = '{}'"
                .format(model.rotor.get('mcvkey_yoke', 'dummy')),
                "mcvkey_shaft = '{}'"
                .format(model.rotor.get('mcvkey_shaft', 'dummy'))]
 
+        culosses = []
         templ = model.rotortype()
         rotmodel = model.rotor.copy()
         if 'conductivity' in rotmodel:
             culosses = self.create_cu_losses(
                 dict(cuconduct=rotmodel['conductivity'],
                      winding_inside=not model.external_rotor))
-        else:
-            culosses = []
+        elif 'material' in rotmodel:
+            rotmodel['winding_inside'] = not model.external_rotor
+            culosses = self.create_cu_losses(rotmodel, condMat)
+
         rotmodel.update(model.rotor[templ])
         rotmodel['is_rotor'] = True  # just in case for the template
         return mcv + culosses + self.render_rotor(rotmodel, templ)
@@ -334,7 +337,16 @@ class Builder:
     def create_fe_contr(self, model):
         return self.__render(model, 'fe-contr.mako')
 
-    def create_cu_losses(self, windings):
+    def create_cu_losses(self, windings, condMat=[]):
+        if 'material' in windings:
+            cond = 0
+            if condMat:
+                cond = condMat.find_by_name(windings['material'])
+            if not cond:
+                raise FslBuilderError(
+                    'conductor material {} not found'.format(
+                        material))
+            windings['cuconduct'] = cond['elconduct']
         return self.__render(windings, 'cu_losses')
 
     def create_fe_losses(self, model):
@@ -400,7 +412,7 @@ class Builder:
             self.fsl_magnet = True
             model.magnet['dxf'] = dict(fsl=conv['fsl_magnet'])
 
-    def create_model(self, model, magnets=[]):
+    def create_model(self, model, magnets=[], condMat=[]):
         magnetMat = {}
         if hasattr(model, 'magnet'):
             material = model.magnet.get('material', 0)
@@ -443,7 +455,7 @@ class Builder:
                 if magnetMat:
                     rotor += self.create_magnet(model, magnetMat)
             else:
-                rotor = self.create_rotor_model(model)
+                rotor = self.create_rotor_model(model, condMat)
             windings = model.windings
             windings['winding_inside'] = model.external_rotor
             if model.commutator:
@@ -452,7 +464,7 @@ class Builder:
                     magdata = self.create_magnet(model, magnetMat)
 
                 return (self.create_new_model(model) +
-                        self.create_cu_losses(windings) +
+                        self.create_cu_losses(windings, condMat) +
                         self.create_fe_losses(model) +
                         rotor +
                         self.create_stator_model(model) +
@@ -463,7 +475,7 @@ class Builder:
                         self.create_rotor_winding(model))
 
             return (self.create_new_model(model) +
-                    self.create_cu_losses(windings) +
+                    self.create_cu_losses(windings, condMat) +
                     self.create_fe_losses(model) +
                     self.create_stator_model(model) +
                     self.create_gen_winding(model) +

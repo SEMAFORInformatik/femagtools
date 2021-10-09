@@ -294,7 +294,7 @@ class FslBuilderTest(unittest.TestCase):
                 damper_div=0.007
             ))
         model = femagtools.MachineModel(self.m)
-        fsl = self.builder.create_rotor_model(model)
+        fsl = self.builder.create_rotor_model(model, condMat=[])
         self.assertEqual(len(fsl), 33)
 
     def test_fe_losses(self):
@@ -475,6 +475,7 @@ class FslBuilderTest(unittest.TestCase):
             ),
 
             windings=dict(
+                material='Cu',
                 num_phases=3,
                 num_wires=5,
                 coil_span=1,
@@ -482,7 +483,8 @@ class FslBuilderTest(unittest.TestCase):
         )
         model = femagtools.MachineModel(machine)
         magnets = femagtools.magnet.Magnet(magnetmat)
-        fsl = self.builder.create_model(model, magnets)
+        condMat = femagtools.magnet.Magnet([dict(name='Cu', elconduct=56e6)])
+        fsl = self.builder.create_model(model, magnets, condMat)
         self.assertEqual(len(fsl), 173)
         brem = [l.strip() for l in fsl
                 if l.split('=')[0].strip() == 'm.remanenc']

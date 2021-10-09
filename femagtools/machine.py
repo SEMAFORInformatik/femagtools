@@ -73,6 +73,38 @@ def iqd(beta, i1):
                                      np.sin(beta)])
 
 
+def puconv(dqpar, p, NR, UR, IR):
+    """convert dqpar to per unit
+    arguments:
+    dqpar: dict from ld-iq or psid-psiq identification
+    p: pole pairs
+    NR: ref speed in 1/s
+    UR: ref voltage per phase in V
+    IR: ref current per phase in A
+    """
+    WR = 2*np.pi*NR*p
+    PSIR = UR/WR
+    SR = 3*UR*IR
+    if 'beta' in dqpar:
+        dqp = dict(beta=dqpar['beta'], losses=dict())
+        dqp['i1'] = np.array(dqpar['i1'])/IR
+    elif 'iq' in dqpar:
+        dqp = dict(iq=np.array(dqpar['iq)'])/IB*np.sqrt(2), losses=dict())
+        dqp['id'] = np.array(dqpar['id'])/IR*np.sqrt(2)
+    else:
+        raise ValueError('invalid dqpar')
+    for k in 'psid', 'psiq':
+        dqp[k] = np.array(dqpar[k])/PSIR
+    if 'losses' in dqpar:
+        for k in ('magnet', 'styoke_hyst', 'styoke_eddy',
+                  'stteeth_hyst', 'stteeth_eddy', 'rotor_hyst', 'rotor_eddy'):
+            dqp['losses'][k] = np.array(dqpar['losses'][k])/SR
+        dqp['losses']['speed'] = p*dqpar['losses']['speed']/WR
+        dqp['losses']['ef'] = dqpar['losses']['ef']
+        dqp['losses']['hf'] = dqpar['losses']['hf']
+    return dqp
+
+
 def __scale_losses(losses, wdg, lfe):
     if losses:
         l = {k: wdg*lfe*np.array(losses[k]) for k in (
@@ -83,6 +115,64 @@ def __scale_losses(losses, wdg, lfe):
         l['speed'] = losses['speed']
         return l
     return {}
+
+
+def dqpar_interpol(xfit, dqpars, ipkey='temperature'):
+    """return interpolated parameters at temperature or exc_current
+
+    Arguments:
+      xfit -- temperature or exc_current to fit dqpars
+      dqpars -- list of dict with id, iq (or i1, beta), Psid and Psiq values
+      ipkey -- key (string) to interpolate
+    """
+    # check current range
+    ckeys = (('i1', 'beta'), ('id', 'iq'))
+    dqtype = 0
+    fpip = {k: dqpars[0][k] for k in ckeys[dqtype]}
+    fpip['losses'] = dict()
+    for k in ckeys[dqtype]:
+        curr = np.array([f[k] for f in dqpars], dtype=object)
+        shape = curr.shape
+        if curr.shape != (len(dqpars), len(curr[0])):
+            raise ValueError("current range conflict")
+        curr = curr.astype(float)
+        if not np.array([np.allclose(curr[0], c)
+                         for c in curr[1:]]).all():
+            raise ValueError("current range conflict")
+
+    try:
+        speed = np.array([d['losses']['speed'] for d in dqpars])
+        if (np.max(speed) - np.min(speed))/np.mean(speed) > 1e-3:
+            raise ValueError("losses: speed conflict")
+    except KeyError:
+        pass
+
+    sorted_dqpars = sorted(dqpars, key=lambda d: d[ipkey])
+    x = [f[ipkey] for f in sorted_dqpars]
+    for k in ('psid', 'psiq'):
+        m = np.array([f[k] for f in sorted_dqpars]).T
+        if len(x) > 2:
+            fpip[k] = ip.UnivariateSpline(x, m, k=2)(xfit).T
+        else:
+            fpip[k] = ip.interp1d(
+                x, m, fill_value='extrapolate')(xfit).T
+    try:
+        for k in ('styoke_hyst', 'stteeth_hyst',
+                  'styoke_eddy', 'stteeth_eddy',
+                  'rotor_hyst', 'rotor_eddy',
+                  'magnet'):
+            m = np.array([f['losses'][k] for f in sorted_dqpars]).T
+            if len(x) > 2:
+                fpip['losses'][k] = ip.UnivariateSpline(x, m, k=2)(xfit).T
+            else:
+                fpip['losses'][k] = ip.interp1d(
+                    x, m, fill_value='extrapolate')(xfit).T
+            fpip['losses']['speed'] = dqpars[0]['losses']['speed']
+            fpip['losses']['hf'] = dqpars[0]['losses']['hf']
+            fpip['losses']['ef'] = dqpars[0]['losses']['ef']
+    except KeyError:
+        pass
+    return x, fpip
 
 
 def create(bch, r1, ls, lfe=1, wdg=1):
@@ -381,7 +471,7 @@ class PmRelMachine(object):
                        self.iqd_plmag(iq, id, f),
                        self.iqd_plcu(iq, id)], axis=0)
 
-    def characteristics(self, T, n, u1max, nsamples=36):
+    def characteristics(self, T, n, u1max, nsamples=50):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -490,12 +580,22 @@ class PmRelMachine(object):
 
             r['phi'].append(r['beta'][-1] - r['gamma'][-1])
             r['cosphi'].append(np.cos(r['phi'][-1]/180*np.pi))
-            #r['losses'].append(self.iqd_losses(iq, id, nx*self.p))
 
-        r['pmech'] = [2*np.pi*nx*tq for nx, tq in zip(r['n'], r['T'])]
-
-        r['losses'] = self.iqd_losses(np.array(r['iq']), np.array(r['id']),
-                                      np.array(r['n'])*self.p).tolist()
+        pmech = np.array([2*np.pi*nx*tq for nx, tq in zip(r['n'], r['T'])])
+        plfe = self.iqd_losses(np.array(r['iq']), np.array(r['id']),
+                               np.array(r['n'])*self.p)
+        plcu = self.m*self.r1*np.array(r['i1'])**2
+        pltotal = plfe + plcu
+        r['pmech'] = pmech.tolist()
+        r['plfe'] = plfe.tolist()
+        r['plcu'] = plcu.tolist()
+        r['losses'] = pltotal.tolist()
+        if pmech.any():
+            if np.abs(pmech[0]) < 1e-12:
+                r['eta'] = [np.nan] + (
+                    pmech[1:]/(pmech[1:]+pltotal[1:])).tolist()
+            else:
+                r['eta'] = (pmech/(pmech+pltotal)).tolist()
 
         return r
 
@@ -619,9 +719,10 @@ class PmRelMachineLdq(PmRelMachine):
                     kx=kx, ky=ky).ev for k in (
                         'styoke_hyst', 'stteeth_hyst',
                         'styoke_eddy', 'stteeth_eddy',
-                    'rotor_hyst', 'rotor_eddy',
-                    'magnet')}
+                        'rotor_hyst', 'rotor_eddy',
+                        'magnet')}
             except KeyError:
+                logger.warning("loss map missing")
                 pass
             return
 

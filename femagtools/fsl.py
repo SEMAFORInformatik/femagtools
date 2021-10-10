@@ -546,7 +546,7 @@ class Builder:
         else:
             return []
 
-    def create(self, model, sim, magnets=None):
+    def create(self, model, sim, magnets=None, condMat=[]):
         "create model and analysis function"
         try:
             sim['lfe'] = model.get('lfe')
@@ -585,7 +585,7 @@ class Builder:
             except UnboundLocalError:
                 pass
 
-        fslmodel = self.create_model(model, magnets)
+        fslmodel = self.create_model(model, magnets, condMat)
         logger.info("create simulation '%s'", sim['calculationMode'])
 
         return (fslmodel + self.create_analysis(sim) +

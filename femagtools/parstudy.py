@@ -108,9 +108,9 @@ class ParameterStudy(object):
         if model.is_complete():
             logger.info("setup model in %s", self.femag.workdir)
             filename = 'femag.fsl'
-            if 'wdgdef' in self.model.windings:
-                self.model.windings['wdgfile'] = self.femag.create_wdg_def(
-                    self.model)
+            if 'wdgdef' in model.windings:
+                model.windings['wdgfile'] = self.femag.create_wdg_def(
+                    model)
 
             with open(os.path.join(self.femag.workdir, filename), 'w') as f:
                 f.write('\n'.join(builder.create_model(
@@ -119,15 +119,15 @@ class ParameterStudy(object):
 
             self.femag.run(filename, options=['-b'])
         model_files = [os.path.join(self.femag.workdir, m)
-                       for m in mc_files] + [f
-                                             for sublist in [
-                                                 glob.glob(os.path.join(
-                                                     self.femag.workdir,
-                                                     model.name+e))
-                                                 for e in (
-                                                     '_*.poc',
-                                                     '.nc', '.[IA]*7')]
-                                             for f in sublist]
+                       for m in mc_files] + [
+            f for sublist in [
+                glob.glob(os.path.join(
+                    self.femag.workdir,
+                    model.name+e))
+                for e in (
+                    '_*.poc',
+                    '.nc', '.[IA]*7')]
+            for f in sublist]
 
         return model_files
 

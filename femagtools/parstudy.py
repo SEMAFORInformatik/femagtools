@@ -64,13 +64,13 @@ class ParameterStudy(object):
     """abstract base class for parameter variation calculation"""
 
     def __init__(self, workdir,
-                 magnetizingCurves=None, magnets=None, result_func=None,
+                 magnetizingCurves=None, magnets=None, condMat=[], result_func=None,
                  repname='grid'):  # tasktype='Task'):
         #self.tasktype = tasktype
         self.result_func = result_func
         self.femag = femagtools.Femag(workdir,
                                       magnetizingCurves=magnetizingCurves,
-                                      magnets=magnets)
+                                      magnets=magnets, condMat=condMat)
         # rudimentary: gives the ability to stop a running parameter variation. thomas.maier/OSWALD
         self.stop = False
         self.reportdir = ''

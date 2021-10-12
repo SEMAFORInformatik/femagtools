@@ -51,12 +51,14 @@ def log_pop(pop, ngen):
 
 class Optimizer(object):
     # tasktype='Task'):
-    def __init__(self, workdir, magnetizingCurves, magnetMat, result_func=None):
+    def __init__(self, workdir, magnetizingCurves, magnetMat, condMat=[],
+                 result_func=None):
         #self.tasktype = tasktype
         self.result_func = result_func
         self.femag = femagtools.Femag(workdir,
                                       magnetizingCurves=magnetizingCurves,
-                                      magnets=magnetMat)
+                                      magnets=magnetMat,
+                                      condMat=condMat)
 
     def _update_population(self, generation, pop, engine):
         self.job.cleanup()

@@ -1626,16 +1626,19 @@ def characteristics(char, title=''):
     ax2.set_ylabel("Cos Phi")
     ax2.legend(loc='lower right')
 
-    axs[1, 0].plot(n, np.array(char['id']), label='Id')
-    axs[1, 0].plot(n, np.array(char['iq']), label='Iq')
+    if 'id' in char:
+        axs[1, 0].plot(n, np.array(char['id']), label='Id')
+    if 'iq' in char:
+        axs[1, 0].plot(n, np.array(char['iq']), label='Iq')
     axs[1, 0].plot(n, np.array(char['i1']), label='I1')
     axs[1, 0].set_xlabel("Speed / rpm")
     axs[1, 0].set_ylabel("Current / A")
     axs[1, 0].legend(loc='center left')
-    ax3 = axs[1, 0].twinx()
-    ax3.plot(n, char['beta'], 'C3-', label='Beta')
-    ax3.set_ylabel("Beta / °")
-    ax3.legend(loc='center right')
+    if 'beta' in char:
+        ax3 = axs[1, 0].twinx()
+        ax3.plot(n, char['beta'], 'C3-', label='Beta')
+        ax3.set_ylabel("Beta / °")
+        ax3.legend(loc='center right')
     axs[1, 0].grid()
 
     plfe = np.array(char['plfe'])*1e-3

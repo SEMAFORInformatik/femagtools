@@ -3,7 +3,7 @@ m.num_wires =  ${model['num_wires']}
 
 xm = {}
 ym = {}
-a = m.rotor_diam/2 - m.airgap - m.pole_height - m.core_height/2
+a = m.rotor_diam/2 - ag - m.pole_height - m.core_height/2
 b = ((m.core_width1 + m.core_width2)/4 + m.pole_width/2)/2
 r = math.sqrt(a^2 + b^2)
 alpha = math.atan2(b, a)

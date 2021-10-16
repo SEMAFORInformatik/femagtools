@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import math
+import femagtools.windings
 from femagtools.dxfsl.converter import convert
 from femagtools.poc import Poc
 from . import __version__

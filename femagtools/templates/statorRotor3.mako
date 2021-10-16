@@ -31,8 +31,7 @@ m.zeroangl    = ${model.get('zeroangle',0)}
 m.rlength     = ${model.get('rlength',1)*100}  
 
 m.mcvkey_yoke = mcvkey_yoke
-   
---m.delta_angle_ndchn =          0.8 --   angle nodechain airgap in [degr]
+
 pre_models("STATOR_3")
 
 % if model.get('is_rotor', False):

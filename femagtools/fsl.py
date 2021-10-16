@@ -337,7 +337,7 @@ class Builder:
         if model.get('num_agnodes', 0):
             tail = ['m.airgap = -1']
         else:
-            if isinstance(model.get(['bore_diam']), list):
+            if isinstance(model.get('bore_diam', 0), list):
                 tail = ['m.airgap   = 2*ag[2]/3']
             else:
                 tail = ['m.airgap   = 2*ag/3']

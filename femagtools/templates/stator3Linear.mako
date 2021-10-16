@@ -1,6 +1,6 @@
 
 
-m.cood_system     = ${model['coord_system'])} -- 1: x/y or 2: r/z 
+m.cood_system     = ${model.get('coord_system', 1)} -- 1: x/y or 2: r/z 
 
 m.l_corner_x0     = 0.0
 m.l_corner_y0     = 0.0

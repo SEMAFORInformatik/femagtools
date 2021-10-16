@@ -94,7 +94,7 @@ class FslBuilderTest(unittest.TestCase):
             slot_width=0.003)
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 41)
+        self.assertEqual(len(fsl), 40)
 
     def test_stator4(self):
         self.m['stator']['stator4'] = dict(

@@ -147,8 +147,7 @@ class BaseFemag(object):
             pass
         builder = femagtools.fsl.Builder()
         if simulation:
-            return builder.create(self.model, simulation,
-                                  self.magnets, self.condMat)
+            return builder.create(self.model, simulation, self.magnets, self.condMat)
         return builder.create_model(self.model,
                                     self.magnets,
                                     self.condMat) + ['save_model("cont")']

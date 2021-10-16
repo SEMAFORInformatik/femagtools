@@ -43,6 +43,17 @@ class Builder:
         self.fsl_stator = False
         self.fsl_magnet = False
 
+    def create_wdg_def(self, model):
+        name = 'winding'
+        w = femagtools.windings.Winding(
+            dict(
+                Q=model.stator['num_slots'],
+                p=model.poles//2,
+                m=len(model.windings['wdgdef']),
+                windings=model.windings['wdgdef']))
+        self.copy_winding_file(name, w)
+        return name
+
     def create_stator_model(self, model):
         mcv = ["mcvkey_yoke = '{}'"
                .format(model.stator.get('mcvkey_yoke', 'dummy')),
@@ -322,11 +333,14 @@ class Builder:
         return self.__render(model, 'basic_modpar')
 
     def create_new_model(self, model):
-        if isinstance(model.get(['bore_diam']), list):
-            tail = ['m.airgap   = 2*ag[2]/3']
+        if model.get('num_agnodes', 0):
+            tail = ['m.airgap = -1']
         else:
-            tail = ['m.airgap   = 2*ag/3']
-        tail += [f"m.nodedist = {model.stator.get('nodedist',1)}"]
+            if isinstance(model.get(['bore_diam']), list):
+                tail = ['m.airgap   = 2*ag[2]/3']
+            else:
+                tail = ['m.airgap   = 2*ag/3']
+            tail += [f"m.nodedist = {model.stator.get('nodedist',1)}"]
 
         return (['-- created by femagtools {}'.format(__version__), ''] +
                 self.__render(model, 'new_model') +
@@ -357,19 +371,20 @@ class Builder:
         return []
 
     def create_gen_winding(self, model):
+        genwdg = self.__render(model, 'gen_winding')
         if 'leak_dist_wind' in model.windings:
-            return self.__render(model, 'gen_winding') + \
+            return genwdg + \
                 self.__render(model.windings['leak_dist_wind'],
                               'leak_dist_wind')
         elif 'leak_evol_wind' in model.windings:
-            return self.__render(model, 'gen_winding') + \
+            return genwdg + \
                 self.__render(model.windings['leak_evol_wind'],
                               'leak_evol_wind')
         elif 'leak_tooth_wind' in model.windings:
-            return self.__render(model, 'gen_winding') + \
+            return genwdg + \
                 self.__render(model.windings['leak_tooth_wind'],
                               'leak_tooth_wind')
-        return self.__render(model, 'gen_winding')
+        return genwdg
 
     def prepare_model_with_dxf(self, model):
         dxfname = model.dxffile.get('name', None)
@@ -468,6 +483,8 @@ class Builder:
                         self.create_cu_losses(windings, condMat, ignore_material) +
                         self.create_fe_losses(model) +
                         rotor +
+                        ['m.remanenc    = 1.0',
+                         'm.relperm     = 1.05'] +
                         self.create_stator_model(model) +
                         magdata +
                         self.create_gen_winding(model) +
@@ -503,14 +520,21 @@ class Builder:
                         magnetMat['rlen'] = model.magnet['rlen']
                 elif hasattr(model, 'stator'):
                     if 'magn_rlen' in model.stator:
-                        magnetMat['rlen'] = model.magnet['magn_rlen']
+                        magnetMat['rlen'] = model.stator['magn_rlen']
                 return self.__render(magnetMat, 'magnet-data')
+            try:
+                magnet = model.magnet
+                rlen = magnet.get('rlen', 100)
+            except AttributeError:
+                magnet = model.stator  # commutator type?
+                rlen = magnet.get('magn_rlen', 100)
+
             return ['m.remanenc       = {}'
-                    .format(model.magnet.get('remanenc', 1.2)),
+                    .format(magnet.get('remanenc', 1.2)),
                     'm.relperm        = {}'
-                    .format(model.magnet.get('relperm', 1.05)),
+                    .format(magnet.get('relperm', 1.05)),
                     'm.rlen           = {}'
-                    .format(model.magnet.get('rlen', 100)),
+                    .format(rlen),
                     '']
         except:
             return []
@@ -542,7 +566,8 @@ class Builder:
         return self.__render(model, 'colorgrad')
 
     def mesh_airgap(self, model):
-        if self.fsl_stator and self.fsl_magnet:
+        if ((self.fsl_stator and self.fsl_magnet) or
+                model.get('num_agnodes', 0)):
             return self.__render(model, 'mesh-airgap')
         else:
             return []

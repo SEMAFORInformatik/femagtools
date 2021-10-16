@@ -14,16 +14,7 @@ m.dc_ac           = ${model.windings.get('dc_ac', 0)}     --   Current: DC: 0; A
  
  pre_models("GEN_CMM_WDG")
 -- gen cmm
-data=io.open(model..".cmm","w")     -- Output in data file
-data:write(string.format("%d\n",m.num_slots))
-for i = 1, m.num_slots do
-  data:write(string.format("%d\n",i))
-end
-for i = 1, m.num_slots+1 do
-  data:write(string.format("%g\n",(i-1)*360/m.tot_num_sl))
-end
-data:write("0.0\n0\n")
-io.close(data)
+pre_models("GEN_CMM"); -- autm. generate cmm File (requires femag rel >=9.2)"
 % elif 'wdgfile' in model.windings:
 def_new_wdg('${model.windings.get("wdgfile")}')
 pre_models("gen_pocfile") 

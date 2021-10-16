@@ -203,15 +203,16 @@ class MachineModel(Model):
             try:
                 Q1 = self.stator['num_slots']
                 g = gcd(Q1, m*self.poles)//m
-                if hasattr(self, 'rotor'):
-                    if 'num_slots' in self.rotor:
-                        Q2 = self.rotor['num_slots']
-                        if Q2 % g:
-                            g = gcd(g, gcd(self.poles, Q2))
-
                 self.stator['num_slots_gen'] = Q1 // g
             except KeyError:
-                pass
+                try:
+                    Q2 = self.rotor['num_slots']
+                    g = gcd(Q2, m*self.poles)//m
+                    if Q2 % g:
+                        g = gcd(g, gcd(self.poles, Q2))
+                    self.rotor['num_slots_gen'] = Q2 // g
+                except KeyError:
+                    pass
 
     def set_mcvkey_magnet(self, mcvkey):
         self.mcvkey_magnet = mcvkey

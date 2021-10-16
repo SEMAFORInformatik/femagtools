@@ -1,3 +1,7 @@
+% if hasattr(model, 'num_agnodes'):
+num_agnodes = ${model.num_agnodes}
+agndst = 360/num_agnodes
+% endif
 % if hasattr(model, 'stator'):
 % if hasattr(model, 'airgap'):
 % if isinstance(model.get(['airgap']), list):
@@ -54,12 +58,12 @@ dy2 = ${model.get(['inner_diam'])*1e3}
 % endif
 
 % if hasattr(model, 'stator'):
-% if 'magnetShell' in model.stator: # DC motor with CMM
-m.tot_num_slot    =   ${int(model.get(['rotor','num_slots']))}
-m.num_sl_gen      =   ${int(model.get(['rotor','num_slots_gen']))}
-% else:
+% if 'num_slots' in model.stator: # DC motor with CMM
 m.tot_num_slot    =   ${int(model.get(['stator','num_slots']))}
 m.num_sl_gen      =   ${int(model.get(['stator','num_slots_gen']))}
+% elif hasattr(model, 'rotor'):
+m.tot_num_slot    =   ${int(model.get(['rotor','num_slots']))}
+m.num_sl_gen      =   ${int(model.get(['rotor','num_slots_gen']))}
 % endif
 m.num_poles       =   ${int(model.get(['poles']))}
 m.num_pol_pair    =   m.num_poles/2

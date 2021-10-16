@@ -1,6 +1,8 @@
 
-
 -- airgap
+if num_agnodes ~= nil then
+  alfa = 2*math.pi*m.npols_gen/m.num_poles
+end
 ndt(agndst)
 r1 = m.fc_radius - ag/6
 x1, y1 = pr2c(r1, alfa)

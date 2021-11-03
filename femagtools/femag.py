@@ -147,6 +147,8 @@ class BaseFemag(object):
             pass
         builder = femagtools.fsl.Builder()
         if simulation:
+            if "hc_min" in simulation:
+                self.model.__setattr__("hc_min", simulation.get("hc_min", 95))
             return builder.create(self.model, simulation, self.magnets, self.condMat)
         return builder.create_model(self.model,
                                     self.magnets,
@@ -358,6 +360,8 @@ class Femag(BaseFemag):
                         get_shortCircuit_parameters(bch,
                                                     simulation.get('initial', 2)))
                     builder = femagtools.fsl.Builder()
+                    if "hc_min" in simulation:
+                        self.model.__setattr__("hc_min", simulation.get("hc_min", 95))
                     fslcmds = (builder.open_model(self.model) +
                                builder.create_shortcircuit(simulation))
                     with open(os.path.join(self.workdir, fslfile), 'w') as f:

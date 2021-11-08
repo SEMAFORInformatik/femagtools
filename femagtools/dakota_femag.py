@@ -44,8 +44,17 @@ def read_paramsin(p):
             row.append(float(v))
         d.append(row)
         if l:
-            resvars = [l.split(':')[-1]
-                       for l in paramsin[b+numin+2:b+numin+numout+2]]
+            resvars = []
+            signs = []
+            for name in [l.split(':')[-1]
+                         for l in paramsin[b+numin+2:b+numin+numout+2]]:
+                if name[0] == '-':
+                    name = name[1:]
+                    signs.append(-1)
+                else:
+                    signs.append(1)
+                resvars.append(name)
+
         b = b + 2 + numin + numout
         i = b
         for l in paramsin[i:]:
@@ -54,8 +63,9 @@ def read_paramsin(p):
             b = b+1
 
     return {
-        "objective_vars": [{'name': v} for v in resvars],
-        "population_size": 20,
+        "objective_vars": [{'name': v, 'sign': s}
+                           for s, v in zip(signs, resvars)],
+        "population_size": len(d),
         "decision_vars": {
             'list': d,
             'columns': columns}
@@ -109,5 +119,8 @@ if __name__ == '__main__':
     with open(sys.argv[2], 'w') as fp:
         for r in zip(*(results['f'])):
             fp.write('#\n')
-            for c, v in zip(r, resvars):
-                fp.write(f' {c} {v}\n')
+            for v, n in zip(r, resvars):
+                if n[0] == '-':
+                    fp.write(f' {v} {n}\n')
+                else:
+                    fp.write(f' {v} {n}\n')

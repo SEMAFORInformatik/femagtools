@@ -9,14 +9,15 @@
 """
 import sys
 import logging
-import json
-import importlib
+import copy
 import pathlib
 import subprocess
 import femagtools
 import mako
 import mako.lookup
 import numpy as np
+import json
+from .dakotaout import read_dakota_out
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,6 @@ class Dakota(object):
             dirs = [pathlib.Path(__file__).parent / 'templates/dakota',
                     pathlib.Path.cwd()]
 
-        print([str(d) for d in dirs])
         self.lookup = mako.lookup.TemplateLookup(
             directories=[str(d) for d in dirs],
             disable_unicode=False, input_encoding='utf-8',
@@ -65,7 +65,7 @@ class Dakota(object):
             '\n'.join([f'{k}={engine[k]}' for k in engine])+'\n')
 
     def __call__(self, study, machine, simulation,
-                 engine, num_samples=0):
+                 engine, **kwargs):
         """prepare input files and run dakota"""
         self._write_engine_conf(engine)
         (self.femag.workdir / 'model.py').write_text(
@@ -81,8 +81,14 @@ class Dakota(object):
         outname = self.femag.workdir / 'dakota.out'
         errname = self.femag.workdir / 'dakota.err'
 
+        dstudy = copy.deepcopy(study)
+        dstudy.update(kwargs)
+        for o in dstudy['objective_vars']:
+            if o.get('sign', 1) < 0:
+                o['name'] = f'-{o["name"]}'
+
         (self.femag.workdir / 'dakota.in').write_text(
-            '\n'.join(self.__render(study, self.template_name)))
+            '\n'.join(self.__render(dstudy, self.template_name)))
 
         with open(outname, 'w') as out, open(errname, 'w') as err:
             logger.info('invoking %s', ' '.join(args))
@@ -100,8 +106,30 @@ class Dakota(object):
                           usecols=range(
                               2, 2 + len(varnames))).T
         xlen = len(study['decision_vars'])
-        return dict(x=data[:xlen].tolist(),
-                    f=data[xlen:].tolist())
+        result = dict(x=data[:xlen].tolist(),
+                      f=data[xlen:].tolist())
+        result.update(read_dakota_out(
+            self.femag.workdir / 'dakota.out'))
+
+        return result
+
+
+class Sampling(Dakota):
+    def __init__(self, workdir,
+                 magnetizingCurves=None, magnets=None, result_func=None):
+        super(self.__class__, self).__init__(workdir,
+                                             magnetizingCurves, magnets,
+                                             result_func,
+                                             template_name='sampling')
+
+
+class Moga(Dakota):
+    def __init__(self, workdir,
+                 magnetizingCurves=None, magnets=None, result_func=None):
+        super(self.__class__, self).__init__(workdir,
+                                             magnetizingCurves, magnets,
+                                             result_func,
+                                             template_name='moga')
 
 
 class PsuadeMoat(Dakota):

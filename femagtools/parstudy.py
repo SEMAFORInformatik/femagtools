@@ -14,7 +14,6 @@ import glob
 import os
 import time
 import numpy as np
-import scipy as sc
 import femagtools
 import femagtools.model
 import femagtools.fsl

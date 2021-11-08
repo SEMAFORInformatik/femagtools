@@ -345,7 +345,8 @@ class Reader:
         for i, line in enumerate(content):
             if line.startswith('Number of Phases m'):
                 self.machine['m'] = int(float((line.split()[-1])))
-            elif line.startswith('Radius air-gap center (torque)'):
+            elif (line.startswith('Radius air-gap center (torque)') or
+                  line.startswith('Air-gap center 1:radius/position')):
                 rec = [l.strip() for l in line.split()]
                 fc_radius = 1e-3*float(rec[-1])
                 self.machine['fc_radius'] = fc_radius

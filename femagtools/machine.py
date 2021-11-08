@@ -168,8 +168,9 @@ def dqpar_interpol(xfit, dqpars, ipkey='temperature'):
                 fpip['losses'][k] = ip.interp1d(
                     x, m, fill_value='extrapolate')(xfit).T
             fpip['losses']['speed'] = dqpars[0]['losses']['speed']
-            fpip['losses']['hf'] = dqpars[0]['losses']['hf']
-            fpip['losses']['ef'] = dqpars[0]['losses']['ef']
+            for f in ('hf', 'ef'):
+                if f in dqpars[0]['losses']:
+                    fpip['losses'][f] = dqpars[0]['losses'][f]
     except KeyError:
         pass
     return x, fpip

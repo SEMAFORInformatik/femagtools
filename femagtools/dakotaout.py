@@ -137,7 +137,8 @@ def read_optsol(s):
                 optsol['parameters'].append((vn[1], float(nums[0])))
         elif len(vn) == 1:
             nums = _numPattern.findall(f' {vn[0]}')
-            optsol['objectives'].append(float(nums[0]))
+            if len(nums) == 1:
+                optsol['objectives'].append(float(nums[0]))
 
     return 'optsol', optsol
 

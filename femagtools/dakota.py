@@ -8,6 +8,7 @@
 
 """
 import sys
+import os
 import logging
 import copy
 import pathlib
@@ -17,9 +18,54 @@ import mako
 import mako.lookup
 import numpy as np
 import json
+import asyncio
+from asyncio.subprocess import PIPE
 from .dakotaout import read_dakota_out
 
 logger = logging.getLogger(__name__)
+
+use_asyncio = True
+
+
+@asyncio.coroutine
+def read_stream_and_display(stream, display):
+    """Read from stream line by line until EOF, display, and capture the lines.
+
+    """
+    output = []
+    while True:
+        line = yield from stream.readline()
+        if not line:
+            break
+        output.append(line)
+        display(line)  # assume it doesn't block
+    return b''.join(output)
+
+
+@asyncio.coroutine
+def read_and_display(*cmd, cwd):
+    """Capture cmd's stdout, stderr while displaying them as they arrive
+    (line by line).
+
+    """
+    # start process
+    process = yield from asyncio.create_subprocess_exec(*cmd, cwd=cwd,
+                                                        stdout=PIPE, stderr=PIPE)
+
+    def nodisplay(l):
+        return
+    # read child's stdout/stderr concurrently (capture and display)
+    try:
+        stdout, stderr = yield from asyncio.gather(
+            read_stream_and_display(process.stdout, nodisplay),
+            read_stream_and_display(process.stderr, sys.stderr.buffer.write))
+    except Exception:
+        process.kill()
+        raise
+    finally:
+        # wait for the process to exit
+        rc = yield from process.wait()
+    return rc, stdout, stderr
 
 
 class Dakota(object):
@@ -90,13 +136,27 @@ class Dakota(object):
         (self.femag.workdir / 'dakota.in').write_text(
             '\n'.join(self.__render(dstudy, self.template_name)))
 
-        with open(outname, 'w') as out, open(errname, 'w') as err:
-            logger.info('invoking %s', ' '.join(args))
-            proc = subprocess.Popen(
-                args,
-                stdout=out, stderr=err, cwd=self.femag.workdir)
+        logger.info('invoking %s with %s',
+                    ' '.join(args), engine['module'])
+        if use_asyncio:
+            # run the event loop
+            if os.name == 'nt':
+                loop = asyncio.ProactorEventLoop()  # for subprocess' pipes on Windows
+                asyncio.set_event_loop(loop)
+            else:
+                loop = asyncio.get_event_loop()
+            ret, *output = loop.run_until_complete(
+                read_and_display(*args, cwd=self.femag.workdir))
+            loop.close()
+            outname.write_text(output[0].decode())
+            errname.write_text(output[1].decode())
+        else:
+            with open(outname, 'w') as out, open(errname, 'w') as err:
+                proc = subprocess.Popen(
+                    args,
+                    stdout=out, stderr=err, cwd=self.femag.workdir)
 
-        ret = proc.wait()
+            ret = proc.wait()
         if ret:
             raise RuntimeError(errname.read_text())
         varnames = ([d['name'] for d in study['decision_vars']] +

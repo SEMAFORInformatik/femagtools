@@ -26,7 +26,7 @@ parvardef = {
         {"name": "torque[-1].ripple",
          "label": "Torque Ripple/Nm"}
     ],
-    "population_size": 9,
+    # "population_size": 9,
     "decision_vars": [
         {"steps": 3, "bounds": [2e-3, 4e-3],
          "name": "stator.statorRotor3.slot_width",
@@ -37,7 +37,10 @@ parvardef = {
         {"steps": 3, "bounds": [0.021, 0.0335],
          "name": "magnet.magnetSector.magn_shape",
          "label": "Magnet Shape/m"}
-    ]
+    ],
+    "samples": 200,
+    "partitions": 6,
+    "seed": 5
 }
 
 # Machine and Simulation Model

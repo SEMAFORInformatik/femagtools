@@ -55,7 +55,7 @@ class Reader(object):
              for k in ('bnd_cnd', 'bnd_cnd', 'per_nod',
                        'co_1', 'co_2', 'co_rad', 'co_phi', 'vp_re', 'vp_im')]
         logger.debug('Nodes: %d', len(self.NODE_ISA_NODE_REC_ND_CO_1))
-        
+
         grp = ds.groups['node_elements']
         (self.NODE_ELE_ISA_NOD_EL_KEY,
          self.NODE_ELE_ISA_NOD_NXT_EL_PNTR) = [
@@ -82,13 +82,13 @@ class Reader(object):
              for k in ('nod_pntr', 'type', 'se_key', 'reluc', 'reluc_2',
                        'mag_1', 'mag_2', 'loss_dens')]
         logger.debug('Elements: %d', len(self.ELEM_ISA_ELEM_REC_EL_TYP))
-             
+
         grp = ds.groups['element_nodes']
         (self.ELE_NOD_ISA_ND_KEY,
          self.ELE_NOD_ISA_NXT_ND_PNTR) = [
              grp.variables[k][:-1]
              for k in ('nd_key', 'nxt_nd_pntr')]
-                        
+
         grp = ds.groups['superelements']
         (self.SUPEL_ISA_SE_NDCHN_PNTR,
          self.SUPEL_ISA_SE_EL_PNTR,
@@ -107,13 +107,13 @@ class Reader(object):
             for k in ('ndch_pntr', 'el_pntr', 'color', 'mcv_type',
                       'cond_type', 'vel_sys', 'sr_key', 'velo_1',
                       'velo_2', 'conduc', 'length', 'curd_re', 'curd_im')]
- 
+
         grp = ds.groups['superelement_nodechains']
         (self.SE_NDCHN_ISA_NC_KEY,
          self.SE_NDCHN_ISA_NXT_NC_PNTR) = [
             grp.variables[k][:]
             for k in ('nc_key', 'nxt_nc_pntr')]
-        
+
         grp = ds.groups['superelement_elements']
         (self.SE_EL_ISA_EL_KEY,
          self.SE_EL_ISA_NXT_EL_PNTR) = [
@@ -180,6 +180,8 @@ class Reader(object):
             grp = ds.groups['machine']
             self.FC_RADIUS = float(grp.variables['fc_radius'].getValue().data)
             self.pole_pairs = int(grp.variables['pole_pairs'].getValue().data)
+            self.delta_node_angle = float(  # rad
+                grp.variables['delta_node_angle'].getValue().data)
             self.poles_sim = int(grp.variables['poles_sim'].getValue().data)
             self.slots = int(grp.variables['num_slots'].getValue().data)
             self.arm_length = int(grp.variables['arm_length'].getValue().data)
@@ -189,8 +191,10 @@ class Reader(object):
         self.BR_TEMP_COEF = 0
         try:
             grp = ds.groups['magnet']
-            self.MAGN_TEMPERATURE = float(grp.variables['temperature'].getValue().data)
-            self.BR_TEMP_COEF = float(grp.variables['br_temp_coef'].getValue().data)
+            self.MAGN_TEMPERATURE = float(
+                grp.variables['temperature'].getValue().data)
+            self.BR_TEMP_COEF = float(
+                grp.variables['br_temp_coef'].getValue().data)
         except:
             pass
         try:
@@ -212,6 +216,7 @@ class Reader(object):
             self.el_fe_induction_2 = []
             self.eddy_cu_vpot = []
 
+
 def read(filename):
     """
     Read nc file and return NcModel object.
@@ -223,7 +228,7 @@ def read(filename):
     ext = os.path.splitext(filename)[-1]
     if not ext:
         filename += '.nc'
- 
+
     return isa7.Isa7(Reader(filename))
 
 

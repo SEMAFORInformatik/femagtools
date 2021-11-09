@@ -290,7 +290,10 @@ class Reader(object):
 
         self.skip_block()
         self.skip_block(2 * ANZ_FORCE_AREAS)
-        self.skip_block(14)
+        #        self.skip_block(14)
+        self.skip_block(10)
+        self.delta_node_angle = self.next_block("f")[1]  # rad
+        self.skip_block(3)
         self.skip_block(2 * 3 + 6 * 100 * 3)
         self.skip_block(30)
         self.skip_block(11 * 4)
@@ -628,6 +631,7 @@ class Isa7(object):
                                      for e in self.elements])
 
         for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim',
+                  'delta_node_angle',
                   'MAGN_TEMPERATURE', 'BR_TEMP_COEF'):
             v = getattr(reader, a, '')
             if v:

@@ -4,7 +4,8 @@ This document lists the major changes in femagtools. Please clone this project t
 
 ## Release 1.1
 - new module parstudy with sampling methods for parameter variation: List, Grid, Sobol, LatinHypercube
-- dakota integration
+- dakota integration (sampling, uq, moga, moat)
+- nc/isa7: delta_node_angle
 
 ## Release 1.0.20
 - femag: run femag with model par only

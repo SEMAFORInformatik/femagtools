@@ -39,8 +39,8 @@ Convert a BCH file to XML by command line::
 
 This command creates the file TEST_002.xml
 
-Read I7/ISA7 File
-+++++++++++++++++
+Read I7/ISA7 or NC File
++++++++++++++++++++++++
 Read an ISA7/I7 or NC File (filename extension is optional):
 
   >>> isa = femagtools.isa7.read('foo')

@@ -12,17 +12,20 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 * read BCH/BATCH, I7/ISA7, NC, PLT, ERG files
 * read and write MCV files (magnetizing curves)
 * create FSL files from model and calculation templates and/or user specific FSL or from DXF
+* create and analyse windings
 * create a variety of plots
 * calculate machine characteristics by using analytic machine models
 * execute parameter studies and multi-objective optimization
 
-The package is hosted on github: <https://github.com/SEMAFORInformatik/femagtools/>`.
-Contributions are highly welcome.
+A couple of jupyter notebooks and example scripts can be found in the source directory
+hosted on github: <https://github.com/SEMAFORInformatik/femagtools/>`.
+
+Contributions and feedback are highly welcome.
   
 Installation
 ------------
 
-Femagtools can be installed on any 2.7 or 3.x Python distribution with Numpy, Scipy and Pip::
+Femagtools can be installed on any 3.x Python distribution with Numpy, Scipy and Pip::
 
   $ pip install femagtools
 
@@ -67,7 +70,9 @@ User Guide
    intro
    femag
    models
+   windings
    bchreader
+   ncisa
    forcedens
    engine
 

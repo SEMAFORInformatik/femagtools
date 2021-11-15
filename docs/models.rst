@@ -177,8 +177,8 @@ cuconduc        conductivity (S/m)             56e6
 slot_indul      insulation thickness in slot   0.0 
 ============    ============================  =======
 
-**End-Winding Leakage**
-.......................
+End-Winding Leakage
+^^^^^^^^^^^^^^^^^^^
 
 Windings may contain a leakage dict: leak_dist_wind, leak_evol_wind, leak_tooth_wind (version added 0.9.9)
 
@@ -673,6 +673,8 @@ explicit_mode   Deactivate rotation correction          0
 plots           Create plots                            []
 airgap_induc    calculate airgap induction              False
 period_frac     Rotate Fraction of Period               1
+calc_noload     Calculate no load                       1
+poc             Current shape definition                (none)
 vtu_movie       Create VTU files                        False
 ==============  ======================================= ========  ============
 
@@ -708,6 +710,15 @@ Example::
    .. image:: img/airgapinduc.png
       :height: 240pt
 
+.. Note::
+   The poc class is used to define current shape: sin, rec, har, hsp, fun
+   
+   ==============  ============================= ============
+   Parameter        Description                  Unit
+   ==============  ============================= ============
+   pole_pitch      pole pitch
+   key_winding     list of key ids
+   ==============  ============================= ============
 
 Short circuit calculation (shortcircuit)
 

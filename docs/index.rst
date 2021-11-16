@@ -74,6 +74,7 @@ User Guide
    bchreader
    ncisa
    forcedens
+   dakota
    engine
 
 References

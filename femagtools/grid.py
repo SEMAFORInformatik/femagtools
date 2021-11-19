@@ -35,9 +35,9 @@ class Grid(femagtools.parstudy.ParameterStudy):
     def __init__(self, workdir,
                  magnetizingCurves=None, magnets=None, condMat=[],
                  result_func=None):  # tasktype='Task'):
-        super(self.__class__, self).__init__(workdir,
-                                             magnetizingCurves, magnets, condMat,
-                                             result_func)
+        super().__init__(workdir,
+                         magnetizingCurves, magnets, condMat,
+                         result_func)
 
     def _get_names_and_range(self, dvars, num_samples):
         if isinstance(dvars, dict):

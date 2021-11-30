@@ -1,16 +1,31 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
- Ld-Lq-Identification with Femag
+ Parameter Variation with Femag
  """
-import os
-import femagtools
-import femagtools.machine
+import pathlib
+import json
+from femagtools.multiproc import Engine
+# instead you can use on of the following
+#
+#from femagtools.docker import Engine
+#from femagtools.condor import Engine
+# fr
+# from femagtools.google import Engine
+#
+# chose sampling method
+import femagtools.parstudy
+
 import logging
 import numpy as np
 
-feapars = {
-    "num_move_steps": 25,
+parvardef = {
+    "decision_vars": [
+        {"values": [60, 90, 120],
+         "name": "magn_temp", "label":"Magn. Temp"}
+    ]
+}
+
+simulation = {
     "calculationMode": "psd_psq_fast",
     "magn_temp": 60.0,
     "maxid": 0.0,
@@ -40,7 +55,7 @@ magnetMat = [{
 
 magnetizingCurve = "../magnetcurves"
 
-pmMotor = {
+machine = {
     "name": "PM 270 L8",
     "desc": "PM Motor 270mm 8 poles VMAGN",
     "poles": 8,
@@ -52,7 +67,9 @@ pmMotor = {
     "stator": {
         "num_slots": 48,
         "num_slots_gen": 12,
+        "fillfac": 0.96,
         "mcvkey_yoke": "M330-50A",
+        "mcvkey_teeth": "M270-35A",
         "nodedist": 4.0,
         "statorRotor3": {
             "slot_height": 0.0335,
@@ -99,46 +116,20 @@ pmMotor = {
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-workdir = os.path.join(os.path.expanduser('~'), 'femag')
-try:
-    os.makedirs(workdir)
-except OSError:
-    pass
+if __name__ == '__main__':
+    engine = Engine()
 
-femag = femagtools.Femag(workdir,
-                         magnetizingCurves=magnetizingCurve,
-                         magnets=magnetMat)
+    workdir = pathlib.Path.home() / 'parvarlist'
+    workdir.mkdir(parents=True, exist_ok=True)
 
-r = femag(pmMotor, feapars)
+    # try List, Grid, Sobol, LatinHypercube
+    parvar = femagtools.parstudy.List(workdir,
+                                      magnetizingCurves=magnetizingCurve,
+                                      magnets=magnetMat)
 
-print(r.type)
+    # start calculation
+    results = parvar(parvardef, machine, simulation,
+                     engine, num_samples=8)
 
-# find speed at u1max
-u1max = 340
-tq = 170
-
-psid = r.psidq['psid']
-psiq = r.psidq['psiq']
-id = r.psidq['id']
-iq = r.psidq['iq']
-
-p = r.machine['p']
-r1 = 0.0
-
-pm = femagtools.machine.PmRelMachinePsidq(3, p,
-                                          psid,
-                                          psiq,
-                                          r1,
-                                          id,
-                                          iq)
-
-tq = 170.0
-u1 = 340.0
-
-iqx, idx = pm.iqd_torque(tq)
-w1 = pm.w1_u(u1, idx, iqx)
-
-betaopt, i1 = femagtools.machine.betai1(iqx, idx)
-
-print("f1 {0:8.1f} Hz,  I1 {1:8.1f} A, Beta {2:4.1f} °".format(
-    w1/2/np.pi, i1, betaopt/np.pi*180))
+    with open('results.json', 'w') as fp:
+        json.dump(results, fp)

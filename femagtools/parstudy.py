@@ -117,6 +117,7 @@ class ParameterStudy(object):
                     ['save_model("close")']))
 
             self.femag.run(filename, options=['-b'])
+
         model_files = [os.path.join(self.femag.workdir, m)
                        for m in mc_files] + [
             f for sublist in [
@@ -124,7 +125,7 @@ class ParameterStudy(object):
                     self.femag.workdir,
                     model.name+e))
                 for e in (
-                    '_*.poc',
+                    '_*.poc', '*.WID',
                     '.nc', '.[IA]*7')]
             for f in sublist]
 
@@ -162,11 +163,13 @@ class ParameterStudy(object):
             modelfiles = self.setup_model(builder, model)
             logger.info("Files %s", modelfiles+extra_files)
 
-        simulation['lfe'] = model.lfe
+        simulation['arm_length'] = model.lfe
         simulation['move_action'] = model.move_action
         simulation['phi_start'] = 0.0
         simulation['range_phi'] = 720/model.get('poles')
         simulation.update(model.windings)
+        if 'pocfilename' not in simulation:
+            simulation['pocfilename'] = f"{model.name}_{model.poles}p.poc"
         fea = femagtools.model.FeaModel(simulation)
 
         prob = femagtools.moproblem.FemagMoProblem(decision_vars,
@@ -187,7 +190,8 @@ class ParameterStudy(object):
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:
         popsize = 0
-        for population in baskets(par_range, opt['population_size']):
+        for population in baskets(par_range, opt.get('population_size',
+                                                     len(par_range))):
             if self.stop:  # try to return the results so far. thomas.maier/OSWALD
                 logger.info(
                     'stopping grid execution... returning results so far...')
@@ -279,7 +283,10 @@ class ParameterStudy(object):
                         calcid += 1
                     if isinstance(r, dict) and 'error' in r:
                         logger.warn("job %d failed: %s", k, r['error'])
-                        f.append([float('nan')]*len(objective_vars))
+                        if objective_vars:
+                            f.append([float('nan')]*len(objective_vars))
+                        else:
+                            f.append(dict())
                     else:
                         if bchMapper:
                             bchData = bchMapper(r)
@@ -291,14 +298,20 @@ class ParameterStudy(object):
                             prob.setResult(r)
                         f.append(prob.objfun([]))
                 else:
-                    f.append([float('nan')]*len(objective_vars))
+                    if objective_vars:
+                        f.append([float('nan')]*len(objective_vars))
+                    else:
+                        f.append(dict())
             p += 1
 
         logger.info('Total elapsed time %d s ...... DONE', elapsedTime)
 
-        # Note results f must be transposed but may have different shapes
         try:
-            objectives = list(zip(*f))
+            if objective_vars:
+                # Note results f must be transposed but may have different shapes
+                objectives = list(zip(*f))
+            else:
+                objectives = f
             if self.reportdir:
                 self._write_report(decision_vars, objective_vars,
                                    objectives, par_range)

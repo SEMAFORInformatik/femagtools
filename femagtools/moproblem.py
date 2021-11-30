@@ -9,6 +9,7 @@
 """
 from .moo.problem import Problem
 import femagtools.magnet
+import femagtools.bch
 import logging
 
 logger = logging.getLogger(__name__)
@@ -63,12 +64,17 @@ class FemagMoProblem(Problem):
         self.result = result
 
     def objfun(self, x):
-        for o in self.objective_vars:
-            logger.debug("%d=====> %s", len(self.objective_vars), str(o))
-        return [f[0] * f[1] if f[1] is not None else None
-                for f in [(o.get('sign', 1),
-                           self.result.get(o['name'].split('.')))
-                          for o in self.objective_vars]]
+        if self.objective_vars:
+            for o in self.objective_vars:
+                logger.debug("%d=====> %s", len(self.objective_vars), str(o))
+            return [f[0] * f[1] if f[1] is not None else None
+                    for f in [(o.get('sign', 1),
+                               self.result.get(o['name'].split('.')))
+                              for o in self.objective_vars]]
+        if isinstance(self.result, femagtools.bch.Reader):
+            return {k: v for k, v in self.result.items()}
+
+        return self.result
 
     # Add some output to __repr__
     def __str__(self):

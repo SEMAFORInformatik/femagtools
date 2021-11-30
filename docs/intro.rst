@@ -11,7 +11,7 @@ Run FEMAG with FSL
 ++++++++++++++++++
 Run a single calculation (single process)::
   
-  workdir = os.path.join(os.path.expanduser('~'), 'femag')
+  workdir = pathlib.Path.home() / 'femag'
   femag = femagtools.Femag(workdir)
   femag.run('femag.fsl')
 
@@ -251,10 +251,9 @@ Example: calculate torque, torque ripple and iron losses at beta=-50°,-25°,0°
   numcores = 3
   engine = femagtools.multiproc.Engine(numcores)
 
-  mcvDir = os.path.join(
-            os.path.expanduser('~'), 'mcv')
+  mcvDir = pathlib.Path.home() / 'mcv'
 
-  g = femagtools.grid.Grid(workdir,
+  g = femagtools.parstudy.Grid(workdir,
                            magnetizingCurves=mcvDir)
 
   results = g(parvar, pmMachine,

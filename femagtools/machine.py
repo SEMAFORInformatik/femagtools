@@ -267,6 +267,8 @@ class PmRelMachine(object):
 
     def iqd_torque(self, torque):
         """return minimum d-q-current for torque"""
+        if np.abs(torque) < 1e-2:
+            return (0, 0)
         res = so.minimize(lambda iqd: la.norm(iqd), self.io, method='SLSQP',
                           constraints=({'type': 'eq',
                                         'fun': lambda iqd:

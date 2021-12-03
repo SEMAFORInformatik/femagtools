@@ -423,6 +423,7 @@ class FslBuilderTest(unittest.TestCase):
     def test_create_model_with_magnet_material(self):
         magnetmat = [dict(
             name='M45',
+            rlen=0.9,
             remanenc=1.1,
             relperm=1.04,
             spmaweight=7.4,
@@ -485,10 +486,15 @@ class FslBuilderTest(unittest.TestCase):
         magnets = femagtools.magnet.Magnet(magnetmat)
         condMat = femagtools.magnet.Magnet([dict(name='Cu', elconduct=56e6)])
         fsl = self.builder.create_model(model, magnets, condMat)
-        self.assertEqual(len(fsl), 173)
+        self.assertEqual(len(fsl), 174)
         brem = [l.strip() for l in fsl
                 if l.split('=')[0].strip() == 'm.remanenc']
-        self.assertEqual(brem[-1].split('=')[-1].strip(), '1.1')
+        self.assertEqual(brem[-1].split('=')[-1].strip(),
+                         str(magnetmat[0]['remanenc']))
+        rlen = [l.strip() for l in fsl
+                if l.split('=')[0].strip() == 'm.rlen']
+        self.assertEqual(rlen[0].split('=')[-1].strip(),
+                         str(100*magnetmat[0]['rlen']))
 
 
 if __name__ == '__main__':

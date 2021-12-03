@@ -530,17 +530,17 @@ class Builder:
                 return self.__render(magnetMat, 'magnet-data')
             try:
                 magnet = model.magnet
-                rlen = magnet.get('rlen', 100)
+                rlen = magnet.get('rlen', 1)
             except AttributeError:
                 magnet = model.stator  # commutator type?
-                rlen = magnet.get('magn_rlen', 100)
+                rlen = magnet.get('magn_rlen', 1)
 
             return ['m.remanenc       = {}'
                     .format(magnet.get('remanenc', 1.2)),
                     'm.relperm        = {}'
                     .format(magnet.get('relperm', 1.05)),
                     'm.rlen           = {}'
-                    .format(rlen),
+                    .format(100*rlen),
                     '']
         except:
             return []

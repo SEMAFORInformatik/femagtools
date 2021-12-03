@@ -467,6 +467,11 @@ class Builder:
 
                 model.set_num_slots_gen()
             if hasattr(model, 'magnet'):
+                if magnetMat:
+                    model['magnet']['remanenc'] = magnetMat.get(
+                        'remanenc', 1.2)
+                    model['magnet']['relperm'] = magnetMat.get('relperm', 1.05)
+                    model['magnet']['rlen'] = magnetMat.get('rlen', 1.0)
                 rotor = (self.create_magnet(model) +
                          self.create_magnet_model(model))
                 if magnetMat:

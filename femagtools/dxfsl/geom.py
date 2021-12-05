@@ -2983,15 +2983,21 @@ class Geometry(object):
         wdg_max_angle = 0
         wdg_min_dist = 99
         wdg_max_dist = 0
+        wdg_close_to_startangle = False
+        wdg_close_to_endangle = False
+
         for w in windings:
             wdg_min_angle = min(wdg_min_angle, w.min_angle)
             wdg_max_angle = max(wdg_max_angle, w.max_angle)
             wdg_min_dist = min(wdg_min_dist, w.min_dist)
             wdg_max_dist = max(wdg_max_dist, w.max_dist)
+            if w.close_to_startangle:
+                wdg_close_to_startangle = True
+            if w.close_to_endangle:
+                wdg_close_to_endangle = True
 
         logger.debug("wdg_min_angle: %s", wdg_min_angle)
         logger.debug("wdg_max_angle: %s", wdg_max_angle)
-        logger.debug("mirrored     : %s", self.is_mirrored())
 
         # air or iron near windings and near airgap ?
         air_areas = [a for a in self.list_of_areas() if a.type == 9]
@@ -3001,8 +3007,29 @@ class Geometry(object):
                 logger.debug(" - air-angle min/max = %s/%s",
                              a.min_air_angle,
                              a.max_air_angle)
+                logger.debug(" - wdg-angle min/max = %s/%s",
+                             wdg_min_angle,
+                             wdg_max_angle)
+
+                if a.close_to_startangle:
+                    if not wdg_close_to_startangle:
+                        logger.debug("#0.1 ===> close to startangle")
+                        a.type = 6  # iron shaft (Zahn)
+                        continue
+
+                if a.close_to_endangle:
+                    if not wdg_close_to_endangle:
+                        logger.debug("#0.2 ===> close to endangle")
+                        if(a.min_angle < wdg_min_angle and
+                           a.close_to_ag):
+                            a.type = 0  # air
+                            continue
+
+                        a.type = 6  # iron shaft (Zahn)
+                        continue
+
                 if greater_equal(a.min_air_angle, wdg_min_angle):
-                    logger.debug("#0 ===> %s >= %s <===",
+                    logger.debug("#0.3 ===> %s >= %s <===",
                                  a.min_air_angle,
                                  wdg_min_angle)
 

@@ -123,6 +123,7 @@ def convert(dxfile,
             show_areas=False,
             write_fsl=True,
             write_png=False,
+            write_id=False,
             debug_mode=False):
     layers = ()
     conv = {}
@@ -280,7 +281,7 @@ def convert(dxfile,
                               rows=3, cols=2, num=5, show=False,
                               # with_nodes=True,
                               # neighbors=True,
-                              # write_id=True,
+                              write_id=write_id,
                               fill_areas=True)
 
             p.render_elements(machine_outer.geom, Shape,
@@ -288,7 +289,7 @@ def convert(dxfile,
                               rows=3, cols=2, num=6, show=False,
                               # with_nodes=True,
                               # neighbors=True,
-                              # write_id=True,
+                              write_id=write_id,
                               fill_areas=True)
             if write_png:
                 p.write_plot(basename)
@@ -412,6 +413,9 @@ def convert(dxfile,
             p.render_elements(machine.geom, Shape,
                               draw_inside=True, title=name,
                               rows=3, cols=2, num=5, show=False,
+                              # with_nodes=True,
+                              # neighbors=True,
+                              write_id=write_id,
                               fill_areas=True)
             if write_png:
                 p.write_plot(basename)
@@ -501,7 +505,7 @@ def create_femag_parameters(m_inner, m_outer, nodedist=1):
 
 def create_femag_parameters_stator(motor, position):
     params = {}
-    num_slots = motor.get_symmetry_part()
+    num_slots = motor.get_num_slots()
     params['tot_num_slot'] = num_slots
     if position == 'in':
         params['da2'] = 2*motor.geom.max_radius
@@ -514,7 +518,7 @@ def create_femag_parameters_stator(motor, position):
 
 def create_femag_parameters_rotor(motor, position):
     params = {}
-    num_poles = motor.get_symmetry_part()
+    num_poles = motor.get_num_poles()
     params['num_poles'] = num_poles
     if position == 'in':
         params['da2'] = 2*motor.geom.max_radius

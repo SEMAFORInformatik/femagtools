@@ -521,7 +521,7 @@ class Machine(object):
 
     def num_of_layers(self):
         w = self.geom.num_of_windings()
-        if w > 0 and self.is_mirrored():
+        if w > 0 and self.geom.winding_is_mirrored():
             return w*2
         return w
 
@@ -611,7 +611,7 @@ class Machine(object):
                 return machine_mirror
 
         logger.debug(" - angles: start: {}, mid: {}, end: {}"
-                    .format(startangle, midangle, endangle))
+                     .format(startangle, midangle, endangle))
         machine_mirror = self.copy_mirror(startangle, midangle, endangle)
         machine_mirror.clear_cut_lines()
         machine_mirror.repair_hull()
@@ -631,6 +631,22 @@ class Machine(object):
             return self.part/2
         else:
             return self.part
+
+    def get_num_slots(self):
+        if self.geom.winding_is_mirrored():
+            return self.part/2
+        else:
+            return self.part
+
+    def get_num_poles(self):
+        return self.get_symmetry_part()
+
+    def get_num_parts(self):
+        if self.geom.is_rotor():
+            return self.get_num_poles()
+        if self.geom.is_stator():
+            return self.get_num_slots()
+        return self.get_symmetry_part()  # strange
 
     def check_symmetry_graph(self, rtol, atol):
         logger.debug("begin check_symmetry_graph")

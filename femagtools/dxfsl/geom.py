@@ -747,6 +747,7 @@ class Geometry(object):
         self.atol = atol
         self.debug = debug
         self.num_edges = 0
+        self.wdg_is_mirrored = False
         i = 0
 
         def get_elements(elements, split):
@@ -2070,6 +2071,9 @@ class Geometry(object):
     def is_mirrored(self):
         return len(self.mirror_corners) > 0
 
+    def winding_is_mirrored(self):
+        return self.wdg_is_mirrored
+
     def get_alfa(self):
         if self.is_mirrored():
             return 2*self.alfa
@@ -2979,9 +2983,9 @@ class Geometry(object):
             elif len(windings) < windings_found:
                 logger.info("%d windings remaining", len(windings))
 
-        wdg_min_angle = 99
+        wdg_min_angle = 99999
         wdg_max_angle = 0
-        wdg_min_dist = 99
+        wdg_min_dist = 99999
         wdg_max_dist = 0
         wdg_close_to_startangle = False
         wdg_close_to_endangle = False
@@ -2996,8 +3000,16 @@ class Geometry(object):
             if w.close_to_endangle:
                 wdg_close_to_endangle = True
 
-        logger.debug("wdg_min_angle: %s", wdg_min_angle)
-        logger.debug("wdg_max_angle: %s", wdg_max_angle)
+        if windings_found:
+            logger.debug("wdg_min_angle: %s", wdg_min_angle)
+            logger.debug("wdg_max_angle: %s", wdg_max_angle)
+            gap_startangle = wdg_min_angle
+            gap_endangle = self.alfa - wdg_max_angle
+            self.wdg_is_mirrored = self.is_mirrored()
+            if np.isclose(gap_startangle,
+                          gap_endangle,
+                          atol=0.01):
+                self.wdg_is_mirrored = False
 
         # air or iron near windings and near airgap ?
         air_areas = [a for a in self.list_of_areas() if a.type == 9]

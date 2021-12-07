@@ -94,6 +94,10 @@ def main():
                            help='show all areas',
                            dest='show_areas',
                            action="store_true")
+    argparser.add_argument('--id',
+                           help='write id of areas',
+                           dest='write_id',
+                           action="store_true")
     argparser.add_argument('-f', '--fsl',
                            help='create fsl',
                            dest='write_fsl',
@@ -211,6 +215,7 @@ def main():
                   show_areas=args.show_areas,
                   write_fsl=args.write_fsl,
                   write_png=args.write_png,
+                  write_id=args.write_id,
                   debug_mode=args.debugger)
 
     if args.write_fsl:

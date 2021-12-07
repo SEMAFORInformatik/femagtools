@@ -12,8 +12,10 @@ taup = m.zeroangl + 360/P -- pole pitch in degree
 
 fml = require ("fml")
 
+h = (da2 - dy2)/2
 M = fml.Point:Create(0, 0)
 C1 = fml.Circle:Create(M, dy2/2)
+C1x = fml.Circle:Create(M, da2/2-h/4)
 L1 = fml.Line:Create(M, 0)
 P1 = fml.Point:Intersection(L1, C1, 2)
 C2 = fml.Circle:Create(M, da2/2)
@@ -31,11 +33,18 @@ M1, P7, P8 = fml.Point:Rounding(L4, L5, r, 1)
 C3 = fml.Circle:Create(M1, r)
 P9 = fml.Point:Intersection(L3, C3, 1)
 
-nc_line(P1.x, P1.y, P2.x, P2.y, 0)
+P3x = fml.Point:Intersection(L4, C1x, 2)
+
+ndt(agndst)
 nc_circle(P2.x, P2.y, P3.x, P3.y, 0)
 nc_circle(P3.x, P3.y, P4.x, P4.y, 0)
+nc_line(P3.x, P3.y, P3x.x, P3x.y, 0)
+
+ndt(4*agndst)
+
+nc_line(P1.x, P1.y, P2.x, P2.y, 0)
 nc_line(P4.x, P4.y, P9.x, P9.y, 0)
-nc_line(P3.x, P3.y, P8.x, P8.y, 0)
+nc_line(P3x.x, P3x.y, P8.x, P8.y, 0)
 nc_circle_m(P9.x, P9.y, P8.x, P8.y, M1.x, M1.y, 0)
 nc_line(P9.x, P9.y, P6.x, P6.y, 0)
 nc_circle(P1.x, P1.y, P6.x, P6.y, 0)
@@ -54,4 +63,9 @@ if mcvkey_yoke ~= nil and mcvkey_yoke ~= 'dummy' then
   def_mat_fm_nlin((P3.x + P5.x)/2, (P2.y + P3.y)/2, "blue", mcvkey_yoke, m.rlength)
 else
   def_mat_fm((P3.x + P5.x)/2, (P2.y + P3.y)/2, 1000, m.rlength)
+end
+
+if(m.npols_gen == m.num_poles) then
+  def_bcond_vpo(P1.x, P1.y, -P1.x, P1.y)
+  def_bcond_vpo(-P1.x, P1.y, P1.x, P1.y)
 end

@@ -949,10 +949,11 @@ def i1beta_psid(i1, beta, psid, ax=0):
                   azim=azim)
 
 
-def i1beta_psiq(i1, beta, psiq):
+def i1beta_psiq(i1, beta, psiq, ax=0):
     """creates a surface plot of psiq vs i1, beta"""
-    _create_3d_axis()
-    ax = plt.gca()
+    if ax == 0:
+        _create_3d_axis()
+        ax = plt.gca()
     azim = 210
     if 0 < np.mean(beta) or -90 > np.mean(beta):
         azim = -60

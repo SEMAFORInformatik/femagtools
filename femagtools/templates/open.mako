@@ -5,3 +5,6 @@
 model = '${model.get(['name'])}'
 load_model(model)
 
+m.num_poles = get_dev_data("num_poles")
+m.npols_gen = get_mod_data("num_poles")
+m.arm_length = get_dev_data("arm_length")

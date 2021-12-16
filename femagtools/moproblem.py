@@ -71,9 +71,8 @@ class FemagMoProblem(Problem):
                     for f in [(o.get('sign', 1),
                                self.result.get(o['name'].split('.')))
                               for o in self.objective_vars]]
-        if isinstance(self.result, femagtools.bch.Reader):
+        if isinstance(self.result, femagtools.getset.GetterSetter):
             return {k: v for k, v in self.result.items()}
-
         return self.result
 
     # Add some output to __repr__

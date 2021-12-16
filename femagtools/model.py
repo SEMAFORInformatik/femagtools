@@ -10,7 +10,7 @@
 """
 import logging
 import string
-
+import numpy as np
 
 logger = logging.getLogger(__name__)
 #
@@ -19,18 +19,6 @@ logger = logging.getLogger(__name__)
 MODELNAME_CHARS = string.printable[:63] + "-_äöüéè"
 # maximum name length
 MAX_MODEL_NAME_LEN = 255
-
-
-def gcd(a, b):
-    while b:
-        a, b = b, a % b
-    return a
-
-
-def lcm(a, b):
-    if a or b:
-        return abs(a*b)/gcd(a, b)
-    return 0
 
 
 def movesteps(nodes):
@@ -200,18 +188,31 @@ class MachineModel(Model):
             except KeyError:
                 m = 1
 
+            if hasattr(self, 'magnet'):
+                slotgen = [m*self.poles]
+            else:
+                slotgen = [self.poles]
             try:
-                Q1 = self.stator['num_slots']
-                g = gcd(Q1, m*self.poles)//m
-                self.stator['num_slots_gen'] = Q1 // g
+                slotgen.append(self.stator['num_slots'])
             except KeyError:
+                pass
+
+            try:
+                slotgen.append(self.rotor['num_slots'])
+            except (AttributeError, KeyError):
+                pass
+
+            g = np.gcd.reduce(slotgen)
+            if hasattr(self, 'magnet') and g > 1:
+                g /= m
+            if 'num_slots' in self.stator:
+                Q1 = self.stator['num_slots']
+                self.stator['num_slots_gen'] = Q1 // g
+            else:
                 try:
                     Q2 = self.rotor['num_slots']
-                    g = gcd(Q2, m*self.poles)//m
-                    if Q2 % g:
-                        g = gcd(g, gcd(self.poles, Q2))
                     self.rotor['num_slots_gen'] = Q2 // g
-                except KeyError:
+                except (AttributeError, KeyError):
                     pass
 
     def set_mcvkey_magnet(self, mcvkey):

@@ -2,7 +2,7 @@ numpy
 scipy
 mako
 networkx
-meshio
+meshio<=4.4.6
 matplotlib
 lxml
 netCDF4

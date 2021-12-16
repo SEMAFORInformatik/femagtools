@@ -176,6 +176,18 @@ def dqpar_interpol(xfit, dqpars, ipkey='temperature'):
     return x, fpip
 
 
+def wdg_resistance(w1, l, d, sigma=56e3):
+    """return winding resistance
+    arguments:
+    w1: number of turns
+    l: wire length of one turn
+    d: wire diameter m^2
+    sigma: conductivity of wire material
+    """
+    a = np.pi*d**2/4
+    return w1*l/sigma/a
+
+
 def create(bch, r1, ls, lfe=1, wdg=1):
     """create PmRelMachine from BCH
 

@@ -333,7 +333,7 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel('data/magnsec')
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create(model, feapars)
-        self.assertEqual(len(fsl), 60)
+        self.assertEqual(len(fsl), 63)
 
     def test_create_plots(self):
         pars = copy.deepcopy(feapars)

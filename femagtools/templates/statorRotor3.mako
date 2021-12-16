@@ -5,7 +5,11 @@ m.nodedist        =   ${model.get('nodedist',1)}
 Q2 = ${int(model['num_slots'])}
 Q1 = m.tot_num_sl
 m.tot_num_sl  =   Q2
+% if model.get('num_slots_gen', 0):
+m.num_sl_gen  =   ${model['num_slots_gen']}
+% else:
 m.num_sl_gen  =   Q2 * m.npols_gen/m.num_poles
+% endif
 % else:
 m.yoke_diam   = dy1
 if (type(da1) == "table") then

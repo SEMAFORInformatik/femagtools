@@ -13,9 +13,9 @@ m.slot_width    = ${model['slot_width']*1e3}
 m.slot_height   = ${model['slot_height']*1e3}
 m.damper_diam   = ${model['damper_diam']*1e3}
 m.damper_div    = ${model['damper_div']*1e3}
-
+m.mcvkey_yoke   = mcvkey_yoke
 m.airgap        = ag
-m.zeroangl      = 0.0
+m.zeroangl      = ${model.get('zeroangle', 0)}
 m.tot_num_sl    = m.num_poles
 m.num_sl_gen    = m.npols_gen
 

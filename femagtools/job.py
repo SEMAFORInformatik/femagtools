@@ -73,7 +73,7 @@ class Task(object):
         """adds a file required by this task
 
         Args:
-            fname: file name 
+            fname: file name
             content: list of str written to file if not None"""
         base = os.path.basename(fname)
         self.transfer_files.append(fname)
@@ -95,20 +95,27 @@ class Task(object):
         if self.result_func:
             return self.result_func(self)
 
-        result = femagtools.bch.Reader()
         # read latest bch file if any
         bchfile_list = sorted(glob.glob(os.path.join(
             self.directory, '*_[0-9][0-9][0-9].B*CH')))
         if bchfile_list:
+            result = femagtools.bch.Reader()
             with open(bchfile_list[-1]) as f:
                 logger.info("Reading %s",
                             bchfile_list[-1])
                 result.read(f)
-            #logger.info("%s %s", result.version, result.type),
+            return result
+            # logger.info("%s %s", result.version, result.type),
         else:
-            msg = 'no BCH files in {}'.format(self.directory)
+            asm_list = sorted(glob.glob(os.path.join(
+                self.directory, '*_[0-9][0-9][0-9].ASM')))
+            if asm_list:
+                logger.info("Reading %s",
+                            asm_list[-1])
+                return femagtools.asm.read(asm_list[-1])
+            msg = 'no BCH (or ASM) files in {}'.format(self.directory)
             logger.error(msg)
-            result = dict(error=msg)
+        result = dict(error=msg)
         return result
 
     def readErrorMessage(self, html=True):

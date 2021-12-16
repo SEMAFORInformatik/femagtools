@@ -357,9 +357,9 @@ def read(arg):
         i1 = [x/np.sqrt(3) for x in i1]
 
     r['lh'] = u1/i1[0]/w1 - r['ls1']
-
-    r.update(parident(w1, u1, i1, r['cosphi'],
-                      r['s'], r['r1'], r['ls1'], r['lh']))
+    if len(i1) > 2:
+        r.update(parident(w1, u1, i1, r['cosphi'],
+                          r['s'], r['r1'], r['ls1'], r['lh']))
     return r
 
 

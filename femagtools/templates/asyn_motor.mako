@@ -36,10 +36,14 @@ R_s = Q1/m.num_phases*m.num_wires*(rl1/100)*(m.arm_length/1000)/(sigma*A_wire/1.
 R_s = 0
 
 -- effective rotor bar length (including ring segment)
+% if model.get('bar_len', 0):
 p = m.num_poles/2
+m.num_phases = 3 -- TODO: fix this
+length_eff = ${model.get('bar_len')*1e3}
+% else:
 Dr = da2-m.slot_height
 length_eff = rl2/100*m.arm_length+math.pi*Dr/Q2/math.sin(math.pi*p/Q2)
-
+%endif
 m.stator_volt     = ${model.get('u1')}       --   Stator windgs (Ph) voltage (RMS) [V]    
 m.connect         = ${model.get('wdgcon',0)} --   Wdgs-connect: 0=open;1=star;2=delta     
 m.frequency       = ${model.get('f1')}      --   Nominal Stator frequency [Hz]           

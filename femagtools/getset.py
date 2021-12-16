@@ -24,10 +24,16 @@ def splitindex(name):
 
 class GetterSetter(object):
     """Generic data access"""
+
     def __init__(self, parameters):
+        self._items = [k for k in parameters.keys()]
         if isinstance(parameters, dict):
-            for k in parameters.keys():
+            for k in self._items:
                 setattr(self, k, parameters[k])
+
+    def items(self):
+        return [(k, self.get(k))
+                for k in self._items if self.get(k)]
 
     def set_value(self, name, value, p=None):
         """set value of parameter identified by name

@@ -239,13 +239,14 @@ class Builder:
         culosses = []
         templ = model.rotortype()
         rotmodel = model.rotor.copy()
-        if 'conductivity' in rotmodel and not ignore_material:
-            culosses = self.create_cu_losses(
-                dict(cuconduct=rotmodel['conductivity'],
-                     winding_inside=not model.external_rotor))
-        elif 'material' in rotmodel and not ignore_material:
-            rotmodel['winding_inside'] = not model.external_rotor
-            culosses = self.create_cu_losses(rotmodel, condMat)
+        if not ignore_material:
+            if 'conductivity' in rotmodel:
+                culosses = self.create_cu_losses(
+                    dict(cuconduct=rotmodel['conductivity'],
+                         winding_inside=not model.external_rotor))
+            elif 'material' in rotmodel:
+                rotmodel['winding_inside'] = not model.external_rotor
+                culosses = self.create_cu_losses(rotmodel, condMat)
 
         rotmodel.update(model.rotor[templ])
         rotmodel['is_rotor'] = True  # just in case for the template
@@ -431,10 +432,11 @@ class Builder:
     def create_model(self, model, magnets=[], condMat=[], ignore_material=False):
         magnetMat = {}
         material = ''
-        if hasattr(model, 'magnet') and not ignore_material:
-            material = model.magnet.get('material', 0)
-        elif hasattr(model, 'stator') and not ignore_material:
-            material = model.stator.get('material', 0)
+        if not ignore_material:  # we are only looking for magnet material
+            if hasattr(model, 'magnet'):
+                material = model.magnet.get('material', 0)
+            elif hasattr(model, 'stator') and not ignore_material:
+                material = model.stator.get('material', 0)
         if magnets and material:
             magnetMat = magnets.find(material)
             if not magnetMat:
@@ -477,7 +479,8 @@ class Builder:
                 if magnetMat:
                     rotor += self.create_magnet(model, magnetMat)
             else:
-                rotor = self.create_rotor_model(model, condMat)
+                rotor = self.create_rotor_model(
+                    model, condMat, ignore_material)
             windings = model.windings
             windings['winding_inside'] = model.external_rotor
             if model.commutator:

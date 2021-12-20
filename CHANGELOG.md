@@ -2,6 +2,13 @@
 
 This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.1.2
+- parstudy with induction motor and wdg material
+	
+## Release 1.1.1
+- dfx fsl conversion improvements
+- parstudy psid-psiq ident with example
+
 ## Release 1.1
 - new module parstudy with sampling methods for parameter variation: List, Grid, Sobol, LatinHypercube
 - dakota integration (sampling, uq, moga, moat)

@@ -201,6 +201,8 @@ valmap = {
     'Number of Pole pairs': 'p',
     'Number of Poles simulated': 'p_gen',
     'Number of parallel windings': 'num_par_wdgs',
+    'Rotor Lamination                [kg]': 'lamweight',
+    'Rotor Conductors                [kg]': 'conweight',
     'MC-File used in calculation': 'mcfile',
     'Losses[W/kg] in MC-File': 'felosscoeff',
     'Max. No. Iterations': 'maxiters',

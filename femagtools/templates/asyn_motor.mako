@@ -34,10 +34,9 @@ sigma = sigma1/(1+tcoeff*T) -- conductivity
 R_s = Q1/m.num_phases*m.num_wires*(rl1/100)*(m.arm_length/1000)/(sigma*A_wire/1.0e6)/a
 --]]
 R_s = 0
-
+p = m.num_poles/2
 -- effective rotor bar length (including ring segment)
 % if model.get('bar_len', 0):
-p = m.num_poles/2
 m.num_phases = 3 -- TODO: fix this
 length_eff = ${model.get('bar_len')*1e3}
 % else:

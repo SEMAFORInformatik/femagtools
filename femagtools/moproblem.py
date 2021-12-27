@@ -10,6 +10,7 @@
 from .moo.problem import Problem
 import femagtools.magnet
 import femagtools.bch
+import femagtools.getset
 import logging
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,8 @@ class FemagMoProblem(Problem):
                     for f in [(o.get('sign', 1),
                                self.result.get(o['name'].split('.')))
                               for o in self.objective_vars]]
-        if isinstance(self.result, femagtools.getset.GetterSetter):
+        if (isinstance(self.result, femagtools.getset.GetterSetter) or
+                isinstance(self.result, femagtools.bch.Reader)):
             return {k: v for k, v in self.result.items()}
         return self.result
 

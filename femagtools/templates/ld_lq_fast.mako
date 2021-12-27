@@ -3,7 +3,7 @@
 --
 	 
 m.move_action     =    0.0 -- rotate
-% if 'lfe' in model:
+% if isinstance(model, dict) and 'lfe' in model:
 m.arm_length      =    ${model.get('lfe')*1e3}
 % endif
 m.speed           =    ${model.get('speed')*60}

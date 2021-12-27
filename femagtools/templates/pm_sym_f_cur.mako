@@ -17,10 +17,11 @@ m.range_phi       = ${model.get('range_phi', 0)}
 m.phi_start       = ${model.get('phi_start', 0)}
 m.pm_eff_aktiv    = 0   --    Generate additional output (>=1)
 m.fc_mult_move_type = 1  --    Type of move path in air gap (1=circ)
-m.pocfilename    = 'SP_10p.poc'
+m.calc_noload     =    ${model.get('calc_noload', 1)}
+m.period_frac    = ${model.get('period_frac', 1)}
+m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 % if model.get('vtu_movie', 0):
 m.movie_type = 'vtu'
-
 %endif
 -- Excitation current
 m.nloa_ex_cur   = ${model.get('nload_ex_cur', 0)} -- No Load Exciting current

@@ -1344,32 +1344,53 @@ class Reader:
 
     def __read_losses(self, content):
         losses = {}
+        i = 0
         # find results for angle:
-        for i, l in enumerate(content):
+        while True:
+            try:
+                l = content[i]
+            except IndexError:
+                break
+
+            if l.startswith('No'):
+                i += 1
+                continue
+
             if l.startswith('Results for Angle I-Up'):
                 losses['beta'] = floatnan(l.split(':')[-1])
                 losses['current'] = floatnan(
                     content[i+1].split(':')[-1])/np.sqrt(2)
-                for k in ('winding', 'staza', 'stajo', 'rotfe',
-                          'magnetJ', 'magnetB', 'r1', 'total'):
+                for k in ('staza', 'stajo', 'rotfe',
+                          'magnetJ', 'magnetB', 'total'):
                     losses[k] = 0.0
+                i += 3
                 continue
 
-            if l.find('Cu-losses') > -1:
+            if l.startswith('Cu-'):
+                # either Cu-losses-Stator or Cu-Losses-Rotor
+                reg = l.split()[0].split('-')[2].lower()
                 rec = self.__findNums(content[i+1])
                 if len(rec) > 0:
-                    losses['winding'] += floatnan(rec[0])
+                    if reg == 'stator':
+                        losses['plcu1'] = floatnan(rec[0])
+                        losses['winding'] = floatnan(rec[0])
+                        if len(rec) > 2:
+                            losses['r1'] = floatnan(rec[2])
+                    else:
+                        losses['plcu2'] = floatnan(rec[0])
+                        if len(rec) > 2:
+                            losses['r2'] = floatnan(rec[2])
                     losses['total'] += floatnan(rec[0])
-                if len(rec) > 2:
-                    losses['r1'] += floatnan(rec[2])
+                i += 2
                 continue
 
-            elif l.startswith('StZa') or l.startswith('RoZa'):
+            if l.startswith('StZa') or l.startswith('RoZa'):
                 rec = self.__findNums(content[i+2])
                 if len(rec) == 2:
                     losses['stajo'] = floatnan(rec[1])
                     losses['staza'] = floatnan(rec[0])
                     losses['total'] += losses['staza']+losses['stajo']
+                i += 3
                 continue
 
             if l.startswith('StJo') or l.startswith('RoJo') or \
@@ -1386,6 +1407,7 @@ class Reader:
                     else:
                         losses['stajo'] += floatnan(rec[0])
                     losses['total'] += losses['staza']+losses['stajo']
+                i += 3
                 continue
 
             if _rotloss.search(l):
@@ -1394,6 +1416,7 @@ class Reader:
                     rotfe = floatnan(rec[0])
                     losses['rotfe'] += rotfe
                     losses['total'] += rotfe
+                i += 3
                 continue
 
             if l.find('Fe-Losses-Rotor') > -1:
@@ -1408,6 +1431,7 @@ class Reader:
                     else:
                         losses['rotfe'] = floatnan(rec[1])
                         losses['total'] += losses['rotfe']
+                i += 4
                 continue
 
             if l.find('Magnet-Losses') > -1:
@@ -1419,7 +1443,9 @@ class Reader:
                     losses['magnetJ'] = float(rec[0])
                     losses['magnetB'] = float(rec[1])
                 losses['total'] += losses['magnetJ']
-
+                i += 2
+                continue
+            i += 1
         if 'total' in losses:
             losses['totalfe'] = sum([losses[k] for k in ('staza',
                                                          'stajo',
@@ -1444,9 +1470,10 @@ class Reader:
                                     cols = ('order_mech', 'order_el',
                                             'freq', 'hyst', 'eddy')
 
-                                self.losses[-1][part][k] = {k1: l
-                                                            for k1, l in zip(cols,
-                                                                             zip(*losses[part][k]))}
+                                self.losses[-1][part][k] = {
+                                    k1: l
+                                    for k1, l in zip(cols,
+                                                     zip(*losses[part][k]))}
                 self.__read_losses(content[i+1:])
                 break
 

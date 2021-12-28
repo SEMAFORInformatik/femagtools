@@ -167,6 +167,7 @@ class Reader:
             'Machine Data Rotor': Reader.__read_dummy,
             'Current Angles defined from no-load test':
             Reader.__read_current_angles,
+            'Machine excitation': Reader.__read_machine_excitation,
             'FEMAG Version': Reader.__read_version,
             'FEMAG Classic Version': Reader.__read_version,
             'Simulation Data': Reader.__read_simulation_data,
@@ -396,6 +397,12 @@ class Reader:
             rec = self.__findNums(l)
             if len(rec) == 3:
                 self.current_angles.append(floatnan(rec[-1]))
+        return
+
+    def __read_machine_excitation(self, content):
+        rec = self.__findNums(content[1])
+        if len(rec) == 1:
+            self.ex_current = floatnan(rec[-1])
         return
 
     def __read_lossPar(self, content):

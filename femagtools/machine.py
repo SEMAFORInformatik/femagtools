@@ -9,6 +9,35 @@ import scipy.interpolate as ip
 
 logger = logging.getLogger(__name__)
 
+KTH = 0.0039  # temperature coefficient of resistance
+TREF = 20.0  # reference temperature of resistance
+
+
+def kskinl(xi, nl):
+    if abs(xi) < EPS:
+        return 1.0
+    xi2 = 2*xi
+    nl2 = nl*nl
+    return 3 / (nl2*xi2)*(np.sinh(xi2) - np.sin(xi2)) / \
+        (np.cosh(xi2)-np.cos(xi2)) + \
+        ((nl2-1)/(nl2*xi)*(np.sinh(xi)+np.sin(xi)) /
+            (np.cosh(xi)+np.cos(xi)))
+
+
+def kskinr(xi, nl):
+    if np.any(np.abs(xi) < 1e-12):
+        return 1.0
+    xi2 = 2*xi
+    nl2 = nl*nl
+    return xi*((np.sinh(xi2)+np.sin(xi2))/(np.cosh(xi2)-np.cos(xi2))) + \
+        ((nl2-1) / 3 * xi2*((np.sinh(xi)-np.sin(xi)) /
+                            (np.cosh(xi)+np.cos(xi))))
+
+
+def resistance(r0, w, temp, zeta, gam, nh):
+    xi = zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+KTH*(temp-TREF))))
+    return r0*(1.+KTH*(temp - TREF))*(gam + kskinr(xi, nh)) / (1. + gam)
+
 
 def mesh(x, y):
     """return the combined vectors x and y
@@ -252,13 +281,20 @@ class PmRelMachine(object):
         ls: leakage inductance in H
     """
 
-    def __init__(self, m, p, r1, ls):
+    def __init__(self, m, p, r1, ls, **kwargs):
         self.p = p
         self.m = m
         self.r1 = r1
         self.ls = ls
         self.io = (1, -1)
         self.fo = 50.0
+        self.tcu1 = 20
+        self.zeta1 = 0.2
+        self.gam = 0.7
+        self.kh = 4
+        for k in kwargs.keys():
+            setattr(self, k, kwargs[k])
+
         self.plexp = {'styoke_hyst': 1.0,
                       'stteeth_hyst': 1.0,
                       'styoke_eddy': 2.0,
@@ -270,6 +306,11 @@ class PmRelMachine(object):
             'styoke_eddy', 'stteeth_eddy',
             'rotor_hyst', 'rotor_eddy',
             'magnet')}
+
+    def rstat(self, w):
+        """stator resistance"""
+        return resistance(self.r1, w, self.tcu1, self.zeta1,
+                          self.gam, self.kh)
 
     def torque_iqd(self, iq, id):
         "torque at q-d-current"
@@ -471,8 +512,14 @@ class PmRelMachine(object):
     def betai1_plcu(self, i1):
         return self.m*self.r1*i1**2
 
-    def iqd_plcu(self, iq, id):
-        return self.m*self.r1*(iq**2+id**2)/2
+    def iqd_plcu(self, iq, id, w1=0):
+        return self.m*self.rstat(w1)*(iq**2+id**2)/2
+
+    def iqd_plcu1(self, iq, id, w1):
+        return self.iqd_plcu(iq, id, w1)
+
+    def iqd_plcu2(self, iq, id):
+        return np.zeros(np.asarray(iq).shape)
 
     def betai1_losses(self, beta, i1, f):
         return np.sum([self.betai1_plfe1(beta, i1, f),
@@ -503,8 +550,8 @@ class PmRelMachine(object):
         if np.isscalar(T):
             iq, id = self.iqd_torque(T)
             i1max = betai1(iq, id)[1]
-            w1 = self.w1max(u1max, iq, id)
-            w1max = self.w1max(u1max, *self.iqdmin(i1max))
+            w1 = self.w1_umax(u1max, iq, id)
+            w1max = self.w1_umax(u1max, *self.iqdmin(i1max))
             nmax = max(w1, w1max)/2/np.pi/self.p
 
             n1 = min(w1/2/np.pi/self.p, nmax)
@@ -711,6 +758,20 @@ class PmRelMachineLdq(PmRelMachine):
         if np.any(beta[beta > np.pi]):
             beta[beta > np.pi] = beta - 2*np.pi
         self.io = iqd((np.min(beta)+max(beta))/2, np.max(i1)/2)
+        try:
+            kx = ky = 3
+            pfe = kwargs['losses']
+            self._set_losspar(pfe)
+            self._losses = {k: ip.RectBivariateSpline(
+                beta, i1, np.array(pfe[k]),
+                kx=kx, ky=ky).ev for k in (
+                    'styoke_hyst', 'stteeth_hyst',
+                    'styoke_eddy', 'stteeth_eddy',
+                    'rotor_hyst', 'rotor_eddy',
+                    'magnet')}
+        except KeyError:
+            logger.warning("loss map missing")
+            pass
         if 'psid' in kwargs:
             kx = ky = 3
             if len(i1) < 4:
@@ -726,19 +787,6 @@ class PmRelMachineLdq(PmRelMachine):
                 beta, i1, np.sqrt(2)*np.asarray(kwargs['psiq']),
                 kx=kx, ky=ky).ev(x, y)
 
-            try:
-                pfe = kwargs['losses']
-                self._set_losspar(pfe)
-                self._losses = {k: ip.RectBivariateSpline(
-                    beta, i1, np.array(pfe[k]),
-                    kx=kx, ky=ky).ev for k in (
-                        'styoke_hyst', 'stteeth_hyst',
-                        'styoke_eddy', 'stteeth_eddy',
-                        'rotor_hyst', 'rotor_eddy',
-                        'magnet')}
-            except KeyError:
-                logger.warning("loss map missing")
-                pass
             return
 
         if len(i1) < 4 or len(beta) < 4:

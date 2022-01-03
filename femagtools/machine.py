@@ -14,7 +14,7 @@ TREF = 20.0  # reference temperature of resistance
 
 
 def kskinl(xi, nl):
-    if abs(xi) < EPS:
+    if np.any(np.abs(xi) < 1e-12):
         return 1.0
     xi2 = 2*xi
     nl2 = nl*nl

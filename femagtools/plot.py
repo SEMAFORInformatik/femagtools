@@ -936,6 +936,16 @@ def i1beta_psim(i1, beta, psim, ax=0):
                   azim=60)
 
 
+def i1beta_up(i1, beta, up, ax=0):
+    """creates a surface plot of up vs i1, beta"""
+    if ax == 0:
+        _create_3d_axis()
+        ax = plt.gca()
+    _plot_surface(ax, i1, beta, up,
+                  (u'I1/A', u'Beta/°', u'Up/V'),
+                  azim=60)
+
+
 def i1beta_psid(i1, beta, psid, ax=0):
     """creates a surface plot of psid vs i1, beta"""
     if ax == 0:
@@ -1038,7 +1048,6 @@ def ldlq(bch):
     lq = np.array(bch.ldq['lq'])
     psid = bch.ldq['psid']
     psiq = bch.ldq['psiq']
-    psim = bch.ldq['psim']
 
     rows = 3
     fig = plt.figure(figsize=(10, 4*rows))
@@ -1053,7 +1062,10 @@ def ldlq(bch):
     i1beta_psiq(i1, beta, psiq)
 
     fig.add_subplot(rows, 2, 4, projection='3d')
-    i1beta_psim(i1, beta, psim)
+    try:
+        i1beta_psim(i1, beta, bch.ldq['psim'])
+    except:
+        i1beta_up(i1, beta, bch.ldq['up'])
 
     fig.add_subplot(rows, 2, 5, projection='3d')
     i1beta_ld(i1, beta, ld)

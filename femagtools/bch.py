@@ -142,7 +142,7 @@ class Reader:
             'Torque-Force': Reader.__read_torque_force,
             'Airgap Induction Br': Reader.__read_airgapInduction,
             'Fourier Analysis': Reader.__read_fft,
-            'Machine excitation': Reader.__read_dummy,
+            'Machine excitation': Reader.__read_machine_excitation,
             'DQ-Parameter for open Winding Modell': Reader.__read_dq_parameter,
             'Magnet Data': Reader.__read_magnet_data,
             'Date': Reader.__read_date,
@@ -167,7 +167,6 @@ class Reader:
             'Machine Data Rotor': Reader.__read_dummy,
             'Current Angles defined from no-load test':
             Reader.__read_current_angles,
-            'Machine excitation': Reader.__read_machine_excitation,
             'FEMAG Version': Reader.__read_version,
             'FEMAG Classic Version': Reader.__read_version,
             'Simulation Data': Reader.__read_simulation_data,
@@ -402,7 +401,7 @@ class Reader:
     def __read_machine_excitation(self, content):
         rec = self.__findNums(content[1])
         if len(rec) == 1:
-            self.ex_current = floatnan(rec[-1])
+            self.machine['ex_current'] = floatnan(rec[-1])
         return
 
     def __read_lossPar(self, content):
@@ -1007,7 +1006,11 @@ class Reader:
 
     def __read_ldq(self, content):
         "read ld-lq section"
+        keys = ['ld', 'lq', 'psim', 'psid', 'psiq', 'torque']
         for i, l in enumerate(content):
+            if l.find('Wdg.-Curr') > -1:
+                if l.find('Voltage Up') > -1:
+                    keys[2] = 'up'
             if l.find('[A') > -1:
                 break
         m = []
@@ -1028,8 +1031,7 @@ class Reader:
 
         self.ldq = {k: (self.armatureLength*np.reshape(
             v, (nrows, ncols)).T[::-1]).tolist() for k, v in zip(
-                ('ld', 'lq', 'psim', 'psid', 'psiq', 'torque'),
-                m[2:])}
+                keys, m[2:])}
         self.ldq['beta'] = m[1][:ncols][::-1].tolist()
         self.ldq['i1'] = i1.tolist()
 
@@ -1583,6 +1585,8 @@ class Reader:
                                            'psidq_ldq',
                                            'machine',
                                            'lossPar',
+                                           'weights',
+                                           'weight',
                                            'flux',
                                            'flux_fft',
                                            'wdgfactors',

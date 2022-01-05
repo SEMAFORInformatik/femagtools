@@ -14,8 +14,6 @@ TREF = 20.0  # reference temperature of resistance
 
 
 def kskinl(xi, nl):
-    if np.any(np.abs(xi) < 1e-12):
-        return 1.0
     xi2 = 2*xi
     nl2 = nl*nl
     return 3 / (nl2*xi2)*(np.sinh(xi2) - np.sin(xi2)) / \
@@ -25,8 +23,6 @@ def kskinl(xi, nl):
 
 
 def kskinr(xi, nl):
-    if np.any(np.abs(xi) < 1e-12):
-        return 1.0
     xi2 = 2*xi
     nl2 = nl*nl
     return xi*((np.sinh(xi2)+np.sin(xi2))/(np.cosh(xi2)-np.cos(xi2))) + \
@@ -36,7 +32,15 @@ def kskinr(xi, nl):
 
 def resistance(r0, w, temp, zeta, gam, nh):
     xi = zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+KTH*(temp-TREF))))
-    return r0*(1.+KTH*(temp - TREF))*(gam + kskinr(xi, nh)) / (1. + gam)
+    if np.isscalar(xi):
+        if xi < 1e-12:
+            k = 1
+        else:
+            k = (gam + kskinr(xi, nh)) / (1. + gam)
+    else:
+        k = np.ones(np.asarray(w).shape)
+        k[xi > 1e-12] = (gam + kskinr(xi[xi > 1e-12], nh)) / (1. + gam)
+    return r0*(1.+KTH*(temp - TREF))*k
 
 
 def mesh(x, y):
@@ -291,7 +295,7 @@ class PmRelMachine(object):
         self.tcu1 = 20
         self.zeta1 = 0.2
         self.gam = 0.7
-        self.kh = 4
+        self.kh = 2
         for k in kwargs.keys():
             setattr(self, k, kwargs[k])
 
@@ -509,8 +513,8 @@ class PmRelMachine(object):
                       'rotor_eddy': ef[1]}
         #                          'magnet'):
 
-    def betai1_plcu(self, i1):
-        return self.m*self.r1*i1**2
+    def betai1_plcu(self, i1, w1=0):
+        return self.m*self.rstat(w1)*i1**2
 
     def iqd_plcu(self, iq, id, w1=0):
         return self.m*self.rstat(w1)*(iq**2+id**2)/2
@@ -525,13 +529,13 @@ class PmRelMachine(object):
         return np.sum([self.betai1_plfe1(beta, i1, f),
                        self.betai1_plfe2(beta, i1, f),
                        self.betai1_plmag(beta, i1, f),
-                       self.betai1_plcu(i1)], axis=0)
+                       self.betai1_plcu(i1), 2*np.pi*f], axis=0)
 
     def iqd_losses(self, iq, id, f):
         return np.sum([self.iqd_plfe1(iq, id, f),
                        self.iqd_plfe2(iq, id, f),
                        self.iqd_plmag(iq, id, f),
-                       self.iqd_plcu(iq, id)], axis=0)
+                       self.iqd_plcu(iq, id, 2*np.pi*f)], axis=0)
 
     def characteristics(self, T, n, u1max, nsamples=50):
         """calculate torque speed characteristics.
@@ -564,15 +568,22 @@ class PmRelMachine(object):
                 iqmtpv, idmtpv, tq = self.mtpv(
                     w1, u1max, i1max, maxtorque=T > 0)
                 if not self._inrange((iqmtpv, idmtpv)):
-                    n2 = min(nmax, n)
-
+                    if n > 0:
+                        n2 = min(nmax, n)
+                    else:
+                        n2 = nmax
                 logger.info("n1: %f n2: %f ",
                             60*n1, 60*n2)
             except ValueError:
-                n2 = min(nmax, n)
-
-            speedrange = sorted(
-                list(set([nx for nx in [n1, n2, n] if nx <= n])))
+                if n > 0:
+                    n2 = min(nmax, n)
+                else:
+                    n2 = nmax
+            if n > 0:
+                speedrange = sorted(
+                    list(set([nx for nx in [n1, n2, n] if nx <= n])))
+            else:
+                speedrange = sorted(list(set([n1, n2])))
             n1 = speedrange[0]
             n3 = speedrange[-1]
             if n2 > n3:
@@ -644,21 +655,29 @@ class PmRelMachine(object):
             r['cosphi'].append(np.cos(r['phi'][-1]/180*np.pi))
 
         pmech = np.array([2*np.pi*nx*tq for nx, tq in zip(r['n'], r['T'])])
-        plfe = self.iqd_losses(np.array(r['iq']), np.array(r['id']),
-                               np.array(r['n'])*self.p)
-        plcu = self.m*self.r1*np.array(r['i1'])**2
+        f1 = np.array(r['n'])*self.p
+        plfe1 = self.iqd_plfe1(np.array(r['iq']), np.array(r['id']), f1)
+        plfe2 = self.iqd_plfe2(np.array(r['iq']), np.array(r['id']), f1)
+        plmag = self.iqd_plmag(np.array(r['iq']), np.array(r['id']), f1)
+        plfe = plfe1 + plfe2 + plmag
+        plcu = self.betai1_plcu(np.array(r['i1']), 2*np.pi*f1)
         pltotal = plfe + plcu
         r['pmech'] = pmech.tolist()
         r['plfe'] = plfe.tolist()
         r['plcu'] = plcu.tolist()
         r['losses'] = pltotal.tolist()
         if pmech.any():
+            p1 = pmech + pltotal
             if np.abs(pmech[0]) < 1e-12:
-                r['eta'] = [np.nan] + (
-                    pmech[1:]/(pmech[1:]+pltotal[1:])).tolist()
+                r['eta'] = [0]
+                i = 1
             else:
-                r['eta'] = (pmech/(pmech+pltotal)).tolist()
-
+                r['eta'] = []
+                i = 0
+            if np.all(abs(p1[i:]) > abs(pmech[i:])):
+                r['eta'] += (pmech[i:]/(p1[i:])).tolist()
+            else:
+                r['eta'] += (p1[i:]/pmech[i:]).tolist()
         return r
 
     def i1beta_characteristics(self, n_list, i1_list, beta_list, u1max):
@@ -758,8 +777,12 @@ class PmRelMachineLdq(PmRelMachine):
         if np.any(beta[beta > np.pi]):
             beta[beta > np.pi] = beta - 2*np.pi
         self.io = iqd((np.min(beta)+max(beta))/2, np.max(i1)/2)
+        kx = ky = 3
+        if len(i1) < 4:
+            ky = len(i1)-1
+        if len(beta) < 4:
+            kx = len(beta)-1
         try:
-            kx = ky = 3
             pfe = kwargs['losses']
             self._set_losspar(pfe)
             self._losses = {k: ip.RectBivariateSpline(
@@ -773,11 +796,6 @@ class PmRelMachineLdq(PmRelMachine):
             logger.warning("loss map missing")
             pass
         if 'psid' in kwargs:
-            kx = ky = 3
-            if len(i1) < 4:
-                ky = len(i1)-1
-            if len(beta) < 4:
-                kx = len(beta)-1
             self.betarange = min(beta), max(beta)
             self.i1range = (0, np.max(i1))
             self.psid = lambda x, y: ip.RectBivariateSpline(

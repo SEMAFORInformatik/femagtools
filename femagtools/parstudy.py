@@ -99,7 +99,7 @@ class ParameterStudy(object):
             raise ValueError("directory {} is not empty".format(dirname))
         self.reportdir = dirname
 
-    def setup_model(self, builder, model):
+    def setup_model(self, builder, model, cmd=''):
         """builds model in current workdir and returns its filenames"""
         # get and write mag curves
         mc_files = self.femag.copy_magnetizing_curves(model)
@@ -116,6 +116,8 @@ class ParameterStudy(object):
                     model, self.femag.magnets, self.femag.condMat) +
                     ['save_model("close")']))
 
+            if cmd:
+                self.femag.cmd = cmd
             self.femag.run(filename, options=['-b'])
 
         model_files = [os.path.join(self.femag.workdir, m)
@@ -160,7 +162,7 @@ class ParameterStudy(object):
                                if hasattr(model,
                                           d.split('.')[0])]) == 0
         if immutable_model:
-            modelfiles = self.setup_model(builder, model)
+            modelfiles = self.setup_model(builder, model, engine.cmd[0])
             logger.info("Files %s", modelfiles+extra_files)
 
         simulation['arm_length'] = model.lfe

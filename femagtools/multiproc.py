@@ -8,7 +8,7 @@
 
     :authors: R. Tanner, N. Mauchle
 """
-import sys
+import platform
 import multiprocessing
 import subprocess
 import os
@@ -51,7 +51,8 @@ def run_femag(cmd, workdir, fslfile):
             proc.wait()
             os.remove(os.path.join(workdir, 'femag.pid'))
 
-            logger.info("Finished pid: %d return %d", proc.pid, proc.returncode)
+            logger.info("Finished pid: %d return %d",
+                        proc.pid, proc.returncode)
             return proc.returncode
         except OSError as e:
             logger.error("Starting process failed: %s, Command: %s", e, cmd)
@@ -72,21 +73,22 @@ class Engine:
             (femag dc is used if None)
         process_count: number of processes (cpu_count() if None)
     """
+
     def __init__(self, cmd=None, process_count=None):
         self.process_count = process_count
         if cmd:
             self.cmd = [cmd]
         else:
             self.cmd = [cfg.get_femag()]
-            if not sys.platform.startswith('linux'):
-                    self.cmd.append('-m')
+        if platform.system() == 'Windows':
+            self.cmd.append('-m')
 
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`Job`
 
         Args:
             workdir: The workdir where the calculation files are stored
-        
+
         Return:
             FEMAG :py:class:`Job`
         """

@@ -185,7 +185,9 @@ def dqpar_interpol(xfit, dqpars, ipkey='temperature'):
     for k in ('psid', 'psiq'):
         m = np.array([f[k] for f in sorted_dqpars]).T
         if len(x) > 2:
-            fpip[k] = ip.UnivariateSpline(x, m, k=2)(xfit).T
+            fpip[k] = np.array(
+                [[ip.UnivariateSpline(x, y, k=2)(xfit)
+                  for y in row] for row in m]).T
         else:
             fpip[k] = ip.interp1d(
                 x, m, fill_value='extrapolate')(xfit).T
@@ -196,7 +198,9 @@ def dqpar_interpol(xfit, dqpars, ipkey='temperature'):
                   'magnet'):
             m = np.array([f['losses'][k] for f in sorted_dqpars]).T
             if len(x) > 2:
-                fpip['losses'][k] = ip.UnivariateSpline(x, m, k=2)(xfit).T
+                fpip['losses'][k] = np.array(
+                    [[ip.UnivariateSpline(x, y, k=2)(xfit)
+                      for y in row] for row in m]).T
             else:
                 fpip['losses'][k] = ip.interp1d(
                     x, m, fill_value='extrapolate')(xfit).T

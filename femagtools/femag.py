@@ -866,6 +866,9 @@ class ZmqFemag(BaseFemag):
         if simulation['calculationMode'] == "pm_sym_loss":
             return self.read_los(self.modelname)
 
+        if simulation['calculationMode'] == "asyn_motor":
+            return self.read_asm(self.modelname)
+
         status, content = self.getfile(result_file)
         r = json.loads(status)
         if r['status'] == 'ok':

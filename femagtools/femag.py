@@ -830,10 +830,12 @@ class ZmqFemag(BaseFemag):
             list of extracted mc names (:obj:`list`)
         """
         dest = dir if dir else self.workdir
-        for m in model.set_magcurves(
-                self.magnetizingCurves, self.magnets):
+        mc_names = [m for m in model.set_magcurves(
+            self.magnetizingCurves, self.magnets)]
+        for m in mc_names:
             f = self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
             self.upload(os.path.join(dest, f))
+        return mc_names
 
     def __call__(self, machine, simulation):
         """setup fsl file, run calculation and return BCH results

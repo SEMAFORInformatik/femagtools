@@ -42,9 +42,9 @@ end
 dphi=1e-3
 r=da2/2 - m.slot_hs2 - hs[1] - hs[2] - hs[3]/2
 phi=180/Q2+m.zeroangl
-x,y=pd2c(r,phi-dphi)
-delete_sreg(x, y)
 x,y=pd2c(r,phi)
+delete_sreg(x, y)
+x,y=pd2c(r,phi-dphi)
 def_new_subreg( x,y, 'Bar', violet )
 x,y = pd2c(r,phi+dphi)
 add_to_subreg( x, y )
@@ -77,10 +77,8 @@ for i=2, m.num_sl_gen do
     end
     if(hs[2]>0.1) then
       r=da2/2 - m.slot_hs2 - hs[1] - hs[2]/2
-      x,y=pd2c(r,phi-dphi)
+      x,y=pd2c(r,phi+j*dphi)
       add_to_subreg( x,y )
-      x,y = pd2c(r,phi+dphi)
-      add_to_subreg( x, y )
     end 
   end
  end

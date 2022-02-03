@@ -234,7 +234,7 @@ def torque(pos, torque, ax=0):
     k = 20
     alpha = np.linspace(pos[0], pos[-1],
                         k*len(torque))
-    f = ip.interp1d(pos, torque, kind='cubic')
+    f = ip.interp1d(pos, torque, kind='quadratic')
     unit = 'Nm'
     scale = 1
     if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
@@ -885,7 +885,7 @@ def transientsc(bch, title=''):
         fig.subplots_adjust(top=0.92)
 
 
-def i1beta_torque(i1, beta, torque, ax=0):
+def i1beta_torque(i1, beta, torque, title='', ax=0):
     """creates a surface plot of torque vs i1, beta"""
     if ax == 0:
         _create_3d_axis()
@@ -898,9 +898,14 @@ def i1beta_torque(i1, beta, torque, ax=0):
     if np.min(torque) < -9.9e3 or np.max(torque) > 9.9e3:
         scale = 1e-3
         unit = 'kNm'
-    _plot_surface(ax, i1, beta, scale*np.asarray(torque),
-                  (u'I1/A', u'Beta/°', u'Torque/{}'.format(unit)),
-                  azim=azim)
+    if title:
+        _plot_surface(ax, i1, beta, scale*np.asarray(torque),
+                      (u'I1/A', u'Beta/°', title),
+                      azim=azim)
+    else:
+        _plot_surface(ax, i1, beta, scale*np.asarray(torque),
+                      (u'I1/A', u'Beta/°', u'Torque/{}'.format(unit)),
+                      azim=azim)
 
 
 def i1beta_ld(i1, beta, ld, ax=0):

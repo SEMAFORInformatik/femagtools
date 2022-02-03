@@ -20,7 +20,7 @@ m.magn_shape      =    ${model['magn_shape']*1e3}
 m.br_height       =    ${model['bridge_height']*1e3}
 m.br_width        =    ${model['bridge_width']*1e3}
 
-m.zeroangl        =     0.0
+m.zeroangl        =    ${model.get('zeroangle',0)}
 m.cond_shaft      =     0.000
 m.mcvkey_yoke     =     mcvkey_yoke
 m.mcvkey_mshaft   =     mcvkey_shaft

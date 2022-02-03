@@ -14,7 +14,7 @@ m.bridge_height   =    ${model['bridge_height']*1e3}
 m.bridge_width    =    ${model['bridge_width']*1e3}
 m.iron_shape      =    ${model['iron_shape']*1e3}
 
-m.zeroangl        =     0.0
+m.zeroangl        =    ${model.get('zeroangle',0)}
 
 m.mcvkey_yoke     =   mcvkey_yoke
 m.nodedist        =   ${model.get('nodedist',1)}

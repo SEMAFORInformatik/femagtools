@@ -14,7 +14,7 @@ m.iron_shape      =    ${model['iron_shape']*1e3}
 m.air_space_b     =    ${model['air_space_b']*1e3}
 m.magn_di_ra      =    ${model['magn_di_ra']*1e3}
 
-m.zeroangl        =     0.0
+m.zeroangl        =   ${model.get('zeroangle',0)}
 
 m.mcvkey_yoke     =   mcvkey_yoke
 m.mcvkey_mshaft   =   mcvkey_shaft

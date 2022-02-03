@@ -14,7 +14,7 @@ m.air_sp_ori      =    ${model['air_sp_ori']}
 m.magn_ori        =    ${model['magn_ori']}
 m.magn_num        =    ${model['magn_num']}
 m.cond_shaft      =    0.0 -- ignored
-m.zeroangl        =     0.0
+m.zeroangl        =    ${model.get('zeroangle',0)}
 
 m.mcvkey_yoke     =   mcvkey_yoke
 m.mcvkey_mshaft    =  mcvkey_shaft

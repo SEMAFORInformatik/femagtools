@@ -12,7 +12,7 @@ yoke_height = dy1/2-da1/2-magn_height
 
 rlenPM = 100*(magn_length/m.arm_length) -- length of PM in %
 
-m.zeroangl = 0
+m.zeroangl = ${model.get('zeroangle',0)}
 
 fml = require("fml")
 

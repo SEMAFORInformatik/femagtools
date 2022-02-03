@@ -6,7 +6,7 @@ alfa = ${model['alfa']}  -- pole width factor 0 < alfa < 1
 
 P = m.num_poles
 Pm = m.npols_gen
-m.zeroangl = 0  -- zero angle in degree
+m.zeroangl = ${model.get('zeroangle',0)}
 taup = m.zeroangl + 360/P -- pole pitch in degree
 
 

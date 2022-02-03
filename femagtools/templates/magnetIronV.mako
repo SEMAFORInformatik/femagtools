@@ -12,9 +12,9 @@ m.iron_shape      =    ${model['iron_shape']*1e3}
 m.air_triangle    =    ${model.get('air_triangle', 0)}
 m.gap_ma_iron     =    ${model['gap_ma_iron']*1e3}
 m.magn_rem        =    ${model.get('magn_rem', 'm.remanenc')}
-m.shaft_rad       =     ${model['condshaft_r']*1e3}
+m.shaft_rad       =    ${model['condshaft_r']*1e3}
 
-m.zeroangl        =     0.0
+m.zeroangl        =    ${model.get('zeroangle',0)}
 
 m.mcvkey_yoke     =   mcvkey_yoke
 

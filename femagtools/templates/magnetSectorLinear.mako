@@ -18,7 +18,7 @@ m.magn_ori        = ${model['magn_ori']}
 m.airgap_shape    = ${model['airgap_shape']*1e3}
 m.magn_type       = ${model['magn_type']}
 
-m.zeroangl        =          0.000 --   Reference angle to x-axis [grad]        
+m.zeroangl        = ${model.get('zeroangle',0)}
  
  m.mcvkey_yoke =   mcvkey_yoke
  

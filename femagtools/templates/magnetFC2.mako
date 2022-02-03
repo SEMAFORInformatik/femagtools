@@ -15,7 +15,7 @@ m.iron_hp         =   ${model['iron_hp']*1e3}
 m.magn_num        =   ${model['magn_num']}
 
 m.nodedist        =   ${model.get('nodedist',0.0)}
-m.zeroangl        =          0.000 --   Reference angle to x-axis [grad]        
+m.zeroangl        =   ${model.get('zeroangle',0)}
  
 m.mcvkey_yoke     =   mcvkey_yoke
  

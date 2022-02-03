@@ -60,14 +60,21 @@ def chunks(l, n):
 
 
 class ParameterStudy(object):
-    """abstract base class for parameter variation calculation"""
+    """abstract base class for parameter variation calculation
+
+    Args:
+    workdir: pathname of work directory
+
+    CAUTION: choose the workdir exclusively for this usage. 
+             do not share it with anything else.
+    """
 
     def __init__(self, workdir,
                  magnetizingCurves=None, magnets=None, condMat=[], result_func=None,
-                 repname='grid'):  # tasktype='Task'):
+                 repname='grid', cmd=None):  # tasktype='Task'):
         #self.tasktype = tasktype
         self.result_func = result_func
-        self.femag = femagtools.Femag(workdir,
+        self.femag = femagtools.Femag(workdir=workdir, cmd=cmd,
                                       magnetizingCurves=magnetizingCurves,
                                       magnets=magnets, condMat=condMat)
         # rudimentary: gives the ability to stop a running parameter variation. thomas.maier/OSWALD
@@ -99,7 +106,7 @@ class ParameterStudy(object):
             raise ValueError("directory {} is not empty".format(dirname))
         self.reportdir = dirname
 
-    def setup_model(self, builder, model, cmd=''):
+    def setup_model(self, builder, model):
         """builds model in current workdir and returns its filenames"""
         # get and write mag curves
         mc_files = self.femag.copy_magnetizing_curves(model)
@@ -116,9 +123,7 @@ class ParameterStudy(object):
                     model, self.femag.magnets, self.femag.condMat) +
                     ['save_model("close")']))
 
-            if cmd:
-                self.femag.cmd = cmd
-            self.femag.run(filename, options=['-b'])
+            self.femag.run(filename)
 
         model_files = [os.path.join(self.femag.workdir, m)
                        for m in mc_files] + [
@@ -161,8 +166,12 @@ class ParameterStudy(object):
         immutable_model = len([d for d in dvarnames
                                if hasattr(model,
                                           d.split('.')[0])]) == 0
+
+        for d in self.femag.workdir.glob('[0-9]*'):
+            shutil.rmtree(d)
+
         if immutable_model:
-            modelfiles = self.setup_model(builder, model, engine.cmd[0])
+            modelfiles = self.setup_model(builder, model)
             logger.info("Files %s", modelfiles+extra_files)
 
         simulation['arm_length'] = model.lfe

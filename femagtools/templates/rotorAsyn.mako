@@ -39,27 +39,28 @@ if mcvkey_yoke ~= 'dummy' then
 end
 
 -- rename subregion to Bar
+dphi=1e-3
 r=da2/2 - m.slot_hs2 - hs[1] - hs[2] - hs[3]/2
 phi=180/Q2+m.zeroangl
-x,y=pd2c(r,phi)
+x,y=pd2c(r,phi-dphi)
 delete_sreg(x, y)
-x,y=pd2c(r,0.99*phi)
+x,y=pd2c(r,phi)
 def_new_subreg( x,y, 'Bar', violet )
-x,y = pd2c(r,1.01*phi)
+x,y = pd2c(r,phi+dphi)
 add_to_subreg( x, y )
---[[
-if(hs[2]>0) then
+
+if(hs[2]>0.1) then
   r=da2/2 - m.slot_hs2 - hs[1] - hs[2]/2
-  x,y=pd2c(r,0.99*phi)
+  x,y=pd2c(r,phi-dphi)
   add_to_subreg( x,y )
-  x,y = pd2c(r,1.01*phi)
+  x,y = pd2c(r,phi+dphi)
   add_to_subreg( x, y )
-end --]]
+end 
 if(hs[1]>0) then
   r=da2/2 - m.slot_hs2 - hs[1]/2
-  x,y=pd2c(r,0.99*phi)
+  x,y=pd2c(r,phi-dphi)
   add_to_subreg( x,y )
-  x,y = pd2c(r,1.01*phi)
+  x,y = pd2c(r,phi+dphi)
   add_to_subreg( x, y )
 end
 
@@ -67,12 +68,19 @@ for i=2, m.num_sl_gen do
   phi=(i-0.5)*360/Q2 + m.zeroangl
   for j = -1,1,2 do
     r=da2/2 - m.slot_hs2 - hs[1] - hs[2] - hs[3]/2
-    x,y = pd2c(r,phi+j*0.01)	
+    x,y = pd2c(r,phi+j*dphi)	
     add_to_subreg( x, y )
     if(hs[1]>0.1) then
       r=da2/2 - m.slot_hs2 - hs[1]/2
-      x,y = pd2c(r,phi+j*0.01)	
+      x,y = pd2c(r,phi+j*dphi)	
       add_to_subreg( x, y )
     end
+    if(hs[2]>0.1) then
+      r=da2/2 - m.slot_hs2 - hs[1] - hs[2]/2
+      x,y=pd2c(r,phi-dphi)
+      add_to_subreg( x,y )
+      x,y = pd2c(r,phi+dphi)
+      add_to_subreg( x, y )
+    end 
   end
  end

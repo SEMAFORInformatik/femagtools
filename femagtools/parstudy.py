@@ -350,11 +350,13 @@ class List(ParameterStudy):
     """List Parameter variation calculation"""
 
     def __init__(self, workdir,
-                 magnetizingCurves=None, magnets=None, condMat=[], result_func=None):  # tasktype='Task'):
-        super(self.__class__, self).__init__(workdir,
-                                             magnetizingCurves, magnets,
-                                             condMat=condMat, result_func=result_func,
-                                             repname='list')
+                 magnetizingCurves=None, magnets=None, condMat=[],
+                 result_func=None, cmd=None):  # tasktype='Task'):
+        super(self.__class__, self).__init__(
+            workdir,
+            magnetizingCurves, magnets,
+            condMat=condMat, result_func=result_func,
+            repname='list', cmd=cmd)
 
     def _get_names_and_range(self, dvars, num_samples):
         if 'list' in dvars:
@@ -372,10 +374,12 @@ class LatinHypercube(ParameterStudy):
     """Latin Hypercube sampling parameter variation calculation"""
 
     def __init__(self, workdir,
-                 magnetizingCurves=None, magnets=None, condMat=[], result_func=None):  # tasktype='Task'):
-        super(self.__class__, self).__init__(workdir,
-                                             magnetizingCurves, magnets,
-                                             condMat=[], result_func=result_func, repname='lhs')
+                 magnetizingCurves=None, magnets=None, condMat=[],
+                 result_func=None, cmd=None):  # tasktype='Task'):
+        super(self.__class__, self).__init__(
+            workdir,
+            magnetizingCurves, magnets,
+            condMat=[], result_func=result_func, repname='lhs', cmd=cmd)
 
     def _get_names_and_range(self, dvars, num_samples):
         dvarnames = [d['name'] for d in dvars]
@@ -394,11 +398,12 @@ class Sobol(ParameterStudy):
     """Sobol sampling parameter variation calculation"""
 
     def __init__(self, workdir,
-                 magnetizingCurves=None, magnets=None, condMat=[], result_func=None):  # tasktype='Task'):
+                 magnetizingCurves=None, magnets=None, condMat=[],
+                 result_func=None, cmd=None):  # tasktype='Task'):
         super(self.__class__, self).__init__(workdir,
                                              magnetizingCurves, magnets,
                                              condMat=condMat, result_func=result_func,
-                                             repname='sobol')
+                                             repname='sobol', cmd=cmd)
 
     def _get_names_and_range(self, dvars, num_samples):
         dvarnames = [d['name'] for d in dvars]
@@ -417,10 +422,12 @@ class Grid(ParameterStudy):
     """Grid Parameter variation calculation"""
 
     def __init__(self, workdir,
-                 magnetizingCurves=None, magnets=None, condMat=[], result_func=None):  # tasktype='Task'):
-        super(self.__class__, self).__init__(workdir,
-                                             magnetizingCurves, magnets, condMat=condMat,
-                                             result_func=result_func)
+                 magnetizingCurves=None, magnets=None, condMat=[],
+                 result_func=None, cmd=None):  # tasktype='Task'):
+        super(self.__class__, self).__init__(
+            workdir,
+            magnetizingCurves, magnets, condMat=condMat,
+            result_func=result_func, cmd=cmd)
 
     def __create_parameter_range(self, domain):
         """returns the transposed array of the combined domain values"""

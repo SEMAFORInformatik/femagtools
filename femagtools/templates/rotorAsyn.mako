@@ -23,8 +23,8 @@ m.num_sl_gen  =   ${model['num_slots_gen']}
 m.num_sl_gen  =   Q2 * m.npols_gen/m.num_poles
 % endif
                                   
-m.slot_height = m.slot_h32 + m.slot_h42 + m.slot_h52 +
-               m.slot_h62 + m.slot_h72
+hs = { m.slot_h32, m.slot_h42,
+       m.slot_h52 + m.slot_h62 + m.slot_h72 }
 m.zeroangl        = ${model.get('zeroangle',0)}
 m.nodedist        =   ${model.get('nodedist',1)}
 
@@ -39,7 +39,7 @@ if mcvkey_yoke ~= 'dummy' then
 end
 
 -- rename subregion to Bar
-r=da2/2 - m.slot_hs2 - m.slot_height/2
+r=da2/2 - m.slot_hs2 - hs[1] - hs[2] - hs[3]/2
 phi=180/Q2+m.zeroangl
 x,y=pd2c(r,phi)
 delete_sreg(x, y)
@@ -47,10 +47,32 @@ x,y=pd2c(r,0.99*phi)
 def_new_subreg( x,y, 'Bar', violet )
 x,y = pd2c(r,1.01*phi)
 add_to_subreg( x, y )
+--[[
+if(hs[2]>0) then
+  r=da2/2 - m.slot_hs2 - hs[1] - hs[2]/2
+  x,y=pd2c(r,0.99*phi)
+  add_to_subreg( x,y )
+  x,y = pd2c(r,1.01*phi)
+  add_to_subreg( x, y )
+end --]]
+if(hs[1]>0) then
+  r=da2/2 - m.slot_hs2 - hs[1]/2
+  x,y=pd2c(r,0.99*phi)
+  add_to_subreg( x,y )
+  x,y = pd2c(r,1.01*phi)
+  add_to_subreg( x, y )
+end
+
 for i=2, m.num_sl_gen do
   phi=(i-0.5)*360/Q2 + m.zeroangl
   for j = -1,1,2 do
+    r=da2/2 - m.slot_hs2 - hs[1] - hs[2] - hs[3]/2
     x,y = pd2c(r,phi+j*0.01)	
     add_to_subreg( x, y )
+    if(hs[1]>0.1) then
+      r=da2/2 - m.slot_hs2 - hs[1]/2
+      x,y = pd2c(r,phi+j*0.01)	
+      add_to_subreg( x, y )
+    end
   end
  end

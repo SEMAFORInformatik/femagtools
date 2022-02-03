@@ -152,8 +152,9 @@ class Engine(object):
         for task in self.job.tasks:
             self.queue.put(task)
 
-        logger.info("Request %d workers on %s (num tasks %d)",
-                    self.num_threads, self.dispatcher, len(self.job.tasks))
+        logger.info("Request %d workers on %s:%d (num tasks %d)",
+                    self.num_threads, self.dispatcher, self.port,
+                    len(self.job.tasks))
         self.async_femags = [AsyncFemag(self.queue,
                                         self.port, self.dispatcher)
                              for i in range(self.num_threads)]

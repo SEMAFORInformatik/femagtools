@@ -2,7 +2,7 @@
 -- Cogging
 --
 m.move_action     =    0.0 -- rotate
-% if model.get('lfe'):
+% if model.get('lfe', 0):
 m.arm_length      =    ${model.get('lfe')*1e3}
 % endif
 

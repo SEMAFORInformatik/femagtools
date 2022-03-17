@@ -175,6 +175,7 @@ class ParameterStudy(object):
             logger.info("Files %s", modelfiles+extra_files)
 
         simulation['arm_length'] = model.lfe
+        simulation['lfe'] = model.lfe
         simulation['move_action'] = model.move_action
         simulation['phi_start'] = 0.0
         simulation['range_phi'] = 720/model.get('poles')

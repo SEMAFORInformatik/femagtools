@@ -37,7 +37,7 @@ class Builder:
                     os.path.join(os.getcwd(), '.')]
         self.lookup = mako.lookup.TemplateLookup(
             directories=dirs,
-            disable_unicode=False, input_encoding='utf-8',
+            input_encoding='utf-8',
             output_encoding='utf-8',
             default_filters=['decode.utf8'])
 

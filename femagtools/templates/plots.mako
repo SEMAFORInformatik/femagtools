@@ -10,8 +10,10 @@ field_lines('field.svg', ${p[1]})
 % else:
 % if len(p) < 3:
 color_gradation( 0,0, 'tot', '${p[0]}', 0, 0, '${p[0]}'..'.svg')
-% else:
+% elif len(p) < 4:
 color_gradation( 0,0, 'tot', '${p[0]}', ${p[1]}, ${p[2]}, '${p[0]}'..'.svg')
+% else:
+color_gradation( 0,0, 'tot', '${p[0]}', ${p[1]}, ${p[2]}, '${p[3]}')
 % endif
 % endif
 % else:

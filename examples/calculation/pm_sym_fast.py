@@ -1,6 +1,6 @@
 import femagtools
 import femagtools.poc
-import os
+import pathlib
 import logging
 
 
@@ -12,7 +12,7 @@ machine = dict(
     bore_diam=0.07,
     inner_diam=0.015,
     airgap=0.001,
-     
+
     stator=dict(
         num_slots=12,
         num_slots_gen=3,
@@ -25,7 +25,7 @@ machine = dict(
             tooth_width=0.009,
             slot_width=0.003)
     ),
-    
+
     magnet=dict(
         mcvkey_shaft="dummy",
         mcvkey_yoke="dummy",
@@ -42,16 +42,16 @@ machine = dict(
             bridge_width=0.0,
             magn_len=1.0)
     ),
-    
+
     windings=dict(
         num_phases=3,
         num_wires=100,
         coil_span=3.0,
         num_layers=1,
         leak_dist_wind=dict(
-            perimrad=67.1e-3, # Radius of perimeter [m]                
-            vbendrad=5e-3,    # Bending radius vertical [m]            
-            endheight=20e-3,  # End winding height [m]                 
+            perimrad=67.1e-3,  # Radius of perimeter [m]
+            vbendrad=5e-3,    # Bending radius vertical [m]
+            endheight=20e-3,  # End winding height [m]
             wiredia=1e-3)     # Wire diameter [m]
     )
 )
@@ -59,20 +59,16 @@ machine = dict(
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
-workdir = os.path.join(
-    os.path.expanduser('~'), 'femag')
-try:
-    os.makedirs(workdir)
-except OSError:
-    pass
+workdir = pathlib.Path().home() / 'femag'
+workdir.mkdir(parents=True, exist_ok=True)
 
 femag = femagtools.Femag(workdir)
 
-poc = femagtools.poc.HspPoc(harm=[1,5],
-                            amp=[1,0.01],
+poc = femagtools.poc.HspPoc(harm=[1, 5],
+                            amp=[1, 0.01],
                             phi=[0, 0])
 
-operatingConditions = dict(
+simulation = dict(
     angl_i_up=0.0,
     calculationMode="pm_sym_fast",
     wind_temp=60.0,
@@ -81,10 +77,10 @@ operatingConditions = dict(
     speed=50.0,
     period_frac=6,
     poc=poc,
-    plots=['field_lines', ['Babs', 1.2, 2.4]])
+    plots=['field_lines', ['Babs', 0.5, 3.2, 'Babs.svg']])
 
 r = femag(machine,
-          operatingConditions)
+          simulation)
 
 print('Torque [Nm] = {}'.format(r.machine['torque']))
 print("""

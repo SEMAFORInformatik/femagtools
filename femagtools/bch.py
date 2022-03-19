@@ -333,7 +333,10 @@ class Reader:
     def __read_magnet_loss_data(self, content):
         for line in content:
             if line.startswith('El.Conductivity Magnet'):
-                self.magnet['sigma_PM'] = float(line.split()[-1])
+                try:
+                    self.magnet['sigma_PM'] = float(line.split()[-1])
+                except ValueError:
+                    pass
 
     def __read_calctime(self, content):
         try:

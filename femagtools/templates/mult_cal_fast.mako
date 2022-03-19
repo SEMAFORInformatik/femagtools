@@ -23,6 +23,12 @@ m.fc_force_points   =  0.0 --    number move points in air gap
 m.loss_funct    = 0     -- loss functon 0: own 1: ext
 m.loss_fact     = 1.0   -- loss multiplication factor
 
+% if model.get('vtu_movie', 0):
+m.movie_type = 'vtu'
+% else:
+m.movie_type = nil
+% endif
+
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 
 run_models("mult_cal_fast")

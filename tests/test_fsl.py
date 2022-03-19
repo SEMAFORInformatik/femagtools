@@ -323,7 +323,7 @@ class FslBuilderTest(unittest.TestCase):
 
         feapars['calculationMode'] = "mult_cal_fast"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 29)
+        self.assertEqual(len(fsl), 31)
 
         feapars['calculationMode'] = "torq_calc"
         fsl = self.builder.create_analysis(feapars)

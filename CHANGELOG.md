@@ -2,6 +2,10 @@
 
 This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.1.10
+- vtu _movie support in mult_cal_fast
+- added optional filename parameter in FE simulation ['plots']
+	
 ## Release 1.1.3
 - eesm support improved (bch, ld_ld_fast)
 

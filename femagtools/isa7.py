@@ -296,24 +296,29 @@ class Reader(object):
         self.skip_block(3)
         self.skip_block(2 * 3 + 6 * 100 * 3)
         self.skip_block(30)
-        self.skip_block(11 * 4)
-        self.skip_block()
-        self.skip_block(1 * 4)
-        # NOM_CURRENT
-        # PR_BASIC_LOSS_DATA
+        self.skip_block(11 * 4)  # supel_EMODUL(I) ..
+        self.skip_block()  # NODE_ISA_NODE_REC_ND_SV_PNTR
+        self.skip_block(1 * 4)  # slot_insulation
+        self.skip_block()  # NOM_CURRENT
+        # PR_BASIC_LOSS_DATA ..
         # TOT_MAGNET_AREA
         # MOVE_EXTERN
         # MOVE_ARMATURE
-        self.skip_block(5)
-
-        self.pole_pairs, self.poles_sim = self.next_block("i")[:2]
+        self.skip_block(4)
+        try:
+            self.pole_pairs, self.poles_sim = self.next_block("i")[:2]
+        except:
+            pass
         self.SLOT_WIRE_DIAMETER = self.next_block("f")
         self.SLOT_WIRE_NUMBERS = self.next_block("i")
         self.skip_block(20*(3 + 2 * 20))  # BASE_FREQUENCY ..
         self.skip_block(2)  # R_TORQUE .. NUM_NOLOAD_EX_CURRENT_STEPS
-        (self.R_CURRENT,
-         self.R_LOAD_VOLTAGE,
-         self.R_NOLOAD_VOLTAGE) = self.next_block("f")
+        try:
+            (self.R_CURRENT,
+             self.R_LOAD_VOLTAGE,
+             self.R_NOLOAD_VOLTAGE) = self.next_block("f")
+        except:
+            pass
         x = self.next_block("f")
         self.R_COSPHI = x[0]
         self.R_BETA_OPT = x[1:]
@@ -329,8 +334,16 @@ class Reader(object):
 
         self.skip_block()
         self.skip_block(2 * 3)  # MAX_LOSS_EVAL_STEPS
-        self.Q_SLOTS_NUMBER, self.M_PHASE_NUMBER = self.next_block("i")[:2]
-        self.N_LAYERS_SLOT, self.N_WIRES_PER_SLOT = self.next_block("i")[:2]
+        try:
+            self.Q_SLOTS_NUMBER, self.M_PHASE_NUMBER = self.next_block("i")[:2]
+        except:
+            pass
+        try:
+            self.N_LAYERS_SLOT, self.N_WIRES_PER_SLOT = self.next_block("i")[
+                :2]
+        except:
+            pass
+
         self.skip_block(1)
         self.skip_block(10 * 100)  # num_index_cad
         self.skip_block(1 * 100)
@@ -361,7 +374,7 @@ class Reader(object):
 
         fmt_ = fmt.replace("?", "i")
 
-        blockSize = struct.unpack_from("=i", self.file, self.pos)[0]
+        blockSize=struct.unpack_from("=i", self.file, self.pos)[0]
         self.pos += 4
         try:
             unpacked = struct.iter_unpack("=" + fmt_,
@@ -657,14 +670,17 @@ class Isa7(object):
                 reader.el_fe_induction_2).T/1000
             self.eddy_cu_vpot = np.asarray(reader.eddy_cu_vpot).T/1000
         else:
-            self.el_fe_induction_1 = np.asarray(
-                [e for e in reader.el_fe_induction_1 if e[0]]).T/1000
-            self.el_fe_induction_2 = np.asarray(
-                [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
-            self.eddy_cu_vpot = np.asarray(
-                [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
-        logger.info('El Fe Induction %s', np.asarray(
-            reader.el_fe_induction_1).shape)
+            try:
+                self.el_fe_induction_1 = np.asarray(
+                    [e for e in reader.el_fe_induction_1 if e[0]]).T/1000
+                self.el_fe_induction_2 = np.asarray(
+                    [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
+                self.eddy_cu_vpot = np.asarray(
+                    [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
+                logger.info('El Fe Induction %s', np.asarray(
+                    reader.el_fe_induction_1).shape)
+            except:
+                pass
 
     def get_subregion(self, name):
         """return subregion by name"""

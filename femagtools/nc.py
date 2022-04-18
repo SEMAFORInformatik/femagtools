@@ -6,9 +6,9 @@
     Read FEMAG netcdf model files
 """
 import logging
+import warnings
 import netCDF4
 from femagtools import isa7
-
 
 logger = logging.getLogger('femagtools.nc')
 
@@ -102,11 +102,13 @@ class Reader(object):
          self.SUPEL_ISA_SUPEL_REC_SE_CONDUC,
          self.SUPEL_ISA_SUPEL_REC_SE_LENGHT,
          self.SUPEL_ISA_SUPEL_REC_SE_CURD_RE,
-         self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM) = [
+         self.SUPEL_ISA_SUPEL_REC_SE_CURD_IM,
+         self.SUPEL_ISA_SUPEL_REC_SE_FILLFACTOR) = [
             grp.variables[k][:]
             for k in ('ndch_pntr', 'el_pntr', 'color', 'mcv_type',
                       'cond_type', 'vel_sys', 'sr_key', 'velo_1',
-                      'velo_2', 'conduc', 'length', 'curd_re', 'curd_im')]
+                      'velo_2', 'conduc', 'length', 'curd_re', 'curd_im',
+                      'fillfactor')]
 
         grp = ds.groups['superelement_nodechains']
         (self.SE_NDCHN_ISA_NC_KEY,
@@ -178,6 +180,7 @@ class Reader(object):
             pass
         try:
             grp = ds.groups['machine']
+            self.speed = float(grp.variables['speed'].getValue().data)
             self.FC_RADIUS = float(grp.variables['fc_radius'].getValue().data)
             self.pole_pairs = int(grp.variables['pole_pairs'].getValue().data)
             self.delta_node_angle = float(  # rad
@@ -215,6 +218,83 @@ class Reader(object):
             self.el_fe_induction_1 = []
             self.el_fe_induction_2 = []
             self.eddy_cu_vpot = []
+
+        self.iron_loss_coefficients = []
+        try:
+            mcgrp = ds.groups['magn_curves']
+            lmc = len(mcgrp.variables['ch'])
+        except KeyError:
+            mcgrp = 0
+            lmc = 0
+
+        lcgrp = ds.groups['loss_coeffs']
+        ce = 0.0
+        ce_freq_exp = 1.5
+        ce_ind_exp = 1.5
+        ke = 0.0
+        khml = 0.65
+
+        lctype = ['magn_curve']*lmc + ['Outside', 'Inside']
+        for i in range(lmc+2):
+            if lctype[i] == 'magn_curve':
+                name = ds.groups['mc'].variables['name'][i].tobytes().decode(
+                    'UTF-8').strip()
+                base_frequency = float(
+                    mcgrp.variables['base_frequency'][i].data)
+                base_induction = float(
+                    mcgrp.variables['base_induction'][i].data)
+                ch = float(mcgrp.variables['ch'][i].data)
+                ch_freq_exp = float(mcgrp.variables['ch_exp'][i].data)
+                ch_ind_exp = float(mcgrp.variables['ind_exp'][i].data)
+                kh = ch/(base_induction**ch_ind_exp *
+                         base_frequency**ch_freq_exp)
+                cw = float(mcgrp.variables['cw'][i].data)
+                cw_freq_exp = float(mcgrp.variables['cw_exp'][i].data)
+                cw_ind_exp = float(mcgrp.variables['ind_exp'][i].data)
+                spec_weight = float(mcgrp.variables['spec_weight'][i].data)
+                fillfactor = float(mcgrp.variables['fillfac'][i].data)
+                shapefactor = 1.0
+            else:
+                j = i - lmc
+                name = lctype[i]
+                shapefactor = float(
+                    lcgrp.variables['shape_factor'][j].data)
+
+                base_frequency = float(lcgrp.variables['freq_0'][j].data)
+                base_induction = float(lcgrp.variables['ind_0'][j].data)
+                ch = float(lcgrp.variables['ch'][j].data)
+                ch_freq_exp = float(lcgrp.variables['fa_hyst'][j].data)
+                ch_ind_exp = float(lcgrp.variables['fa_ind'][j].data)
+                cw = float(lcgrp.variables['cw'][j].data)
+                cw_freq_exp = float(lcgrp.variables['fa_eddy'][j].data)
+                cw_ind_exp = float(lcgrp.variables['fa_ind'][j].data)
+                spec_weight = float(lcgrp.variables['spec_mass_fe'][j].data)
+                fillfactor = float(lcgrp.variables['fill_factor_fe'][j].data)
+                shapefactor = float(lcgrp.variables['shape_factor'][j].data)
+
+            kh = ch/(base_induction**ch_ind_exp*base_frequency**ch_freq_exp)
+
+            coeffdict = {
+                "Name": name,
+                "base_frequency": base_frequency,
+                "base_induction": base_induction,
+                "ch": ch,
+                "ch_freq_exp": ch_freq_exp,
+                "ch_ind_exp": ch_ind_exp,
+                "kh": kh,
+                "khml": khml,
+                "cw": cw,
+                "cw_freq_exp": cw_freq_exp,
+                "cw_ind_exp": cw_ind_exp,
+                "ce": ce,
+                "ce_freq_exp": ce_freq_exp,
+                "ce_ind_exp": ce_ind_exp,
+                "ke": ke,
+                "spec_weight": spec_weight,
+                "fillfactor": fillfactor,
+                "shapefactor": shapefactor
+            }
+            self.iron_loss_coefficients.append(coeffdict)
 
 
 def read(filename):

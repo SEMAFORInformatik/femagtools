@@ -354,8 +354,8 @@ class Reader(object):
         self.skip_block(2 * 4)
         self.skip_block(3)
         self.skip_block(1 * 64)  # bnodes_mech
-        self.skip_block(6)
-
+        self.skip_block(5)
+        self.SUPEL_ISA_SUPEL_REC_SE_FILLFACTOR = self.next_block("f")
         self.ELEM_ISA_ELEM_REC_LOSS_DENS = self.next_block("f")
         self.skip_block(3)
         self.skip_block(1 * 64)
@@ -374,8 +374,9 @@ class Reader(object):
 
         fmt_ = fmt.replace("?", "i")
 
-        blockSize=struct.unpack_from("=i", self.file, self.pos)[0]
+        blockSize = struct.unpack_from("=i", self.file, self.pos)[0]
         self.pos += 4
+        unpacked = []
         try:
             unpacked = struct.iter_unpack("=" + fmt_,
                                           self.file[self.pos:self.pos
@@ -385,13 +386,15 @@ class Reader(object):
         except AttributeError:  # python 2 has no iter_unpack
             chunksize = struct.calcsize("=" + fmt_)
             offset = self.pos
-            unpacked = []
             for j in range(blockSize // chunksize):
                 unpacked.append(struct.unpack_from("=" + fmt_,
                                                    self.file,
                                                    offset))
                 offset += chunksize
             logger.info("%s: %d %d", fmt_, blockSize, len(unpacked))
+        except struct.error as e:
+            logger.warning("Invalid Blocksize %s",
+                           blockSize)
 
         self.pos += blockSize + 4
 
@@ -568,7 +571,8 @@ class Isa7(object):
                              reader.SUPEL_ISA_SUPEL_REC_SE_VELO_1[se],
                              reader.SUPEL_ISA_SUPEL_REC_SE_VELO_2[se],
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_RE[se],
-                             reader.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se]))
+                             reader.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se],
+                             reader.SUPEL_ISA_SUPEL_REC_SE_FILLFACTOR[se]))
 
         logger.info("Subregions")
         self.subregions = []
@@ -599,7 +603,7 @@ class Isa7(object):
                 SubRegion(sr + 1,
                           reader.SR_ISA_SR_REC_SR_TYP[sr],
                           reader.SR_ISA_SR_REC_SR_COL[sr],
-                          reader.SR_ISA_SR_REC_SR_NAME[sr],
+                          reader.SR_ISA_SR_REC_SR_NAME[sr].strip(),
                           reader.SR_ISA_SR_REC_SR_NTURNS[sr],
                           reader.SR_ISA_SR_REC_SR_CUR_DIR[sr],
                           reader.SR_ISA_SR_REC_SR_WB_KEY[sr] - 1,
@@ -644,7 +648,7 @@ class Isa7(object):
                                      for e in self.elements])
 
         for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim',
-                  'delta_node_angle',
+                  'delta_node_angle', 'speed',
                   'MAGN_TEMPERATURE', 'BR_TEMP_COEF'):
             v = getattr(reader, a, '')
             if v:
@@ -682,10 +686,13 @@ class Isa7(object):
             except:
                 pass
 
+        self.iron_loss_coefficients = getattr(
+            reader, 'iron_loss_coefficients', [])
+
     def get_subregion(self, name):
         """return subregion by name"""
         for s in self.subregions:
-            if s.name == name:
+            if s.name == name.strip():
                 return s
         raise ValueError('no such subregion "{}" in this model'.format(name))
 
@@ -771,6 +778,29 @@ class Isa7(object):
                 area_demag=area_demag,
                 pos=self.pos_el_fe_induction[ind[1]]))
         return results
+
+    def scale_factor(self):
+        '''Returns the scale factor
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        scale_facor : int
+        '''
+        try:
+            poles = 2*self.pole_pairs
+        except:
+            poles = 2
+        try:
+            poles_sim = self.poles_sim
+        except:
+            poles_sim = poles
+
+        scale_factor = poles/poles_sim
+
+        return scale_factor
 
 
 class Point(object):
@@ -979,7 +1009,7 @@ class Element(BaseEntity):
 class SuperElement(BaseEntity):
     def __init__(self, key, sr_key, elements, nodechains, color,
                  nc_keys, mcvtype, condtype, conduc, length,
-                 velsys, velo_1, velo_2, curd_re, curd_im):
+                 velsys, velo_1, velo_2, curd_re, curd_im, fillfactor):
         super(self.__class__, self).__init__(key)
         self.sr_key = sr_key
         self.subregion = None
@@ -996,6 +1026,7 @@ class SuperElement(BaseEntity):
         self.velsys = velsys
         self.velo = velo_1, velo_2
         self.curd = curd_re, curd_im
+        self.fillfactor = fillfactor
 
 
 class SubRegion(BaseEntity):

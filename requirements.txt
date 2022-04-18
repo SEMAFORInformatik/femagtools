@@ -2,6 +2,7 @@ numpy
 scipy
 mako
 networkx
+vtk
 meshio<=4.4.6
 matplotlib
 lxml

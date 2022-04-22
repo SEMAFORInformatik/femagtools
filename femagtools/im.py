@@ -8,6 +8,7 @@
 import numpy as np
 import scipy.optimize as so
 import logging
+import json
 
 EPS = 1e-13
 KTH = 0.003921  # temperature coefficient of resistance

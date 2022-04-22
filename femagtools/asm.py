@@ -22,129 +22,6 @@ import lmfit
 
 logger = logging.getLogger('femagtools.asm')
 
-TREF = 20
-
-
-class InductionMotor(object):
-    def __init__(self, parameters):
-        #        rs_Tref; rr_Tref; Lls; Lh; rh; Llr; Iin; p;
-        self.Tact = 150
-        self.Tref = TREF
-        for k in parameters.keys():
-            self.__setattr__(k, parameters[k])
-
-    def imag(self, psi):
-        """magnetizing current"""
-        return psi / self.Lh
-
-    def rrot(self, w):
-        """stator resistance"""
-        return self.rr_Tref * (self.Tact + 235) / (self.Tref + 235)
-
-    def rstat(self, w):
-        """stator resistance"""
-        return self.rs_Tref * (self.Tact + 235) / (self.Tref + 235)
-
-    def lrot(self, w):
-        """rotor leakage inductance"""
-        return self.Llr
-
-    def lstat(self, w):
-        """stator leakage inductance"""
-        return self.Lls
-
-    def sigma(self, w):
-        """leakage factor"""
-        return (1 - self.Lh**2.0 /
-                ((self.Lh + self.Lls) * (self.Lh + self.Llr)))
-
-    def lh(self, psi):
-        return psi / self.imag(psi)
-
-    def lr(self, w2, psi):
-        return self.lh(psi) + self.lrot(w2)
-
-    def ls(self, w1, psi):
-        return self.lh(psi) + self.lstat(w1)
-
-    def u1(self, w1, psi, wm):
-        """stator voltage"""
-        istat = self.i1(w1, psi, wm)
-        z1 = (self.rstat(w1) + w1 * self.Lls * 1j)
-        return w1 * psi * 1j + istat * z1
-
-    def i1(self, w1, psi, wm):
-        """stator current"""
-        imag = self.imag(psi)
-        if abs(w1) > 0:
-            imag += w1 * psi / self.rh * 1j
-        return self.i2(w1, psi, wm) + imag
-
-    def i2(self, w1, psi, wm):
-        """rotor current"""
-        w2 = w1 - self.p * wm
-        if abs(w2) > 0:
-            z2 = (self.rrot(w2) + w2 * self.lrot(w2) * 1j)
-            return w2 * psi * 1j / z2
-        return 0
-
-    def inertia(self):
-        """rotor inertia"""
-        return self.Iin
-
-    def torqueu(self, w1, u1max, psi, wm):
-        """calculate motor torque"""
-        # check stator voltage
-        u1 = self.u1(w1, psi, wm)
-        self.psi = psi
-        if abs(u1) > u1max:  # must adjust flux
-            self.psi = so.bisect(
-                lambda psi: u1max - abs(self.u1(w1, psi, wm)),
-                psi, 0.01 * psi)
-        return self.torque(w1, self.psi, wm)
-
-    def pullouttorque(self, w1, u1):
-        """pull out torque"""
-        sk = self.sk(w1)
-        w2 = sk * w1
-        r2 = self.rrot(w2)
-        x1 = w1 * (self.Lh + self.Lls)
-        x2 = w1 * (self.Lh + self.Llr)
-        r1 = self.rstat(w1)
-        sigma = self.sigma(w1)
-        return 3 * self.p * u1**2 / w1 * (1 - sigma) /\
-            ((r1**2 + x1**2) * r2 / (sk * x1 * x2) + sk * x2 *
-             (r2**2 + sigma**2 * x1**2) / (r2 * x1) + 2 * r1 * (1 - sigma))
-
-    def sk(self, w1):
-        """pullout slip"""
-        r2 = self.rrot(0.)
-        x1 = w1 * (self.Lh + self.Lls)
-        x2 = w1 * (self.Lh + self.lrot(0.))
-        r1 = self.rstat(w1)
-        return r2 / x2 * np.sqrt((r1**2 + x1**2) / (self.sigma(w1)**2 * x1**2 + r1**2))
-
-    def torque(self, w1, psi, wm):
-        """motor torque (in airgap)"""
-        w2 = w1 - self.p * wm
-        if w2 == 0:
-            return 0.
-        s = w2 / w1
-        r2 = self.rrot(w2)
-        i2 = self.i2(w1, psi, wm)
-        return 3 * self.p / w1 / s * r2 * (i2 * i2.conjugate()).real
-
-    def w1(self, u1max, psi, tload, wm):
-        """calculate stator frequency with given torque and speed"""
-        sign = 1       # driving mode
-        if tload < 0:  # braking mode
-            sign = -1
-        wsync = wm * self.p
-
-        return so.bisect(
-            lambda w1: self.torqueu(w1, u1max, psi, wm) - tload,
-            wsync, wsync * (1 + sign * self.sk(wsync)))
-
 
 def imcur(s, w1, u1, r1, ls1, lh, ls2, r2):
     """return currents i1r, i1i, i2r, i2i"""
@@ -172,13 +49,15 @@ def torque(p, w1, u1, s, r1, ls1, lh, ls2, r2):
 
 def fit_current(w1, u1, slip, r1, ls1, lh, i1, cosphi):
     def imcurr(s, ls2, r2):
-        return np.array([x + 1j*y
-                         for x, y in [imcur(sx, w1, u1, r1, ls1, lh, ls2, r2)[:2]
-                                      for sx in s]])
+        return np.array(
+            [x + 1j*y
+             for x, y in [imcur(sx, w1, u1, r1, ls1, lh, ls2, r2)[:2]
+                          for sx in s]])
     model = lmfit.model.Model(imcurr)
     ls2_guess = 0.0
-    r2_guess = np.mean([u1/i1x*sx
-                        for i1x, sx in zip(i1, slip) if abs(i1x) > 1e-6])
+    r2_guess = np.mean(
+        [u1/i1x*sx
+         for i1x, sx in zip(i1, slip) if abs(i1x) > 1e-6])
     params = model.make_params(r2=r2_guess, ls2=ls2_guess)
     guess = lmfit.models.update_param_vals(params, model.prefix)
     i1c = np.array([x*pf - 1j*x*np.sqrt(1-pf**2)

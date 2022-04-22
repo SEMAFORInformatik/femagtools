@@ -556,6 +556,10 @@ class Isa7(object):
             for elk in el_keys:
                 elements.append(self.elements[elk - 1])
 
+            try:
+                fillfactor = reader.SUPEL_ISA_SUPEL_REC_SE_FILLFACTOR[se]
+            except:
+                fillfactor = 1
             self.superelements.append(
                 SuperElement(se + 1,
                              reader.SUPEL_ISA_SUPEL_REC_SE_SR_KEY[se] - 1,
@@ -572,13 +576,13 @@ class Isa7(object):
                              reader.SUPEL_ISA_SUPEL_REC_SE_VELO_2[se],
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_RE[se],
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se],
-                             reader.SUPEL_ISA_SUPEL_REC_SE_FILLFACTOR[se]))
+                             fillfactor))
 
         logger.info("Subregions")
         self.subregions = []
         for sr in range(len(reader.SR_ISA_SR_SE_PNTR)):
-            se_keys = []
-            se_ptr = reader.SR_ISA_SR_SE_PNTR[sr]
+            se_keys=[]
+            se_ptr=reader.SR_ISA_SR_SE_PNTR[sr]
 
             while se_ptr > 0:
                 se_keys.append(reader.SR_SE_ISA_SE_KEY[se_ptr - 1])

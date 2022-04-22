@@ -1450,7 +1450,7 @@ class Reader:
                 rec = self.__findNums(content[i+1])
                 if len(rec) == 1:
                     losses['magnetJ'] = float(rec[0])
-                    #losses['magnetB'] = float(Nan)
+                    # losses['magnetB'] = float(Nan)
                 if len(rec) == 2:
                     losses['magnetJ'] = float(rec[0])
                     losses['magnetB'] = float(rec[1])
@@ -1475,17 +1475,19 @@ class Reader:
                     for k in losses[part]:
                         for x in losses[part][k]:
                             x[0] = int(x[0])
-                            if(losses[part][k]):
-                                if len(losses[part][k][0]) == 4:
-                                    cols = ('order_el', 'freq', 'hyst', 'eddy')
-                                else:
-                                    cols = ('order_mech', 'order_el',
-                                            'freq', 'hyst', 'eddy')
-
+                            if len(losses[part][k][0]) == 4:
+                                cols = ('order_el', 'freq', 'hyst', 'eddy')
+                            else:
+                                cols = ('order_mech', 'order_el',
+                                        'freq', 'hyst', 'eddy')
+                            if losses[part][k]:
                                 self.losses[-1][part][k] = {
                                     k1: l
                                     for k1, l in zip(cols,
                                                      zip(*losses[part][k]))}
+                        if not losses[part][k]:
+                            self.losses[-1][part][k] = {
+                                c: () for c in cols}
                 self.__read_losses(content[i+1:])
                 break
 

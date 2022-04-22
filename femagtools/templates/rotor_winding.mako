@@ -10,5 +10,5 @@ alpha = math.atan2(b, a)
 
 xm[1], ym[1] = pr2c(r, math.pi/m.num_poles - alpha)
 xm[2], ym[2] = pr2c(r, math.pi/m.num_poles + alpha)
-def_new_wdg(xm[1], ym[1], yellow, "Exc", m.num_wires, 1000.0, wi)
+def_new_wdg(xm[1], ym[1], yellow, "Exc", m.num_wires, 10.0, wi)
 add_to_wdg(xm[2], ym[2], wsamekey, wo, wser) 

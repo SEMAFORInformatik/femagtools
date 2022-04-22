@@ -33,17 +33,19 @@ def read_bchfile(filename):
 
 def create_fsl(machine,
                operatingconditions={},
-               magnetmat=[]):
+               magnetmat=[],
+               templatedir=''):
     """create FSL command list from model parameters
 
     Args:
         machine: dict with parameters
         operatuingConditions: dict with parameters
         magnetmat: list fo dict with parameters
+        templatedir: additional template directory
 """
     model = MachineModel(machine)
 
-    builder = Builder()
+    builder = Builder(templatedir)
     magnets = []
     if magnetmat:
         magnets = Magnet(magnetmat)

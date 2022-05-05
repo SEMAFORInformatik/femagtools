@@ -552,10 +552,8 @@ class Isa7(object):
                 el_keys.append(reader.SE_EL_ISA_EL_KEY[el_ptr - 1])
                 el_ptr = reader.SE_EL_ISA_NXT_EL_PNTR[el_ptr - 1]
 
-            elements = []
-            for elk in el_keys:
-                elements.append(self.elements[elk - 1])
-
+            elements = [self.elements[elk - 1]
+                        for elk in el_keys]
             try:
                 fillfactor = reader.SUPEL_ISA_SUPEL_REC_SE_FILLFACTOR[se]
             except:
@@ -581,16 +579,15 @@ class Isa7(object):
         logger.info("Subregions")
         self.subregions = []
         for sr in range(len(reader.SR_ISA_SR_SE_PNTR)):
-            se_keys=[]
-            se_ptr=reader.SR_ISA_SR_SE_PNTR[sr]
+            se_keys = []
+            se_ptr = reader.SR_ISA_SR_SE_PNTR[sr]
 
             while se_ptr > 0:
                 se_keys.append(reader.SR_SE_ISA_SE_KEY[se_ptr - 1])
                 se_ptr = reader.SR_SE_ISA_NXT_SE_PNTR[se_ptr - 1]
 
-            superelements = []
-            for sek in se_keys:
-                superelements.append(self.superelements[sek - 1])
+            superelements = [self.superelements[sek - 1]
+                             for sek in se_keys]
 
             nodechains = []
             nc_keys = []
@@ -625,9 +622,8 @@ class Isa7(object):
                     sr_keys.append(reader.WB_SR_ISA_SR_KEY[sr_ptr - 1])
                     sr_ptr = reader.WB_SR_ISA_NXT_SR_PNTR[sr_ptr - 1]
 
-                subregions = []
-                for srk in sr_keys:
-                    subregions.append(self.subregions[srk - 1])
+                subregions = [self.subregions[srk - 1]
+                              for srk in sr_keys]
 
                 self.windings.append(
                     Winding(wd + 1,
@@ -703,7 +699,7 @@ class Isa7(object):
     def wdg_elements(self):
         """return elements in winding region"""
         return [el for el in self.elements
-                if self.superelement.condtype != 0]
+                if el.superelement.condtype != 0]
 
     def magnet_super_elements(self):
         """return superelements which are magnets"""
@@ -1032,6 +1028,10 @@ class SuperElement(BaseEntity):
         self.curd = curd_re, curd_im
         self.fillfactor = fillfactor
 
+    def area(self):
+        """return area of this superelement"""
+        return sum([e.area for e in self.elements])
+
 
 class SubRegion(BaseEntity):
     def __init__(self, key, sr_type, color, name, nturns, curdir, wb_key,
@@ -1052,6 +1052,10 @@ class SubRegion(BaseEntity):
     def elements(self):
         """return elements of this subregion"""
         return [e for s in self.superelements for e in s.elements]
+
+    def area(self):
+        """return area of this subregion"""
+        return sum([e.area for e in self.elements()])
 
 
 class Winding(BaseEntity):

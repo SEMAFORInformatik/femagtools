@@ -9,6 +9,7 @@ import numpy as np
 import scipy.optimize as so
 import logging
 import json
+import warnings
 
 EPS = 1e-13
 KTH = 0.003921  # temperature coefficient of resistance
@@ -16,7 +17,7 @@ TREF = 20.0  # reference temperature of resistance
 
 eecdefaults = dict(
     zeta1=0.2,
-    zeta2=1.6,
+    zeta2=2.4,
     gam=0.7,
     kh=2,
     tcu1=20,
@@ -26,6 +27,7 @@ eecdefaults = dict(
     tcu2=20)
 
 logger = logging.getLogger('im')
+logging.captureWarnings(True)
 
 
 def xiskin(w, temp, zeta):
@@ -127,7 +129,7 @@ class InductionMachine(Component):
 
     def lrot(self, w):
         """rotor leakage inductivity"""
-        kl2 = 1.+self.pl2v*(kskinl(
+        kl2 = 1.0+self.pl2v*(kskinl(
             xiskin(w, self.tcu2, self.zeta2), 1)-1)
         return self.lsigma2*kl2
 
@@ -149,8 +151,8 @@ class InductionMachine(Component):
     def sigma(self, w, psi):
         """leakage coefficient"""
         lh = psi / self.imag(psi)
-        return (1 - (np.power(np.abs(lh), 2.0)) /
-                ((lh+self.lstat(w))*(lh+self.lrot(w))))
+        return (1 - lh**2 /
+                ((lh+self.lstat(w))*(lh+self.lrot(0))))
 
     def u1(self, w1, psi, wm):
         """stator voltage"""
@@ -173,16 +175,16 @@ class InductionMachine(Component):
             return w2*psi*1j/z2
         return 0
 
-    def w1torque(self, w1, u1max, psi, wm, tload):
-        """calculate difference between load and motor torque"""
+    def w1torque(self, w1, u1max, psi, wm):
+        """calculate motor torque"""
         # check stator voltage
         u1 = self.u1(w1, psi, wm)
         self.psi = psi
         if abs(u1) > u1max:  # must adjust flux
-            self.psi = so.bisect(
-                lambda psi: u1max - abs(self.u1(w1, psi, wm)),
-                psi, 0.1*psi)
-        return self.torque(w1, self.psi, wm)-tload
+            self.psi = so.fsolve(
+                lambda psix: u1max - abs(self.u1(w1, psix, wm)),
+                psi)[0]
+        return self.torque(w1, self.psi, wm)
 
     def pullouttorque(self, w1, u1):
         """pull out torque"""
@@ -224,9 +226,11 @@ class InductionMachine(Component):
             return 0.
         # find psi
         psi = u1max/w1
-        self.psi = so.fsolve(
-            lambda psi: u1max - abs(self.u1(w1, psi, wm)),
-            psi)[0]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.psi = so.fsolve(
+                lambda psi: u1max - abs(self.u1(w1, psi, wm)),
+                psi)[0]
         return self.torque(w1, self.psi, wm)
 
     def w1(self, u1max, psi, tload, wm):
@@ -234,36 +238,25 @@ class InductionMachine(Component):
         wsync = max(wm*self.p, 0.001)
         sk = self.rrot(0.)/(wsync*(self.lstat(wsync) + self.lrot(0.0)))
         if tload < 0:
-            a, b = wsync, wsync*(1-sk)
+            b = 0.999*wsync
         else:
-            a, b = wsync, wsync*(1+sk)
-        try:
-            return so.bisect(self.w1torque, a, b,
-                             args=(u1max, psi, wm, tload))
-        except ValueError as ex:
-            logger.debug("a, b: %s",
-                         (a, b, tload,
-                          self.torque(a, self.psi, wm),
-                          self.torque(b, self.psi, wm)))
-            raise ex
+            b = 1.001*wsync
+        logger.debug("wm %s tload %s w1torque %s",
+                     wm, tload, self.w1torque(b, u1max, psi, wm))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return so.fsolve(
+                lambda w1: self.w1torque(w1, u1max, psi, wm) - tload, b)[0]
 
     def wmfweak(self, u1max, psi, torque):
         """return lower speed limit of field weakening range"""
         wm0 = u1max/psi/self.p
-        try:
-            return so.fsolve(
-                lambda wm: u1max - np.abs(self.u1(
-                    self.w1(u1max, psi, torque, wm), psi, wm)),
-                wm0)[0]
-        except ValueError as ex:
-            logger.error("wm0 %s, umax: %s", (wm0, 0.9*wm0),
-                         (u1max, np.abs(self.u1(
-                             self.w1(u1max, psi, torque, wm0), psi, wm0)),
-                          np.abs(self.u1(
-                              self.w1(u1max, psi, torque, wm0), psi, wm0))))
-            raise ex
+        return so.fsolve(
+            lambda wm: u1max - np.abs(self.u1(
+                self.w1(u1max, psi, torque, wm), psi, wm)),
+            wm0)[0]
 
-    def characteristics(self, T, n, u1max, nsamples=50):
+    def characteristics(self, T, n, u1max, nsamples=50, kpo=0.9):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -278,39 +271,39 @@ class InductionMachine(Component):
 
         wmType = self.wmfweak(u1max, self.psiref, T)
         pmmax = wmType*T
-        KPO = 0.9
         wmPullout = so.fsolve(
             lambda wx: (self.pullouttorque(self.p*wx, u1max) - abs(pmmax/wx)),
-            wmType)
-        wmtab0 = np.linspace(wmType, 2*wmPullout[0])
+            wmType)[0]
+        wmtab0 = np.linspace(wmType, 2*wmPullout)
         for wm, tq in zip(wmtab0, [pmmax/wx for wx in wmtab0]):
             logger.debug("u1 %g psi %g tq %g wm %g",
                          u1max, self.psiref, tq, wm)
             try:
                 w1 = self.w1(u1max, self.psiref, tq, wm)
             except ValueError:
-                wpo = KPO * pmmax/tq
+                wmPullout = kpo * pmmax/tq
                 break
-
-        wmMax = 1.5*wpo
+        wmMax = 1.5*wmPullout
         if n:
             wmMax = 2*np.pi*n
-        wmtab0 = np.linspace(wpo, wmMax)
-        for wm, tq in zip(wmtab0, [pmmax/wx**2 for wx in wmtab0]):
-            logger.debug("u1 %g psi %g tq %g wm %g",
-                         u1max, self.psiref, tq, wm)
-            try:
-                w1 = self.w1(u1max, self.psiref, tq, wm)
-            except ValueError:
-                wmMax = wm
-                break
+        if wmMax > wmPullout:
+            wmtab0 = np.linspace(wmPullout, wmMax)
+            for wm, tq in zip(wmtab0, [pmmax/wx**2
+                                       for wx in wmtab0]):
+                logger.debug("u1 %g psi %g tq %g wm %g",
+                             u1max, self.psiref, tq, wm)
+                try:
+                    w1 = self.w1(u1max, self.psiref, tq, wm)
+                except ValueError:
+                    wmMax = wm
+                    break
 
-        logger.info("wmtype %f wpo %f wmmax %f", wmType, wpo, wmMax)
+        logger.info("wmtype %f wpo %f wmmax %f", wmType, wmPullout, wmMax)
 
-        if wmType < wpo < wmMax:
+        if wmType < wmPullout < wmMax:
             wmtab = []
             dw = 0
-            wmrange = sorted([0, wmType, wpo, wmMax])
+            wmrange = sorted([0, wmType, wmPullout, wmMax])
             for a, b in zip(wmrange, wmrange[1:]):
                 nx = int(round(nsamples*(b-a)/wmrange[-1]))
                 dw = (b-a)/nx
@@ -329,11 +322,11 @@ class InductionMachine(Component):
         logger.info("Speed range %s", wmrange)
 
         def tload2(wm):
-            if wm < wmType and wm < wpo:
+            if wm < wmType and wm < wmPullout:
                 return T
-            if wm < wpo:
+            if wm < wmPullout:
                 return pmmax/wm
-            return wpo*pmmax/wm**2
+            return wmPullout*pmmax/wm**2
 
         r = dict(u1=[], i1=[], T=[], cosphi=[], n=[],
                  plfe1=[], plcu1=[], plcu2=[])
@@ -343,22 +336,22 @@ class InductionMachine(Component):
         for wm, tq in zip(wmtab, T):
             logger.debug("u1 %g psi %g tq %g wm %g",
                          u1max, self.psiref, tq, wm)
-            try:
-                w1 = self.w1(u1max, self.psiref, tq, wm)
-                w1tab.append(w1)
-                u1 = self.u1(w1, self.psi, wm)
-                r['u1'].append(np.abs(u1))
-                i1 = self.i1(w1, self.psi, wm)
-                r['i1'].append(np.abs(i1))
-                r['cosphi'].append(np.cos(np.angle(u1) - np.angle(i1)))
-                r['plfe1'].append(self.m*np.abs(u1)**2/self.rfe(w1, self.psi))
-                i2 = self.i2(w1, self.psi, wm)
-                r['plcu1'].append(self.m*np.abs(i1)**2*self.rstat(w1))
-                r['plcu2'].append(self.m*np.abs(i2)**2*self.rrot(w1-self.p*wm))
-                r['T'].append(tq - tfric)
-                r['n'].append(wm/2/np.pi)
-            except ValueError:
-                break
+#            try:
+            w1 = self.w1(u1max, self.psiref, tq, wm)
+            w1tab.append(w1)
+            u1 = self.u1(w1, self.psi, wm)
+            r['u1'].append(np.abs(u1))
+            i1 = self.i1(w1, self.psi, wm)
+            r['i1'].append(np.abs(i1))
+            r['cosphi'].append(np.cos(np.angle(u1) - np.angle(i1)))
+            r['plfe1'].append(self.m*np.abs(u1)**2/self.rfe(w1, self.psi))
+            i2 = self.i2(w1, self.psi, wm)
+            r['plcu1'].append(self.m*np.abs(i1)**2*self.rstat(w1))
+            r['plcu2'].append(self.m*np.abs(i2)**2*self.rrot(w1-self.p*wm))
+            r['T'].append(tq - tfric)
+            r['n'].append(wm/2/np.pi)
+#            except ValueError as ex:
+#                break
         r['plfric'] = [2*np.pi*n*tfric for n in r['n']]
         r['pmech'] = [2*np.pi*n*tq for n, tq in zip(r['n'], r['T'])]
         pmech = np.array(r['pmech'])

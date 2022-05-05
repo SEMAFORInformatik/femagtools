@@ -72,7 +72,7 @@ if dsh ~= nil then -- create shaft subregion
   if mcvkey_shaft ~= nil and mcvkey_shaft ~= 'dummy' then
     def_mat_fm_nlin(x0, y0, "lightgrey", mcvkey_shaft, rlen)
   else
-    def_mat_fm_nlin(x0, y0, "lightgrey", 1000, rlen)
+    def_mat_fm(x0, y0, "lightgrey", 1000, rlen)
   end
 end
 

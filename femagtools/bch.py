@@ -1485,7 +1485,7 @@ class Reader:
                                     k1: l
                                     for k1, l in zip(cols,
                                                      zip(*losses[part][k]))}
-                        if not losses[part][k]:
+                        if not losses[part][k] and cols:
                             self.losses[-1][part][k] = {
                                 c: () for c in cols}
                 self.__read_losses(content[i+1:])

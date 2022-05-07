@@ -55,9 +55,16 @@ def invpark(a, q, d):
 
 KTH = 0.0039  # temperature coefficient of resistance
 TREF = 20.0  # reference temperature of resistance
+EPS = 1e-13
+
+
+def xiskin(w, temp, zeta):
+    return zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+KTH*(temp-TREF))))
 
 
 def kskinl(xi, nl):
+    if abs(xi) < EPS:
+        return 1.0
     xi2 = 2*xi
     nl2 = nl*nl
     return 3 / (nl2*xi2)*(np.sinh(xi2) - np.sin(xi2)) / \
@@ -67,6 +74,8 @@ def kskinl(xi, nl):
 
 
 def kskinr(xi, nl):
+    if abs(xi) < EPS:
+        return 1.0
     xi2 = 2*xi
     nl2 = nl*nl
     return xi*((np.sinh(xi2)+np.sin(xi2))/(np.cosh(xi2)-np.cos(xi2))) + \
@@ -75,21 +84,12 @@ def kskinr(xi, nl):
 
 
 def resistance(r0, w, temp, zeta, gam, nh):
-    xi = zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+KTH*(temp-TREF))))
-    if np.isscalar(xi):
-        if xi < 1e-12:
-            k = 1
-        else:
-            k = (gam + kskinr(xi, nh)) / (1. + gam)
-    else:
-        k = np.ones(np.asarray(w).shape)
-        k[xi > 1e-12] = (gam + kskinr(xi[xi > 1e-12], nh)) / (1. + gam)
-    return r0*(1.+KTH*(temp - TREF))*k
+    xi = xiskin(w, temp, zeta)
+    return r0*(1.+KTH*(temp - TREF))*(gam + kskinr(xi, nh)) / (1. + gam)
 
 
 def betai1(iq, id):
     """return beta and amplitude of dq currents"""
-    logger.info("%s", (iq, id))
     return (np.arctan2(id, iq),
             la.norm((id, iq), axis=0)/np.sqrt(2.0))
 

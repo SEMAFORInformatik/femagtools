@@ -8,12 +8,11 @@
 import numpy as np
 import scipy.optimize as so
 import logging
+from .utils import resistance, xiskin, kskinl
 import json
 import warnings
 
 EPS = 1e-13
-KTH = 0.003921  # temperature coefficient of resistance
-TREF = 20.0  # reference temperature of resistance
 
 eecdefaults = dict(
     zeta1=0.2,
@@ -28,36 +27,6 @@ eecdefaults = dict(
 
 logger = logging.getLogger('im')
 logging.captureWarnings(True)
-
-
-def xiskin(w, temp, zeta):
-    return zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+KTH*(temp-TREF))))
-
-
-def kskinl(xi, nl):
-    if abs(xi) < EPS:
-        return 1.0
-    xi2 = 2*xi
-    nl2 = nl*nl
-    return 3 / (nl2*xi2)*(np.sinh(xi2) - np.sin(xi2)) / \
-        (np.cosh(xi2)-np.cos(xi2)) + \
-        ((nl2-1)/(nl2*xi)*(np.sinh(xi)+np.sin(xi)) /
-            (np.cosh(xi)+np.cos(xi)))
-
-
-def kskinr(xi, nl):
-    if abs(xi) < EPS:
-        return 1.0
-    xi2 = 2*xi
-    nl2 = nl*nl
-    return xi*((np.sinh(xi2)+np.sin(xi2))/(np.cosh(xi2)-np.cos(xi2))) + \
-        ((nl2-1) / 3 * xi2*((np.sinh(xi)-np.sin(xi)) /
-                            (np.cosh(xi)+np.cos(xi))))
-
-
-def resistance(r0, w, temp, zeta, gam, nh):
-    xi = xiskin(w, temp, zeta)
-    return r0*(1.+KTH*(temp - TREF))*(gam + kskinr(xi, nh)) / (1. + gam)
 
 
 class Component:

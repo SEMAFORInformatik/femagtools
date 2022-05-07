@@ -1,4 +1,4 @@
-import femagtools.im
+import femagtools.machine.im
 import pathlib
 import pytest
 import numpy as np
@@ -12,7 +12,7 @@ def im():
         "lsigma2": 4.4e-3, "kh": 10, "zeta2": 1,
         "fec": 120, "fee": 0, "fexp": 7.0,
         "iml": 5.317456519935536, "ims": 3.425169199057511, "mexp": 8.75033417091787}
-    return femagtools.im.InductionMachine(impars)
+    return femagtools.machine.im.InductionMachine(impars)
 
 
 def test_im(im):

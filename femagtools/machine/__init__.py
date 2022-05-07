@@ -9,7 +9,7 @@
 import numpy as np
 from femagtools.bch import Reader
 from .pm import PmRelMachineLdq, PmRelMachinePsidq
-from .utils import betai1, iqd
+from .utils import betai1, iqd, invpark, K, T, puconv, dqpar_interpol
 
 
 def __scale_losses(losses, wdg, lfe):

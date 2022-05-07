@@ -1658,9 +1658,14 @@ def characteristics(char, title=''):
         ax3.set_ylabel("Beta / °")
         ax3.legend(loc='center right')
     axs[1, 0].grid()
-
-    plfe = np.array(char.get('plfe', char['plfe1']))*1e-3
-    plcu = np.array(char.get('plcu', char['plcu1']))*1e-3
+    try:
+        plfe = np.array(char['plfe'])*1e-3
+    except KeyError:
+        plfe = np.array(char['plfe1'])*1e-3
+    try:
+        plcu = np.array(char['plcu'])*1e-3
+    except KeyError:
+        plcu = np.array(char['plcu1'])*1e-3
     pl = np.array(char['losses'])*1e-3
     axs[1, 1].plot(n, plcu, 'C0-', label='Cu Losses')
     axs[1, 1].plot(n, plfe, 'C1-', label='Fe Losses')

@@ -63,19 +63,27 @@ def xiskin(w, temp, zeta):
 
 
 def kskinl(xi, nl):
-    if abs(xi) < EPS:
-        return 1.0
     xi2 = 2*xi
     nl2 = nl*nl
-    return 3 / (nl2*xi2)*(np.sinh(xi2) - np.sin(xi2)) / \
-        (np.cosh(xi2)-np.cos(xi2)) + \
-        ((nl2-1)/(nl2*xi)*(np.sinh(xi)+np.sin(xi)) /
-            (np.cosh(xi)+np.cos(xi)))
+    if np.isscalar(xi):
+        if xi < EPS:
+            k = 1
+        else:
+            k = (3 / (nl2*xi2)*(np.sinh(xi2) - np.sin(xi2)) /
+                 (np.cosh(xi2)-np.cos(xi2)) +
+                 ((nl2-1)/(nl2*xi)*(np.sinh(xi)+np.sin(xi)) /
+                          (np.cosh(xi)+np.cos(xi))))
+    else:
+        xi2 = xi2[xi > EPS]
+        k = np.ones(np.asarray(xi).shape)
+        k[xi > 1e-12] = (3 / (nl2*xi2)*(np.sinh(xi2) - np.sin(xi2)) /
+                         (np.cosh(xi2)-np.cos(xi2)) +
+                         ((nl2-1)/(nl2*xi)*(np.sinh(xi)+np.sin(xi)) /
+                          (np.cosh(xi)+np.cos(xi))))
+    return k
 
 
 def kskinr(xi, nl):
-    if abs(xi) < EPS:
-        return 1.0
     xi2 = 2*xi
     nl2 = nl*nl
     return xi*((np.sinh(xi2)+np.sin(xi2))/(np.cosh(xi2)-np.cos(xi2))) + \
@@ -85,7 +93,17 @@ def kskinr(xi, nl):
 
 def resistance(r0, w, temp, zeta, gam, nh):
     xi = xiskin(w, temp, zeta)
-    return r0*(1.+KTH*(temp - TREF))*(gam + kskinr(xi, nh)) / (1. + gam)
+    #xi = zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+KTH*(temp-TREF))))
+    if np.isscalar(xi):
+        if xi < 1e-12:
+            k = 1
+        else:
+            k = (gam + kskinr(xi, nh)) / (1. + gam)
+    else:
+        k = np.ones(np.asarray(w).shape)
+        k[xi > 1e-12] = (gam + kskinr(xi[xi > 1e-12], nh)) / (1. + gam)
+    return r0*(1.+KTH*(temp - TREF))*k
+# return r0*(1.+KTH*(temp - TREF))*(gam + kskinr(xi, nh)) / (1. + gam)
 
 
 def betai1(iq, id):

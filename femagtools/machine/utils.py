@@ -5,6 +5,7 @@
 """
 import numpy as np
 import numpy.linalg as la
+import scipy.interpolate as ip
 import logging
 
 logger = logging.getLogger(__name__)

@@ -9,7 +9,7 @@ import numpy as np
 import femagtools.bch
 import scipy.optimize as so
 import scipy.interpolate as ip
-from .utils import resistance, kskinl
+from .utils import resistance
 import logging
 
 EPS = 1e-13

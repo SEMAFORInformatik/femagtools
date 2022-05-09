@@ -1466,6 +1466,8 @@ class Reader:
 
     def __read_hysteresis_eddy_current_losses(self, content):
         losses = dict(fft=dict(), stator=dict(), rotor=dict())
+        cols = ('order_mech', 'order_el',
+                'freq', 'hyst', 'eddy')
         part = 'fft'  # either stator or rotor or fft
         k = ''
         for i, l in enumerate(content):
@@ -1477,9 +1479,6 @@ class Reader:
                             x[0] = int(x[0])
                             if len(losses[part][k][0]) == 4:
                                 cols = ('order_el', 'freq', 'hyst', 'eddy')
-                            else:
-                                cols = ('order_mech', 'order_el',
-                                        'freq', 'hyst', 'eddy')
                             if losses[part][k]:
                                 self.losses[-1][part][k] = {
                                     k1: l

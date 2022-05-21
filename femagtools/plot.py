@@ -719,7 +719,8 @@ def multcal(bch, title=''):
                         bch.flux_fft['1'][0]['voltage'])
         except:
             pass
-        fig.tight_layout(h_pad=3.5)
+
+    fig.tight_layout(h_pad=3.5)
     if title:
         fig.subplots_adjust(top=0.92)
 

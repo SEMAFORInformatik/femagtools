@@ -56,7 +56,10 @@ class Winding(object):
     def __init__(self, arg):
         """create winding either from bch winding section or winding dict()
 
-        """
+        Arguments:
+          arg: (object) femagtools.bch.Reader
+            or dict Q: number of slots, m: number of phases, p: pole pairs, l: num layers, yd: coils span (slots)
+       """
         if isinstance(arg, femagtools.bch.Reader):
             self.m = arg.machine['m']
             self.Q = arg.machine['Q']
@@ -180,6 +183,18 @@ class Winding(object):
     def kw(self, n=0):
         """return winding factor"""
         return self.kwp(n) * self.kwd(n)
+
+    def coils_per_phase(self):
+        """return number of coils per phase"""
+        return self.Q * self.l/2/self.m
+
+    def turns_per_phase(self, n, g):
+        """return number of turns per phase
+        Arguments:
+        n: (int) number of wires per slot size
+        g: (int) number of parallel coil groups
+        """
+        return n*self.coils_per_phase()//g
 
     def sequence(self):
         """returns sequence of winding keys"""

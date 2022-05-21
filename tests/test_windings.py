@@ -101,3 +101,15 @@ def test_custom_winding_write(wdg1, tmp_path):
     wdg1.write(name, tmp_path)
     p = tmp_path / (name + '.WID')
     assert 26 == len(p.read_text().split('\n'))
+
+
+def test_coils_per_phase():
+    wdg = femagtools.windings.Winding(
+        {'Q': 48, 'p': 1, 'm': 3, 'l': 2, 'yd': 20})
+    assert wdg.coils_per_phase() == 16
+
+
+def test_turns_per_phase():
+    wdg = femagtools.windings.Winding(
+        {'Q': 48, 'p': 1, 'm': 3, 'l': 2, 'yd': 20})
+    assert wdg.turns_per_phase(n=2, g=2) == 16

@@ -26,14 +26,14 @@ def read(filename, pmod=0):
     if len(bag) < 3:
         logger.warn("%s has incomplete content", filename)
         return(dict())
-    
+
     model_angle = bag[0][-1] - bag[0][0]
     ntiles = int(round(360/model_angle))
 
     if pmod:
         negative_periodic = pmod % 2
     else:
-        negative_periodic = np.abs(np.sum(bag[1])/np.max(bag[1])) > 1
+        negative_periodic = np.abs(bag[1][0] - bag[1][-1])/np.max(bag[1]) > 1
 
     if negative_periodic:
         bx = np.append(
@@ -50,7 +50,7 @@ def read(filename, pmod=0):
     N = len(bx)
     # compute DFT from induction
     Y = np.fft.fft(bx)
-    
+
     # find the peak (amplitude of base harmonic)
     i = np.argmax(np.abs(Y[:N//2]))
     a = 2*np.abs(Y[i])/N

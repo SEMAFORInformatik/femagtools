@@ -25,6 +25,12 @@ class FslBuilderError(Exception):
     pass
 
 
+def cosys(model):
+    if model.get('move_action', 0) == 0:
+        return 'cosys("polar")'
+    return 'cosys("cartes")'
+
+
 class Builder:
     def __init__(self, templatedir=''):
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
@@ -330,6 +336,7 @@ class Builder:
     def create_open(self, model):
         return (['-- created by femagtools {}'.format(__version__), ''] +
                 self.__render(model, 'open') +
+                ['global_unit("mm")', cosys(model)] +
                 self.set_modpar(model) +
                 self.create_fe_contr(model))
 
@@ -348,6 +355,7 @@ class Builder:
 
         return (['-- created by femagtools {}'.format(__version__), ''] +
                 self.__render(model, 'new_model') +
+                ['global_unit("mm")', cosys(model)] +
                 self.set_modpar(model) +
                 self.create_fe_contr(model) +
                 tail)
@@ -520,7 +528,8 @@ class Builder:
         return self.create_open(model)
 
     def load_model(self, model):
-        return self.__render(model, 'open')
+        return (self.__render(model, 'open') +
+                ['global_unit("mm")', cosys(model)])
 
     def create_magnet(self, model, magnetMat=None):
         try:

@@ -88,20 +88,20 @@ valmap = {
     'Change of Perm. max %': 'permchg'}
 
 
-def _read_sections(f):
+def _read_sections(lines):
     """return list of ASM sections
 
     sections are either surrounded by lines starting with '[***'
     or by starting with any 'Input data' or 'Simulation Results'
     Args:
-      param f (file) BCH file to be read
+      param lines (list) lines of ASM file to read
 
     Returns:
       list of sections
     """
 
     section = []
-    for line in f:
+    for line in lines:
         if ('[****' in line or
             'Input data' in line or
                 'Simulation Results' in line):
@@ -197,6 +197,8 @@ def read(arg):
     r = {}
     if isinstance(arg, str):
         lines = pathlib.Path(arg).read_text().split('\n')
+    elif isinstance(arg, pathlib.Path):
+        lines = arg.read_text().split('\n')
     else:
         lines = arg
     for s in _read_sections(lines):

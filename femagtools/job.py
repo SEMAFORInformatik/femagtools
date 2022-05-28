@@ -11,8 +11,9 @@
 import os
 import platform
 import shutil
-import glob
+import pathlib
 import femagtools.bch
+import femagtools.airgap
 import femagtools.config as cfg
 import logging
 import uuid
@@ -96,23 +97,31 @@ class Task(object):
             return self.result_func(self)
 
         # read latest bch file if any
-        bchfile_list = sorted(glob.glob(os.path.join(
-            self.directory, '*_[0-9][0-9][0-9].B*CH')))
+        basedir = pathlib.Path(self.directory)
+        bchfile_list = sorted(basedir.glob(
+            '*_[0-9][0-9][0-9].B*CH'))
+        # check airgap induction file exists
+        airgap_induc = basedir / 'bag.dat'
         if bchfile_list:
             result = femagtools.bch.Reader()
             with open(bchfile_list[-1]) as f:
                 logger.info("Reading %s",
                             bchfile_list[-1])
                 result.read(f)
+            if airgap_induc.exists():
+                result.airgap = femagtools.airgap.read(airgap_induc)
             return result
             # logger.info("%s %s", result.version, result.type),
         else:
-            asm_list = sorted(glob.glob(os.path.join(
-                self.directory, '*_[0-9][0-9][0-9].ASM')))
+            asm_list = sorted(basedir.glob(
+                '*_[0-9][0-9][0-9].ASM'))
             if asm_list:
                 logger.info("Reading %s",
                             asm_list[-1])
-                return femagtools.asm.read(asm_list[-1])
+                result = femagtools.asm.read(asm_list[-1])
+                if airgap_induc.exists():
+                    result['airgap'] = femagtools.airgap.read(airgap_induc)
+                return result
             msg = 'no BCH (or ASM) files in {}'.format(self.directory)
             logger.error(msg)
         result = dict(error=msg)
@@ -132,8 +141,7 @@ class Task(object):
         errstr += sepIn.format(self.directory)
 
         # read latest prot file
-        protfile_list = sorted(
-            glob.glob(os.path.join(self.directory, '*.PROT')))
+        protfile_list = sorted(pathlib.Path(self.directory).glob('*.PROT'))
         if protfile_list:
             with open(protfile_list[-1], encoding='latin1') as f:
                 e = [em in l for em in protfile_error for l in f.readlines()]

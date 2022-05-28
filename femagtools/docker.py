@@ -34,11 +34,13 @@ def publish_receive(message):
 
 
 class AsyncFemag(threading.Thread):
-    def __init__(self, queue, port, host):
+    def __init__(self, queue, port, host,
+                 extra_result_files):
         threading.Thread.__init__(self)
         self.queue = queue
         self.container = femagtools.femag.ZmqFemag(
             port, host)
+        self.extra_result_files = extra_result_files
 
     def _do_task(self, task):
         logger.debug('Docker task %s %s',
@@ -91,13 +93,13 @@ class AsyncFemag(threading.Thread):
                 r = self._do_task(task)
                 if r[0]['status'] == 'ok':
                     task.status = 'C'
-                    bchfile = r[0]['result_file'][0]
-                    status, content = self.container.getfile(bchfile)
-                    logging.debug("get results %s: status %s len %d",
-                                  task.id, status, len(content))
-                    with open(os.path.join(task.directory,
-                                           bchfile), 'wb') as f:
-                        f.write(content)
+                    for fname in [r[0]['result_file'][0]] + self.extra_result_files:
+                        status, content = self.container.getfile(fname)
+                        logging.debug("get results %s: status %s len %d",
+                                      task.id, status, len(content))
+                        with open(os.path.join(task.directory,
+                                               fname), 'wb') as f:
+                            f.write(content)
                 else:
                     task.status = 'X'
                     logger.warning("%s: %s", task.id, r[0]['message'])
@@ -142,7 +144,7 @@ class Engine(object):
         self.job = femagtools.job.Job(workdir)
         return self.job
 
-    def submit(self):
+    def submit(self, extra_result_files=[]):
         """Starts the FEMAG calculation(s) as Docker containers
 
         Return:
@@ -155,9 +157,12 @@ class Engine(object):
         logger.info("Request %d workers on %s:%d (num tasks %d)",
                     self.num_threads, self.dispatcher, self.port,
                     len(self.job.tasks))
-        self.async_femags = [AsyncFemag(self.queue,
-                                        self.port, self.dispatcher)
-                             for i in range(self.num_threads)]
+        self.async_femags = [
+            AsyncFemag(
+                self.queue,
+                self.port, self.dispatcher,
+                extra_result_files)
+            for i in range(self.num_threads)]
 
         for async_femag in self.async_femags:
             async_femag.start()

@@ -139,7 +139,8 @@ class ParameterStudy(object):
         return model_files
 
     def __call__(self, opt, machine, simulation,
-                 engine, bchMapper=None, extra_files=[], num_samples=0):
+                 engine, bchMapper=None,
+                 extra_files=[], num_samples=0):
         """calculate objective vars for all decision vars
         Args:
           opt: variation parameter dict (decision_vars, objective_vars)
@@ -147,7 +148,7 @@ class ParameterStudy(object):
           simulation: parameter dict of simulation
           engine: calculation runner (MultiProc, Condor ..)
           bchMapper: bch result transformation function
-          files: list of additional file names to be copied
+          extra_files: list of additional input file names to be copied
           num_samples: number of samples (ingored with Grid sampling)
         """
 
@@ -174,6 +175,9 @@ class ParameterStudy(object):
             modelfiles = self.setup_model(builder, model)
             logger.info("Files %s", modelfiles+extra_files)
 
+        extra_result_files = []
+        if simulation.get('airgap_induc', False):
+            extra_result_files.append('bag.dat')
         simulation['arm_length'] = model.lfe
         simulation['lfe'] = model.lfe
         simulation['move_action'] = model.move_action
@@ -269,7 +273,7 @@ class ParameterStudy(object):
                                   fea.poc.content())
 
             tstart = time.time()
-            status = engine.submit()
+            status = engine.submit(extra_result_files)
             logger.info('Started %s', status)
             status = engine.join()
             tend = time.time()

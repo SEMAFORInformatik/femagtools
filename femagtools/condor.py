@@ -86,17 +86,19 @@ class CondorCluster(object):
             # tooltip
             s = "<h3>ClusterId {0}</h3><table>\n".format(vars['clusterId'])
             attrs = dict(variable='Variable', baseValue='BaseValue',
-                         bounds=['StartValue','EndValue'],
-                         nSteps='nSteps',unit='Unit', desc='Desc')
+                         bounds=['StartValue', 'EndValue'],
+                         nSteps='nSteps', unit='Unit', desc='Desc')
             for r in vars['optimize']['decision_vars']:
                 for a in attrs:
                     if isinstance(attrs[a], str):
                         rs = re.sub('@.*?@', '', str(r[a]))
-                        s += "<tr><td>{0}:</td><td>{1}</td></tr>".format(attrs[a], rs)
+                        s += "<tr><td>{0}:</td><td>{1}</td></tr>".format(
+                            attrs[a], rs)
                     elif isinstance(attrs[a], list):
                         for i in range(len(r[a])):
                             rs = re.sub('@.*?@', '', str(r[a][i]))
-                            s += "<tr><td>{0}:</td><td>{1}</td></tr>".format(attrs[a][i], rs)
+                            s += "<tr><td>{0}:</td><td>{1}</td></tr>".format(
+                                attrs[a][i], rs)
             s += "</table>"
 
             # get infos from each cluster directory
@@ -177,7 +179,7 @@ class Engine(object):
         logger.info("%s, %s", userdir, directory)
         return condorCl.getClusterData(directory)
 
-    def submit(self):
+    def submit(self, extra_result_files=[]):
         submitfile = self.job.prepareDescription()
         cmdout = subprocess.check_output(["condor_submit", submitfile])
         self.clusterId = re.findall(r'\d+', cmdout.decode('utf-8'))[-1]

@@ -95,7 +95,7 @@ class Engine:
         self.job = Job(workdir)
         return self.job
 
-    def submit(self):
+    def submit(self, extra_result_files=[]):
         """Starts the FEMAG calculation(s) with the internal
         :py:meth:`multiproc.run_femag` function
 
@@ -108,7 +108,8 @@ class Engine:
                                                   t.directory,
                                                   t.fsl_file))
                       for t in self.job.tasks]
-        self.pool.close()  # used to free resources after calculations have finished. thomas.maier/OSWALD
+        # used to free resources after calculations have finished. thomas.maier/OSWALD
+        self.pool.close()
         return len(self.tasks)
 
     def join(self):

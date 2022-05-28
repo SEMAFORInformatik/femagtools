@@ -92,6 +92,21 @@ def kskinr(xi, nl):
                             (np.cosh(xi)+np.cos(xi))))
 
 
+def wdg_resistance(wdg, n, g, aw, da1, hs, lfe, S=56e6):
+    """return winding resistance per phase in Ohm
+    Arguments:
+    wdg: (Winding) winding 
+    n: (int) number of wires per coil side
+    g: (int) number of parallel coil groups
+    lfe: length of stator lamination stack in m
+    aw: wire cross section area m2
+    S: (float) conductivity of copper 1/Ohm m
+    """
+    # mean length of one turn
+    lt = 2.8*(da1+hs)/2*wdg.yd*2*np.pi/wdg.Q + 16e-3 + 2*lfe
+    return wdg.turns_per_phase(n, g)*lt/S/aw/g
+
+
 def resistance(r0, w, temp, zeta, gam, nh):
     xi = xiskin(w, temp, zeta)
     #xi = zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+KTH*(temp-TREF))))
@@ -212,15 +227,3 @@ def dqpar_interpol(xfit, dqpars, ipkey='temperature'):
     except KeyError:
         pass
     return x, fpip
-
-
-def wdg_resistance(w1, l, d, sigma=56e3):
-    """return winding resistance
-    arguments:
-    w1: number of turns
-    l: wire length of one turn
-    d: wire diameter m^2
-    sigma: conductivity of wire material
-    """
-    a = np.pi*d**2/4
-    return w1*l/sigma/a

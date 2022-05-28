@@ -2,6 +2,7 @@
 #
 import femagtools.bch
 import femagtools.machine
+import femagtools.windings
 import math
 import pathlib
 import pytest
@@ -320,3 +321,17 @@ def test_psidq_losses(data_dir):
     id = -120
     assert pm.iqd_plfe1(iq, id, f1) == pytest.approx(887.4, rel=1e-1)
     assert pm.iqd_plfe2(iq, id, f1) == pytest.approx(50.4, rel=1e-1)
+
+
+def test_wdg_resistance():
+    wdg = femagtools.windings.Winding(
+        {'Q': 36, 'm': 3, 'p': 2, 'yd': 8, 'l': 2})
+    n = 17  # wires / coil side
+    g = 2  # parallel groups
+    aw = 1.5083e-6  # wire cross section area m2
+    da1 = 0.1172  # bore diameter m
+    hs = 19.33e-3  # slot height m
+    lfe = 0.1172  # length of stator lamination stack m
+    sigma = 58e6  # conductivity 1/Ohm m (copper at 20°C)
+    assert pytest.approx(0.3156, rel=1e-1) == femagtools.machine.wdg_resistance(
+        wdg, n, g, aw, da1, hs, lfe, sigma)

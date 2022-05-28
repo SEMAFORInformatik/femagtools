@@ -174,7 +174,8 @@ class Winding(object):
         nue = n if n and not np.isscalar(n) else self.kw_order(n)
         if q1 == q2:
             x = nue*np.pi/self.Q
-            return np.sin(q1*x)/(q1*np.sin(x))
+            q = self.Q/2/self.m/self.p
+            return np.sin(q*x)/(q*np.sin(x))
         x = nue*np.pi*Yk/self.Q
         k = 2 if self.l == 1 else 1
         return -((np.sin(k*x*q1) - np.cos(x*Qb)*np.sin(k*x*q2)) /

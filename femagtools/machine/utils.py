@@ -1,5 +1,5 @@
 """
-  utils
+  femagtools.machine.utils
 
   auxiliary module
 """
@@ -92,19 +92,32 @@ def kskinr(xi, nl):
                             (np.cosh(xi)+np.cos(xi))))
 
 
-def wdg_resistance(wdg, n, g, aw, da1, hs, lfe, S=56e6):
+def wdg_resistance(wdg, n, g, aw, da1, hs, lfe, sigma=56e6):
     """return winding resistance per phase in Ohm
     Arguments:
-    wdg: (Winding) winding 
+    wdg: (Winding) winding
     n: (int) number of wires per coil side
     g: (int) number of parallel coil groups
     lfe: length of stator lamination stack in m
     aw: wire cross section area m2
-    S: (float) conductivity of copper 1/Ohm m
+    sigma: (float) conductivity of wire material 1/Ohm m
     """
     # mean length of one turn
     lt = 2.8*(da1+hs)/2*wdg.yd*2*np.pi/wdg.Q + 16e-3 + 2*lfe
-    return wdg.turns_per_phase(n, g)*lt/S/aw/g
+    return wdg.turns_per_phase(n, g)*lt/sigma/aw/g
+
+
+def wdg_inductance(wdg, n, g, da1, lfe, ag):
+    """return winding inductance per phase in H
+    Arguments:
+    wdg: (Winding) winding
+    n: (int) number of wires per coil side
+    g: (int) number of parallel coil groups
+    da1: vbore diameter in m
+    lfe: length of stator lamination stack in m
+    ag: length of airgap in m
+    """
+    return wdg.inductance(n, g, da1, lfe, ag)
 
 
 def resistance(r0, w, temp, zeta, gam, nh):

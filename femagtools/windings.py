@@ -165,17 +165,19 @@ class Winding(object):
 
     def kwp(self, n=0):
         """pitch factor"""
-        nue = n if n and not np.isscalar(n) else self.kw_order(n)
+        if np.asarray(n).any() and not np.isscalar(n):
+            nue = n
+        else:
+            nue = self.kw_order(n)
         return np.sin(nue*self.yd*np.pi/self.Q)
 
     def kwd(self, n=0):
         """zone (distribution) factor"""
         q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
-        nue = n if n and not np.isscalar(n) else self.kw_order(n)
-        if q1 == q2:
-            x = nue*np.pi/self.Q
-            q = self.Q/2/self.m/self.p
-            return np.sin(q*x)/(q*np.sin(x))
+        if np.asarray(n).any() and not np.isscalar(n):
+            nue = n
+        else:
+            nue = self.kw_order(n)
         x = nue*np.pi*Yk/self.Q
         k = 2 if self.l == 1 else 1
         return -((np.sin(k*x*q1) - np.cos(x*Qb)*np.sin(k*x*q2)) /
@@ -185,6 +187,12 @@ class Winding(object):
         """return winding factor"""
         return self.kwp(n) * self.kwd(n)
 
+    def harmleakcoeff(self, n=4000):
+        nue = self.p * (1 + np.arange(1-n, n)*2*self.m)
+        kw1 = self.kwd()*self.kwp()
+        kwn = self.kwd(nue)*self.kwp(nue)
+        return np.sum((self.p*kwn/nue/kw1)**2) - 1
+
     def coils_per_phase(self):
         """return number of coils per phase"""
         return self.Q * self.l/2/self.m
@@ -192,10 +200,24 @@ class Winding(object):
     def turns_per_phase(self, n, g):
         """return number of turns per phase
         Arguments:
-        n: (int) number of wires per slot size
+        n: (int) number of wires per slot side
         g: (int) number of parallel coil groups
         """
         return n*self.coils_per_phase()//g
+
+    def inductance(self, nwires, g, da1, lfe, ag):
+        """return main inductance / phase
+        Arguments:
+        nwires: number of wires in slot side
+        g: (int) number of parallel groups
+        da1: (float) bore diameter / m
+        lfe: (float) length of lamination /m
+        ag: (float) length of airgap / m
+        """
+        mue0 = 4*np.pi*1e-7
+        taup = np.pi*da1/self.p/2
+        return (mue0*(self.kw()*self.turns_per_phase(nwires, g))**2 *
+                2*self.m/(np.pi**2)/self.p/ag*taup*lfe)
 
     def sequence(self):
         """returns sequence of winding keys"""
@@ -220,9 +242,13 @@ class Winding(object):
         """returns axis angle of winding 1 in mechanical system"""
         return self.mmf()['alfa0']
 
-    def mmf(self, k=1):
+    def mmf(self, k=1, nmax=9):
         """returns the dimensionless magnetomotive force (ampere-turns/turns/ampere) and
-        winding angle of phase k (rad)"""
+        winding angle of phase k (rad)
+        Arguments:
+        k: (int) winding key
+        nmax: (int) max order of harmonic (in electrical system)
+        """
         taus = 2*np.pi/self.Q
         t = np.gcd(self.Q, self.p)
         slots = self.slots(k)[0]
@@ -253,13 +279,17 @@ class Winding(object):
         # if alfa0 < 0: alfa0 += 2*np.pi
         pos_fft = np.linspace(0, self.Q/t*taus, self.p//t*60)
         D = (a*np.cos(2*np.pi*pos_fft/T0+alfa0))
+        nue, mmf_nue = np.array([(n, a) for n, f in zip(
+            np.arange(0, nmax*self.p),
+            2*np.abs(Y)/N) if a > 0]).T
+
         return dict(
             pos=[i*taus/NY for i in range(len(y))],
             mmf=yy[:NY*self.Q//t].tolist(),
             alfa0=-alfa0/self.p,
+            nue=nue.tolist(),
+            mmf_nue=mmf_nue.tolist(),
             pos_fft=pos_fft.tolist(),
-            nue=np.arange(0, 9*self.p).tolist(),
-            mmf_nue=(2*np.abs(Y[:9*self.p])/N).tolist(),
             mmf_fft=D.tolist())
 
     def zoneplan(self):

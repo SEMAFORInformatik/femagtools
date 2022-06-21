@@ -1,6 +1,8 @@
 m.yoke_diam   = dy1
 m.inside_diam = da1
-
+if( m.el_order_ag == nil ) then
+  m.el_order_ag   =  1 --   El. order in air gap: lin=1: quadr=2    
+end
 m.slot_height     =     ${model['slot_height']*1e3}
 m.slot_h1         =     ${model['slot_h1']*1e3}
 m.slot_h2         =     ${model['slot_h2']*1e3}

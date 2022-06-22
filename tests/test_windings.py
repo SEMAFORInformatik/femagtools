@@ -113,3 +113,14 @@ def test_turns_per_phase():
     wdg = femagtools.windings.Winding(
         {'Q': 48, 'p': 1, 'm': 3, 'l': 2, 'yd': 20})
     assert wdg.turns_per_phase(n=2, g=2) == 16
+
+
+def test_inductance():
+    wdg = femagtools.windings.Winding(
+        {'Q': 36, 'p': 4, 'm': 3, 'l': 2, 'yd': 4})
+    nc = 23
+    g = 1
+    lfe = 42e-3
+    da1 = 110e-3
+    ag = 1e-3
+    assert round(wdg.inductance(nc, g, da1, lfe, ag), 4) == 0.0236

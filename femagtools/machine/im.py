@@ -1,14 +1,16 @@
 """
-  GT-ISE Femag API
+  femagtools machine
 
   induction machine (electrical circuit model)
 
-  Copyright 2021: Semafor Informatik & Energie AG, Switzerland
+  Copyright 2022: Semafor Informatik & Energie AG, Switzerland
 """
 import numpy as np
 import scipy.optimize as so
 import logging
-from .utils import resistance, xiskin, kskinl
+from .utils import resistance, leakinductance, wdg_resistance
+import femagtools.windings
+import femagtools.parstudy
 import json
 import warnings
 
@@ -97,13 +99,12 @@ class InductionMachine(Component):
         # return psi/self.lh
 
     def lrot(self, w):
-        """rotor leakage inductivity"""
-        kl2 = 1.0+self.pl2v*(kskinl(
-            xiskin(w, self.tcu2, self.zeta2), 1)-1)
-        return self.lsigma2*kl2
+        """rotor leakage inductance"""
+        return leakinductance(self.lsigma2, w, self.tcu2,
+                              self.zeta2, 1, self.pl2v)
 
     def lstat(self, w):
-        """stator leakage inductivity"""
+        """stator leakage inductance"""
         return self.lsigma1
 
     def rrot(self, w):
@@ -234,14 +235,15 @@ class InductionMachine(Component):
         Keyword arguments:
         T -- (float) the maximum torque in Nm
         n -- (float) the maximum speed in 1/s
-        u1max -- (float) the maximum voltage in V rms
+        u1max -- (float) the maximum phase voltage in V rms
         nsamples -- (optional) number of speed samples
         """
 
         wmType = self.wmfweak(u1max, self.psiref, T)
         pmmax = wmType*T
         wmPullout = so.fsolve(
-            lambda wx: (self.pullouttorque(self.p*wx, u1max) - abs(pmmax/wx)),
+            lambda wx: (kpo*self.pullouttorque(self.p *
+                        wx, u1max) - abs(pmmax/wx)),
             wmType)[0]
         wmtab0 = np.linspace(wmType, 2*wmPullout)
         for wm, tq in zip(wmtab0, [pmmax/wx for wx in wmtab0]):
@@ -342,6 +344,176 @@ class InductionMachine(Component):
                 r['eta'] += (p1[i:]/pmech[i:]).tolist()
 
         return r
+
+
+def parident(workdir, engine, f1, u1, wdgcon,
+             machine, magnetizingCurves, condMat=[], **kwargs):
+    """return dict of parameters of equivalent circuit for induction machines
+
+    arguments:
+    workdir --directory for intermediate files
+    endine -- calculation driver (multiproc, docker, condor)
+    f1 -- stator voltage frequency [Hz]
+    u1 -- stator voltage (line-to-line) [V]
+    wdgcon -- winding connection  ('open', 'wye', 'star', 'delta')
+    machine -- dict() with machine parameters
+    magnetizingCurves -- list of dict() with BH curves
+    condMat -- list of dict() with conductor material properties
+
+    optional:
+    num_u1_steps: (int) number of u1 steps for the no-load and load calculation (default 6)
+    """
+    import scipy.interpolate as ip
+    import scipy.optimize as so
+    CON = {'open': 0, 'wye': 1, 'star': 1, 'delta': 2}
+    p = machine['poles']//2
+    slip = 1e-2
+    u1ph = u1
+    if CON[wdgcon] == 1:
+        u1ph /= np.sqrt(3)
+    u1max = 1.25*u1ph
+    u1min = u1ph/4
+    num_u1_steps = kwargs.get('num_u1_steps', 6)
+    f1tab = [f1]*num_u1_steps
+    u1_logspace = True
+    if u1_logspace:
+        b = (u1min-u1max)/np.log(u1min/u1max)
+        a = u1max/b
+        u1tab = [b*(a+np.log(x))
+                 for x in np.linspace(u1min/u1max, 1,
+                                      num_u1_steps-1)]
+    else:
+        u1tab = np.linspace(u1min, u1max, num_u1_steps-1).tolist()
+
+    u1tab.append(u1ph)
+    # Note: first num_u1_steps-1 are noload operation only
+    parvardef = {
+        "decision_vars": [
+            {"values": u1tab, "name": "u1"},
+            {"values": f1tab, "name": "f1"},
+            {"values": [f/p for f in f1tab[:-1]] + [(1-slip)*f1tab[-1]/p],
+             "name": "speed"}
+        ]
+    }
+
+    parvar = femagtools.parstudy.List(
+        workdir, condMat=condMat,
+        magnetizingCurves=magnetizingCurves)
+
+    # set AC simulation
+    Q2 = machine['rotor']['num_slots']
+    da1 = machine['bore_diam']
+    slotmodel = [k for k in machine['rotor'] if isinstance(
+        machine['rotor'][k], dict)][-1]
+    Dr = (da1 - 2*machine['airgap'] -
+          machine['rotor'][slotmodel].get('slot_height', 0) -
+          machine['rotor'][slotmodel].get('slot_h1', 0))
+    bar_len = machine['lfe']+np.pi*Dr/Q2/np.sin(np.pi*p/Q2)
+
+    simulation = dict(
+        calculationMode="asyn_motor",
+        bar_len=bar_len,
+        wind_temp=20,
+        bar_temp=20,
+        speed=f1/p,
+        f1=f1,
+        airgap_induc=True,
+        num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
+        wdgcon=CON[wdgcon],  # 0:open, 1:star, 2:delta
+        u1=u1ph)  # phase voltage
+
+    # start calculation
+    results = parvar(parvardef, machine, simulation, engine)
+
+    if simulation['wdgcon'] == 1:
+        connu, conni = 1/np.sqrt(3), 1
+    elif simulation['wdgcon'] == 2:
+        connu, conni = 1, 1/np.sqrt(3)
+    else:
+        connu, conni = 1, 1
+    u1tab = [connu*f['u1'][0] for f in results['f']]
+    i1 = [conni*f['i1'][0] for f in results['f']]
+    # amplitude of flux density in airgap
+    bamp = [f['airgap']['Bamp'] for f in results['f']]
+    wdg = femagtools.windings.Winding(
+        {'Q': machine['stator']['num_slots'],
+         'p': machine['poles']//2,
+         'm': machine['windings']['num_phases'],
+         'l': machine['windings']['num_layers'],
+         'yd': machine['windings']['coil_span']})
+    taup = np.pi*da1/2/p
+    lfe = machine['lfe']
+    n1 = wdg.turns_per_phase(machine['windings']['num_wires'],
+                             machine['windings']['num_par_wdgs'])
+    # main flux per phase at no load
+    psi = [n1*wdg.kw()*taup*lfe*np.sqrt(2)/np.pi*b
+           for b in bamp[:-1]]
+    w1 = 2*np.pi*results['f'][0]['f1'][0]
+    u1ref = u1ph
+    psiref = float(ip.interp1d(u1tab[:-1], psi, kind='cubic')(u1ref))
+
+    fitp, cov = so.curve_fit(
+        lambda x, iml, ims, mexp: iml*x/psiref + ims*(x/psiref)**mexp,
+        psi, i1[:-1], (1, 1, 1))
+    iml, ims, mexp = fitp
+
+    try:
+        r1 = machine['windings']['resistance']
+    except KeyError:
+        n = machine['windings']['num_wires']
+        g = simulation['num_par_wdgs']
+        hs = machine['stator'].get('slot_height', 0)
+        if 'dia_wire' in machine['windings']:
+            aw = np.pi*machine['windings']['dia_wire']**2/4
+        # TODO: read nc file and get slot area:
+        # as = nc.windings[0].subregions[0].area()
+        # aw = as/wdg.l/n*fillfac
+        sigma = 56e6
+        if 'material' in machine['winding']:
+            sigma = condMat[machine['winding']]['elconduct']
+        r1 = wdg_resistance(
+            wdg, n, g, aw, da1, hs, lfe, sigma)
+
+    # must correct psiref
+    lh = psiref/(iml+ims)
+    ls1 = results['f'][-1]['lh'] - (1+wdg.harmleakcoeff())*lh
+
+    def imag(x):
+        return iml*x/psiref + ims*(x/psiref)**mexp
+    psix = so.fsolve(
+        lambda psi: u1ref - np.sqrt(
+            (r1*imag(psi))**2 +
+            (w1*ls1 + w1*psi)**2),
+        psiref)[0]
+    logger.info(psix)
+    psiref = psix
+    fitp, cov = so.curve_fit(
+        lambda x, iml, ims, mexp: iml*x/psiref + ims*(x/psiref)**mexp,
+        psi, i1[:-1], (1, 1, 1))
+    iml, ims, mexp = fitp
+
+    p = results['f'][0]['p']
+    m = results['f'][0]['num_phases']
+    lh = psiref/(iml+ims)
+    ls1 = results['f'][-1]['lh'] - lh
+    r2 = results['f'][-1]['r2']
+    ls2 = results['f'][-1]['ls2']
+    pfe = results['f'][-1]['pfe1'][0]
+    rotor_mass = sum([results['f'][-1].get('conweight', 0),
+                      results['f'][-1].get('lamweight', 0)])
+
+    n = machine['windings']['num_wires']
+    g = simulation['num_par_wdgs']
+    ag = machine['airgap']
+    return {
+        'p': p, 'm': m, 'lh': wdg.inductance(n, g, da1, lfe, ag),
+        'f1ref': f1, 'u1ref': u1ph,
+        'rotor_mass': rotor_mass, 'kfric_b': 1,
+        'r1': r1, 'r2': r2,
+        'lsigma1': ls1, 'lsigma2': ls2,
+        'psiref': psiref, 'wref': w1,
+        'fec': pfe, 'fee': 0, 'fexp': 7.0,
+        'iml': iml, 'ims': ims, 'mexp': mexp}
 
 
 if __name__ == '__main__':

@@ -113,16 +113,23 @@ def wdg_inductance(wdg, n, g, da1, lfe, ag):
     wdg: (Winding) winding
     n: (int) number of wires per coil side
     g: (int) number of parallel coil groups
-    da1: vbore diameter in m
+    da1: bore diameter in m
     lfe: length of stator lamination stack in m
     ag: length of airgap in m
     """
     return wdg.inductance(n, g, da1, lfe, ag)
 
 
-def resistance(r0, w, temp, zeta, gam, nh):
+def resistance(r0, w, temp, zeta, gam=0, nh=1):
+    """return conductor resistance
+    Arguments:
+    r0: (float) dc resistance
+    w: (float) current frequency in rad
+    temp: (float) conductor temperature in deg Celsius
+    zeta: (float) skin effect coefficient (penetration depth)
+    gam: (float) constant coefficient (0..1)
+    nh: (int) number of vertical conductors in slot"""
     xi = xiskin(w, temp, zeta)
-    #xi = zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+KTH*(temp-TREF))))
     if np.isscalar(xi):
         if xi < 1e-12:
             k = 1
@@ -133,6 +140,19 @@ def resistance(r0, w, temp, zeta, gam, nh):
         k[xi > 1e-12] = (gam + kskinr(xi[xi > 1e-12], nh)) / (1. + gam)
     return r0*(1.+KTH*(temp - TREF))*k
 # return r0*(1.+KTH*(temp - TREF))*(gam + kskinr(xi, nh)) / (1. + gam)
+
+
+def leakinductance(l0, w, temp, zeta, nl=1, pl2v=0.5):
+    """return conductor leakage inductance
+    Arguments:
+    r0: (float) dc resistance
+    w: (float) current frequency in rad
+    temp: (float) conductor temperature in deg Celsius
+    zeta: (float) skin effect coefficient (penetration depth)
+    nh: (int) number of vertical conductors in slot
+    pl2v: (float) variable coefficient (0..1) """
+    return l0*(1.0+pl2v*(kskinl(
+        xiskin(w, temp, zeta), nl)-1))
 
 
 def betai1(iq, id):

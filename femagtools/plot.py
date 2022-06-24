@@ -1185,8 +1185,7 @@ def mesh(isa, with_axis=False, ax=0):
         ax = plt.gca()
     ax.set_aspect('equal')
     for el in isa.elements:
-        z = np.array([list(i) for i in zip(
-            *[v.xy for v in el.vertices])]).T
+        z = np.array([v.xy for v in el.vertices])
         pts = np.vstack((z, z[0])).T
         ax.add_line(Line2D(pts[0], pts[1],
                            color='b', ls='-', lw=0.25))
@@ -1258,7 +1257,7 @@ def demag_pos(isa, pos, icur=-1, ibeta=-1, ax=0):
     """
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([isa.demagnetization(e, icur, ibeta)[1]
-                     for e in emag])
+                      for e in emag])
     for i, x in enumerate(isa.pos_el_fe_induction):
         if x >= pos/180*np.pi:
             break

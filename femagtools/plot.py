@@ -1185,8 +1185,11 @@ def mesh(isa, with_axis=False, ax=0):
         ax = plt.gca()
     ax.set_aspect('equal')
     for el in isa.elements:
-        pts = [list(i) for i in zip(*[v.xy for v in el.vertices])]
-        ax.add_line(Line2D(pts[0], pts[1], color='b', ls='-', lw=0.25))
+        z = np.array([list(i) for i in zip(
+            *[v.xy for v in el.vertices])]).T
+        pts = np.vstack((z, z[0])).T
+        ax.add_line(Line2D(pts[0], pts[1],
+                           color='b', ls='-', lw=0.25))
 
     # for nc in isa.nodechains:
     #    pts = [list(i) for i in zip(*[(n.x, n.y) for n in nc.nodes])]

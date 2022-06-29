@@ -181,6 +181,8 @@ def read_simulation_results(content):
 
 def parident(w1, u1, i1, cosphi, s, r1, ls1, lh):
     """returns equivalent circuit parameters: r2, ls"""
+    logger.info("w1 %s u1 %s i1 %s cosphi %s s %s r1 %s ls1 %s lh %s",
+                w1, u1, i1, cosphi, s, r1, ls1, lh)
     ls2, r2 = fit_current(w1, u1, s,
                           r1, ls1, lh, i1, cosphi)
 
@@ -234,6 +236,7 @@ def read(arg):
     r['ls1'] = r.pop('xs1')/w1
     u1 = r['u1'][0]
     i1 = r['i1']
+    cosphi = r['cosphi']
     if r['wdgconn'] == 'star':
         u1 = u1/np.sqrt(3)
     if r['wdgconn'] == 'delta':
@@ -241,7 +244,7 @@ def read(arg):
 
     r['lh'] = u1/i1[0]/w1 - r['ls1']
     if len(i1) > 2:
-        r.update(parident(w1, u1, i1, r['cosphi'],
+        r.update(parident(w1, u1, i1, cosphi,
                           r['s'], r['r1'], r['ls1'], r['lh']))
     return r
 

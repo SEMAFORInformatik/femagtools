@@ -188,6 +188,9 @@ class Winding(object):
         return self.kwp(n) * self.kwd(n)
 
     def harmleakcoeff(self, n=4000):
+        """return harmonic leakage coefficient
+        Arguments:
+        n: (int) maximum number of harmonics"""
         nue = self.p * (1 + np.arange(1-n, n)*2*self.m)
         kw1 = self.kwd()*self.kwp()
         kwn = self.kwd(nue)*self.kwp(nue)
@@ -205,7 +208,7 @@ class Winding(object):
         """
         return n*self.coils_per_phase()//g
 
-    def inductance(self, nwires, g, da1, lfe, ag):
+    def inductance(self, nwires, g, da1, lfe, ag, sw=0):
         """return main inductance / phase
         Arguments:
         nwires: number of wires in slot side
@@ -213,11 +216,17 @@ class Winding(object):
         da1: (float) bore diameter / m
         lfe: (float) length of lamination /m
         ag: (float) length of airgap / m
+        sw: (float) slot opening width / m
         """
         mue0 = 4*np.pi*1e-7
         taup = np.pi*da1/self.p/2
+        tauq = np.pi*da1/self.Q
+        h = sw/ag
+        xic = 2/np.pi*(h*np.arctan(h/2) - np.log(1+(h/2)**2))
+        kc = tauq/(tauq-xic*ag)  # Carter factor
+        de = kc * ag
         return (mue0*(self.kw()*self.turns_per_phase(nwires, g))**2 *
-                2*self.m/(np.pi**2)/self.p/ag*taup*lfe)
+                2*self.m/(np.pi**2)/self.p/de*taup*lfe)
 
     def sequence(self):
         """returns sequence of winding keys"""

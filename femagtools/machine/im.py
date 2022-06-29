@@ -12,6 +12,7 @@ from .utils import resistance, leakinductance, wdg_resistance
 import femagtools.windings
 import femagtools.parstudy
 import json
+import copy
 import warnings
 
 EPS = 1e-13
@@ -423,6 +424,11 @@ def parident(workdir, engine, f1, u1, wdgcon,
         u1=u1ph)  # phase voltage
 
     # start calculation
+    m = copy.deepcopy(machine)
+    try:
+        m['windings'].pop('resistance')
+    except:
+        pass
     results = parvar(parvardef, machine, simulation, engine)
 
     if simulation['wdgcon'] == 1:
@@ -445,16 +451,16 @@ def parident(workdir, engine, f1, u1, wdgcon,
     lfe = machine['lfe']
     n1 = wdg.turns_per_phase(machine['windings']['num_wires'],
                              machine['windings']['num_par_wdgs'])
-    # main flux per phase at no load
-    psi = [n1*wdg.kw()*taup*lfe*np.sqrt(2)/np.pi*b
-           for b in bamp[:-1]]
+    # main flux per phase at no load in airgap
+    psih = [n1*wdg.kw()*taup*lfe*np.sqrt(2)/np.pi*b
+            for b in bamp[:-1]]
     w1 = 2*np.pi*results['f'][0]['f1'][0]
     u1ref = u1ph
-    psiref = float(ip.interp1d(u1tab[:-1], psi, kind='cubic')(u1ref))
+    psiref = float(ip.interp1d(u1tab[:-1], psih, kind='cubic')(u1ref))
 
     fitp, cov = so.curve_fit(
         lambda x, iml, ims, mexp: iml*x/psiref + ims*(x/psiref)**mexp,
-        psi, i1[:-1], (1, 1, 1))
+        psih, i1[:-1], (1, 1, 1))
     iml, ims, mexp = fitp
 
     try:
@@ -489,7 +495,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     psiref = psix
     fitp, cov = so.curve_fit(
         lambda x, iml, ims, mexp: iml*x/psiref + ims*(x/psiref)**mexp,
-        psi, i1[:-1], (1, 1, 1))
+        psih, i1[:-1], (1, 1, 1))
     iml, ims, mexp = fitp
 
     p = results['f'][0]['p']
@@ -506,7 +512,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     g = simulation['num_par_wdgs']
     ag = machine['airgap']
     return {
-        'p': p, 'm': m, 'lh': wdg.inductance(n, g, da1, lfe, ag),
+        'p': p, 'm': m,
         'f1ref': f1, 'u1ref': u1ph,
         'rotor_mass': rotor_mass, 'kfric_b': 1,
         'r1': r1, 'r2': r2,

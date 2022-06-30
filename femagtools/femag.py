@@ -263,10 +263,11 @@ class Femag(BaseFemag):
         condMat: collection of conductor material
     """
 
-    def __init__(self, workdir, cmd=None,
+    def __init__(self, workdir, cmd=None, templatedirs=[],
                  magnetizingCurves=None, magnets=None, condMat=[]):
         super(self.__class__, self).__init__(workdir, cmd,
-                                             magnetizingCurves, magnets, condMat)
+                                             magnetizingCurves, magnets, condMat,
+                                             templatedirs=templatedirs)
 
     def run(self, filename, options=['-b'], fsl_args=[]):
         """invoke FEMAG in current workdir
@@ -476,9 +477,12 @@ class ZmqFemag(BaseFemag):
 
     def __init__(self, port, host='localhost', workdir='', logdir='',
                  cmd=None,
-                 magnetizingCurves=None, magnets=None, condMat=[]):
-        super(self.__class__, self).__init__(workdir, cmd,
-                                             magnetizingCurves, magnets, condMat)
+                 magnetizingCurves=None, magnets=None, condMat=[],
+                 templatedirs=[]):
+        super(self.__class__, self).__init__(
+            workdir, cmd,
+            magnetizingCurves, magnets, condMat,
+            templatedirs=templatedirs)
         self.host = host
         self.port = port
         self.femaghost = ''

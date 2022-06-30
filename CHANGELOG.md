@@ -8,6 +8,9 @@ This document lists the major changes in femagtools. Please clone this project t
 ## Release 1.1.17
 	- rearranged module machine: im.py, sm.py, pm.py utils.py
 
+## Release 1.1.12
+	- ts module added (vtu postprocessing, loss calculation)
+
 ## Release 1.1.10
 - vtu _movie support in mult_cal_fast
 - added optional filename parameter in FE simulation ['plots']

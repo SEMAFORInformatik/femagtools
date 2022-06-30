@@ -2,16 +2,22 @@
 
 This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.1.18
+	- added templatedirs parameter for user specific mako templates
+
+## Release 1.1.17
+	- rearranged module machine: im.py, sm.py, pm.py utils.py
+
 ## Release 1.1.10
 - vtu _movie support in mult_cal_fast
 - added optional filename parameter in FE simulation ['plots']
-	
+
 ## Release 1.1.3
 - eesm support improved (bch, ld_ld_fast)
 
 ## Release 1.1.2
 - parstudy with induction motor and wdg material
-	
+
 ## Release 1.1.1
 - dfx fsl conversion improvements
 - parstudy psid-psiq ident with example

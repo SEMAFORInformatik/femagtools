@@ -79,11 +79,13 @@ class FemagError(Exception):
 
 
 class BaseFemag(object):
-    def __init__(self, workdir, cmd, magnetizingCurves, magnets, condMat):
+    def __init__(self, workdir, cmd, magnetizingCurves, magnets, condMat,
+                 templatedirs=[]):
         self.workdir = workdir
         self.magnets = []
         self.magnetizingCurves = []
         self.condMat = []
+        self.templatedirs = templatedirs
         if cmd:
             self.cmd = cmd
         else:
@@ -145,7 +147,7 @@ class BaseFemag(object):
                     self.model)
         except AttributeError:
             pass
-        builder = femagtools.fsl.Builder()
+        builder = femagtools.fsl.Builder(self.templatedirs)
         if simulation:
             if "hc_min" in simulation:
                 self.model.__setattr__("hc_min", simulation.get("hc_min", 95))
@@ -359,9 +361,10 @@ class Femag(BaseFemag):
                     simulation.update(
                         get_shortCircuit_parameters(bch,
                                                     simulation.get('initial', 2)))
-                    builder = femagtools.fsl.Builder()
+                    builder = femagtools.fsl.Builder(self.templatedirs)
                     if "hc_min" in simulation:
-                        self.model.__setattr__("hc_min", simulation.get("hc_min", 95))
+                        self.model.__setattr__(
+                            "hc_min", simulation.get("hc_min", 95))
                     fslcmds = (builder.open_model(self.model) +
                                builder.create_shortcircuit(simulation))
                     with open(os.path.join(self.workdir, fslfile), 'w') as f:
@@ -886,7 +889,7 @@ class ZmqFemag(BaseFemag):
                     simulation.update(
                         get_shortCircuit_parameters(bch,
                                                     simulation.get('initial', 2)))
-                    builder = femagtools.fsl.Builder()
+                    builder = femagtools.fsl.Builder(self.templatedirs)
                     response = self.send_fsl(
                         builder.create_shortcircuit(simulation))
                     r = json.loads(response[0])

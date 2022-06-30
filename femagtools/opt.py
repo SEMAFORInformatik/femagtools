@@ -52,8 +52,9 @@ def log_pop(pop, ngen):
 class Optimizer(object):
     # tasktype='Task'):
     def __init__(self, workdir, magnetizingCurves, magnetMat, condMat=[],
-                 result_func=None):
-        #self.tasktype = tasktype
+                 result_func=None, templatedirs=[]):
+        # self.tasktype = tasktype
+        self.templatedirs = templatedirs
         self.result_func = result_func
         self.femag = femagtools.Femag(workdir,
                                       magnetizingCurves=magnetizingCurves,
@@ -112,37 +113,37 @@ class Optimizer(object):
                              operatingConditions, engine)
 
     def optimize(self, num_generations, opt, pmMachine,
-                 operatingConditions, engine):
-        """execute optimization"""
-        decision_vars = opt['decision_vars']
-        objective_vars = opt['objective_vars']
-        population_size = opt['population_size']
+                 operatingConditions, engine).
+    """execute optimization"""
+    decision_vars = opt['decision_vars']
+    objective_vars = opt['objective_vars']
+    population_size = opt['population_size']
 
-        problem = femagtools.moproblem.FemagMoProblem(decision_vars,
-                                                      objective_vars)
-        self.builder = femagtools.fsl.Builder()
-        self.model = femagtools.model.MachineModel(pmMachine)
-        self.fea = operatingConditions
-        self.fea.update(self.model.windings)
-        self.fea['lfe'] = self.model.lfe
-        self.fea['move_action'] = self.model.move_action
-        self.fea['phi_start'] = 0.0
-        self.fea['range_phi'] = 720/self.model.get('poles')
-        self.pop = Population(problem, population_size)
+    problem = femagtools.moproblem.FemagMoProblem(decision_vars,
+                                                  objective_vars)
+    self.builder = femagtools.fsl.Builder(self.templatedirs)
+    self.model = femagtools.model.MachineModel(pmMachine)
+    self.fea = operatingConditions
+    self.fea.update(self.model.windings)
+    self.fea['lfe'] = self.model.lfe
+    self.fea['move_action'] = self.model.move_action
+    self.fea['phi_start'] = 0.0
+    self.fea['range_phi'] = 720/self.model.get('poles')
+    self.pop = Population(problem, population_size)
 
-        algo = Nsga2()
+    algo = Nsga2()
 
-        self.job = engine.create_job(self.femag.workdir)
+    self.job = engine.create_job(self.femag.workdir)
 
-        logger.info("Optimize x:%d f:%d generations:%d population size:%d",
-                    len(self.pop.problem.decision_vars),
-                    len(self.pop.problem.objective_vars),
-                    num_generations,
-                    self.pop.size())
+    logger.info("Optimize x:%d f:%d generations:%d population size:%d",
+                 len(self.pop.problem.decision_vars),
+                 len(self.pop.problem.objective_vars),
+                 num_generations,
+                 self.pop.size())
 
-        results = dict(rank=[], f=[], x=[])
-        elapsedTime = 0
-        for i in range(num_generations):
+     results = dict(rank=[], f=[], x=[])
+      elapsedTime = 0
+       for i in range(num_generations):
             logger.info("Generation %d", i)
             if i > 0:
                 newpop = algo.evolve(self.pop)

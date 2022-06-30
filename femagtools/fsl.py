@@ -32,17 +32,16 @@ def cosys(model):
 
 
 class Builder:
-    def __init__(self, templatedir=''):
+    def __init__(self, templatedirs=[]):
+        dirs = templatedirs
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
             # lookup up files in pyinstaller bundle
             logging.debug("Frozen!")
-            dirs = [os.path.join(sys._MEIPASS, 'fsltemplates'),
-                    os.path.join(os.getcwd(), '.')]
+            dirs += [os.path.join(sys._MEIPASS, 'fsltemplates'),
+                     os.path.join(os.getcwd(), '.')]
         else:
-            dirs = [os.path.join(os.path.dirname(__file__), 'templates'),
-                    os.path.join(os.getcwd(), '.')]
-        if templatedir:
-            dirs.insert(0, templatedir)
+            dirs += [os.path.join(os.path.dirname(__file__), 'templates'),
+                     os.path.join(os.getcwd(), '.')]
         self.lookup = mako.lookup.TemplateLookup(
             directories=dirs,
             input_encoding='utf-8',

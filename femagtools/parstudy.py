@@ -65,14 +65,16 @@ class ParameterStudy(object):
     Args:
     workdir: pathname of work directory
 
-    CAUTION: choose the workdir exclusively for this usage. 
+    CAUTION: choose the workdir exclusively for this usage.
              do not share it with anything else.
     """
 
     def __init__(self, workdir,
                  magnetizingCurves=None, magnets=None, condMat=[], result_func=None,
-                 repname='grid', cmd=None):  # tasktype='Task'):
+                 repname='grid', cmd=None,
+                 templatedirs=[]):  # tasktype='Task'):
         #self.tasktype = tasktype
+        self.templatedirs = templatedirs
         self.result_func = result_func
         self.femag = femagtools.Femag(workdir=workdir, cmd=cmd,
                                       magnetizingCurves=magnetizingCurves,
@@ -85,19 +87,20 @@ class ParameterStudy(object):
         the "owner" of the Grid have to take care to terminate all running xfemag64 or wfemagw64
         processes after setting stop to True
         For example:
-        
+
         def killFemagThreads():
             if sys.platform.startswith('linux'):
-                os.system("kill $(ps aux | grep '[x]femag64' | awk '{print $2}')")
+                os.system(
+                    "kill $(ps aux | grep '[x]femag64' | awk '{print $2}')")
             else:
                 os.system("taskkill /f /im wfemagw64.exe")
-                
+
         thomas.maier/OSWALD
         """
 
     def set_report_directory(self, dirname):
-        """saves the result files (BCH/BATCH) of every calculation 
-        into this directory. Throws ValueError if directory is not empty or 
+        """saves the result files (BCH/BATCH) of every calculation
+        into this directory. Throws ValueError if directory is not empty or
         FileNotFoundError if it does not exist.
         Args:
           dirname: name of report directory
@@ -158,7 +161,7 @@ class ParameterStudy(object):
         objective_vars = opt.get('objective_vars', {})
 
         model = femagtools.model.MachineModel(machine)
-        builder = femagtools.fsl.Builder()
+        builder = femagtools.fsl.Builder(self.templatedirs)
 
         dvarnames, domain, par_range = self._get_names_and_range(
             decision_vars, num_samples)

@@ -34,7 +34,7 @@ def read_bchfile(filename):
 def create_fsl(machine,
                operatingconditions={},
                magnetmat=[],
-               templatedir=''):
+               templatedirs=[]):
     """create FSL command list from model parameters
 
     Args:
@@ -45,7 +45,7 @@ def create_fsl(machine,
 """
     model = MachineModel(machine)
 
-    builder = Builder(templatedir)
+    builder = Builder(templatedirs)
     magnets = []
     if magnetmat:
         magnets = Magnet(magnetmat)

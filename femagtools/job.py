@@ -69,6 +69,10 @@ class Task(object):
         self.status = None
         self.fsl_file = None
         self.id = id
+        self.stateofproblem = 'mag_static'
+
+    def set_stateofproblem(self, stateofproblem):
+        self.stateofproblem = stateofproblem
 
     def add_file(self, fname, content=None):
         """adds a file required by this task

@@ -9,8 +9,8 @@ def test_femag():
     else:
         expected = "xfemag64"
 
-    assert femagtools.config.get_femag() == expected
-    
+    assert femagtools.config.get_executable().find(expected) > -1
+
 
 def test_engine_config():
     default_config = {

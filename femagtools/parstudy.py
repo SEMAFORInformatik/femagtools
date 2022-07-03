@@ -274,6 +274,8 @@ class ParameterStudy(object):
                 if hasattr(fea, 'poc'):
                     task.add_file(fea.pocfilename,
                                   fea.poc.content())
+                if hasattr(fea, 'stateofproblem'):
+                    task.set_stateofproblem(fea.stateofproblem)
 
             tstart = time.time()
             status = engine.submit(extra_result_files)

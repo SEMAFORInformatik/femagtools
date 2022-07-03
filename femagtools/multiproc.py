@@ -29,7 +29,7 @@ def run_femag(cmd, workdir, fslfile):
     :internal:
 
     Args:
-        cmd: The program (executable image) to be run
+        cmd: (list) The program (executable image) to be run
         workdir: The workdir where the calculation files are stored
         fslfile: The name of the start file (usually femag.fsl)
     """
@@ -69,7 +69,7 @@ class Engine:
     <https://docs.python.org/3.6/library/multiprocessing.html>`_
 
     Args:
-        cmd: the program (executable image) to be run 
+        cmd: the program (executable image) to be run
             (femag dc is used if None)
         process_count: number of processes (cpu_count() if None)
     """
@@ -78,10 +78,10 @@ class Engine:
         self.process_count = process_count
         if cmd:
             self.cmd = [cmd]
+            if platform.system() == 'Windows':
+                self.cmd.append('-m')
         else:
-            self.cmd = [cfg.get_femag()]
-        if platform.system() == 'Windows':
-            self.cmd.append('-m')
+            self.cmd = ''
 
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`Job`
@@ -102,9 +102,22 @@ class Engine:
         Return:
             length of started tasks
         """
+        # must check if cmd is set:
+        args = []
+        if platform.system() == 'Windows':
+            args.append('-m')
+
+        if self.cmd:
+            for t in self.job.tasks:
+                t.cmd = self.cmd
+        else:
+            for t in self.job.tasks:
+                t.cmd = [cfg.get_executable(
+                    t.stateofproblem)] + args
+
         self.pool = multiprocessing.Pool(self.process_count)
         self.tasks = [self.pool.apply_async(run_femag,
-                                            args=(self.cmd,
+                                            args=(t.cmd,
                                                   t.directory,
                                                   t.fsl_file))
                       for t in self.job.tasks]

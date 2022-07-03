@@ -79,6 +79,8 @@ class Optimizer(object):
             if 'poc' in self.fea:
                 task.add_file(self.fea['pocfilename'],
                               self.fea['poc'].content())
+            if 'stateofproblem' in self.fea:
+                task.set_stateofproblem(fea['stateofproblem'])
         tstart = time.time()
         ntasks = engine.submit()
         status = engine.join()
@@ -192,12 +194,12 @@ class Optimizer(object):
                                  for i in self.pop.individuals if hasattr(i, 'results')]
         return results
 
-    #print("\nChampion: {}\n".format(pop.champion['f']))
+    # print("\nChampion: {}\n".format(pop.champion['f']))
         # if flast != None:
         #    print("Fitness Comparison:")
         #    for f1, f2 in zip(pop.champion['f'], flast):
         #        print( "{:10.2f} {:10.2f}      {:10.2f}".format(f1, f2, f1-f2))
-        #flast = list(pop.champion['f'])
+        # flast = list(pop.champion['f'])
         # print("")
 #    except:
 #        print "Unexpected error:", sys.exc_info()

@@ -17,6 +17,21 @@ try:
 except ImportError:
     import configparser
 
+executable = {
+    'Linux': {
+        'mag_static': 'xfemag64',
+        'mag_dynamic': 'cxfemag64',
+        'mag_transient': 'tsfemag64',
+        'mech_static': 'mefemag64',
+        'therm_static': 'thfemag64'},
+    'Windows': {
+        'mag_static': 'wfemagw64.exe',
+        'mag_dynamic': 'wcfemagw64.exe',
+        'mag_transient': 'wtsfemagw64.exe',
+        'mech_static': 'wmefemagw64.exe',
+        'therm_static': 'wthfemagw64.exe'}
+}
+
 
 def is_exe(fpath):
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -37,13 +52,12 @@ def which(program):
     return None
 
 
-def get_executable():
+def get_executable(stateofproblem='mag_static'):
     """returns platform specific pathname of femag executable"""
-    if platform.system() == "Windows":
-        wfemag = which("wfemagw64.exe")
-        if not wfemag:
-            raise Exception("wfemagw64 not found in {}".format(
-                os.environ["PATH"]))
+    progname = executable[platform.system()][stateofproblem]
+    femag = which(progname)
+    if not femag:
+        raise Exception(f"{progname} not found in {os.environ['PATH']}")
         # TODO: for l in ['libstdc++-6.dll', 'libgcc_s_dw2-1.dll']:
         #    lib = which(l)
         #    if not lib:
@@ -51,27 +65,8 @@ def get_executable():
         #            l, os.environ["PATH"]))
 
         #    transfer_files.append(lib)
-        return wfemag
+    return femag
 
-    xfemag = which("xfemag64")
-    if not xfemag:
-        raise Exception("xfemag64 not found in {}".format(
-            os.environ["PATH"]))
-    return xfemag
-        
-
-def get_femag():
-    """returns femag command"""
-    if sys.platform.startswith('linux'):
-        if platform.machine() == 'x86_64':
-            return 'xfemag64'
-        return 'xfemag'
-
-    if platform.machine() == 'AMD64':
-        return 'wfemagw64'
-
-    return 'wfemag'
-    
 
 class Config(dict):
 

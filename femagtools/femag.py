@@ -23,6 +23,8 @@ import femagtools.magnet
 import femagtools.conductor
 import femagtools.windings
 import femagtools.mcv
+import femagtools.ts
+import femagtools.asm
 import femagtools.airgap as ag
 import femagtools.fsl
 import femagtools.ntib as ntib
@@ -89,7 +91,7 @@ class BaseFemag(object):
         if cmd:
             self.cmd = cmd
         else:
-            self.cmd = cfg.get_femag()
+            self.cmd = ''
 
         if magnetizingCurves:
             if isinstance(magnetizingCurves,
@@ -172,6 +174,9 @@ class BaseFemag(object):
     def get_asm_file(self, modelname, offset=0):
         return self.get_result_file(modelname, 'ASM', offset)
 
+    def get_ts_files(self, modelname, offset=0):
+        return self.get_result_file(modelname, 'TS', offset)
+
     def get_result_file(self, modelname, ext, offset=0):
         """return latest result (bch, asm) file (if any)"""
         filelist = sorted(glob.glob(os.path.join(
@@ -190,6 +195,14 @@ class BaseFemag(object):
             logger.info("Read ASM {}".format(asmfile))
             return femagtools.asm.read(asmfile)
         return {}
+
+    def read_ts(self, modelname=None):
+        "read most recent TS files and return result"
+        if not modelname:
+            modelname = self._get_modelname_from_log()
+
+        logger.info("Read TS {}".format(modelname))
+        return femagtools.ts.read_st(self.workdir, modelname)
 
     def read_bch(self, modelname=None, offset=0):
         "read most recent BCH/BATCH file and return result"
@@ -270,22 +283,26 @@ class Femag(BaseFemag):
                                              magnetizingCurves, magnets, condMat,
                                              templatedirs=templatedirs)
 
-    def run(self, filename, options=['-b'], fsl_args=[]):
+    def run(self, filename, options=['-b'], fsl_args=[], stateofproblem='mag_static'):
         """invoke FEMAG in current workdir
 
         Args:
             filename: name of file to execute
             options: list of FEMAG options
             fsl_args: list of FSL argument options
-
+            stateofproblem: (str) one of config.executable
         Raises:
             FemagError
         """
-        if self.cmd.find('wfemag') > -1 and \
-           '-b' in options and \
-           '-m' not in options:
+        if self.cmd:
+            cmd = self.cmd
+        else:
+            cmd = femagtools.config.get_executable(stateofproblem)
+        if (cmd.find('wfemag') > -1 and
+            '-b' in options and
+                '-m' not in options):
             options.insert(0, '-m')
-        args = [self.cmd] + options + [filename] + fsl_args
+        args = [cmd] + options + [filename] + fsl_args
 
         basename, ext = os.path.splitext(os.path.basename(filename))
         outname = os.path.join(self.workdir, basename+'.out')
@@ -306,7 +323,7 @@ class Femag(BaseFemag):
 
         rc = proc.returncode
         logger.info("%s exited with returncode %d (num errs=%d)",
-                    self.cmd, rc, len(errs))
+                    cmd, rc, len(errs))
         if rc != 0 or errs:
             with io.open(errname, encoding='latin1',
                          errors='ignore') as errfile:
@@ -335,6 +352,7 @@ class Femag(BaseFemag):
             f.write('\n'.join(self.create_fsl(machine,
                                               simulation)))
         if simulation:
+            stateofproblem = simulation.get('stateofproblem', 'mag_static')
             if 'poc' in simulation:
                 with open(os.path.join(self.workdir,
                                        simulation['pocfilename']), 'w') as f:
@@ -347,14 +365,19 @@ class Femag(BaseFemag):
                         simulation['current'],
                         simulation['angl_i_up'])))
                 # TODO: add r1, m
+        else:
+            stateofproblem = 'mag_static'
 
-        self.run(fslfile, options, fsl_args)
+        self.run(fslfile, options, fsl_args, stateofproblem=stateofproblem)
         if simulation:
             if simulation['calculationMode'] == "pm_sym_loss":
                 return self.read_los(self.modelname)
 
             if simulation['calculationMode'] == 'asyn_motor':
                 return self.read_asm(self.modelname)
+
+            if simulation['calculationMode'] == 'calc_field_ts':
+                return self.read_ts(self.modelname)
 
             bch = self.read_bch(self.modelname)
             if simulation['calculationMode'] == 'pm_sym_fast':
@@ -633,11 +656,12 @@ class ZmqFemag(BaseFemag):
                 msg = str(e)
                 return ['{"status":"error", "message":"'+msg+'"}', '{}']
 
-    def run(self, options=['-b'], restart=False, procId=None):  # noqa: C901
+    def run(self, options=['-b'], restart=False, procId=None, stateofproblem='mag_static'):  # noqa: C901
         """invokes FEMAG in current workdir and returns pid
 
         Args:
             options: list of FEMAG options
+            stateofproblem: str one of config.executable
         """
         if self.__is_running():
             if restart:
@@ -648,12 +672,16 @@ class ZmqFemag(BaseFemag):
             else:
                 return self.femagTask.proc.pid
 
-        if self.cmd.find('wfemag') > -1 and \
-           '-b' in options and \
-           '-m' not in options:
+        if self.cmd:
+            cmd = self.cmd
+        else:
+            cmd = femagtools.config.get_executable(stateofproblem)
+        if (cmd.find('wfemag') > -1 and
+            '-b' in options and
+                '-m' not in options):
             options.insert(0, '-m')
 
-        args = [self.cmd] + options
+        args = [cmd] + options
         self.femagTask = FemagTask(self.port, args, self.workdir, self.logdir)
         self.femagTask.start()
         if not self.request_socket:
@@ -883,6 +911,9 @@ class ZmqFemag(BaseFemag):
 
         if simulation['calculationMode'] == "asyn_motor":
             return self.read_asm(self.modelname)
+
+        if simulation['calculationMode'] == "calc_field_ts":
+            return self.read_ts(self.modelname)
 
         status, content = self.getfile(result_file)
         r = json.loads(status)

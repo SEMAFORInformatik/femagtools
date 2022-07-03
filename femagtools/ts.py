@@ -8,6 +8,81 @@ import femagtools.vtu as vtu
 import numpy as np
 import scipy.integrate as integrate
 import warnings
+import pathlib
+import logging
+
+logger = logging.getLogger('femagtools.asm')
+
+
+def _read_sections(lines):
+    """return list of TS sections
+
+    sections may be surrounded by lines starting with 'Windings/branches'
+    Args:
+      param lines (list) lines of TS file to read
+
+    Returns:
+      list of sections
+    """
+
+    section = []
+    title = ''
+    group = []
+    columns = []
+    if lines:
+        title = lines[0]
+        s = 1
+        if 'Groups' in lines[1]:
+            s = 2
+        for line in lines[s:]:
+            i = 0
+            if 'Windings/branches' in line:
+                i = 1
+                yield section[i:]
+                section = []
+            else:
+                section.append(line.strip())
+    yield section
+
+
+def read_st(arg, modelname):
+    """read TS result files stv, stc, stm
+    Arguments:
+    arg: (str or Path) name of directory
+    modelname: (str) name of model
+    """
+    r = {}
+    if isinstance(arg, str):
+        dir = pathlib.Path(arg)
+    elif isinstance(arg, pathlib.Path):
+        dir = arg
+    else:
+        logger.error("Invalid arg type %s", type(arg))
+        return
+    res = dict()
+    for ext in ('stv', 'stc', 'stm'):
+        lines = (dir / f"{modelname}.{ext}").read_text().split('\n')
+        for s in _read_sections(lines):
+            if s:
+                k = 2
+                if ext == 'stm':
+                    k = 1
+                    labels = [l.lower()
+                              for l in s[k-1].split()[::2]][1:]
+                elif ext == 'stc':
+                    labels = [f'I{l}'
+                              for l in s[k-1].split()[1::2]][1:]
+                else:
+                    labels = [f'U{l}'
+                              for l in s[k-1].split()[1::2]][1:]
+                m = np.array(
+                    [[float(x) for x in l.split()]
+                     for l in s[k:] if l]).T
+                if 'time' not in res:
+                    res['time'] = m[0].tolist()
+                for i, k in enumerate(labels):
+                    res[k] = m[i+1].tolist()
+    return res
 
 
 def losscoeff_frequency_to_time(B0, f0, c, exp):
@@ -158,7 +233,7 @@ class Losses(object):
 
         The loss energy is determined by adding up the loss energy of the
         individual elements over the time window.
-        If start and end are not specified, the time window of the 
+        If start and end are not specified, the time window of the
         previous calculation is used.
         '''
         data_list = ['time [s]', 'curd']
@@ -193,7 +268,7 @@ class Losses(object):
         individual elements over the time window.
         The loss energy is divided by the time window length
         to obtain the averaged power loss
-        If start and end are not specified, the time window of the 
+        If start and end are not specified, the time window of the
         previous calculation is used.
         '''
         while len(srname) < 4:
@@ -219,7 +294,7 @@ class Losses(object):
 
         The loss energy is determined by adding up the loss energy of the
         individual elements over the time window.
-        If start and end are not specified, the time window of the 
+        If start and end are not specified, the time window of the
         previous calculation is used.
         '''
 
@@ -264,7 +339,7 @@ class Losses(object):
         individual elements over the time window.
         The loss energy is divided by the time window length
         to obtain the averaged power loss
-        If start and end are not specified, the time window of the 
+        If start and end are not specified, the time window of the
         previous calculation is used.
         '''
 
@@ -305,7 +380,7 @@ class Losses(object):
         powerlosses : float
             Ohmic power losses of the subregion
 
-        A FFT from the current density is made. 
+        A FFT from the current density is made.
         The power losses of each harmonic is determined and added.
         '''
         scale_factor = self.nc_model.scale_factor()
@@ -359,10 +434,10 @@ class Losses(object):
         lossenergy : float
             Power dissipation of the subregion
 
-        A FFT from the current density is made. 
+        A FFT from the current density is made.
         The power losses of each harmonic is determined and added.
         The time window has to be pariode or a multiple of it.
-        If start and end are not specified, the time window of the 
+        If start and end are not specified, the time window of the
         previous calculation is used.
         '''
         data_list = ['time [s]', 'curd']
@@ -391,10 +466,10 @@ class Losses(object):
         loss_data : dict
             Dictonary of subregions and power dissipation of it
 
-        A FFT from the current density is made. 
+        A FFT from the current density is made.
         The power losses of each harmonic is determined and added.
         The time window has to be pariode or a multiple of it.
-        If start and end are not specified, the time window of the 
+        If start and end are not specified, the time window of the
         previous calculation is used.
         '''
 
@@ -434,9 +509,9 @@ class Losses(object):
         ironlosses : float
             Iron losses of the superlement
 
-        A FFT is made from the flux density. 
-        The iron losses of each harmonic is determined  by 
-        Bertotti formula 
+        A FFT is made from the flux density.
+        The iron losses of each harmonic is determined  by
+        Bertotti formula
 
             Physt = ch * (f/f0)**hfe * (B/B0)**hBe * V * rho
             Peddy = ch * (f/f0)**wfe * (B/B0)**wBe * V * rho
@@ -651,7 +726,7 @@ class Losses(object):
 
         The iron losses are calculated based on the Bertotti formula
         in time domaine.
-        The loss coefficients in frequency domain are converted into 
+        The loss coefficients in frequency domain are converted into
         time domain coefficients.
         For the hysteresis losses is a water fall methode implemented.
         Eddy current losses and anomalous losses are calculated by

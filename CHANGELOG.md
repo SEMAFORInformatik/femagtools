@@ -4,6 +4,7 @@ This document lists the major changes in femagtools. Please clone this project t
 
 ## Release 1.1.18
 	- added templatedirs parameter for user specific mako templates
+        - improved TS support
 
 ## Release 1.1.17
 	- rearranged module machine: im.py, sm.py, pm.py utils.py

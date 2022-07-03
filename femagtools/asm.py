@@ -17,7 +17,6 @@ import pathlib
 import logging
 import logging.config
 import numpy as np
-import scipy.optimize as so
 import lmfit
 
 logger = logging.getLogger('femagtools.asm')

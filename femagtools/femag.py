@@ -39,6 +39,24 @@ logger = logging.getLogger(__name__)
 BCHEXT = 'BATCH' if sys.platform.startswith('linux') else 'BCH'  # win32
 
 
+def handle_process_output(filedes, outfile, log):
+    """read from file descriptor and direct lines to logger and outfile"""
+    with open(outfile, 'w') as fp:
+        for line in filedes:
+            fp.write(str(line))
+            if log:
+                if (b'' == line or
+                    b'\x1b' in line or  # ignore terminal escape seq
+                    b'\n' == line or
+                    b'Start:' in line or
+                    b'Stop:' in line or
+                        b'Elapsed time:' in line):
+                    continue
+                if line:
+                    logger.info(" > %s",
+                                line.decode().strip())
+
+
 def get_shortCircuit_parameters(bch, nload):
     try:
         if nload < 0:
@@ -283,7 +301,8 @@ class Femag(BaseFemag):
                                              magnetizingCurves, magnets, condMat,
                                              templatedirs=templatedirs)
 
-    def run(self, filename, options=['-b'], fsl_args=[], stateofproblem='mag_static'):
+    def run(self, filename, options=['-b'], fsl_args=[],
+            stateofproblem='mag_static'):
         """invoke FEMAG in current workdir
 
         Args:
@@ -311,9 +330,12 @@ class Femag(BaseFemag):
             logger.info('invoking %s', ' '.join(args))
             proc = subprocess.Popen(
                 args,
-                stdout=out, stderr=err, cwd=self.workdir)
-
+                stdout=subprocess.PIPE, stderr=err, cwd=self.workdir)
+            stdoutthr = threading.Thread(target=handle_process_output,
+                                         args=(proc.stdout, outname, True))
+            stdoutthr.start()
         proc.wait()
+        stdoutthr.join()
         errs = []
         # print femag output
         with io.open(outname, encoding='latin1', errors='ignore') as outfile:

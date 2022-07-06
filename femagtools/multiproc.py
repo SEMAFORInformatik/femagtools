@@ -11,7 +11,11 @@
 import platform
 import multiprocessing
 import subprocess
+import time
 import os
+import re
+import threading
+import pathlib
 import logging
 from .job import Job
 import femagtools.config as cfg
@@ -21,6 +25,84 @@ except ImportError:
     DEVNULL = open(os.devnull, 'wb')
 
 logger = logging.getLogger(__name__)
+
+numpat = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
+
+
+class ProtFile:
+    def __init__(self, dirname, num_cur_steps):
+        self.size = 0
+        self.looplen = 0
+        self.cur_steps = [1, num_cur_steps]
+        self.n = 0
+        self.num_loops = 0
+        self.dirname = dirname
+
+    def percent(self):
+        if self.looplen > 0:
+            return 100 * self.n / self.looplen
+        return 0
+
+    def update(self):
+        p = list(pathlib.Path(self.dirname).glob('*.PROT'))
+        if p:
+            if self.size < p[0].stat().st_size:
+                with p[0].open() as fp:
+                    fp.seek(self.size)
+                    buf = fp.read()
+                return self.append(buf)
+        return ''
+
+    def append(self, buf):
+        self.size += len(buf)
+        for line in [l.strip() for l in buf.split('\n') if l]:
+            if line.startswith('Loop'):
+                self.n = 0
+                try:
+                    cur_steps = self.cur_steps[self.num_loops]
+                except IndexError:
+                    cur_steps = 1
+                x0, x1, dx, nbeta = [float(f)
+                                     for f in re.findall(numpat, line)][:4]
+                move_steps = round((x1-x0)/dx+1)
+                beta_steps = int(nbeta)
+                self.looplen = cur_steps*beta_steps*move_steps
+                self.num_loops += 1
+            elif (line.startswith('Cur') or
+                  line.startswith('Id')):
+                self.n += 1
+            elif line.startswith('Number movesteps Fe-Losses'):
+                return ''
+        if self.looplen == 0:
+            return ''
+        return f'{self.n}/{self.looplen}'  # {self.percent():3.1f}%
+
+
+class ProgressLogger(threading.Thread):
+    def __init__(self, dirs, num_cur_steps):
+        threading.Thread.__init__(self)
+        self.dirs = dirs
+        self.num_cur_steps = num_cur_steps
+        self.running = False
+
+    def run(self):
+        self.running = True
+        protfiles = [ProtFile(d, self.num_cur_steps)
+                     for d in self.dirs]
+        while self.running:
+            time.sleep(2)
+            logmsg = [p.update() for p in protfiles]
+            summary = [l  # f'<{i}> {l}'
+                       for i, l in enumerate(logmsg)
+                       if l]
+            if summary:
+                logger.info('Samples %s', ', '.join(summary))
+            else:
+                logger.info('collecting FE losses ...')
+                return
+
+    def stop(self):
+        self.running = False
 
 
 def run_femag(cmd, workdir, fslfile):
@@ -74,14 +156,16 @@ class Engine:
         process_count: number of processes (cpu_count() if None)
     """
 
-    def __init__(self, cmd=None, process_count=None):
-        self.process_count = process_count
+    def __init__(self, **kwargs):
+        self.process_count = kwargs.get('process_count', None)
+        cmd = kwargs.get('cmd', '')
         if cmd:
             self.cmd = [cmd]
             if platform.system() == 'Windows':
                 self.cmd.append('-m')
-        else:
-            self.cmd = ''
+
+        self.progressLogger = 0
+        self.num_cur_steps = kwargs.get('num_cur_steps', 1)
 
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`Job`
@@ -123,6 +207,10 @@ class Engine:
                       for t in self.job.tasks]
         # used to free resources after calculations have finished. thomas.maier/OSWALD
         self.pool.close()
+        self.progressLogger = ProgressLogger(
+            [t.directory for t in self.job.tasks],
+            num_cur_steps=self.job.num_cur_steps)
+        self.progressLogger.start()
         return len(self.tasks)
 
     def join(self):
@@ -137,11 +225,15 @@ class Engine:
             t.status = 'C' if r == 0 else 'X'
             status.append(t.status)
 
+        if self.progressLogger:
+            self.progressLogger.stop()
         return status
 
     def terminate(self):
         import psutil
         logger.info("terminate Engine")
+        if self.progressLogger:
+            self.progressLogger.stop()
         # terminate pool
         self.pool.terminate()
         self.pool.close()

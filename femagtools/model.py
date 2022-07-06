@@ -418,3 +418,14 @@ class FeaModel(Model):
         self.plots = []
         self.airgap_induc = []
         super(self.__class__, self).__init__(parameters)
+
+    def get_num_cur_steps(self):
+        """returns number of curSteps (used for progress calc)"""
+        try:
+            if self.calculationMode == 'psd_psq_fast':
+                return self.round((self.maxiq-self.miniq)/self.delta_iq) + 1
+            if self.calculationMode == 'ld_lq_fast':
+                return self.num_cur_steps+1  # must include 0
+        except:
+            pass
+        return 1

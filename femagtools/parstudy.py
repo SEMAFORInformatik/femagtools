@@ -195,6 +195,8 @@ class ParameterStudy(object):
                                                    objective_vars)
 
         job = engine.create_job(self.femag.workdir)
+        # for progress logger
+        job.num_cur_steps = fea.get_num_cur_steps()
 
         f = []
         p = 1
@@ -204,7 +206,6 @@ class ParameterStudy(object):
         if hasattr(fea, 'poc'):
             fea.poc.pole_pitch = 2*360/model.get('poles')
             fea.pocfilename = fea.poc.filename()
-
         elapsedTime = 0
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:

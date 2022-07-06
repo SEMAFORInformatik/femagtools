@@ -136,6 +136,8 @@ class Optimizer(object):
     algo = Nsga2()
 
     self.job = engine.create_job(self.femag.workdir)
+    # for progress logger
+    job.num_cur_steps = femagtools.model.FeaModel(self.fea).get_num_cur_steps()
 
     logger.info("Optimize x:%d f:%d generations:%d population size:%d",
                  len(self.pop.problem.decision_vars),

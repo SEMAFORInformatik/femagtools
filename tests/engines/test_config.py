@@ -9,7 +9,11 @@ def test_femag():
     else:
         expected = "xfemag64"
 
-    assert femagtools.config.get_executable().find(expected) > -1
+    try:
+        msg = femagtools.config.get_executable()
+    except Exception as e:
+        msg = str(e)
+    assert msg.find(expected) > -1
 
 
 def test_engine_config():

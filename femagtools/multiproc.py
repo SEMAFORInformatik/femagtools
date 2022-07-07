@@ -75,7 +75,7 @@ class ProtFile:
                 return ''
         if self.looplen == 0:
             return ''
-        return f'{self.n}/{self.looplen}'  # {self.percent():3.1f}%
+        return f'{self.percent():3.1f}%'  # {self.n}/{self.looplen}'
 
 
 class ProgressLogger(threading.Thread):

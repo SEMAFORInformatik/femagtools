@@ -273,7 +273,7 @@ class PmRelMachine(object):
                        self.iqd_plmag(iq, id, f),
                        self.iqd_plcu(iq, id, 2*np.pi*f)], axis=0)
 
-    def characteristics(self, T, n, u1max, nsamples=50):
+    def characteristics(self, T, n, u1max, nsamples=30):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -317,30 +317,23 @@ class PmRelMachine(object):
                     n2 = nmax
             if n > 0:
                 speedrange = sorted(
-                    list(set([nx for nx in [n1, n2, n] if nx <= n])))
+                    list(set([nx for nx in [n1, n2, n] if nx <= nmax])))
             else:
                 speedrange = sorted(list(set([n1, n2])))
-            n1 = speedrange[0]
+            speedrange.insert(0, 0)
             n3 = speedrange[-1]
-            if n2 > n3:
-                n2 = n3
-            logger.info("Speed intervals %s",
-                        [60*nx for nx in speedrange])
-            if len(speedrange) > 2:
-                nsamples = nsamples - int(speedrange[1]/(n3/nsamples))
-                dn = (n3-speedrange[1])/nsamples
-            else:
-                dn = n3 / nsamples
-            nx = n1
-
-            for nx in np.linspace(0, n1, int(n1/dn)):
+            nstab = [int(nsamples*(x1-x2)/n3)
+                     for x1, x2 in zip(speedrange[1:],
+                                       speedrange)]
+            for nx in np.linspace(0, n1, nstab[0]):
                 r['id'].append(id)
                 r['iq'].append(iq)
                 r['n'].append(nx)
                 r['T'].append(T)
 
             if n1 < n2:
-                for nn in np.linspace(r['n'][-1]+dn/2, n2, int(n2/dn)):
+                dn = r['n'][-1] - r['n'][-2]
+                for nn in np.linspace(r['n'][-1]+dn, n2, nstab[1]):
                     w1 = 2*np.pi*nn*self.p
                     iq, id = self.iqd_imax_umax(i1max, w1, u1max,
                                                 maxtorque=T > 0)
@@ -355,7 +348,7 @@ class PmRelMachine(object):
                                     nn*60, tq, i1max, w1, u1max)
 
             if n2 < n3:
-                for nn in np.linspace(r['n'][-1]+dn/2, n3, int(n3/dn)):
+                for nn in np.linspace(r['n'][-1]+dn/2, n3, nstab[2]):
                     w1 = 2*np.pi*nn*self.p
                     try:
                         iq, id, tq = self.mtpv(

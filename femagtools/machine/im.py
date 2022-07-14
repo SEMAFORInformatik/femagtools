@@ -273,25 +273,28 @@ class InductionMachine(Component):
         logger.info("wmtype %f wpo %f wmmax %f", wmType, wmPullout, wmMax)
 
         if wmType < wmPullout < wmMax:
-            wmtab = []
-            dw = 0
             wmrange = sorted([0, wmType, wmPullout, wmMax])
-            for a, b in zip(wmrange, wmrange[1:]):
-                nx = int(round(nsamples*(b-a)/wmrange[-1]))
-                dw = (b-a)/nx
-                wmtab += np.linspace(a+dw, b, nx).tolist()
-            wmtab[0] = 0
         elif wmMax < wmType:
             wmrange = sorted([0, wmMax])
-            wmtab = np.linspace(0, wmMax, nsamples).tolist()
         else:
             wmrange = sorted([0, wmType, wmMax])
-            nx = int(round(nsamples*wmType/wmMax))
-            dw = (wmMax-wmType)/(nsamples-nx)
-            wmtab = (np.linspace(0, wmType, nx).tolist() +
-                     np.linspace(wmType+dw, wmMax, nsamples-nx).tolist())
 
         logger.info("Speed range %s", wmrange)
+        wmlin = []
+        dw = 0
+        for i, nx in enumerate([round(nsamples*(w1-w0)/wmMax)
+                                for w1, w0 in zip(wmrange[1:],
+                                                  wmrange)]):
+            if nx == 1:
+                nx = 2
+            if nx > 0:
+                lw = np.linspace(wmrange[i]+dw, wmrange[i+1], nx)
+                dw = lw[-1] - lw[-2]
+                wmlin.append(lw)
+        if len(wmlin) > 1:
+            wmtab = np.concatenate(wmlin)
+        else:
+            wmtab = wmlin[0]
 
         def tload2(wm):
             if wm < wmType and wm < wmPullout:
@@ -313,32 +316,32 @@ class InductionMachine(Component):
             w1tab.append(w1)
             u1 = self.u1(w1, self.psi, wm)
             r['u1'].append(np.abs(u1))
-            i1 = self.i1(w1, self.psi, wm)
+            i1=self.i1(w1, self.psi, wm)
             r['i1'].append(np.abs(i1))
             r['cosphi'].append(np.cos(np.angle(u1) - np.angle(i1)))
             r['plfe1'].append(self.m*np.abs(u1)**2/self.rfe(w1, self.psi))
-            i2 = self.i2(w1, self.psi, wm)
+            i2=self.i2(w1, self.psi, wm)
             r['plcu1'].append(self.m*np.abs(i1)**2*self.rstat(w1))
             r['plcu2'].append(self.m*np.abs(i2)**2*self.rrot(w1-self.p*wm))
             r['T'].append(tq - tfric)
             r['n'].append(wm/2/np.pi)
 #            except ValueError as ex:
 #                break
-        r['plfric'] = [2*np.pi*n*tfric for n in r['n']]
-        r['pmech'] = [2*np.pi*n*tq for n, tq in zip(r['n'], r['T'])]
-        pmech = np.array(r['pmech'])
-        pltotal = (np.array(r['plfe1']) + np.array(r['plfric']) +
+        r['plfric']=[2*np.pi*n*tfric for n in r['n']]
+        r['pmech']=[2*np.pi*n*tq for n, tq in zip(r['n'], r['T'])]
+        pmech=np.array(r['pmech'])
+        pltotal=(np.array(r['plfe1']) + np.array(r['plfric']) +
                    np.array(r['plcu1']) + np.array(r['plcu2']))
-        r['losses'] = pltotal.tolist()
+        r['losses']=pltotal.tolist()
 
         if pmech.any():
-            p1 = pmech + pltotal
+            p1=pmech + pltotal
             if np.abs(pmech[0]) < 1e-12:
-                r['eta'] = [0]
-                i = 1
+                r['eta']=[0]
+                i=1
             else:
-                r['eta'] = []
-                i = 0
+                r['eta']=[]
+                i=0
             if np.all(abs(p1[i:]) > abs(pmech[i:])):
                 r['eta'] += (pmech[i:]/(p1[i:])).tolist()
             else:
@@ -366,29 +369,29 @@ def parident(workdir, engine, f1, u1, wdgcon,
     """
     import scipy.interpolate as ip
     import scipy.optimize as so
-    CON = {'open': 0, 'wye': 1, 'star': 1, 'delta': 2}
-    p = machine['poles']//2
-    slip = 1e-2
-    u1ph = u1
+    CON={'open': 0, 'wye': 1, 'star': 1, 'delta': 2}
+    p=machine['poles']//2
+    slip=1e-2
+    u1ph=u1
     if CON[wdgcon] == 1:
         u1ph /= np.sqrt(3)
-    u1max = 1.25*u1ph
-    u1min = u1ph/4
-    num_u1_steps = kwargs.get('num_u1_steps', 6)
-    f1tab = [f1]*num_u1_steps
-    u1_logspace = True
+    u1max=1.25*u1ph
+    u1min=u1ph/4
+    num_u1_steps=kwargs.get('num_u1_steps', 6)
+    f1tab=[f1]*num_u1_steps
+    u1_logspace=True
     if u1_logspace:
-        b = (u1min-u1max)/np.log(u1min/u1max)
-        a = u1max/b
-        u1tab = [b*(a+np.log(x))
+        b=(u1min-u1max)/np.log(u1min/u1max)
+        a=u1max/b
+        u1tab=[b*(a+np.log(x))
                  for x in np.linspace(u1min/u1max, 1,
                                       num_u1_steps-1)]
     else:
-        u1tab = np.linspace(u1min, u1max, num_u1_steps-1).tolist()
+        u1tab=np.linspace(u1min, u1max, num_u1_steps-1).tolist()
 
     u1tab.append(u1ph)
     # Note: first num_u1_steps-1 are noload operation only
-    parvardef = {
+    parvardef={
         "decision_vars": [
             {"values": u1tab, "name": "u1"},
             {"values": f1tab, "name": "f1"},
@@ -397,19 +400,19 @@ def parident(workdir, engine, f1, u1, wdgcon,
         ]
     }
 
-    parvar = femagtools.parstudy.List(
+    parvar=femagtools.parstudy.List(
         workdir, condMat=condMat,
         magnetizingCurves=magnetizingCurves)
 
     # set AC simulation
-    Q2 = machine['rotor']['num_slots']
-    da1 = machine['bore_diam']
-    slotmodel = [k for k in machine['rotor'] if isinstance(
+    Q2=machine['rotor']['num_slots']
+    da1=machine['bore_diam']
+    slotmodel=[k for k in machine['rotor'] if isinstance(
         machine['rotor'][k], dict)][-1]
-    Dr = (da1 - 2*machine['airgap'] -
+    Dr=(da1 - 2*machine['airgap'] -
           machine['rotor'][slotmodel].get('slot_height', 0) -
           machine['rotor'][slotmodel].get('slot_h1', 0))
-    bar_len = machine['lfe']+np.pi*Dr/Q2/np.sin(np.pi*p/Q2)
+    bar_len=machine['lfe']+np.pi*Dr/Q2/np.sin(np.pi*p/Q2)
 
     simulation = dict(
         calculationMode="asyn_motor",

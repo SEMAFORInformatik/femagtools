@@ -246,16 +246,16 @@ class InductionMachine(Component):
             lambda wx: (kpo*self.pullouttorque(self.p *
                         wx, u1max) - abs(pmmax/wx)),
             wmType)[0]
-        wmtab0 = np.linspace(wmType, 2*wmPullout)
+        wmtab0 = np.linspace(wmType, 3*wmPullout)
         for wm, tq in zip(wmtab0, [pmmax/wx for wx in wmtab0]):
             logger.debug("u1 %g psi %g tq %g wm %g",
                          u1max, self.psiref, tq, wm)
             try:
                 w1 = self.w1(u1max, self.psiref, tq, wm)
             except ValueError:
-                wmPullout = kpo * pmmax/tq
+                wmPullout = wm
                 break
-        wmMax = 1.5*wmPullout
+        wmMax = max(1.5*wmPullout, 3*abs(pmmax/T))
         if n:
             wmMax = 2*np.pi*n
         if wmMax > wmPullout:
@@ -300,8 +300,12 @@ class InductionMachine(Component):
             if wm < wmType and wm < wmPullout:
                 return T
             if wm < wmPullout:
-                return pmmax/wm
-            return wmPullout*pmmax/wm**2
+                if pmmax < 0:
+                    return max(T, pmmax/wm)
+                return min(T, pmmax/wm)
+            if pmmax < 0:
+                return max(wmPullout*pmmax/wm**2, T)
+            return min(wmPullout*pmmax/wm**2, T)
 
         r = dict(u1=[], i1=[], T=[], cosphi=[], n=[],
                  plfe1=[], plcu1=[], plcu2=[])
@@ -316,32 +320,32 @@ class InductionMachine(Component):
             w1tab.append(w1)
             u1 = self.u1(w1, self.psi, wm)
             r['u1'].append(np.abs(u1))
-            i1=self.i1(w1, self.psi, wm)
+            i1 = self.i1(w1, self.psi, wm)
             r['i1'].append(np.abs(i1))
             r['cosphi'].append(np.cos(np.angle(u1) - np.angle(i1)))
             r['plfe1'].append(self.m*np.abs(u1)**2/self.rfe(w1, self.psi))
-            i2=self.i2(w1, self.psi, wm)
+            i2 = self.i2(w1, self.psi, wm)
             r['plcu1'].append(self.m*np.abs(i1)**2*self.rstat(w1))
             r['plcu2'].append(self.m*np.abs(i2)**2*self.rrot(w1-self.p*wm))
             r['T'].append(tq - tfric)
             r['n'].append(wm/2/np.pi)
 #            except ValueError as ex:
 #                break
-        r['plfric']=[2*np.pi*n*tfric for n in r['n']]
-        r['pmech']=[2*np.pi*n*tq for n, tq in zip(r['n'], r['T'])]
-        pmech=np.array(r['pmech'])
-        pltotal=(np.array(r['plfe1']) + np.array(r['plfric']) +
+        r['plfric'] = [2*np.pi*n*tfric for n in r['n']]
+        r['pmech'] = [2*np.pi*n*tq for n, tq in zip(r['n'], r['T'])]
+        pmech = np.array(r['pmech'])
+        pltotal = (np.array(r['plfe1']) + np.array(r['plfric']) +
                    np.array(r['plcu1']) + np.array(r['plcu2']))
-        r['losses']=pltotal.tolist()
+        r['losses'] = pltotal.tolist()
 
         if pmech.any():
-            p1=pmech + pltotal
+            p1 = pmech + pltotal
             if np.abs(pmech[0]) < 1e-12:
-                r['eta']=[0]
-                i=1
+                r['eta'] = [0]
+                i = 1
             else:
-                r['eta']=[]
-                i=0
+                r['eta'] = []
+                i = 0
             if np.all(abs(p1[i:]) > abs(pmech[i:])):
                 r['eta'] += (pmech[i:]/(p1[i:])).tolist()
             else:
@@ -369,29 +373,29 @@ def parident(workdir, engine, f1, u1, wdgcon,
     """
     import scipy.interpolate as ip
     import scipy.optimize as so
-    CON={'open': 0, 'wye': 1, 'star': 1, 'delta': 2}
-    p=machine['poles']//2
-    slip=1e-2
-    u1ph=u1
+    CON = {'open': 0, 'wye': 1, 'star': 1, 'delta': 2}
+    p = machine['poles']//2
+    slip = 1e-2
+    u1ph = u1
     if CON[wdgcon] == 1:
         u1ph /= np.sqrt(3)
-    u1max=1.25*u1ph
-    u1min=u1ph/4
-    num_u1_steps=kwargs.get('num_u1_steps', 6)
-    f1tab=[f1]*num_u1_steps
-    u1_logspace=True
+    u1max = 1.25*u1ph
+    u1min = u1ph/4
+    num_u1_steps = kwargs.get('num_u1_steps', 6)
+    f1tab = [f1]*num_u1_steps
+    u1_logspace = True
     if u1_logspace:
-        b=(u1min-u1max)/np.log(u1min/u1max)
-        a=u1max/b
-        u1tab=[b*(a+np.log(x))
+        b = (u1min-u1max)/np.log(u1min/u1max)
+        a = u1max/b
+        u1tab = [b*(a+np.log(x))
                  for x in np.linspace(u1min/u1max, 1,
                                       num_u1_steps-1)]
     else:
-        u1tab=np.linspace(u1min, u1max, num_u1_steps-1).tolist()
+        u1tab = np.linspace(u1min, u1max, num_u1_steps-1).tolist()
 
     u1tab.append(u1ph)
     # Note: first num_u1_steps-1 are noload operation only
-    parvardef={
+    parvardef = {
         "decision_vars": [
             {"values": u1tab, "name": "u1"},
             {"values": f1tab, "name": "f1"},
@@ -400,19 +404,19 @@ def parident(workdir, engine, f1, u1, wdgcon,
         ]
     }
 
-    parvar=femagtools.parstudy.List(
+    parvar = femagtools.parstudy.List(
         workdir, condMat=condMat,
         magnetizingCurves=magnetizingCurves)
 
     # set AC simulation
-    Q2=machine['rotor']['num_slots']
-    da1=machine['bore_diam']
-    slotmodel=[k for k in machine['rotor'] if isinstance(
+    Q2 = machine['rotor']['num_slots']
+    da1 = machine['bore_diam']
+    slotmodel = [k for k in machine['rotor'] if isinstance(
         machine['rotor'][k], dict)][-1]
-    Dr=(da1 - 2*machine['airgap'] -
+    Dr = (da1 - 2*machine['airgap'] -
           machine['rotor'][slotmodel].get('slot_height', 0) -
           machine['rotor'][slotmodel].get('slot_h1', 0))
-    bar_len=machine['lfe']+np.pi*Dr/Q2/np.sin(np.pi*p/Q2)
+    bar_len = machine['lfe']+np.pi*Dr/Q2/np.sin(np.pi*p/Q2)
 
     simulation = dict(
         calculationMode="asyn_motor",
@@ -430,9 +434,9 @@ def parident(workdir, engine, f1, u1, wdgcon,
     m = copy.deepcopy(machine)
     try:
         m['windings'].pop('resistance')
-    except:
+    except KeyError:
         pass
-    results = parvar(parvardef, machine, simulation, engine)
+    results = parvar(parvardef, m, simulation, engine)
 
     if simulation['wdgcon'] == 1:
         connu, conni = 1/np.sqrt(3), 1

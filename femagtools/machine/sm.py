@@ -11,6 +11,7 @@ import scipy.optimize as so
 import scipy.interpolate as ip
 from .utils import resistance
 import logging
+import warnings
 
 EPS = 1e-13
 
@@ -25,6 +26,7 @@ eecdefaults = dict(
     kfric_b=1)
 
 logger = logging.getLogger('sm')
+logging.captureWarnings(True)
 
 
 def _linsampl(exc, excl, a):
@@ -46,7 +48,7 @@ def _splinterp(beta, i1, betax, i1x, a):
     """auxiliary function to increase resolution of array a
     using a cubic spline interpolation.
     arguments:
-    beta: (list) n original up-i angles in rad 
+    beta: (list) n original up-i angles in rad
     i1: (list) m original current in A
     betax: (list) nx new up-i angles in rad
     i1x: (list) mx new currents
@@ -235,18 +237,22 @@ class SynchronousMachine(object):
             startvals = self.bounds[0][1], 0, sum(self.bounds[-1])/2
         else:
             startvals = -self.bounds[0][1], 0, sum(self.bounds[-1])/2
-        res = so.minimize(
-            self.culoss, startvals, method='SLSQP',  # trust-constr
-            bounds=self.bounds,
-            #            jac=gradient_respecting_bounds(self.bounds, self.culoss),
-            constraints=[
-                {'type': 'eq',
-                 'fun': lambda iqd: self.torque_iqd(*iqd) - torque}],
-            options={'disp': disp, 'maxiter': maxiter})
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            res = so.minimize(
+                self.culoss, startvals, method='SLSQP',  # trust-constr
+                bounds=self.bounds,
+                #            jac=gradient_respecting_bounds(self.bounds, self.culoss),
+                constraints=[
+                    {'type': 'eq',
+                     'fun': lambda iqd: self.torque_iqd(*iqd) - torque}],
+                options={'disp': disp, 'maxiter': maxiter})
         if res['success']:
             return res.x
         logger.warning("%s: torque=%f %f, io=%s",
-                       res['message'], torque, self.torque_iqd(*startvals), startvals)
+                       res['message'], torque, self.torque_iqd(*startvals),
+                       startvals)
         raise ValueError(res['message'])
 
     def iqd_torque_umax(self, torque, w1, u1max, io=0,

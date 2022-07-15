@@ -1,6 +1,8 @@
 # Changelog
 
 This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
+## Release 1.1.19
+        - multiproc engine with timestep parameter for progress logging
 
 ## Release 1.1.18
 	- added templatedirs parameter for user specific mako templates

@@ -360,16 +360,17 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     arguments:
     workdir --directory for intermediate files
-    endine -- calculation driver (multiproc, docker, condor)
+    engine -- calculation driver (multiproc, docker, condor)
     f1 -- stator voltage frequency [Hz]
     u1 -- stator voltage (line-to-line) [V]
     wdgcon -- winding connection  ('open', 'wye', 'star', 'delta')
     machine -- dict() with machine parameters
-    magnetizingCurves -- list of dict() with BH curves
+    magnetizingCurves -- list of dict() with BH curves (or directory with MC/MCV files)
     condMat -- list of dict() with conductor material properties
 
     optional:
     num_u1_steps: (int) number of u1 steps for the no-load and load calculation (default 6)
+    u1_logspace: (bool) uses log distributed voltage samples if true (linear otherwise) (default true)
     """
     import scipy.interpolate as ip
     import scipy.optimize as so
@@ -383,7 +384,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     u1min = u1ph/4
     num_u1_steps = kwargs.get('num_u1_steps', 6)
     f1tab = [f1]*num_u1_steps
-    u1_logspace = True
+    u1_logspace = kwargs.get('u1_logspace', True)
     if u1_logspace:
         b = (u1min-u1max)/np.log(u1min/u1max)
         a = u1max/b

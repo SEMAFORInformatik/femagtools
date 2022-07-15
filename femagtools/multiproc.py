@@ -73,24 +73,24 @@ class ProtFile:
                 self.n += 1
             elif line.startswith('Number movesteps Fe-Losses'):
                 return ''
-        if self.looplen == 0:
-            return ''
+
         return f'{self.percent():3.1f}%'  # {self.n}/{self.looplen}'
 
 
 class ProgressLogger(threading.Thread):
-    def __init__(self, dirs, num_cur_steps):
+    def __init__(self, dirs, num_cur_steps, timestep):
         threading.Thread.__init__(self)
         self.dirs = dirs
         self.num_cur_steps = num_cur_steps
         self.running = False
+        self.timestep = timestep
 
     def run(self):
         self.running = True
         protfiles = [ProtFile(d, self.num_cur_steps)
                      for d in self.dirs]
         while self.running:
-            time.sleep(2)
+            time.sleep(self.timestep)
             logmsg = [p.update() for p in protfiles]
             summary = [l  # f'<{i}> {l}'
                        for i, l in enumerate(logmsg)
@@ -154,6 +154,7 @@ class Engine:
         cmd: the program (executable image) to be run
             (femag dc is used if None)
         process_count: number of processes (cpu_count() if None)
+        progress_timestep: time step in seconds for progress log messages if > 0)
     """
 
     def __init__(self, **kwargs):
@@ -165,7 +166,7 @@ class Engine:
                 self.cmd.append('-m')
 
         self.progressLogger = 0
-        self.num_cur_steps = kwargs.get('num_cur_steps', 1)
+        self.progress_timestep = kwargs.get('timestep', 3)
 
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`Job`
@@ -191,10 +192,10 @@ class Engine:
         if platform.system() == 'Windows':
             args.append('-m')
 
-        if self.cmd:
+        try:
             for t in self.job.tasks:
                 t.cmd = self.cmd
-        else:
+        except AttributeError:
             for t in self.job.tasks:
                 t.cmd = [cfg.get_executable(
                     t.stateofproblem)] + args
@@ -205,12 +206,14 @@ class Engine:
                                                   t.directory,
                                                   t.fsl_file))
                       for t in self.job.tasks]
-        # used to free resources after calculations have finished. thomas.maier/OSWALD
         self.pool.close()
-        self.progressLogger = ProgressLogger(
-            [t.directory for t in self.job.tasks],
-            num_cur_steps=self.job.num_cur_steps)
-        self.progressLogger.start()
+
+        if self.progress_timestep:
+            self.progressLogger = ProgressLogger(
+                [t.directory for t in self.job.tasks],
+                num_cur_steps=self.job.num_cur_steps,
+                timestep=self.progress_timestep)
+            self.progressLogger.start()
         return len(self.tasks)
 
     def join(self):

@@ -117,6 +117,7 @@ class Reader:
         self.flux = {}
         self.magnet = {}
         self.airgapInduction = {}
+        self.airgap = {}
         self.flux_fft = {}
         self.linearForce = []
         self.linearForce_fft = []
@@ -404,7 +405,10 @@ class Reader:
     def __read_machine_excitation(self, content):
         rec = self.__findNums(content[1])
         if len(rec) == 1:
-            self.machine['ex_current'] = floatnan(rec[-1])
+            if content[1].startswith('Magnets:'):
+                self.machine['brem'] = floatnan(rec[-1])
+            else:
+                self.machine['ex_current'] = floatnan(rec[-1])
         return
 
     def __read_lossPar(self, content):
@@ -1595,6 +1599,7 @@ class Reader:
                                            'flux_fft',
                                            'wdgfactors',
                                            'airgapInduction',
+                                           'airgap',
                                            'magnet',
                                            'scData',
                                            'dqPar',

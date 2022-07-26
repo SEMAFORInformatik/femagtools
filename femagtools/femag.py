@@ -264,13 +264,6 @@ class BaseFemag(object):
 
         return dict()
 
-    def read_airgap_induction(self, modelname='', offset=0):
-        """read airgap induction"""
-        # we need to figure out the number of poles in model
-        bch = self.read_bch(modelname, offset)
-        return ag.read(os.path.join(self.workdir, 'bag.dat'),
-                       bch.machine['p_sim'])
-
     def _get_modelname_from_log(self):
         """
         Read the modelname from the Femag Log file
@@ -368,7 +361,7 @@ class Femag(BaseFemag):
     def __call__(self, machine, simulation={},
                  options=['-b'], fsl_args=[]):
         """setup fsl file, run calculation and return
-        BCH or LOS results if any."""
+        BCH, ASM, TS or LOS results if any."""
         fslfile = 'femag.fsl'
         with open(os.path.join(self.workdir, fslfile), 'w') as f:
             f.write('\n'.join(self.create_fsl(machine,
@@ -436,6 +429,8 @@ class Femag(BaseFemag):
 
                     bch.torque += bchsc.torque
                     bch.demag += bchsc.demag
+            if 'airgap_induc' in simulation:
+                bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'))
             return bch
         return dict(status='ok', message=self.modelname)
 
@@ -678,7 +673,8 @@ class ZmqFemag(BaseFemag):
                 msg = str(e)
                 return ['{"status":"error", "message":"'+msg+'"}', '{}']
 
-    def run(self, options=['-b'], restart=False, procId=None, stateofproblem='mag_static'):  # noqa: C901
+    def run(self, options=['-b'], restart=False, procId=None,
+            stateofproblem='mag_static'):  # noqa: C901
         """invokes FEMAG in current workdir and returns pid
 
         Args:
@@ -960,5 +956,7 @@ class ZmqFemag(BaseFemag):
                     if r['status'] == 'ok':
                         bch.read(content.decode('latin1'))
 
+            if 'airgap_induc' in simulation:
+                bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'))
             return bch
         raise FemagError(r['message'])

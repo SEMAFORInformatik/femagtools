@@ -96,7 +96,8 @@ class Task(object):
             f.writelines('\n'.join(content))
 
     def get_results(self):
-        """returns result of most recent BCH file (or project specific results if result_func is set)"""
+        """returns result of most recent BCH or ASM file
+        (or project specific results if result_func is set)"""
         if self.result_func:
             return self.result_func(self)
 
@@ -105,15 +106,15 @@ class Task(object):
         bchfile_list = sorted(basedir.glob(
             '*_[0-9][0-9][0-9].B*CH'))
         # check airgap induction file exists
-        airgap_induc = basedir / 'bag.dat'
+        bagdat = basedir / 'bag.dat'
         if bchfile_list:
             result = femagtools.bch.Reader()
             with open(bchfile_list[-1]) as f:
                 logger.info("Reading %s",
                             bchfile_list[-1])
                 result.read(f)
-            if airgap_induc.exists():
-                result.airgap = femagtools.airgap.read(airgap_induc)
+            if bagdat.exists():
+                result.airgap = femagtools.airgap.read(bagdat)
             return result
             # logger.info("%s %s", result.version, result.type),
         else:
@@ -123,8 +124,8 @@ class Task(object):
                 logger.info("Reading %s",
                             asm_list[-1])
                 result = femagtools.asm.read(asm_list[-1])
-                if airgap_induc.exists():
-                    result['airgap'] = femagtools.airgap.read(airgap_induc)
+                if bagdat.exists():
+                    result['airgap'] = femagtools.airgap.read(bagdat)
                 return result
             msg = 'no BCH (or ASM) files in {}'.format(self.directory)
             logger.error(msg)
@@ -220,6 +221,7 @@ class Job(object):
         self.runDirPrefix = ''
         self.basedir = basedir
         self.tasks = []
+        self.num_cur_steps = 0
 
     def cleanup(self):
         """removes all task directories of previous run"""

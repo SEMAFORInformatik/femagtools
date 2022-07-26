@@ -115,7 +115,6 @@ def run_femag(cmd, workdir, fslfile):
         workdir: The workdir where the calculation files are stored
         fslfile: The name of the start file (usually femag.fsl)
     """
-    logger.info('FEMAG %s: %s', workdir, fslfile)
     with open(os.path.join(workdir, "femag.out"), "wb") as out, \
             open(os.path.join(workdir, "femag.err"), "wb") as err:
         try:
@@ -125,6 +124,7 @@ def run_femag(cmd, workdir, fslfile):
                                     stdout=out,
                                     stderr=err,
                                     cwd=workdir)
+            logger.info('%s (pid %d, workdir %s)', cmd, proc.pid, workdir)
             # write pid file
             with open(os.path.join(workdir, 'femag.pid'), 'w') as pidfile:
                 pidfile.write("{}\n".format(proc.pid))
@@ -208,7 +208,8 @@ class Engine:
                       for t in self.job.tasks]
         self.pool.close()
 
-        if self.progress_timestep:
+        if (self.progress_timestep and
+                self.job.num_cur_steps):
             self.progressLogger = ProgressLogger(
                 [t.directory for t in self.job.tasks],
                 num_cur_steps=self.job.num_cur_steps,

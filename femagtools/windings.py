@@ -238,8 +238,6 @@ class Winding(object):
         """returns slot indexes of winding key"""
         ngen = self.m*self.Q//np.gcd(self.Q, self.m*2*self.p)
         taus = 360/self.Q
-        s = [round((x-taus/2)/taus)
-             for x in self.windings[key]['PHI']]
 
         dim = int(self.l*ngen/self.m)
         slots = [(round((x-taus/2)/taus) + ngen*n) % self.Q + 1
@@ -252,8 +250,8 @@ class Winding(object):
         return self.mmf()['alfa0']
 
     def mmf(self, k=1, nmax=9):
-        """returns the dimensionless magnetomotive force (ampere-turns/turns/ampere) and
-        winding angle of phase k (rad)
+        """returns the dimensionless magnetomotive force
+        (ampere-turns/turns/ampere) and winding angle of phase k (rad)
         Arguments:
         k: (int) winding key
         nmax: (int) max order of harmonic (in electrical system)

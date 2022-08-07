@@ -3,7 +3,7 @@ scipy
 mako
 networkx
 vtk
-meshio<=4.4.6
+meshio
 matplotlib
 lxml
 netCDF4

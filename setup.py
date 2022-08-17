@@ -34,6 +34,39 @@ here = os.path.abspath(os.path.dirname(__file__))
 with io.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+
+def get_extra_requires(add_all=True):
+    import re
+    from collections import defaultdict
+
+    extra_requires = [
+        'lxml:             dxfsl',
+        'dxfgrabber:       dxfsl',
+        'networkx:         dxfsl',
+        'matplotlib:       plot',
+        'meshio:           meshio',
+        'vtk:              vtk',
+        'pyzmq:            zmq'
+    ]
+
+    extra_deps = defaultdict(set)
+    for k in extra_requires:
+        if k.strip() and not k.startswith('#'):
+            tags = set()
+            if ':' in k:
+                k, v = k.split(':')
+                tags.update(vv.strip() for vv in v.split(','))
+            tags.add(re.split('[<=>]', k)[0])
+            for t in tags:
+                extra_deps[t].add(k)
+
+    # add tag `all` at the end
+    if add_all:
+        extra_deps['all'] = set(vv for v in extra_deps.values() for vv in v)
+
+    return extra_deps
+
+
 setup(
     description='Python API for FEMAG',
     long_description=long_description,
@@ -43,11 +76,9 @@ setup(
     version=version,
     platforms="any",
     install_requires=['numpy', 'scipy>=1.7', 'mako', 'six', 'lmfit',
-                      'dxfgrabber', 'networkx', 'netCDF4'],
-    extras_require={
-        "meshio": ["meshio", "lxml"],
-        "vtk": ["vtk"]
-    },
+                      'netCDF4'],
+    extras_require=get_extra_requires(),
+    tests_require=['pytest', 'meshio', 'matplotlib'],
     packages=['femagtools', 'femagtools.moo',
               'femagtools.dxfsl', 'femagtools.machine'],
     package_data={'femagtools': ['templates/*.mako']},

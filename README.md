@@ -20,7 +20,12 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 
 The package can be used with Python 3.x on Linux, MacOS or Windows and is hosted on github: <https://github.com/SEMAFORInformatik/femagtools/>` where also many examples can be found in the examples directory. Contributions and feedback to this project are highly welcome.
 
-The installation can be done in the usual ways with pip or conda.
+The installation can be done in the usual ways with pip:
+
+```
+pip install femagtools[all]
+```
+([all] pulls in all optional dependencies.
 
 For details see the documentation <http://docs.semafor.ch/femagtools>
 
@@ -72,5 +77,3 @@ femagtools.__version__
 
 
     '1.0.nn'
-
-

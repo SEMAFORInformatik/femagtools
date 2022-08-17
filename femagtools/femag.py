@@ -23,7 +23,6 @@ import femagtools.magnet
 import femagtools.conductor
 import femagtools.windings
 import femagtools.mcv
-import femagtools.ts
 import femagtools.asm
 import femagtools.airgap as ag
 import femagtools.fsl
@@ -216,6 +215,7 @@ class BaseFemag(object):
 
     def read_ts(self, modelname=None):
         "read most recent TS files and return result"
+        import femagtools.ts
         if not modelname:
             modelname = self._get_modelname_from_log()
 

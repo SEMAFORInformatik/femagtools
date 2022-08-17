@@ -15,7 +15,6 @@ import re
 import sys
 import math
 import femagtools.windings
-from femagtools.dxfsl.converter import convert
 from femagtools.poc import Poc
 from . import __version__
 logger = logging.getLogger(__name__)
@@ -105,6 +104,7 @@ class Builder:
         if templ != 'dxffile':
             return
 
+        from femagtools.dxfsl.converter import convert
         logger.info("Conv stator from %s",
                     model.stator['dxffile']['name'])
         params = {}
@@ -295,6 +295,7 @@ class Builder:
         if templ != 'dxffile':
             return
 
+        from femagtools.dxfsl.converter import convert
         params = {}
         params['split'] = model.magnet[templ].get('split', False)
         params['show_plots'] = model.magnet[templ].get('plot', False)
@@ -398,6 +399,7 @@ class Builder:
         return genwdg
 
     def prepare_model_with_dxf(self, model):
+        from femagtools.dxfsl.converter import convert
         dxfname = model.dxffile.get('name', None)
         if not dxfname:
             logger.error('Name of dxf-file expected')

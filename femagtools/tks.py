@@ -73,23 +73,23 @@ class Reader(object):
                     hbj = readlist(content[i+1:])
                     self.curve[0]['hi'] = hbj[0]
                     self.curve[0]['bi'] = hbj[1]
-                    
+
                 elif l.startswith('Material Name'):
                     self.name = l.split(':')[1].strip()
 
                 elif l.startswith('Comment'):
                     self.mc1_title = l.split(':')[1].strip()
-                        
+
                 elif l.startswith('Mass Density'):
                     d = numPattern.findall(l.replace(',', '.'))
                     self.rho = float(d[0])
                     if l.split()[-1] == 'kg/m^3':
                         self.rho /= 1e3
-                        
+
                 elif l.startswith('f='):
                     fref = numPattern.findall(l.replace(',', '.'))
                     fxref = float(fref[0])
-                    
+
                 elif l.startswith('B(T)	P(W/kg)') or l.startswith('B[T]	P[W/kg]'):
                     b, p = readlist(content[i+1:])
                     self.losses['f'].append(fxref)
@@ -126,10 +126,10 @@ class Reader(object):
             self.losses['cw'] = z[0]
             self.losses['cw_freq'] = z[1]
             self.losses['b_coeff'] = z[2]
-            
+
             self.losses['Bo'] = self.Bo
             self.losses['fo'] = self.fo
-            
+
             # must normalize pfe matrix:
             bmin = np.ceil(10*max([min(b) for b in self.losses['B']]))/10.0
             bmax = round(10*max([max(b) for b in self.losses['B']]))/10.0
@@ -138,20 +138,20 @@ class Reader(object):
             for i, b in enumerate(self.losses['B']):
                 n = len([x for x in Bv if x < b[-1]])
                 if n < len(b) and n < len(Bv):
-                    if Bv[n] < b[-1]+0.1:
+                    if Bv[n] < b[-1]+0.01:
                         b = list(b)
                         b[-1] = Bv[n]
                         n += 1
                 pfunc = ip.interp1d(b, pfe[i], kind='cubic')
                 m.append([float(pfunc(x))
                           for x in Bv[:n]] + [None]*(len(Bv)-n))
-                    
+
             self.losses['B'] = Bv.tolist()
             self.losses['pfe'] = m
 
     def __getitem__(self, index):
         return self.__getattribute__(index)
-    
+
     def getValues(self):
         """return values as mcv dict"""
         return {
@@ -184,7 +184,7 @@ if __name__ == "__main__":
         filename = sys.argv[1]
     else:
         filename = sys.stdin.readline().strip()
-            
+
     tks = Reader(filename)
     if tks.losses:
         import matplotlib.pylab as pl
@@ -198,11 +198,11 @@ if __name__ == "__main__":
 
         femagtools.plot.felosses(tks.losses,
                                  (ch, alpha, cw, beta, gamma),
-#                                 (tks.losses['cw'],
-#                                  tks.losses['cw_freq'],
-#                                  tks.losses['b_coeff']),
+                                 #                                 (tks.losses['cw'],
+                                 #                                  tks.losses['cw_freq'],
+                                 #                                  tks.losses['b_coeff']),
                                  title=filename, log=False)
         pl.show()
-        
+
     mcv = tks.getValues()
     json.dump(mcv, sys.stdout)

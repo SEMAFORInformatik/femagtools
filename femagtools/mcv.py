@@ -17,6 +17,7 @@ import os.path
 import struct
 import math
 import numpy as np
+import scipy.interpolate as ip
 from six import string_types
 import femagtools.losscoeffs as lc
 
@@ -84,6 +85,51 @@ M_LOSS_FREQ = 20
 MUE0 = 4e-7*np.pi  # 1.2566371E-06
 
 
+def recalc_bsin(curve):
+    """recalculates B-H curve (static problems) into effective
+       B-H curve for eddy current problems (voltage driven)."""
+    ncurve = []
+    ndel = 80
+    x = np.linspace(1, ndel, ndel)
+    for c in curve:
+        nc = dict(
+            bi=c['bi'],
+            hi=c['hi'][:2])
+        bh = ip.interp1d(c['bi'], c['hi'],
+                         kind='cubic', assume_sorted=True)
+        for bx in c['bi'][2:-1]:
+            bt = bx*np.sin(2*np.pi/4/ndel*x)
+            nue = np.sum(bh(bt)/bt)/ndel
+            nc['hi'].append(bx*nue)
+        nc['hi'].append(c['hi'][-1])
+        ncurve.append(nc)
+    return ncurve
+
+
+def recalc_hsin(curve):
+    """recalculates B-H curve (static problems) into effective
+       B-H curve for eddy current problems (current driven)."""
+    ncurve = []
+    ndel = 80
+    Tp = 1/200
+    dt = Tp/ndel
+    x = np.linspace(1, ndel, ndel)
+    for c in curve:
+        nc = dict(
+            hi=c['hi'],
+            bi=c['bi'][:2])
+        hb = ip.interp1d(c['hi'], c['bi'],
+                         kind='cubic', assume_sorted=True)
+        for hx in c['hi'][2:-1]:
+            ht = hx*np.sin(2*np.pi/4/ndel*x)
+            bt = hb(ht)*np.sin(2*np.pi/4/ndel*x)
+            nc['bi'].append(
+                2*np.sum((bt[:-1] + bt[1:])*dt/2)/Tp)
+        nc['bi'].append(c['hi'][-1])
+        ncurve.append(nc)
+    return ncurve
+
+
 def approx(db2, curve):
     """return nuer, bi2, a, b approx for curve"""
     nuek0 = (curve['hi'][1] - curve['hi'][0]) / \
@@ -119,6 +165,17 @@ def approx(db2, curve):
     a.append(1.0)
     b.append(MUE0*curve['hi'][-1]-curve['bi'][-1])
     return dict(nuer=nuer, a=a, b=b, bi2=bi2)
+
+
+def fe_sat_mag(curve):
+    fesat = 0
+    for c in curve:
+        js2 = c['bi'][-1] - MUE0*c['hi'][-1]
+        js1 = c['bi'][-2] - MUE0*c['hi'][-2]
+        s = (js1 + js2)/2
+        if s > fesat:
+            fesat = s
+    return fesat
 
 
 def findNotNone(l):
@@ -281,7 +338,7 @@ class Writer(Mcv):
             # must be float?
             self.fp.write(struct.pack('f', d))
 
-    def _prepare(self, fillfac):
+    def _prepare(self, fillfac, recsin):
         """prepare output format (internal use only)"""
         if self.mc1_type in (ORIENT_CRV, ORIENT_PM_CRV):
             self.version_mc_curve = self.ORIENTED_VERSION_MC_CURVE
@@ -294,8 +351,10 @@ class Writer(Mcv):
             for c in curve:
                 c['bi'] = [alpha*b + MUE0*(1. - alpha)*h
                            for b, h in zip(c['bi'], c['hi'])]
-            self.mc1_fillfac = fillfac
-            self.mc1_recalc = 1
+        if recsin == 'flux':
+            curve = recalc_bsin(curve)
+        elif recsin == 'cur':
+            curve = recalc_hsin(curve)
         logger.info("%s Type: %d Num Curves %d",
                     self.name, self.version_mc_curve,
                     len(self.curve))
@@ -307,20 +366,27 @@ class Writer(Mcv):
                         for c, n in zip(curve, self.mc1_mi)]
         for db2, c in zip(self.mc1_db2, curve):
             c.update(approx(db2, c))
+        self.mc1_fe_sat_magnetization = fe_sat_mag(curve)
         self.mc1_mi = [len(c['a'])
                        for c in curve]
         return curve
 
-    def transpose(self, m):
-        maxLen = max([len(l) for l in m])
-        for mi in m:
-            for i in range(len(mi)):
-                mi[i] = mi[i] if mi[i] != None else 0.0
-            mi.extend([0.0] * (maxLen - len(mi)))
-        return np.array(m).transpose(1, 0).tolist()
-
-    def writeBinaryFile(self, fillfac=None):
-        curve = self._prepare(fillfac)
+    def writeBinaryFile(self, fillfac=None, recsin=''):
+        """write binary file after conversion if requested.
+        arguments:
+        fillfac: (float) fill actor
+        recsin: (str) either 'flux' or 'cur'
+        """
+        curve = self._prepare(fillfac, recsin)
+        mc1_type = self.mc1_type
+        mc1_recalc = self.mc1_recalc
+        mc1_fillfac = self.mc1_fillfac
+        if fillfac and fillfac < 1:
+            mc1_recalc = 1
+            mc1_fillfac = fillfac
+        if recsin in ('flux', 'cur'):
+            mc1_type = MAG_AC_CRV
+            mc1_recalc = 1
         # write line, version_mc_curve
         self.writeBlock(self.version_mc_curve)
 
@@ -332,24 +398,24 @@ class Writer(Mcv):
         # write line, mc1_ni(1),mc1_mi(1),mc1_type,mc1_recalc,mc1_db2(1)
         self.writeBlock([int(self.mc1_ni[0]),
                          int(self.mc1_mi[0]),
-                         int(self.mc1_type),
-                         int(self.mc1_recalc),
+                         int(mc1_type),
+                         int(mc1_recalc),
                          self.mc1_db2[0]])
 
         # write line, mc1_remz, mc1_bsat, mc1_bref, mc1_fillfac
         if self.version_mc_curve == self.ACT_VERSION_MC_CURVE:
             self.writeBlock([float(self.mc1_remz), float(self.mc1_bsat),
-                             float(self.mc1_bref), float(self.mc1_fillfac)])
-        if self.mc1_type == DEMCRV_BR:
+                             float(self.mc1_bref), float(mc1_fillfac)])
+        if mc1_type == DEMCRV_BR:
             self.mc1_remz = self.mc1_angle[self.mc1_curves-1]
         if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
            self.version_mc_curve == self.PARAMETER_PM_CURVE:
             logging.debug("write mc1_curves %d", self.mc1_curves)
             self.writeBlock([float(self.mc1_remz), float(self.mc1_bsat),
-                             float(self.mc1_bref), float(self.mc1_fillfac),
+                             float(self.mc1_bref), float(mc1_fillfac),
                              self.mc1_curves])
 
-        if self.mc1_type == DEMCRV_BR:
+        if mc1_type == DEMCRV_BR:
             self.mc1_angle[self.mc1_curves-1] = self.mc1_remz
 
         # data
@@ -435,7 +501,7 @@ class Writer(Mcv):
         except Exception as e:
             logger.error(e, exc_info=True)
 
-    def writeMcv(self, filename, fillfac=None):
+    def writeMcv(self, filename, fillfac=None, recsin=''):
         # windows needs this strip to remove '\r'
         filename = filename.strip()
         self.name = os.path.splitext(filename)[0]
@@ -449,7 +515,7 @@ class Writer(Mcv):
             self.fp = open(filename, "wb")
         logger.info("Write File %s, binary format %d", filename, binary)
 
-        self.writeBinaryFile(fillfac)
+        self.writeBinaryFile(fillfac, recsin)
         self.fp.close()
 
 
@@ -899,13 +965,16 @@ class MagnetizingCurve(object):
         return functools.reduce(lambda a, kv: a.replace(*kv),
                                 repls.items(), name)
 
-    def writefile(self, name, directory='.', fillfac=None):
+    def writefile(self, name, directory='.',
+                  fillfac=None, recsin=''):
         """find magnetic curve by name or id and write binary file
         Arguments:
           name: key of mcv dict (name or id)
           directory: destination directory (must be writable)
-          fillfac: new fill factor (curves will be recalulated
+          fillfac: (float) new fill factor (curves will be recalulated
                 if not None or 0)
+          recsin: (str) either 'flux' or 'cur' recalculates for
+             eddy current calculation (dynamic simulation)
 
         returns filename if found else None
         """
@@ -939,7 +1008,7 @@ class MagnetizingCurve(object):
         filename = ''.join((bname, ext))
         writer = Writer(mcv)
         writer.writeMcv(os.path.join(directory, filename),
-                        fillfac=fillfac)
+                        fillfac=fillfac, recsin=recsin)
         return filename
 
     def fitLossCoeffs(self):

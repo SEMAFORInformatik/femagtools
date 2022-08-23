@@ -1458,12 +1458,23 @@ def winding(wdg, ax=0):
     for i, layer in enumerate(z):
         b = -xoff if i else xoff
         lw = line_thickness[i]
+        direction = ['right', 'left']
+        d = 1
         for m, mslots in enumerate(layer):
             for k in mslots:
                 x = abs(k) * dslot + b
                 xpoints = []
                 ypoints = []
-                if (i == 0 and (k > 0 or (k < 0 and wdg.l > 1))):
+                if wdg.q >= 1:
+                    if (i == 0 and (k > 0 or (k < 0 and wdg.l > 1))):
+                        d = 0  # right
+                    else:
+                        d = 1  # left
+                elif d == 0:
+                    d = 1
+                else:
+                    d = 0
+                if direction[d] == 'right':
                     # first layer, positive dir or neg. dir and 2-layers:
                     #   from right bottom
                     if x + yd > smax+b:

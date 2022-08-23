@@ -101,7 +101,7 @@ class Reader(object):
 
         if pfe and not np.isscalar(self.losses['B'][0]):
             colsize = max([len(p) for p in pfe])
-            losses = np.array([list(p) + [0]*(colsize-len(p)) for p in pfe]).T
+            losses = [list(p) + [0]*(colsize-len(p)) for p in pfe]
             z = lc.fitjordan(
                 self.losses['f'],
                 self.losses['B'],

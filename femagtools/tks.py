@@ -23,6 +23,8 @@ MUE0 = 4e-7*np.pi  # 1.2566371E-06
 fo = 50.
 Bo = 1.5
 numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)')
+HBpattern = re.compile(r'H.+\s+B')
+BPpattern = re.compile(r'B.+\s+P')
 
 
 def readlist(section):
@@ -69,7 +71,7 @@ class Reader(object):
                 content = [l.strip() for l in f.readlines()]
         if content:
             for i, l in enumerate(content):
-                if l.startswith('H(A/m)	B(T)') or l.startswith('H[A/m]	B[T]'):
+                if HBpattern.match(l):
                     hbj = readlist(content[i+1:])
                     self.curve[0]['hi'] = hbj[0]
                     self.curve[0]['bi'] = hbj[1]
@@ -90,12 +92,11 @@ class Reader(object):
                     fref = numPattern.findall(l.replace(',', '.'))
                     fxref = float(fref[0])
 
-                elif l.startswith('B(T)	P(W/kg)') or l.startswith('B[T]	P[W/kg]'):
+                elif BPpattern.match(l):
                     b, p = readlist(content[i+1:])
                     self.losses['f'].append(fxref)
                     self.losses['B'].append(b)
                     pfe.append(p)
-
         logger.info("%s Bmax %3.2f", filename, max(self.curve[0]['bi']))
 
         if pfe and not np.isscalar(self.losses['B'][0]):

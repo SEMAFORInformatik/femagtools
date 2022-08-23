@@ -33,9 +33,9 @@ def fitsteinmetz(f, B, losses, Bo, fo, alpha0=1.0):
                 x[0], x[1], cw, alpha0, beta, fo, Bo),
             fbx, y, (1.0, 2.0))
         fitp = np.insert(fitp, 1, alpha0)
-        
+
     else:
-        pfe = np.asarray(losses).T
+        pfe = losses
         z = []
         for i, fx in enumerate(f):
             if fx:
@@ -79,5 +79,5 @@ def fitjordan(f, B, losses, Bo, fo):
     y = np.array(z).T[2]
     fitp, cov = so.curve_fit(lambda x, ch, alpha, cw, beta, gamma: pfe_jordan(
         x[0], x[1], ch, alpha, cw, beta, gamma, fo, Bo),
-                             fbx, y, (1.0, 1.0, 1.0, 2.0, 1.0))
+        fbx, y, (1.0, 1.0, 1.0, 2.0, 1.0))
     return fitp

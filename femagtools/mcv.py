@@ -93,7 +93,6 @@ def norm_pfe(B, pfe):
     """
     bmin = np.ceil(10*max([b[0] for b in B]))/10.0
     bmax = round(10*max([b[-1] for b in B]))/10.0
-    bx = [b for r in B for b in r]
     Bv = np.arange(bmin, bmax+0.01, 0.1)
     m = []
     for i, b in enumerate(B):
@@ -496,25 +495,45 @@ class Writer(Mcv):
         try:
             nfreq = len([1 for x in self.losses['f'] if x > 0])
             nind = len(self.losses['B'])
-            self.writeBlock([nfreq, nind])
-            self.writeBlock(self.losses['B'] +
-                            [0.0]*(M_LOSS_INDUCT - nind))
-            cw = self.losses['cw']
-            alpha = self.losses['cw_freq']
-            beta = self.losses['b_coeff']
+            if nind < 1 or nfreq < 1:
+                return
+            if np.isscalar(self.losses['B'][0]):
+                B = self.losses['B']
+                pfe = self.losses['pfe']
+                cw = self.losses['cw']
+                alfa = self.losses['cw_freq']
+                beta = self.losses['b_coeff']
+            else:
+                fo = self.losses.get('fo',
+                                     self.mc1_base_frequency)
+                Bo = self.losses.get('Bo',
+                                     self.mc1_base_induction)
+                cw, alfa, beta = lc.fitsteinmetz(
+                    self.losses['f'], self.losses['B'], self.losses['pfe'], Bo, fo)
+                B, pfe = norm_pfe(self.losses['B'], self.losses['pfe'])
+                nind = len(B)
+                self.losses['cw'] = cw
+                self.losses['cw_freq'] = alfa
+                self.losses['b_coeff'] = beta
+                self.losses['Bo'] = Bo
+                self.losses['fo'] = fo
 
-            for f, p in zip(self.losses['f'], self.losses['pfe']):
+            self.writeBlock([nfreq, nind])
+            self.writeBlock(B +
+                            [0.0]*(M_LOSS_INDUCT - nind))
+
+            for f, p in zip(self.losses['f'], pfe):
                 if f is not None:
                     pl = [px if px is not None else lc.pfe_steinmetz(
-                        f, b, cw, alpha, beta,
+                        f, b, cw, alfa, beta,
                         self.losses['fo'],
                         self.losses['Bo'])
 
-                        for px, b in zip(p, self.losses['B'])]
+                        for px, b in zip(p, B)]
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - len(pl)))
                     self.writeBlock(f)
-            for m in range(M_LOSS_FREQ - len(self.losses['pfe'])):
+            for m in range(M_LOSS_FREQ - len(pfe)):
                 self.writeBlock([0.0]*M_LOSS_INDUCT)
                 self.writeBlock(0.0)
 

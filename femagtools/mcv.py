@@ -91,8 +91,10 @@ def norm_pfe(B, pfe):
     pfe: list of list of loss values
     returns B vector and pfe matrix
     """
+    bmin = np.ceil(10*max([b[0] for b in B]))/10.0
+    bmax = round(10*max([b[-1] for b in B]))/10.0
     bx = [b for r in B for b in r]
-    Bv = np.arange(round(min(bx), 1), round(max(bx), 1)+0.01, 0.1)
+    Bv = np.arange(bmin, bmax+0.01, 0.1)
     m = []
     for i, b in enumerate(B):
         n = len([x for x in Bv if x < b[-1]])

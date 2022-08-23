@@ -130,7 +130,6 @@ class Reader(object):
             self.losses['fo'] = self.fo
 
             # must normalize pfe matrix:
-            print(self.losses['B'])
             (self.losses['B'],
              self.losses['pfe']) = femagtools.mcv.norm_pfe(self.losses['B'], pfe)
 

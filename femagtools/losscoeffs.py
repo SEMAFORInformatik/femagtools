@@ -62,7 +62,7 @@ def fitjordan(f, B, losses, Bo, fo):
     losses(f,B)=(ch*(f/fo)**alpha + ch*(f/fo)**beta)*(B/Bo)**gamma
     returns (ch, alpha, cw, beta, gamma)
     """
-    pfe = np.asarray(losses).T
+    pfe = losses
     z = []
     for i, fx in enumerate(f):
         if fx:

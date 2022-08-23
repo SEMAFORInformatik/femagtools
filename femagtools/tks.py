@@ -99,7 +99,6 @@ class Reader(object):
         logger.info("%s Bmax %3.2f", filename, max(self.curve[0]['bi']))
 
         if pfe and not np.isscalar(self.losses['B'][0]):
-            import scipy.interpolate as ip
             colsize = max([len(p) for p in pfe])
             losses = np.array([list(p) + [0]*(colsize-len(p)) for p in pfe]).T
             z = lc.fitjordan(
@@ -131,23 +130,9 @@ class Reader(object):
             self.losses['fo'] = self.fo
 
             # must normalize pfe matrix:
-            bmin = np.ceil(10*max([min(b) for b in self.losses['B']]))/10.0
-            bmax = round(10*max([max(b) for b in self.losses['B']]))/10.0
-            Bv = np.arange(bmin, bmax+0.01, 0.1)
-            m = []
-            for i, b in enumerate(self.losses['B']):
-                n = len([x for x in Bv if x < b[-1]])
-                if n < len(b) and n < len(Bv):
-                    if Bv[n] < b[-1]+0.01:
-                        b = list(b)
-                        b[-1] = Bv[n]
-                        n += 1
-                pfunc = ip.interp1d(b, pfe[i], kind='cubic')
-                m.append([float(pfunc(x))
-                          for x in Bv[:n]] + [None]*(len(Bv)-n))
-
-            self.losses['B'] = Bv.tolist()
-            self.losses['pfe'] = m
+            print(self.losses['B'])
+            (self.losses['B'],
+             self.losses['pfe']) = femagtools.mcv.norm_pfe(self.losses['B'], pfe)
 
     def __getitem__(self, index):
         return self.__getattribute__(index)

@@ -85,6 +85,28 @@ M_LOSS_FREQ = 20
 MUE0 = 4e-7*np.pi  # 1.2566371E-06
 
 
+def norm_pfe(B, pfe):
+    """normalize B and pfe
+    B. list of list of flux induction values
+    pfe: list of list of loss values
+    returns B vector and pfe matrix
+    """
+    bx = [b for r in B for b in r]
+    Bv = np.arange(round(min(bx), 1), round(max(bx), 1)+0.01, 0.1)
+    m = []
+    for i, b in enumerate(B):
+        n = len([x for x in Bv if x < b[-1]])
+        if n < len(b) and n < len(Bv):
+            if Bv[n] < b[-1]+0.01:
+                b = list(b)
+                b[-1] = Bv[n]
+                n += 1
+        pfunc = ip.interp1d(b, pfe[i], kind='cubic')
+        m.append([float(pfunc(x))
+                  for x in Bv[:n]] + [None]*(len(Bv)-n))
+    return Bv.tolist(), m
+
+
 def recalc_bsin(curve):
     """recalculates B-H curve (static problems) into effective
        B-H curve for eddy current problems (voltage driven)."""
@@ -480,12 +502,13 @@ class Writer(Mcv):
             beta = self.losses['b_coeff']
 
             for f, p in zip(self.losses['f'], self.losses['pfe']):
-                if f != None:
-                    pl = [px if px != None else lc.pfe_steinmetz(f, b, cw, alpha, beta,
-                                                                 self.losses['fo'],
-                                                                 self.losses['Bo'])
+                if f is not None:
+                    pl = [px if px is not None else lc.pfe_steinmetz(
+                        f, b, cw, alpha, beta,
+                        self.losses['fo'],
+                        self.losses['Bo'])
 
-                          for px, b in zip(p, self.losses['B'])]
+                        for px, b in zip(p, self.losses['B'])]
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - len(pl)))
                     self.writeBlock(f)

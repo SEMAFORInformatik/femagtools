@@ -226,7 +226,7 @@ class Winding(object):
         kc = tauq/(tauq-xic*ag)  # Carter factor
         de = kc * ag
         return (mue0*(self.kw()*self.turns_per_phase(nwires, g))**2 *
-                2*self.m/(np.pi**2)/self.p/de*taup*lfe)
+                4/(np.pi**2)/self.p/de*taup*lfe)
 
     def sequence(self):
         """returns sequence of winding keys"""

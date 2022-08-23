@@ -389,7 +389,8 @@ class Writer(Mcv):
                         for c, n in zip(curve, self.mc1_mi)]
         for db2, c in zip(self.mc1_db2, curve):
             c.update(approx(db2, c))
-        self.mc1_fe_sat_magnetization = fe_sat_mag(curve)
+        if not hasattr(self, 'mc1_fe_sat_magnetization'):
+            self.mc1_fe_sat_magnetization = fe_sat_mag(curve)
         self.mc1_mi = [len(c['a'])
                        for c in curve]
         return curve

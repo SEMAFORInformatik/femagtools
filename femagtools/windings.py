@@ -412,7 +412,6 @@ class Winding(object):
                                      "stroke-linecap": "round"})
 
         direction = ['right', 'left']
-        d = 1
         for i, layer in enumerate(z):
             b = -xoff if i else xoff
             w = i if self.yd > 1 else 0
@@ -422,7 +421,7 @@ class Winding(object):
                     pc = [f"L {slotpos} {-coil_len//2+2} M {slotpos} {-coil_len//2-1}",
                           f"L {slotpos} {-coil_len}"]
 
-                    if self.q >= 1:
+                    if self.q >= 1 or self.l > 1:
                         if (i == 0 and (k > 0 or (k < 0 and self.l > 1))):
                             d = 0  # right
                         else:

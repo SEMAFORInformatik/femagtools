@@ -1321,7 +1321,7 @@ def mmf(f, title='', ax=0):
     phi = [f['alfa0']/np.pi*180, f['alfa0']/np.pi*180]
     y = [min(f['mmf_fft']), 1.1*max(f['mmf_fft'])]
     ax.plot(phi, y, '--')
-    alfa0 = round(f['alfa0']/np.pi*180, 3)
+    alfa0 = round(f['alfa0']/np.pi*180, 2)
     ax.text(phi[0]/2, y[0]+0.05, f"{alfa0}°",
             ha="center", va="bottom")
     ax.annotate(f"", xy=(phi[0], y[0]),
@@ -1459,13 +1459,12 @@ def winding(wdg, ax=0):
         b = -xoff if i else xoff
         lw = line_thickness[i]
         direction = ['right', 'left']
-        d = 1
         for m, mslots in enumerate(layer):
             for k in mslots:
                 x = abs(k) * dslot + b
                 xpoints = []
                 ypoints = []
-                if wdg.q >= 1:
+                if wdg.q >= 1 or wdg.l > 1:
                     if (i == 0 and (k > 0 or (k < 0 and wdg.l > 1))):
                         d = 0  # right
                     else:

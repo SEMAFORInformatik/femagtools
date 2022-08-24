@@ -52,6 +52,7 @@ def q1q2yk(Q, p, m, l=1):
 
 
 class Winding(object):
+    # TODO: raise ValueError "Unbalanced winding" if Q % (m * gcd(Q, p)) != 0
 
     def __init__(self, arg):
         """create winding either from bch winding section or winding dict()
@@ -249,15 +250,13 @@ class Winding(object):
         """returns axis angle of winding 1 in mechanical system"""
         return self.mmf()['alfa0']
 
-    def mmf(self, k=1, nmax=9):
+    def mmf(self, k=1, nmax=21):
         """returns the dimensionless magnetomotive force
         (ampere-turns/turns/ampere) and winding angle of phase k (rad)
         Arguments:
         k: (int) winding key
         nmax: (int) max order of harmonic (in electrical system)
         """
-        taus = 2*np.pi/self.Q
-        t = np.gcd(self.Q, self.p)
         slots = self.slots(k)[0]
         dirs = self.windings[k]['dir']
         # turns = self.windings[k]['N']
@@ -266,6 +265,7 @@ class Winding(object):
                                for n in range(r)])
 
         NY = 4096
+        t = np.gcd(self.Q, self.p)
         y = np.zeros(NY*self.Q//t)
         for i in range(1, self.Q//t+1):
             if i in set(slots):
@@ -274,21 +274,27 @@ class Winding(object):
         yy[:NY//2] = yy[-NY//2:]
         yy = np.tile(yy-np.mean(yy), t)
         yy /= np.max(yy)
-        # y = np.tile(y,t)
 
+        # calc spectrum
         N = len(yy)
         Y = np.fft.fft(yy)
-        imax = np.argmax(np.abs(Y[:N//2]))
+        pb = self.p//t
+        if self.q < 1:
+            imax = pb
+        else:
+            imax = np.argmax(np.abs(Y[:N//2]))
         a = 2*np.abs(Y[imax])/N
+        taus = 2*np.pi/self.Q
         freq = np.fft.fftfreq(N, d=taus/NY)
         T0 = np.abs(1/freq[imax])
         alfa0 = np.angle(Y[imax])
         # if alfa0 < 0: alfa0 += 2*np.pi
-        pos_fft = np.linspace(0, self.Q/t*taus, self.p//t*60)
+        pos_fft = np.linspace(0, 2*np.pi/t, 20*pb)
         D = (a*np.cos(2*np.pi*pos_fft/T0+alfa0))
-        nue, mmf_nue = np.array([(n, a) for n, f in zip(
-            np.arange(0, nmax*self.p),
-            2*np.abs(Y)/N) if a > 0]).T
+        nue, mmf_nue = np.array(
+            [(n, f) for n, f in zip(
+                np.arange(0, nmax),
+                2*np.abs(Y)/N) if f > 0]).T
 
         return dict(
             pos=[i*taus/NY for i in range(len(y))],

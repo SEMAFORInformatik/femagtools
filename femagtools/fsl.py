@@ -190,6 +190,8 @@ class Builder:
                          'alfa = 2*math.pi*m.num_sl_gen/m.tot_num_slot',
                          'num_agnodes = math.floor(m.fc_radius*alfa/agndst + 0.5)'] +
                         fslcode)
+            if hasattr(model, 'num_agnodes'):
+                return fslcode
             return (fslcode +
                     ['post_models("nodedistance", "ndst" )',
                      'agndst=ndst[1]*1e3'])
@@ -345,13 +347,13 @@ class Builder:
 
     def create_new_model(self, model):
         if model.get('num_agnodes', 0):
-            tail = ['m.airgap = -1']
+            tail = ['m.airgap = -2*ag/3']
         else:
             if isinstance(model.get('bore_diam', 0), list):
                 tail = ['m.airgap   = 2*ag[2]/3']
             else:
                 tail = ['m.airgap   = 2*ag/3']
-            tail += [f"m.nodedist = {model.stator.get('nodedist',1)}"]
+        tail += [f"m.nodedist = {model.stator.get('nodedist',1)}"]
 
         return (['-- created by femagtools {}'.format(__version__), ''] +
                 self.__render(model, 'new_model') +

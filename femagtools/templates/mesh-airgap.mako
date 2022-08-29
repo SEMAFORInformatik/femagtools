@@ -6,7 +6,7 @@ end
 ndt(agndst)
 r1 = m.fc_radius - ag/6
 x1, y1 = pr2c(r1, alfa)
-n = math.floor(r1*alfa/agndst + 1.5)
+n = math.floor(m.fc_radius*alfa/agndst + 1.5)
 nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)
 
 r2 = m.fc_radius + ag/6
@@ -15,6 +15,12 @@ nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)
 
 if inner_da_start == nil then
   inner_da_start = da2/2
+end
+if inner_da_end == nil then
+  inner_da_end = da2/2
+end
+if outer_da_end == nil then
+  outer_da_end = da1/2
 end
 nc_line(inner_da_start, 0.0, r1, 0.0, 0.0)
 

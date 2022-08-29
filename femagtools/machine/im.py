@@ -6,14 +6,17 @@
   Copyright 2022: Semafor Informatik & Energie AG, Switzerland
 """
 import numpy as np
+import scipy.interpolate as ip
 import scipy.optimize as so
 import logging
+import pathlib
 from .utils import resistance, leakinductance, wdg_resistance
 import femagtools.windings
 import femagtools.parstudy
 import json
 import copy
 import warnings
+import time
 
 EPS = 1e-13
 
@@ -67,15 +70,29 @@ class InductionMachine(Component):
             if hasattr(self, 'u1ref'):
                 self.psiref = self.u1ref/self.wref
         if 'lh' in parameters:
-            self.ims = 0
-            self.psiref = 1
-            self.iml = 1/self.lh
-            self.mexp = 0
+            def imag(self, psi):
+                """magnetizing current"""
+                return psi/lh
+            self._imag = imag
+        elif 'iml' in parameters:
+            def imag(psi):
+                return (self.iml * np.abs(psi)/self.psiref +
+                        self.ims*np.power(np.abs(psi)/self.psiref, self.mexp))
+            self._imag = imag
+        elif 'im' in parameters:
+            self._imag = ip.interp1d(self.psi, self.im,
+                                     kind='quadratic',
+                                     bounds_error=False,
+                                     fill_value='extrapolate')
         if 'pfe' in parameters:
             self.rh = self.m*(self.psiref*self.wref)**2/self.pfe
         for k in eecdefaults.keys():
             if not hasattr(self, k):
                 setattr(self, k, eecdefaults[k])
+
+    def imag(self, psi):
+        """magnetizing current"""
+        return float(self._imag(psi))
 
     def rfe(self, w, psi):
         """equivalent resistance for iron losses"""
@@ -92,12 +109,6 @@ class InductionMachine(Component):
         except AttributeError:
             pass
         return self.rh
-
-    def imag(self, psi):
-        """magnetizing current"""
-        return (self.iml * np.abs(psi)/self.psiref +
-                self.ims*np.power(np.abs(psi)/self.psiref, self.mexp))
-        # return psi/self.lh
 
     def lrot(self, w):
         """rotor leakage inductance"""
@@ -207,7 +218,7 @@ class InductionMachine(Component):
     def w1(self, u1max, psi, tload, wm):
         """calculate stator frequency with given torque and speed"""
         wsync = max(wm*self.p, 0.001)
-        sk = self.rrot(0.)/(wsync*(self.lstat(wsync) + self.lrot(0.0)))
+        #sk = self.rrot(0.)/(wsync*(self.lstat(wsync) + self.lrot(0.0)))
         if tload < 0:
             b = 0.999*wsync
         else:
@@ -361,53 +372,77 @@ def parident(workdir, engine, f1, u1, wdgcon,
     arguments:
     workdir --directory for intermediate files
     engine -- calculation driver (multiproc, docker, condor)
-    f1 -- stator voltage frequency [Hz]
-    u1 -- stator voltage (line-to-line) [V]
+    f1 -- line voltage frequency [Hz]
+    u1 -- line voltage (line-to-line) [V]
     wdgcon -- winding connection  ('open', 'wye', 'star', 'delta')
     machine -- dict() with machine parameters
     magnetizingCurves -- list of dict() with BH curves (or directory with MC/MCV files)
     condMat -- list of dict() with conductor material properties
 
     optional:
-    num_u1_steps: (int) number of u1 steps for the no-load and load calculation (default 6)
-    u1_logspace: (bool) uses log distributed voltage samples if true (linear otherwise) (default true)
+    num_steps: (int) number of current steps for the no-load
+        calculation (default 5)
+    logspace: (bool) uses log distributed current samples if true
+         (linear otherwise) (default true)
+    templatedirs: (list of str) names of directories to search for templates
     """
-    import scipy.interpolate as ip
-    import scipy.optimize as so
     CON = {'open': 0, 'wye': 1, 'star': 1, 'delta': 2}
     p = machine['poles']//2
     slip = 1e-2
     u1ph = u1
+    w1 = 2*np.pi*f1
     if CON[wdgcon] == 1:
         u1ph /= np.sqrt(3)
-    u1max = 1.25*u1ph
-    u1min = u1ph/4
-    num_u1_steps = kwargs.get('num_u1_steps', 6)
-    f1tab = [f1]*num_u1_steps
-    u1_logspace = kwargs.get('u1_logspace', True)
-    if u1_logspace:
-        b = (u1min-u1max)/np.log(u1min/u1max)
-        a = u1max/b
-        u1tab = [b*(a+np.log(x))
-                 for x in np.linspace(u1min/u1max, 1,
-                                      num_u1_steps-1)]
+    wdg = femagtools.windings.Winding(
+        {'Q': machine['stator']['num_slots'],
+         'm': machine['windings']['num_phases'],
+         'p': machine['poles']//2,
+         'l': machine['windings']['num_layers'],
+         'yd': machine['windings']['coil_span']})
+    L1 = wdg.inductance(
+        nwires=machine['windings']['num_wires'],
+        g=machine['windings']['num_par_wdgs'],
+        da1=machine['bore_diam'],
+        lfe=machine['lfe'],
+        ag=machine['airgap'])
+    i1max = 1.7*u1ph/w1/L1
+    i1min = i1max/5
+    num_steps = kwargs.get('num_steps', 5)
+    if kwargs.get('logspace', True):
+        b = (i1min-i1max)/np.log(i1min/i1max)
+        a = i1max/b
+        i1tab = [b*(a+np.log(x))
+                 for x in np.linspace(i1min/i1max, 1,
+                                      num_steps)]
     else:
-        u1tab = np.linspace(u1min, u1max, num_u1_steps-1).tolist()
+        i1tab = np.linspace(i1min, i1max, num_steps).tolist()
 
-    u1tab.append(u1ph)
-    # Note: first num_u1_steps-1 are noload operation only
-    parvardef = {
-        "decision_vars": [
-            {"values": u1tab, "name": "u1"},
-            {"values": f1tab, "name": "f1"},
-            {"values": [f/p for f in f1tab[:-1]] + [(1-slip)*f1tab[-1]/p],
-             "name": "speed"}
-        ]
-    }
+    m = copy.deepcopy(machine)
+    Q2 = m['rotor']['num_slots']
+    noloadsim = dict(
+        calculationMode="noloadflux-rot",
+        curvec=i1tab,
+        num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
+        Q2=Q2)
 
-    parvar = femagtools.parstudy.List(
+    da1 = m['bore_diam']
+    ag = m['airgap']
+    # do not create airgap nodechains automatically
+    m['num_agnodes'] = 8*Q2*np.floor(da1*np.pi/Q2/4/ag+0.5)
+    try:
+        m['windings'].pop('resistance')
+    except KeyError:
+        pass
+
+    parstudy = femagtools.parstudy.ParameterStudy(
         workdir, condMat=condMat,
         magnetizingCurves=magnetizingCurves)
+
+    builder = femagtools.fsl.Builder(kwargs.get('templatedirs', []))
+    model = femagtools.model.MachineModel(m)
+    #modelfiles = parstudy.setup_model(builder, model)
+    extra_result_files = [f'noloadbag-{i+1}.dat'
+                          for i in range(num_steps)] + ['psi-rot-mag.dat']
 
     # set AC simulation
     Q2 = machine['rotor']['num_slots']
@@ -419,63 +454,87 @@ def parident(workdir, engine, f1, u1, wdgcon,
           machine['rotor'][slotmodel].get('slot_h1', 0))
     bar_len = machine['lfe']+np.pi*Dr/Q2/np.sin(np.pi*p/Q2)
 
-    simulation = dict(
+    loadsim = dict(
         calculationMode="asyn_motor",
         bar_len=bar_len,
         wind_temp=20,
         bar_temp=20,
-        speed=f1/p,
+        speed=(1-slip)*f1/p,
         f1=f1,
         airgap_induc=True,
         num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
         wdgcon=CON[wdgcon],  # 0:open, 1:star, 2:delta
         u1=u1ph)  # phase voltage
 
-    # start calculation
-    m = copy.deepcopy(machine)
-    try:
-        m['windings'].pop('resistance')
-    except KeyError:
-        pass
-    results = parvar(parvardef, m, simulation, engine)
+    # prepare calculation
+    job = engine.create_job(workdir)
+    task = job.add_task(_eval_noloadrot(i1tab, u1ph))
+    # create model
+    for mc in parstudy.femag.copy_magnetizing_curves(
+            model,
+            dir=task.directory):
+        task.add_file(mc)
 
-    if simulation['wdgcon'] == 1:
-        connu, conni = 1/np.sqrt(3), 1
-    elif simulation['wdgcon'] == 2:
-        connu, conni = 1, 1/np.sqrt(3)
-    else:
-        connu, conni = 1, 1
-    u1tab = [connu*f['u1'][0] for f in results['f']]
-    i1 = [conni*f['i1'][0] for f in results['f']]
+    # task.set_stateofproblem('mag_dynamic')
+    task.add_file(
+        'femag.fsl',
+        builder.create_model(model, condMat=parstudy.femag.condMat) +
+        builder.create_analysis(noloadsim) +
+        ['save_model("close")'])
+    task = job.add_task()
+    task.set_stateofproblem('mag_dynamic')
+    for mc in parstudy.femag.copy_magnetizing_curves(
+            model,
+            dir=task.directory,
+            recsin='flux'):
+        task.add_file(mc)
+    task.add_file(
+        'femag.fsl',
+        builder.create_model(model, condMat=parstudy.femag.condMat) +
+        builder.create_analysis(loadsim) +
+        ['save_model("close")'])
+    # start FE simulations
+    tstart = time.time()
+    status = engine.submit(extra_result_files)
+    logger.info('Started %s', status)
+    status = engine.join()
+    tend = time.time()
+    logger.info("Elapsed time %d s Status %s",
+                (tend-tstart), status)
+    # collect results
+    results = []
+    for t in job.tasks:
+        if t.status == 'C':
+            results.append(t.get_results())
+        else:
+            results.append([])
+
+    i1_0 = results[0]['i1_0']
+    psi1_0 = results[0]['psi1_0']
     # amplitude of flux density in airgap
-    bamp = [f['airgap']['Bamp'] for f in results['f']]
-    wdg = femagtools.windings.Winding(
-        {'Q': machine['stator']['num_slots'],
-         'p': machine['poles']//2,
-         'm': machine['windings']['num_phases'],
-         'l': machine['windings']['num_layers'],
-         'yd': machine['windings']['coil_span']})
+    bamp = results[0]['Bamp']
     taup = np.pi*da1/2/p
     lfe = machine['lfe']
     n1 = wdg.turns_per_phase(machine['windings']['num_wires'],
                              machine['windings']['num_par_wdgs'])
     # main flux per phase at no load in airgap
     psih = [n1*wdg.kw()*taup*lfe*np.sqrt(2)/np.pi*b
-            for b in bamp[:-1]]
-    w1 = 2*np.pi*results['f'][0]['f1'][0]
-    u1ref = u1ph
-    psiref = float(ip.interp1d(u1tab[:-1], psih, kind='cubic')(u1ref))
+            for b in bamp]
 
-    fitp, cov = so.curve_fit(
-        lambda x, iml, ims, mexp: iml*x/psiref + ims*(x/psiref)**mexp,
-        psih, i1[:-1], (1, 1, 1))
-    iml, ims, mexp = fitp
+    u1ref = u1ph
+    psi1ref = u1ref/w1
+    logger.info("psi1_0 %s", psi1_0)
+    logger.info("i1tab %s", i1tab)
+    logger.info("psi1ref %s", psi1ref)
+    logger.info("u1ref %s", u1ref)
+    logger.info("w1 %s", w1)
+    logger.info("L1 %s", L1)
 
     try:
         r1 = machine['windings']['resistance']
     except KeyError:
         n = machine['windings']['num_wires']
-        g = simulation['num_par_wdgs']
+        g = loadsim['num_par_wdgs']
         hs = machine['stator'].get('slot_height', 0)
         if 'dia_wire' in machine['windings']:
             aw = np.pi*machine['windings']['dia_wire']**2/4
@@ -488,46 +547,88 @@ def parident(workdir, engine, f1, u1, wdgcon,
         r1 = wdg_resistance(
             wdg, n, g, aw, da1, hs, lfe, sigma)
 
-    # must correct psiref
-    lh = psiref/(iml+ims)
-    ls1 = results['f'][-1]['lh'] - (1+wdg.harmleakcoeff())*lh
+    psi1 = ip.interp1d(i1_0, psi1_0, kind='quadratic')
+    imref = so.fsolve(
+        lambda imx: u1ref - np.sqrt((imx*r1)**2 +
+                                    (w1*psi1(imx))**2),
+        u1ph/w1/L1)[0]
+    psihref = float(ip.interp1d(i1tab, psih, kind='quadratic')(imref))
+    psi1ref = float(psi1(imref))
 
-    def imag(x):
-        return iml*x/psiref + ims*(x/psiref)**mexp
-    psix = so.fsolve(
-        lambda psi: u1ref - np.sqrt(
-            (r1*imag(psi))**2 +
-            (w1*ls1 + w1*psi)**2),
-        psiref)[0]
-    logger.info(psix)
-    psiref = psix
-    fitp, cov = so.curve_fit(
-        lambda x, iml, ims, mexp: iml*x/psiref + ims*(x/psiref)**mexp,
-        psih, i1[:-1], (1, 1, 1))
-    iml, ims, mexp = fitp
+    lh = psihref/imref
+    L1 = psi1ref/imref
+    ls1 = L1 - lh  # (1+wdg.harmleakcoeff())*lh
+    # end winding leakage
+    logger.info('Lh: %g Ls1: %g', results[1]['lh'], ls1)
 
-    p = results['f'][0]['p']
-    m = results['f'][0]['num_phases']
-    lh = psiref/(iml+ims)
-    ls1 = results['f'][-1]['lh'] - lh
-    r2 = results['f'][-1]['r2']
-    ls2 = results['f'][-1]['ls2']
-    pfe = results['f'][-1]['pfe1'][0]
-    rotor_mass = sum([results['f'][-1].get('conweight', 0),
-                      results['f'][-1].get('lamweight', 0)])
+    p = results[1]['p']
+    m = results[1]['num_phases']
+
+    r2 = results[1]['r2']
+    ls2 = results[1]['ls2']
+    pfe = results[1]['pfe1'][0]
+    rotor_mass = sum([results[1].get('conweight', 0),
+                      results[1].get('lamweight', 0)])
 
     n = machine['windings']['num_wires']
-    g = simulation['num_par_wdgs']
-    ag = machine['airgap']
+    g = loadsim['num_par_wdgs']
+
     return {
         'p': p, 'm': m,
         'f1ref': f1, 'u1ref': u1ph,
         'rotor_mass': rotor_mass, 'kfric_b': 1,
         'r1': r1, 'r2': r2,
         'lsigma1': ls1, 'lsigma2': ls2,
-        'psiref': psiref, 'wref': w1,
+        'psiref': psihref, 'wref': w1,
         'fec': pfe, 'fee': 0, 'fexp': 7.0,
-        'iml': iml, 'ims': ims, 'mexp': mexp}
+        'im': i1tab, 'psi': psih}
+
+
+class _eval_noloaddc():
+    """ Result Functor for noloadflux dc calc"""
+
+    def __init__(self, i1tab, u1ref):
+        self.u1ref = u1ref
+        self.i1tab = i1tab
+
+    def __call__(self, task):
+        basedir = pathlib.Path(task.directory)
+        psimag = np.loadtxt(basedir/'noloadflux.dat').T
+        im, psi = psimag[0:6:2], psimag[12::2]
+        d = 0
+        a = np.array(
+            (np.cos(d), np.cos(d-2*np.pi/3), np.cos(d+2*np.pi/3)))/3*2
+        i0 = np.sum(a*im.T, axis=1)/np.sqrt(2)
+        psi0 = np.sum(a*psi.T, axis=1)/np.sqrt(2)
+
+        bag = np.loadtxt(basedir / 'noloadbag.dat').T
+        Bamp = [b['Bamp'] for b in [
+            femagtools.airgap.fft(bag[0], b)
+            for b in bag[1:]]]
+        return {'i1_0': i0, 'psi1_0': psi0, 'Bamp': Bamp}
+
+
+class _eval_noloadrot():
+    """ Result Functor for noloadflux rot calc"""
+
+    def __init__(self, i1tab, u1ref):
+        self.u1ref = u1ref
+        self.i1tab = i1tab
+
+    def __call__(self, task):
+        basedir = pathlib.Path(task.directory)
+        psimag = np.loadtxt(basedir/'psi-rot-mag.dat')
+        pos = psimag[:, 0]
+        i0 = psimag[0, 1::2]
+        psi0 = np.mean(psimag[:, 2::2].T, axis=1)
+
+        # matrix (i x j x k) of curr, rotor pos, angle
+        bags = [np.loadtxt(p)
+                for p in sorted(basedir.glob('noloadbag-*.dat'))]
+        Bamp = np.mean([[femagtools.airgap.fft(bags[0][:, 0], bx)['Bamp']
+                         for bx in bag[:, 1:].T] for bag in bags],
+                       axis=1)
+        return {'i1_0': i0, 'psi1_0': psi0, 'Bamp': Bamp}
 
 
 if __name__ == '__main__':

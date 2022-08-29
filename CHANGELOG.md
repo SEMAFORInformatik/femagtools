@@ -1,6 +1,19 @@
 # Changelog
 
-This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
+	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
+
+## Release 1.1.23
+	- parameter ident for im: noload calc with rotate
+
+## Release 1.1.22
+	- mcv loss data handling
+
+## Release 1.1.21
+	- recalc mcv for dynamic (eddy current) simulations
+
+## Release 1.1.20
+	- extra_require: vtk, dxfgrabber, networkx, meshio, pyzmq, matplotlib
+
 ## Release 1.1.19
         - multiproc engine with timestep parameter for progress logging
 

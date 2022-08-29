@@ -1,21 +1,11 @@
 
-<<<<<<< HEAD
--- airgap
-if num_agnodes ~= nil then
-  alfa = 2*math.pi*m.npols_gen/m.num_poles
-end
-ndt(agndst)
-r1 = m.fc_radius - ag/6
-x1, y1 = pr2c(r1, alfa)
-n = math.floor(m.fc_radius*alfa/agndst + 1.5)
-nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)
-=======
-
--- airgap if not already created...
->>>>>>> 567a0bff3b807636880bea6b3dd508b95cdabc05
+-- create airgap nodechains and mesh if not already created...
 
 airgap_created = airgap_created or false
 if airgap_created ~= true then
+    if num_agnodes ~= nil then
+      alfa = 2*math.pi*m.npols_gen/m.num_poles
+    end
     if agndst == nil then
       agndst = m.nodedist
     end
@@ -25,7 +15,7 @@ if airgap_created ~= true then
     end
     r1 = m.fc_radius - ag/6
     x1, y1 = pr2c(r1, alfa)
-    n = math.floor(r1*alfa/agndst + 1.5)
+    n = math.floor(m.fc_radius*alfa/agndst + 1.5)
     nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)
 
     r2 = m.fc_radius + ag/6
@@ -53,30 +43,3 @@ if airgap_created ~= true then
     x0, y0 = pr2c(r2+ag/6, alfa/2)
     create_mesh_se(x0, y0)
 end
-<<<<<<< HEAD
-if inner_da_end == nil then
-  inner_da_end = da2/2
-end
-if outer_da_end == nil then
-  outer_da_end = da1/2
-end
-nc_line(inner_da_start, 0.0, r1, 0.0, 0.0)
-
-if outer_da_start == nil then
-  outer_da_start = da1/2
-end
-nc_line(r2, 0.0, outer_da_start, 0.0, 0.0)
-
-if m.tot_num_slot > m.num_sl_gen then
-  x3, y3 = pr2c(inner_da_end, alfa)
-  x4, y4 = pr2c(outer_da_end, alfa)
-  nc_line(x3, y3, x1, y1, 0, 0)
-  nc_line(x4, y4, x2, y2, 0, 0)
-end
-
-x0, y0 = pr2c(r1-ag/6, alfa/2)
-create_mesh_se(x0, y0)
-x0, y0 = pr2c(r2+ag/6, alfa/2)
-create_mesh_se(x0, y0)
-=======
->>>>>>> 567a0bff3b807636880bea6b3dd508b95cdabc05

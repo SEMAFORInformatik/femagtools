@@ -29,7 +29,7 @@ for j=1, #srkeys do
 end
 
  post_models("end_wind_leak","leak")
- L_end = math.sqrt(leak[2]^2+leak[3]^2)
+ L_end = 0 -- math.sqrt(leak[2]^2+leak[3]^2)
 
 -- stator winding resistance per phase
 tcoeff = 3.93e-3 -- temp coeff 1/K

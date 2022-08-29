@@ -174,10 +174,6 @@ class ParameterStudy(object):
         for d in self.femag.workdir.glob('[0-9]*'):
             shutil.rmtree(d)
 
-        if immutable_model:
-            modelfiles = self.setup_model(builder, model)
-            logger.info("Files %s", modelfiles+extra_files)
-
         extra_result_files = []
         if simulation.get('airgap_induc', False):
             extra_result_files.append('bag.dat')
@@ -193,6 +189,10 @@ class ParameterStudy(object):
 
         prob = femagtools.moproblem.FemagMoProblem(decision_vars,
                                                    objective_vars)
+
+        if immutable_model:
+            modelfiles = self.setup_model(builder, model, recsin=fea.recsin)
+            logger.info("Files %s", modelfiles+extra_files)
 
         job = engine.create_job(self.femag.workdir)
         # for progress logger
@@ -264,7 +264,8 @@ class ParameterStudy(object):
                     logger.info("prepare %s", x)
                     for mc in self.femag.copy_magnetizing_curves(
                             model,
-                            task.directory):
+                            dir=task.directory,
+                            recsin=fea.recsin):
                         task.add_file(mc)
 
                     task.add_file(

@@ -268,9 +268,9 @@ class MachineModel(Model):
 
         mcv = 0
         if 'stator' in self.__dict__:
+            fillfac = self.stator.get('fillfac', 1.0)
             for k in ('mcvkey_yoke', 'mcvkey_teeth'):
                 mcvname = k+'_name'
-                fillfac = self.stator.get('fillfac', 1.0)
                 if mcvname not in self.stator:
                     try:
                         if self.stator[k] != 'dummy':
@@ -406,6 +406,7 @@ class MachineModel(Model):
 
 class FeaModel(Model):
     def __init__(self, parameters):
+        self.recsin = ''  # recalc mcv for dynamic simulation
         self.cufilfact = 0.45
         self.culength = 1.4
         self.wind_temp = 20
@@ -418,6 +419,8 @@ class FeaModel(Model):
         self.plots = []
         self.airgap_induc = []
         super(self.__class__, self).__init__(parameters)
+        if parameters.get('calculationMode', '') == 'asyn_motor':
+            self.recsin = 'flux'
 
     def get_num_cur_steps(self):
         """returns number of curSteps (used for progress calc)"""

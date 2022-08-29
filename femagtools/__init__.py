@@ -20,6 +20,7 @@ from .model import MachineModel
 from .fsl import Builder
 from .magnet import Magnet
 from .femag import Femag, ZmqFemag
+from .conductor import Conductor
 
 
 def read_bchfile(filename):
@@ -34,6 +35,7 @@ def read_bchfile(filename):
 def create_fsl(machine,
                operatingconditions={},
                magnetmat=[],
+               condMat=[],
                templatedirs=[]):
     """create FSL command list from model parameters
 
@@ -49,6 +51,12 @@ def create_fsl(machine,
     magnets = []
     if magnetmat:
         magnets = Magnet(magnetmat)
+    if condMat:
+        if not isinstance(condMat, Conductor):
+            condMat = Conductor(condMat)
+
     if operatingconditions:
         return builder.create(model, operatingconditions, magnets)
-    return builder.create_model(model, magnets=magnets) + ['save_model("cont")']
+    return builder.create_model(model,
+                                condMat=condMat,
+                                magnets=magnets) + ['save_model("cont")']

@@ -725,8 +725,8 @@ class Isa7(object):
             return None
 
     def flux_density(self, el, icur, ibeta):
-        """return move pos and flux density (bx, by) or (br, bt)
-        of element for current and beta 
+        """return move pos and flux density in cartesian coordinates (bx, by)
+        of element for current and beta
 
         Arguments:
           el: element
@@ -748,8 +748,7 @@ class Isa7(object):
         """return demagnetization Hx, Hy at element
         Arguments:
           el: element
-          icur, ibeta: current, beta index
-          cosys: coodinate system of model ('polar', 'cartes', 'cylind')"""
+          icur, ibeta: current, beta index"""
         flxdens = self.flux_density(el, icur, ibeta)
         return (flxdens['pos'], el.demag_b((flxdens['bx'], flxdens['by']),
                                            self.MAGN_TEMPERATURE))

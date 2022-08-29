@@ -403,10 +403,12 @@ class Femag(BaseFemag):
                     simulation.update(
                         get_shortCircuit_parameters(bch,
                                                     simulation.get('initial', 2)))
+
                     builder = femagtools.fsl.Builder(self.templatedirs)
                     if "hc_min" in simulation:
                         self.model.__setattr__(
                             "hc_min", simulation.get("hc_min", 95))
+
                     fslcmds = (builder.open_model(self.model) +
                                builder.create_shortcircuit(simulation))
                     with open(os.path.join(self.workdir, fslfile), 'w') as f:

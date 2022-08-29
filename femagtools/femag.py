@@ -133,14 +133,15 @@ class BaseFemag(object):
     def copy_winding_file(self, name, wdg):
         wdg.write(name, self.workdir)
 
-    def copy_magnetizing_curves(self, model, dir=None):
+    def copy_magnetizing_curves(self, model, dir=None, recsin=''):
         """extract mc names from model and write files into workdir or dir if given
 
         Return:
             list of extracted mc names (:obj:`list`)
         """
         dest = dir if dir else self.workdir
-        return [self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
+        return [self.magnetizingCurves.writefile(m[0], dest,
+                                                 fillfac=m[1], recsin=recsin)
                 for m in model.set_magcurves(
             self.magnetizingCurves, self.magnets)]
 
@@ -159,7 +160,8 @@ class BaseFemag(object):
         """create list of fsl commands"""
         self.model = femagtools.model.MachineModel(machine)
         self.modelname = self.model.name
-        self.copy_magnetizing_curves(self.model)
+        recsin = simulation.get('recsin', '')
+        self.copy_magnetizing_curves(self.model, recsin=recsin)
         try:
             if 'wdgdef' in self.model.windings:
                 self.model.windings['wdgfile'] = self.create_wdg_def(
@@ -881,7 +883,7 @@ class ZmqFemag(BaseFemag):
         wdg.write(name, self.workdir)
         self.upload(os.path.join(self.workdir, name+'.WID'))
 
-    def copy_magnetizing_curves(self, model, dir=None):
+    def copy_magnetizing_curves(self, model, dir=None, recsin=''):
         """extract mc names from model and write files into workdir or dir if given
            and upload to Femag
 
@@ -892,7 +894,8 @@ class ZmqFemag(BaseFemag):
         mc_names = [m for m in model.set_magcurves(
             self.magnetizingCurves, self.magnets)]
         for m in mc_names:
-            f = self.magnetizingCurves.writefile(m[0], dest, fillfac=m[1])
+            f = self.magnetizingCurves.writefile(m[0], dest,
+                                                 fillfac=m[1], recsin=recsin)
             self.upload(os.path.join(dest, f))
         return mc_names
 

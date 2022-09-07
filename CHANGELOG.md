@@ -4,6 +4,7 @@
 
 ## Release 1.1.23
 	- parameter ident for im: noload calc with rotate
+	- efficiency and losses maps
 
 ## Release 1.1.22
 	- mcv loss data handling

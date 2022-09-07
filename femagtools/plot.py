@@ -1694,6 +1694,64 @@ def characteristics(char, title=''):
     fig.tight_layout()
 
 
+def get_nT_boundary(n, T):
+    """extract boundary from n,T lists"""
+    n0 = n[0]
+    t0 = T[0]
+    #      braking, driving
+    bnd = [[(n0, t0)], []]
+    for nx, tx in zip(n, T):
+        if tx < t0:
+            bnd[1].append((n0, t0))
+            bnd[0].append((nx, tx))
+            n0 = nx
+        t0 = tx
+    bnd[1].append((nx, tx))
+    return np.array(bnd[0] + bnd[1][::-1])
+
+
+def plot_contour(speed, torque, z, title='', levels=[]):
+    from matplotlib.path import Path
+    from matplotlib.patches import PathPatch
+    x = [60*n for n in speed]
+    y = torque
+    if not levels:
+        if max(z) <= 1:
+            levels = [0.25, 0.5, 0.75, 0.8, 0.84,
+                      0.88, 0.9, 0.92, 0.94, 0.96]
+            if max(z) > levels[-1]:
+                levels.append(np.ceil(max(z)*100)/100)
+        else:
+            levels = 14
+    fig, ax = plt.subplots(figsize=(12, 12))
+    cont = ax.tricontour(x, y, z,
+                         linewidths=0.4, levels=levels, colors='k')
+    ax.clabel(cont, inline=True, colors='k')
+    contf = ax.tricontourf(x, y, z,
+                           levels=levels, cmap='YlOrRd')
+    #
+    clippath = Path(get_nT_boundary(x, y))
+    patch = PathPatch(clippath, facecolor='none')
+    ax.add_patch(patch)
+    for c in cont.collections:
+        c.set_clip_path(patch)
+    for c in contf.collections:
+        c.set_clip_path(patch)
+    #ax.plot(x, y, "k.", ms=3)
+    ax.set_ylabel('Torque / Nm')
+    ax.set_xlabel('Speed / rpm')
+    ax.set_title(title)
+
+
+def efficiency_map(rmap):
+    plot_contour(rmap['n'], rmap['T'], rmap['eta'], title='Efficiency')
+
+
+def losses_map(rmap):
+    plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3,
+                 title='Losses / kW', levels=14)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')

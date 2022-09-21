@@ -1710,7 +1710,7 @@ def get_nT_boundary(n, T):
     return np.array(bnd[0] + bnd[1][::-1])
 
 
-def plot_contour(speed, torque, z, title='', levels=[]):
+def plot_contour(speed, torque, z, ax, title='', levels=[]):
     from matplotlib.path import Path
     from matplotlib.patches import PathPatch
     x = [60*n for n in speed]
@@ -1723,7 +1723,6 @@ def plot_contour(speed, torque, z, title='', levels=[]):
                 levels.append(np.ceil(max(z)*100)/100)
         else:
             levels = 14
-    fig, ax = plt.subplots(figsize=(12, 12))
     cont = ax.tricontour(x, y, z,
                          linewidths=0.4, levels=levels, colors='k')
     ax.clabel(cont, inline=True, colors='k')
@@ -1743,13 +1742,18 @@ def plot_contour(speed, torque, z, title='', levels=[]):
     ax.set_title(title)
 
 
-def efficiency_map(rmap):
-    plot_contour(rmap['n'], rmap['T'], rmap['eta'], title='Efficiency')
+def efficiency_map(rmap, ax=0, title='Efficiency Map'):
+    if ax == 0:
+        fig, ax = plt.subplots(figsize=(12, 12))
+    plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
+                 title=title)
 
 
-def losses_map(rmap):
-    plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3,
-                 title='Losses / kW', levels=14)
+def losses_map(rmap, ax=0, title='Losses Map / kW'):
+    if ax == 0:
+        fig, ax = plt.subplots(figsize=(12, 12))
+    plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3, ax,
+                 title=title, levels=14)
 
 
 if __name__ == "__main__":

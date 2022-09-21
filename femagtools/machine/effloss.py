@@ -92,23 +92,32 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
     """return speed, torque efficiency and losses
 
     arguments:
-    eecpars: list of EEC Parameter dicts at different temperatures
-    u1: phase voltage (V rms)
-    T: starting torque (Nm)
+    eecpars: (dict) EEC Parameter with
+      dicts at different temperatures (or machine object)
+    u1: (float) phase voltage (V rms)
+    T: (float) starting torque (Nm)
     temp: temperature (°C)
-    n: maximum speed (1/s)
+    n: (float) maximum speed (1/s)
     npoints: (list) number of values of speed and torque
-    """
-    if isinstance(temp, list) or isinstance(temp, tuple):
-        xtemp = [temp[0], temp[1]]
-    else:
-        xtemp = [temp, temp]
-    p = eecpars['p']
-    nmax = n
 
-    m = _create_machine(xtemp, eecpars)
-    r = m.characteristics(T, nmax, u1)  # driving mode
-    rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
+    """
+    if isinstance(eecpars, dict):
+        if isinstance(temp, list) or isinstance(temp, tuple):
+            xtemp = [temp[0], temp[1]]
+        else:
+            xtemp = [temp, temp]
+        m = _create_machine(xtemp, eecpars)
+    else:  # must be a Machine
+        m = eecpars
+    if isinstance(T, list):
+        r['T'] = T
+        r['n'] = n
+        rb['T'] = []
+        rb['n'] = []
+    else:
+        nmax = n
+        r = m.characteristics(T, nmax, u1)  # driving mode
+        rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
 
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)
@@ -117,14 +126,14 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
         iqd = np.array([
             m.iqd_torque_umax(
                 nt[1],
-                2*np.pi*nt[0]*p,
+                2*np.pi*nt[0]*m.p,
                 u1)[:-1]
             for nt in ntmesh.T]).T
         beta, i1 = betai1(iqd[0], iqd[1])
-        uqd = [m.uqd(2*np.pi*n*p, *i)
+        uqd = [m.uqd(2*np.pi*n*m.p, *i)
                for n, i in zip(ntmesh[0], iqd.T)]
         u1 = np.linalg.norm(uqd, axis=1)/np.sqrt(2.0)
-        f1 = ntmesh[0]*p
+        f1 = ntmesh[0]*m.p
     else:
         f1 = []
         u1max = u1

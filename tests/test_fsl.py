@@ -295,7 +295,7 @@ class FslBuilderTest(unittest.TestCase):
             ))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_rotor_model(model, condMat=[])
-        self.assertEqual(len(fsl), 32)
+        self.assertEqual(len(fsl), 33)
 
     def test_fe_losses(self):
         model = femagtools.MachineModel(self.m)

@@ -6,7 +6,7 @@
 	- parameter ident for im: noload calc with rotate
 	- efficiency and losses maps
         - sizing added: spm, ipm, eesm, im
-
+        - new parameter in machine dict to set the number of nodes in airgap: num_agnodes
 ## Release 1.1.22
 	- mcv loss data handling
 

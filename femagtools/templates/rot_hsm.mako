@@ -18,6 +18,7 @@ m.mcvkey_yoke   = mcvkey_yoke
 m.zeroangl      = ${model.get('zeroangle', 0)}
 m.tot_num_sl    = m.num_poles
 m.num_sl_gen    = m.npols_gen
+m.airgap  = ag
 
 pre_models("ROT_HSM")
 

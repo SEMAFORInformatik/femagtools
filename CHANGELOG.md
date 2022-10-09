@@ -2,6 +2,9 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.1.24
+	- bch: added skewAngle, skewSections, parallelWdgs to machine dict
+
 ## Release 1.1.23
 	- parameter ident for im: noload calc with rotate
 	- efficiency and losses maps

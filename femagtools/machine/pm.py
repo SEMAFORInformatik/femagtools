@@ -68,6 +68,16 @@ class PmRelMachine(object):
             raise ValueError(f'Torque {torque} out of current range')
         return res.x
 
+    def tmech_iqd(iq, id, n, kpfe, pfw):
+        """return shaft torque with given d-q current, iron loss correction factor
+          and friction windage losses"""
+        f1 = self.p*n
+        plfe1 = self.iqd_plfe1(iq, id, f1)
+        plfe2 = self.iqd_plfe2(iq, id, f1)
+        plfe = kpfe * (plfe1 + plfe2)
+        pmag = self.iqd_plmag(iq, id, f1)
+        return self.torque_iqd(iq, id) - (plfe + pmag + pfw)/(2*np.pi*n)
+
     def uqd(self, w1, iq, id):
         """return uq, ud of frequency w1 and d-q current"""
         psid, psiq = self.psi(iq, id)
@@ -523,8 +533,8 @@ class PmRelMachineLdq(PmRelMachine):
                     'styoke_eddy', 'stteeth_eddy',
                     'rotor_hyst', 'rotor_eddy',
                     'magnet')}
-        except KeyError:
-            logger.warning("loss map missing")
+        except KeyError as e:
+            logger.warning("loss map missing: %s", e)
             pass
         if 'psid' in kwargs:
             self.betarange = min(beta), max(beta)
@@ -697,7 +707,8 @@ class PmRelMachinePsidq(PmRelMachine):
                 'styoke_eddy', 'stteeth_eddy',
                 'rotor_hyst', 'rotor_eddy',
                 'magnet')}
-        except KeyError:
+        except KeyError as e:
+            logger.warning("loss map missing: %s", e)
             pass
 
     def psi(self, iq, id):

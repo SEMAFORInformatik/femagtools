@@ -29,7 +29,8 @@ PM_DEFAULTS = dict(
     brem=1.15,  # remanence 0.3 .. 1.3 T
     demag=1.5,  # safety factor for demagnetisation
     external_rotor=False,
-    coil_span=0
+    coil_span=0,
+    hfe=1e-3  # iron height between magnet and airgap (IPM)
 )
 
 SM_DEFAULTS = dict(
@@ -149,6 +150,16 @@ Q2RR = {
     4: {36: [48],
         48: [72, 60],
         72: [96, 84]}}
+
+Q2IEC = {
+    1: {18: [22],
+        24: [18, 22],
+        36: [],
+        48: [],
+        54: [],
+        60: [],
+        72: []}
+}
 
 
 def _im_stator_slots(p):
@@ -442,43 +453,42 @@ def get_surface_magnet_dimensions(I1, N, kw, psi1, lfe, Da2, par):
 
 def get_interior_magnet_dimensions(I1, N, kw, psi1, lfe, Da2, par):
     r = dict()
-    hM = _get_magnet_height(I1, N, kw, par)
+    hM = round(_get_magnet_height(I1, N, kw, par), 5)
     Dy2 = _get_magnet_yoke_diameter(
         psi1, lfe, Da2, hM, par['By'], par['external_rotor'])
 
-    # magnet width in mm
-    p = par['p']
-    mag_width = par['mag_width']
-    mag_topFactor = 0.8
-    mag_gamma = mag_width * np.pi/p
-    mag_disp_r_top = hM
-    mag_disp_r_bottom = (Da2 * np.sin((np.pi-mag_gamma)/2) - Dy2) / 2
-    mag_disp_r = mag_disp_r_top * mag_topFactor + \
-        mag_disp_r_bottom * (1 - mag_topFactor)
-    mag_disp = mag_disp_r / np.sin((np.pi-mag_gamma)/2)
-    mag_width_abs = Da2 * np.sin(mag_gamma / 2) - mag_disp
-    hs = mag_disp_r - mag_disp_r_top
+    kr = 0.9
+    # pole pitch angle
+    alphap = np.pi/par['p']
+    hfe = par['hfe']
+    tap = np.tan(alphap/2)
+    sip = np.sin(alphap/2)
+    a = (1+1/tap**2)
+    b = 4/tap*(hfe/sip+hM)
+    c = -Da2**2 + 4*Da2*hfe - 4*hfe**2 + 4*(hfe/sip+hM)**2
+    wM = (-b+np.sqrt(b**2 - 4*a*c))/2/a
+    hp = Da2/2 - (wM/tap/2 + hfe/sip + hM)
 
     # Magnet iron 4 BFE
-    mag_dm_min = Da2/2 - np.sqrt((Da2**2 - mag_width_abs**2)/4)
+    mag_dm_min = Da2/2 - np.sqrt((Da2**2 - wM**2)/4)
     mag_dm_max = (Da2-Dy2)/2 - hM
-    magn_di_ra = mag_dm_min * mag_topFactor + mag_dm_max * (1 - mag_topFactor)
+    magn_di_ra = mag_dm_min * kr + mag_dm_max * (1 - kr)
     mag_corner_center_distance = np.sqrt(
-        (Da2/2-magn_di_ra-hM)**2 + (mag_width_abs/2)**2)
+        (Da2/2-magn_di_ra-hM)**2 + (wM/2)**2)
     iron_bfe = (mag_corner_center_distance *
-                np.sin(np.pi/p/2 -
-                       np.arcsin(mag_width_abs/2/mag_corner_center_distance)))
+                np.sin(alphap/2 -
+                       np.arcsin(wM/2/mag_corner_center_distance)))
     return dict(
         Da2=np.floor(Da2*1e4+0.5)/1e4,
         Dy2=np.floor(Dy2*1e4+0.5)/1e4,
-        hM=round(hM, 5),
+        hM=hM,
         nodedist=1.0,
         magnetIron=dict(
             magn_height=np.floor(hM*2000+0.5)/2000.0,
-            magn_width=round(mag_width_abs, 4),
+            magn_width=round(wM, 4),
             air_triangle=1,
             magn_rem=par['brem'],
-            iron_height=round(hs, 4),
+            iron_height=round(hfe, 4),
             gap_ma_iron=0,
             bridge_height=0.0,
             bridge_width=0.0,
@@ -565,23 +575,23 @@ def get_sm_rotor_dimensions(A, lfe, Da2, par):
     wc = alphap/2*Da2*par['Ba']/par['Bthr']
     hfmax = (wp-wc)/2/np.tan(alphap/2)
     mue0 = 4*np.pi*1e-7
-    #rt = bdr/np.sin(taup/2)
-    #b = wr (Da2/2-rt)*np.cos(taup/2)*np.tan(taup/2)
+    # rt = bdr/np.sin(taup/2)
+    # b = wr (Da2/2-rt)*np.cos(taup/2)*np.tan(taup/2)
     wf = wp - wc
     anr = par['airgap']*par['Ba']/mue0/par['J']/par['kqr']
 
     a = np.tan(alphap/2)/2
     b = (wp/2 - wc + np.tan(alphap/2)*(Da2/2 - hp))/2
-    #hc = (b + np.sqrt(b**2 - 4*anr*a))/(2*a)
+    # hc = (b + np.sqrt(b**2 - 4*anr*a))/(2*a)
     hc = min(max(4*anr/(wc+wp), 0.75*hfmax), hfmax)
-    #y = (Da2/2 - hc - hp)*np.tan(alphap/2)
+    # y = (Da2/2 - hc - hp)*np.tan(alphap/2)
     # if y > wc/2:
     #    wc = 2*y
 
-    #bnr = anr/hc/2
+    # bnr = anr/hc/2
     hyr = wc/2*np.cos(alphap/2)*par['Ba']/par['Byr']
     pr = 0.95*Da2/2
-    #pw = Da2/2*np.sin(0.9*taup)
+    # pw = Da2/2*np.sin(0.9*taup)
     r['Dy2'] = round(Da2 - 2*hp - 2*hyr - 2*hc, 4)
     if r['Dy2'] < 6e-3:
         hyr = hyr + r['Dy2']/2

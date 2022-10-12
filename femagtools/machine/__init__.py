@@ -12,9 +12,9 @@ from .pm import PmRelMachineLdq, PmRelMachinePsidq
 from .utils import betai1, iqd, invpark, K, T, puconv, dqpar_interpol, wdg_resistance
 
 
-def __scale_losses(losses, wdg, lfe):
+def __scale_losses(losses, lfe):
     if losses:
-        l = {k: wdg*lfe*np.array(losses[k]) for k in (
+        l = {k: lfe*np.array(losses[k]) for k in (
             'styoke_hyst', 'styoke_eddy',
             'stteeth_hyst', 'stteeth_eddy',
             'rotor_hyst', 'rotor_eddy',
@@ -43,7 +43,7 @@ def create(bch, r1, ls, lfe=1, wdg=1):
             psid = wdg*lfe*np.array(bch.psidq['psid'])
             psiq = wdg*lfe*np.array(bch.psidq['psiq'])
             try:
-                losses = __scale_losses(bch.psidq['losses'], wdg, lfe)
+                losses = __scale_losses(bch.psidq['losses'], lfe)
                 losses['ef'] = bch.lossPar.get('ef', [2.0, 2.0])
                 losses['eh'] = bch.lossPar.get('eh', [1.0, 1.0])
             except KeyError:
@@ -57,7 +57,7 @@ def create(bch, r1, ls, lfe=1, wdg=1):
             psid = wdg*lfe*np.array(bch.ldq['psid'])
             psiq = wdg*lfe*np.array(bch.ldq['psiq'])
             try:
-                losses = __scale_losses(bch.ldq['losses'], wdg, lfe)
+                losses = __scale_losses(bch.ldq['losses'], lfe)
                 losses['ef'] = bch.lossPar.get('ef', [2.0, 2.0])
                 losses['eh'] = bch.lossPar.get('eh', [1.0, 1.0])
             except KeyError:

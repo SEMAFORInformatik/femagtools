@@ -514,27 +514,41 @@ class Reader:
                                                                   ''.join(content))]
 
     def __read_general_machine_data(self, content):
+        mcfiles = []
         for l in content:
-            if l.find('Armature Length [mm]:') > -1:
-                self.armatureLength = floatnan(l.split()[-1])
-            elif l.find('Magn. Fluss Psim RMS') > 0:
-                self.machine['psim'] = floatnan(l.split()[-1])
-            elif l.find('Number of Pole pairs') > -1:
-                self.machine['p'] = int(l.split()[-1])
-            elif l.find('Number of Poles simulated') > -1:
-                self.machine['p_sim'] = int(l.split()[-1])
-            elif l.find('Total Number of Slots') > -1:
-                self.machine['Q'] = int(l.split()[-1])
-            elif l.find('Number of Slot-Sides sim.') > -1:
-                self.machine['qs_sim'] = int(l.split()[-1])
-            elif l.find('POC-File used in calculation') > -1:
-                self.machine['pocfile'] = l.split(
-                    ':')[-1].strip().replace('\\', '\\\\')
-            elif l.find('MC-File used in calculation') > -1:
-                self.machine['mcfile'] = l.split(
-                )[-1].strip().replace('\\', '\\\\')
-            elif l.find('Rotation Fraction') > -1:
-                self.machine['period_frac'] = int(l.split()[-1])
+            try:
+                if l.find('Armature Length [mm]:') > -1:
+                    self.armatureLength = floatnan(l.split()[-1])
+                elif l.find('No of parallel wdgs-section') > -1:
+                    self.machine['parallelWdgs'] = int(l.split()[-1])
+                elif l.find('Skew angle') > -1:
+                    self.machine['skewAngle'] = floatnan(l.split()[-1])
+                elif l.find('number of skew sections') > -1:
+                    self.machine['skewSections'] = int(l.split()[-1])
+                elif l.find('Magn. Fluss Psim RMS') > 0:
+                    self.machine['psim'] = floatnan(l.split()[-1])
+                elif l.find('Number of Pole pairs') > -1:
+                    self.machine['p'] = int(l.split()[-1])
+                elif l.find('Number of Poles simulated') > -1:
+                    self.machine['p_sim'] = int(l.split()[-1])
+                elif l.find('Total Number of Slots') > -1:
+                    self.machine['Q'] = int(l.split()[-1])
+                elif l.find('Number of Slot-Sides sim.') > -1:
+                    self.machine['qs_sim'] = int(l.split()[-1])
+                elif l.find('POC-File used in calculation') > -1:
+                    self.machine['pocfile'] = l.split(
+                        ':')[-1].strip().replace('\\', '\\\\')
+                elif l.find('MC-File used in calculation') > -1:
+                    mcfiles.append(l.split()[-1].strip().replace('\\', '\\\\'))
+                elif l.find('Rotation Fraction') > -1:
+                    self.machine['period_frac'] = int(l.split()[-1])
+            except Exception as e:
+                logger.warning('%s: %s', e, l)
+        if mcfiles:
+            if len(mcfiles) > 1:
+                self.machine['mcfile'] = mcfiles
+            else:
+                self.machine['mcfile'] = mcfiles[0]
 
     def __read_characteristics(self, content):
         characteristics = {}

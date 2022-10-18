@@ -2,11 +2,14 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.1.24
+	- bch: added skewAngle, skewSections, parallelWdgs to machine dict
+
 ## Release 1.1.23
 	- parameter ident for im: noload calc with rotate
 	- efficiency and losses maps
         - sizing added: spm, ipm, eesm, im
-
+        - new parameter in machine dict to set the number of nodes in airgap: num_agnodes
 ## Release 1.1.22
 	- mcv loss data handling
 

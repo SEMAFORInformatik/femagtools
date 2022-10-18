@@ -1336,7 +1336,7 @@ def mmf_fft(f, title='', mmfmin=1e-2, ax=0):
     if title:
         ax.set_title(title)
     else:
-        ax.set_title('MMF Harmonics')
+        ax.set_title('MMF Harmonics (per phase)')
     ax.grid(True)
     order, mmf = np.array([(n, m) for n, m in zip(f['nue'],
                                                   f['mmf_nue']) if m > mmfmin]).T
@@ -1459,6 +1459,7 @@ def winding(wdg, ax=0):
         b = -xoff if i else xoff
         lw = line_thickness[i]
         direction = ['right', 'left']
+        d = 1
         for m, mslots in enumerate(layer):
             for k in mslots:
                 x = abs(k) * dslot + b

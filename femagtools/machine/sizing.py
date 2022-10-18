@@ -29,7 +29,8 @@ PM_DEFAULTS = dict(
     brem=1.15,  # remanence 0.3 .. 1.3 T
     demag=1.5,  # safety factor for demagnetisation
     external_rotor=False,
-    coil_span=0
+    coil_span=0,
+    hfe=1e-3  # iron height between magnet and airgap (IPM)
 )
 
 SM_DEFAULTS = dict(
@@ -65,6 +66,7 @@ IM_DEFAULTS = dict(
     Bth=1.5,  # flux density in teeth 1.5 .. 2 T
     By=1.2,  # flux density in yoke 1.2 .. 1.5 T
     kq=0.42,  # winding fill factor 0.35 .. 0.75
+    kqr=.9,   # bar fill factor
     external_rotor=False,
     coil_span=0
 )
@@ -149,6 +151,16 @@ Q2RR = {
     4: {36: [48],
         48: [72, 60],
         72: [96, 84]}}
+
+Q2IEC = {
+    1: {18: [22],
+        24: [18, 22],
+        36: [],
+        48: [],
+        54: [],
+        60: [],
+        72: []}
+}
 
 
 def _im_stator_slots(p):
@@ -300,7 +312,7 @@ def get_stator_dimensions(par, slots=[]):
     bns = taus*(Da+2*hs1) - bds
 
     hns = (-bns + np.sqrt(bns**2 + 4*ans*np.tan(taus)))/2/np.tan(taus)
-    hys = taup*Ba/By/np.pi
+    hys = psi1/2/lfe*By
 
     # airgap and yoke diameter
     airgap = par['airgap']
@@ -442,43 +454,42 @@ def get_surface_magnet_dimensions(I1, N, kw, psi1, lfe, Da2, par):
 
 def get_interior_magnet_dimensions(I1, N, kw, psi1, lfe, Da2, par):
     r = dict()
-    hM = _get_magnet_height(I1, N, kw, par)
+    hM = round(_get_magnet_height(I1, N, kw, par), 5)
     Dy2 = _get_magnet_yoke_diameter(
         psi1, lfe, Da2, hM, par['By'], par['external_rotor'])
 
-    # magnet width in mm
-    p = par['p']
-    mag_width = par['mag_width']
-    mag_topFactor = 0.8
-    mag_gamma = mag_width * np.pi/p
-    mag_disp_r_top = hM
-    mag_disp_r_bottom = (Da2 * np.sin((np.pi-mag_gamma)/2) - Dy2) / 2
-    mag_disp_r = mag_disp_r_top * mag_topFactor + \
-        mag_disp_r_bottom * (1 - mag_topFactor)
-    mag_disp = mag_disp_r / np.sin((np.pi-mag_gamma)/2)
-    mag_width_abs = Da2 * np.sin(mag_gamma / 2) - mag_disp
-    hs = mag_disp_r - mag_disp_r_top
+    kr = 0.9
+    # pole pitch angle
+    alphap = np.pi/par['p']
+    hfe = par['hfe']
+    tap = np.tan(alphap/2)
+    sip = np.sin(alphap/2)
+    a = (1+1/tap**2)
+    b = 4/tap*(hfe/sip+hM)
+    c = -Da2**2 + 4*Da2*hfe - 4*hfe**2 + 4*(hfe/sip+hM)**2
+    wM = (-b+np.sqrt(b**2 - 4*a*c))/2/a
+    hp = Da2/2 - (wM/tap/2 + hfe/sip + hM)
 
     # Magnet iron 4 BFE
-    mag_dm_min = Da2/2 - np.sqrt((Da2**2 - mag_width_abs**2)/4)
+    mag_dm_min = Da2/2 - np.sqrt((Da2**2 - wM**2)/4)
     mag_dm_max = (Da2-Dy2)/2 - hM
-    magn_di_ra = mag_dm_min * mag_topFactor + mag_dm_max * (1 - mag_topFactor)
+    magn_di_ra = mag_dm_min * kr + mag_dm_max * (1 - kr)
     mag_corner_center_distance = np.sqrt(
-        (Da2/2-magn_di_ra-hM)**2 + (mag_width_abs/2)**2)
+        (Da2/2-magn_di_ra-hM)**2 + (wM/2)**2)
     iron_bfe = (mag_corner_center_distance *
-                np.sin(np.pi/p/2 -
-                       np.arcsin(mag_width_abs/2/mag_corner_center_distance)))
+                np.sin(alphap/2 -
+                       np.arcsin(wM/2/mag_corner_center_distance)))
     return dict(
         Da2=np.floor(Da2*1e4+0.5)/1e4,
         Dy2=np.floor(Dy2*1e4+0.5)/1e4,
-        hM=round(hM, 5),
+        hM=hM,
         nodedist=1.0,
         magnetIron=dict(
             magn_height=np.floor(hM*2000+0.5)/2000.0,
-            magn_width=round(mag_width_abs, 4),
+            magn_width=round(wM, 4),
             air_triangle=1,
             magn_rem=par['brem'],
-            iron_height=round(hs, 4),
+            iron_height=round(hfe, 4),
             gap_ma_iron=0,
             bridge_height=0.0,
             bridge_width=0.0,
@@ -487,7 +498,7 @@ def get_interior_magnet_dimensions(I1, N, kw, psi1, lfe, Da2, par):
             iron_shape=Da2/2))
 
 
-def get_im_rotor_dimensions(A, lfe, Da2, par, rtype='rotorKs2'):
+def get_im_rotor_dimensions(A, Da2, psi1, lfe, par, rtype='rotorKs2'):
     r = dict()
     r['Da2'] = Da2
     if 'Q2' not in par:
@@ -498,26 +509,28 @@ def get_im_rotor_dimensions(A, lfe, Da2, par, rtype='rotorKs2'):
     # J = AJ/A
     J = par['J']
     hs1 = 1e-3
-    taus = np.pi/r['num_slots']
-    kq = 0.9  # cu (bar) fill factor
-    ans = taus*Da2*A/J
-    bds = taus*(Da2-2*hs1)*par['Ba']/par['Bth']
-    bns = taus*(Da2-2*hs1) - bds
-    hns = (-bns +
-           np.sqrt(bns**2 +
-                   4*ans*(1-2*np.tan(taus))))/2/(1-2*np.tan(taus))
+    alfar = np.pi/r['num_slots']
+    kq = par['kqr']
+    Ar = alfar*Da2*A/J/kq
+    wt = alfar*(Da2-2*hs1)*par['Ba']/par['Bth']
+    wr = alfar*(Da2-2*hs1) - wt
+    #hr = (wr + np.sqrt(wr**2 - 4 * Ar*np.tan(alphar)))(2*np.tan(alphar))
+    hr = (wr + np.sqrt(wr**2 +
+                       4*Ar*(1-2*np.tan(alfar))))/2/(1-2*np.tan(alfar))
     taup = np.pi * Da2/(2*par['p'])
-    hys = taup*par['Ba']/par['By']/np.pi
-    r['Dy2'] = round(Da2 - 2*hns - 2*hys, 4)
+    hyr = psi1/2/lfe*par['By']
+    r['Dy2'] = round(Da2 - 2*hr - 2*hyr, 4)
+    logger.info("Dy2 %f Da2 %f hys %f hr %f",
+                r['Dy2']*1e3, Da2*1e3, hyr*1e3, hr*1e3)
     slotwidth = 1e-3
     Q2 = r['num_slots']
-    r1 = bns/2-slotwidth
-    r2 = (Da2/2-hns-hs1)*np.tan(taus)
+    r1 = wr/2-slotwidth
+    r2 = (Da2/2-hr-hs1)*np.tan(alfar)
     if rtype == 'statorRotor3':
         r['statorRotor3'] = dict(
             slot_width=slotwidth,
-            tooth_width=round(bds, 4),
-            slot_height=round(+r2, 4),
+            tooth_width=round(wt, 4),
+            slot_height=round(hr+r2, 4),
             slot_top_sh=1.0,
             slot_h1=round(hs1, 4),
             slot_h2=round(hs1+r1, 4),
@@ -534,16 +547,16 @@ def get_im_rotor_dimensions(A, lfe, Da2, par, rtype='rotorKs2'):
             slot_h32=0.0,
             slot_b42=0.0,
             slot_h42=0.0,
-            slot_b52=round(bns, 4),
+            slot_b52=round(wr, 4),
             slot_b62=3e-3,
             slot_h52=2.5e-3,
-            slot_h62=round(hns, 4),
+            slot_h62=round(hr, 4),
             slot_h72=2e-3)
     else:
         r['rotorKs2'] = dict(
-            slot_angle=round(2*taus*180/np.pi, 2),
-            slot_height=round(hns+r1+r2, 4),
-            slot_topwidth=round(bns, 4),
+            slot_angle=round(2*alfar*180/np.pi, 2),
+            slot_height=round(hr+r1+r2, 4),
+            slot_topwidth=round(wr, 4),
             slot_width=slotwidth,
             slot_h1=hs1,
             slot_h2=0,
@@ -554,7 +567,7 @@ def get_im_rotor_dimensions(A, lfe, Da2, par, rtype='rotorKs2'):
     return r
 
 
-def get_sm_rotor_dimensions(A, lfe, Da2, par):
+def get_sm_rotor_dimensions(A, psi1, lfe, Da2, par):
     r = dict()
     r['Da2'] = Da2
     r['num_wires'] = 1
@@ -565,23 +578,17 @@ def get_sm_rotor_dimensions(A, lfe, Da2, par):
     wc = alphap/2*Da2*par['Ba']/par['Bthr']
     hfmax = (wp-wc)/2/np.tan(alphap/2)
     mue0 = 4*np.pi*1e-7
-    #rt = bdr/np.sin(taup/2)
-    #b = wr (Da2/2-rt)*np.cos(taup/2)*np.tan(taup/2)
+
     wf = wp - wc
     anr = par['airgap']*par['Ba']/mue0/par['J']/par['kqr']
 
     a = np.tan(alphap/2)/2
     b = (wp/2 - wc + np.tan(alphap/2)*(Da2/2 - hp))/2
-    #hc = (b + np.sqrt(b**2 - 4*anr*a))/(2*a)
     hc = min(max(4*anr/(wc+wp), 0.75*hfmax), hfmax)
-    #y = (Da2/2 - hc - hp)*np.tan(alphap/2)
-    # if y > wc/2:
-    #    wc = 2*y
 
-    #bnr = anr/hc/2
-    hyr = wc/2*np.cos(alphap/2)*par['Ba']/par['Byr']
+    hyr = psi1/2/lfe*par['Byr']
     pr = 0.95*Da2/2
-    #pw = Da2/2*np.sin(0.9*taup)
+
     r['Dy2'] = round(Da2 - 2*hp - 2*hyr - 2*hc, 4)
     if r['Dy2'] < 6e-3:
         hyr = hyr + r['Dy2']/2
@@ -636,10 +643,10 @@ def _set_genpars(r, poles):
         r[k] = r['stator'].pop(k)
 
 
-def spm(pnom, speed, udc, p, **kwargs):
+def spm(pnom, speed, p, **kwargs):
     """returns dimension of a SPM machine"""
     par = dict(
-        pnom=pnom, speed=speed, udc=udc, p=p)
+        pnom=pnom, speed=speed, p=p)
     par.update(kwargs)
 
     _set_pm_defaults(par)
@@ -658,10 +665,10 @@ def spm(pnom, speed, udc, p, **kwargs):
     return r
 
 
-def ipm(pnom, speed, udc, p, **kwargs):
+def ipm(pnom, speed, p, **kwargs):
     """returns dimension of a IPM machine"""
     par = dict(
-        pnom=pnom, speed=speed, udc=udc, p=p)
+        pnom=pnom, speed=speed, p=p)
     par.update(kwargs)
     _set_pm_defaults(par)
 
@@ -680,10 +687,10 @@ def ipm(pnom, speed, udc, p, **kwargs):
     return r
 
 
-def im(pnom, speed, udc, p, **kwargs):
+def im(pnom, speed, p, **kwargs):
     """returns dimension of a IM machine"""
     par = dict(
-        pnom=pnom, speed=speed, udc=udc, p=p)
+        pnom=pnom, speed=speed, p=p)
     par.update(kwargs)
     _set_im_defaults(par)
 
@@ -695,16 +702,16 @@ def im(pnom, speed, udc, p, **kwargs):
     r = get_stator_dimensions(par, slots=slots)
     # rotor parameters
     r['rotor'] = get_im_rotor_dimensions(
-        par['cos_phi']*r['A'], r['lfe'], r['Da2'], par)
+        par['cos_phi']*r['A'], r['Da2'], r['psi1'], r['lfe'], par)
     _set_genpars(r, 2*par['p'])
     r['name'] = f"IM-{r['poles']}"
     return r
 
 
-def eesm(pnom, speed, udc, p, **kwargs):
+def eesm(pnom, speed, p, **kwargs):
     """returns dimension of a EESM machine"""
     par = dict(
-        pnom=pnom, speed=speed, udc=udc, p=p)
+        pnom=pnom, speed=speed, p=p)
     par.update(kwargs)
     _set_sm_defaults(par)
 
@@ -712,7 +719,8 @@ def eesm(pnom, speed, udc, p, **kwargs):
     r = get_stator_dimensions(par)
 
     # rotor parameters
-    r['rotor'] = get_sm_rotor_dimensions(r['A'], r['lfe'], r['Da2'], par)
+    r['rotor'] = get_sm_rotor_dimensions(r['A'], r['psi1'],
+                                         r['lfe'], r['Da2'], par)
 
     _set_genpars(r, 2*par['p'])
     r['name'] = f"EESM-{r['poles']}"
@@ -726,7 +734,7 @@ if __name__ == "__main__":
     p = 4
     udc = 600
 
-    r = spm(pnom, speed, udc, p)
+    r = spm(pnom, speed, p, udc=udc)
 
     # print results
     print("Number of slots          {:10d}".format(r['stator']['num_slots']))

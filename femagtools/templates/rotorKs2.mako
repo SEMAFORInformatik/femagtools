@@ -26,12 +26,13 @@ m.nodedist        =   ${model.get('nodedist',1)}
 m.mcvkey_yoke = mcvkey_yoke
 pre_models("ROTOR_KS2")
 
+dphi=1e-2
 if mcvkey_yoke ~= 'dummy' then
   m.rlength         =     ${model.get('rlength', 1)*100}
-  x, y = pd2c(m.rotor_diam/2-m.slot_height/2,0)
+  x, y = pd2c(m.rotor_diam/2-m.slot_height/2,m.zeroangl+dphi)
   def_mat_fm_nlin(x, y, "blue", mcvkey_yoke, m.rlength)
 
-  x, y = pd2c(m.inside_diam/2+(m.rotor_diam/2-m.inside_diam/2-m.slot_height)/2,0)
+  x, y = pd2c(m.inside_diam/2+(m.rotor_diam/2-m.inside_diam/2-m.slot_height)/2,m.zeroangl+dphi)
   def_mat_fm_nlin(x, y, "blue", mcvkey_yoke, m.rlength)
 end
 -- for winding gen
@@ -41,3 +42,17 @@ if m.middle_line == 2 then
   m.xcoil_1, m.ycoil_1 =  pr2c(r, taus/2)
   m.xcoil_2, m.ycoil_2 =  pr2c(r-m.slot_height/2, taus/2)
 end
+
+-- set subregions 'Bar'
+r=da2/2 - m.slot_height/2
+phi=180/Q2+m.zeroangl
+x,y=pd2c(r,phi)
+delete_sreg(x, y)
+x,y=pd2c(r,phi-dphi)
+def_new_subreg( x,y, 'Bar', violet )
+
+for i=2, m.num_sl_gen do
+  phi=(2*i-1)*180/Q2 + m.zeroangl
+  x,y = pd2c(r,phi)
+  add_to_subreg( x, y )
+ end

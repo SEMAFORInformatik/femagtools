@@ -179,14 +179,14 @@ class Winding(object):
             nue = n
         else:
             nue = self.kw_order(n)
-        x = nue*np.pi*Yk/self.Q
         k = 2 if self.l == 1 else 1
-        return -((np.sin(k*x*q1) - np.cos(x*Qb)*np.sin(k*x*q2)) /
-                 ((q1+q2)*np.sin(k*x)))
+        a = nue*k*np.pi/self.Q*Yk
+        t = num_basic_windings(self.Q, self.p, self.l)
+        return np.real((np.sin(a*q1) - np.exp(1j*np.pi/t*Yk*nue)*np.sin(a*q2))/((q1+q2)*np.sin(a)))
 
     def kw(self, n=0):
         """return winding factor"""
-        return self.kwp(n) * self.kwd(n)
+        return np.abs(self.kwp(n) * self.kwd(n))
 
     def harmleakcoeff(self, n=4000):
         """return harmonic leakage coefficient

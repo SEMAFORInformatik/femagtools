@@ -22,6 +22,7 @@ import femagtools.moproblem
 import femagtools.getset
 import shutil
 import functools
+import pathlib
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,11 @@ class ParameterStudy(object):
                                if hasattr(model,
                                           d.split('.')[0])]) == 0
 
-        for d in self.femag.workdir.glob('[0-9]*'):
+        if isinstance(self.femag.workdir, pathlib.Path):
+            workdir = self.femag.workdir
+        else:
+            workdir = pathlib.Path(self.femag.workdir)
+        for d in workdir.glob('[0-9]*'):
             shutil.rmtree(d)
 
         extra_result_files = []

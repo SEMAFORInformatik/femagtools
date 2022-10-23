@@ -5,13 +5,13 @@
 
     Read FEMAG I7/ISA7 model files
 """
-import logging
-import struct
-import sys
-import pdb
-import re
-import numpy as np
 from collections import Counter
+import numpy as np
+import re
+import pdb
+import sys
+import struct
+import logging
 
 logger = logging.getLogger('femagtools.isa7')
 
@@ -516,6 +516,10 @@ class Isa7(object):
                 loss_dens = reader.ELEM_ISA_ELEM_REC_LOSS_DENS[e]
             except (IndexError, AttributeError):
                 loss_dens = 0
+            try:
+                temperature = reader.ELEM_ISA_ELEM_REC_TEMPERATURE[e]
+            except (IndexError, AttributeError):
+                temperature = 20
             self.elements.append(
                 Element(e + 1,
                         reader.ELEM_ISA_ELEM_REC_EL_TYP[e],
@@ -526,7 +530,8 @@ class Isa7(object):
                         (reader.ELEM_ISA_ELEM_REC_EL_MAG_1[e],
                          reader.ELEM_ISA_ELEM_REC_EL_MAG_2[e]),
                         loss_dens,  # in W/m³
-                        reader.BR_TEMP_COEF/100)   # in 1/K
+                        reader.BR_TEMP_COEF/100,
+                        temperature)   # in 1/K
             )
         logger.info("SuperElements")
         self.superelements = []
@@ -558,6 +563,14 @@ class Isa7(object):
                 fillfactor = reader.SUPEL_ISA_SUPEL_REC_SE_FILLFACTOR[se]
             except:
                 fillfactor = 1
+            try:
+                temp_coef = reader.SUPEL_ISA_SUPEL_REC_SE_TEMP_COEF[se]
+            except:
+                temp_coef = 0
+            try:
+                temperature = reader.SUPEL_ISA_SUPEL_REC_SE_TEMPERATURE[se]
+            except:
+                temperature = 20
             self.superelements.append(
                 SuperElement(se + 1,
                              reader.SUPEL_ISA_SUPEL_REC_SE_SR_KEY[se] - 1,
@@ -574,7 +587,7 @@ class Isa7(object):
                              reader.SUPEL_ISA_SUPEL_REC_SE_VELO_2[se],
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_RE[se],
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se],
-                             fillfactor))
+                             fillfactor, temp_coef, temperature))
 
         logger.info("Subregions")
         self.subregions = []
@@ -854,7 +867,8 @@ class NodeChain(BaseEntity):
 
 class Element(BaseEntity):
     def __init__(self, key, el_type,
-                 se_key, vertices, reluc, mag, loss_density, br_temp_coef=0):
+                 se_key, vertices, reluc, mag, loss_density,
+                 br_temp_coef=0, temperature=20):
         super(self.__class__, self).__init__(key)
         self.el_type = el_type
         self.se_key = se_key
@@ -863,6 +877,7 @@ class Element(BaseEntity):
         self.mag = mag
         self.br_temp_coef = br_temp_coef
         self.loss_density = loss_density
+        self.temperature = temperature
         if el_type == 1:    # Linear triangle
             self.area = ((vertices[2].x - vertices[1].x) *
                          (vertices[0].y - vertices[1].y) -
@@ -1008,7 +1023,8 @@ class Element(BaseEntity):
 class SuperElement(BaseEntity):
     def __init__(self, key, sr_key, elements, nodechains, color,
                  nc_keys, mcvtype, condtype, conduc, length,
-                 velsys, velo_1, velo_2, curd_re, curd_im, fillfactor):
+                 velsys, velo_1, velo_2, curd_re, curd_im,
+                 fillfactor, temp_coef, temperature):
         super(self.__class__, self).__init__(key)
         self.sr_key = sr_key
         self.subregion = None
@@ -1026,6 +1042,8 @@ class SuperElement(BaseEntity):
         self.velo = velo_1, velo_2
         self.curd = curd_re, curd_im
         self.fillfactor = fillfactor
+        self.temp_coef = temp_coef
+        self.temperature = temperature
 
     def area(self):
         """return area of this superelement"""

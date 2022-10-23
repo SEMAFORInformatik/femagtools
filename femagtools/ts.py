@@ -174,6 +174,38 @@ class Losses(object):
                     'Waterfall method not possible, specify parameter kw')
                 kw = 0.0
 
+    def ohm_lossenergy_el(self, el, supel):
+        '''Ohmic loss energy of an element
+        Parameters
+        ----------
+        el: object
+            Element
+        supel: object
+            Superelement of the element (for material data)
+
+        Returns
+        -------
+        ellossenergy : float
+            Ohmic loss energy of the element
+        '''
+
+        length = self.nc_model.arm_length
+        time = self.times.vector
+
+        ff = supel.fillfactor
+        if ff == 0.0:
+            ff = 1.0
+
+        temp_corr = 1+supel.temp_coef*(el.temperature-20)
+        ellossenergy = 0.0
+        cd_vec = self.vtu_data.get_data_vector('curd', el.key)
+        for j in range(len(time)-1):
+            cd = (cd_vec[j]+cd_vec[j+1])/2
+            dt = time[j+1]-time[j]
+            ellossenergy = ellossenergy + dt*cd**2*el.area/ff / \
+                supel.conduc*temp_corr*supel.length
+        return ellossenergy*length
+
     def ohm_lossenergy_sr(self, sr):
         '''Ohmic loss energy of a subregion
         Parameters
@@ -190,26 +222,13 @@ class Losses(object):
         individual elements.
         '''
         scale_factor = self.nc_model.scale_factor()
-        length = self.nc_model.arm_length
-        time = self.time_vector
-
         srlossenergy = 0.0
-        for supel in sr.superelements:
+        for se in sr.superelements:
             selossenergy = 0.0
-            if supel.conduc > 0.0:
-                ff = supel.fillfactor
-                if ff == 0.0:
-                    ff = 1.0
-                #print(supel.key, supel.conduc, supel.length, ff)
-                for el in supel.elements:
-                    #print(el.key,  el.area)
-                    ellossenergy = 0.0
-                    cd_vec = self.vtu_data.get_data_vector('curd', el.key)
-                    for j in range(len(time)-1):
-                        cd = (cd_vec[j]+cd_vec[j+1])/2
-                        dt = time[j+1]-time[j]
-                        ellossenergy = ellossenergy + dt*cd**2*el.area/ff/supel.conduc*supel.length
-                    selossenergy = selossenergy + ellossenergy*length*scale_factor
+            if se.conduc > 0.0:
+                for el in se.elements:
+                    ellossenergy = self.ohm_lossenergy_el(el, se)
+                    selossenergy = selossenergy + ellossenergy * scale_factor
 
             srlossenergy = srlossenergy + selossenergy
 
@@ -242,11 +261,10 @@ class Losses(object):
         if start != 0.0 or end != 0.0:
             self.vtu_data.set_time_window(start, end)
 
-        self.time_vector = self.vtu_data.get_data_vector('time [s]')
+        self.times = TimeRange(self.vtu_data, self.nc_model)
 
         sr = self.nc_model.get_subregion(srname)
-        srlossenergy = self.ohm_lossenergy_sr(sr)
-        return srlossenergy
+        return self.ohm_lossenergy_sr(sr)
 
     def ohm_powerlosses_subregion(self, srname, start=0.0, end=0.0):
         '''Ohmic loss dissipation of a subregion within the time window
@@ -274,9 +292,8 @@ class Losses(object):
         while len(srname) < 4:
             srname = srname+' '
 
-        srlossenergy = self.ohm_lossenergy_subregion(srname, start, end)
-        srpowerlosses = srlossenergy/(self.time_vector[-1]-self.time_vector[0])
-        return srpowerlosses
+        time = self.times.vector[-1]-self.times.vector[0]
+        return srlossenergy / time
 
     def ohm_lossenergy(self, start=0.0, end=0.0):
         '''Ohmic loss energy of all subregions
@@ -304,7 +321,7 @@ class Losses(object):
         if start != 0.0 or end != 0.0:
             self.vtu_data.set_time_window(start, end)
 
-        self.time_vector = self.vtu_data.get_data_vector('time [s]')
+        self.times = TimeRange(self.vtu_data, self.nc_model)
 
         loss_data = []
         for sr in self.nc_model.subregions:
@@ -312,7 +329,6 @@ class Losses(object):
 
             srname = sr.name
             if sr.wb_key >= 0:
-                #print(sr.key,"is winding",sr.wb_key+1)
                 if srname == '    ':
                     srname = "wdg "+str(sr.wb_key+1)
 
@@ -349,17 +365,17 @@ class Losses(object):
         if start != 0.0 or end != 0.0:
             self.vtu_data.set_time_window(start, end)
 
-        self.time_vector = self.vtu_data.get_data_vector('time [s]')
+        self.times = TimeRange(self.vtu_data, self.nc_model)
+        #self.time_vector = self.vtu_data.get_data_vector('time [s]')
+        time = self.times.vector[-1]-self.times.vector[0]
 
         loss_data = []
         for sr in self.nc_model.subregions:
             srlossenergy = self.ohm_lossenergy_sr(sr)
-            srpowerlosses = srlossenergy / \
-                (self.time_vector[-1]-self.time_vector[0])
+            srpowerlosses = srlossenergy / time
 
             srname = sr.name
             if sr.wb_key >= 0:
-                #print(sr.key,"is winding",sr.wb_key+1)
                 if srname == '    ':
                     srname = "wdg "+str(sr.wb_key+1)
 
@@ -367,6 +383,47 @@ class Losses(object):
                 {'key': sr.key, 'name': srname, 'losses': srpowerlosses})
 
         return loss_data
+
+    def ohm_powerlosses_fft_el(self, el, supel):
+        '''Power dissipation of an element
+        Parameters
+        ----------
+        el : object
+            Element
+        supel: object
+            Superelement of the element (for material data)
+
+        Returns
+        -------
+        elpowerlosses : float
+            Ohmic power losses of the element
+
+        A FFT from the current density is made.
+        The power losses of each harmonic is determined and added.
+        '''
+
+        length = self.nc_model.arm_length
+
+        ff = supel.fillfactor
+        if ff == 0.0:
+            ff = 1.0
+
+        temp_corr = 1+supel.temp_coef*(el.temperature-20)
+        elpowerlosses = 0.0
+        cd_vec_0 = self.vtu_data.get_data_vector('curd', el.key)
+        if not self.times.equidistant:
+            cd_vec = np.interp(self.times.vector_equi,
+                               self.times.vector, cd_vec_0,
+                               period=1.0/self.times.freq)
+        else:
+            cd_vec = cd_vec_0
+        cd_spec = abs(np.fft.fft(cd_vec))/(len(cd_vec)/2)
+        for j in range(int(len(cd_vec)/2)):
+            elpowerlosses = elpowerlosses + \
+                cd_spec[j]**2/2*el.area/ff / \
+                supel.conduc*temp_corr*supel.length
+
+        return elpowerlosses*length
 
     def ohm_powerlosses_fft_sr(self, sr):
         '''Power dissipation of a subregion
@@ -384,35 +441,14 @@ class Losses(object):
         The power losses of each harmonic is determined and added.
         '''
         scale_factor = self.nc_model.scale_factor()
-        length = self.nc_model.arm_length
 
         srpowerlosses = 0.0
-        for supel in sr.superelements:
+        for se in sr.superelements:
             sepowerlosses = 0.0
-            if supel.conduc > 0.0:
-                ff = supel.fillfactor
-                if ff == 0.0:
-                    ff = 1.0
-                    #print(supel.key, supel.conduc, supel.length, ff)
-                for el in supel.elements:
-                    #print(el.key,  el.area)
-                    elpowerlosses = 0.0
-                    cd_vec_0 = self.vtu_data.get_data_vector('curd', el.key)
-                    if not self.times.equidistant:
-                        cd_vec = np.interp(self.times.vector_equi,
-                                           self.times.vector, cd_vec_0,
-                                           period=1.0/self.times.freq)
-                        # f = interpolate.interp1d(self.times.vector, cd_vec_0, kind="cubic")
-                        # cd_vec = f(self.times.vector_equi)
-                    else:
-                        cd_vec = cd_vec_0
-                    cd_spec = abs(np.fft.fft(cd_vec))/(len(cd_vec)/2)
-                    for j in range(int(len(cd_vec)/2)):
-                        elpowerlosses = elpowerlosses + \
-                            cd_spec[j]**2/2*el.area/ff / \
-                            supel.conduc*supel.length
-
-                    sepowerlosses = sepowerlosses + elpowerlosses*length*scale_factor
+            if se.conduc > 0.0:
+                for el in se.elements:
+                    elpowerlosses = self.ohm_powerlosses_fft_el(el, se)
+                    sepowerlosses = sepowerlosses + elpowerlosses * scale_factor
 
             srpowerlosses = srpowerlosses + sepowerlosses
 
@@ -487,7 +523,6 @@ class Losses(object):
 
             srname = sr.name
             if sr.wb_key >= 0:
-                #print(sr.key,"is winding",sr.wb_key+1)
                 if srname == '    ':
                     srname = "wdg "+str(sr.wb_key+1)
 
@@ -497,45 +532,53 @@ class Losses(object):
         return loss_data
 
 # iron losses
-    def iron_losses_fft_se(self, se):
-        '''Iron losses of a superelement
+    def iron_losses_fft_el(self, el, se):
+        '''Iron losses of an element
         Parameters
         ----------
+        el: object
+            Element
         se: object
-            Superelement
+            Superelement of element (for material data)
 
         Returns
         -------
         ironlosses : float
-            Iron losses of the superlement
+            Iron losses of the element
 
         A FFT is made from the flux density.
         The iron losses of each harmonic is determined  by
         Bertotti formula
 
-            Physt = ch * (f/f0)**hfe * (B/B0)**hBe * V * rho
-            Peddy = ch * (f/f0)**wfe * (B/B0)**wBe * V * rho
-            Pexce = ch * (f/f0)**efe * (B/B0)**eBe * V * rho
+            Physt = ch * (f/f0)**hfe * (B/B0)**hBe * V * rho * shape_factor
+            Peddy = ch * (f/f0)**wfe * (B/B0)**wBe * V * rho * shape_factor
+            Pexce = ch * (f/f0)**efe * (B/B0)**eBe * V * rho * shape_factor
 
-        and added to the total losses of the superelement
+        and added to the total losses of the element
 
-            Ptot  = (Physt + Peddy + Pexce) * shape_factor
+            Ptot  = (Physt + Peddy + Pexce)
         '''
 
-        scale_factor = self.nc_model.scale_factor()
         length = self.nc_model.arm_length
         freq = self.times.freq
 
-        sehystlosses = 0.0
-        seeddylosses = 0.0
-        seexcelosses = 0.0
-        if se.elements[0].reluc[0] < 1.0 or se.elements[0].reluc[1] < 1.0:
+        eltotallosses = 0.0
+        elhystlosses = 0.0
+        eleddylosses = 0.0
+        elexcelosses = 0.0
+
+        if (se.elements[0].reluc[0] < 1.0 or se.elements[0].reluc[1] < 1.0) and \
+           (se.elements[0].mag[0] == 0.0 and se.elements[0].mag[1] == 0.0):
+
             center_pnt = se.elements[0].center
-            if (np.sqrt(center_pnt[0]**2+center_pnt[1]**2) > self.nc_model.FC_RADIUS):
-                ldi = len(self.iron_loss_coefficients)-2  # outside
-            else:
+            try:
+                if (np.sqrt(center_pnt[0]**2+center_pnt[1]**2) > self.nc_model.FC_RADIUS):
+                    ldi = len(self.iron_loss_coefficients)-2  # outside
+                else:
+                    ldi = len(self.iron_loss_coefficients)-1  # inside
+            except:
                 ldi = len(self.iron_loss_coefficients)-1  # inside
-            sf = self.iron_loss_coefficients[ldi]['shapefactor']
+            #sf = self.iron_loss_coefficients[ldi]['shapefactor']
             if (se.mcvtype > 0):
                 ldi = se.mcvtype-1
             bf = self.iron_loss_coefficients[ldi]['base_frequency']
@@ -552,47 +595,127 @@ class Losses(object):
             sw = self.iron_loss_coefficients[ldi]['spec_weight']*1000
             ff = self.iron_loss_coefficients[ldi]['fillfactor']
 
+            bx_vec_0 = self.vtu_data.get_data_vector('b', el.key)[0]
+            if not self.times.equidistant:
+                bx_vec = np.interp(self.times.vector_equi,
+                                   self.times.vector, bx_vec_0,
+                                   period=1.0/self.times.freq)
+                # f = interpolate.interp1d(self.times.vector, bx_vec_0, kind="cubic")
+                # bx_vec = f(self.times.vector_equi)
+            else:
+                bx_vec = bx_vec_0
+            bx_vec = np.array(bx_vec)/ff
+            spx = np.fft.fft(bx_vec)
+            bx_spec = abs(spx)/(len(bx_vec)/2)
+            bx_spec[0] = bx_spec[0]/2
+            bx_phi = np.arctan2(spx.imag, spx.real)
+
+            by_vec_0 = self.vtu_data.get_data_vector('b', el.key)[1]
+            if not self.times.equidistant:
+                by_vec = np.interp(self.times.vector_equi,
+                                   self.times.vector, by_vec_0,
+                                   period=1.0/self.times.freq)
+                # f = interpolate.interp1d(self.times.vector, by_vec_0, kind="cubic")
+                # by_vec = f(self.times.vector_equi)
+            else:
+                by_vec = by_vec_0
+            by_vec = np.array(by_vec)/ff
+            spy = np.fft.fft(by_vec)
+            by_spec = abs(spy)/(len(by_vec)/2)
+            by_spec[0] = by_spec[0]/2
+            by_phi = np.arctan2(spy.imag, spy.real)
+
+            b_abs = np.sqrt(np.array(bx_vec)**2+np.array(by_vec)**2)
+            b_spec = np.sqrt(bx_spec**2+by_spec**2)
+
+            # kh: Korrekturfaktor für drehendes Feld
+            kz = 1.0
+            i_max = list(b_spec).index(max(b_spec))
+            # Phasenverschiebung zwischen Grundschwingungskomponeneten
+            dphi = bx_phi[i_max]-by_phi[i_max]
+            while dphi > np.pi/2:
+                dphi = dphi - np.pi
+            while dphi < -np.pi/2:
+                dphi = dphi + np.pi
+            # Gleichanteil
+            b_dc = max(abs(bx_spec[0]), abs(by_spec[0]))
+            # Achsenverhältnis der Ellipse
+            axis = 0.0
+            #Transformation in Hauptrichtung
+            j_max = list(b_abs).index(max(b_abs))
+            phi = np.arctan2(by_vec[j_max], bx_vec[j_max])
+            bxt_vec = []
+            byt_vec = []
+            for i in range(len(bx_vec)):
+                bxt_vec.append(np.cos(phi)*bx_vec[i]+np.sin(phi)*by_vec[i])
+                byt_vec.append(np.sin(phi)*bx_vec[i]-np.cos(phi)*by_vec[i])
+            # Achsenverhältnis
+            max_bxt = max(abs(np.array(bxt_vec)))
+            max_byt = max(abs(np.array(byt_vec)))
+            if (max_byt > 1.0e-3):
+                axis = max_bxt/max_byt
+            if axis > 1.0:
+                axis = 1.0/axis
+
+            # Korrekturfaktor
+            if ((abs(dphi) > np.pi/3) and axis > 0.3):
+                kz = 1.55
+            if (b_dc > 0.2):
+                kz = 1.0 + 0.65*b_dc**2.1
+            if (max(b_spec) > 1.85):
+                kz = 1.1
+
+            for j in range(int(len(b_spec)/2)):
+                elhystlosses = elhystlosses + kz * ch * \
+                    (j*freq/bf)**chfe*(b_spec[j]/bb)**chbe
+                eleddylosses = eleddylosses + cw * \
+                    (j*freq/bf)**cwfe*(b_spec[j]/bb)**cwbe
+                elexcelosses = elexcelosses + ce * \
+                    (j*freq/bf)**cefe*(b_spec[j]/bb)**cebe
+
+            elhystlosses = elhystlosses*el.area*length*ff*sw
+            eleddylosses = eleddylosses*el.area*length*ff*sw
+            elexcelosses = elexcelosses*el.area*length*ff*sw
+
+        eltotallosses = elhystlosses + eleddylosses + elexcelosses
+
+        return {'total': eltotallosses,
+                'hysteresis': elhystlosses,
+                'eddycurrent': eleddylosses,
+                'excess': elexcelosses}
+
+    def iron_losses_fft_se(self, se):
+        '''Iron losses of a superelement
+        Parameters
+        ----------
+        se: object
+            Superelement
+
+        Returns
+        -------
+        ironlosses : float
+            Iron losses of the superelement
+
+        The iron losses are calculated based on the Bertotti formula
+        (see also iron_losses_fft_el)
+        The results are muliplied by the scale factor,
+        represent also the whole machine.
+        '''
+
+        scale_factor = self.nc_model.scale_factor()
+
+        sehystlosses = 0.0
+        seeddylosses = 0.0
+        seexcelosses = 0.0
+        if (se.elements[0].reluc[0] < 1.0 or se.elements[0].reluc[1] < 1.0) and \
+                (se.elements[0].mag[0] == 0.0 and se.elements[0].mag[1] == 0.0):
             for el in se.elements:
-                #print(el.key,  el.area)
-                elhystlosses = 0.0
-                eleddylosses = 0.0
-                elexcelosses = 0.0
-
-                bx_vec_0 = self.vtu_data.get_data_vector('b', el.key)[0]
-                if not self.times.equidistant:
-                    bx_vec = np.interp(self.times.vector_equi,
-                                       self.times.vector, bx_vec_0,
-                                       period=1.0/self.times.freq)
-                    # f = interpolate.interp1d(self.times.vector, bx_vec_0, kind="cubic")
-                    # bx_vec = f(self.times.vector_equi)
-                else:
-                    bx_vec = bx_vec_0
-                bx_spec = abs(np.fft.fft(bx_vec))/(len(bx_vec)/2)
-
-                by_vec_0 = self.vtu_data.get_data_vector('b', el.key)[1]
-                if not self.times.equidistant:
-                    by_vec = np.interp(self.times.vector_equi,
-                                       self.times.vector, by_vec_0,
-                                       period=1.0/self.times.freq)
-                    # f = interpolate.interp1d(self.times.vector, by_vec_0, kind="cubic")
-                    # by_vec = f(self.times.vector_equi)
-                else:
-                    by_vec = by_vec_0
-                by_spec = abs(np.fft.fft(by_vec))/(len(by_vec)/2)
-
-                b_spec = np.sqrt((bx_spec**2+by_spec**2))
-
-                for j in range(int(len(b_spec)/2)):
-                    elhystlosses = elhystlosses + ch * \
-                        (j*freq/bf)**chfe*(b_spec[j]/bb)**chbe
-                    eleddylosses = eleddylosses + cw * \
-                        (j*freq/bf)**cwfe*(b_spec[j]/bb)**cwbe
-                    elexcelosses = elexcelosses + ce * \
-                        (j*freq/bf)**cefe*(b_spec[j]/bb)**cebe
-
-                sehystlosses = sehystlosses + elhystlosses*el.area*length*ff*sf*sw*scale_factor
-                seeddylosses = seeddylosses + eleddylosses*el.area*length*ff*sf*sw*scale_factor
-                seexcelosses = seexcelosses + elexcelosses*el.area*length*ff*sf*sw*scale_factor
+                ellosses = self.iron_losses_fft_el(el, se)
+                sehystlosses = sehystlosses + \
+                    ellosses['hysteresis'] * scale_factor
+                seeddylosses = seeddylosses + \
+                    ellosses['eddycurrent'] * scale_factor
+                seexcelosses = seexcelosses + ellosses['excess'] * scale_factor
 
         setotallosses = sehystlosses + seeddylosses + seexcelosses
 
@@ -681,7 +804,6 @@ class Losses(object):
                 for sr in self.nc_model.subregions:
                     if se in sr.superelements:
                         srname = sr.name
-                        #print(se.key, "in", sr.key, sr.name)
             else:
                 if (se.mcvtype == 0):
                     center_pnt = se.elements[0].center
@@ -712,17 +834,19 @@ class Losses(object):
 
         return losseslist
 
-    def iron_lossenergy_time_se(self, se):
-        '''Iron losses of a superelement in time domain
+    def iron_lossenergy_time_el(self, el, se):
+        '''Iron losses of an elemt in time domain
         Parameters
         ----------
+        el: object
+             Element
         se: object
-            Superelement
+             Superelement of element
 
         Returns
         -------
         lossenergies : float
-            Iron losses of the superlement
+             Iron losses of the element
 
         The iron losses are calculated based on the Bertotti formula
         in time domaine.
@@ -733,20 +857,24 @@ class Losses(object):
         add up the losses of each time step.
         '''
 
-        scale_factor = self.nc_model.scale_factor()
         length = self.nc_model.arm_length
         time = self.times.vector
 
-        sehystenergy = 0.0
-        seeddyenergy = 0.0
-        seexceenergy = 0.0
-        if se.elements[0].reluc[0] < 1.0 or se.elements[0].reluc[1] < 1.0:
+        elhystenergy = 0.0
+        eleddyenergy = 0.0
+        elexceenergy = 0.0
+
+        if (se.elements[0].reluc[0] < 1.0 or se.elements[0].reluc[1] < 1.0) and \
+                (se.elements[0].mag[0] == 0.0 and se.elements[0].mag[1] == 0.0):
             if (se.mcvtype == 0):
                 center_pnt = se.elements[0].center
-                if (np.sqrt(center_pnt[0]**2+center_pnt[1]**2) > self.nc_model.FC_RADIUS):
-                    ldi = len(self.iron_loss_coefficients)-2  # outside
-                else:
-                    ldi = len(self.iron_loss_coefficients)-1  # inside
+                try:
+                    if (np.sqrt(center_pnt[0]**2+center_pnt[1]**2) > self.nc_model.FC_RADIUS):
+                        ldi = len(self.iron_loss_coefficients)-2  # outside
+                    else:
+                        ldi = len(self.iron_loss_coefficients)-1  # inside
+                except:
+                    ldi = len(self.iron_loss_coefficients)-1  # use inside
             else:
                 ldi = se.mcvtype-1
             kh = self.iron_loss_coefficients[ldi]['kh']
@@ -758,125 +886,161 @@ class Losses(object):
             cebe = self.iron_loss_coefficients[ldi]['ce_ind_exp']
             sw = self.iron_loss_coefficients[ldi]['spec_weight']*1000
             ff = self.iron_loss_coefficients[ldi]['fillfactor']
-            sf = self.iron_loss_coefficients[ldi]['shapefactor']
+            #sf = self.iron_loss_coefficients[ldi]['shapefactor']
 
-            for el in se.elements:
-                elhystenergy = 0.0
-                eleddyenergy = 0.0
-                elexceenergy = 0.0
+            bx_vec = np.array(self.vtu_data.get_data_vector('b', el.key)[0])/ff
+            by_vec = np.array(self.vtu_data.get_data_vector('b', el.key)[1])/ff
 
-                bx_vec = self.vtu_data.get_data_vector('b', el.key)[0]
-                by_vec = self.vtu_data.get_data_vector('b', el.key)[1]
+            # Maximalwert und Richtung des Haupfeldes
+            Bpeak = np.sqrt(bx_vec[0]**2+by_vec[0]**2)
+            phi = np.arctan2(by_vec[0], bx_vec[0])
+            for i in range(1, len(time)):
+                b1 = np.sqrt(bx_vec[i-1]**2+by_vec[i-1]**2)
+                b2 = np.sqrt(bx_vec[i]**2+by_vec[i]**2)
+                if abs(b2) > Bpeak:
+                    Bpeak = abs(b2)
+                    phi = np.arctan2(by_vec[i], bx_vec[i])
 
-                # Maximalwert und Richtung des Haupfeldes
-                Bpeak = np.sqrt(bx_vec[0]**2+by_vec[0]**2)
-                phi = np.arctan2(by_vec[0], bx_vec[0])
-                for i in range(1, len(time)):
-                    b1 = np.sqrt(bx_vec[i-1]**2+by_vec[i-1]**2)
-                    b2 = np.sqrt(bx_vec[i]**2+by_vec[i]**2)
-                    if abs(b2) > Bpeak:
-                        Bpeak = abs(b2)
-                        phi = np.arctan2(by_vec[i], bx_vec[i])
+            #Transformation in Hauptrichutng
+            br_vec = []
+            bt_vec = []
+            for i in range(len(time)):
+                br_vec.append(np.cos(phi)*bx_vec[i]+np.sin(phi)*by_vec[i])
+                bt_vec.append(np.sin(phi)*bx_vec[i]-np.cos(phi)*by_vec[i])
 
-                #Transformation in Hauptrichutng
-                br_vec = []
-                bt_vec = []
-                for i in range(len(time)):
-                    br_vec.append(np.cos(phi)*bx_vec[i]+np.sin(phi)*by_vec[i])
-                    bt_vec.append(np.sin(phi)*bx_vec[i]-np.cos(phi)*by_vec[i])
-
-                Bpeak_p = np.sqrt(bx_vec[0]**2+by_vec[0]**2)
-                Bx = []
-                tp_beg = 0.0
-                tp_end = 0.0
-                Tp = 0.0
-                nzeros = 0
-                zero = (br_vec[0] >= 0)
-                if br_vec[1] > br_vec[0]:
+            Bpeak_p = np.sqrt(bx_vec[0]**2+by_vec[0]**2)
+            Bx = []
+            tp_beg = 0.0
+            tp_end = 0.0
+            Tp = 0.0
+            nzeros = 0
+            zero = (br_vec[0] >= 0)
+            if br_vec[1] > br_vec[0]:
+                up = True
+            else:
+                up = False
+            for i in range(1, len(time)):
+                b1 = np.sqrt(br_vec[i-1]**2+bt_vec[i-1]**2)
+                b2 = np.sqrt(br_vec[i]**2+bt_vec[i]**2)
+                # Maximalwert innerhalb letzter Periode
+                if abs(b2) > Bpeak_p:
+                    Bpeak_p = abs(b2)
+                # Nulldurchgaenge und Periodendauer
+                if zero != (br_vec[i] >= 0):
+                    zero = (not zero)
+                    tp_beg = tp_end
+                    tp_end = time[i]
+                    if tp_beg > 0.0:
+                        nzeros = nzeros+1
+                        if nzeros > 1:
+                            #Tp = (Tp*(nzeros-1)/nzeros+2*(tp_end-tp_beg)/nzeros)/2
+                            Tp = 2*(tp_end-tp_beg)
+                            Bpeak = Bpeak_p
+                            elhystenergy = elhystenergy+kh*Bpeak**chbe/2
+                            Bpeak_p = 0.0
+                        else:
+                            Tp = 2.0*(tp_end-tp_beg)
+                            Bpeak = Bpeak_p
+                            elhystenergy = elhystenergy+kh * \
+                                Bpeak**chbe * (tp_end-time[0])/Tp
+                            Bpeak_p = 0.0
+                    Bx = []
+                # Wendepunkte
+                if up and b2 < b1:
+                    Bx.append(b1)
+                if not up and b2 > b1:
+                    Bx.append(b1)
+                # Steigungsrichtung
+                if b2 > b1:
                     up = True
                 else:
                     up = False
-                for i in range(1, len(time)):
-                    b1 = np.sqrt(br_vec[i-1]**2+bt_vec[i-1]**2)
-                    b2 = np.sqrt(br_vec[i]**2+bt_vec[i]**2)
-                    # Maximalwert innerhalb letzter Periode
-                    if abs(b2) > Bpeak_p:
-                        Bpeak_p = abs(b2)
-                    # Nulldurchgaenge und Periodendauer
-                    if zero != (br_vec[i] >= 0):
-                        zero = (not zero)
-                        tp_beg = tp_end
-                        tp_end = time[i]
-                        if tp_beg > 0.0:
-                            nzeros = nzeros+1
-                            if nzeros > 1:
-                                #Tp = (Tp*(nzeros-1)/nzeros+2*(tp_end-tp_beg)/nzeros)/2
-                                Tp = 2*(tp_end-tp_beg)
-                                Bpeak = Bpeak_p
-                                elhystenergy = elhystenergy+kh*Bpeak**chbe/2
-                                Bpeak_p = 0.0
-                            else:
-                                Tp = 2.0*(tp_end-tp_beg)
-                                Bpeak = Bpeak_p
-                                elhystenergy = elhystenergy+kh * \
-                                    Bpeak**chbe * (tp_end-time[0])/Tp
-                                Bpeak_p = 0.0
-                        Bx = []
-                    # Wendepunkte
-                    if up and b2 < b1:
-                        Bx.append(b1)
-                    if not up and b2 > b1:
-                        Bx.append(b1)
-                    # Steigungsrichtung
-                    if b2 > b1:
-                        up = True
-                    else:
-                        up = False
 
-                    try:
-                        if b2 > 0 and up and b2 > Bx[-2]:
-                            Bm = abs(Bx[-2]+Bx[-1])/2
-                            dB = abs(Bx[-2]-Bx[-1])
-                            elhystenergy = elhystenergy + \
-                                kh*Bm**(chbe-1)*khml*dB/2
-                            Bx.remove(Bx[-2])
-                            Bx.remove(Bx[-1])
-                        if b2 < 0 and not up and b2 < Bx[-2]:
-                            elhystenergy = elhystenergy + \
-                                kh*Bm**(chbe-1)*khml*dB/2
-                            Bx.remove(Bx[-2])
-                            Bx.remove(Bx[-1])
-                        if b2 > 0 and not up and Bx[-1] > Bx[-2]:
-                            elhystenergy = elhystenergy + \
-                                kh*Bm**(chbe-1)*khml*dB/2
-                            Bx.remove(Bx[-2])
-                            Bx.remove(Bx[-1])
-                        if b2 < 0 and up and Bx[-1] < Bx[-2]:
-                            elhystenergy = elhystenergy + \
-                                kh*Bm**(chbe-1)*khml*dB/2
-                            Bx.remove(Bx[-2])
-                            Bx.remove(Bx[-1])
+                try:
+                    if b2 > 0 and up and b2 > Bx[-2]:
+                        Bm = abs(Bx[-2]+Bx[-1])/2
+                        dB = abs(Bx[-2]-Bx[-1])
+                        elhystenergy = elhystenergy + \
+                            kh*Bm**(chbe-1)*khml*dB/2
+                        Bx.remove(Bx[-2])
+                        Bx.remove(Bx[-1])
+                    if b2 < 0 and not up and b2 < Bx[-2]:
+                        elhystenergy = elhystenergy + \
+                            kh*Bm**(chbe-1)*khml*dB/2
+                        Bx.remove(Bx[-2])
+                        Bx.remove(Bx[-1])
+                    if b2 > 0 and not up and Bx[-1] > Bx[-2]:
+                        elhystenergy = elhystenergy + \
+                            kh*Bm**(chbe-1)*khml*dB/2
+                        Bx.remove(Bx[-2])
+                        Bx.remove(Bx[-1])
+                    if b2 < 0 and up and Bx[-1] < Bx[-2]:
+                        elhystenergy = elhystenergy + \
+                            kh*Bm**(chbe-1)*khml*dB/2
+                        Bx.remove(Bx[-2])
+                        Bx.remove(Bx[-1])
 
-                    except:
-                        pass
+                except:
+                    pass
 
-                    dt = time[i]-time[i-1]
-                    dbr = br_vec[i]-br_vec[i-1]
-                    dbt = bt_vec[i]-bt_vec[i-1]
-                    db = np.sqrt(dbr**2+dbt**2)
-                    eleddyenergy = eleddyenergy + kw*(db/dt)**cwbe * dt
-                    elexceenergy = elexceenergy + ke*(db/dt)**cebe * dt
+                dt = time[i]-time[i-1]
+                dbr = br_vec[i]-br_vec[i-1]
+                dbt = bt_vec[i]-bt_vec[i-1]
+                db = np.sqrt(dbr**2+dbt**2)
+                eleddyenergy = eleddyenergy + kw*(db/dt)**cwbe * dt
+                elexceenergy = elexceenergy + ke*(db/dt)**cebe * dt
 
-                #elhystenergy = elhystenergy+kh*Bpeak**chbe * T/(time[-1]-time[0])
-                if nzeros >= 1:
-                    elhystenergy = elhystenergy+kh * \
-                        Bpeak**chbe * (time[-1]-tp_end)/Tp
+            #elhystenergy = elhystenergy+kh*Bpeak**chbe * T/(time[-1]-time[0])
+            if nzeros >= 1:
+                elhystenergy = elhystenergy+kh * \
+                    Bpeak**chbe * (time[-1]-tp_end)/Tp
 
-                sehystenergy = sehystenergy + elhystenergy*el.area*length*ff*sf*sw*scale_factor
-                seeddyenergy = seeddyenergy + eleddyenergy*el.area*length*ff*sf*sw*scale_factor
-                seexceenergy = seexceenergy + elexceenergy*el.area*length*ff*sf*sw*scale_factor
+            elhystenergy = elhystenergy*el.area*length*ff*sw
+            eleddyenergy = eleddyenergy*el.area*length*ff*sw
+            elexceenergy = elexceenergy*el.area*length*ff*sw
+
+        eltotalenergy = elhystenergy + eleddyenergy + elexceenergy
+
+        return {'total': eltotalenergy,
+                'hysteresis': elhystenergy,
+                'eddycurrent': eleddyenergy,
+                'excess': elexceenergy}
+
+    def iron_lossenergy_time_se(self, se):
+        '''Iron losses of a superelement in time domain
+        Parameters
+        ----------
+        se: object
+            Superelement
+
+        Returns
+        -------
+        lossenergies : float
+            Iron losses of the superelement
+
+        The iron losses are calculated based on the Bertotti formula
+        in time domain (see also iron_lossenergy_time_el)
+        The results are muliplied by the scale factor,
+        represent also the whole machine.
+        '''
+
+        scale_factor = self.nc_model.scale_factor()
+
+        sehystenergy = 0.0
+        seeddyenergy = 0.0
+        seexceenergy = 0.0
+        if (se.elements[0].reluc[0] < 1.0 or se.elements[0].reluc[1] < 1.0) and \
+                (se.elements[0].mag[0] == 0.0 and se.elements[0].mag[1] == 0.0):
+            for el in se.elements:
+                elenergy = self.iron_lossenergy_time_el(el, se)
+                sehystenergy = sehystenergy + \
+                    elenergy['hysteresis'] * scale_factor
+                seeddyenergy = seeddyenergy + \
+                    elenergy['eddycurrent'] * scale_factor
+                seexceenergy = seexceenergy + elenergy['excess'] * scale_factor
 
         setotalenergy = sehystenergy + seeddyenergy + seexceenergy
+
         return {'total': setotalenergy,
                 'hysteresis': sehystenergy,
                 'eddycurrent': seeddyenergy,
@@ -899,7 +1063,7 @@ class Losses(object):
             Iron losses energy of the subregion
 
         The iron losses are calculated based on the Bertotti formula
-        in time domain (see also iron_lossenergy_time_se)
+        in time domain (see also iron_lossenergy_time_el)
         '''
         if start != 0.0 or end != 0.0:
             self.vtu_data.set_time_window(start, end)
@@ -920,13 +1084,12 @@ class Losses(object):
             sreddyenergy = sreddyenergy + seenergy['eddycurrent']
             srexceenergy = srexceenergy + seenergy['excess']
 
-        srenergy = {'subregion': srname,
-                    'total': srtotalenergy,
-                    'hysteresis': srhystenergy,
-                    'eddycurrent': sreddyenergy,
-                    'excess': srexceenergy
-                    }
-        return srenergy
+        return {'subregion': srname,
+                'total': srtotalenergy,
+                'hysteresis': srhystenergy,
+                'eddycurrent': sreddyenergy,
+                'excess': srexceenergy
+                }
 
     def iron_losses_time_subregion(self, srname, start=0.0, end=0.0):
         '''Iron power losses of a subregion
@@ -945,7 +1108,7 @@ class Losses(object):
             Iron losses energy of the subregion
 
         The iron losses are calculated based on the Bertotti formula
-        in time domain (see also iron_lossenergy_time_se)
+        in time domain (see also iron_lossenergy_time_el)
         '''
         while len(srname) < 4:
             srname = srname+' '
@@ -996,14 +1159,16 @@ class Losses(object):
                 for sr in self.nc_model.subregions:
                     if se in sr.superelements:
                         srname = sr.name
-                        #print(se.key, "in", sr.key, sr.name)
             else:
                 if (se.mcvtype == 0):
                     center_pnt = se.elements[0].center
-                    if (np.sqrt(center_pnt[0]**2+center_pnt[1]**2) > self.nc_model.FC_RADIUS):
-                        srname = "no, outside"
-                    else:
-                        srname = "no, inside"
+                    try:
+                        if (np.sqrt(center_pnt[0]**2+center_pnt[1]**2) > self.nc_model.FC_RADIUS):
+                            srname = "no, outside"
+                        else:
+                            srname = "no, inside"
+                    except:
+                        srname = "no, used inside"
 
             found = False
             for srlosses in energylist:
@@ -1043,7 +1208,7 @@ class Losses(object):
             Iron losses of the subregion
 
         The iron losses are calculated based on the Bertotti formula
-        in time domain (see also iron_lossenergy_time_se)
+        in time domain (see also iron_lossenergy_time_el)
         '''
 
         energylist = self.iron_lossenergy_time(start, end)
@@ -1058,3 +1223,106 @@ class Losses(object):
             losseslist.append(sr)
 
         return losseslist
+
+    def export_lossdensity(self,  filename, methode="fft", start=0.0, end=0.0):
+        '''Export the loss density of elements in a vtu -file
+        Parameters
+        ----------
+        filename: string
+            Filename of created vtu-file (with extension)
+        nethode: string
+            Calculation methode (optional, default="fft")
+            methode="fft": use fft to calculate the losses
+            methode="time": calculate the losses in time domain
+        start: float
+            Start of the time window (optional)
+        end : float
+            End of the time window (optional)
+
+        Returns
+        -------
+
+        The losses density in each element is calculated und
+        stored in a vtu-file.
+        '''
+
+        import vtk
+
+        if start != 0.0 or end != 0.0:
+            self.vtu_data.set_time_window(start, end)
+
+        #scale_factor = self.nc_model.scale_factor()
+        length = self.nc_model.arm_length
+        self.times = TimeRange(self.vtu_data, self.nc_model)
+        time = self.times.vector[-1]-self.times.vector[0]
+
+        dest_grid = vtk.vtkUnstructuredGrid()
+        # copy points
+        num_point = self.vtu_data.output.GetNumberOfPoints()
+        points = vtk.vtkPoints()
+        for i in range(num_point):
+            pnt = self.vtu_data.output.GetPoints().GetPoint(i)
+            points.InsertNextPoint(pnt)
+        dest_grid.SetPoints(points)
+        # copy cells
+        num_cells = self.vtu_data.output.GetNumberOfCells()
+        cells = vtk.vtkCellArray()
+        cell_types = []
+        # original cells
+
+        for i in range(num_cells):
+            cell = self.vtu_data.output.GetCell(i)
+            if cell.GetNumberOfPoints() == 3:
+                triangle = vtk.vtkTriangle()
+                for j in range(cell.GetNumberOfPoints()):
+                    triangle.GetPointIds().SetId(j, cell.GetPointId(j))
+                cells.InsertNextCell(triangle)
+                cell_types.append(vtk.VTK_TRIANGLE)
+            if cell.GetNumberOfPoints() == 4:
+                quad = vtk.vtkQuad()
+                for j in range(cell.GetNumberOfPoints()):
+                    quad.GetPointIds().SetId(j, cell.GetPointId(j))
+                cells.InsertNextCell(quad)
+                cell_types.append(vtk.VTK_QUAD)
+        dest_grid.SetCells(cell_types, cells)
+
+        # insert cell values
+        cell_data = vtk.vtkDoubleArray()
+        cell_data.SetNumberOfComponents(1)
+        cell_data.SetName("lossdensity [W/m3]")
+        cell_data.SetNumberOfValues(num_cells)
+
+        for se in self.nc_model.superelements:
+            for el in se.elements:
+                ellossdensity = 0
+                if se.conduc > 0.0:
+                    if methode == "time":
+                        ellossenergy = self.ohm_lossenergy_el(el, se)
+                        ellossdensity = ellossenergy / \
+                            (time * el.area * length)
+                    else:
+                        ellosses = self.ohm_powerlosses_fft_el(el, se)
+                        ellossdensity = ellosses / (el.area * length)
+
+                if (se.elements[0].reluc[0] < 1.0 or se.elements[0].reluc[1] < 1.0) and \
+                   (se.elements[0].mag[0] == 0.0 and se.elements[0].mag[1] == 0.0):
+                    if methode == "time":
+                        ellossenergy = self.iron_lossenergy_time_el(el, se)
+                        ellossdensity = ellossdensity + \
+                            ellossenergy['total'] / (time * el.area * length)
+                    else:
+                        ellosses = self.iron_losses_fft_el(el, se)
+                        ellossdensity = ellossdensity + \
+                            ellosses['total'] / (el.area * length)
+
+                cell_data.InsertValue(el.key-1, ellossdensity)
+
+        dest_grid.GetCellData().AddArray(cell_data)
+
+        writer = vtk.vtkXMLUnstructuredGridWriter()
+        writer.SetFileName(filename)
+        writer.SetInputData(dest_grid)
+        writer.Update()
+        writer.Write()
+
+        return

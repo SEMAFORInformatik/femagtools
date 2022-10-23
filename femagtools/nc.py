@@ -81,6 +81,10 @@ class Reader(object):
              grp.variables[k][:-1]
              for k in ('nod_pntr', 'type', 'se_key', 'reluc', 'reluc_2',
                        'mag_1', 'mag_2', 'loss_dens')]
+        try:
+            self.ELEM_ISA_ELEM_REC_TEMPERATURE = grp.variables['temperature'][:-1]
+        except:
+            pass
         logger.debug('Elements: %d', len(self.ELEM_ISA_ELEM_REC_EL_TYP))
 
         grp = ds.groups['element_nodes']
@@ -109,6 +113,10 @@ class Reader(object):
                       'cond_type', 'vel_sys', 'sr_key', 'velo_1',
                       'velo_2', 'conduc', 'length', 'curd_re', 'curd_im',
                       'fillfactor')]
+        try:
+            self.SUPEL_ISA_SUPEL_REC_SE_TEMP_COEF = grp.variables['temp_coef'][:]
+        except:
+            pass
 
         grp = ds.groups['superelement_nodechains']
         (self.SE_NDCHN_ISA_NC_KEY,

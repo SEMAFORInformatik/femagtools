@@ -365,6 +365,18 @@ def forcedens_fft(title, fdens, ax=0):
     ax.set_zlabel('kN/m²')
 
 
+def fluxdens_surface(fdens, ax):
+    if ax == 0:
+        _create_3d_axis()
+        ax = plt.gca()
+    x = [p for p in fdens.positions[0]['X']]
+    y = [p['position'] for p in fdens.positions]
+    z = np.array([p['B_N']
+                  for p in fdens.positions])
+    _plot_surface(ax, x, y, z,
+                  (u'Rotor pos/°', u'Pos/°', u'B N / T'))
+
+
 def winding_flux(pos, flux, ax=0):
     """plot flux vs position"""
     if ax == 0:

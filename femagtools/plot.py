@@ -365,7 +365,7 @@ def forcedens_fft(title, fdens, ax=0):
     ax.set_zlabel('kN/m²')
 
 
-def fluxdens_surface(fdens, ax):
+def fluxdens_surface(fdens, ax=0):
     if ax == 0:
         _create_3d_axis()
         ax = plt.gca()

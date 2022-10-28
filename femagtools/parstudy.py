@@ -110,10 +110,10 @@ class ParameterStudy(object):
             raise ValueError("directory {} is not empty".format(dirname))
         self.reportdir = dirname
 
-    def setup_model(self, builder, model):
+    def setup_model(self, builder, model, recsin):
         """builds model in current workdir and returns its filenames"""
         # get and write mag curves
-        mc_files = self.femag.copy_magnetizing_curves(model)
+        mc_files = self.femag.copy_magnetizing_curves(model, recsin=recsin)
 
         if model.is_complete():
             logger.info("setup model in %s", self.femag.workdir)

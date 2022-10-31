@@ -1083,20 +1083,18 @@ class Reader:
         ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
         if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:
             ncols = 2
-        nrows = len(m[2])//ncols
-        if ncols * nrows % len(m[3]) != 0:
-            if ncols > nrows:
-                ncols = ncols-1
-            else:
-                nrows = nrows-1
+        id = np.reshape(m[0], (-1, ncols)).T[0]
+        id = self.__removeTrailingZero(id)
+        nrows = len(id)
 
         cols = ('styoke', 'stteeth', 'rotor', 'magnet')
+        mlen = nrows*ncols
         if self.ldq:
-            ls = {k: np.reshape(v,
+            ls = {k: np.reshape(v[:mlen],
                                 (nrows, ncols)).T[::-1].tolist()
                   for k, v in zip(cols, m[2:])}
         else:
-            ls = {k: np.reshape(v,
+            ls = {k: np.reshape(v[:mlen],
                                 (nrows, ncols)).T.tolist()
                   for k, v in zip(cols, m[2:])}
         m = []
@@ -1113,11 +1111,11 @@ class Reader:
         if m:
             m = np.array(m).T
             if self.ldq:
-                ls.update({k: np.reshape(v,
+                ls.update({k: np.reshape(v[:mlen],
                                          (nrows, ncols)).T[::-1].tolist()
                            for k, v in zip(cols, m[2:])})
             else:
-                ls.update({k: np.reshape(v,
+                ls.update({k: np.reshape(v[:mlen],
                                          (nrows, ncols)).T.tolist()
                            for k, v in zip(cols, m[2:])})
         ls['speed'] = speed

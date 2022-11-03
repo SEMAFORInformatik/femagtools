@@ -1090,7 +1090,7 @@ class Winding(BaseEntity):
 
     def elements(self):
         """return elements of this winding"""
-        return [e for s in self.subregions for e in s.elements]
+        return [e for s in self.subregions for e in s.elements()]
 
 
 def read(filename):

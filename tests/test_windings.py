@@ -123,4 +123,4 @@ def test_inductance():
     lfe = 42e-3
     da1 = 110e-3
     ag = 1e-3
-    assert round(wdg.inductance(nc, g, da1, lfe, ag), 4) == 0.0157
+    assert round(wdg.inductance(nc, g, da1, lfe, ag), 4) == 0.0236

@@ -204,7 +204,7 @@ def airgap(airgap, ax=0):
         ax = plt.gca()
     ax.set_title('Airgap Flux Density [T]')
     ax.plot(airgap['pos'], airgap['B'],
-            label='Max {:4.2f} T'.format(max(airgap['B'])))
+            label='Max {:4.2f} T'.format(max(np.abs(airgap['B']))))
     ax.plot(airgap['pos'], airgap['B_fft'],
             label='Base Ampl {:4.2f} T'.format(airgap['Bamp']))
     ax.set_xlabel('Position/°')
@@ -1645,7 +1645,9 @@ def main():
 
 
 def characteristics(char, title=''):
-    fig, axs = plt.subplots(2, 2, figsize=(10, 8), sharex=True)
+    fig, axs = plt.subplots(2, 2, figsize=(10, 8),
+                            layout='tight',
+                            sharex=True)
     if title:
         fig.suptitle(title)
 
@@ -1704,7 +1706,7 @@ def characteristics(char, title=''):
     ax4.legend(loc='upper center')
     ax4.set_ylabel("Efficiency")
 
-    fig.tight_layout()
+    return fig
 
 
 def get_nT_boundary(n, T):

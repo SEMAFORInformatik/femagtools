@@ -1,3 +1,11 @@
+"""
+  femagtools.pm
+  ~~~~~~~~~~~~~
+
+  PM/Rel synchronous machine (SPM, IPM, RM) electrical circuit model
+
+  Copyright 2022: Semafor Informatik & Energie AG, Switzerland
+"""
 import logging
 import numpy as np
 import numpy.linalg as la

@@ -30,9 +30,9 @@ m.wedge_width2= ${model['wedge_width2']*1e3}
 m.middle_line = ${model.get('middle_line',0)}
 m.tooth_width = ${model['tooth_width']*1e3}
 m.slot_top_sh = ${model['slot_top_sh']}
-   
+
 m.zeroangl    = ${model.get('zeroangle',0)}
-m.rlength     = ${model.get('rlength',1)*100}  
+m.rlength     = ${model.get('rlength',1)*100}
 
 m.mcvkey_yoke = mcvkey_yoke
 
@@ -94,7 +94,7 @@ if mcvkey_teeth ~= nil then
      r = (m.inside_diam - m.slot_height)/2
   else
      r = (m.inside_diam + m.slot_height)/2
-  end  
+  end
   x0, y0 = pr2c(r, 2*math.pi/m.tot_num_slot + m.zeroangl/180*math.pi)
    def_mat_fm_nlin(x0, y0, "blue", mcvkey_teeth, m.rlength)
 end

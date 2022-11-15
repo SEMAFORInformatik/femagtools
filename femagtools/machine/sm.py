@@ -1,9 +1,9 @@
 """
-  GT-ISE Femag API
-
+  femagtools.sm
+  ~~~~~~~~~~~~~
   wound-rotor synchronous machine (EESM) electrical circuit model
 
-  Copyright 2021: Semafor Informatik & Energie AG, Switzerland
+  Copyright 2022: Semafor Informatik & Energie AG, Switzerland
 """
 import numpy as np
 import femagtools.bch

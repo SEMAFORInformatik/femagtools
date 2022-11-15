@@ -177,12 +177,16 @@ class Builder:
 
         statmodel = model.stator.copy()
         statmodel.update(model.stator[templ])
-        statmodel.update({
-            'zeroangle': model.stator.get('zeroangle', 0),
-            'rlength': model.stator.get('rlength', 1),
-            'num_layers': model.windings.get('num_layers', 1)}
-        )
-
+        k = 'zeroangle'
+        if k not in statmodel:
+            statmodel[k] = 0
+        k = 'rlength'
+        if k not in statmodel:
+            statmodel[k] = 1
+        if 'windings' in statmodel:
+            k = 'num_layers'
+            if k not in statmodel['windings']:
+                statmodel['windings'][k] = 1
         fslcode = self.__render(statmodel, templ, stator=True)
         if fslcode:
             if self.fsl_stator:
@@ -330,8 +334,9 @@ class Builder:
         """return connect_model if rotating machine and incomplete model
         (Note: femag bug with connect model)"
         """
-        if (model.get('move_action') == 0 and (model.connect_full or
-                                               model.stator['num_slots'] > model.stator['num_slots_gen'])):
+        if (model.get('move_action') == 0 and (
+                model.connect_full or
+                model.stator['num_slots'] > model.stator['num_slots_gen'])):
             return ['pre_models("connect_models")\n']
         return []
 
@@ -494,7 +499,10 @@ class Builder:
             else:
                 rotor = self.create_rotor_model(
                     model, condMat, ignore_material)
-            windings = model.windings
+            try:
+                windings = model.windings
+            except:
+                windings = {}
             windings['winding_inside'] = model.external_rotor
             if model.commutator:
                 magdata = []
@@ -512,6 +520,13 @@ class Builder:
                         self.create_gen_winding(model) +
                         self.mesh_airgap(model) +
                         self.create_connect_models(model) +
+                        self.create_rotor_winding(model))
+            if 'statorRing' in model.stator:
+                return (self.create_new_model(model) +
+                        self.create_cu_losses(windings, condMat, ignore_material) +
+                        self.create_fe_losses(model) +
+                        rotor +
+                        self.create_stator_model(model) +
                         self.create_rotor_winding(model))
 
             return (self.create_new_model(model) +

@@ -220,14 +220,16 @@ class Winding(object):
         sw: (float) slot opening width / m
         """
         mue0 = 4*np.pi*1e-7
-        taup = np.pi*da1/self.p/2
+        # carter factor
         tauq = np.pi*da1/self.Q
         h = sw/ag
         xic = 2/np.pi*(h*np.arctan(h/2) - np.log(1+(h/2)**2))
         kc = tauq/(tauq-xic*ag)  # Carter factor
         de = kc * ag
-        return (mue0*(self.kw()*self.turns_per_phase(nwires, g))**2 *
-                4/(np.pi**2)/self.p/de*taup*lfe)
+
+        N1 = self.turns_per_phase(nwires, g)
+        return 3*mue0*da1*lfe*((self.kw()*N1)**2 /
+                               (np.pi*self.p**2*de))
 
     def sequence(self):
         """returns sequence of winding keys"""

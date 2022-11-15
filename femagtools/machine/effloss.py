@@ -7,44 +7,9 @@ import copy
 import scipy.interpolate as ip
 import logging
 from .utils import betai1, dqpar_interpol
+from . import create_from_eecpars
 
 logger = logging.getLogger("femagtools.effloss")
-
-
-def _create_machine(temp, eecpars):
-    """create machine according to the eecpars:
-    PM, EESM or IM"""
-    if 'ldq' in eecpars:  # this is a PM (or EESM)
-        if (isinstance(eecpars['ldq'], list) and
-            'ex_current' in eecpars['ldq'][0] or
-            isinstance(eecpars['ldq'], dict) and
-                'ex_current' in eecpars['ldq']):
-            pars = copy.deepcopy(eecpars)
-            pars['tcu1'] = temp[0]
-            pars['tcu2'] = temp[1]
-            return femagtools.machine.sm.SynchronousMachine(pars)
-
-        if isinstance(eecpars['ldq'], list) and len(eecpars['ldq']) > 1:
-            x, dqp = dqpar_interpol(
-                temp[1], eecpars['ldq'], ipkey='temperature')
-        else:
-            dqp = eecpars['ldq'][0]
-            logger.warning(
-                "single temperature DQ parameters: unable to fit temperature %s", temp)
-        return femagtools.machine.PmRelMachineLdq(
-            eecpars['m'], eecpars['p'], r1=eecpars['r1'],
-            ls=eecpars['ls1'],
-            psid=dqp['psid'],
-            psiq=dqp['psiq'],
-            losses=dqp['losses'],
-            beta=dqp['beta'],
-            i1=dqp['i1'],
-            tcu1=temp[0])
-    else:  # must be an induction machine
-        pars = copy.deepcopy(eecpars)
-        pars['tcu1'] = temp[0]
-        pars['tcu2'] = temp[1]
-        return femagtools.machine.im.InductionMachine(pars)
 
 
 def _generate_mesh(n, T, nb, Tb, npoints):
@@ -106,7 +71,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
             xtemp = [temp[0], temp[1]]
         else:
             xtemp = [temp, temp]
-        m = _create_machine(xtemp, eecpars)
+        m = create_from_eecpars(xtemp, eecpars)
     else:  # must be a Machine
         m = eecpars
     if isinstance(T, list):

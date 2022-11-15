@@ -1,4 +1,4 @@
--- calculate noload flux and airgap flux density
+-- calculate noload flux and airgap flux density (magstatic mode)
 --
 -- model:
 --    Q2 (number of rotor slots)
@@ -14,7 +14,9 @@ function calc_field(phi, curvec, file_psi)
   pos={}
   bag={}
   rec={}
+  cur={}
   f1=0
+  alfa0 = 2*math.pi/3
   a=${model.get('num_par_wdgs', 1)}   -- parallel branches
 
   for i=1, #curvec do
@@ -22,37 +24,43 @@ function calc_field(phi, curvec, file_psi)
     amp = math.sqrt(2)*curvec[i]/a
     for k=1,3 do
     --Set currents
-      alfa = (k-1)*2*math.pi/3
+      alfa = (k-1)*2*math.pi/3 + alfa0
       def_curr_wdg(k, amp*math.cos(alfa), 0)
     end
 
-  calc_field_single({
+    calc_field_single({
         maxit=300, maxcop=m.error_perm, -- err_perm in %
         permode='restore'})
 
-  psi[i] = 0
-  for k=1,3 do
-    psi_re, psi_im = flux_winding_wk(k)
-    alfa = (k-1)*2*math.pi/3
-    psi[i] = psi[i] + ksym/a*m.arm_length*psi_re*math.cos(alfa)
-  end
+    --psi[i] = 0
+    for k=1,3 do
+      psir, psii = flux_winding_wk(k)
+      curr, curi = get_wdg_data("cur", k)
+      cur[k] = {a*curr, a*curi}
+      --alfa = (k-1)*2*math.pi/3
+      --psi[i] = psi[i] + ksym/a*m.arm_length*psi_re*math.cos(alfa)
+      psi[k] = {ksym*psir/a*m.arm_length, ksym*psii/a*m.arm_length}
+    end
 
     post_models("induct(x)","b")    -- Calculate field distribution
-      k = 1
-      for j = 1, table.getn(b), 3 do
-        pos[k] = b[j]
-        bag[i][k] = b[j+1] -- radial component only
-        k = k+1
-      end
+    k = 1
+    for j = 1, table.getn(b), 3 do
+      pos[k] = b[j]
+      bag[i][k] = b[j+1] -- radial component only
+      k = k+1
+    end
+
+    file_psi:write(string.format("%g ", phi))
+    for k=1, 3 do
+      file_psi:write(string.format("%g %g ",
+        cur[k][1], cur[k][2]))
+    end
+    for k=1, 3 do
+      file_psi:write(string.format("%g %g ",
+        psi[k][1], psi[k][2]))
+    end
+    file_psi:write("\n")
   end
-  rec[1] = string.format("%g ", phi)
-  file_psi:write(rec[1])
-  for i=1, #curvec do
-     rec[i+1] = string.format("%g %g ", curvec[i], math.sqrt(2)/3*psi[i])
-     file_psi:write(rec[i+1])
-  end
-  print(table.concat(rec))
-  file_psi:write("\n")
   return pos, bag
 end
 
@@ -89,6 +97,13 @@ print(string.format(" rotation steps: %d  current steps: %d\n", nrot, #curvec))
 bags = {}
 
 phi = 0
+-- initialize rotate
+rotate({
+    airgap = m.fc_radius,    -- air gap radius
+    region = "inside",       -- region to rotate
+    mode   = "save"         -- save initial model state
+})
+
 file_psi = io.open("psi-rot-mag.dat","w")
 for n=1,nrot+1 do
 
@@ -97,20 +112,12 @@ for n=1,nrot+1 do
 
   phi=dphi*n
   if (phi>=360.0/ksym) then
-    rotate({airgap=m.fc_radius,
-            angle=dphi-phi,
-            region="inside",
-            mode="increment"})  -- rotation pos outside model
+    rotate({angle=dphi-phi, mode="increment"})  -- rotation pos outside model
   else
-    rotate({airgap=m.fc_radius,
-            angle=dphi,
-            region="inside",
-            mode="increment"})  -- rotation pos inside model
+    rotate({angle=dphi, mode="increment"})  -- rotation pos inside model
   end
 end
-rotate({
-         mode = "reset"  -- restore the initial state (discard any changes)
-       })
+rotate({mode = "reset"})  -- restore the initial state (discard any changes)
 file_psi:close()
 
 for i=1, #curvec do

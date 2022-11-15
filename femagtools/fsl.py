@@ -183,10 +183,9 @@ class Builder:
         k = 'rlength'
         if k not in statmodel:
             statmodel[k] = 1
-        if 'windings' in statmodel:
-            k = 'num_layers'
-            if k not in statmodel['windings']:
-                statmodel['windings'][k] = 1
+        k = 'num_layers'
+        if k not in statmodel:
+            statmodel[k] = 1
         fslcode = self.__render(statmodel, templ, stator=True)
         if fslcode:
             if self.fsl_stator:

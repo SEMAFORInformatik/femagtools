@@ -40,21 +40,23 @@ pre_models("STATOR_3")
 
 % if model.get('is_rotor', False):
 
+
 if dsh ~= nil then -- create shaft subregion
+  alph0=m.zeroangl/180*math.pi
   rlen=100
   x = {}
   y = {}
   taus = 2*math.pi/Q2
-  x[1],y[1] = pr2c(dsh/2,0)
-  x[3],y[3] = pr2c(dy2/2,0)
+  x[1],y[1] = pr2c(dsh/2,alph0)
+  x[3],y[3] = pr2c(dy2/2,alph0)
   ndt(4)
   if m.num_sl_gen < m.tot_num_sl then
-    x[2],y[2] = pr2c(dsh/2,taus*m.num_sl_gen)
-    x[4],y[4] = pr2c(dy2/2,taus*m.num_sl_gen)
+    x[2],y[2] = pr2c(dsh/2,taus*m.num_sl_gen+alph0)
+    x[4],y[4] = pr2c(dy2/2,taus*m.num_sl_gen+alph0)
     nc_line(x[2], y[2], x[4], y[4], 0)
   else
-    x[2],y[2] = pr2c(dsh/2,taus*m.tot_num_sl/2)
-    x[4],y[4] = pr2c(dy2/2,taus*m.tot_num_sl/2)
+    x[2],y[2] = pr2c(dsh/2,taus*m.tot_num_sl/2+alph0)
+    x[4],y[4] = pr2c(dy2/2,taus*m.tot_num_sl/2+alph0)
   end
   if dsh > 0 then
     nc_circle(x[1],y[1],x[2],y[2],0)
@@ -66,7 +68,7 @@ if dsh ~= nil then -- create shaft subregion
      nc_line(x[1], y[1], x[3], y[3], 0)
   end
   -- Create Mesh
-  x0, y0 = pr2c((dy2+dsh)/4, math.pi*Q2*m.num_sl_gen)
+  x0, y0 = pr2c((dy2+dsh)/4, math.pi*Q2*m.num_sl_gen+alph0)
   create_mesh_se(x0, y0)
   def_new_subreg(x0, y0,"Shft",'lightgrey')
   if mcvkey_shaft ~= nil and mcvkey_shaft ~= 'dummy' then

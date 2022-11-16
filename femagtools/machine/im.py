@@ -408,7 +408,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
         da1=machine['bore_diam'],
         lfe=machine['lfe'],
         ag=machine['airgap'])
-    i1max = 2*u1ph/w1/L1
+    i1max = 2.5*u1ph/w1/L1
     i1min = i1max/5
     num_steps = kwargs.get('num_steps', 5)
     if kwargs.get('logspace', False):

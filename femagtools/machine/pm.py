@@ -9,12 +9,19 @@
 import logging
 import numpy as np
 import numpy.linalg as la
-from .utils import iqd, betai1, resistance
+from .utils import iqd, betai1, resistance, dqparident
 import scipy.optimize as so
 import scipy.interpolate as ip
 
-
 logger = logging.getLogger(__name__)
+
+
+def parident(workdir, engine, temp, machine,
+             magnetizingCurves, magnetMat, condMat,
+             **kwargs):
+    return dqparident(workdir, engine, temp, machine,
+                      magnetizingCurves, magnetMat, condMat,
+                      **kwargs)
 
 
 class PmRelMachine(object):

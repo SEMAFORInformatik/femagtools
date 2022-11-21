@@ -81,10 +81,17 @@ class InductionMachine(Component):
                         self.ims*np.power(np.abs(psi)/self.psiref, self.mexp))
             self._imag = imag
         elif 'im' in parameters:
-            self._imag = ip.interp1d(self.psi, self.im,
-                                     kind='quadratic',
-                                     bounds_error=False,
-                                     fill_value='extrapolate')
+            if np.min(np.abs(self.im) > 0.1):
+                im = np.insert(self.im, 0, 0)
+                psi = np.insert(self.psi, 0, 0)
+            else:
+                im = self.im
+                psi = self.psi
+            self._imag = ip.interp1d(
+                psi, im, kind='quadratic',
+                bounds_error=False,
+                fill_value='extrapolate')
+            self.psi = self.psiref
         if 'pfe' in parameters:
             self.rh = self.m*(self.psiref*self.wref)**2/self.pfe
         for k in eecdefaults.keys():
@@ -603,7 +610,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     lh = psihref/imref
     L1 = psi1ref/imref
-    ls1 = L1 - lh  # (1+wdg.harmleakcoeff())*lh
+    ls1 = L1 - lh*(1+wdg.harmleakcoeff())
     # end winding leakage
     logger.info('Lh: %g Ls1: %g', lh, ls1)
     ü = 3*4*(wdg.kw()*n1)**2/Q2

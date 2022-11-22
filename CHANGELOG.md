@@ -2,6 +2,12 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.1.26
+	- amela interface added
+
+## Release 1.1.25
+        - ts: revised ts losses
+
 ## Release 1.1.24
 	- bch: added skewAngle, skewSections, parallelWdgs to machine dict
 

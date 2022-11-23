@@ -4,6 +4,7 @@
 
     Calculate Magnet Losses with AMELA
 '''
+import sys
 import json
 import pathlib
 import logging
@@ -18,19 +19,19 @@ logger = logging.getLogger(__name__)
 
 
 class Amela():
-    '''Run Amela Calculation 
+    '''Run Amela Calculation
     Parameters
     ----------
-    workdir : str 
-        working directory of AMELA 
+    workdir : str
+        working directory of AMELA
     magnet_data : dict
-        calculation control 
+        calculation control
         -- name must be provided
-        dict(name='test', 
+        dict(name='test',
         -- the following parameters are optional
-             mur=1.05, 
-             sigma=625000, 
-             hm=3, 
+             mur=1.05,
+             sigma=625000,
+             hm=3,
              wm=20,
              lm=30,
              speed=1000)
@@ -41,16 +42,19 @@ class Amela():
         self.magn = magnet_data
         self.workdir = pathlib.Path(workdir)
         self.jsonfile = []
-        self.cmd = self.workdir / 'AMELA'
+        if sys.platform == 'win32':
+            self.cmd = str(self.workdir / 'AMELA.BAT')
+        else:
+            self.cmd = str(self.workdir / 'AMELA')
 
     def get_magnet_data(self):
-        '''Extract magnet data from nc file 
+        '''Extract magnet data from nc file
         Parameters
         ----------
             None
-        Returns 
+        Returns
         ----------
-        pm_data: list of magnet data 
+        pm_data: list of magnet data
         '''
         nc_name = self.workdir / self.magn['name']
         r = femagtools.nc.read(nc_name)
@@ -192,72 +196,68 @@ class Amela():
         else:
             return [pm_data[0]]
 
-
-    def export_json(self, pm_data):  
-        '''Export magnet data to json files 
+    def export_json(self, pm_data):
+        '''Export magnet data to json files
         Parameters
         ----------
         pm_data: list of magnet data
-        Returns 
+        Returns
         ----------
         None
         ----------
         '''
         pm_dir = self.workdir / self.magn['name']
         pm_dir.mkdir(exist_ok=True)
-        for i in pm_data: 
+        for i in pm_data:
             filename = (pm_dir / i['name']).with_suffix('.json')
-            self.jsonfile.append(str(filename)) # for the future use
-            with filename.open('w') as f: 
+            self.jsonfile.append(str(filename))  # for the future use
+            with filename.open('w') as f:
                 json.dump(i, f)
             logger.info('Exporting %s ...', i['name'])
 
-
-    def read_loss(self, pm_data): 
-        '''Read magnet losses  
+    def read_loss(self, pm_data):
+        '''Read magnet losses
         Parameters
         ----------
             pm_data : dict
-        Returns 
+        Returns
         ----------
             losses : dict
         ----------
         '''
         losses = {}
-        for i in range(len(pm_data)): 
+        for i in range(len(pm_data)):
             dirname = self.magn['name'] + '/' + pm_data[i]['name'] + \
                 '/EClosses.tab'
             result_name = self.workdir / dirname
-            with result_name.open() as f: 
+            with result_name.open() as f:
                 data = np.loadtxt(f)
                 losses[pm_data[i]['name']] = data
                 logger.info("Magnet losses in superelement %s is %.3f W",
-                    pm_data[i]['name'].split('se')[-1], np.mean(data[:, -1]))
+                            pm_data[i]['name'].split('se')[-1], np.mean(data[:, -1]))
         return losses
 
-
-    def __call__(self, batch=False): 
-        '''Run amela calculation 
+    def __call__(self, batch=False):
+        '''Run amela calculation
         Parameters
         ----------
             None
-        Returns 
+        Returns
         ----------
             losses : dict (batch mode only)
         ----------
         '''
-        # get magnet data 
+        # get magnet data
         r = self.get_magnet_data()
-        # export to json 
+        # export to json
         self.export_json(r)
         # run batch file
-        if batch: 
-           cmd = [self.cmd, '--batch', self.magn['name'] + '/']
-           log_file = self.workdir / 'amela.out'
-           logger.info("Calculating magnet losses with AMELA ...")
-           with log_file.open('w') as output: 
+        if batch:
+            cmd = [self.cmd, '--batch', self.magn['name'] + '/']
+            log_file = self.workdir / 'amela.out'
+            logger.info("Calculating magnet losses with AMELA ...")
+            with log_file.open('w') as output:
                 subprocess.run(cmd, stdout=output)
-           return self.read_loss(r)
+            return self.read_loss(r)
         else:
             subprocess.run(self.cmd)
-

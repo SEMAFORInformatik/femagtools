@@ -312,12 +312,11 @@ def read(filename):
     Arguments:
         filename: name of nc file to be read
     """
-    import os
-    ext = os.path.splitext(filename)[-1]
-    if not ext:
-        filename += '.nc'
-
-    return isa7.Isa7(Reader(filename))
+    import pathlib
+    ncfile = pathlib.Path(filename)
+    if ncfile.suffix != '.nc':
+        ncfile = filename.with_suffix('.nc')
+    return isa7.Isa7(Reader(str(ncfile)))
 
 
 if __name__ == "__main__":

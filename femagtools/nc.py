@@ -315,7 +315,7 @@ def read(filename):
     import pathlib
     ncfile = pathlib.Path(filename)
     if ncfile.suffix != '.nc':
-        ncfile = filename.with_suffix('.nc')
+        ncfile = ncfile.with_suffix('.nc')
     return isa7.Isa7(Reader(str(ncfile)))
 
 

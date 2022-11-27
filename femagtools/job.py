@@ -38,7 +38,7 @@ class TaskFactory:
         TaskFactory.factories.put[typename] = taskFactory
     addFactory = staticmethod(addFactory)
 
-    def createTask(typename, taskid, dir, result_func):
+    def createTask(typename, taskid, dir, result_func, result_files):
         if typename not in TaskFactory.factories:
             try:
                 TaskFactory.factories[typename] = \
@@ -48,16 +48,18 @@ class TaskFactory:
                 mod = importlib.import_module(modname)
                 TaskFactory.factories[typename] = getattr(mod,
                                                           classname).Factory()
-        return TaskFactory.factories[typename].create(taskid, dir, result_func)
+        return TaskFactory.factories[typename].create(taskid, dir, result_func, result_files)
     createTask = staticmethod(createTask)
 
 
 class Task(object):
     """represents a single execution unit that may include data files"""
 
-    def __init__(self, id, directory, result_func=None):
+    def __init__(self, id, directory, result_func=None,
+                 extra_result_files=[]):
         self.result_func = result_func
         self.directory = directory
+        self.extra_result_files = extra_result_files
         try:
             os.makedirs(self.directory)
         except OSError as e:
@@ -174,8 +176,8 @@ class Task(object):
             self.directory == other.directory
 
     class Factory:
-        def create(self, id, dir, result_func): return Task(
-            id, dir, result_func)
+        def create(self, id, dir, result_func, result_files): return Task(
+            id, dir, result_func, result_files)
 
 
 class CloudTask(Task):
@@ -208,8 +210,8 @@ class CloudTask(Task):
         self.tar_file.addfile(info, data)
 
     class Factory:
-        def create(self, id, dir, result_func): return CloudTask(
-            id, dir, result_func)
+        def create(self, id, dir, result_func, result_files): return CloudTask(
+            id, dir, result_func, result_files)
 
 
 class Job(object):
@@ -219,7 +221,7 @@ class Job(object):
 
     def __init__(self, basedir):
         self.runDirPrefix = ''
-        self.basedir = basedir
+        self.basedir = str(pathlib.Path(basedir).absolute())
         self.tasks = []
         self.num_cur_steps = 0
 
@@ -230,14 +232,15 @@ class Job(object):
             shutil.rmtree(task.directory, ignore_errors=True)
         self.tasks = []
 
-    def add_task(self, result_func=None):
+    def add_task(self, result_func=None, result_files=[]):
         "adds a new task to this job"
         taskid = "{}-{}".format(
             str(uuid.uuid4()).split('-')[0], len(self.tasks))
         dir = os.path.join(self.basedir,
                            '{}{:d}'.format(self.runDirPrefix,
                                            len(self.tasks)))
-        t = TaskFactory.createTask('Task', taskid, dir, result_func)
+        t = TaskFactory.createTask(
+            'Task', taskid, dir, result_func, result_files)
         self.tasks.append(t)
         return t
 
@@ -301,12 +304,13 @@ class CloudJob(Job):
     def __init__(self, basedir):
         super(self.__class__, self).__init__(basedir)
 
-    def add_task(self, result_func=None):
+    def add_task(self, result_func=None, result_files=[]):
         "adds a new :py:class:`CloudTask` to this job"
         taskid = "{}-{}".format(str(uuid.uuid4()), len(self.tasks))
         dir = os.path.join(self.basedir,
                            '{}{:d}'.format(self.runDirPrefix,
                                            len(self.tasks)))
-        t = TaskFactory.createTask('CloudTask', taskid, dir, result_func)
+        t = TaskFactory.createTask(
+            'CloudTask', taskid, dir, result_func, result_files)
         self.tasks.append(t)
         return t

@@ -43,8 +43,6 @@ class AsyncFemag(threading.Thread):
         self.extra_result_files = extra_result_files
 
     def _do_task(self, task):
-        logger.debug('Docker task %s %s',
-                     task.id, task.fsl_file)
         resend = True
         num_tries = 0
         while resend:
@@ -67,7 +65,8 @@ class AsyncFemag(threading.Thread):
         for f in task.transfer_files:
             if f != task.fsl_file:
                 r = self.container.upload(
-                    os.path.join(task.directory, f))
+                    os.path.join(task.directory,
+                                 os.path.basename(f)))
                 status = json.loads(r[0])
                 if status['status'] != 'ok':
                     logger.warning('Docker task %s upload status %s',
@@ -80,7 +79,11 @@ class AsyncFemag(threading.Thread):
         ret = self.container.send_fsl(fslcmds +
                                       ['save_model(close)'])
         # TODO: add publish_receive
-        return [json.loads(s) for s in ret]
+        try:
+            return [json.loads(s) for s in ret]
+        except Exception as e:
+            logger.error("%s: %s", e, ret, exc_current=True)
+            return [{'status': 'error', 'msg': str(ret)}]
 
     def run(self):
         """execute femag fsl task in task directory"""
@@ -93,7 +96,11 @@ class AsyncFemag(threading.Thread):
                 r = self._do_task(task)
                 if r[0]['status'] == 'ok':
                     task.status = 'C'
-                    for fname in [r[0]['result_file'][0]] + self.extra_result_files:
+                    result_files = []
+                    if 'result_file' in r[0]:
+                        result_files = [r[0]['result_file'][0]]
+                    result_files += self.extra_result_files + task.extra_result_files
+                    for fname in result_files:
                         status, content = self.container.getfile(fname)
                         logging.debug("get results %s: status %s len %d",
                                       task.id, status, len(content))
@@ -102,9 +109,10 @@ class AsyncFemag(threading.Thread):
                             f.write(content)
                 else:
                     task.status = 'X'
-                    logger.warning("%s: %s", task.id, r[0]['message'])
+                    logger.warning("%s: %s", task.id, r[0])
             except (KeyError, IndexError):
                 task.status = 'X'
+                logger.error("AsyncFemag", exc_info=True)
 
             logger.debug("Task %s end status %s",
                          task.id, task.status)

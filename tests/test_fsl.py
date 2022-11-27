@@ -398,7 +398,7 @@ class FslBuilderTest(unittest.TestCase):
             endheight=1,
             wiredia=1)
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 35)
+        self.assertEqual(len(fsl), 33)
 
         model.windings.pop('leak_dist_wind')
         model.windings['leak_evol_wind'] = dict(

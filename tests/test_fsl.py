@@ -410,7 +410,7 @@ class FslBuilderTest(unittest.TestCase):
             evolbend=1,
             wiredia=1)
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 34)
+        self.assertEqual(len(fsl), 38)
 
         model.windings.pop('leak_evol_wind')
         model.windings['leak_tooth_wind'] = dict(
@@ -418,7 +418,7 @@ class FslBuilderTest(unittest.TestCase):
             bendrad=1,
             wiredia=1)
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 30)
+        self.assertEqual(len(fsl), 34)
 
     def test_create_model_with_magnet_material(self):
         magnetmat = [dict(

@@ -353,9 +353,13 @@ def dqparident(workdir, engine, temp, machine,
         json.dump(results, fp)
     ls1 = 0
     leakfile = pathlib.Path(workdir) / 'end_wind_leak.dat'
-    if leakfile.exists():
-        leakages = leakfile.read_text().split()
-        ls1 = np.linalg.norm(leakages[1:])
+    try:
+        leakages = [float(x)
+                    for x in leakfile.read_text().split()]
+        ls1 += leakages[1]  # TODO: np.linalg.norm(leakages[1:])
+    except:
+        logger.warning("No end winding leakage")
+
     try:
         rotor_mass = sum(results['f'][-1]['weights'][-1])
     except KeyError:

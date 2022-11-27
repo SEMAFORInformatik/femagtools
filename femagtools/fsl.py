@@ -390,18 +390,16 @@ class Builder:
 
     def create_gen_winding(self, model):
         genwdg = self.__render(model, 'gen_winding')
-        if 'leak_dist_wind' in model.windings:
-            return genwdg + \
-                self.__render(model.windings['leak_dist_wind'],
-                              'leak_dist_wind')
-        elif 'leak_evol_wind' in model.windings:
-            return genwdg + \
-                self.__render(model.windings['leak_evol_wind'],
-                              'leak_evol_wind')
-        elif 'leak_tooth_wind' in model.windings:
-            return genwdg + \
-                self.__render(model.windings['leak_tooth_wind'],
-                              'leak_tooth_wind')
+        k = list({'leak_dist_wind',
+                  'leak_evol_wind',
+                  'leak_tooth_wind'}.intersection(model.windings))
+        if k:
+            return (genwdg +
+                    self.__render(model.windings[k[0]], k[0]) +
+                    ['post_models("end_wind_leak","leak")',
+                     'file_leak = io.open("end_wind_leak.dat","w")',
+                     'file_leak:write(string.format("%g %g %g\\n", leak[1], leak[2], leak[3]))',
+                     'file_leak:close()'])
         return genwdg
 
     def prepare_model_with_dxf(self, model):

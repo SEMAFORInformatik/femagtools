@@ -10,9 +10,3 @@ m.vbendrad        = ${model['vbendrad']*1e3} --   Bending radius vertical [mm]
 m.endheight       = ${model['endheight']*1e3} --   End winding height [mm]
 m.wiredia         = ${model['wiredia']*1e3} --   Wire diameter [mm]
 pre_models("leak_dist_wind")
-
- post_models("end_wind_leak","leak")
-file_leak = io.open("end_wind_leak.dat","w")
-file_leak:write(string.format("%g %g %g\n",
-                leak[1], leak[2], leak[3]))
-file_leak:close()

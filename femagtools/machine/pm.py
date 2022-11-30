@@ -9,7 +9,7 @@
 import logging
 import numpy as np
 import numpy.linalg as la
-from .utils import iqd, betai1, resistance, dqparident
+from .utils import iqd, betai1, skin_resistance, dqparident
 import scipy.optimize as so
 import scipy.interpolate as ip
 
@@ -62,8 +62,8 @@ class PmRelMachine(object):
 
     def rstat(self, w):
         """stator resistance"""
-        return resistance(self.r1, w, self.tcu1, self.zeta1,
-                          self.gam, self.kh)
+        return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
+                               self.gam, self.kh)
 
     def torque_iqd(self, iq, id):
         "torque at q-d-current"

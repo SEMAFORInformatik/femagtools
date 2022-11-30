@@ -9,7 +9,7 @@ import numpy as np
 import femagtools.bch
 import scipy.optimize as so
 import scipy.interpolate as ip
-from .utils import resistance
+from .utils import skin_resistance
 import logging
 import warnings
 
@@ -164,13 +164,13 @@ class SynchronousMachine(object):
 
     def rstat(self, w):
         """stator resistance"""
-        return resistance(self.r1, w, self.tcu1, self.zeta1,
-                          self.gam, self.kh)
+        return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
+                               self.gam, self.kh)
 
     def rrot(self, w):
         """rotor resistance"""
-        return resistance(self.r2, w, self.tcu2, self.zeta2,
-                          0.0, 1)
+        return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
+                               0.0, 1)
 
     def psi(self, iq, id, iex):
         """return psid, psiq of currents iq, id"""

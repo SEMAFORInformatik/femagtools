@@ -1,8 +1,7 @@
 
 -- create airgap nodechains and mesh if not already created...
 
-airgap_created = airgap_created or false
-if airgap_created ~= true then
+if not airgap_created then
     if num_agnodes ~= nil then
       alfa = 2*math.pi*m.npols_gen/m.num_poles
     end

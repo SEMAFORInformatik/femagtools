@@ -16,7 +16,7 @@ function calc_field(phi, curvec, file_psi)
   rec={}
   cur={}
   f1=0
-  alfa0 = 2*math.pi/3
+  alfa0 = math.pi/3
   a=${model.get('num_par_wdgs', 1)}   -- parallel branches
 
   for i=1, #curvec do
@@ -78,8 +78,9 @@ else
   dphi = ndst[2] -- deg
 end
 nodes = math.floor(360/Q2/dphi+0.5)
+printf("Nodes in airgap total %g, Nodes per rotor slot: %d", 360/dphi, nodes)
 -- find a valid number of steps for a rotation of one rotor slot:
-for n=5, nodes//2 do
+for n=nodes//4, nodes//2 do
   if nodes % n == 0 then
     dphi = nodes/n*dphi
     nrot = n
@@ -109,13 +110,8 @@ for n=1,nrot+1 do
 
   pos, bag = calc_field(phi, curvec, file_psi)
   bags[n] = bag
-
-  phi=dphi*n
-  if (phi>=360.0/ksym) then
-    rotate({angle=dphi-phi, mode="increment"})  -- rotation pos outside model
-  else
-    rotate({angle=dphi, mode="increment"})  -- rotation pos inside model
-  end
+  phi = n*dphi
+  rotate({angle=phi, mode="absolute"})
 end
 rotate({mode = "reset"})  -- restore the initial state (discard any changes)
 file_psi:close()
@@ -127,7 +123,7 @@ for i=1, #curvec do
      file_bag:write(string.format("%g ", pos[k]))
      for n=1, nrot+1 do
       file_bag:write(string.format("%g ",
-         bags[n][i][k]))
+         bags[n][i][k]))  -- Br, rotpos, cur, pos
      end
      file_bag:write("\n")
   end

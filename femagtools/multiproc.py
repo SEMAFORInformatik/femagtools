@@ -223,12 +223,17 @@ class Engine:
         Return:
             list of all calculations status (C = Ok, X = error)
         """
-        results = [task.get() for task in self.tasks]
+        exitcodes = [task.get() for task in self.tasks]
         status = []
-        for t, r in zip(self.job.tasks, results):
-            t.status = 'C' if r == 0 else 'X'
+        for t, ec in zip(self.job.tasks, exitcodes):
+            t.status = 'C'
+            if ec != 0:
+                t.status = 'X'
+                errmsg = pathlib.Path(t.directory) / 'femag.err'
+                if errmsg.exists():
+                    t.errmsg = errmsg.read_text()
+                    logger.error(t.errmsg)
             status.append(t.status)
-
         if self.progressLogger:
             self.progressLogger.stop()
         return status

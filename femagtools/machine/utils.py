@@ -121,8 +121,8 @@ def wdg_inductance(wdg, n, g, da1, lfe, ag):
     return wdg.inductance(n, g, da1, lfe, ag)
 
 
-def resistance(r0, w, temp, zeta, gam=0, nh=1):
-    """return conductor resistance
+def skin_resistance(r0, w, temp, zeta, gam=0, nh=1):
+    """return eddy current resistance of winding or rotor bar
     Arguments:
     r0: (float) dc resistance
     w: (float) current frequency in rad
@@ -143,17 +143,68 @@ def resistance(r0, w, temp, zeta, gam=0, nh=1):
 # return r0*(1.+KTH*(temp - TREF))*(gam + kskinr(xi, nh)) / (1. + gam)
 
 
-def leakinductance(l0, w, temp, zeta, nl=1, pl2v=0.5):
-    """return conductor leakage inductance
+def skin_leakage_inductance(l0, w, temp, zeta, nl=1, pl2v=0.5):
+    """return eddy current leakage inductance of rotor bar
     Arguments:
-    r0: (float) dc resistance
+    l0: (float) dc inductance
     w: (float) current frequency in rad
     temp: (float) conductor temperature in deg Celsius
     zeta: (float) skin effect coefficient (penetration depth)
-    nh: (int) number of vertical conductors in slot
+    nl: (int) number of vertical conductors in slot
     pl2v: (float) variable coefficient (0..1) """
     return l0*(1.0+pl2v*(kskinl(
         xiskin(w, temp, zeta), nl)-1))
+
+
+def wdg_leakage_inductances(machine):
+    """calculate slot leakage and end winding inductances
+    ref: Design of Rotating Electrical Machines
+    Juha Pyrhonen, Tapani Jokinen, Valeria Hrabovcova
+    page 236ff
+    """
+    from ..windings import Winding
+    wdg = Winding(
+        {'Q': machine['stator']['num_slots'],
+         'm': machine['windings']['num_phases'],
+         'p': machine['poles']//2,
+         'l': machine['windings']['num_layers'],
+         'yd': machine['windings']['coil_span']})
+    n1 = wdg.turns_per_phase(machine['windings']['num_wires'],
+                             machine['windings']['num_par_wdgs'])
+    m = wdg.m
+    p = wdg.p
+    Q = wdg.Q
+    D = machine['bore_diam']
+    W = wdg.yd
+    taup = Q/2/p
+    eps = 1 - W/taup
+    hs = machine['stator']['statorRotor3']['slot_height']
+    taus = (D+hs)*np.pi/Q
+
+    b1 = machine['stator']['statorRotor3']['slot_width']
+    h1 = machine['stator']['statorRotor3']['slot_h1']
+    h2 = machine['stator']['statorRotor3']['slot_h2']
+    h3 = 0
+    hd = 0
+    b4 = machine['stator']['statorRotor3']['wedge_width1'] + \
+        2*machine['stator']['statorRotor3']['slot_r1']
+    h41 = 0
+    h42 = h41
+    h4 = hs - h1 - h2
+    lfe = machine['lfe']
+    k1 = 1-9*eps/16
+    k2 = 1-3*eps/4
+    lbda = k1*(h4-hd)/3/b4 + k2*(h3/b4+h1/b1+h2/(b4-b1)*np.log(b4/b1))+hd/4/b4
+    mue0 = 4*np.pi*1e-7
+    Lu = 4*m/Q*mue0*lfe*n1**2*lbda
+    q = wdg.q
+    wew = (1-eps)*(D + h4)*np.pi/2/p
+    lew = (lfe-wew)/2
+    lmdew = 0.55
+    lmw0 = 0.35
+    lmdw = 2*lew*lmdew + wew*lmw0
+    Lew = 4*m/Q*q*n1**2*mue0*lmdw
+    return Lu, Lew
 
 
 def betai1(iq, id):

@@ -11,7 +11,7 @@ import scipy.interpolate as ip
 import scipy.optimize as so
 import logging
 import pathlib
-from .utils import resistance, leakinductance, wdg_resistance
+from .utils import skin_resistance, skin_leakage_inductance, wdg_resistance, wdg_leakage_inductances
 import femagtools.windings
 import femagtools.parstudy
 import json
@@ -34,6 +34,11 @@ eecdefaults = dict(
 
 logger = logging.getLogger('im')
 logging.captureWarnings(True)
+
+
+def slot_opening_factor(n, p, bs, D, Q):
+    k = 1 - bs/(D*np.pi/Q)
+    return np.sin(n*p*np.pi/Q*(1-k))/(n*p*np.pi/Q*(1-k))
 
 
 class Component:
@@ -73,7 +78,7 @@ class InductionMachine(Component):
         if 'lh' in parameters:
             def imag(self, psi):
                 """magnetizing current"""
-                return psi/lh
+                return psi/self.lh
             self._imag = imag
         elif 'iml' in parameters:
             def imag(psi):
@@ -122,8 +127,8 @@ class InductionMachine(Component):
 
     def lrot(self, w):
         """rotor leakage inductance"""
-        return leakinductance(self.lsigma2, w, self.tcu2,
-                              self.zeta2, 1, self.pl2v)
+        return skin_leakage_inductance(self.lsigma2, w, self.tcu2,
+                                       self.zeta2, 1, self.pl2v)
 
     def lstat(self, w):
         """stator leakage inductance"""
@@ -131,13 +136,13 @@ class InductionMachine(Component):
 
     def rrot(self, w):
         """rotor resistance"""
-        return resistance(self.r2, w, self.tcu2, self.zeta2,
-                          0.0, 1)
+        return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
+                               0.0, 1)
 
     def rstat(self, w):
         """stator resistance"""
-        return resistance(self.r1, w, self.tcu1, self.zeta1,
-                          self.gam, self.kh)
+        return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
+                               self.gam, self.kh)
         # return self.r1
 
     def sigma(self, w, psi):
@@ -438,7 +443,9 @@ def parident(workdir, engine, f1, u1, wdgcon,
     da1 = m['bore_diam']
     ag = m['airgap']
     # do not create airgap nodechains automatically
-    m['num_agnodes'] = 8*Q2*np.floor(da1*np.pi/Q2/4/ag+0.5)
+    # we prefer an integer number of elements per rotor slot
+    nper = np.lcm(wdg.Q, Q2)/Q2
+    m['num_agnodes'] = Q2*np.ceil(2*(da1-ag)*np.pi/Q2/ag/nper)*nper
     try:
         m['windings'].pop('resistance')
     except KeyError:
@@ -453,12 +460,12 @@ def parident(workdir, engine, f1, u1, wdgcon,
     # modelfiles = parstudy.setup_model(builder, model)
     extra_result_files = [f'noloadbag-{i+1}.dat'
                           for i in range(num_steps)] + [
-        'bar.dat', 'psi-rot-mag.dat']
+        'psi-rot-mag.dat']
 
     # set AC simulation
     slotmodel = [k for k in machine['rotor'] if isinstance(
         machine['rotor'][k], dict)][-1]
-    Dr = (da1 - 2*machine['airgap'] -
+    Dr = (da1 - 2*ag -
           machine['rotor'][slotmodel].get('slot_height', 0) -
           machine['rotor'][slotmodel].get('slot_h1', 0))
     bar_len = machine['lfe']+np.pi*Dr/Q2/np.sin(np.pi*p/Q2)
@@ -477,6 +484,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
             d = rotorbar['stator'].pop(k)
             break
     d = rotorbar.pop('windings')
+    if 'shaft_diam' in rotorbar:
+        rotorbar['inner_diam'] = rotorbar.pop('shaft_diam')
     # use one rotor slot only
     Q2 = rotorbar['rotor']['num_slots']
     rotorbar['stator']['statorRing'] = {'num_slots': Q2}
@@ -485,7 +494,6 @@ def parident(workdir, engine, f1, u1, wdgcon,
             rotorbar['rotor'][k]['num_slots_gen'] = 1
             rotorbar['rotor'][k]['zeroangle'] = 90-180/Q2
             break
-    rotorbar['num_agnodes'] = 1  # prevent automatic airgap meshing
 
     loadsim = dict(  # not used
         calculationMode="asyn_motor",
@@ -501,7 +509,9 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     # prepare calculation
     job = engine.create_job(workdir)
-    task = job.add_task(_eval_noloadrot(i1tab, u1ph))
+    task = job.add_task(_eval_noloadrot(i1tab, u1ph), extra_result_files)
+    logger.debug("Task %s noload workdir %s result files %s",
+                 task.id, task.directory, task.extra_result_files)
     # create model
     for mc in parstudy.femag.copy_magnetizing_curves(
             model,
@@ -515,7 +525,10 @@ def parident(workdir, engine, f1, u1, wdgcon,
         ['save_model("close")'])
     # ec simulation
     barmodel = femagtools.model.MachineModel(rotorbar)
-    task = job.add_task(_eval_ecsim())
+    extra_result_files = ['bar.dat']
+    task = job.add_task(_eval_ecsim(), extra_result_files)
+    logger.debug("Task %s rotobar workdir %s result files %s",
+                 task.id, task.directory, task.extra_result_files)
     task.set_stateofproblem('mag_dynamic')
     for mc in parstudy.femag.copy_magnetizing_curves(
             barmodel,
@@ -529,7 +542,9 @@ def parident(workdir, engine, f1, u1, wdgcon,
         builder.create_analysis(ecsim) +
         ['save_model("close")'])
     # AC simulation
-    actask = job.add_task()
+    actask = job.add_task(result_files=['end_wind_leak.dat'])
+    logger.debug("Task %s loadsim workdir %s result files %s",
+                 task.id, task.directory, task.extra_result_files)
     actask.set_stateofproblem('mag_dynamic')
     for mc in parstudy.femag.copy_magnetizing_curves(
             model,
@@ -543,7 +558,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
         ['save_model("close")'])
     # start FE simulations
     tstart = time.time()
-    status = engine.submit(extra_result_files)
+    status = engine.submit()
     logger.info('Started %s', status)
     status = engine.join()
     tend = time.time()
@@ -551,23 +566,25 @@ def parident(workdir, engine, f1, u1, wdgcon,
                 (tend-tstart), status)
     # collect results
     results = []
+    errors = []
     for t in job.tasks:
         if t.status == 'C':
             results.append(t.get_results())
         else:
-            logger.warning("Status %s", t)
+            logger.warning("Status %s", t.status)
             results.append({})
 
     i1_0 = results[0]['i1_0'].tolist()
     psi1_0 = results[0]['psi1_0'].tolist()
     # amplitude of flux density in airgap
     bamp = results[0]['Bamp']
-    taup = np.pi*da1/2/p
+    taup = np.pi*(da1-ag)/2/p
     lfe = machine['lfe']
     n1 = wdg.turns_per_phase(machine['windings']['num_wires'],
                              machine['windings']['num_par_wdgs'])
     # main flux per phase at no load in airgap
-    psih = np.mean([[2/np.pi*n1*wdg.kw()*taup*lfe*b/np.sqrt(2)
+    kfe = machine['stator'].get('fillfac', 1.0)
+    psih = np.mean([[2/np.pi*n1*wdg.kw()*taup*lfe*kfe*b/np.sqrt(2)
                    for b in bb]
                     for bb in bamp], axis=1)
 
@@ -577,6 +594,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
     # psi1_0.insert(0, 0)
     # i1_0.insert(0, 0)
     logger.info("psi1_0 %s", np.mean(psi1_0, axis=1))
+    logger.info("psih %s", psih)
+    logger.info("psi1_0-psih %s", np.mean(psi1_0, axis=1)-psih)
     logger.info("i1tab %s", i1tab)
     logger.info("psi1ref %s", psi1ref)
     logger.info("u1ref %s", u1ref)
@@ -611,20 +630,27 @@ def parident(workdir, engine, f1, u1, wdgcon,
     lh = psihref/imref
     L1 = psi1ref/imref
     ls1 = L1 - lh*(1+wdg.harmleakcoeff())
-    # end winding leakage
-    logger.info('Lh: %g Ls1: %g', lh, ls1)
+    logger.info('L1: %g Lh: %g Ls1: %g kw %g, sigma0: %g',
+                L1, lh, ls1, wdg.kw(), wdg.harmleakcoeff())
     ü = 3*4*(wdg.kw()*n1)**2/Q2
     r2 = results[1]['r2']*ü
     ls2 = results[1]['ls2']*ü
     zeta2 = results[1]['zeta2']
     pl2v = results[1]['pl2v']
 
+    # end winding leakage
     basedir = pathlib.Path(actask.directory)
     leakfile = basedir / 'end_wind_leak.dat'
-    if leakfile.exists():
-        leakages = leakfile.read_text().split()
-        ls1 += np.linalg.norm(leakages[1:])
-
+    try:
+        leakages = [float(x)
+                    for x in leakfile.read_text().split()]
+        ls1 += leakages[1]  # TODO: np.linalg.norm(leakages[1:])
+        logger.info("L1ew %s", leakages[1])
+    except:
+        logger.warning("No end winding leakage")
+        Lu, Lew = wdg_leakage_inductances(machine)
+        logger.info("L1ew %s", Lew)
+        ls1 += Lew
     p = results[2]['p']
     m = results[2]['num_phases']
     # r2 = results[1]['r2']
@@ -713,6 +739,7 @@ class _eval_ecsim():
 
     def __call__(self, task):
         import lmfit
+        from .utils import xiskin, kskinl
         basedir = pathlib.Path(task.directory)
         ufreq = np.loadtxt(basedir/'bar.dat').T
         lbar = ufreq[2]/2/np.pi/ufreq[0]
@@ -723,9 +750,9 @@ class _eval_ecsim():
 
         def barimp(f, zeta, pl2v):
             w = 2*np.pi*f
-            r = femagtools.machine.utils.resistance(r0, w, temp, zeta)
-            xi = femagtools.machine.utils.xiskin(w, temp, zeta)
-            lbar = l0*(1 + pl2v*(femagtools.machine.utils.kskinl(xi, 1)-1))
+            r = skin_resistance(r0, w, temp, zeta)
+            xi = xiskin(w, temp, zeta)
+            lbar = l0*(1 + pl2v*(kskinl(xi, 1)-1))
             return r + 1j*lbar
         model = lmfit.model.Model(barimp)
         params = model.make_params(zeta=1, pl2v=0.5)

@@ -42,42 +42,85 @@ pre_models("STATOR_3")
 
 
 if dsh ~= nil then -- create shaft subregion
+  del_bcond()
   alph0=m.zeroangl/180*math.pi
   rlen=100
   x = {}
   y = {}
+  r = dsh/2
+  minr = 5e-2
+  if(dsh/dy2 < minr) then
+    r = dy2/8
+  end
   taus = 2*math.pi/Q2
-  x[1],y[1] = pr2c(dsh/2,alph0)
-  x[3],y[3] = pr2c(dy2/2,alph0)
-  ndt(4)
-  if m.num_sl_gen < m.tot_num_sl then
-    x[2],y[2] = pr2c(dsh/2,taus*m.num_sl_gen+alph0)
-    x[4],y[4] = pr2c(dy2/2,taus*m.num_sl_gen+alph0)
-    nc_line(x[2], y[2], x[4], y[4], 0)
-  else
-    x[2],y[2] = pr2c(dsh/2,taus*m.tot_num_sl/2+alph0)
-    x[4],y[4] = pr2c(dy2/2,taus*m.tot_num_sl/2+alph0)
-  end
-  if dsh > 0 then
-    nc_circle(x[1],y[1],x[2],y[2],0)
-    if m.num_sl_gen == m.tot_num_sl then
-     nc_circle(x[2],y[2],x[1],y[1],0)
+  if(m.num_sl_gen < m.tot_num_sl) then
+    x[1],y[1] = pr2c(r,alph0)
+    x[2],y[2] = pr2c(dy2/2,alph0)
+    ndt(5*agndst)
+    nc_line(x[1], y[1], x[2], y[2], 0)
+    for i=1, m.num_sl_gen do
+      x[3],y[3] = pr2c(r,taus*i+alph0)
+      x[4],y[4] = pr2c(dy2/2,taus*i+alph0)
+      nc_line(x[4], y[4], x[3], y[3], 0)
+      nc_line_cont(x[1], y[1], 0)
+      x[1], y[1] = x[3], y[3]
+      x0, y0 = pr2c((r+dy2/2)/2, (2*i-1)*taus/2+alph0)
+      create_mesh_se(x0, y0)
+      if(i==1) then
+        def_new_sreg(x0, y0,"Shft",'lightgrey')
+      else
+        add_to_sreg(x0, y0)
+      end
     end
+
+    if(dsh/dy2 < minr) then
+      if(dsh >1) then
+        x1, y1 = pr2c(dsh/2, alph0)
+        x2, y2 = pr2c(dsh/2, m.num_sl_gen*taus + alph0)
+        n = math.max(math.pi*dsh/agndst/5, 16)*m.num_sl_gen/Q2
+        nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, n)
+        x3, y3 = pr2c(r, alph0)
+        nc_line(x1, y1, x3, y3, 0)
+        x3, y3 = pr2c(r, m.num_sl_gen*taus + alph0)
+        nc_line(x2, y2, x3, y3, 0)
+        x0, y0 = pr2c((r+dsh/2)/2, taus+alph0)
+      else
+        x0, y0 = pr2c(dy2/10, taus+alph0)
+        x1, y1 = pr2c(r, alph0)
+        x2, y2 = pr2c(r, m.num_sl_gen*taus + alph0)
+        nc_line(0, 0, x1, y1, 0)
+        nc_line(0, 0, x2, y2, 0)
+      end
+      create_mesh_se(x0, y0)
+      add_to_sreg(x0, y0)
+      if(dsh >1) then
+        def_bcond_vpo(x1, y1, x2, y2)
+      end
+    end
+  else -- full model
+      if(dsh >1) then
+        x1, y1 = pr2c(dsh/2, alph0)
+        x2, y2 = pr2c(dsh/2, m.num_sl_gen*taus/2 + alph0)
+        n = math.max(math.pi*dsh/agndst/5, 16)*m.num_sl_gen/Q2/2
+        nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, n)
+        nc_circle_m(x2, y2, x1, y1, 0.0, 0.0, n)
+        x0, y0 = pr2c((dy2+dsh)/4, taus+alph0)
+        create_mesh_se(x0, y0)
+        def_bcond_vpo(x1, y1, x2, y2)
+        def_bcond_vpo(x2, y2, x1, y1)
+      else
+        x0, y0 = pr2c((dy2+dsh)/4, taus)
+        create_mesh_se(x0,y0)
+      end
+      def_new_sreg(x0, y0,"Shft",'white')
   end
-  if m.num_sl_gen < m.tot_num_sl then
-     nc_line(x[1], y[1], x[3], y[3], 0)
-  end
-  -- Create Mesh
-  x0, y0 = pr2c((dy2+dsh)/4, math.pi*Q2*m.num_sl_gen+alph0)
-  create_mesh_se(x0, y0)
-  def_new_subreg(x0, y0,"Shft",'lightgrey')
+  x0, y0 = pr2c((dy2+dsh)/4, taus/2+alph0)
   if mcvkey_shaft ~= nil and mcvkey_shaft ~= 'dummy' then
     def_mat_fm_nlin(x0, y0, "lightgrey", mcvkey_shaft, rlen)
   else
     def_mat_fm(x0, y0, "lightgrey", 1000, rlen)
   end
 end
-
 
 r=da2/2-m.slot_height/2
 phi=math.pi/Q2

@@ -584,7 +584,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
                              machine['windings']['num_par_wdgs'])
     # main flux per phase at no load in airgap
     kfe = machine['stator'].get('fillfac', 1.0)
-    psih = np.mean([[2/np.pi*n1*wdg.kw()*taup*lfe*kfe*b/np.sqrt(2)
+    psih = np.mean([[2/np.pi*n1*wdg.kw()*taup*lfe*b/np.sqrt(2)
                    for b in bb]
                     for bb in bamp], axis=1)
 

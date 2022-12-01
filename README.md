@@ -15,6 +15,7 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 * create FSL files from model and calculation templates and/or user specific FSL
 * create FSL files from DXF
 * create and analyze symmetrical windings
+* sizing and parameter identification
 * calculate machine characteristics by using analytic machine models
 * execute parameter studies and multi-objective optimization
 

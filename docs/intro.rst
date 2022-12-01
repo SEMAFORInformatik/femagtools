@@ -1,5 +1,10 @@
 Introduction and Overview
 *************************
+
+This section presents an overview of the most typical
+usage scenarios. Familiarity with the python programming
+language is highly recommended.
+
 .. note::
    consider the usage of logging when executing long running commands::
 
@@ -7,10 +12,11 @@ Introduction and Overview
      logging.basicConfig(level=logging.INFO,
                          format='%(asctime)s %(message)s')
 
+
 Run FEMAG with FSL
 ++++++++++++++++++
 Run a single calculation (single process)::
-  
+
   workdir = pathlib.Path.home() / 'femag'
   femag = femagtools.Femag(workdir)
   femag.run('femag.fsl')
@@ -25,7 +31,13 @@ Run several calculations in parallel (multi processes)::
 
   numtasks = engine.submit()
   status = engine.join()
-  
+
+.. note::
+   Running femag simulations based on raw FSL files is discouraged.
+   The recommended approach is to use Mako templates instead. The fsl module
+   will then take care to create the fsl files.
+
+
 Read BCH/BATCH File
 +++++++++++++++++++
 Read a BCH file and print the machine torque::
@@ -47,7 +59,7 @@ Read an ISA7/I7 or NC File (filename extension is optional):
   >>> nc = femagtools.nc.read('foo')
 
 Print Node coordinates::
-  
+
   >>> n = isa.nodes[0]
   >>> print(n.x)
   (0.03380740433931351)
@@ -61,14 +73,14 @@ Get an Element by key::
   >>> el = isa.elements[0]
 
 Inspect Element properties::
-  
+
   >>> el.mag
   (0.8485281467437744, 0.8485281467437744)
   >>> el.reluc
   (0.9523810148239136, 0.9523810148239136)
 
 Get Node coordinates of Element::
-  
+
   >>> el_coords = [v.xy for v in el.vertices]
   >>> print(el_coords)
   [(0.036389999091625214, 1.142020034095026e-09),
@@ -76,7 +88,7 @@ Get Node coordinates of Element::
   (0.03500000014901161, 0.0)]
 
 Get a SuperElement by Element::
-  
+
   >>> spel = isa.superelements[el.se_key]
   >>> el in spel.elements
   True
@@ -96,10 +108,18 @@ Plot SuperElements::
 
 .. image:: img/plot.png
    :height: 240pt
-  
+
 Create FSL and/or invoke FEMAG with Model Parameters
 ++++++++++++++++++++++++++++++++++++++++++++++++++++
-Create a FE model from the templates stator1 and magnetSector::
+This is the recommended approach to work with FEMAG.
+A machine model is defined with a python dictionary that includes
+3 child dictionaries: stator, rotor or magnet and windings.
+The final FSL file is then created from Mako templates by a rendering process.
+Various templates are included in femagtools but users can also use
+their own.
+
+Here is an example which creates a FE model from the built-in
+templates stator1 and magnetSector::
 
   machine = dict(
      name = "PM 130 L4",
@@ -109,7 +129,7 @@ Create a FE model from the templates stator1 and magnetSector::
      bore_diam = 0.07,
      inner_diam = 0.015,
      airgap = 0.001,
-     
+
      stator = dict(
          num_slots = 12,
          mcvkey_yoke = "dummy",
@@ -145,7 +165,7 @@ Create a FE model from the templates stator1 and magnetSector::
            coil_span = 3.0,
            num_layers = 1)
   )
-  
+
   fsl = femagtools.create_fsl(model)
   with open('femag.fsl', 'w') as f:
       f.write('\n'.join(fsl))
@@ -155,11 +175,13 @@ After opening this file in FEMAG the shown geometry is created:
 .. image:: img/geom.png
    :height: 240pt
 
-The same machine and operating parameters can be used to run FEMAG directly::
+It is not necessary to create FSL files. Machine models defined by
+such dictionaries can be used with simulation parameters to
+run FEMAG directly::
 
   femag = femagtools.Femag(workdir)
 
-  operatingConditions = dict(
+  simulation = dict(
     calculationMode="pm_sym_fast",
     current=50.0,
     angl_i_up=0.0,
@@ -167,16 +189,36 @@ The same machine and operating parameters can be used to run FEMAG directly::
     wind_temp=60.0,
     magn_temp=60.0)
 
-  r = femag(machine,
-            operatingConditions)
+  r = femag(machine, simulation))
 
   print('Torque [Nm] = {}'.format(r.machine['torque']))
+
+As with the model and winding geometries
+various simulation templates are included in femagtools.
+
+Machine Sizing
+++++++++++++++
+
+Based on a simple
+set of requirements such as power, speed, voltage and pole pairs
+a model dictionary  can be created for different machine types::
+
+  p2 = 1.5e3
+  speed = 1500/60
+  udc = 550
+  p = 4
+
+  machine = femagtools.machine.sizing.spm(
+          p2, speed, p, udc=udc)
 
 
 Evaluate PM/Reluctance machine characteristics
 ++++++++++++++++++++++++++++++++++++++++++++++
 
-Definition of the PM or Reluctance machine with Ld,Lq parameters::
+For the fast evaluation of
+machine characteristics such speed, torque, losses etc. several
+analytical models are provided. Her is an example of a PM
+or reluctance machine using Ld-Lq parameters::
 
   p = 4
   r1 = 0.0806
@@ -205,7 +247,7 @@ Calculation of minimal current and frequency at given torque and max voltage::
   i1 = np.linalg.norm(np.array((iqx, idx)))
 
 .. plot:: pyplots/pmfieldweak.py
-      
+
 Speed-Torque characteristics with max power::
 
   def torque(T, pmax, wm):
@@ -221,7 +263,7 @@ Speed-Torque characteristics with max power::
   r = pm.characteristics(T, n, u1)
 
 .. plot:: pyplots/pmchar.py
-  
+
 
 Execute Parameter Variations
 ++++++++++++++++++++++++++++
@@ -239,7 +281,7 @@ Example: calculate torque, torque ripple and iron losses at beta=-50°,-25°,0°
        "bounds": [-50, 0],
        "name": "angl_i_up"}
   }
-  
+
   operatingConditions = dict(
     angl_i_up=0.0,
     calculationMode="pm_sym_fast",
@@ -247,7 +289,7 @@ Example: calculate torque, torque ripple and iron losses at beta=-50°,-25°,0°
     magn_temp=60.0,
     current=50.0,
     speed=50.0)
-    
+
   numcores = 3
   engine = femagtools.multiproc.Engine(numcores)
 
@@ -260,12 +302,12 @@ Example: calculate torque, torque ripple and iron losses at beta=-50°,-25°,0°
               operatingConditions, engine)
 
 The variable results is a dict with the keys x and f holding the (n x m) arrays of the decision and the objective variables.
-  
+
 Make a Multi-Objective Optimization
 +++++++++++++++++++++++++++++++++++
 
 Example: minimize ripple and losses and maximize torque (note the sign parameter) by varying magnet width and height ::
-  
+
   optdef = {
     "objective_vars": [
         {"name": "dqPar.torque[-1]", "desc": "Torque / Nm", "sign": -1},
@@ -275,13 +317,13 @@ Example: minimize ripple and losses and maximize torque (note the sign parameter
     "population_size": 24,
     "decision_vars": [
         {"name": "magnet.magnetSector.magn_width_pct",
-	 "desc": "Magn width", 
+	 "desc": "Magn width",
 	 "bounds": [0.75, 0.85]},
-         
+
         {"name": "magnet.magnetSector.magn_height",
 	 "desc": "Magn height",
 	 "bounds": [3e-3, 5e-3]}
-         
+
     ]
   }
 
@@ -292,4 +334,3 @@ Example: minimize ripple and losses and maximize torque (note the sign parameter
   num_generations = 3
   results = opt.optimize(num_generations,
                          optdef, machine, operatingConditions, engine)
-

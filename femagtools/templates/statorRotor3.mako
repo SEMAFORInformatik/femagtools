@@ -40,7 +40,6 @@ pre_models("STATOR_3")
 
 % if model.get('is_rotor', False):
 
-
 if dsh ~= nil then -- create shaft subregion
   del_bcond()
   alph0=m.zeroangl/180*math.pi

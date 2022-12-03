@@ -26,12 +26,13 @@ barlen = ${model.get('bar_len')*1e3}
 p = m.num_poles/2
 barlen = m.arm_length+math.pi*Dr/Q2/math.sin(math.pi*p/Q2)
 % endif
---lfe = 1.4*m.arm_length -- get_dev_data("arm_length")
 
 state_of_problem('mag_dynamic')
 file_bar = io.open("bar.dat","w")
 dfreq = 8
 f0 = 2
+bag = {}
+pos = {}
 Nfreqs = 15 --
 for i= 1, Nfreqs do
  freq = f0 + (i-1)*dfreq
@@ -39,8 +40,11 @@ for i= 1, Nfreqs do
         permode=permode, freq=freq})
   u_re, u_im = get_wdg_data("volt", rotorbar)
   i_re, i_im = get_wdg_data("cur", rotorbar)
-  print(string.format("%g: %g %g", freq, u_re*barlen, u_im*barlen))
+  flx1_re, flx1_im = get_wdg_data("flux", rotorbar)
+  flx2_re, flx2_im = get_wdg_data("flux", stator)
+  print(string.format("%g: %g %g %g",
+       freq, u_re*barlen, u_im*barlen, flx1_re*barlen))
     file_bar:write(string.format("%g %g %g\n",
-      freq, u_re*barlen, u_im*barlen))
+      freq, u_re*barlen, (flx1_re-flx2_re)*barlen))
 end
 file_bar:close()

@@ -523,9 +523,11 @@ def parident(workdir, engine, f1, u1, wdgcon,
         builder.create_model(model, condMat=parstudy.femag.condMat) +
         builder.create_analysis(noloadsim) +
         ['save_model("close")'])
+
     # ec simulation
     barmodel = femagtools.model.MachineModel(rotorbar)
     extra_result_files = ['bar.dat']
+    r = (da1-ag)/2
     task = job.add_task(_eval_ecsim(), extra_result_files)
     logger.debug("Task %s rotobar workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
@@ -533,7 +535,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     for mc in parstudy.femag.copy_magnetizing_curves(
             barmodel,
             dir=task.directory,
-            recsin='flux'):
+            recsin='flux'):  # todo cur
         task.add_file(mc)
     task.add_file(
         'femag.fsl',
@@ -541,6 +543,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
                              condMat=parstudy.femag.condMat) +
         builder.create_analysis(ecsim) +
         ['save_model("close")'])
+
     # AC simulation
     actask = job.add_task(result_files=['end_wind_leak.dat'])
     logger.debug("Task %s loadsim workdir %s result files %s",
@@ -741,10 +744,11 @@ class _eval_ecsim():
         import lmfit
         from .utils import xiskin, kskinl
         basedir = pathlib.Path(task.directory)
-        ufreq = np.loadtxt(basedir/'bar.dat').T
-        lbar = ufreq[2]/2/np.pi/ufreq[0]
-
-        r0 = ufreq[1][0]
+        psifreq = np.loadtxt(basedir/'bar.dat').T
+        rbar = psifreq[1]
+        lbar = psifreq[2]
+        f = psifreq[0]
+        r0 = rbar[0]
         l0 = lbar[0]
         temp = 20
 
@@ -757,8 +761,8 @@ class _eval_ecsim():
         model = lmfit.model.Model(barimp)
         params = model.make_params(zeta=1, pl2v=0.5)
         guess = lmfit.models.update_param_vals(params, model.prefix)
-        imp = ufreq[1] + 1j*lbar
-        rfit = model.fit(imp, params=guess, f=ufreq[0], verbose=True)
+        imp = rbar + 1j*lbar
+        rfit = model.fit(imp, params=guess, f=f, verbose=True)
         zeta = rfit.params['zeta'].value
         pl2v = rfit.params['pl2v'].value
         logger.info("ECSIM %s",

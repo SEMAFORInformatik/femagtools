@@ -36,6 +36,31 @@ logger = logging.getLogger('im')
 logging.captureWarnings(True)
 
 
+def ring_leakage_inductance(machine):
+    """returns the ring leakage inductance
+    ref: Design of Rotating Electrical Machines
+    Juha Pyrhönen, Tapani Jokinen, Valeria Hrabovcova
+    (Ed. 2008)  page 249
+    """
+    mue0 = 4*np.pi*1e-7
+
+    Qr = machine['rotor']['num_slots']
+    m = machine['windings']['num_phases']
+    p = machine['poles']//2
+    lbar = machine['lfe']
+    ls = lbar
+    nue = 0.36 if p == 1 else 0.18
+    da1 = machine['bore_diam']
+    ag = machine['airgap']
+    slotmodel = [k for k in machine['rotor'] if isinstance(
+        machine['rotor'][k], dict)][-1]
+
+    Dr = (da1 - 2*ag -
+          machine['rotor'][slotmodel].get('slot_height', 0) -
+          machine['rotor'][slotmodel].get('slot_h1', 0))
+    return mue0*Qr/m/p**2/3*((lbar-ls) + nue*np.pi*Dr/2/p)
+
+
 def slot_opening_factor(n, p, bs, D, Q):
     k = 1 - bs/(D*np.pi/Q)
     return np.sin(n*p*np.pi/Q*(1-k))/(n*p*np.pi/Q*(1-k))
@@ -502,7 +527,6 @@ def parident(workdir, engine, f1, u1, wdgcon,
         bar_temp=20,
         speed=(1-slip)*f1/p,
         f1=f1,
-        airgap_induc=True,
         num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
         wdgcon=CON[wdgcon],  # 0:open, 1:star, 2:delta
         u1=u1ph)  # phase voltage
@@ -528,7 +552,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
     barmodel = femagtools.model.MachineModel(rotorbar)
     extra_result_files = ['bar.dat']
     r = (da1-ag)/2
-    task = job.add_task(_eval_ecsim(), extra_result_files)
+    task = job.add_task(_eval_ecsim(
+        machine['lfe']/bar_len), extra_result_files)
     logger.debug("Task %s rotobar workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
     task.set_stateofproblem('mag_dynamic')
@@ -598,12 +623,12 @@ def parident(workdir, engine, f1, u1, wdgcon,
     # i1_0.insert(0, 0)
     logger.info("psi1_0 %s", np.mean(psi1_0, axis=1))
     logger.info("psih %s", psih)
-    logger.info("psi1_0-psih %s", np.mean(psi1_0, axis=1)-psih)
-    logger.info("i1tab %s", i1tab)
-    logger.info("psi1ref %s", psi1ref)
-    logger.info("u1ref %s", u1ref)
-    logger.info("w1 %s", w1)
-    logger.info("L1 %s", L1)
+    logger.debug("psi1_0-psih %s", np.mean(psi1_0, axis=1)-psih)
+    logger.debug("i1tab %s", i1tab)
+    logger.debug("psi1ref %s", psi1ref)
+    logger.debug("u1ref %s", u1ref)
+    logger.debug("w1 %s", w1)
+    logger.debug("L1 %s", L1)
     try:
         r1 = machine['windings']['resistance']
     except KeyError:
@@ -737,7 +762,8 @@ class _eval_noloadrot():
 class _eval_ecsim():
     """ Result Functor for ec simulation"""
 
-    def __init__(self):
+    def __init__(self, ks):
+        self.ks = ks  # factor lfe/bar_len
         pass
 
     def __call__(self, task):
@@ -746,10 +772,10 @@ class _eval_ecsim():
         basedir = pathlib.Path(task.directory)
         psifreq = np.loadtxt(basedir/'bar.dat').T
         rbar = psifreq[1]
-        lbar = psifreq[2]
+        lbar = self.ks*psifreq[2:]
         f = psifreq[0]
         r0 = rbar[0]
-        l0 = lbar[0]
+        l0 = lbar[0, 0]
         temp = 20
 
         def barimp(f, zeta, pl2v):
@@ -761,7 +787,7 @@ class _eval_ecsim():
         model = lmfit.model.Model(barimp)
         params = model.make_params(zeta=1, pl2v=0.5)
         guess = lmfit.models.update_param_vals(params, model.prefix)
-        imp = rbar + 1j*lbar
+        imp = rbar + 1j*lbar[-1]
         rfit = model.fit(imp, params=guess, f=f, verbose=True)
         zeta = rfit.params['zeta'].value
         pl2v = rfit.params['pl2v'].value

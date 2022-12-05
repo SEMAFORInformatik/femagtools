@@ -16,10 +16,11 @@ lfe              Lenght of iron                         m
 poles            Number of poles
 outer_diam       Outer diameter (yoke side)             m
 bore_diam        Bore diameter  (airgap side)           m
-inner_diam       Inner diameter (yoke)                  m
+inner_diam       Inner diameter (yoke or shaft)         m
+shaft_diam       Shaft diameter                         m
 airgap           airgap width                           m
 external_rotor   True, False                            False
-ffactor          processing factor for iron losses      
+ffactor          processing factor for iron losses
 dxffile          (see :ref:'model_creation_with_dxf')
 ==============  ======================================  ======
 
@@ -28,71 +29,74 @@ dxffile          (see :ref:'model_creation_with_dxf')
 
 Stators have basic parameters and slots:
 
-==============  ============================  =====================
-Parameter        Description                  Default  
-==============  ============================  =====================
+==============  ===============================  =====================
+Parameter        Description                     Default
+==============  ===============================  =====================
 num_slots        Number of Slots Q
-num_slots_gen    Number of Slots in Model      m*Q/gcd(Q, 2p*m)
-rlength          Relative iron length          1.0
-mcvkey_yoke      Name of lamination material   dummy
-mcvkey_teeth     Name of lamination material   dummy
-nodedist         Factor for node distance      1.0
-==============  ============================  =====================
+num_slots_gen    Number of Slots in Model        m*Q/gcd(Q, 2p*m)
+rlength          Relative iron length            1.0
+mcvkey_yoke      Name of lamination material     dummy
+mcvkey_teeth     Name of lamination material     dummy
+fillfac          stacking factor of lamination   1.0
+nodedist         Factor for node distance        1.0
+==============  ===============================  =====================
 
 .. Note::
 
    if no value for num_slots_gen is given its value is calculated from
    the the number of slots Q and pole pairs p. (version added 0.0.16)
 
+.. _stator:
+
 Stator Slots
 ^^^^^^^^^^^^
 ============    ===========================================
-Name             Parameter      
+Name             Parameter
 ============    ===========================================
-stator1  
+stator1
                  slot_rf1,
                  tip_rh1,
-                 tip_rh2, 
+                 tip_rh2,
                  tooth_width,
                  slot_width
 stator2
                  slot_t1,
-                 slot_t2,        
-                 slot_t3,         
-                 slot_depth,      
-                 slot_width,      
-                 corner_width    
+                 slot_t2,
+                 slot_t3,
+                 slot_depth,
+                 slot_width,
+                 corner_width
 statorRotor3
                  slot_height,
-                 slot_h1,    
-                 slot_h2,    
-                 slot_width, 
-                 slot_r1,    
+                 slot_h1,
+                 slot_h2,
+                 slot_width,
+                 slot_r1,
                  slot_r2,
                  wedge_width1,
                  wedge_width2,
-                 middle_line, 
-                 tooth_width, 
-                 slot_top_sh 
+                 middle_line,
+                 tooth_width,
+                 slot_top_sh
 stator4
                  slot_height,
-                 slot_h1,    
-                 slot_h2,    
-                 slot_h3,    
+                 slot_h1,
+                 slot_h2,
+                 slot_h3,
                  slot_h4,
-                 slot_width, 
-                 slot_r1,    
+                 slot_width,
+                 slot_r1,
                  wedge_width1,
                  wedge_width2,
                  wedge_width3
 statorBG
                  yoke_diam_ins
-                 slot_h1,    
-                 slot_h3,    
-                 slot_width, 
-                 slot_r1,    
+                 slot_h1,
+                 slot_h3,
+                 slot_width,
+                 slot_r1,
                  slot_r2,
-                 middle_line, 
+                 middle_line,
                  tooth_width,
 		 tip_rad,
 		 slottooth
@@ -107,11 +111,11 @@ dxffile
    All units are metric units.
 
 .. _stator_slots_fsl:
-   
+
 User defined Stator Slots with FSL
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If a FSL file that includes the definition of stator geometry exists and is readable it can be used for the model creation.
+If a Mako or FSL file that includes the definition of stator geometry exists and is readable it can be used for the model creation.
 
 Example with file mystator.fsl::
 
@@ -124,13 +128,16 @@ Example with file mystator.fsl::
 	  mystator=dict()
       ),
       ...
-  
-.. _stator_slots_dxf:
-      
-User defined Slots with DXF
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If a DXF file that defines the stator geometry exists and is readable 
+.. Note::
+   The file search path can be set with the parameter 'templatedirs' in the Femag or Builder class.
+
+.. _stator_slots_dxf:
+
+User defined Stator Slots with DXF
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If a DXF file that defines the stator geometry exists and is readable
 it can be used to create the FSL of the model.
 All DXF conversion parameters are supported.
 
@@ -148,21 +155,21 @@ Example::
 	  )
       ),
       ...
-      
+
 ==========   ============================  =======
 Parameters   Description                   Default
 ==========   ============================  =======
-position     'in' or 'out'                 
+position     'in' or 'out'
 split        splits intersecting lines at  False
              their intersection-points
 plot         creates the plot              False
 	     of the integrated object
 ==========   ============================  =======
 
--- Note:: The split option is required only if intersecting lines have no common point.
+.. Note:: The split option is required only if intersecting lines have no common point.
 
-Windings
---------
+**Windings**
+------------
 
 ============    ============================  =======
 Name             Parameter                    Default
@@ -171,11 +178,17 @@ num_phases      number of phases (m)
 num_wires       number of wires per slot
 coil_span       coil span
 num_layers      number of layers
+resistance      elect. resistance (Ohm)
 cufilfact       Fill factor of copper          0.45
 culength        rel length of conductor        1.4
 cuconduc        conductivity (S/m)             56e6
-slot_indul      insulation thickness in slot   0.0 
+slot_indul      insulation thickness in slot   0.0
+material        name of material
 ============    ============================  =======
+
+.. Note:: The material parameter references a dict item in
+  the list of `conductor`_ material. It overrides the cuconduc value and is the preferred method.
+
 
 End-Winding Leakage
 ^^^^^^^^^^^^^^^^^^^
@@ -183,32 +196,32 @@ End-Winding Leakage
 Windings may contain a leakage dict: leak_dist_wind, leak_evol_wind, leak_tooth_wind (version added 0.9.9)
 
 * leak_dist_wind
-  
+
   ============    ============================  =======
   Name             Parameter                    Unit
   ============    ============================  =======
-  perimrad        Radius of perimeter            m     
+  perimrad        Radius of perimeter            m
   vbendrad        Bending radius vertical        m
   endheight       End winding height             m
   m.wiredia       Wire diameter                  m
   ============    ============================  =======
 
 * leak_evol_wind
-  
+
   ============    =============================  =======
   Name             Parameter                     Unit
   ============    =============================  =======
   evol1rad        Top radius of first evolvent   m
-  evol2rad        Top radius of second evolvent  m   
-  botlevel        Level at bottom of evolvents   m   
-  toplevel        Level at top of evolvents      m 
+  evol2rad        Top radius of second evolvent  m
+  botlevel        Level at bottom of evolvents   m
+  toplevel        Level at top of evolvents      m
   evolbend        Bending radius                 m
   endheight       End winding height             m
   m.wiredia       Wire diameter                  m
   ============    =============================  =======
 
 * leak_tooth_wind
-  
+
   ============    ============================  =======
   Name             Parameter                    Unit
   ============    ============================  =======
@@ -225,21 +238,21 @@ Windings may contain a leakage dict: leak_dist_wind, leak_evol_wind, leak_tooth_
         coil_span=3.0,
         num_layers=1,
         leak_dist_wind=dict(
-            perimrad=67.1e-3, # Radius of perimeter [m]                
-            vbendrad=5e-3,    # Bending radius vertical [m]            
-            endheight=20e-3,  # End winding height [m]                 
+            perimrad=67.1e-3, # Radius of perimeter [m]
+            vbendrad=5e-3,    # Bending radius vertical [m]
+            endheight=20e-3,  # End winding height [m]
             wiredia=1e-3)     # Wire diameter [m]
     )
 
-  
+
 **Magnet**
 ----------
 
 Magnets have basic parameters and slots:
 
-==============  ================================  =======  
-Parameter        Description                      Default  
-==============  ================================  =======  
+==============  ================================  =======
+Parameter        Description                      Default
+==============  ================================  =======
 mcvkey_yoke      Name of lamination material      dummy
 mcvkey_shaft     Name of shaft material           dummy
 material         Name of magnet material
@@ -248,14 +261,14 @@ nodedist         Factor for node distance         1.0
 
 .. Note::
 
-   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the magnetizingCurve object.
-   * the material parameter references a name of the 'Magnet Material'_ list. 
+   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the `magnetizingCurve`_ object.
+   * the material parameter references a name of the `Magnet Material`_ list.
 
 Magnet Slots
 ^^^^^^^^^^^^
 
 ============    ===========================================
-Name             Parameter      
+Name             Parameter
 ============    ===========================================
 magnetSector    magn_num,
                 magn_width_pct,
@@ -350,7 +363,7 @@ dxffile         see :ref:`rotor_slots_dxf`
 ============    ===========================================
 
 **Example**::
-  
+
   machine = dict(
      name="PM 130 L4",
      lfe=0.1,
@@ -359,7 +372,7 @@ dxffile         see :ref:`rotor_slots_dxf`
      bore_diam=0.07,
      inner_diam=0.015,
      airgap=0.001,
-     
+
      stator=dict(
          num_slots=12,
          num_slots_gen=3,
@@ -398,14 +411,14 @@ dxffile         see :ref:`rotor_slots_dxf`
   )
 
 .. _rotor_slots_fsl:
-		 
+
 User defined Magnet Slots with FSL
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Example**
 
-If a FSL file that creates the magnet geometry exists and is readable 
-it can be used for the model creation as an empty dict::
+If a Mako or FSL file that creates the magnet geometry exists and is readable
+it can be used for the model creation as an empty dict (see Note in `stator_slots_fsl`_)::
 
   machine = dict(
       name="Motor",
@@ -418,15 +431,15 @@ it can be used for the model creation as an empty dict::
       ...
 
 .. _rotor_slots_dxf:
-      
-User defined Slots with DXF
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If a DXF file that defines the magnet geometry exists and is readable 
+User defined Rotor Slots with DXF
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If a DXF file that defines the magnet geometry exists and is readable
 it can be used to create the FSL for the model.
 
 Example::
-  
+
   machine = dict(
       name="Motor",
       ...
@@ -440,59 +453,95 @@ Example::
 	  )
       ),
       ...
-      
+
 ==========   ============================  =======
 Parameters   Description                   Default
 ==========   ============================  =======
-position     'in' or 'out'                 
+position     'in' or 'out'
 split        splits intersecting lines at  False
              their intersection points
 plot         creates the plot              False
 	     of the integrated object
 ==========   ============================  =======
 
--- Note:: The split option is required only if intersecting lines have no common point.
+.. Note:: The split option is required only if intersecting lines have no common point.
 
 **Rotor**
 ---------
-Rotors have a excitation winding
+Rotors have a excitation or short circuit cage winding
 and following basic parameters and slots:
 
-==============  ================================  =======  
-Parameter        Description                      Default  
-==============  ================================  =======  
+==============  ================================  =======
+Parameter        Description                      Default
+==============  ================================  =======
 mcvkey_yoke      Name of lamination material      dummy
 mcvkey_shaft     Name of shaft material           dummy
+fillfac          stacking factor of lamination    1.0
 nodedist         Factor for node distance         1.0
 ==============  ================================  =======
 
 .. Note::
 
-   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the magnetizingCurve object.
+   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the `magnetizingCurve`_ object.
 
 Rotor Slots
 ^^^^^^^^^^^
 
-========    ===========================================
-Name             Parameter      
-========    ===========================================
-rot_hsm     gap_pol_shaft,
-            core_height,
-	    pole_height,
-	    pole_rad,
-	    core_width1,
-	    core_width2,
-	    pole_width_r,
-	    pole_width,
-            slot_width,
-            slot_height,
-            damper_diam,
-            damper_div
-========    ===========================================
+============  ===========================================
+Name             Parameter
+============  ===========================================
+rot_hsm       gap_pol_shaft,
+              core_height,
+	      pole_height,
+	      pole_rad,
+	      core_width1,
+	      core_width2,
+	      pole_width_r,
+	      pole_width,
+              slot_width,
+              slot_height,
+              damper_diam,
+              damper_div
+statorRotor3  (same as in `stator`_)
+rotorKs2      slot_angle, slot_height, slot_topwidth.
+              slot_width, slot_h1,
+              slot_h2, slot_r1, slot_r2, middle_line
+rotorAsyn     slot_bs2, slot_hs2, slot_b32, slot_h32,
+              slot_b42, slot_h42, slot_b52, slot_b62,
+              slot_h52, slot_h62, slot_h72
+============  ===========================================
 
+**Material**
+============
 
-**Magnetizing Curve**
-=====================
+.. _conductor:
+
+Conductors
+----------
+
+The conductors is a list of dict items that describe the material properties of
+==============  ====== ===============================================
+Name            Unit   Descipription
+==============  ====== ===============================================
+name                   identifier
+desc
+spmaweight      g/cm³  specific mass (density)
+elconduct       S/m    electrical conductivity at 20°C
+tempcoef        1/K    temperature coefficient
+==============  ====== ===============================================
+
+Example::
+
+  condMat = [
+    {"name": "Al", "spmaweight": 2.7,
+     "elconduct": 33e6, "tempcoef": 3.9e-3},
+    {"name": "Cu", "spmaweight": 8.96,
+     "elconduct": 56e6, "tempcoef": 3.9e-3} ]
+
+.. _magnetizingCurve:
+
+Magnetizing Curve
+-----------------
 
 The MagnetizingCurve is a container of magnetizing curves (eg. lamination or PM material) that can be referenced by the model mcvkey attributes. It can either point to a directory of MC/MCV-File or hold a list of magnet curves which are identified by name.
 
@@ -552,7 +601,7 @@ Using a magnetizingcurve to write a mcv file::
           1.196, 1.314, 1.3845, 1.433,
           1.576, 1.677, 1.745, 1.787,
           1.81, 1.825, 1.836],
-        
+
        hi=[0.0, 22.16, 31.07, 37.25, 43.174,
            49.54, 56.96, 66.11, 78.291,
            95, 120.64, 164.6, 259.36,
@@ -566,7 +615,7 @@ Using a magnetizingcurve to write a mcv file::
        cw=1.68)
 
     mcv = femagtools.mcv.MagnetizingCurve(mcvData)
-    
+
     mcv.writefile('m270-35a')
 
 .. image:: img/mcv.png
@@ -575,9 +624,9 @@ Using a magnetizingcurve to write a mcv file::
 .. Note::
 
    if the curve data is used in a stator or magnet slot model there is no need to create the file explicitly. Femagtools will take care of that during the model creation.
-   
-**Magnet Material**
-===================
+
+Magnet Material
+---------------
 
 list of dict objects each having a unique name (or id) and a set of parameters
 that describe the magnet properties.
@@ -592,33 +641,33 @@ rlen              Relative length                1.0
 remanenc          Remanence Induction Br                    T
 relperm           Relative Permeability
 spmaweight        Specific Mass                  7500       kg/m³
-temcoefbr         Temperature Coefficient of Br  -0.001     1/K 
+temcoefbr         Temperature Coefficient of Br  -0.001     1/K
 temcoefhc         Temperature Coefficient of Hc  -0.001     A/m/K
-magntemp          Magnet Temperature             20         °C      
-magncond          Electr. Conductivity           625000      S/m    
-magnwidth         Magnet segment width (obsol.)  0.0         m     
-magnlength        Magn. segment length (obsol.)  0.0         m      
-magnsegwidth      Magnet segment width           0.0         m     
-magnseglength     Magnet segment length          0.0         m      
+magntemp          Magnet Temperature             20         °C
+magncond          Electr. Conductivity           625000      S/m
+magnwidth         Magnet segment width (obsol.)  0.0         m
+magnlength        Magn. segment length (obsol.)  0.0         m
+magnsegwidth      Magnet segment width           0.0         m
+magnseglength     Magnet segment length          0.0         m
 ==============   ============================== ==========  ========
 
 .. Note::
 
   * name must be unique within list. It may be used as reference in the magnet model of the machine.
-    
+
     Example::
-    
+
       magnets = [dict(name='MX-333', remanenc=1.2, relperm=1.05)]
 
   * mcvkey is used for material that have a non-linear BH curve.
   * the key orient describes the field orientation (mcartiso, mpoliso, martaniso, mpolaniso)
   * rlen defines the relative length
-    
+
      Example::
-       
+
        magnets=[dict(name='BH53M', mcvkey='BH53M',
                      orient='mcartiso', rlen=1.0)]
-		     
+
   * The mcvkey can either reference a file or an entry in the magnetizing curve dict.
 
 .. include:: userspec.rst
@@ -637,12 +686,12 @@ skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
 magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
-num_par_wdgs    Number of parallel windings     1      
+num_par_wdgs    Number of parallel windings     1
 eval_force      Evaluate force                  0
 period_frac     Rotate Fraction of Period       1
 vtu_movie       Create VTU files                False
 ==============  ============================= ==========  ============
-   
+
 Example::
 
   simulation = dict(
@@ -662,7 +711,7 @@ num_skew_steps  Number of skew steps                    0
 magn_temp       Magnet Temperature                                 °C
 wind_temp       Winding Temperature                     20         °C
 num_move_steps  Number of move steps                    49
-num_par_wdgs    Number of parallel windings             1      
+num_par_wdgs    Number of parallel windings             1
 eval_force      Evaluate force                          0
 current         Phase current                                      A (RMS)
 angl_i_up       Angle I vs. Up                          0          deg
@@ -679,7 +728,7 @@ vtu_movie       Create VTU files                        False
 ==============  ======================================= ========  ============
 
 .. Note::
-   
+
    plots is a list of field_lines or color_gradation plots to be created after the calculation. Possible values
    'field-lines', 'Babs', 'Br', 'Bx', 'By', 'Br', 'Bt', 'Habs', 'Hx', 'Hy', 'Hr', 'Ht'
    'demag', 'ecurr', 'ecloss', 'relperm', 'Wm', 'Bdev', 'Vpot'. (See http://script.profemag.ch/ColorGrad.html) added in version 0.0.16. The value types can be simple strings or list with name and min/max range.
@@ -696,7 +745,7 @@ Example::
 
 .. Note::
    If airgap_induc is True the induction in the airgap is calculated after the simulation returns. The values can be read with the method read_airgap_induc() of call Femag.
-   
+
    ==============  ============================= ============
    Parameter        Description                  Unit
    ==============  ============================= ============
@@ -712,7 +761,7 @@ Example::
 
 .. Note::
    The poc class is used to define current shape: sin, rec, har, hsp, fun
-   
+
    ==============  ============================= ============
    Parameter        Description                  Unit
    ==============  ============================= ============
@@ -739,7 +788,7 @@ if shortCircuit is set True. (version added 0.9.30). The results are included in
    ==============  ===================================== ==========  ==========
 
    Example::
-     
+
      pmRelSim = dict(
         angl_i_up=-39.3,
         calculationMode="pm_sym_fast",
@@ -774,7 +823,7 @@ if shortCircuit is set True. (version added 0.9.30). The results are included in
      fig, ax = plt.subplots()
      femagtools.plot.transientsc(r)
      plt.show()
-   
+
 .. image:: img/shortcircuit.png
   :height: 290pt
 
@@ -788,7 +837,7 @@ skew_angle      Skewing angle                           0          deg
 num_skew_steps  Number of skew steps                    0
 wind_temp       Winding Temperature                     20         °C
 num_move_steps  Number of move steps                    49
-num_par_wdgs    Number of parallel windings             1      
+num_par_wdgs    Number of parallel windings             1
 eval_force      Evaluate force                          0
 current         Phase current                                      A (RMS)
 nload_ex_cur    No-Load excitation current              0          A
@@ -814,8 +863,8 @@ skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
 magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
-num_par_wdgs    Number of parallel windings     1      
-eval_force      Evaluate force                  0         
+num_par_wdgs    Number of parallel windings     1
+eval_force      Evaluate force                  0
 i1_max          Max. phase current                        A (RMS)
 beta_min        Min. Beta angle                           deg
 beta_max        Max. beta angle                           deg
@@ -836,7 +885,7 @@ Example::
     num_cur_steps=3,
     num_beta_steps"=4,
     speed=50.0)
-  
+
 
 Psid-Psiq Identification (psd_psq_fast)
 
@@ -848,12 +897,12 @@ skew_angle      Skewing angle                   0         deg
 num_skew_steps  Number of skew steps            0
 magn_temp       Magnet Temperature                        °C
 num_move_steps  Number of move steps
-num_par_wdgs    Number of parallel windings     1      
-eval_force      Evaluate force                  0         
-maxid           Max. Amplitude Id current                 A 
-minid           Min. Amplitude Id current                 A 
-maxiq           Max. Amplitude Iq current                 A 
-miniq           Min. Amplitude Iq current                 A 
+num_par_wdgs    Number of parallel windings     1
+eval_force      Evaluate force                  0
+maxid           Max. Amplitude Id current                 A
+minid           Min. Amplitude Id current                 A
+maxiq           Max. Amplitude Iq current                 A
+miniq           Min. Amplitude Iq current                 A
 delta_id        Delta of Id current steps                 A
 delta_iq        Delta of Iq current steps                 A
 period_frac     Rotate Fraction of Period       1
@@ -873,7 +922,7 @@ Example::
     delta_iq=50.0,
     speed=50.0)
 
-    
+
 PM/Rel Torque Calc (torq_calc)
 
 ==============  ============================= ==========  ============
@@ -885,7 +934,7 @@ num_skew_steps  Number of skew steps            0
 magn_temp       Magnet Temperature                        °C
 wind_temp       Winding Temperature             20        °C
 num_move_steps  Number of move steps            49
-num_par_wdgs    Number of parallel windings     1      
+num_par_wdgs    Number of parallel windings     1
 current         Phase current                             A (RMS)
 angl_i_up       Angle I vs. Up                  0         deg
 ==============  ============================= ==========  ============
@@ -933,7 +982,7 @@ For older FEMAG versions the minimal data is::
       outer_diam=0.13,
       bore_diam=0.07,
       airgap=0.001,
-     
+
       stator=dict(
           num_slots=12,
           num_slots_gen=3,
@@ -942,7 +991,7 @@ For older FEMAG versions the minimal data is::
   )
 
 .. _model_creation_with_dxf:
-  
+
 **Model Creation with DXF**
 ===========================
 
@@ -960,7 +1009,7 @@ The procedure is as follows:
 For monitoring and trouble-shooting purposes it is possible to create plots that display the intermediate results.
 
 Example with a single dxf file motor.dxf::
-   
+
    machine = dict(
       name="Motor",
       lfe=0.001,
@@ -1003,7 +1052,6 @@ Example with two separate dxf files for stator and rotor::
 	      name='myrotor.dxf',
               position='in',
               split=True
-	  )  
+	  )
       ),
       ...
-

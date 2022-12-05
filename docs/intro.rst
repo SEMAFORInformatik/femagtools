@@ -35,7 +35,7 @@ Run several calculations in parallel (multi processes)::
 .. note::
    Running femag simulations based on raw FSL files is discouraged.
    The recommended approach is to use Mako templates instead. The fsl module
-   will then take care to create the fsl files.
+   will then take care to create the fsl files. (Ref `fslmako`_)
 
 
 Read BCH/BATCH File
@@ -108,6 +108,8 @@ Plot SuperElements::
 
 .. image:: img/plot.png
    :height: 240pt
+
+.. _fslmako:
 
 Create FSL and/or invoke FEMAG with Model Parameters
 ++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -199,9 +201,9 @@ various simulation templates are included in femagtools.
 Machine Sizing
 ++++++++++++++
 
-Based on a simple
-set of requirements such as power, speed, voltage and pole pairs
-a model dictionary  can be created for different machine types::
+A model dictionary can be created for different machine types (SPM, IPM, EESM, IM)
+by using simple
+set of requirements such as power, speed, voltage and pole pairs::
 
   p2 = 1.5e3
   speed = 1500/60
@@ -264,6 +266,24 @@ Speed-Torque characteristics with max power::
 
 .. plot:: pyplots/pmchar.py
 
+Parameter Identification
+++++++++++++++++++++++++
+
+The parameters of the analytical model for different machines (inductances, resistances ..)
+can be determined fastly based on the model dict::
+
+  machine = {
+    'poles': 4,
+    'outer_diam': 0.220,
+    'bore_diam': 0.125,
+    .. }
+   engine = femagtools.multiproc.Engine()
+   dqpars = femagtools.machine.pm.parident(
+      workdir, engine, temp=[60, 90],
+      machine=machine,
+      magnetizingCurves=magnetizingCurves,
+      magnetMat=magnetMat,
+      condMat=condMat)
 
 Execute Parameter Variations
 ++++++++++++++++++++++++++++

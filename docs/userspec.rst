@@ -1,5 +1,5 @@
-User Specified Magnet Geometries
-================================
+**User Specified Magnet Geometries**
+====================================
 
 Magnet geometries not covered by the built in models can be specified by fsl code. Here is a example:
 
@@ -18,7 +18,7 @@ The following values are defined globally and can be referenced in the template:
 ==============  =========================== =======
 Name            Description                 Unit
 ==============  =========================== =======
-mcvkey_yoke     lamination material of yoke 
+mcvkey_yoke     lamination material of yoke
 mcvkey_shaft    material of shaft
 m.remanenc      Remanence Induction         T
 m.relperm       Rel. Permeability of PM
@@ -41,11 +41,11 @@ Example FSL Template file ''spoke.mako'' using 4 parameters::
   ws = ${model['slot_width']}*1e3
 
   -- calculate slot height and pole pitch
-  hs = (da2-dy2)/2 - bm   
+  hs = (da2-dy2)/2 - bm
   taup = math.pi/m.num_poles
 
   x = {}
-  y = {} 
+  y = {}
 
   -- characteristic points of model
 
@@ -61,7 +61,7 @@ Example FSL Template file ''spoke.mako'' using 4 parameters::
   x[8],y[8] = pr2c(dy2/2, taup)
   x[9],y[9] = pr2c(da2/2 - hs, taup)
   x[10],y[10] = pr2c(da2/2, taup)
-  
+
 Magnet definition in Python file with included mako file (eg in this case ''spoke'') and the parameter definition::
 
   ..
@@ -78,9 +78,9 @@ Magnet definition in Python file with included mako file (eg in this case ''spok
 The resulting model:
 
 .. figure:: img/spoke.png
-	    
+
 .. note::
 
    Starting with Release 0.4.4 the syntax has changed but backward compatibility is fully supported.
-   
+
    the complete example can be found in `stator1-spoke.py <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/stator1-spoke.py>`_ and `spokefml.mako <https://github.com/SEMAFORInformatik/femagtools/blob/master/examples/model-creation/spokefml.mako>`_ in the example directory on github.

@@ -13,7 +13,11 @@ def test_ecsim_eval(data_dir):
     task = Task(id=1, directory=data_dir / 'parident')
     eval = femagtools.machine.im._eval_ecsim()
     r = eval(task)
-    assert {'r2': 0.00011541,
-            'ls2': 3.57991e-07,
-            'zeta2': 0.9891359043215603,
-            'pl2v': 0.9130062527810479} == r
+    expected = {'r2': 0.00011541,
+                'ls2': 3.57991e-07,
+                'zeta2': 0.9891,
+                'pl2v': 0.913}
+    assert expected['r2'] == r['r2']
+    assert expected['ls2'] == r['ls2']
+    assert expected['zeta2'] == round(r['zeta2'], 4)
+    assert expected['pl2v'] == round(r['pl2v'], 3)

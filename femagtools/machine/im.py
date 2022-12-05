@@ -552,8 +552,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     barmodel = femagtools.model.MachineModel(rotorbar)
     extra_result_files = ['bar.dat']
     r = (da1-ag)/2
-    task = job.add_task(_eval_ecsim(
-        machine['lfe']/bar_len), extra_result_files)
+    task = job.add_task(_eval_ecsim())
     logger.debug("Task %s rotobar workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
     task.set_stateofproblem('mag_dynamic')
@@ -762,18 +761,17 @@ class _eval_noloadrot():
 class _eval_ecsim():
     """ Result Functor for ec simulation"""
 
-    def __init__(self, ks):
-        self.ks = ks  # factor lfe/bar_len
+    def __init__(self):
         pass
 
     def __call__(self, task):
         import lmfit
         from .utils import xiskin, kskinl
         basedir = pathlib.Path(task.directory)
-        psifreq = np.loadtxt(basedir/'bar.dat').T
-        rbar = psifreq[1]
-        lbar = self.ks*psifreq[2:]
-        f = psifreq[0]
+        freqrind = np.loadtxt(basedir/'bar.dat').T
+        rbar = freqrind[1]
+        lbar = freqrind[2:]
+        f = freqrind[0]
         r0 = rbar[0]
         l0 = lbar[0, 0]
         temp = 20

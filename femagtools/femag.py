@@ -200,7 +200,7 @@ class BaseFemag(object):
         """return latest result (bch, asm) file (if any)"""
         filelist = sorted(glob.glob(os.path.join(
             self.workdir, modelname+'_[0-9][0-9][0-9].'+ext)))
-        if(filelist):
+        if (filelist):
             return filelist[-1-offset]
         return ''
 
@@ -287,7 +287,7 @@ class Femag(BaseFemag):
         magnetizingCurves: collection of lamination material curves
         magnets: collection of magnet material
         condMat: collection of conductor material
-        templatedirs: (list) names of directories the include mako files as fsl templates
+        templatedirs: (list) names of directories that include mako files as fsl templates
     """
 
     def __init__(self, workdir, cmd=None, templatedirs=[],
@@ -518,7 +518,7 @@ class ZmqFemag(BaseFemag):
         workdir: name of working directory
         logdir: name of logging directory (default is workdir/log)
         cmd: name of femag program
-        templatedirs: (list) names of directories the include mako files as fsl templates
+        templatedirs: (list) names of directories that include mako files as fsl templates
     """
 
     def __init__(self, port, host='localhost', workdir='', logdir='',

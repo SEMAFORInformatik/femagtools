@@ -159,8 +159,8 @@ def skin_leakage_inductance(l0, w, temp, zeta, nl=1, pl2v=0.5):
 def wdg_leakage_inductances(machine):
     """calculate slot leakage and end winding inductances
     ref: Design of Rotating Electrical Machines
-    Juha Pyrhonen, Tapani Jokinen, Valeria Hrabovcova
-    page 236ff
+    Juha Pyrhönen, Tapani Jokinen, Valeria Hrabovcova
+    (Ed. 2008) page 236ff
     """
     from ..windings import Winding
     wdg = Winding(
@@ -178,16 +178,23 @@ def wdg_leakage_inductances(machine):
     W = wdg.yd
     taup = Q/2/p
     eps = 1 - W/taup
-    hs = machine['stator']['statorRotor3']['slot_height']
+    slotmodel = [k for k in machine['stator'] if isinstance(
+        machine['stator'][k], dict)][-1]
+    hs = machine['stator'][slotmodel].get('slot_height',
+                                          (machine['outer_diam']-D)/2)
     taus = (D+hs)*np.pi/Q
 
-    b1 = machine['stator']['statorRotor3']['slot_width']
-    h1 = machine['stator']['statorRotor3']['slot_h1']
-    h2 = machine['stator']['statorRotor3']['slot_h2']
+    b1 = machine['stator'][slotmodel]['slot_width']
+    h1 = machine['stator'][slotmodel]['slot_h1']
+    h2 = machine['stator'][slotmodel]['slot_h2']
     h3 = 0
     hd = 0
-    b4 = machine['stator']['statorRotor3']['wedge_width1'] + \
-        2*machine['stator']['statorRotor3']['slot_r1']
+    if machine['stator'][slotmodel].get('tooth_width', 0):
+        b4 = taus-machine['stator'][slotmodel]['tooth_width'] + \
+            2*machine['stator'][slotmodel].get('slot_r1', 0)
+    else:
+        b4 = machine['stator'][slotmodel].get('wedge_width1', taus/2) + \
+            2*machine['stator'][slotmodel].get('slot_r1', 0)
     h41 = 0
     h42 = h41
     h4 = hs - h1 - h2

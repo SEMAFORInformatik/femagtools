@@ -17,12 +17,11 @@ du_u0 = m.error_perm/5
 psi={}
 L={}
 
-Dr = da2-m.slot_height
 % if model.get('bar_len', 0):
-m.num_phases = 3 -- TODO: fix this
 barlen = ${model.get('bar_len')*1e3}
 % else:
 p = m.num_poles/2
+Dr = da2-m.slot_height
 barlen = m.arm_length+math.pi*Dr/Q2/math.sin(math.pi*p/Q2)
 % endif
 
@@ -52,9 +51,9 @@ for i= 1, Nfreqs do
       flx2_re, flx2_im = get_wdg_data("flux", stator)
 
       print(string.format("%g: %g %g %g",
-         freq, i_re, flx1_re*barlen, flx2_re*barlen))
+         freq, i_re, flx1_re*m.arm_length, flx2_re*m.arm_length))
 
-      leakind[k] = (flx1_re-flx2_re)*barlen/cur
+      leakind[k] = (flx1_re-flx2_re)*m.arm_length/cur
   end
   file_bar:write(string.format("%g %g ",
       freq, rbar))

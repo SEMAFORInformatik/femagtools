@@ -374,6 +374,8 @@ class Writer(Mcv):
             for c in curve:
                 c['bi'] = [alpha*b + MUE0*(1. - alpha)*h
                            for b, h in zip(c['bi'], c['hi'])]
+            if hasattr(self, 'mc1_fe_sat_magnetization'):
+                self.mc1_fe_sat_magnetization = fe_sat_mag(curve)
         if recsin == 'flux':
             curve = recalc_bsin(curve)
         elif recsin == 'cur':
@@ -789,7 +791,7 @@ class Reader(Mcv):
         self.losses = {}
         try:
             (nfreq, njind) = self.readBlock([int, int])
-            if(nfreq and njind):
+            if (nfreq and njind):
                 self.losses['B'] = self.readBlock(
                     [float]*M_LOSS_INDUCT)[:njind]
                 self.losses['f'] = []

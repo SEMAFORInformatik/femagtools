@@ -202,7 +202,7 @@ Machine Sizing
 ++++++++++++++
 
 A model dictionary can be created for different machine types (SPM, IPM, EESM, IM)
-by using simple
+by using a simple
 set of requirements such as power, speed, voltage and pole pairs::
 
   p2 = 1.5e3
@@ -269,7 +269,7 @@ Speed-Torque characteristics with max power::
 Parameter Identification
 ++++++++++++++++++++++++
 
-The parameters of the analytical model for different machines (inductances, resistances ..)
+The parameters of the analytical model such inductances, resistances etc.
 can be determined fastly based on the model dict::
 
   machine = {

@@ -11,13 +11,20 @@ The Multi-Core engine uses a process pool to manage the calculation tasks locall
  engine = femagtools.multiproc.Engine()
 
 
+Docker Engine
+=============
+
+The Docker engine uses a load balancer (dispatcher)::
+
+ engine = femagtools.docker.Engine(dispatcher='localhost', port=5000, num_threads=5)
+
 Condor Engine
 =============
 
 The Condor engine uses a HT Condor pool to manage the calculation tasks in a corporate network::
 
  engine = femagtools.condor.Engine()
- 
+
 
 Amazon Engine
 =============
@@ -30,7 +37,7 @@ Prerequisite
 To use Amazon as a calculation engine you have to:
 
 * create an account and setup a user with the correct authority.
-* configured your AWS credentials under ~/.aws/credentials
+* configured your AWS credentials under ~/.aws/credentialsarv
 
 Fast start
 ----------
@@ -45,7 +52,7 @@ If you already uploaded some FEMAG files you can add the bucket as list::
   buckets = [{'id': '926c39a7-db69-42f8-bf86-2fd1f8559188-0', 'folder': '~/parvar/0'},
              {'id': '99ec9af5-ecb5-4029-88d6-70da9841ef91-1', 'folder': '~/parvar/1'},
              {'id': '4c61ebb3-89df-4e3a-ba46-288f8e0672a6-2', 'folder': '~/parvar/2'}]
-  
+
 Configuration file
 ------------------
 You have to setup a configuration file with an amazon Section, where you define some
@@ -67,7 +74,7 @@ delete_buckets        1                          Delete the buckets after calcul
 All configuration options are optional.
 
 Example of a configuration file::
-  
+
   [amazon]
   iam_instance_profile = ecsInstanceRole
   key_name = test-key-pair-eucentral-1
@@ -88,16 +95,16 @@ The special entry *{{ENV}}* indicates the femagtools module to put all the confi
 .. note:: The files for each calculation are transferred in a tar.gz file
 
 Example::
- 
+
  #!/bin/bash
- 
+
  {{ENV}}
- 
+
  mkdir ~/.aws
  echo -e '[default]\nregion = '$SERVER_LOCATION'\noutput = json' > ~/.aws/config
- 
+
  yum install -y aws-cli libquadmath
- 
+
  mkdir ~/data
  aws s3 sync s3://$BUCKET_NAME/ ~/data
  cd ~/data
@@ -134,7 +141,7 @@ If you already uploaded some FEMAG files you can add the buckets as list::
   buckets = [{'id': '926c39a7-db69-42f8-bf86-2fd1f8559188-0', 'folder': '~/parvar/0'},
              {'id': '99ec9af5-ecb5-4029-88d6-70da9841ef91-1', 'folder': '~/parvar/1'},
              {'id': '4c61ebb3-89df-4e3a-ba46-288f8e0672a6-2', 'folder': '~/parvar/2'}]
-  
+
 Configuration file
 ------------------
 You have to setup a configuration file with an google Section, where you define some Options for the Google instance.
@@ -153,7 +160,7 @@ server_config         ./gcloud.json              A json file where you can defin
 All configuration options are optional.
 
 Example of a configuration file::
-  
+
  [google]
  SERVER_LOCATION = us-east1-b
  instance_type = n1-standard-1
@@ -164,7 +171,7 @@ Example of a configuration file::
  server_config = ./gcloud.json
  startup_script = ./startup.sh
 
- 
+
 startup.sh
 ----------
 With the startup.sh file you can define the processing sequence after the instance
@@ -173,12 +180,12 @@ has started up. This is a good place to start the calculation.
 .. note:: The files for one calculation are transferred in a tar.gz file
 
 Example::
- 
+
  #!/bin/bash
 
  # [START startup_script]
  CS_BUCKET=$(curl http://metadata/computeMetadata/v1/instance/attributes/bucket -H "Metadata-Flavor: Google")
- 
+
  mkdir data
  gsutil rsync gs://$CS_BUCKET data
  cd data
@@ -186,7 +193,7 @@ Example::
  xfemag -b femag.fsl </dev/null
  echo $? > exit_code
  gsutil rsync /data gs://$CS_BUCKET
- 
+
  # [END startup_script]
 
 Server configuration
@@ -237,4 +244,3 @@ Example::
         }]
     }
   }
-

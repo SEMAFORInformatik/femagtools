@@ -120,11 +120,11 @@ def recalc_bsin(curve):
             hi=c['hi'][:2])
         bh = ip.interp1d(c['bi'], c['hi'],
                          kind='cubic', assume_sorted=True)
-        for bx in c['bi'][2:-1]:
+        for bx in c['bi'][2:]:
             bt = bx*np.sin(2*np.pi/4/ndel*x)
             nue = np.sum(bh(bt)/bt)/ndel
             nc['hi'].append(bx*nue)
-        nc['hi'].append(c['hi'][-1])
+        # nc['hi'].append(c['hi'][-1])
         ncurve.append(nc)
     return ncurve
 
@@ -143,12 +143,12 @@ def recalc_hsin(curve):
             bi=c['bi'][:2])
         hb = ip.interp1d(c['hi'], c['bi'],
                          kind='cubic', assume_sorted=True)
-        for hx in c['hi'][2:-1]:
+        for hx in c['hi'][2:]:
             ht = hx*np.sin(2*np.pi/4/ndel*x)
             bt = hb(ht)*np.sin(2*np.pi/4/ndel*x)
             nc['bi'].append(
                 2*np.sum((bt[:-1] + bt[1:])*dt/2)/Tp)
-        nc['bi'].append(c['hi'][-1])
+        # nc['bi'].append(c['bi'][-1])
         ncurve.append(nc)
     return ncurve
 
@@ -374,12 +374,13 @@ class Writer(Mcv):
             for c in curve:
                 c['bi'] = [alpha*b + MUE0*(1. - alpha)*h
                            for b, h in zip(c['bi'], c['hi'])]
-            if hasattr(self, 'mc1_fe_sat_magnetization'):
-                self.mc1_fe_sat_magnetization = fe_sat_mag(curve)
         if recsin == 'flux':
             curve = recalc_bsin(curve)
         elif recsin == 'cur':
             curve = recalc_hsin(curve)
+        if fillfac or recsin:
+            if hasattr(self, 'mc1_fe_sat_magnetization'):
+                self.mc1_fe_sat_magnetization = fe_sat_mag(curve)
         logger.info("%s Type: %d Num Curves %d",
                     self.name, self.version_mc_curve,
                     len(self.curve))

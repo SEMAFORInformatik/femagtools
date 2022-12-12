@@ -60,8 +60,8 @@ TREF = 20.0  # reference temperature of resistance
 EPS = 1e-13
 
 
-def xiskin(w, temp, zeta):
-    return zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+KTH*(temp-TREF))))
+def xiskin(w, temp, zeta, kth=KTH):
+    return zeta*np.sqrt(abs(w)/(2*np.pi)/(50*(1+kth*(temp-TREF))))
 
 
 def kskinl(xi, nl):
@@ -121,7 +121,7 @@ def wdg_inductance(wdg, n, g, da1, lfe, ag):
     return wdg.inductance(n, g, da1, lfe, ag)
 
 
-def skin_resistance(r0, w, temp, zeta, gam=0, nh=1):
+def skin_resistance(r0, w, temp, zeta, gam=0, nh=1, kth=KTH):
     """return eddy current resistance of winding or rotor bar
     Arguments:
     r0: (float) dc resistance
@@ -129,7 +129,8 @@ def skin_resistance(r0, w, temp, zeta, gam=0, nh=1):
     temp: (float) conductor temperature in deg Celsius
     zeta: (float) skin effect coefficient (penetration depth)
     gam: (float) constant coefficient (0..1)
-    nh: (int) number of vertical conductors in slot"""
+    nh: (int) number of vertical conductors in slot
+    kth: (float) temperature coefficient (Default = 0.0039, Cu)"""
     xi = xiskin(w, temp, zeta)
     if np.isscalar(xi):
         if xi < 1e-12:
@@ -139,11 +140,11 @@ def skin_resistance(r0, w, temp, zeta, gam=0, nh=1):
     else:
         k = np.ones(np.asarray(w).shape)
         k[xi > 1e-12] = (gam + kskinr(xi[xi > 1e-12], nh)) / (1. + gam)
-    return r0*(1.+KTH*(temp - TREF))*k
+    return r0*(1.+kth*(temp - TREF))*k
 # return r0*(1.+KTH*(temp - TREF))*(gam + kskinr(xi, nh)) / (1. + gam)
 
 
-def skin_leakage_inductance(l0, w, temp, zeta, nl=1, pl2v=0.5):
+def skin_leakage_inductance(l0, w, temp, zeta, nl=1, pl2v=0.5, kth=KTH):
     """return eddy current leakage inductance of rotor bar
     Arguments:
     l0: (float) dc inductance
@@ -151,9 +152,10 @@ def skin_leakage_inductance(l0, w, temp, zeta, nl=1, pl2v=0.5):
     temp: (float) conductor temperature in deg Celsius
     zeta: (float) skin effect coefficient (penetration depth)
     nl: (int) number of vertical conductors in slot
-    pl2v: (float) variable coefficient (0..1) """
+    pl2v: (float) variable coefficient (0..1)
+    kth: (float) temperature coefficient (Default = 0.0039, Cu)"""
     return l0*(1.0+pl2v*(kskinl(
-        xiskin(w, temp, zeta), nl)-1))
+        xiskin(w, temp, zeta, kth), nl)-1))
 
 
 def wdg_leakage_inductances(machine):

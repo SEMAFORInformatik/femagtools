@@ -279,6 +279,112 @@ class InductionMachine(Component):
                 self.w1(u1max, psi, torque, wm), psi, wm)),
             wm0)[0]
 
+    def torque_chart(self, smin=-0.1, smax=0.1, nsamples=100):
+        """
+        calculate torque(s) curve
+
+        :param smin: min slip
+        :param smax: max slip
+        :return: dict with slip and torque lists
+        """
+
+        s = np.linspace(smin, smax, nsamples)
+        f1 = self.f1ref
+        u1 = self.u1ref
+        w1 = 2 * np.pi * f1
+        wm = (1-s) * w1 / self.p
+        r = {}
+        r['s'] = list(s)
+        r['T'] = [self.torqueu(w1, u1, wx) for wx in wm]
+        return r
+
+    def operating_point(self, T, n, u1max, Tfric=None):
+        """
+        calculate single operating point.
+
+        return dict with values for
+            s -- (float) slip at this op
+            f1 -- (float) stator frequency in Hz
+            u1 -- (float) stator phase voltage in V rms
+            i1 -- (float) stator phase current in A rms
+            i2 -- (float) rotor bar current in A rms
+            p1 -- (float) electrical power in W
+            pmech -- (float) mechanical power in W
+            plcu1 -- (float) stator copper losses in W
+            plcu2 -- (float) rotor copper losses in W
+            plfric -- (float) friction losses in W, according to Tfric
+            losses -- (float) total losses in W
+            cosphi -- (float) power factor for this op
+            eta -- (float) efficiency for this op
+            T -- (float) torque for this op in Nm, copy of argument T
+            Tfric -- (float) friction torque in Nm
+            n -- (float) speed for this op in 1/s, copy of argument n
+            tcu1/2 -- (float) temperature of statur/rotor in deg. C
+
+        Keyword arguments:
+            T -- (float) the output torque at the shaft in Nm
+            n -- (float) the speed of the machine in 1/s
+            u1max -- (float) the maximum phase voltage in V rms
+            Tfric -- (float, optional) the friction torque to consider in Nm.
+                     If Tfric is None, the friction torque is calculated according to the rotor-mass and the
+                     frition factor of the machine (kfric_b). Friction is written to the result dict!
+        """
+
+        r = {}  # result dit
+
+        if Tfric:
+            tfric = Tfric
+        else:
+            # formula from
+            # PERMANENT MAGNET MOTOR TECHNOLOGY: DESIGN AND APPLICATIONS
+            # Jacek Gieras
+            #
+            # plfric = kfric_b m_r n 1e-3 W
+            # -- kfric_b : 1..3 W/kg/rpm
+            # -- m_r: rotor mass in kg
+            # -- n: rotor speed in rpm
+            tfric = self.kfric_b * self.rotor_mass * 30e-3 / np.pi
+            # TODO: make frictiontorque speed depended?
+
+        tq = T + tfric
+        wm = 2*np.pi*n
+        w1 = self.w1(u1max, self.psiref, tq, wm)
+        s = (w1 - self.p*wm) / w1
+        r['s'] = float(s)
+        r['f1'] = float(w1/2/np.pi)
+        u1 = self.u1(w1, self.psi, wm)
+        r['u1'] = float(np.abs(u1))
+        i1 = self.i1(w1, self.psi, wm)
+        r['i1'] = float(np.abs(i1))
+        r['cosphi'] = float(np.cos(np.angle(u1) - np.angle(i1)))
+        r['plfe1'] = float(self.m * np.abs(u1) ** 2 / self.rfe(w1, self.psi))
+        i2 = self.i2(w1, self.psi, wm)
+        r['i2'] = float(np.abs(i2))
+        r['plcu1'] = float(self.m * np.abs(i1) ** 2 * self.rstat(w1))
+        r['plcu2'] = float(self.m * np.abs(i2) ** 2 *
+                           self.rrot(w1 - self.p * wm))
+        r['plfric'] = float(2 * np.pi * n * tfric)
+        pmech = 2 * np.pi * n * tq
+        r['pmech'] = float(pmech)
+        pltotal = r['plfe1'] + r['plfric'] + r['plcu1'] + r['plcu2']
+        r['losses'] = float(pltotal)
+        p1 = pmech + pltotal
+        r['p1'] = float(p1)
+        if np.abs(pmech) < 1e-12:
+            eta = 0  # power to low for eta calculation
+        elif p1 > pmech:
+            eta = pmech/p1  # motor
+        else:
+            eta = p1/pmech  # generator
+        r['eta'] = float(eta)
+        r['T'] = float(T)
+        r['Tfric'] = float(tfric)
+        r['n'] = float(n)
+        r['tcu1'] = float(self.tcu1)
+        r['tcu2'] = float(self.tcu2)
+
+        return r
+
     def characteristics(self, T, n, u1max, nsamples=50, kpo=0.9):
         """calculate torque speed characteristics.
         return dict with list values of

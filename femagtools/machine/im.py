@@ -91,6 +91,7 @@ class InductionMachine(Component):
     """basic induction machine model with T equivalent circuit"""
 
     def __init__(self, parameters):
+        self.kth1 = self.kth2 = 0.0039  # temp coefficient of stator wdg and rotor bar
         Component.__init__(self, parameters)
         if 'f1type' in parameters:
             self.f1ref = self.f1type
@@ -162,12 +163,12 @@ class InductionMachine(Component):
     def rrot(self, w):
         """rotor resistance"""
         return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
-                               0.0, 1)
+                               0.0, 1, kth=self.kth2)
 
     def rstat(self, w):
         """stator resistance"""
         return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
-                               self.gam, self.kh)
+                               self.gam, self.kh, kth=self.kth1)
         # return self.r1
 
     def sigma(self, w, psi):
@@ -559,7 +560,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     for mc in parstudy.femag.copy_magnetizing_curves(
             barmodel,
             dir=task.directory,
-            recsin='flux'):  # todo cur
+            recsin='cur'):  # todo cur
         task.add_file(mc)
     task.add_file(
         'femag.fsl',
@@ -661,7 +662,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
                 L1, lh, ls1, wdg.kw(), wdg.harmleakcoeff())
     ü = 3*4*(wdg.kw()*n1)**2/Q2
     r2 = results[1]['r2']*ü
-    ls2 = results[1]['ls2']*ü
+    ls2 = results[1]['ls2']*ü  # + ring_leakage_inductance(machine))*ü
     zeta2 = results[1]['zeta2']
     pl2v = results[1]['pl2v']
 
@@ -688,8 +689,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     n = machine['windings']['num_wires']
     g = loadsim['num_par_wdgs']
-
-    return {
+    impars = {
         'p': p, 'm': m,
         'f1ref': f1, 'u1ref': u1ph,
         'rotor_mass': rotor_mass, 'kfric_b': 1,
@@ -699,6 +699,18 @@ def parident(workdir, engine, f1, u1, wdgcon,
         'psiref': psihref, 'wref': w1,
         'fec': pfe, 'fee': 0, 'fexp': 7.0,
         'im': i1tab, 'psi': psih.tolist()}
+    try:
+        wmat = machine['windings']['material']
+        impars['kth1'] = parstudy.femag.condMat.find(wmat)['tempcoef']
+    except KeyError:
+        logger.warning('Missing winding material id')
+    try:
+        bmat = machine['rotor']['material']
+        impars['kth2'] = parstudy.femag.condMat.find(bmat)['tempcoef']
+    except KeyError:
+        logger.warning('Missing winding material id')
+
+    return impars
 
 
 class _eval_noloaddc():

@@ -118,7 +118,12 @@ def recalc_bsin(curve):
         nc = dict(
             bi=c['bi'],
             hi=c['hi'][:2])
-        bh = ip.interp1d(c['bi'], c['hi'],
+        bi = list(c['bi'])
+        hi = list(c['hi'])
+        if bi[0] > 0:
+            bi.insert(0, 0)
+            hi.insert(0, 0)
+        bh = ip.interp1d(bi, hi,
                          kind='cubic', assume_sorted=True)
         for bx in c['bi'][2:]:
             bt = bx*np.sin(2*np.pi/4/ndel*x)
@@ -141,7 +146,12 @@ def recalc_hsin(curve):
         nc = dict(
             hi=c['hi'],
             bi=c['bi'][:2])
-        hb = ip.interp1d(c['hi'], c['bi'],
+        hi = list(c['hi'])
+        bi = list(c['bi'])
+        if hi[0] > 0:
+            hi.insert(0, 0)
+            bi.insert(0, 0)
+        hb = ip.interp1d(hi, bi,
                          kind='cubic', assume_sorted=True)
         for hx in c['hi'][2:]:
             ht = hx*np.sin(2*np.pi/4/ndel*x)

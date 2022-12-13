@@ -249,7 +249,6 @@ class Amela():
                             pm_data[i]['name'].split('se')[-1], total_loss)
         return losses
 
-
     def __call__(self, ialh=False):
         '''Run amela calculation
         Parameters

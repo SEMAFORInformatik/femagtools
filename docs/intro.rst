@@ -213,6 +213,8 @@ set of requirements such as power, speed, voltage and pole pairs::
   machine = femagtools.machine.sizing.spm(
           p2, speed, p, udc=udc)
 
+There are a couple of additional parameters such as shear stress, current density
+stack length/pole pitch ratio etc. (Ref `Sizing`_)
 
 Evaluate PM/Reluctance machine characteristics
 ++++++++++++++++++++++++++++++++++++++++++++++

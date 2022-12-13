@@ -72,6 +72,7 @@ User Guide
    intro
    femag
    models
+   sizing
    windings
    bchreader
    ncisa

@@ -1,3 +1,5 @@
+.. _sizing:
+
 **Sizing**
 **********
 
@@ -58,6 +60,7 @@ cos_phi         power factor                                        0.8
 
 
 Example::
+
   p2 = 1.5e3
   speed = 1500/60
   udc = 550

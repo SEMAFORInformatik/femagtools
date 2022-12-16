@@ -55,6 +55,33 @@ def get_si_factor(contentline):
     return 1.0
 
 
+def sttylosses(losses):
+    """map losses of stator subregions to stteeth and styoke"""
+    # extract stator subregion names
+    sregs = set([k for k in losses.keys()
+                 if k.split('_')[-1] not in {'hyst', 'eddy'} and
+                 k not in {'rotor', 'magnet', 'speed'}])
+
+    def hysteddy(yoke, teeth, losses):
+        d = {'styoke': losses[yoke], 'stteeth': losses[teeth]}
+        try:
+            d['styoke_hyst'] = losses[yoke+'_hyst']
+            d['stteeth_hyst'] = losses[teeth+'_hyst']
+            d['styoke_eddy'] = losses[yoke+'_eddy']
+            d['stteeth_eddy'] = losses[teeth+'_eddy']
+        except KeyError:
+            pass
+        return d
+
+    if sregs == {'StYoke', 'StTeeth'}:
+        return hysteddy('StYoke', 'StTeeth', losses)
+    if sregs == {'StJo', 'StZa'}:
+        return hysteddy('StJo', 'StZa', losses)
+    if sregs == {'Iron', 'StJo'}:
+        return hysteddy('StJo', 'Iron', losses)
+    return {}
+
+
 def _readSections(f):
     """return list of bch sections
 
@@ -1066,20 +1093,22 @@ class Reader:
     def __read_losses_tab(self, content):
         "read losses of psidq or ldq"
         m = []
+        subregs = [name.split()[-1]
+                   for name in content[2].split('\t') if name][2:]
+        logger.info("Stator Subregions: %s", subregs)
         speed = float(content[0].split()[-1])/60.
         logger.info('losses for speed %f', speed)
         nl = 4
         for l in content[4:]:
             rec = l.split('\t')
-            if len(rec) == 6:
+            if len(rec) > 1:
+                if rec[0].startswith('P fe'):
+                    break
                 m.append([floatnan(x) for x in rec])
-            elif rec[0].startswith('P fe'):
-                break
             nl += 1
         if not m:
             return
         m = np.array(m).T
-
         ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
         if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:
             ncols = 2
@@ -1087,7 +1116,7 @@ class Reader:
         id = self.__removeTrailingZero(id)
         nrows = len(id)
 
-        cols = ('styoke', 'stteeth', 'rotor', 'magnet')
+        cols = subregs[:-2] + ['rotor', 'magnet']
         mlen = nrows*ncols
         if self.ldq:
             ls = {k: np.reshape(v[:mlen],
@@ -1100,14 +1129,14 @@ class Reader:
         m = []
         for l in content[nl+3:]:
             rec = l.split('\t')
-            if len(rec) == 8:
-                m.append([floatnan(x) for x in rec])
-            elif not rec and m:
+            if not rec and m:
                 break
+            if len(rec) > 5:
+                m.append([floatnan(x) for x in rec])
 
-        cols = ('styoke_hyst', 'styoke_eddy',
-                'stteeth_hyst', 'stteeth_eddy',
-                'rotor_hyst', 'rotor_eddy')
+        cols = []
+        for s in subregs[:-2] + ['rotor', 'magnet']:
+            cols += [s+'_hyst', s+'_eddy']
         if m:
             m = np.array(m).T
             if self.ldq:
@@ -1119,6 +1148,7 @@ class Reader:
                                          (nrows, ncols)).T.tolist()
                            for k, v in zip(cols, m[2:])})
         ls['speed'] = speed
+        ls.update(sttylosses(ls))
         if self.ldq:
             self.ldq['losses'] = ls
         elif self.psidq:

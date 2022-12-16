@@ -63,7 +63,9 @@ def sttylosses(losses):
                  k not in {'rotor', 'magnet', 'speed'}])
 
     def hysteddy(yoke, teeth, losses):
-        d = {'styoke': losses[yoke], 'stteeth': losses[teeth]}
+        d = {'styoke': losses[yoke]}
+        if teeth:
+            d['stteeth'] = losses[teeth]
         try:
             d['styoke_hyst'] = losses[yoke+'_hyst']
             d['stteeth_hyst'] = losses[teeth+'_hyst']
@@ -79,6 +81,21 @@ def sttylosses(losses):
         return hysteddy('StJo', 'StZa', losses)
     if sregs == {'Iron', 'StJo'}:
         return hysteddy('StJo', 'Iron', losses)
+    if sregs == {'stat'}:
+        return hysteddy('stat', '', losses)
+    if sregs == {'Iron'}:
+        return hysteddy('Iron', '', losses)
+    if sregs == {'StJo'}:
+        return hysteddy('StJo', '', losses)
+    if sregs == {'STTH', 'STTP', 'STYK'}:
+        l = hysteddy('STYK', 'STTH', losses)
+        l['stteeth'] += losses['STTP']
+        try:
+            l['stteeth_eddy'] += losses['STTP_eddy']
+            l['stteeth_hyst'] += losses['STTP_hyst']
+        except KeyError:
+            pass
+        return l
     return {}
 
 

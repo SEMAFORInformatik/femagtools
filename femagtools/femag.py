@@ -157,10 +157,16 @@ class BaseFemag(object):
         return name
 
     def create_fsl(self, machine, simulation):
-        """create list of fsl commands"""
+        """create list of fsl commands
+        Args:
+          machine: dict of fe machine model (stator, rotor/magnet, windings)
+          simulation: dict of FE simulation (can be empty)
+        """
         self.model = femagtools.model.MachineModel(machine)
         self.modelname = self.model.name
-        recsin = simulation.get('recsin', '')
+        recsin = ''
+        if simulation:
+            recsin = simulation.get('recsin', '')
         self.copy_magnetizing_curves(self.model, recsin=recsin)
         try:
             if 'wdgdef' in self.model.windings:
@@ -171,8 +177,9 @@ class BaseFemag(object):
         builder = femagtools.fsl.Builder(self.templatedirs)
         if simulation:
             if "hc_min" in simulation:
-                self.model.__setattr__("hc_min", simulation.get("hc_min", 95))
-            return builder.create(self.model, simulation, self.magnets, self.condMat)
+                self.model.hc_min = simulation["hc_min"]
+            return builder.create(self.model, simulation,
+                                  self.magnets, self.condMat)
         return builder.create_model(self.model,
                                     self.magnets,
                                     self.condMat) + ['save_model("cont")']

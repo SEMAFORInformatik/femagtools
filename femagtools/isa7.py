@@ -187,13 +187,15 @@ class Reader(object):
         if NUM_FE_EVAL_MOVE_STEP < 0:
             NUM_FE_EVAL_MOVE_STEP = 0
 
-        self.el_fe_induction_1 = [[[]], [[]], [[]]]
-        self.el_fe_induction_2 = [[[]], [[]], [[]]]
-        self.eddy_cu_vpot = [[[]], [[]], [[]]]
+        self.el_fe_induction_1 = []
+        self.el_fe_induction_2 = []
+        self.eddy_cu_vpot = []
         self.pos_el_fe_induction = []
 
         if NUM_FE_EVAL_MOVE_STEP > 1:
             self.pos_el_fe_induction = self.next_block("f")
+            self.el_fe_induction_1.append([[]])
+            self.el_fe_induction_2.append([[]])
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
                 self.el_fe_induction_1[0][0].append(self.next_block("h"))
                 self.el_fe_induction_2[0][0].append(self.next_block("h"))
@@ -213,6 +215,7 @@ class Reader(object):
             self.skip_block()
 
         if NUM_FE_EVAL_MOVE_STEP > 1:
+            self.eddy_cu_vpot.append([[]])
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
                 self.eddy_cu_vpot[0][0].append(self.next_block("h"))
 
@@ -264,6 +267,9 @@ class Reader(object):
         FC_NUM_MOVE_LOSSES = self.next_block("i")[0]
 
         if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
+            self.el_fe_induction_1.append([[]])
+            self.el_fe_induction_2.append([[]])
+            self.eddy_cu_vpot.append([[]])
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
                 self.el_fe_induction_1[1][0].append(self.next_block("h"))
                 self.el_fe_induction_2[1][0].append(self.next_block("h"))
@@ -326,6 +332,9 @@ class Reader(object):
 
         if (FC_NUM_MOVE_LOSSES > 2 and NUM_FE_EVAL_MOVE_STEP > 1
                 and FC_NUM_BETA_ID > 1):
+            self.el_fe_induction_1.append([[]])
+            self.el_fe_induction_2.append([[]])
+            self.eddy_cu_vpot.append([[]])
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
                 self.el_fe_induction_1[2][0].append(self.next_block("h"))
                 self.el_fe_induction_2[2][0].append(self.next_block("h"))
@@ -680,6 +689,7 @@ class Isa7(object):
             self.curr_loss = np.array([c/np.sqrt(2) for c in reader.curr_loss])
         except AttributeError:
             pass
+        logger.info(reader.el_fe_induction_1)
         if len(np.asarray(reader.el_fe_induction_1).shape) > 2:
             self.el_fe_induction_1 = np.asarray(
                 reader.el_fe_induction_1).T/1000

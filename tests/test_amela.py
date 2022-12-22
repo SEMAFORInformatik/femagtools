@@ -1,11 +1,10 @@
-
 from femagtools import amela
 import json 
 
 def read_output(): 
     with open('tests/data/amela.out', 'r') as f: 
         data = f.readline()
-    return data.split('"')[1]
+    return data.split('\n')[0]
 
 def read_json(): 
     with open('tests/data/pm_data/pm_data_se38.json', 'r') as f: 

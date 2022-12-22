@@ -1,1 +1,1 @@
-@echo "succeed"
+@echo succeed

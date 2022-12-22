@@ -21,6 +21,27 @@ import time
 
 EPS = 1e-13
 
+
+def log_interp1d(x, y, kind='cubic'):
+    """logarithmic interpolation function, including extrapolation
+
+    due to the nature of logarithmic functions, it is not possible to have
+    a supporting point at 0!
+
+    arguments:
+    x, y (arraylike): supporting points
+    kind (str): kind of underlying interpolation, default = 'cubic'
+    """
+    xx = np.asarray(x)
+    yy = np.asarray(y)
+    # TODO: check for x=0, dimensions, etc.
+    logx = np.log10(xx)
+    logy = np.log10(yy)
+    lin_interp = ip.interp1d(logx, logy, kind=kind, fill_value="extrapolate")
+    def log_interp(zz): return np.power(10.0, lin_interp(np.log10(zz)))
+    return log_interp
+
+
 eecdefaults = dict(
     zeta1=0.2,
     zeta2=2.4,
@@ -112,16 +133,7 @@ class InductionMachine(Component):
                         self.ims*np.power(np.abs(psi)/self.psiref, self.mexp))
             self._imag = imag
         elif 'im' in parameters:
-            if np.min(np.abs(self.im) > 0.1):
-                im = np.insert(self.im, 0, 0)
-                psi = np.insert(self.psi, 0, 0)
-            else:
-                im = self.im
-                psi = self.psi
-            self._imag = ip.interp1d(
-                psi, im, kind='quadratic',
-                bounds_error=False,
-                fill_value='extrapolate')
+            self._imag = log_interp1d(self.psi, self.im)
             self.psi = self.psiref
         if 'pfe' in parameters:
             self.rh = self.m*(self.psiref*self.wref)**2/self.pfe
@@ -185,9 +197,9 @@ class InductionMachine(Component):
 
     def i1(self, w1, psi, wm):
         """stator current"""
-        imag = self.imag(psi)
+        imag = complex(self.imag(psi))
         if abs(w1) > 0:
-            imag += w1*psi/self.rfe(w1, psi)
+            imag += w1*psi/self.rfe(w1, psi)*1j
         return self.i2(w1, psi, wm) + imag
 
     def i2(self, w1, psi, wm):
@@ -531,6 +543,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
         calculation (default 5)
     logspace: (bool) uses log distributed current samples if true
          (linear otherwise) (default true)
+    i_max_fact: (float) factor for maximum current to calculate no_load flux (default=2.5)
     templatedirs: (list of str) names of directories to search for templates
     """
     CON = {'open': 0, 'wye': 1, 'star': 1, 'delta': 2}
@@ -552,8 +565,9 @@ def parident(workdir, engine, f1, u1, wdgcon,
         da1=machine['bore_diam'],
         lfe=machine['lfe'],
         ag=machine['airgap'])
-    i1max = 2.5*u1ph/w1/L1
-    i1min = i1max/5
+    i1max_fact = kwargs.get('i_max_fact', 2.5)
+    i1max = i1max_fact*u1ph/w1/L1
+    i1min = u1ph/w1/L1/5
     num_steps = kwargs.get('num_steps', 5)
     if kwargs.get('logspace', False):
         b = (i1min-i1max)/np.log(i1min/i1max)
@@ -640,7 +654,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     # prepare calculation
     job = engine.create_job(workdir)
-    task = job.add_task(_eval_noloadrot(i1tab, u1ph), extra_result_files)
+    task = job.add_task(_eval_noloadrot(), extra_result_files)
     logger.debug("Task %s noload workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
     # create model
@@ -721,9 +735,18 @@ def parident(workdir, engine, f1, u1, wdgcon,
     psih = np.mean([[2/np.pi*n1*wdg.kw()*taup*lfe*b/np.sqrt(2)
                    for b in bb]
                     for bb in bamp], axis=1)
-
+    i10tab = [0] + i1_0
+    psihtab = [0] + psih.tolist()
     u1ref = u1ph
-    psi1ref = u1ref/w1
+    psiref = u1ref/w1
+
+    # def inoload(x, iml, ims, mexp):
+    #    """return noload current"""
+    #    return iml*x/psiref + ims*(x/psiref)**mexp
+    #fitp, cov = so.curve_fit(inoload, psihtab, i10tab, (1, 1, 1))
+    #iml, ims, mexp = fitp
+    # logger.info("iml, ims, mexp %g, %g, %g",
+    #            iml, ims, mexp)
     # i1tab.insert(0, 0)
     # psi1_0.insert(0, 0)
     # i1_0.insert(0, 0)
@@ -731,7 +754,6 @@ def parident(workdir, engine, f1, u1, wdgcon,
     logger.info("psih %s", psih)
     logger.debug("psi1_0-psih %s", np.mean(psi1_0, axis=1)-psih)
     logger.debug("i1tab %s", i1tab)
-    logger.debug("psi1ref %s", psi1ref)
     logger.debug("u1ref %s", u1ref)
     logger.debug("w1 %s", w1)
     logger.debug("L1 %s", L1)
@@ -751,14 +773,16 @@ def parident(workdir, engine, f1, u1, wdgcon,
         r1 = wdg_resistance(
             wdg, n, g, aw, da1, hs, lfe)
 
-    psi1 = ip.interp1d(i1_0, np.mean(psi1_0, axis=1),
-                       kind='quadratic')
+    # psi1 = ip.interp1d(i1_0, np.mean(psi1_0, axis=1),
+    #                    kind='quadratic')
+    psi1 = log_interp1d(i1_0, np.mean(psi1_0, axis=1))
     imref = so.fsolve(
         lambda imx: u1ref - np.sqrt((imx*r1)**2 +
                                     (w1*psi1(imx))**2),
         u1ph/w1/L1)[0]
-    psihref = float(ip.interp1d(i1tab, psih,
-                                kind='quadratic')(imref))
+    # psihref = float(ip.interp1d(i1tab, psih,
+    #                             kind='quadratic')(imref))
+    psihref = float(log_interp1d(i1tab, psih)(imref))
     psi1ref = float(psi1(imref))
 
     lh = psihref/imref
@@ -768,7 +792,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
                 L1, lh, ls1, wdg.kw(), wdg.harmleakcoeff())
     ü = 3*4*(wdg.kw()*n1)**2/Q2
     r2 = results[1]['r2']*ü
-    ls2 = results[1]['ls2']*ü  # + ring_leakage_inductance(machine))*ü
+    ls2 = results[1]['ls2']*ü + ring_leakage_inductance(machine)*ü
     zeta2 = results[1]['zeta2']
     pl2v = results[1]['pl2v']
 
@@ -822,9 +846,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
 class _eval_noloaddc():
     """ Result Functor for noloadflux dc calc"""
 
-    def __init__(self, i1tab, u1ref):
-        self.u1ref = u1ref
-        self.i1tab = i1tab
+    def __init__(self):
+        pass
 
     def __call__(self, task):
         basedir = pathlib.Path(task.directory)
@@ -846,9 +869,8 @@ class _eval_noloaddc():
 class _eval_noloadrot():
     """ Result Functor for noloadflux rot calc"""
 
-    def __init__(self, i1tab, u1ref):
-        self.u1ref = u1ref
-        self.i1tab = i1tab
+    def __init__(self):
+        pass
 
     def __call__(self, task):
         basedir = pathlib.Path(task.directory)

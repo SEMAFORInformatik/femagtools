@@ -207,7 +207,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.psidq['psid']), 3)
         self.assertEqual(len(bch.psidq_ldq['ld']), 3)
 
-        self.assertEqual(len(bch.psidq['losses']), 11)
+        self.assertEqual(len(bch.psidq['losses']), 17)
         self.assertEqual(len(bch.psidq['losses']['styoke']), 3)
         self.assertTrue('id' in bch.airgapInduction)
         self.assertEqual(bch.airgapInduction['id'],
@@ -233,7 +233,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(len(bch.torque), 13)
         self.assertEqual(len(bch.torque[-1]['torque']), 46)
 
-        self.assertEqual(len(bch.ldq['losses']), 5)
+        self.assertEqual(len(bch.ldq['losses']), 7)
         self.assertEqual(len(bch.ldq['losses']['styoke']), 4)
 
         self.assertTrue('i1' in bch.airgapInduction)
@@ -275,13 +275,13 @@ class BchReaderTest(unittest.TestCase):
 #        self.assertAlmostEqual(bch.dqPar['psiq'][0], 1.0899999999999999, 5)
         self.assertAlmostEqual(bch.dqPar['psid'][0], 1.93, 5)
         self.assertAlmostEqual(bch.dqPar['psiq'][0], 0.77074639149333668, 5)
-        
+
     def test_read_felosses(self):
         bch = self.read_bch('rel-felosses.BATCH')
         self.assertEqual(len(bch.losses), 4)
         self.assertEqual(bch.losses[-1]['stajo'], 4425.106)
         self.assertEqual(bch.losses[-1]['staza'], 7504.659)
-    
+
     def test_read_pmsim_demag(self):
         bch = self.read_bch('PMREL-4p-skewed.BATCH')
 

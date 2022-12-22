@@ -381,9 +381,12 @@ def dqparident(workdir, engine, temp, machine,
     aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
     r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
 
+    n = len(temp)
     parvardef = {
         "decision_vars": [
-            {"values": temp, "name": "magn_temp"},
+            {"values": sorted(2*temp), "name": "magn_temp"},
+            {"values": n*[0, -90], "name": "beta_max"},
+            {"values": n*[-90, -180], "name": "beta_min"}
         ]
     }
 
@@ -397,11 +400,12 @@ def dqparident(workdir, engine, temp, machine,
         i1_max=kwargs.get('i1_max', i1_max),
         magn_temp=20,
         wind_temp=20,
-        beta_max=0.0,
-        beta_min=-180.0,
+        beta_max=0,
+        beta_min=-90,
+        num_move_steps=26,
         num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
         num_cur_steps=kwargs.get('num_cur_steps', 5),
-        num_beta_steps=kwargs.get('num_beta_steps', 13),
+        num_beta_steps=kwargs.get('num_beta_steps', 7),
         speed=kwargs.get('speed', 160/machine['poles']),
         period_frac=period_frac)
 
@@ -425,26 +429,27 @@ def dqparident(workdir, engine, temp, machine,
     except KeyError:
         rotor_mass = 0  # need femag classic > rel-9.3.x-48-gca42bbd0
 
-    ldq = [dict(
-        i1=b['ldq']['i1'],
-        beta=b['ldq']['beta'],
-        psid=b['ldq']['psid'],
-        psiq=b['ldq']['psiq'],
-        torque=b['ldq']['torque'],
-        ld=b['ldq']['ld'],
-        lq=b['ldq']['lq'],
-        psim=b['ldq']['psim']) for b in results['f']]
-
-    losskeys = ('speed',
-                'styoke_hyst', 'stteeth_hyst', 'styoke_eddy',
+    ldq = []
+    for i in range(0, len(results['f']), 2):
+        d = dict(i1=results['f'][i]['ldq']['i1'],
+                 beta=results['f'][i+1]['ldq']['beta'][:-1] + results['f'][i]['ldq']['beta'])
+        d.update(
+            {k: np.vstack((np.array(results['f'][i+1]['ldq'][k])[:-1, :],
+                           np.array(results['f'][i]['ldq'][k]))).tolist()
+             for k in ('psid', 'psiq', 'torque', 'ld', 'lq', 'psim')})
+        ldq.append(d)
+    losskeys = ('styoke_hyst', 'stteeth_hyst', 'styoke_eddy',
                 'stteeth_eddy', 'rotor_hyst', 'rotor_eddy',
                 'magnet')
-    for i in range(len(results['f'])):
-        ldq[i]['temperature'] = results['x'][0][i]
-        ldq[i]['losses'] = {k: results['f'][i]['ldq']['losses'][k]
+    for i in range(0, len(results['f']), 2):
+        j = i//2
+        ldq[j]['temperature'] = results['x'][0][i]
+        ldq[j]['losses'] = {k: np.vstack((np.array(results['f'][i+1]['ldq']['losses'][k])[:-1, :],
+                                          np.array(results['f'][i]['ldq']['losses'][k]))).tolist()
                             for k in losskeys}
+        ldq[j]['losses']['speed'] = results['f'][i]['ldq']['losses']['speed']
         for k in ('hf', 'ef'):
-            ldq[i]['losses'][k] = results['f'][i]['lossPar'][k]
+            ldq[j]['losses'][k] = results['f'][i]['lossPar'][k]
 
     return {'m': machine['windings']['num_phases'],
             'p': machine['poles']//2,

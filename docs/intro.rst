@@ -213,13 +213,15 @@ set of requirements such as power, speed, voltage and pole pairs::
   machine = femagtools.machine.sizing.spm(
           p2, speed, p, udc=udc)
 
+There are a couple of additional parameters such as shear stress, current density,
+stack length/pole pitch ratio etc. (Ref :ref:`sizing`)
 
 Evaluate PM/Reluctance machine characteristics
 ++++++++++++++++++++++++++++++++++++++++++++++
 
 For the fast evaluation of
 machine characteristics such speed, torque, losses etc. several
-analytical models are provided. Her is an example of a PM
+analytical models are provided. Here is an example of a PM
 or reluctance machine using Ld-Lq parameters::
 
   p = 4
@@ -269,21 +271,35 @@ Speed-Torque characteristics with max power::
 Parameter Identification
 ++++++++++++++++++++++++
 
-The parameters of the analytical model such inductances, resistances etc.
-can be determined fastly based on the model dict::
+For each type of machine (im, pm, sm)
+the parameters of the analytical model such inductances, resistances etc.
+can be determined fastly based by the function parident::
 
   machine = {
     'poles': 4,
     'outer_diam': 0.220,
     'bore_diam': 0.125,
     .. }
+
    engine = femagtools.multiproc.Engine()
+
    dqpars = femagtools.machine.pm.parident(
       workdir, engine, temp=[60, 90],
       machine=machine,
       magnetizingCurves=magnetizingCurves,
       magnetMat=magnetMat,
       condMat=condMat)
+
+The factory function create_from_eecpars is included in
+the machine module to create the corresponding
+model::
+
+  temp = [102, 80] # set stator winding and magnet temperature
+  machmod = femagtools.machine.create_from_eecpars(temp, dqpars)
+
+  tq = 170.0
+  iq, id =  machmod.iqd_torque(tq)
+
 
 Execute Parameter Variations
 ++++++++++++++++++++++++++++

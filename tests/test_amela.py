@@ -1,5 +1,7 @@
 from femagtools import amela
 import json 
+import os
+import sys
 
 def read_output(): 
     with open('tests/data/amela.out', 'r') as f: 
@@ -12,6 +14,8 @@ def read_json():
     return data 
 
 def test_amela():
+    if sys.platform == 'linux':
+        os.chmod('tests/data/AMELA', 0o0777)
     al = amela.Amela(workdir='tests/data', 
                     magnet_data=dict(name='pm_data'))
     loss = al()

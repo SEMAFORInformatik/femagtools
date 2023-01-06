@@ -762,7 +762,17 @@ def parident(workdir, engine, f1, u1, wdgcon,
     except KeyError:
         n = machine['windings']['num_wires']
         g = loadsim['num_par_wdgs']
-        hs = machine['stator'].get('slot_height', 0)
+        slotmodel = [k for k in machine['stator'] if isinstance(
+            machine['stator'][k], dict)][-1]
+        if slotmodel == 'stator1':
+            hs = machine['stator']['stator1']['slot_rf1'] - \
+                machine['stator']['stator1']['tip_rh1']
+        else:
+            hs = machine['stator'][slotmodel].get('slot_height', 0)
+        if 'dia_wire' in machine['windings']:
+            aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
+        else:  # wire diameter from slot area
+            aw = machine['windings'].get('cufilfact', 0.45)*np.pi*da1*hs/N
         aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
         # TODO: read nc file and get slot area:
         # as = nc.windings[0].subregions[0].area()

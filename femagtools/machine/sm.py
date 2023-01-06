@@ -81,7 +81,7 @@ def gradient_respecting_bounds(bounds, fun, eps=1e-8):
 
 
 class SynchronousMachine(object):
-    def __init__(self, pars):
+    def __init__(self, pars, lfe=1, wdg=1):
         for k in eecdefaults.keys():
             setattr(self, k, eecdefaults[k])
         for k in pars:
@@ -90,16 +90,16 @@ class SynchronousMachine(object):
 
         islinear = True
         iexc = [l['ex_current'] for l in pars['ldq']]
-        i1 = [i for i in pars['ldq'][-1]['i1']]
+        i1 = [i/wdg for i in pars['ldq'][-1]['i1']]
         i1x = np.linspace(i1[0], i1[-1], 12)
         beta = [b*np.pi/180 for b in pars['ldq'][-1]['beta']]
         betax = np.linspace(beta[0], beta[-1], 20)
 
         if _islinear(iexc):
-            psid = np.array([
+            psid = wdg*lfe*np.array([
                 _splinterp(beta, i1, betax, i1x, l['psid'])
                 for l in pars['ldq']])
-            psiq = np.array([
+            psiq = wdg*lfe*np.array([
                 _splinterp(beta, i1, betax, i1x, l['psiq'])
                 for l in pars['ldq']])
             exc = iexc
@@ -108,10 +108,10 @@ class SynchronousMachine(object):
             nsamples = 10
             iexcl = np.linspace(iexc[0], iexc[-1], nsamples)
             exc = iexcl
-            psid = _linsampl(iexc, iexcl, np.array(
+            psid = wdg*lfe*_linsampl(iexc, iexcl, np.array(
                 [_splinterp(beta, i1, betax, i1x, l['psid'])
                  for l in pars['ldq']]))
-            psiq = _linsampl(iexc, iexcl, np.array(
+            psiq = wdg*lfe*_linsampl(iexc, iexcl, np.array(
                 [_splinterp(beta, i1, betax, i1x, l['psiq'])
                  for l in pars['ldq']]))
 
@@ -142,7 +142,7 @@ class SynchronousMachine(object):
                                              for l in pars['ldq']]))
                        for k in keys}
             self._losses = {k: ip.RegularGridInterpolator(
-                (exc, beta, i1), np.array(pfe[k])) for k in keys}
+                (exc, beta, i1), lfe*np.array(pfe[k])) for k in keys}
             self._set_losspar(pars['ldq'][0]['losses']['speed'],
                               pars['ldq'][0]['losses']['ef'],
                               pars['ldq'][0]['losses']['hf'])

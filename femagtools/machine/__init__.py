@@ -12,9 +12,24 @@ from .pm import PmRelMachineLdq, PmRelMachinePsidq
 from .im import InductionMachine
 from .utils import betai1, iqd, invpark, K, T, puconv, dqpar_interpol, wdg_resistance
 import copy
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-def create_from_eecpars(temp, eecpars):
+def __scale_losses(losses, lfe):
+    if losses:
+        l = {k: lfe*np.array(losses[k]) for k in (
+            'styoke_hyst', 'styoke_eddy',
+            'stteeth_hyst', 'stteeth_eddy',
+            'rotor_hyst', 'rotor_eddy',
+            'magnet')}
+        l['speed'] = losses['speed']
+        return l
+    return {}
+
+
+def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     """create machine according to the eecpars:
     PM, EESM or IM"""
     if 'ldq' in eecpars:  # this is a PM (or EESM)
@@ -25,7 +40,7 @@ def create_from_eecpars(temp, eecpars):
             pars = copy.deepcopy(eecpars)
             pars['tcu1'] = temp[0]
             pars['tcu2'] = temp[1]
-            return femagtools.machine.sm.SynchronousMachine(pars)
+            return femagtools.machine.sm.SynchronousMachine(pars, lfe=lfe, wdg=wdg)
 
         if isinstance(eecpars['ldq'], list) and len(eecpars['ldq']) > 1:
             x, dqp = dqpar_interpol(
@@ -34,17 +49,43 @@ def create_from_eecpars(temp, eecpars):
             dqp = eecpars['ldq'][0]
             logger.warning(
                 "single temperature DQ parameters: unable to fit temperature %s", temp)
+
+        beta = dqp['beta']
+        i1 = np.array(dqp['i1'])/wdg
+        psid = wdg*lfe*dqp['psid']
+        psiq = wdg*lfe*dqp['psiq']
+        try:
+            losses = __scale_losses(dqp['losses'], lfe)
+            losses['ef'] = eecpars['ldq'][-1]['losses']['ef']
+            losses['eh'] = eecpars['ldq'][-1]['losses']['ef']
+        except KeyError as e:
+            logger.warning(e)
+            losses = {}
+
         return PmRelMachineLdq(
-            eecpars['m'], eecpars['p'], r1=eecpars['r1'],
-            ls=eecpars['ls1'],
-            psid=dqp['psid'],
-            psiq=dqp['psiq'],
-            losses=dqp['losses'],
-            beta=dqp['beta'],
-            i1=dqp['i1'],
+            eecpars['m'], eecpars['p'],
+            r1=eecpars['r1']*lfe*wdg**2,
+            ls=eecpars['ls1']*wdg**2,
+            psid=psid,
+            psiq=psiq,
+            losses=losses,
+            beta=beta,
+            i1=i1,
             tcu1=temp[0])
-    else:  # must be an induction machine
+
+    else:  # must be an induction machine (TODO: check scaling)
         pars = copy.deepcopy(eecpars)
+        pars['r1'] = lfe*wdg**2*pars['r1']
+        pars['lsigma1'] = lfe*pars['lsigma1']
+        pars['lsigma2'] = lfe*pars['lsigma2']
+        pars['psiref'] = wdg*lfe*pars['psiref']
+        pars['u1ref'] = wdg*lfe*pars['u1ref']
+        pars['rotor_mass'] = lfe*pars['rotor_mass']
+        pars['r2'] = lfe*pars['r2']
+        pars['fec'] = lfe*pars['fec']
+        pars['fee'] = lfe*pars['fee']
+        pars['im'] = [im/wdg for im in pars['im']]
+        pars['psi'] = [psi*wdg*lfe for psi in pars['psi']]
         pars['tcu1'] = temp[0]
         pars['tcu2'] = temp[1]
         return InductionMachine(pars)

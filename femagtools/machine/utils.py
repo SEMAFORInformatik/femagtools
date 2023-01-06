@@ -351,13 +351,13 @@ def dqparident(workdir, engine, temp, machine,
 
     da1 = machine['outer_diam']
     Q1 = machine['stator']['num_slots']
-    if 'statorRotor3' in machine['stator']:
-        hs = machine['stator']['statorRotor3']['slot_height']
-    elif 'stator1' in machine['stator']:
+    slotmodel = [k for k in machine['stator'] if isinstance(
+        machine['stator'][k], dict)][-1]
+    if slotmodel == 'stator1':
         hs = machine['stator']['stator1']['slot_rf1'] - \
             machine['stator']['stator1']['tip_rh1']
-    elif 'stator4' in machine['stator']:
-        hs = machine['stator']['stator4']['slot_height']
+    else:
+        hs = machine['stator'][slotmodel].get('slot_height', 0)
     N = machine['windings']['num_wires']
     Jmax = 15  # max current density in A/mm2
 
@@ -378,7 +378,10 @@ def dqparident(workdir, engine, temp, machine,
 
     lfe = machine['lfe']
     g = machine['windings'].get('num_par_wdgs', 1)
-    aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
+    if 'dia_wire' in machine['windings']:
+        aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
+    else:  # wire diameter from slot area
+        aw = machine['windings'].get('cufilfact', 0.45)*np.pi*da1*hs/N
     r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
 
     n = len(temp)

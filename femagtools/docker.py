@@ -83,7 +83,7 @@ class AsyncFemag(threading.Thread):
             return [json.loads(s) for s in ret]
         except Exception as e:
             logger.error("%s: %s", e, ret, exc_current=True)
-            return [{'status': 'error', 'msg': str(ret)}]
+            return [{'status': 'error', 'message': str(ret)}]
 
     def run(self):
         """execute femag fsl task in task directory"""

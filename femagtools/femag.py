@@ -510,9 +510,10 @@ class SubscriberTask(threading.Thread):
 
             if socks.get(self.controller) == zmq.POLLIN:
                 req = self.controller.recv()
-                self.logger.info(req)
+                self.logger.info("subscriber %s", req)
                 break
-
+        self.subscriber.close()
+        self.controller.close()
         self.logger.debug("subscriber stopped")
 
 
@@ -626,7 +627,8 @@ class ZmqFemag(BaseFemag):
             except zmq.error.Again as e:
                 # logger.exception("send_request")
                 errmsg = str(e)
-                logger.warning("send_request: %s Message %s", str(e), msg)
+                logger.warning("send_request: %s Message %s, host: %s port: %s", str(
+                    e), msg, self.host, self.port)
                 continue
         logger.info("oops")
         return [b'{"status":"error", "message":"' + errmsg.encode() + b'"}']

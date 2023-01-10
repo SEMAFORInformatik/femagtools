@@ -1,7 +1,7 @@
-from femagtools import amela
-import json 
 import os
 import sys
+import json 
+from femagtools import amela
 
 def read_output(): 
     with open('tests/data/amela.out', 'r') as f: 

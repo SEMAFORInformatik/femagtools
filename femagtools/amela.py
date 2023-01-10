@@ -23,7 +23,10 @@ class Amela():
     Parameters
     ----------
     workdir : str
-        working directory of AMELA
+        working directory of femag calculation
+        (The directory that the nc file)
+    amela_dir: str (optional)
+        amela directory 
     magnet_data : dict
         calculation control
         -- name must be provided
@@ -39,15 +42,20 @@ class Amela():
              nseglen=0)
     '''
 
-    def __init__(self, workdir, magnet_data):
+    def __init__(self, workdir, magnet_data, amela_dir=None):
 
         self.magn = magnet_data
         self.workdir = pathlib.Path(workdir)
+        if amela_dir is not None: 
+            self.amela_dir = pathlib.Path(amela_dir)
+        else: 
+            self.amela_dir = self.workdir
+
         self.jsonfile = []
         if sys.platform == 'win32':
-            self.cmd = [str(self.workdir / 'AMELA.BAT')]
+            self.cmd = [str(self.amela_dir / 'AMELA.BAT')]
         else:
-            self.cmd = [str(self.workdir / 'AMELA')]
+            self.cmd = [str(self.amela_dir / 'AMELA')]
         # default batch 
         self.cmd.append('--b')
         # append calc options
@@ -217,7 +225,7 @@ class Amela():
         None
         ----------
         '''
-        pm_dir = self.workdir / self.magn['name']
+        pm_dir = self.amela_dir / self.magn['name']
         pm_dir.mkdir(exist_ok=True)
         for i in pm_data:
             filename = (pm_dir / i['name']).with_suffix('.json')
@@ -240,7 +248,7 @@ class Amela():
         for i in range(len(pm_data)):
             dirname = self.magn['name'] + '/' + pm_data[i]['name'] + \
                 '/EClosses.tab'
-            result_name = self.workdir / dirname
+            result_name = self.amela_dir / dirname
             with result_name.open() as f:
                 data = np.loadtxt(f)
                 total_loss = np.mean(data[0:-1, -1]) 
@@ -266,7 +274,7 @@ class Amela():
         # run amela 
         calc_method = 'IALH' if ialh else '3DI'
         cmd = self.cmd + ['--calc', calc_method, self.magn['name'] + '/']
-        log_file = self.workdir / 'amela.out'
+        log_file = self.amela_dir / 'amela.out'
         logger.info("Calculating magnet losses with AMELA ...")
         with log_file.open('w') as output:
             subprocess.run(cmd, stdout=output)

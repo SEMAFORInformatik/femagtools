@@ -79,7 +79,8 @@ User Guide
    forcedens
    dakota
    engine
-
+   amela
+   
 References
 ==========
 

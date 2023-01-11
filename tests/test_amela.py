@@ -1,7 +1,7 @@
-import json
-import sys
 import os
-lsfrom femagtools import amela
+import sys
+import json
+from femagtools import amela
 
 
 def read_output():

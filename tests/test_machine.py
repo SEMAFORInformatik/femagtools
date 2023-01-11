@@ -324,6 +324,7 @@ def test_psidq_losses(data_dir):
 
 
 def test_wdg_resistance():
+    from femagtools.machine.utils import wdg_resistance
     wdg = femagtools.windings.Winding(
         {'Q': 36, 'm': 3, 'p': 2, 'yd': 8, 'l': 2})
     n = 17  # wires / coil side
@@ -333,5 +334,5 @@ def test_wdg_resistance():
     hs = 19.33e-3  # slot height m
     lfe = 0.1172  # length of stator lamination stack m
     sigma = 58e6  # conductivity 1/Ohm m (copper at 20°C)
-    assert pytest.approx(0.3156, rel=1e-1) == femagtools.machine.wdg_resistance(
+    assert pytest.approx(0.3156, rel=1e-1) == wdg_resistance(
         wdg, n, g, aw, da1, hs, lfe, sigma)

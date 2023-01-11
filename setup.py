@@ -29,11 +29,6 @@ version = str(ast.literal_eval(_version_re.search(meta_data).group(1)))
 license = str(ast.literal_eval(_license_re.search(meta_data).group(1)))
 author = str(ast.literal_eval(_author_re.search(meta_data).group(1)))
 
-here = os.path.abspath(os.path.dirname(__file__))
-# Get the long description from the README file
-with io.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
-    long_description = f.read()
-
 
 def get_extra_requires(add_all=True):
     import re
@@ -69,7 +64,6 @@ def get_extra_requires(add_all=True):
 
 setup(
     description='Python API for FEMAG',
-    long_description=long_description,
     author=author,
     url='https://github.com/SEMAFORInformatik/femagtools',
     author_email='tar@semafor.ch',

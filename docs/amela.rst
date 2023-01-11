@@ -15,7 +15,7 @@ for the loss calculation will be extracted from the FEMAG model file.
    print(f'loss in the superelement 38 is: {loss} W')
 
   * If the FEMAG model file (nc file) is located in a different directory as AMELA.
-    Both the workdir (nc file) and amela_dir need to be input.
+    Both the workdir (nc file) and amela_dir (AMELA.bat or AMELA.sh) need to be input.
 
   Example::
    
@@ -26,7 +26,7 @@ for the loss calculation will be extracted from the FEMAG model file.
    print(f'loss in the superelement 38 is: {loss} W')
 
 The circumferential and axial segmentation are optional parameters and can be
-passed in the dictionary. 
+passed in the same dictionary. 
 
   Example::
 

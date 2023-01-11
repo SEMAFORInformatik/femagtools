@@ -11,7 +11,7 @@ import scipy.interpolate as ip
 import scipy.optimize as so
 import logging
 import pathlib
-from .utils import skin_resistance, skin_leakage_inductance, wdg_resistance, wdg_leakage_inductances
+from .utils import skin_resistance, skin_leakage_inductance, wdg_leakage_inductances
 import femagtools.windings
 import femagtools.parstudy
 import json
@@ -633,7 +633,6 @@ def parident(workdir, engine, f1, u1, wdgcon,
     if 'shaft_diam' in rotorbar:
         rotorbar['inner_diam'] = rotorbar.pop('shaft_diam')
     # use one rotor slot only
-    Q2 = rotorbar['rotor']['num_slots']
     rotorbar['stator']['statorRing'] = {'num_slots': Q2}
     for k in rotorbar['rotor']:
         if isinstance(rotorbar['rotor'][k], dict):
@@ -743,8 +742,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
     # def inoload(x, iml, ims, mexp):
     #    """return noload current"""
     #    return iml*x/psiref + ims*(x/psiref)**mexp
-    #fitp, cov = so.curve_fit(inoload, psihtab, i10tab, (1, 1, 1))
-    #iml, ims, mexp = fitp
+    # fitp, cov = so.curve_fit(inoload, psihtab, i10tab, (1, 1, 1))
+    # iml, ims, mexp = fitp
     # logger.info("iml, ims, mexp %g, %g, %g",
     #            iml, ims, mexp)
     # i1tab.insert(0, 0)
@@ -760,26 +759,29 @@ def parident(workdir, engine, f1, u1, wdgcon,
     try:
         r1 = machine['windings']['resistance']
     except KeyError:
-        n = machine['windings']['num_wires']
-        g = loadsim['num_par_wdgs']
+        from .utils import wdg_resistance
         slotmodel = [k for k in machine['stator'] if isinstance(
             machine['stator'][k], dict)][-1]
         if slotmodel == 'stator1':
             hs = machine['stator']['stator1']['slot_rf1'] - \
                 machine['stator']['stator1']['tip_rh1']
         else:
-            hs = machine['stator'][slotmodel].get('slot_height', 0)
+            hs = machine['stator'][slotmodel].get('slot_height',
+                                                  0.33*(machine['outer_diam']-da1))
+        n = machine['windings']['num_wires']
         if 'dia_wire' in machine['windings']:
             aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
         else:  # wire diameter from slot area
-            aw = machine['windings'].get('cufilfact', 0.45)*np.pi*da1*hs/N
-        aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
+            aw = 0.75 * \
+                machine['windings'].get(
+                    'cufilfact', 0.45)*np.pi*da1*hs/wdg.Q/2/n
         # TODO: read nc file and get slot area:
         # as = nc.windings[0].subregions[0].area()
         # aw = as/wdg.l/n*fillfac
         # TODO: sigma = 58e6
         # if 'material' in machine['windings']:
         #    sigma = condMat[machine['windings']]['elconduct']
+        g = loadsim['num_par_wdgs']
         r1 = wdg_resistance(
             wdg, n, g, aw, da1, hs, lfe)
 

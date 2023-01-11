@@ -10,7 +10,7 @@ import numpy as np
 from femagtools.bch import Reader
 from .pm import PmRelMachineLdq, PmRelMachinePsidq
 from .im import InductionMachine
-from .utils import betai1, iqd, invpark, K, T, puconv, dqpar_interpol, wdg_resistance
+from .utils import betai1, iqd, invpark, K, T, puconv, dqpar_interpol
 import copy
 import logging
 

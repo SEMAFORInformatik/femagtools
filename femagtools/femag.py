@@ -210,7 +210,15 @@ class BaseFemag(object):
         if (filelist):
             return filelist[-1-offset]
         return ''
-
+    
+    def get_result_file_list(self, modelname, ext):
+        """return list of result (me) file (if any)"""
+        filelist = sorted(glob.glob(os.path.join(
+            self.workdir, modelname+'_[0-9][0-9][0-9].'+ext)))
+        if len(filelist) > 0:
+            return filelist
+        return []
+    
     def read_asm(self, modelname=None, offset=0):
         "read most recent ASM file and return result"
         if not modelname:
@@ -230,6 +238,16 @@ class BaseFemag(object):
 
         logger.info("Read TS {}".format(modelname))
         return femagtools.ts.read_st(self.workdir, modelname)
+
+    def read_modal(self, modelname=None): 
+        "read modal analysis output and return result"
+        import femagtools.me
+        filelist = self.get_result_file_list(modelname + '_Mode', 'txt')
+        psfiles = self.get_result_file_list(modelname + '_Mode', 'ps')
+        if len(filelist) > 0: 
+            return femagtools.me.get_eigenvectors(filelist, psfiles)
+        else: 
+            return ''
 
     def read_bch(self, modelname=None, offset=0):
         "read most recent BCH/BATCH file and return result"
@@ -402,6 +420,9 @@ class Femag(BaseFemag):
 
             if simulation['calculationMode'] == 'calc_field_ts':
                 return self.read_ts(self.modelname)
+
+            if simulation['calculationMode'] == 'modal_analysis': 
+                return self.read_modal(self.modelname)
 
             bch = self.read_bch(self.modelname)
             if simulation['calculationMode'] == 'pm_sym_fast':

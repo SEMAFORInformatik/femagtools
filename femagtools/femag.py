@@ -621,14 +621,19 @@ class ZmqFemag(BaseFemag):
             self.request_socket.send_string(msg[-1])
 
         errmsg = ''
+        max_num_again = 2
+        again = 0
         while True:
             try:
                 return self.request_socket.recv_multipart()
             except zmq.error.Again as e:
+                again += 1
                 # logger.exception("send_request")
                 errmsg = str(e)
                 logger.warning("send_request: %s Message %s, host: %s port: %s", str(
                     e), msg, self.host, self.port)
+                if again >= max_num_again:
+                    break
                 continue
         logger.info("oops")
         return [b'{"status":"error", "message":"' + errmsg.encode() + b'"}']

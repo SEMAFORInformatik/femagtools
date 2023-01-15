@@ -245,6 +245,7 @@ class BaseFemag(object):
         filelist = self.get_result_file_list(modelname + '_Mode', 'txt')
         psfiles = self.get_result_file_list(modelname + '_Mode', 'ps')
         if len(filelist) > 0: 
+            logger.info("Read Eigenvectors {}".format(modelname))
             return femagtools.me.get_eigenvectors(filelist, psfiles)
         else: 
             return ''

@@ -18,12 +18,11 @@ def get_eigenvectors(filelist, psfiles):
     ps_data = []
     temp = [] 
     temp_arr = []
-    
-    if len(psfiles) > 0: 
-        read_fig = True
-    else: 
-        read_fig = False
+    read_fig = False
 
+    if len(psfiles) > 0: read_fig = True
+    if len(filelist) == 0: return []
+    
     for k, kk in zip(filelist, range(len(filelist))): 
         # read ps file
         if read_fig: ps_data.append(plt.imread(psfiles[kk]))

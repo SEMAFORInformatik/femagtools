@@ -47,11 +47,14 @@ for i in workdir.glob('*_Mode_*'):
 
 femag = femagtools.Femag(workdir)
 
+# mechanical material can be passed in a list: 
+# [mass_density, Young's Modulus, Possion's number]
+#  kg/m3, Gpa, #
 simulation = dict(
-    num_modes=20,
+    num_modes=15,
     calculationMode="modal_analysis",
-    youngs_modulus=210, # Gpa
-    mass_density=7700, # kg/m3
+    stator_material=[7700, 210, 0.3], 
+    slot_material=[5000, 1.5, 0.3],
     export_figure=True
 )
 # return eigenfrequency, eigenvectors

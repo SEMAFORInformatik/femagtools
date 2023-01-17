@@ -561,7 +561,7 @@ class Reader:
         mcfiles = []
         for l in content:
             try:
-                if l.find('Armature Length [mm]:') > -1:
+                if l.find('Armature Length') > -1:
                     self.armatureLength = floatnan(l.split()[-1])
                 elif l.find('No of parallel wdgs-section') > -1:
                     self.machine['parallelWdgs'] = int(l.split()[-1])

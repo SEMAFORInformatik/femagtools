@@ -116,7 +116,11 @@ class Task(object):
                             bchfile_list[-1])
                 result.read(f)
             if bagdat.exists():
-                result.airgap = femagtools.airgap.read(bagdat)
+                try:
+                    pmod = result.machine['p_sim']
+                except KeyError:
+                    pmod = 0
+                result.airgap = femagtools.airgap.read(bagdat, pmod=pmod)
             return result
             # logger.info("%s %s", result.version, result.type),
         else:
@@ -127,7 +131,12 @@ class Task(object):
                             asm_list[-1])
                 result = femagtools.asm.read(asm_list[-1])
                 if bagdat.exists():
-                    result['airgap'] = femagtools.airgap.read(bagdat)
+                    try:
+                        pmod = result['p_gen']
+                    except KeyError:
+                        pmod = 0
+                    result['airgap'] = femagtools.airgap.read(bagdat,
+                                                              pmod=pmod)
                 return result
             msg = 'no BCH (or ASM) files in {}'.format(self.directory)
             logger.error(msg)

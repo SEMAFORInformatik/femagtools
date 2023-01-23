@@ -18,6 +18,9 @@ except ImportError:
 import sys
 import json
 import io
+import time
+import re
+import threading
 import femagtools.model
 import femagtools.magnet
 import femagtools.conductor
@@ -26,11 +29,8 @@ import femagtools.mcv
 import femagtools.asm
 import femagtools.airgap as ag
 import femagtools.fsl
-import femagtools.ntib as ntib
-import femagtools.config as cfg
-import time
-import re
-import threading
+from femagtools import ntib
+
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +210,7 @@ class BaseFemag(object):
         if (filelist):
             return filelist[-1-offset]
         return ''
-    
+
     def get_result_file_list(self, modelname, ext):
         """return list of result (me) file (if any)"""
         filelist = sorted(glob.glob(os.path.join(
@@ -218,7 +218,7 @@ class BaseFemag(object):
         if len(filelist) > 0:
             return filelist
         return []
-    
+
     def read_asm(self, modelname=None, offset=0):
         "read most recent ASM file and return result"
         if not modelname:
@@ -239,15 +239,15 @@ class BaseFemag(object):
         logger.info("Read TS {}".format(modelname))
         return femagtools.ts.read_st(self.workdir, modelname)
 
-    def read_modal(self, modelname=None): 
+    def read_modal(self, modelname=None):
         "read modal analysis output and return result"
         import femagtools.me
         filelist = self.get_result_file_list(modelname + '_Mode', 'txt')
         psfiles = self.get_result_file_list(modelname + '_Mode', 'ps')
-        if len(filelist) > 0: 
+        if len(filelist) > 0:
             logger.info("Read Eigenvectors {}".format(modelname))
             return femagtools.me.get_eigenvectors(filelist, psfiles)
-        else: 
+        else:
             return ''
 
     def read_bch(self, modelname=None, offset=0):
@@ -422,7 +422,7 @@ class Femag(BaseFemag):
             if simulation['calculationMode'] == 'calc_field_ts':
                 return self.read_ts(self.modelname)
 
-            if simulation['calculationMode'] == 'modal_analysis': 
+            if simulation['calculationMode'] == 'modal_analysis':
                 return self.read_modal(self.modelname)
 
             bch = self.read_bch(self.modelname)
@@ -463,7 +463,13 @@ class Femag(BaseFemag):
                     bch.torque += bchsc.torque
                     bch.demag += bchsc.demag
             if 'airgap_induc' in simulation:
-                bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'))
+                try:
+                    pmod = bch.machine['p_sim']
+                except KeyError:
+                    pmod = 0
+                bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'),
+                                     pmod=pmod)
+
             return bch
         return dict(status='ok', message=self.modelname)
 
@@ -969,7 +975,15 @@ class ZmqFemag(BaseFemag):
             return self.read_los(self.modelname)
 
         if simulation['calculationMode'] == "asyn_motor":
-            return self.read_asm(self.modelname)
+            results = self.read_asm(self.modelname)
+            if 'airgap_induc' in simulation:
+                try:
+                    pmod = results['p_gen']
+                except KeyError:
+                    pmod = 0
+                bagdat = os.path.join(self.workdir, 'bag.dat')
+                results['airgap'] = ag.read(bagdat, pmod=pmod)
+            return results
 
         if simulation['calculationMode'] == "calc_field_ts":
             return self.read_ts(self.modelname)
@@ -998,6 +1012,11 @@ class ZmqFemag(BaseFemag):
                         bch.read(content.decode('latin1'))
 
             if 'airgap_induc' in simulation:
-                bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'))
+                try:
+                    pmod = bch.machine['p_sim']
+                except KeyError:
+                    pmod = 0
+                bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'),
+                                     pmod=pmod)
             return bch
         raise FemagError(r['message'])

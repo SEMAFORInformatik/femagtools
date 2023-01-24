@@ -477,28 +477,32 @@ class InductionMachine(Component):
                 return max(wmPullout*pmmax/wm**2, T)
             return min(wmPullout*pmmax/wm**2, T)
 
-        r = dict(u1=[], i1=[], T=[], cosphi=[], n=[],
+        r = dict(u1=[], i1=[], T=[], cosphi=[], n=[], s=[], sk=[],
                  plfe1=[], plcu1=[], plcu2=[])
         T = [tload2(wx) for wx in wmtab]
         tfric = self.kfric_b*self.rotor_mass*30e-3/np.pi
         w1tab = []
-        for wm, tq in zip(wmtab, T):
-            logger.debug("u1 %g psi %g tq %g wm %g",
-                         u1max, self.psiref, tq, wm)
-#            try:
-            w1 = self.w1(u1max, self.psiref, tq, wm)
-            w1tab.append(w1)
-            u1 = self.u1(w1, self.psi, wm)
-            r['u1'].append(np.abs(u1))
-            i1 = self.i1(w1, self.psi, wm)
-            r['i1'].append(np.abs(i1))
-            r['cosphi'].append(np.cos(np.angle(u1) - np.angle(i1)))
-            r['plfe1'].append(self.m*np.abs(u1)**2/self.rfe(w1, self.psi))
-            i2 = self.i2(w1, self.psi, wm)
-            r['plcu1'].append(self.m*np.abs(i1)**2*self.rstat(w1))
-            r['plcu2'].append(self.m*np.abs(i2)**2*self.rrot(w1-self.p*wm))
-            r['T'].append(tq - tfric)
-            r['n'].append(wm/2/np.pi)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for wm, tq in zip(wmtab, T):
+                logger.debug("u1 %g psi %g tq %g wm %g",
+                             u1max, self.psiref, tq, wm)
+    #            try:
+                w1 = self.w1(u1max, self.psiref, tq, wm)
+                w1tab.append(w1)
+                u1 = self.u1(w1, self.psi, wm)
+                r['u1'].append(np.abs(u1))
+                i1 = self.i1(w1, self.psi, wm)
+                r['i1'].append(np.abs(i1))
+                r['cosphi'].append(np.cos(np.angle(u1) - np.angle(i1)))
+                r['plfe1'].append(self.m*np.abs(u1)**2/self.rfe(w1, self.psi))
+                i2 = self.i2(w1, self.psi, wm)
+                r['plcu1'].append(self.m*np.abs(i1)**2*self.rstat(w1))
+                r['plcu2'].append(self.m*np.abs(i2)**2*self.rrot(w1-self.p*wm))
+                r['T'].append(tq - tfric)
+                r['n'].append(wm/2/np.pi)
+                r['s'].append(float((w1 - self.p * wm) / w1))
+                r['sk'].append(self.sk(w1, u1/w1))
 #            except ValueError as ex:
 #                break
         r['plfric'] = [2*np.pi*n*tfric for n in r['n']]

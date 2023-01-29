@@ -220,8 +220,9 @@ class PmRelMachine(object):
         u1b = [np.linalg.norm(self.uqd(w1, *iqd(b, i1max)))
                for b in btab]
         if np.sqrt(2)*np.max(u1b) > u1max:
-            m = (u1b[-1] - u1b[0])/(btab[-1]-btab[0])
-            beta0 = (np.sqrt(2)*u1max-u1b[0])/m + btab[0]
+            u1 = ip.interp1d(btab, u1b)
+            beta0=so.fsolve(lambda bx: u1max - u1(bx),
+                            btab[0])[0]
             beta, info, ier, mesg = so.fsolve(
                 lambda b: la.norm(
                     self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
@@ -356,13 +357,16 @@ class PmRelMachine(object):
                 r['n'].append(nx)
                 r['T'].append(T)
 
-            if n1 < n2:
+            if n1 < n2: # find id, iq, torque in fieldweakening range
                 dn = r['n'][-1] - r['n'][-2]
                 for nn in np.linspace(r['n'][-1]+dn, n2, nstab[1]):
                     w1 = 2*np.pi*nn*self.p
                     iq, id = self.iqd_imax_umax(i1max, w1, u1max,
                                                 maxtorque=T > 0)
                     tq = self.torque_iqd(iq, id)
+                    logger.info("1: n %g T %g i1max %g w1 %g u1 %g",
+                                nn*60, tq, i1max, w1, u1max)
+
                     if (T > 0 and tq > 0) or (T < 0 and tq < 0):
                         r['id'].append(id)
                         r['iq'].append(iq)

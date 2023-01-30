@@ -219,10 +219,12 @@ class PmRelMachine(object):
             btab = np.linspace(max(-np.pi, self.betarange[0]), -np.pi/2)
         u1b = [np.linalg.norm(self.uqd(w1, *iqd(b, i1max)))
                for b in btab]
-        if np.sqrt(2)*np.max(u1b) > u1max:
-            u1 = ip.interp1d(btab, u1b)
-            beta0=so.fsolve(lambda bx: u1max - u1(bx),
-                            btab[0])[0]
+        if np.max(u1b) > np.sqrt(2)*u1max:
+            beta0=btab[0]
+            for bx, ux in zip(btab, u1b):
+                if ux/np.sqrt(2)>u1max:
+                    break
+                beta0 = bx
             beta, info, ier, mesg = so.fsolve(
                 lambda b: la.norm(
                     self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
@@ -230,7 +232,6 @@ class PmRelMachine(object):
                 full_output=True)
             if ier == 1:
                 return iqd(beta[0], i1max)
-
         return self.mtpv(w1, u1max, i1max, maxtorque)[:2]
 
     def mtpa(self, i1):
@@ -248,8 +249,7 @@ class PmRelMachine(object):
         """return d-q-current, torque for voltage and frequency
         with maximum (maxtorque=True) or minimum torque """
         sign = -1 if maxtorque else 1
-        i0 = (-sign*self.i1range[1]/10, self.i1range[1]/10)
-
+        i0 = (-sign*self.i1range[1]/10, -self.i1range[1]/10)
         res = so.minimize(
             lambda iqd: sign*self.torque_iqd(*iqd),
             i0, method='SLSQP',
@@ -342,10 +342,13 @@ class PmRelMachine(object):
                 else:
                     n2 = nmax
             if n > 0:
+                if n < nmax:
+                    nmax = n
                 speedrange = sorted(
                     list(set([nx for nx in [n1, n2, n] if nx <= nmax])))
             else:
                 speedrange = sorted(list(set([n1, n2])))
+            logger.info("speedrange %s", speedrange)
             speedrange.insert(0, 0)
             n3 = speedrange[-1]
             nstab = [int(nsamples*(x1-x2)/n3)
@@ -357,10 +360,17 @@ class PmRelMachine(object):
                 r['n'].append(nx)
                 r['T'].append(T)
 
+            n1 = speedrange[1]
+            try:
+                n2 = speedrange[2]
+            except IndexError:
+                n2 = n1
             if n1 < n2: # find id, iq, torque in fieldweakening range
                 dn = r['n'][-1] - r['n'][-2]
                 for nn in np.linspace(r['n'][-1]+dn, n2, nstab[1]):
                     w1 = 2*np.pi*nn*self.p
+                    logger.info("fieldweakening: n %g T %g i1max %g w1 %g u1 %g",
+                                nn*60, tq, i1max, w1, u1max)
                     iq, id = self.iqd_imax_umax(i1max, w1, u1max,
                                                 maxtorque=T > 0)
                     tq = self.torque_iqd(iq, id)

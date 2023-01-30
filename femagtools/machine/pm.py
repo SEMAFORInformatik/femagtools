@@ -369,7 +369,7 @@ class PmRelMachine(object):
                 dn = r['n'][-1] - r['n'][-2]
                 for nn in np.linspace(r['n'][-1]+dn, n2, nstab[1]):
                     w1 = 2*np.pi*nn*self.p
-                    logger.info("fieldweakening: n %g T %g i1max %g w1 %g u1 %g",
+                    logger.debug("fieldweakening: n %g T %g i1max %g w1 %g u1 %g",
                                 nn*60, tq, i1max, w1, u1max)
                     iq, id = self.iqd_imax_umax(i1max, w1, u1max,
                                                 maxtorque=T > 0)

@@ -364,17 +364,14 @@ class PmRelMachine(object):
                     iq, id = self.iqd_imax_umax(i1max, w1, u1max,
                                                 maxtorque=T > 0)
                     tq = self.torque_iqd(iq, id)
-                    logger.info("1: n %g T %g i1max %g w1 %g u1 %g",
-                                nn*60, tq, i1max, w1, u1max)
-
                     if (T > 0 and tq > 0) or (T < 0 and tq < 0):
                         r['id'].append(id)
                         r['iq'].append(iq)
                         r['n'].append(nn)
                         r['T'].append(tq)
                     else:
-                        logger.info("2: n %g T %g i1max %g w1 %g u1 %g",
-                                    nn*60, tq, i1max, w1, u1max)
+                        logger.warning("fieldweakening: n %g T %g i1max %g w1 %g u1 %g",
+                                       nn*60, tq, i1max, w1, u1max)
 
             if n2 < n3:
                 for nn in np.linspace(r['n'][-1]+dn/2, n3, nstab[2]):

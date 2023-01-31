@@ -29,6 +29,7 @@ import femagtools.mcv
 import femagtools.asm
 import femagtools.airgap as ag
 import femagtools.fsl
+import femagtools.config
 from femagtools import ntib
 
 

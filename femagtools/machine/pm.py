@@ -342,10 +342,9 @@ class PmRelMachine(object):
                 else:
                     n2 = nmax
             if n > 0:
-                if n < nmax:
-                    nmax = n
+                nmax = min(nmax, n)
                 speedrange = sorted(
-                    list(set([nx for nx in [n1, n2, n] if nx <= nmax])))
+                    list(set([nx for nx in [n1, n2, n] if nx < 1.01*nmax])))
             else:
                 speedrange = sorted(list(set([n1, n2])))
             logger.info("speedrange %s", speedrange)

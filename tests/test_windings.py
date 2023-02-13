@@ -124,3 +124,9 @@ def test_inductance():
     da1 = 110e-3
     ag = 1e-3
     assert round(wdg.inductance(nc, g, da1, lfe, ag), 4) == 0.0236
+
+
+def test_unbalanced_winding():
+    with pytest.raises(ValueError):
+        wdg = femagtools.windings.Winding(
+            {'Q': 48, 'p': 6, 'm': 3})

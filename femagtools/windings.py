@@ -69,7 +69,10 @@ class Winding(object):
         else:
             for k in arg.keys():
                 setattr(self, k, arg[k])
-
+        # balanced winding check
+        if np.mod(self.Q, self.m*np.gcd(self.Q, self.p)):
+            raise ValueError(
+                f"Unbalanced winding: Q={self.Q}, p={self.p}, m={self.m}")
         self.q = self.Q/2/self.p/self.m  # number of coils per pole and phase
 
         if hasattr(self, 'windings'):

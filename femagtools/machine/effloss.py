@@ -81,8 +81,17 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
         rb['n'] = []
     else:
         nmax = n
-        r = m.characteristics(T, nmax, u1)  # driving mode
-        rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
+        if 'ldq' in eecpars:
+            r = m.characteristics(T, nmax, u1)  # driving mode  
+            if min(eecpars['ldq'][0]['beta']) >= -90: # driving mode only
+                rb = {}
+                rb['n'] = None
+                rb['T'] = None
+            else:
+                rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
+        else: 
+            r = m.characteristics(T, nmax, u1)  # driving mode  
+            rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
 
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)

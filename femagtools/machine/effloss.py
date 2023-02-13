@@ -1,12 +1,7 @@
-import femagtools.machine
-import femagtools.machine.pm
-import femagtools.machine.sm
-import femagtools.machine.im
 import numpy as np
-import copy
 import scipy.interpolate as ip
 import logging
-from .utils import betai1, dqpar_interpol
+from .utils import betai1
 from . import create_from_eecpars
 
 logger = logging.getLogger("femagtools.effloss")
@@ -67,7 +62,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
 
     """
     if isinstance(eecpars, dict):
-        if isinstance(temp, list) or isinstance(temp, tuple):
+        if isinstance(temp, (list, tuple)):
             xtemp = [temp[0], temp[1]]
         else:
             xtemp = [temp, temp]
@@ -75,22 +70,20 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
     else:  # must be a Machine
         m = eecpars
     if isinstance(T, list):
-        r['T'] = T
-        r['n'] = n
-        rb['T'] = []
-        rb['n'] = []
+        r = {'T': T, 'n': n}
+        rb = {'T': [], 'n': []}
     else:
         nmax = n
         if 'ldq' in eecpars:
-            r = m.characteristics(T, nmax, u1)  # driving mode  
-            if min(eecpars['ldq'][0]['beta']) >= -90: # driving mode only
+            r = m.characteristics(T, nmax, u1)  # driving mode
+            if min(eecpars['ldq'][0]['beta']) >= -90:  # driving mode only
                 rb = {}
                 rb['n'] = None
                 rb['T'] = None
             else:
                 rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
-        else: 
-            r = m.characteristics(T, nmax, u1)  # driving mode  
+        else:
+            r = m.characteristics(T, nmax, u1)  # driving mode
             rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
 
     ntmesh = _generate_mesh(r['n'], r['T'],
@@ -112,8 +105,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
         f1 = []
         u1max = u1
         r = dict(u1=[], i1=[], plfe1=[], plcu1=[], plcu2=[])
-        for n, tq in ntmesh.T:
-            wm = 2*np.pi*n
+        for nx, tq in ntmesh.T:
+            wm = 2*np.pi*nx
             w1 = m.w1(u1max, m.psiref, tq, wm)
             f1.append(w1/2/np.pi)
             u1 = m.u1(w1, m.psi, wm)

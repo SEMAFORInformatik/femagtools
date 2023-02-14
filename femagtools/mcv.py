@@ -507,7 +507,7 @@ class Writer(Mcv):
             return
 
         try:
-            nfreq = len([1 for x in self.losses['f'] if x > 0])
+            nfreq = len([1 for x in self.losses['f'][0] if x > 0])
             nind = len(self.losses['B'])
             if nind < 1 or nfreq < 1:
                 return
@@ -557,7 +557,7 @@ class Writer(Mcv):
             self.writeBlock([1])
             logger.info('Losses n freq %d n ind %d', nfreq, nind)
         except Exception as e:
-            logger.error(e, exc_info=True)
+            logger.error("Exception %s", e, exc_info=True)
 
     def writeMcv(self, filename, fillfac=None, recsin=''):
         # windows needs this strip to remove '\r'
@@ -921,7 +921,7 @@ class MagnetizingCurve(object):
                                           filename), os.R_OK):
                     return id
             except Exception as ex:
-                logger.warn(ex)
+                logger.warn("Exception %s", ex)
                 pass
         logger.debug("search by name %s", id)
         m = self.find_by_name(id)

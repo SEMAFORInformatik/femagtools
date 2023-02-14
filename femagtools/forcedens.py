@@ -130,21 +130,35 @@ class ForceDensity(object):
                 elif s[0].startswith('POSITION'):
                     self.__read_position(s)
 
-    def fft(self):
-        """return FFT of FN"""
-        import scipy.fftpack
+    def _prepare(self): 
+        """return FN and FT Matrix"""
+        ntiles = int(360/self.positions[0]['X'][-1])
         try:
-            ntiles = int(360/self.positions[0]['X'][-1])
             FN = np.tile(
-                np.array([p['FN'][:-1] for p in self.positions[:-1]]),
-                (ntiles, ntiles))
+                np.array([p['FN'][:-1] for p in self.positions[:-1]]).T,
+                (ntiles, 1))
+            FT = np.tile(
+                np.array([p['FT'][:-1] for p in self.positions[:-1]]).T,
+                (ntiles, 1))
         except AttributeError:
             return []
+        return [FN, FT]
+    
+    def fft(self):
+        """return 2D FFT of the Force Density"""
+        fdens = self._prepare()
+        FN, FT= fdens[0], fdens[1] 
+        N = FN.size
+        dim = FN.shape[0]//2
+        # Dimension [Position °] X [Time Steps s]
+        FN_MAG = np.fft.fft2(FN)[0:dim, :]/N
+        FT_MAG = np.fft.fft2(FT)[0:dim, :]/N
 
-        N = FN.shape[0]
-        fdn = scipy.fftpack.fft2(FN)
-        dim = N//ntiles//2
-        return np.abs(fdn)[1:dim, 1:dim]/N
+        return dict(fn_harm=dict(amplitude=np.abs(FN_MAG), 
+                                phase=np.angle(FN_MAG)), 
+                    ft_harm=dict(amplitude=np.abs(FT_MAG), 
+                                phase=np.angle(FT_MAG)) 
+                    )
     
     def items(self):
         return [(k, getattr(self, k)) for k in ('version',

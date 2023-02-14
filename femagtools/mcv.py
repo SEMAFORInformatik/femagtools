@@ -821,7 +821,8 @@ class Reader(Mcv):
                 self.losses['b_coeff'] = beta
                 self.losses['ch'] = self.ch
                 self.losses['ch_freq'] = self.ch_freq
-        except:
+        except Exception as e:
+            logger.debug("Exception %s", e)
             if self.losses and 'B' in self.losses:
                 if not self.losses['f'] or not self.losses['pfe']:
                     self.losses = {}
@@ -908,6 +909,8 @@ class MagnetizingCurve(object):
     def find(self, id):
         """find mcv by id or name"""
         try:
+            if isinstance(id, string_types):
+                return id
             return self.mcv[id]['name']
         except ValueError:
             pass  # not found

@@ -871,6 +871,7 @@ class MagnetizingCurve(object):
           a single mcv or
           a directory"""
         self.mcv = {}
+        self.mcdirectory = ''
         if isinstance(mcvpar, list):
             logger.info("MagnetizingCurve is list")
             for m in mcvpar:
@@ -884,12 +885,12 @@ class MagnetizingCurve(object):
             try:
                 self.mcv[str(mcvpar['id'])] = mcvpar
                 return
-            except Exception:
+            except KeyError:
                 pass
             try:
                 self.mcv[mcvpar['name']] = mcvpar
                 return
-            except Exception:
+            except KeyError:
                 pass
 
             self.mcv['0'] = mcvpar
@@ -922,7 +923,7 @@ class MagnetizingCurve(object):
                     return id
             except Exception as ex:
                 logger.warn(ex)
-                pass
+
         logger.debug("search by name %s", id)
         m = self.find_by_name(id)
         return m['name'] if m else None

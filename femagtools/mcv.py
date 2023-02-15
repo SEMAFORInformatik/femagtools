@@ -507,7 +507,7 @@ class Writer(Mcv):
             return
 
         try:
-            nfreq = len([1 for x in self.losses['f'] if x > 0])
+            nfreq = len([1 for x in self.losses['f'][0] if x > 0])
             nind = len(self.losses['B'])
             if nind < 1 or nfreq < 1:
                 return
@@ -557,7 +557,7 @@ class Writer(Mcv):
             self.writeBlock([1])
             logger.info('Losses n freq %d n ind %d', nfreq, nind)
         except Exception as e:
-            logger.error(e, exc_info=True)
+            logger.error("Exception %s", e, exc_info=True)
 
     def writeMcv(self, filename, fillfac=None, recsin=''):
         # windows needs this strip to remove '\r'
@@ -821,7 +821,8 @@ class Reader(Mcv):
                 self.losses['b_coeff'] = beta
                 self.losses['ch'] = self.ch
                 self.losses['ch_freq'] = self.ch_freq
-        except:
+        except Exception as e:
+            logger.debug("Exception %s", e)
             if self.losses and 'B' in self.losses:
                 if not self.losses['f'] or not self.losses['pfe']:
                     self.losses = {}
@@ -871,7 +872,6 @@ class MagnetizingCurve(object):
           a single mcv or
           a directory"""
         self.mcv = {}
-        self.mcdirectory = ''
         if isinstance(mcvpar, list):
             logger.info("MagnetizingCurve is list")
             for m in mcvpar:
@@ -909,6 +909,8 @@ class MagnetizingCurve(object):
     def find(self, id):
         """find mcv by id or name"""
         try:
+            if isinstance(id, string_types):
+                return id
             return self.mcv[id]['name']
         except ValueError:
             pass  # not found
@@ -921,8 +923,9 @@ class MagnetizingCurve(object):
                 if os.access(os.path.join(self.mcdirectory,
                                           filename), os.R_OK):
                     return id
-            except Exception as ex:
-                logger.warn(ex)
+            except AttributeError as ex:
+                #logger.warn("Exception %s", ex)
+                pass  # no mcdirectory
 
         logger.debug("search by name %s", id)
         m = self.find_by_name(id)

@@ -507,7 +507,7 @@ class Writer(Mcv):
             return
 
         try:
-            nfreq = len([1 for x in self.losses['f'][0] if x > 0])
+            nfreq = len([1 for x in self.losses['f'] if x > 0])
             nind = len(self.losses['B'])
             if nind < 1 or nfreq < 1:
                 return

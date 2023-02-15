@@ -1,0 +1,51 @@
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "femagtools"
+authors = [
+    {name = "Ronald Tanner", email = "tar@semafor.ch"},
+    {name = "Dapu Zhang", email = "d.zhan@gtisoft.com"},
+    {name = "Beat Holm", email = "hob@semafor.ch"},
+    {name = "Günther Amsler", email = "amg@semafor.ch"},
+    {name = "Nicolas Mauchle", email = "mau@semafor.ch"}
+]
+description = "Python API for FEMAG"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Topic :: Scientific/Engineering"
+]
+dependencies = [
+    'numpy', 'scipy', 'mako', 'six', 'lmfit', 'netCDF4'
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dxfsl = ['lxml', 'dxfgrabber', 'networkx']
+plot =  ['matplotlib']
+meshio = ['meshio']
+vtk = ['vtk']
+zmq = ['pyzmq']
+test = ['pytest']
+
+[project.scripts]
+femagtools-plot = "femagtools.plot:main"
+femagtools-convert = "femagtools.convert:main"
+femagtools-bchxml = "femagtools.bchxml:main"
+femagtools-dxfsl = "femagtools.dxfsl.conv:main"
+
+[tool.setuptools.packages.find]
+include = ["femagtools"]
+exclude = ["docs*", "tests*", "notebooks*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "femagtools.__version__"}

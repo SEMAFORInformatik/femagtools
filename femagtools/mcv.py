@@ -909,8 +909,6 @@ class MagnetizingCurve(object):
     def find(self, id):
         """find mcv by id or name"""
         try:
-            if isinstance(id, string_types):
-                return id
             return self.mcv[id]['name']
         except ValueError:
             pass  # not found

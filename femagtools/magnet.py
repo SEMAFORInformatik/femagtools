@@ -32,11 +32,14 @@ class Magnet:
 
     def find_by_name(self, name):
         """find magnet by name"""
-        for k in self.magnets.keys():
-            if self.magnets[k]['name'] == name:
-                return self.magnets[k]
+        try:
+            for k in self.magnets.keys():
+                if self.magnets[k]['name'] == name:
+                    return self.magnets[k]
             # not found
-        return None
+        except KeyError:
+            pass
+        return {}
 
     def __str__(self):
         return str([self.magnets[m]

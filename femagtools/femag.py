@@ -146,6 +146,41 @@ class BaseFemag(object):
                 for m in model.set_magcurves(
             self.magnetizingCurves, self.magnets)]
 
+    def set_magnet_properties(self, simulation):
+        """set temperature adapted magnet propeties"""
+        if not hasattr(self.model, 'magnet'):
+            return
+        if 'hc_min' in simulation:  # backward compatibility
+            self.model.hc_min = simulation('hc_min')
+        if 'magn_temp' not in simulation:
+            return
+        if 'material' not in self.model.magnet:
+            return
+        try:
+            magn_temp = simulation['magn_temp']
+            material = self.model.magnet['material']
+            magnetMat = self.magnets.find(material)
+            if magnetMat:
+                Brem = magnetMat.get('remanenc', 1.2)
+                relperm = magnetMat.get('relperm', 1.05)
+                tempcoefbr = magnetMat.get('temcoefbr', -0.1e-2)
+                tempcoefhc = magnetMat.get('temcoefhc', -0.1e-2)
+                tempcoefmuer = magnetMat.get('temcoefmuer',
+                                             tempcoefbr/tempcoefhc)
+                hcj = magnetMat.get('HcJ', 0)
+                if hcj:
+                    self.model.hc_min = -hcj * (1+(tempcoefhc*magn_temp-20))
+
+            self.model.magnet['temp_prop'] = {
+                'remanenc': Brem,
+                'relperm': tempcoefmuer*relperm,
+                'temcoefbr': tempcoefbr,
+                'temcoefhc': tempcoefhc,
+                'magntemp': magn_temp}
+
+        except AttributeError:
+            pass
+
     def create_wdg_def(self, model):
         name = 'winding'
         w = femagtools.windings.Winding(
@@ -177,8 +212,7 @@ class BaseFemag(object):
             pass
         builder = femagtools.fsl.Builder(self.templatedirs)
         if simulation:
-            if "hc_min" in simulation:
-                self.model.hc_min = simulation["hc_min"]
+            self.set_magnet_properties(simulation)
             return builder.create(self.model, simulation,
                                   self.magnets, self.condMat)
         return builder.create_model(self.model,
@@ -435,10 +469,7 @@ class Femag(BaseFemag):
                                                     simulation.get('initial', 2)))
 
                     builder = femagtools.fsl.Builder(self.templatedirs)
-                    if "hc_min" in simulation:
-                        self.model.__setattr__(
-                            "hc_min", simulation.get("hc_min", 95))
-
+                    self.set_magnet_properties(simulation)
                     fslcmds = (builder.open_model(self.model) +
                                builder.create_shortcircuit(simulation))
                     with open(os.path.join(self.workdir, fslfile), 'w') as f:

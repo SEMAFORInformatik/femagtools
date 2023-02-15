@@ -546,17 +546,19 @@ class Builder:
         return (self.__render(model, 'open') +
                 ['global_unit("mm")', cosys(model)])
 
-    def create_magnet(self, model, magnetMat=None):
+    def create_magnet(self, model, magnetMat={}):
         try:
-            if magnetMat:
+            temp_prop = model.get('temp_prop',
+                                  {k: magnetMat[k] for k in magnetMat})
+            if temp_prop:
                 logger.info("Setting magnet properties %s", magnetMat['name'])
                 if hasattr(model, 'magnet'):
                     if 'rlen' in model.magnet:
-                        magnetMat['rlen'] = model.magnet['rlen']
+                        temp_prop['rlen'] = model.magnet['rlen']
                 elif hasattr(model, 'stator'):
                     if 'magn_rlen' in model.stator:
-                        magnetMat['rlen'] = model.stator['magn_rlen']
-                return self.__render(magnetMat, 'magnet-data')
+                        temp_prop['rlen'] = model.stator['magn_rlen']
+                return self.__render(temp_prop, 'magnet-data')
             try:
                 magnet = model.magnet
                 rlen = magnet.get('rlen', 1)

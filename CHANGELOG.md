@@ -2,6 +2,11 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.2.2
+	- femag: temperature dependency of magnet material improved (muer)
+    - windings: check unbalanced windings
+    - effmap: drive mode only
+
 ## Release 1.1.26
 	- amela interface added
 

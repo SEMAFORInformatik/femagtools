@@ -537,6 +537,7 @@ class Builder:
                     self.create_rotor_winding(model))
 
         return (self.open_model(model) +
+                self.create_fe_losses(model) +
                 self.create_magnet(model, magnetMat))
 
     def open_model(self, model):

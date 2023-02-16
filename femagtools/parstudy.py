@@ -13,6 +13,9 @@ import logging
 import glob
 import os
 import time
+import shutil
+import functools
+import pathlib
 import numpy as np
 import femagtools
 import femagtools.model
@@ -20,9 +23,7 @@ import femagtools.fsl
 import femagtools.condor
 import femagtools.moproblem
 import femagtools.getset
-import shutil
-import functools
-import pathlib
+from .femag import set_magnet_properties
 
 logger = logging.getLogger(__name__)
 
@@ -141,49 +142,6 @@ class ParameterStudy(object):
             for f in sublist]
 
         return model_files
-
-    def set_magnet_properties(self, model, simulation):
-        """set temperature adapted magnet propeties
-        TODO: join duplicate code in femag module
-        """
-        if not hasattr(model, 'magnet'):
-            return
-        if hasattr(simulation, 'hc_min'):  # backward compatibility
-            model.hc_min = simulation.hc_min
-        if not hasattr(simulation, 'magn_temp'):
-            return
-        if 'material' not in model.magnet:
-            return
-        try:
-            magn_temp = simulation.magn_temp
-            material = model.magnet['material']
-            magnetMat = self.femag.magnets.find(material)
-            if magnetMat:
-                model.magnet['temp_prop'] = {
-                    'remanenc': magnetMat.get('remanenc', 1.2),
-                    'magntemp': magn_temp
-                }
-                relperm = magnetMat.get('relperm', 1.05)
-                tempcoefmuer = 1
-                tempcoefbr = magnetMat.get('temcoefbr', 0)
-                tempcoefhc = magnetMat.get('temcoefhc', 0)
-                if tempcoefbr and tempcoefhc:
-                    tempcoefmuer = tempcoefbr/tempcoefhc
-                if 'temcoefmuer' in magnetMat:
-                    tempcoefmuer = magnetMat['temcoefmuer']
-                hcj = magnetMat.get('HcJ', 0)
-                if hcj:
-                    model.hc_min = -hcj * (1+(tempcoefhc*magn_temp-20))
-                model.magnet['temp_prop']['relperm'] = \
-                    (1+(tempcoefmuer*magn_temp-20))*relperm
-                if tempcoefbr:
-                    model.magnet['temp_prop']['temcoefbr'] = tempcoefbr
-                if tempcoefhc:
-                    model.magnet['temp_prop']['temcoefhc'] = tempcoefhc
-
-        except AttributeError:
-            pass
-
 
     def __call__(self, opt, machine, simulation,
                  engine, bchMapper=None,
@@ -309,7 +267,7 @@ class ParameterStudy(object):
                             recsin=fea.recsin):
                         task.add_file(mc)
 
-                self.set_magnet_properties(model, fea)
+                set_magnet_properties(model, fea, self.femag.magnets)
                 task.add_file(
                     'femag.fsl',
                     builder.create_model(model, self.femag.magnets) +

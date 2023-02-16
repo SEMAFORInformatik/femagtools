@@ -9,6 +9,7 @@
 
 """
 import time
+import logging
 import pathlib
 import femagtools
 import femagtools.fsl
@@ -16,8 +17,8 @@ import femagtools.moproblem
 import femagtools.getset
 from .moo.algorithm import Nsga2
 from .moo.population import Population
+from .femag import set_magnet_properties
 
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class Optimizer(object):
             if 'wdgdef' in self.model.windings:
                 self.model.windings['wdgfile'] = self.femag.create_wdg_def(
                     self.model)
+            set_magnet_properties(self.model, self.fea, self.femag.magnets)
             task.add_file('femag.fsl',
                           self.builder.create(self.model, self.fea,
                                               self.femag.magnets))

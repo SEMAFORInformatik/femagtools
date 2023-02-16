@@ -39,6 +39,10 @@ logger = logging.getLogger(__name__)
 BCHEXT = 'BATCH' if sys.platform.startswith('linux') else 'BCH'  # win32
 
 
+class FemagError(Exception):
+    pass
+
+
 def handle_process_output(filedes, outfile, log):
     """read from file descriptor and direct lines to logger and outfile"""
     with open(outfile, 'w') as fp:
@@ -94,9 +98,52 @@ def get_shortCircuit_parameters(bch, nload):
         raise FemagError("missing pm/Rel-Sim results")
 
 
-class FemagError(Exception):
-    pass
+def set_magnet_properties(model, simulation, magnets):
+    """set temperature adapted magnet properties"""
+    if not hasattr(model, 'magnet'):
+        return
+    if isinstance(simulation, dict):
+        if 'hc_min' in simulation:  # backward compatibility
+            model.hc_min = simulation['hc_min']
+        if 'magn_temp' not in simulation:
+            return
+        magn_temp = simulation['magn_temp']
+    else:
+        if hasattr(simulation, 'hc_min'):  # backward compatibility
+            model.hc_min = simulation.hc_min
+        if not hasattr(simulation, 'magn_temp'):
+            return
+        magn_temp = simulation.magn_temp
+    if 'material' not in model.magnet:
+        return
+    try:
+        material = model.magnet['material']
+        magnetMat = magnets.find(material)
+        if magnetMat:
+            model.magnet['temp_prop'] = {
+                'remanenc': magnetMat.get('remanenc', 1.2),
+                'magntemp': magn_temp
+            }
+            relperm = magnetMat.get('relperm', 1.05)
+            tempcoefmuer = 1
+            tempcoefbr = magnetMat.get('temcoefbr', 0)
+            tempcoefhc = magnetMat.get('temcoefhc', 0)
+            if tempcoefbr and tempcoefhc:
+                tempcoefmuer = tempcoefbr/tempcoefhc
+            if 'temcoefmuer' in magnetMat:
+                tempcoefmuer = magnetMat['temcoefmuer']
+            hcj = magnetMat.get('HcJ', 0)
+            if hcj:
+                model.hc_min = -hcj * (1+(tempcoefhc*magn_temp-20))
+            model.magnet['temp_prop']['relperm'] = \
+                (1+(tempcoefmuer*magn_temp-20))*relperm
+            if tempcoefbr:
+                model.magnet['temp_prop']['temcoefbr'] = tempcoefbr
+            if tempcoefhc:
+                model.magnet['temp_prop']['temcoefhc'] = tempcoefhc
 
+    except AttributeError:
+        pass
 
 class BaseFemag(object):
     def __init__(self, workdir, cmd, magnetizingCurves, magnets, condMat,
@@ -146,46 +193,6 @@ class BaseFemag(object):
                 for m in model.set_magcurves(
             self.magnetizingCurves, self.magnets)]
 
-    def set_magnet_properties(self, simulation):
-        """set temperature adapted magnet propeties"""
-        if not hasattr(self.model, 'magnet'):
-            return
-        if 'hc_min' in simulation:  # backward compatibility
-            self.model.hc_min = simulation['hc_min']
-        if 'magn_temp' not in simulation:
-            return
-        if 'material' not in self.model.magnet:
-            return
-        try:
-            magn_temp = simulation['magn_temp']
-            material = self.model.magnet['material']
-            magnetMat = self.magnets.find(material)
-            if magnetMat:
-                self.model.magnet['temp_prop'] = {
-                    'remanenc': magnetMat.get('remanenc', 1.2),
-                    'magntemp': magn_temp
-                }
-                relperm = magnetMat.get('relperm', 1.05)
-                tempcoefmuer = 1
-                tempcoefbr = magnetMat.get('temcoefbr', 0)
-                tempcoefhc = magnetMat.get('temcoefhc', 0)
-                if tempcoefbr and tempcoefhc:
-                    tempcoefmuer = tempcoefbr/tempcoefhc
-                if 'temcoefmuer' in magnetMat:
-                    tempcoefmuer = magnetMat['temcoefmuer']
-                hcj = magnetMat.get('HcJ', 0)
-                if hcj:
-                    self.model.hc_min = -hcj * (1+(tempcoefhc*magn_temp-20))
-                self.model.magnet['temp_prop']['relperm'] = \
-                    (1+(tempcoefmuer*magn_temp-20))*relperm
-                if tempcoefbr:
-                    self.model.magnet['temp_prop']['temcoefbr'] = tempcoefbr
-                if tempcoefhc:
-                    self.model.magnet['temp_prop']['temcoefhc'] = tempcoefhc
-
-        except AttributeError:
-            pass
-
     def create_wdg_def(self, model):
         name = 'winding'
         w = femagtools.windings.Winding(
@@ -217,7 +224,7 @@ class BaseFemag(object):
             pass
         builder = femagtools.fsl.Builder(self.templatedirs)
         if simulation:
-            self.set_magnet_properties(simulation)
+            set_magnet_properties(self.model, simulation, self.magnets)
             return builder.create(self.model, simulation,
                                   self.magnets, self.condMat)
         return builder.create_model(self.model,
@@ -474,7 +481,7 @@ class Femag(BaseFemag):
                                                     simulation.get('initial', 2)))
 
                     builder = femagtools.fsl.Builder(self.templatedirs)
-                    self.set_magnet_properties(simulation)
+                    set_magnet_properties(self.model, simulation, self.magnets)
                     fslcmds = (builder.open_model(self.model) +
                                builder.create_shortcircuit(simulation))
                     with open(os.path.join(self.workdir, fslfile), 'w') as f:

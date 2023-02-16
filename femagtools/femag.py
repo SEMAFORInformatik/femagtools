@@ -151,7 +151,7 @@ class BaseFemag(object):
         if not hasattr(self.model, 'magnet'):
             return
         if 'hc_min' in simulation:  # backward compatibility
-            self.model.hc_min = simulation('hc_min')
+            self.model.hc_min = simulation['hc_min']
         if 'magn_temp' not in simulation:
             return
         if 'material' not in self.model.magnet:
@@ -177,7 +177,7 @@ class BaseFemag(object):
                 if hcj:
                     self.model.hc_min = -hcj * (1+(tempcoefhc*magn_temp-20))
                 self.model.magnet['temp_prop']['relperm'] = \
-                    tempcoefmuer*relperm
+                    (1+(tempcoefmuer*magn_temp-20))*relperm
                 if tempcoefbr:
                     self.model.magnet['temp_prop']['temcoefbr'] = tempcoefbr
                 if tempcoefhc:

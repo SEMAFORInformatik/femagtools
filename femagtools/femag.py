@@ -161,22 +161,27 @@ class BaseFemag(object):
             material = self.model.magnet['material']
             magnetMat = self.magnets.find(material)
             if magnetMat:
-                Brem = magnetMat.get('remanenc', 1.2)
+                self.model.magnet['temp_prop'] = {
+                    'remanenc': magnetMat.get('remanenc', 1.2),
+                    'magntemp': magn_temp
+                }
                 relperm = magnetMat.get('relperm', 1.05)
-                tempcoefbr = magnetMat.get('temcoefbr', -0.1e-2)
-                tempcoefhc = magnetMat.get('temcoefhc', -0.1e-2)
-                tempcoefmuer = magnetMat.get('temcoefmuer',
-                                             tempcoefbr/tempcoefhc)
+                tempcoefmuer = 1
+                tempcoefbr = magnetMat.get('temcoefbr', 0)
+                tempcoefhc = magnetMat.get('temcoefhc', 0)
+                if tempcoefbr and tempcoefhc:
+                    tempcoefmuer = tempcoefbr/tempcoefhc
+                if 'temcoefmuer' in magnetMat:
+                    tempcoefmuer = magnetMat['temcoefmuer']
                 hcj = magnetMat.get('HcJ', 0)
                 if hcj:
                     self.model.hc_min = -hcj * (1+(tempcoefhc*magn_temp-20))
-
-            self.model.magnet['temp_prop'] = {
-                'remanenc': Brem,
-                'relperm': tempcoefmuer*relperm,
-                'temcoefbr': tempcoefbr,
-                'temcoefhc': tempcoefhc,
-                'magntemp': magn_temp}
+                self.model.magnet['temp_prop']['relperm'] = \
+                    tempcoefmuer*relperm
+                if tempcoefbr:
+                    self.model.magnet['temp_prop']['temcoefbr'] = tempcoefbr
+                if tempcoefhc:
+                    self.model.magnet['temp_prop']['temcoefhc'] = tempcoefhc
 
         except AttributeError:
             pass

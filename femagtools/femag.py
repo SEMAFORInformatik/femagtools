@@ -637,6 +637,7 @@ class ZmqFemag(BaseFemag):
         if self.femagTask and self.femagTask.proc:
             logger.info("stopFemagTask")
             self.femagTask.proc.kill()
+            self.femagTask.proc.wait()
             self.femagTask = None
             self.request_socket = None
             self.subscriber.stop()

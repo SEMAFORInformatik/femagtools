@@ -129,14 +129,14 @@ def set_magnet_properties(model, simulation, magnets):
             tempcoefbr = magnetMat.get('temcoefbr', 0)
             tempcoefhc = magnetMat.get('temcoefhc', 0)
             if tempcoefbr and tempcoefhc:
-                tempcoefmuer = tempcoefbr/tempcoefhc
+                tempcoefmuer = (tempcoefbr-tempcoefhc)/(1+tempcoefhc*(magn_temp-20))
             if 'temcoefmuer' in magnetMat:
                 tempcoefmuer = magnetMat['temcoefmuer']
             hcj = magnetMat.get('HcJ', 0)
             if hcj:
-                model.hc_min = -hcj * (1+(tempcoefhc*magn_temp-20))
+                model.hc_min = -hcj * (1+tempcoefhc*(magn_temp-20))
             model.magnet['temp_prop']['relperm'] = \
-                (1+(tempcoefmuer*magn_temp-20))*relperm
+                (1+tempcoefmuer*(magn_temp-20))*relperm
             if tempcoefbr:
                 model.magnet['temp_prop']['temcoefbr'] = tempcoefbr
             if tempcoefhc:

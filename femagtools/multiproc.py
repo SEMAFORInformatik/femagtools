@@ -239,22 +239,13 @@ class Engine:
         return status
 
     def terminate(self):
-        import psutil
         logger.info("terminate Engine")
         if self.progressLogger:
             self.progressLogger.stop()
         # terminate pool
-        self.pool.terminate()
-        self.pool.close()
-        # stop all running processes
-        for t in self.job.tasks:
-            try:
-                logger.debug("terminate Engine in dir: %s", t.directory)
-                with open(os.path.join(t.directory,
-                                       'femag.pid'), 'r') as pidfile:
-                    procId = int(pidfile.readline())
-                    p = psutil.Process(procId)
-                    p.terminate()
-                    p.wait(1)  # timeout 1 second
-            except Exception as e:
-                pass  # ignore
+        try:
+            self.pool.terminate()
+            self.pool.close()
+        except AttributeError:
+            logger.warn("%s", e)
+

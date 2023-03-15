@@ -86,19 +86,21 @@ class Winding(object):
                     w['dir'] = [1 if s > 0 else -1 for s in w['slots']]
                     w['PHI'] = [(2*abs(s)-1)*taus/2 for s in w['slots']]
                     w['R'] = [0 if l == 1 else 1 for l in w['layer']]
-            k = 0
+
             self.yd = max(self.Q//self.p//2, 1)
+            w = 1
             try:
-                i = self.windings[1]['dir'].index(
-                    -self.windings[1]['dir'][0])
-                self.yd = abs(self.windings[1]['slots'][0] +
-                              self.windings[1]['slots'][i])
+                k = self.windings[w]['dir'].index(
+                    -self.windings[w]['dir'][0])
+                dphi = (self.windings[w]['PHI'][k] -
+                        self.windings[w]['PHI'][0])
+                self.yd = abs(round(dphi/taus))
             except ValueError:
                 pass
 
             slots = [round((x-taus/2)/taus)
                      for x in self.windings[1]['PHI']]
-            self.l = 1
+            self.l = 2
             if len(slots) > ngen//self.m:
                 self.l = 2
             return

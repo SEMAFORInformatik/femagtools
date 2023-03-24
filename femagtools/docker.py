@@ -41,6 +41,7 @@ class AsyncFemag(threading.Thread):
         self.container = femagtools.femag.ZmqFemag(
             port, host)
         self.extra_result_files = extra_result_files
+        self.running = False
 
     def _do_task(self, task):
         resend = True
@@ -58,43 +59,46 @@ class AsyncFemag(threading.Thread):
                     task.id, num_tries)
                 return [dict(status='error', msg='too many resend')]
 
-        if status['status'] != 'ok':
-            logger.warning('Docker task %s cleanup status %s',
-                           task.id, status)
-            return [status]
-        for f in task.transfer_files:
-            if f != task.fsl_file:
-                r = self.container.upload(
-                    os.path.join(task.directory,
-                                 os.path.basename(f)))
-                status = json.loads(r[0])
-                if status['status'] != 'ok':
-                    logger.warning('Docker task %s upload status %s',
-                                   task.id, status)
-                    return [status]
-            fslfile = os.path.join(task.directory, task.fsl_file)
-        fslcmds = []
-        with open(fslfile) as f:
-            fslcmds = f.readlines()
-        ret = self.container.send_fsl(fslcmds +
-                                      ['save_model(close)'])
-        # TODO: add publish_receive
         try:
+            if status['status'] != 'ok':
+                logger.warning('Docker task %s cleanup status %s',
+                               task.id, status)
+                return [status]
+            for f in task.transfer_files:
+                if f != task.fsl_file:
+                    r = self.container.upload(
+                        os.path.join(task.directory,
+                                     os.path.basename(f)))
+                    status = json.loads(r[0])
+                    if status['status'] != 'ok':
+                        logger.warning('Docker task %s upload status %s',
+                                       task.id, status)
+                        return [status]
+                fslfile = os.path.join(task.directory, task.fsl_file)
+            fslcmds = []
+            with open(fslfile) as f:
+                fslcmds = f.readlines()
+            ret = self.container.send_fsl(fslcmds +
+                                          ['save_model(close)'])
+            # TODO: add publish_receive
             return [json.loads(s) for s in ret]
         except Exception as e:
+            if not self.running:
+                return [{'status': 'ok'}]
             logger.error("%s: %s", e, ret, exc_current=True)
             return [{'status': 'error', 'message': str(ret)}]
 
     def run(self):
         """execute femag fsl task in task directory"""
-        while True:
+        self.running = True
+        while self.running:
             task = self.queue.get()
             if task is None:
                 break
 
             try:
                 r = self._do_task(task)
-                if r[0]['status'] == 'ok':
+                if r[0]['status'] == 'ok' and self.running:
                     task.status = 'C'
                     result_files = []
                     if 'result_file' in r[0]:
@@ -112,6 +116,9 @@ class AsyncFemag(threading.Thread):
                     logger.warning("%s: %s", task.id, r[0])
             except (KeyError, IndexError):
                 task.status = 'X'
+                status, content = self.container.getfile('femag.err')
+                logging.info("get femag.err  %s: status %s len %d",
+                              task.id, status, len(content))
                 logger.error("AsyncFemag", exc_info=True)
 
             logger.debug("Task %s end status %s",
@@ -120,6 +127,8 @@ class AsyncFemag(threading.Thread):
             self.queue.task_done()
         self.container.close()
 
+    def stop(self):
+        self.running = False
 
 class Engine(object):
 
@@ -139,6 +148,7 @@ class Engine(object):
         self.dispatcher = dispatcher
         self.num_threads = num_threads
         self.async_femags = None
+        self.running = True
 
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`CloudJob`
@@ -158,6 +168,10 @@ class Engine(object):
         Return:
             number of started tasks (int)
         """
+        if not self.running:
+            logger.info('submit, engine is terminated')
+            return 0
+
         self.queue = Queue()
         for task in self.job.tasks:
             self.queue.put(task)
@@ -184,6 +198,9 @@ class Engine(object):
             list of all calculations status (C = Ok, X = error) (:obj:`list`)
         """
         # block until all tasks are done
+        if not self.running:
+            logger.info('join, engine is terminated')
+            return []
         logger.debug("join: block until all tasks are done")
         self.queue.join()
 
@@ -199,3 +216,10 @@ class Engine(object):
 
         logger.debug("join: done")
         return [t.status for t in self.job.tasks]
+
+    def terminate(self):
+        logger.info("terminate Engine")
+        for async_femag in self.async_femags:
+            async_femag.stop()
+        self.running = False
+        logger.info("terminate Engine Done.")

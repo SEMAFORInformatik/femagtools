@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 
 numpat = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
 
+class LicenseError(Exception):
+    pass 
 
 class ProtFile:
     def __init__(self, dirname, num_cur_steps):
@@ -133,13 +135,20 @@ def run_femag(cmd, workdir, fslfile):
             proc.wait()
             os.remove(os.path.join(workdir, 'femag.pid'))
 
-            logger.info("Finished pid: %d return %d",
-                        proc.pid, proc.returncode)
-            return proc.returncode
+            #logger.info("Finished pid: %d return %d",
+            #            proc.pid, proc.returncode)
+            #return proc.returncode
         except OSError as e:
             logger.error("Starting process failed: %s, Command: %s", e, cmd)
             raise
-
+        
+    # raise License Error
+    if proc.returncode != 0: 
+        with open(os.path.join(workdir, "femag.err"), "r") as err: 
+            for line in err: 
+                if 'license' in line: 
+                    raise LicenseError(line)
+                
     logger.info("Finished pid: %d return %d", proc.pid, proc.returncode)
     return proc.returncode
 

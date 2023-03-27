@@ -258,6 +258,14 @@ class ParameterStudy(object):
                     prob.prepare(x, [fea, self.femag.magnets])
                     for m in modelfiles:
                         task.add_file(m)
+                    set_magnet_properties(model, fea, self.femag.magnets)
+                    task.add_file(
+                        'femag.fsl',
+                        builder.create_open(model) +
+                        builder.create_fe_losses(model) +
+                        builder.create_analysis(fea) +
+                        ['save_model("close")'])
+
                 else:
                     prob.prepare(x, [model, fea, self.femag.magnets])
                     logger.info("prepare %s", x)
@@ -266,13 +274,13 @@ class ParameterStudy(object):
                             dir=task.directory,
                             recsin=fea.recsin):
                         task.add_file(mc)
-
-                set_magnet_properties(model, fea, self.femag.magnets)
-                task.add_file(
-                    'femag.fsl',
-                    builder.create_model(model, self.femag.magnets) +
-                    builder.create_analysis(fea) +
-                    ['save_model("close")'])
+                    set_magnet_properties(model, fea, self.femag.magnets)
+                    task.add_file(
+                        'femag.fsl',
+                        builder.create_model(model, self.femag.magnets) +
+                        builder.create_analysis(fea) +
+                        ['save_model("close")'])
+                    
                 if hasattr(fea, 'poc'):
                     task.add_file(fea.pocfilename,
                                   fea.poc.content())

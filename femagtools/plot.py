@@ -1770,19 +1770,19 @@ def losses_map(rmap, ax=0, title='Losses Map / kW'):
     plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3, ax,
                  title=title, levels=14)
 
-def eigenmode(reigen, num_modes=12): 
+def eigenmode(reigen, num_modes=12):
     """plot eigenmode"""
     cols = 4
     rows = int((num_modes - num_modes%cols)/cols + 1)
     fig, ax = plt.subplots(rows, cols)
     ctr = 0
-    for i in range(rows): 
-        for j in range(cols): 
-            if ctr < num_modes: 
+    for i in range(rows):
+        for j in range(cols):
+            if ctr < num_modes:
                 ax[i, j].imshow(reigen[0][ctr])
                 ax[i, j].set_title(f'Freq: {reigen[1][ctr]:.2f} Hz')
                 ax[i, j].axis('off')
-            else: 
+            else:
                 ax[i, j].remove()
                 ax[i, j] = None
             ctr+=1

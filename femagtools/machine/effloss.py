@@ -2,6 +2,7 @@ import numpy as np
 import scipy.interpolate as ip
 import logging
 from .utils import betai1
+from .pm import PmRelMachineLdq
 from . import create_from_eecpars
 
 logger = logging.getLogger("femagtools.effloss")
@@ -67,29 +68,28 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
         else:
             xtemp = [temp, temp]
         m = create_from_eecpars(xtemp, eecpars)
-    else:  # must be a Machine
+    else:  # must be an instance of Machine
         m = eecpars
     if isinstance(T, list):
         r = {'T': T, 'n': n}
         rb = {'T': [], 'n': []}
-    else:
+    else: # calculate speed,torque charactersics
         nmax = n
-        if 'ldq' in eecpars:
-            r = m.characteristics(T, nmax, u1)  # driving mode
-            if min(eecpars['ldq'][0]['beta']) >= -90:  # driving mode only
+        r = m.characteristics(T, nmax, u1)  # driving mode
+        if isinstance(m, PmRelMachineLdq):
+            if min(m.betarange) >= -np.pi/2:  # driving mode only
                 rb = {}
                 rb['n'] = None
                 rb['T'] = None
             else:
                 rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
         else:
-            r = m.characteristics(T, nmax, u1)  # driving mode
             rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
 
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)
 
-    if 'ldq' in eecpars:
+    if isinstance(m, PmRelMachineLdq):
         iqd = np.array([
             m.iqd_torque_umax(
                 nt[1],
@@ -118,19 +118,17 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
             r['plcu1'].append(m.m*np.abs(i1)**2*m.rstat(w1))
             r['plcu2'].append(m.m*np.abs(i2)**2*m.rrot(w1-m.p*wm))
 
-    tfric = eecpars['kfric_b']*eecpars['rotor_mass']*30e-3/np.pi
-    plfric = 2*np.pi*ntmesh[0]*tfric
-    ntmesh[1] -= tfric
-    pmech = np.array(
-        [2*np.pi*nt[0]*nt[1]
-         for nt in ntmesh.T])
 
-    if 'ldq' in eecpars:
+    if isinstance(m, PmRelMachineLdq):
         plfe1 = m.iqd_plfe1(*iqd, f1)
         plfe2 = m.iqd_plfe2(iqd[0], iqd[1], f1)
         plmag = m.iqd_plmag(iqd[0], iqd[1], f1)
         plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
         plcu2 = m.iqd_plcu2(*iqd)
+        try:
+            tfric = eecpars['kfric_b']*eecpars['rotor_mass']*30e-3/np.pi
+        except:
+            tfric = 0
     else:
         plfe1 = np.array(r['plfe1'])
         plfe2 = np.zeros(ntmesh.shape[1])
@@ -140,7 +138,13 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
         iqd = np.zeros(ntmesh.shape)
         u1 = np.array(r['u1'])
         i1 = np.array(r['i1'])
+        tfric = 0
 
+    plfric = 2*np.pi*ntmesh[0]*tfric
+    ntmesh[1] -= tfric
+    pmech = np.array(
+        [2*np.pi*nt[0]*nt[1]
+         for nt in ntmesh.T])
     ploss = plfe1+plfe2+plmag+plcu1+plcu2+plfric
 
     eta = []

@@ -5,13 +5,12 @@
 
     Read FEMAG I7/ISA7 model files
 """
-from collections import Counter
-import numpy as np
 import re
-import pdb
 import sys
 import struct
 import logging
+from collections import Counter
+import numpy as np
 
 logger = logging.getLogger('femagtools.isa7')
 
@@ -400,7 +399,7 @@ class Reader(object):
                                                    self.file,
                                                    offset))
                 offset += chunksize
-            logger.info("%s: %d %d", fmt_, blockSize, len(unpacked))
+            logger.debug("%s: %d %d", fmt_, blockSize, len(unpacked))
         except struct.error as e:
             logger.warning("Invalid Blocksize %s",
                            blockSize)
@@ -473,7 +472,7 @@ class Isa7(object):
         self.lines = [Line(self.points[abs(pk1) - 1], self.points[abs(pk2) - 1])
                       for pk1, pk2 in zip(reader.LINE_ISA_LINE_REC_LN_PNT_1,
                                           reader.LINE_ISA_LINE_REC_LN_PNT_2)]
-        logger.info("Nodes")
+        logger.debug("Nodes")
         self.nodes = [
             Node(n + 1,
                  reader.NODE_ISA_NODE_REC_ND_BND_CND[n],
@@ -486,7 +485,7 @@ class Isa7(object):
                  reader.NODE_ISA_NODE_REC_ND_VP_IM[n])
             for n in range(len(reader.NODE_ISA_NODE_REC_ND_BND_CND))]
 
-        logger.info("Nodechains")
+        logger.debug("Nodechains")
         self.nodechains = []
         for nc in range(len(reader.NDCHN_ISA_NDCHN_REC_NC_NOD_1)):
             nd1 = reader.NDCHN_ISA_NDCHN_REC_NC_NOD_1[nc]
@@ -511,7 +510,7 @@ class Isa7(object):
                 raise  # preserve the stack trace
 
         self.elements = []
-        logger.info("Elements")
+        logger.debug("Elements")
         for e in range(len(reader.ELEM_ISA_EL_NOD_PNTR)):
             ndkeys = []
             ndk = reader.ELEM_ISA_EL_NOD_PNTR[e]
@@ -542,7 +541,7 @@ class Isa7(object):
                         reader.BR_TEMP_COEF/100,
                         temperature)   # in 1/K
             )
-        logger.info("SuperElements")
+        logger.debug("SuperElements")
         self.superelements = []
         for se in range(len(reader.SUPEL_ISA_SE_NDCHN_PNTR)):
             nc_keys = []
@@ -598,7 +597,7 @@ class Isa7(object):
                              reader.SUPEL_ISA_SUPEL_REC_SE_CURD_IM[se],
                              fillfactor, temp_coef, temperature))
 
-        logger.info("Subregions")
+        logger.debug("Subregions")
         self.subregions = []
         for sr in range(len(reader.SR_ISA_SR_SE_PNTR)):
             se_keys = []
@@ -633,7 +632,7 @@ class Isa7(object):
                           superelements,
                           nodechains))
 
-        logger.info("Windings")
+        logger.debug("Windings")
         self.windings = []
         try:
             for wd in range(len(reader.WB_ISA_WB_SR_PNTR)):
@@ -689,7 +688,7 @@ class Isa7(object):
             self.curr_loss = np.array([c/np.sqrt(2) for c in reader.curr_loss])
         except AttributeError:
             pass
-        logger.info(reader.el_fe_induction_1)
+        logger.debug(reader.el_fe_induction_1)
         if len(np.asarray(reader.el_fe_induction_1).shape) > 2:
             self.el_fe_induction_1 = np.asarray(
                 reader.el_fe_induction_1).T/1000
@@ -704,7 +703,7 @@ class Isa7(object):
                     [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
                 self.eddy_cu_vpot = np.asarray(
                     [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
-                logger.info('El Fe Induction %s', np.asarray(
+                logger.debug('El Fe Induction %s', np.asarray(
                     reader.el_fe_induction_1).shape)
             except:
                 pass
@@ -809,7 +808,7 @@ class Isa7(object):
 
         Returns
         -------
-        scale_facor : int
+        scale_factor : int
         '''
         try:
             poles = 2*self.pole_pairs

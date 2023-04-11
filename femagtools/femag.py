@@ -57,8 +57,12 @@ def handle_process_output(filedes, outfile, log):
                         b'Elapsed time:' in line):
                     continue
                 if line:
-                    logger.info(" > %s",
-                                line.decode().strip())
+                    try:
+                        logger.info(" > %s",
+                                    line.decode().strip())
+                    except UnicodeDecodeError:
+                        # ignore
+                        pass
 
 
 def get_shortCircuit_parameters(bch, nload):

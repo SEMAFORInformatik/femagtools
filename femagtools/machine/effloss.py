@@ -37,11 +37,11 @@ def _generate_mesh(n, T, nb, Tb, npoints):
         t0 = tbip(nx)
         t1 = tip(nx)
         try:
-            npnts = round((t1-t0) / (tmax-tmin) * tnum)
+            npnts = round((t1-t0) / (tmax-tmin) * npoints[1])
             if npnts > 2:
                 for t in np.concatenate(
-                        (np.linspace(t0, 0.015*tmin, npnts),
-                         np.linspace(0.015*tmax, t1, npnts))):
+                        (np.linspace(t0, 0.015*tmin, tnum),
+                         np.linspace(0.015*tmax, t1, tnum))):
                     nxtx.append((nx, t))
         except ValueError as ex:
             logger.warning("n, t0, t1 %s tmin, tmax %s, npoints %d",
@@ -49,7 +49,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
     return np.array(nxtx).T
 
 
-def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
+def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(50, 40)):
     """return speed, torque efficiency and losses
 
     arguments:

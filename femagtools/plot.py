@@ -1725,7 +1725,7 @@ def get_nT_boundary(n, T):
     return np.array(bnd[0] + bnd[1][::-1])
 
 
-def plot_contour(speed, torque, z, ax, title='', levels=[]):
+def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True):
     from matplotlib.path import Path
     from matplotlib.patches import PathPatch
     x = [60*n for n in speed]
@@ -1740,7 +1740,8 @@ def plot_contour(speed, torque, z, ax, title='', levels=[]):
             levels = 14
     cont = ax.tricontour(x, y, z,
                          linewidths=0.4, levels=levels, colors='k')
-    ax.clabel(cont, inline=True, colors='k')
+    if clabel:
+        ax.clabel(cont, inline=True, colors='k')
     contf = ax.tricontourf(x, y, z,
                            levels=levels, cmap='YlOrRd')
     #
@@ -1755,20 +1756,22 @@ def plot_contour(speed, torque, z, ax, title='', levels=[]):
     ax.set_ylabel('Torque / Nm')
     ax.set_xlabel('Speed / rpm')
     ax.set_title(title)
+    return contf
 
-
-def efficiency_map(rmap, ax=0, title='Efficiency Map'):
+def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
-    plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
-                 title=title)
+    contf = plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
+                         title=title, clabel=clabel)
+    return contf
 
 
-def losses_map(rmap, ax=0, title='Losses Map / kW'):
+def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
-    plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3, ax,
-                 title=title, levels=14)
+    return plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3, ax,
+                        title=title, levels=14, clabel=clabel)
+
 
 def eigenmode(reigen, num_modes=12):
     """plot eigenmode"""

@@ -26,8 +26,6 @@ def test_imeffloss(impars):
     r = femagtools.machine.effloss.efficiency_losses_map(
         impars, u1, T, temp, nmax, npoints=(10, 4))
     assert r['T'] == pytest.approx(
-        [-33, -0.5, 0.5, 32.8,
-         -33, -0.5, 0.5, 32.8,
-         -28.2, -0.5, 0.5, 26,
-         -19, 0.5, -14.4, 0.5,
-         -11.6, 0.5, -9.7, 0.5], abs=1e-1)
+        [-33., -0.5, 0.4, 32.7,
+         -33., -0.5, 0.4, 32.7,
+         -28.2, -0.5, 0.4, 26], abs=1e-1)

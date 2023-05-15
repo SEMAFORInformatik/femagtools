@@ -1741,10 +1741,13 @@ def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True):
     cont = ax.tricontour(x, y, z,
                          linewidths=0.4, levels=levels, colors='k')
     if clabel:
-        ax.clabel(cont, inline=True, colors='k')
+        ax.clabel(cont, inline=True, colors='k', fontsize=8)
     contf = ax.tricontourf(x, y, z,
                            levels=levels, cmap='YlOrRd')
     #
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+
     clippath = Path(get_nT_boundary(x, y))
     patch = PathPatch(clippath, facecolor='none')
     ax.add_patch(patch)

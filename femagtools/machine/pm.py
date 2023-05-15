@@ -108,8 +108,9 @@ class PmRelMachine(object):
         u -- the maximum voltage (RMS)
         iq, id -- the d-q currents"""
         w10 = np.sqrt(2)*u/la.norm(self.psi(iq, id))
-        return so.fsolve(lambda w1:
-                         la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2), w10)[0]
+        return so.fsolve(
+            lambda w1: la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2),
+            w10)[0]
 
     def w1_u(self, u, iq, id):
         """return frequency w1 at given voltage u and id, iq current
@@ -216,7 +217,8 @@ class PmRelMachine(object):
         if maxtorque:
             btab = np.linspace(max(-np.pi/2, self.betarange[0]), 0)
         else:
-            btab = np.linspace(max(-np.pi, self.betarange[0]), -np.pi/2)
+            btab = np.linspace(min(-np.pi/2, self.betarange[1]),
+                               self.betarange[0])
         u1b = [np.linalg.norm(self.uqd(w1, *iqd(b, i1max)))
                for b in btab]
         if np.max(u1b) > np.sqrt(2)*u1max:
@@ -317,9 +319,11 @@ class PmRelMachine(object):
             iq, id = self.iqd_torque(T)
             i1max = betai1(iq, id)[1]
             w1 = self.w1_umax(u1max, iq, id)
-            w1max = self.w1_umax(u1max, *self.iqdmin(i1max))
+            iqmin, idmin = self.iqdmin(i1max)
+            if (iqmin < 0):
+                iqmin = 0
+            w1max = self.w1_umax(u1max, iqmin, idmin)
             nmax = max(w1, w1max)/2/np.pi/self.p
-
             n1 = min(w1/2/np.pi/self.p, nmax)
             r['n_type'] = n1
             logger.info("Type speed %f n: %f nmax %f",
@@ -347,7 +351,8 @@ class PmRelMachine(object):
                     list(set([nx for nx in [n1, n2, n] if nx < 1.01*nmax])))
             else:
                 speedrange = sorted(list(set([n1, n2])))
-            logger.info("speedrange %s", speedrange)
+            logger.info("speedrange %s (T = %s Nm)",
+                        speedrange, T)
             speedrange.insert(0, 0)
             n3 = speedrange[-1]
             nstab = [int(nsamples*(x1-x2)/n3)
@@ -364,7 +369,7 @@ class PmRelMachine(object):
                 n2 = speedrange[2]
             except IndexError:
                 n2 = n1
-            if n1 < n2: # find id, iq, torque in fieldweakening range
+            if n1 < n2:  # find id, iq, torque in fieldweakening range
                 dn = r['n'][-1] - r['n'][-2]
                 for nn in np.linspace(r['n'][-1]+dn, n2, nstab[1]):
                     w1 = 2*np.pi*nn*self.p
@@ -379,8 +384,8 @@ class PmRelMachine(object):
                         r['n'].append(nn)
                         r['T'].append(tq)
                     else:
-                        logger.warning("fieldweakening: n %g T %g i1max %g w1 %g u1 %g",
-                                       nn*60, T, i1max, w1, u1max)
+                        logger.warning("fieldweakening: n %g T %g tq %g i1max %g w1 %g u1 %g",
+                                       nn*60, T, tq, i1max, w1, u1max)
 
             if n2 < n3:
                 for nn in np.linspace(r['n'][-1]+dn/2, n3, nstab[2]):

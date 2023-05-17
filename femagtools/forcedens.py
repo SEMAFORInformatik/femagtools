@@ -64,10 +64,10 @@ class ForceDensity(object):
             self.version = rec[3]
         else:
             self.version = rec[-1]
-            
+
     def __read_project_filename(self, content):
         self.project = content[1].strip()
-        
+
     def __read_nodes_and_mesh(self, content):
         self.nodes, self.elements, self.quality = \
             [float(r[0]) for r in [num_pat.findall(l)
@@ -77,7 +77,7 @@ class ForceDensity(object):
             if m:
                 self.type = m.group(1).strip()
                 return
-            
+
     def __read_date_and_title(self, content):
         d = content[0].split(':')[1].strip().split()
         dd, MM, yy = d[0].split('.')
@@ -89,12 +89,12 @@ class ForceDensity(object):
             self.title = content[2].strip() + ', ' + content[6].strip()
         else:
             self.title = content[2].strip()
-            
+
         self.current = float(num_pat.findall(content[4])[0])
-        
+
     def __read_filename(self, content):
         self.filename = content[0].split(':')[1].strip()
-        
+
     def __read_position(self, content):
         d = dict(position=float(num_pat.findall(content[0])[-1]),
                  unit=unit_pat.findall(content[0].split()[1])[0])
@@ -117,7 +117,7 @@ class ForceDensity(object):
         with open(filename) as f:
             for s in _readSections(f.readlines()):
                 logger.debug('Section %s' % s[0:2])
-                if s[0].startswith('FEMAG'):
+                if s[0].lower().startswith('femag'):
                     self.__read_version(s)
                 elif s[0].startswith('Project'):
                     self.__read_project_filename(s)
@@ -130,7 +130,7 @@ class ForceDensity(object):
                 elif s[0].startswith('POSITION'):
                     self.__read_position(s)
 
-    def _prepare(self): 
+    def _prepare(self):
         """return FN and FT Matrix"""
         ntiles = int(360/self.positions[0]['X'][-1])
         try:
@@ -143,23 +143,23 @@ class ForceDensity(object):
         except AttributeError:
             return []
         return [FN, FT]
-    
+
     def fft(self):
         """return 2D FFT of the Force Density"""
         fdens = self._prepare()
-        FN, FT= fdens[0], fdens[1] 
+        FN, FT= fdens[0], fdens[1]
         N = FN.size
         dim = FN.shape[0]//2
         # Dimension [Position °] X [Time Steps s]
         FN_MAG = np.fft.fft2(FN)[0:dim, :]/N
         FT_MAG = np.fft.fft2(FT)[0:dim, :]/N
 
-        return dict(fn_harm=dict(amplitude=np.abs(FN_MAG), 
-                                phase=np.angle(FN_MAG)), 
-                    ft_harm=dict(amplitude=np.abs(FT_MAG), 
-                                phase=np.angle(FT_MAG)) 
+        return dict(fn_harm=dict(amplitude=np.abs(FN_MAG),
+                                phase=np.angle(FN_MAG)),
+                    ft_harm=dict(amplitude=np.abs(FT_MAG),
+                                phase=np.angle(FT_MAG))
                     )
-    
+
     def items(self):
         return [(k, getattr(self, k)) for k in ('version',
                                                 'type',
@@ -221,16 +221,16 @@ if __name__ == "__main__":
     fdens = read(filename)
 
     # Show the results
+    print(fdens.version)
 
     title = '{}, Rotor position {}'.format(
         fdens.title, fdens.positions[0]['position'])
     pos = fdens.positions[0]['X']
     FT_FN = (fdens.positions[0]['FT'],
              fdens.positions[0]['FN'])
-    femagtools.plot.forcedens(title, pos, FT_FN)    
+    femagtools.plot.forcedens(title, pos, FT_FN)
     pl.show()
 
     title = 'Force Density Harmonics'
     femagtools.plot.forcedens_fft(title, fdens)
     pl.show()
-     

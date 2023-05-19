@@ -122,8 +122,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
         plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
         plcu2 = m.iqd_plcu2(*iqd)
         try:
-            tfric = eecpars['kfric_b']*eecpars['rotor_mass']*30e-3/np.pi
-        except:
+            tfric = m.kfric_b*m.rotor_mass*30e-3/np.pi
+        except AttributeError:
             tfric = 0
     else:
         plfe1 = np.array(r['plfe1'])
@@ -134,7 +134,10 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
         iqd = np.zeros(ntmesh.shape)
         u1 = np.array(r['u1'])
         i1 = np.array(r['i1'])
-        tfric = 0
+        try:
+            tfric = eecpars['kfric_b']*eecpars['rotor_mass']*30e-3/np.pi
+        except:
+            tfric = 0
 
     plfric = 2*np.pi*ntmesh[0]*tfric
     ntmesh[1] -= tfric

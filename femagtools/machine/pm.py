@@ -45,6 +45,7 @@ class PmRelMachine(object):
         self.zeta1 = 0.2
         self.gam = 0.7
         self.kh = 2
+        self.kfric_b = 1
         for k in kwargs.keys():
             setattr(self, k, kwargs[k])
 
@@ -83,7 +84,7 @@ class PmRelMachine(object):
             raise ValueError(f'Torque {torque} out of current range')
         return res.x
 
-    def tmech_iqd(iq, id, n, kpfe, pfw):
+    def tmech_iqd(self, iq, id, n, kpfe, pfw):
         """return shaft torque with given d-q current, iron loss correction factor
           and friction windage losses"""
         f1 = self.p*n

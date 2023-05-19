@@ -29,9 +29,11 @@ def __scale_losses(losses, lfe):
     return {}
 
 
-def create_from_eecpars(temp, eecpars, rlfe=1, rwdg=1):
+def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     """create machine according to the eecpars:
     PM, EESM or IM"""
+    rlfe = lfe
+    rwdg = wdg
     if 'ldq' in eecpars:  # this is a PM (or EESM)
         if (isinstance(eecpars['ldq'], list) and
             'ex_current' in eecpars['ldq'][0] or
@@ -113,7 +115,7 @@ def __scale_losses(losses, rlfe):
     return {}
 
 
-def create(bch, r1, ls, rlfe=1, rwdg=1):
+def create(bch, r1, ls, lfe=1, wdg=1):
     """create PmRelMachine from BCH
 
     Arguments:
@@ -123,6 +125,8 @@ def create(bch, r1, ls, rlfe=1, rwdg=1):
       rlfe: scale factor length
       rwdg: scale factor number of windings
 """
+    rwdg = wdg
+    rlfe = lfe
     m = 3
     if isinstance(bch, Reader):
         p = bch.machine['p']

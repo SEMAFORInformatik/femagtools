@@ -68,7 +68,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
     if isinstance(T, list):
         r = {'T': T, 'n': n}
         rb = {'T': [], 'n': []}
-    else:  # calculate speed,torque charactersics
+    else:  # calculate speed,torque characteristics
         nmax = n
         rb = {}
         r = m.characteristics(T, nmax, u1)  # driving mode

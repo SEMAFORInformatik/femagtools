@@ -180,24 +180,20 @@ class PmRelMachine(object):
     def id_torque(self, torque, iq):
         "return d current with given torque and d-current"
         id0 = min(self.io[1]/4, iq/np.tan(self.betarange[0]))
-        return so.fsolve(lambda id: self.torque_iqd(np.array([iq]), id)-torque, id0)[0]
+        return so.fsolve(
+            lambda id: self.torque_iqd(np.array([iq]), id)-torque, id0)[0]
 
     def iqd_torque_umax(self, torque, w1, u1max):
         "return d-q current and torque at stator frequency and max voltage"
-        iq, id = self.iqd_torque(torque)
-        # check voltage
-        if la.norm(self.uqd(w1, iq, id)) <= u1max*np.sqrt(2):
-            return (iq, id, torque)
-        # decrease psi (flux weakening mode), let i1 == i1max
-        iqd, info, ier, mesg = so.fsolve(
-            lambda iqd: (la.norm(self.uqd(w1, *iqd)) - u1max*np.sqrt(2),
-                         self.torque_iqd(*iqd) - torque),
-            (iq, id),
-            full_output=True)
-        if ier != 1:  # didn't converge
-            return self.mtpv(w1, u1max, betai1(iq, id)[1],
-                             maxtorque=torque > 0)
-        return iqd[0], iqd[1], self.torque_iqd(iq, id)
+        res = so.minimize(lambda iqd: la.norm(iqd), self.io, method='SLSQP',
+                          constraints=(
+                              {'type': 'eq',
+                               'fun': lambda iqd:
+                               self.torque_iqd(*iqd) - torque},
+                              {'type': 'ineq',
+                               'fun': lambda iqd:
+                               np.sqrt(2)*u1max - la.norm(self.uqd(w1, *iqd))}))
+        return res.x[0], res.x[1], self.torque_iqd(*res.x)
 
     def iqd_torque_imax_umax(self, torque, n, umax):
         """return iq, id, torque for constant torque or field weakening"""
@@ -223,9 +219,9 @@ class PmRelMachine(object):
         u1b = [np.linalg.norm(self.uqd(w1, *iqd(b, i1max)))
                for b in btab]
         if np.max(u1b) > np.sqrt(2)*u1max:
-            beta0=btab[0]
+            beta0 = btab[0]
             for bx, ux in zip(btab, u1b):
-                if ux/np.sqrt(2)>u1max:
+                if ux/np.sqrt(2) > u1max:
                     break
                 beta0 = bx
             beta, info, ier, mesg = so.fsolve(

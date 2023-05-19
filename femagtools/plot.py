@@ -1732,8 +1732,13 @@ def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True):
     y = torque
     if not levels:
         if max(z) <= 1:
-            levels = [0.25, 0.5, 0.75, 0.8, 0.84,
-                      0.88, 0.9, 0.92, 0.94, 0.96]
+            if max(z) > 0.96:
+                levels = [0.5, 0.75, 0.8, 0.84,
+                          0.88, 0.91, 0.93, 0.95, 0.97]
+            else:
+                levels = [0.25, 0.5, 0.75, 0.8, 0.84,
+                          0.88, 0.9, 0.92, 0.94, 0.96]
+
             if max(z) > levels[-1]:
                 levels.append(np.ceil(max(z)*100)/100)
         else:

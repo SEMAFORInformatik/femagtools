@@ -101,10 +101,12 @@ def wdg_resistance(wdg, n, g, aw, da1, hs, lfe, sigma=56e6):
     g: (int) number of parallel coil groups
     lfe: length of stator lamination stack in m
     aw: wire cross section area m2
+    da1: bore diameter m
+    hs: slot height
     sigma: (float) conductivity of wire material 1/Ohm m
     """
     # mean length of one turn
-    lt = 2.8*(da1+hs)/2*wdg.yd*2*np.pi/wdg.Q + 16e-3 + 2*lfe
+    lt = 2.8*(da1/2+hs)*wdg.yd*2*np.pi/wdg.Q + 16e-3 + 2*lfe
     return wdg.turns_per_phase(n, g)*lt/sigma/aw/g
 
 

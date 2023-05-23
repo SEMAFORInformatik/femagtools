@@ -1131,7 +1131,7 @@ def sm():
                                              [10.68, 12.06, 14.5,
                                                  17.56, 19.53, 21.85],
                                              [10.68, 12.57, 15.18, 17.33, 18.99, 20.43]]}}]}
-    return femagtools.machine.sm.SynchronousMachine(smpars)
+    return femagtools.machine.sm.SynchronousMachineLdq(smpars)
 
 
 def test_sm(sm):

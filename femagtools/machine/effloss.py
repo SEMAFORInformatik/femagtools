@@ -3,6 +3,7 @@ import scipy.interpolate as ip
 import logging
 from .utils import betai1
 from .pm import PmRelMachineLdq, PmRelMachinePsidq, PmRelMachine
+from .sm import SynchronousMachine
 from . import create_from_eecpars
 
 logger = logging.getLogger("femagtools.effloss")
@@ -85,7 +86,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)
 
-    if isinstance(m, PmRelMachine):
+    if isinstance(m, PmRelMachine) or isinstance(m, SynchronousMachine):
         iqd = np.array([
             m.iqd_torque_umax(
                 nt[1],
@@ -115,7 +116,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
             r['plcu2'].append(m.m*np.abs(i2)**2*m.rrot(w1-m.p*wm))
 
 
-    if isinstance(m, PmRelMachine):
+    if isinstance(m, PmRelMachine) or isinstance(m, SynchronousMachine):
         plfe1 = m.iqd_plfe1(*iqd, f1)
         plfe2 = m.iqd_plfe2(iqd[0], iqd[1], f1)
         plmag = m.iqd_plmag(iqd[0], iqd[1], f1)

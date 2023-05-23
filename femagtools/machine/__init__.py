@@ -9,6 +9,7 @@
 import numpy as np
 from femagtools.bch import Reader
 from .pm import PmRelMachineLdq, PmRelMachinePsidq
+from .sm import SynchronousMachine, SynchronousMachineLdq, SynchronousMachinePsidq
 from .im import InductionMachine
 from .utils import betai1, iqd, invpark, K, T, puconv, dqpar_interpol
 import copy
@@ -34,51 +35,69 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     PM, EESM or IM"""
     rlfe = lfe
     rwdg = wdg
-    if 'ldq' in eecpars:  # this is a PM (or EESM)
-        if (isinstance(eecpars['ldq'], list) and
-            'ex_current' in eecpars['ldq'][0] or
-            isinstance(eecpars['ldq'], dict) and
-                'ex_current' in eecpars['ldq']):
-            pars = copy.deepcopy(eecpars)
-            pars['tcu1'] = temp[0]
-            pars['tcu2'] = temp[1]
-            machine = femagtools.machine.sm.SynchronousMachine(pars, lfe=rlfe, wdg=rwdg)
+    if 'ldq' in eecpars or 'psidq' in eecpars:  # this is a PM (or EESM)
+        try:
+            dqpars = eecpars['ldq']
+        except KeyError:
+            dqpars = eecpars['psidq']
+        if (isinstance(dqpars, list) and
+            'ex_current' in dqpars[0] or
+            isinstance(dqpars, dict) and
+                'ex_current' in dqpars):
+            smpars = copy.deepcopy(eecpars)
+            smpars['tcu1'] = temp[0]
+            smpars['tcu2'] = temp[1]
+            if 'ldq' in smpars:
+                machine = SynchronousMachineLdq(smpars, lfe=rlfe, wdg=rwdg)
+            else:
+                machine = SynchronousMachinePsidq(smpars, lfe=rlfe, wdg=rwdg)
             try:
                 machine.rotor_mass = rlfe*eecpars['rotor_mass']
             except KeyError:
                 pass
             return machine
 
-        if isinstance(eecpars['ldq'], list) and len(eecpars['ldq']) > 1:
+        if isinstance(dqpars, list) and len(dqpars) > 1:
             x, dqp = dqpar_interpol(
-                temp[1], eecpars['ldq'], ipkey='temperature')
+                temp[1], dqpars, ipkey='temperature')
         else:
-            dqp = eecpars['ldq'][0]
+            dqp = dqpars[0]
             logger.warning(
                 "single temperature DQ parameters: unable to fit temperature %s", temp)
 
-        beta = dqp['beta']
-        i1 = np.array(dqp['i1'])/rwdg
         psid = rwdg*rlfe*dqp['psid']
         psiq = rwdg*rlfe*dqp['psiq']
         try:
             losses = __scale_losses(dqp['losses'], rlfe)
-            losses['ef'] = eecpars['ldq'][-1]['losses']['ef']
-            losses['eh'] = eecpars['ldq'][-1]['losses']['ef']
+            losses['ef'] = dqpars[-1]['losses']['ef']
+            losses['eh'] = dqpars[-1]['losses']['ef']
         except KeyError as e:
             logger.warning(e)
             losses = {}
-
-        machine = PmRelMachineLdq(
-            eecpars['m'], eecpars['p'],
-            r1=eecpars['r1']*rlfe*rwdg**2,
-            ls=eecpars['ls1']*rwdg**2,
-            psid=psid,
-            psiq=psiq,
-            losses=losses,
-            beta=beta,
-            i1=i1,
-            tcu1=temp[0])
+        if 'psidq' in eecpars:
+            machine = PmRelMachinePsidq(
+                eecpars['m'], eecpars['p'],
+                r1=eecpars['r1']*rlfe*rwdg**2,
+                ls=eecpars['ls1']*rwdg**2,
+                psid=psid,
+                psiq=psiq,
+                losses=losses,
+                id=np.array(dqp['id'])/rwdg,
+                iq=np.array(dqp['iq'])/rwdg,
+                tcu1=temp[0])
+        else:
+            beta = dqp['beta']
+            i1 = np.array(dqp['i1'])/rwdg
+            machine = PmRelMachineLdq(
+                eecpars['m'], eecpars['p'],
+                r1=eecpars['r1']*rlfe*rwdg**2,
+                ls=eecpars['ls1']*rwdg**2,
+                psid=psid,
+                psiq=psiq,
+                losses=losses,
+                beta=beta,
+                i1=i1,
+                tcu1=temp[0])
         try:
             machine.rotor_mass = rlfe*eecpars['rotor_mass']
         except KeyError:
@@ -141,6 +160,8 @@ def create(bch, r1, ls, lfe=1, wdg=1):
                 losses['eh'] = bch.lossPar.get('eh', [1.0, 1.0])
             except KeyError:
                 losses = {}
+            if 'ex_current' in bch.machine:
+                raise ValueError("not yet implemented for EESM")
             machine = PmRelMachinePsidq(m, p, psid, psiq, r1*rlfe*rwdg**2,
                                         id, iq, ls*rwdg**2, losses=losses)
             try:
@@ -161,6 +182,9 @@ def create(bch, r1, ls, lfe=1, wdg=1):
                 losses['eh'] = bch.lossPar.get('eh', [1.0, 1.0])
             except KeyError:
                 losses = {}
+            if 'ex_current' in bch.machine:
+                raise ValueError("not yet implemented for EESM")
+
             machine = PmRelMachineLdq(m, p, psid=psid, psiq=psiq,
                                       r1=r1*rlfe*rwdg**2,
                                       i1=i1, beta=beta, ls=ls*rwdg**2,

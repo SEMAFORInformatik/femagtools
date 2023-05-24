@@ -106,7 +106,7 @@ def wdg_resistance(wdg, n, g, aw, da1, hs, lfe, sigma=56e6):
     sigma: (float) conductivity of wire material 1/Ohm m
     """
     # mean length of one turn
-    lt = 2.8*(da1/2+hs)*wdg.yd*2*np.pi/wdg.Q + 16e-3 + 2*lfe
+    lt = 2.8*(da1+hs)/2*wdg.yd*2*np.pi/wdg.Q + 16e-3 + 2*lfe
     return wdg.turns_per_phase(n, g)*lt/sigma/aw/g
 
 

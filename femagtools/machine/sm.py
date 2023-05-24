@@ -65,12 +65,12 @@ def parident(workdir, engine, machine,
         ifnom = machine['rotor']['ifnom']
         exc_logspace = True
         if exc_logspace:
-            excur = np.logspace(np.log(ifnom/10), np.log(2.5*ifnom),
-                                kwargs.get("num_exc_steps", 7),
+            excur = np.logspace(np.log(ifnom/10), np.log(1.5*ifnom),
+                                kwargs.get("num_exc_steps", 8),
                                 base=np.exp(1)).tolist()
         else:
-            excur = np.linspace(ifnom/10, 2.5*ifnom,
-                                kwargs.get("num_exc_steps", 7))
+            excur = np.linspace(ifnom/10, 1.5*ifnom,
+                                kwargs.get("num_exc_steps", 8))
 
         parvardef = {
             "decision_vars": [
@@ -83,24 +83,26 @@ def parident(workdir, engine, machine,
             magnetizingCurves=magnetizingCurves)
 
         simulation = dict(
-                calculationMode="psd_psq_fast",  #"ld_lq_fast",
-            wind_temp=20.0,
-            i1_max=kwargs.get('i1_max', i1_max),
-            maxid=0,
-            minid=-i1_max,
-            maxiq=i1_max,
-            miniq=-i1_max,
-            delta_id=i1_max/kwargs.get('num_cur_steps', 5),
-            delta_iq=i1_max/kwargs.get('num_cur_steps', 5),
-            beta_min=-180.0,
-            beta_max=0.0,
-            calc_noload=0,
-            load_ex_cur=0.5,
-            num_cur_steps=kwargs.get('num_cur_steps', 5),
-            num_beta_steps=kwargs.get('num_beta_steps', 13),
-            num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
-            period_frac=6,
-            speed=50.0)
+                calculationMode=kwargs.get('calculationMode',
+                                           'ld_lq_fast'),
+                wind_temp=20.0,
+                i1_max=kwargs.get('i1_max', i1_max),
+                maxid=0,
+                minid=-i1_max,
+                maxiq=i1_max,
+                miniq=-i1_max,
+                delta_id=i1_max/kwargs.get('num_cur_steps', 5),
+                delta_iq=i1_max/kwargs.get('num_cur_steps', 5),
+                beta_min=-180.0,
+                beta_max=0.0,
+                calc_noload=0,
+                num_move_steps=kwargs.get('num_move_steps', 31),
+                load_ex_cur=0.5,
+                num_cur_steps=kwargs.get('num_cur_steps', 5),
+                num_beta_steps=kwargs.get('num_beta_steps', 13),
+                num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
+                period_frac=6,
+                speed=50.0)
 
         ###self.cleanup()  # remove previously created files in workdir
         results = parvar(parvardef, machine, simulation, engine)
@@ -510,10 +512,10 @@ class SynchronousMachinePsidq(SynchronousMachine):
 
         self.psidf = ip.RegularGridInterpolator(
                 (exc, iqx, idx), psid,
-                bounds_error=False)
+                method='cubic', bounds_error=False, fill_value=None)
         self.psiqf = ip.RegularGridInterpolator(
                 (exc, iqx, idx), psiq,
-                bounds_error=False)
+                method='cubic', bounds_error=False, fill_value=None)
         self.bounds = [(min(iq), max(iq)),
                        (min(id), 0),
                        (iexc[0], iexc[-1])]
@@ -530,7 +532,9 @@ class SynchronousMachinePsidq(SynchronousMachine):
                                              for l in eecpars[idname]]))
                        for k in keys}
             self._losses = {k: ip.RegularGridInterpolator(
-                (exc, iq, id), lfe*np.array(pfe[k])) for k in keys}
+                    (exc, iq, id), lfe*np.array(pfe[k]),
+                    method='cubic', bounds_error=False, fill_value=None)
+                            for k in keys}
             self._set_losspar(eecpars[idname][0]['losses']['speed'],
                           eecpars[idname][0]['losses']['ef'],
                           eecpars[idname][0]['losses']['hf'])
@@ -592,10 +596,10 @@ class SynchronousMachineLdq(SynchronousMachine):
 
         self.psidf = ip.RegularGridInterpolator(
                 (exc, betax, i1x), np.sqrt(2)*psid,
-                bounds_error=False)
+                method='cubic', bounds_error=False, fill_value=None)
         self.psiqf = ip.RegularGridInterpolator(
                 (exc, betax, i1x), np.sqrt(2)*psiq,
-                bounds_error=False)
+                method='cubic', bounds_error=False, fill_value=None)
         i1max = np.sqrt(2)*(max(i1))
         self.bounds = [(np.cos(min(beta))*i1max, i1max),
                        (-i1max, 0),
@@ -613,7 +617,9 @@ class SynchronousMachineLdq(SynchronousMachine):
                                              for l in eecpars[idname]]))
                        for k in keys}
             self._losses = {k: ip.RegularGridInterpolator(
-                (exc, beta, i1), lfe*np.array(pfe[k])) for k in keys}
+                    (exc, beta, i1), lfe*np.array(pfe[k]),
+                    method='cubic', bounds_error=False, fill_value=None)
+                            for k in keys}
             self._set_losspar(eecpars[idname][0]['losses']['speed'],
                               eecpars[idname][0]['losses']['ef'],
                               eecpars[idname][0]['losses']['hf'])

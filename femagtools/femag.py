@@ -527,6 +527,7 @@ class FemagTask(threading.Thread):
         threading.Thread.__init__(self)
         self.port = port
         self.args = args + [str(self.port)]
+        self.proc = None
         self.returncode = None
         self.workdir = workdir
         self.logdir = logdir
@@ -801,7 +802,7 @@ class ZmqFemag(BaseFemag):
             self.request_socket = self.__req_socket()
 
         # check if mq is ready for listening
-        lcount = 10
+        lcount = 300
         for t in range(lcount):
             time.sleep(0.1)
             if self.__is_running():
@@ -810,7 +811,7 @@ class ZmqFemag(BaseFemag):
                         self.femagTask.proc.pid))
                 break
 
-        return self.femagTask.proc.pid
+        return self.femagTask.proc.pid if self.femagTask.proc else 0
 
     def quit(self, save_model=False):
         """terminates femag"""

@@ -11,16 +11,15 @@ m.skew_angle      =    ${model.get('skew_angle',0)}
 m.fc_radius2      =    0.0
 m.phi_start       =    ${model.get('phi_start', 0)}
 m.range_phi       =    ${model.get('range_phi', 0)}
-m.nu_force_pat    =    0.0
 % else:
 m.speed_linear    =    ${model.get('speed')}
 m.skew_linear     =    ${model.get('skew_displ',0)}
 m.line            =    0
 m.two_pole_wi     =    2*m.pole_width
 m.range_x         =    m.two_pole_wi
-m.range_y         =    0.0 
+m.range_y         =    0.0
 
-m.fc_force_points =  5                                                
+m.fc_force_points =  5
 m.fcpx_mm1        =   m.npols_gen*m.pole_width +1.0
 m.fcpy_mm1        =   -3*ag/4
 m.fcpx_mm2        =   -1.0
@@ -35,6 +34,7 @@ m.fcpy_mm5        =   m.fcpy_mm1
 m.npols_gen       =  1 -- number of sectors simulated
 
 % endif
+m.nu_force_pat    =    0.0
 m.nu_skew_steps   =    ${model.get('num_skew_steps',0)}
 m.magn_temp       =    ${model.get('magn_temp',20.0)}
 m.winding_temp    =    ${model.get('wind_temp', 20.0)}

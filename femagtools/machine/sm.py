@@ -301,9 +301,9 @@ class SynchronousMachine(object):
     def iqd_torque(self, torque, disp=False, maxiter=500):
         """return currents for torque with minimal losses"""
         if torque > 0:
-            startvals = self.bounds[0][1], 0, sum(self.bounds[-1])/2
+            startvals = self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
         else:
-            startvals = -self.bounds[0][1], 0, sum(self.bounds[-1])/2
+            startvals = -self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -329,13 +329,15 @@ class SynchronousMachine(object):
     def iqd_torque_umax(self, torque, w1, u1max, io=0,
                         disp=False, maxiter=500):
         """return currents for torque with minimal losses"""
+        #logger.info(">> torque %g w1 %g u1 %g io %s", torque, w1, u1max, io)
         if io == 0:
             iqde = self.iqd_torque(torque, disp, maxiter)
             if np.linalg.norm(
                     self.uqd(w1, *iqde)) <= u1max*np.sqrt(2):
                 return (*iqde, torque)
-            io = iqde
-            logger.debug("torque %g io %s", torque, io)
+            io = iqde[0], 0, iqde[2]
+            logger.debug("--- torque %g io %s", torque, io)
+        #logger.info(">>      io %s", io)
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -483,6 +485,10 @@ class SynchronousMachinePsidq(SynchronousMachine):
     def __init__(self, eecpars, lfe=1, wdg=1):
         super(self.__class__, self).__init__(
                 eecpars)
+        self.iqrange = (eecpars['psidq'][0]['iq'][0],
+                        eecpars['psidq'][0]['iq'][-1])
+        self.idrange = (eecpars['psidq'][0]['id'][0],
+                        eecpars['psidq'][0]['id'][-1])
         islinear = True
         iexc = [l['ex_current'] for l in eecpars['psidq']]
         id = [i/wdg for i in eecpars['psidq'][-1]['id']]
@@ -567,6 +573,9 @@ class SynchronousMachinePsidq(SynchronousMachine):
 class SynchronousMachineLdq(SynchronousMachine):
     def __init__(self, eecpars, lfe=1, wdg=1):
         super(self.__class__, self).__init__(eecpars)
+        self.betarange = (eecpars['ldq'][0]['beta'][0]/180*np.pi,
+                          eecpars['ldq'][0]['beta'][-1]/180*np.pi)
+        self.i1range = (0, eecpars['ldq'][0]['i1'][-1])
         islinear = True
         iexc = [l['ex_current'] for l in eecpars['ldq']]
         i1 = [i/wdg for i in eecpars['ldq'][-1]['i1']]

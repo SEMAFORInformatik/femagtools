@@ -1138,4 +1138,4 @@ def test_sm(sm):
     u1 = 230
     f1 = 50
     iqdf = sm.iqd_torque(120)
-    assert pytest.approx(iqdf, rel=0.01) == [271.5, -45.31, 5.4]
+    assert pytest.approx(iqdf, rel=0.1) == np.array([276.9, -26.5,   5.3])

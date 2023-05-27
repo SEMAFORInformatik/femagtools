@@ -324,8 +324,6 @@ def dqpar_interpol(xfit, dqpars, ipkey='temperature'):
         pass
     return x, fpip
 
-    Q2 = machine['rotor']['num_slots']
-
 
 def dqparident(workdir, engine, temp, machine,
                magnetizingCurves, magnetMat=[], condMat=[],

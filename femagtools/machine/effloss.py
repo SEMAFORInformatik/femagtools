@@ -3,7 +3,7 @@ import scipy.interpolate as ip
 import logging
 from .utils import betai1
 from .pm import PmRelMachineLdq, PmRelMachinePsidq, PmRelMachine
-from .sm import SynchronousMachine
+from .sm import SynchronousMachine, SynchronousMachineLdq, SynchronousMachinePsidq
 from . import create_from_eecpars
 
 logger = logging.getLogger("femagtools.effloss")
@@ -71,27 +71,39 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
         rb = {'T': [], 'n': []}
     else:  # calculate speed,torque characteristics
         nmax = n
+        nsamples = 10
         rb = {}
-        r = m.characteristics(T, nmax, u1)  # driving mode
-        if isinstance(m, PmRelMachineLdq):
+        r = m.characteristics(T, nmax, u1, nsamples=nsamples)  # driving mode
+        if isinstance(m, (PmRelMachineLdq, SynchronousMachineLdq)):
             if min(m.betarange) >= -np.pi/2:  # driving mode only
                 rb['n'] = None
                 rb['T'] = None
-        if isinstance(m, PmRelMachinePsidq):
+        if isinstance(m, (PmRelMachinePsidq, SynchronousMachinePsidq)):
             if min(m.iqrange) >= 0:  # driving mode only
                 rb['n'] = None
                 rb['T'] = None
         if 'n' not in rb:
-            rb = m.characteristics(-T, max(r['n']), u1)  # braking mode
+            rb = m.characteristics(-T, max(r['n']), u1, nsamples=nsamples)  # braking mode
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)
 
-    if isinstance(m, PmRelMachine) or isinstance(m, SynchronousMachine):
+    class ProgressLogger:
+        def __init__(self, nsamples):
+            self.n = 0
+            self.nsamples = nsamples
+            self.num_iv = round(nsamples/15)
+        def __call__(self, iqd):
+            self.n += 1
+            if self.n % self.num_iv == 0:
+                logger.info("Samples %d%%",
+                            round(100*self.n/self.nsamples))
+    if isinstance(m, (PmRelMachine, SynchronousMachine)):
+        progress = ProgressLogger(ntmesh.shape[1])
         iqd = np.array([
             m.iqd_torque_umax(
                 nt[1],
                 2*np.pi*nt[0]*m.p,
-                u1)[:-1]
+                u1, log=progress)[:-1]
             for nt in ntmesh.T]).T
         beta, i1 = betai1(iqd[0], iqd[1])
         uqd = [m.uqd(2*np.pi*n*m.p, *i)
@@ -115,8 +127,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
             r['plcu1'].append(m.m*np.abs(i1)**2*m.rstat(w1))
             r['plcu2'].append(m.m*np.abs(i2)**2*m.rrot(w1-m.p*wm))
 
-
-    if isinstance(m, PmRelMachine) or isinstance(m, SynchronousMachine):
+    if isinstance(m, (PmRelMachine, SynchronousMachine)):
         plfe1 = m.iqd_plfe1(*iqd, f1)
         plfe2 = m.iqd_plfe2(iqd[0], iqd[1], f1)
         plmag = m.iqd_plmag(iqd[0], iqd[1], f1)
@@ -137,7 +148,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
         i1 = np.array(r['i1'])
         try:
             tfric = eecpars['kfric_b']*eecpars['rotor_mass']*30e-3/np.pi
-        except:
+        except KeyError:
             tfric = 0
 
     plfric = 2*np.pi*ntmesh[0]*tfric

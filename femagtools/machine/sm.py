@@ -312,7 +312,7 @@ class SynchronousMachine(object):
                 #logger.info("iqde %s --> pcu %f", iqde, pcu)
                 return pcu
             res = so.minimize(
-                sqrtculoss, startvals, method='SLSQP',  # trust-constr
+                self.culoss, startvals, method='SLSQP',  # trust-constr
                 bounds=self.bounds,
                 #            jac=gradient_respecting_bounds(self.bounds, self.culoss),
                 constraints=[
@@ -326,17 +326,22 @@ class SynchronousMachine(object):
                        startvals)
         raise ValueError(res['message'])
 
-    def iqd_torque_umax(self, torque, w1, u1max, io=0,
-                        disp=False, maxiter=500):
+    def iqd_torque_umax(self, torque, w1, u1max,
+                        disp=False, maxiter=500, log=0):
         """return currents for torque with minimal losses"""
         #logger.info(">> torque %g w1 %g u1 %g io %s", torque, w1, u1max, io)
-        if io == 0:
-            iqde = self.iqd_torque(torque, disp, maxiter)
-            if np.linalg.norm(
-                    self.uqd(w1, *iqde)) <= u1max*np.sqrt(2):
+        #if torque > 0:
+        #    io = self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
+        #else:
+        #    io = -self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
+        iqde = self.iqd_torque(torque, disp, maxiter)
+        if np.linalg.norm(
+            self.uqd(w1, *iqde)) <= u1max*np.sqrt(2):
+                if log:
+                    log(iqde)
                 return (*iqde, torque)
-            io = iqde[0], 0, iqde[2]
-            logger.debug("--- torque %g io %s", torque, io)
+        io = iqde[0], 0, iqde[2]
+        #    logger.debug("--- torque %g io %s", torque, io)
         #logger.info(">>      io %s", io)
 
         with warnings.catch_warnings():
@@ -347,7 +352,7 @@ class SynchronousMachine(object):
                 return pcu
 
             res = so.minimize(
-                sqrtculoss, io, method='SLSQP',  # trust-constr
+                self.culoss, io, method='SLSQP',  # trust-constr
                 bounds=self.bounds,
                 options={'disp': disp, 'maxiter': maxiter},
                 #            jac=gradient_respecting_bounds(self.bounds, self.culoss),
@@ -358,7 +363,9 @@ class SynchronousMachine(object):
                      'fun': lambda iqd: np.linalg.norm(
                          self.uqd(w1, *iqd)) - u1max*np.sqrt(2)}])
             if res['success']:
-                return (*res.x, self.torque_iqd(*res.x))
+                if log:
+                    log(res.x)
+                return *res.x, self.torque_iqd(*res.x)
         logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
                        res['message'], w1, torque, u1max, io)
         raise ValueError(res['message'])

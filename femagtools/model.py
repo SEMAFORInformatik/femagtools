@@ -431,9 +431,12 @@ class FeaModel(Model):
         """returns number of curSteps (used for progress calc)"""
         try:
             if self.calculationMode == 'psd_psq_fast':
-                return self.round((self.maxiq-self.miniq)/self.delta_iq) + 1
+                return round(
+                    ((self.maxiq-self.minid)/self.delta_id) + 1)
             if self.calculationMode == 'ld_lq_fast':
-                return self.num_cur_steps+1  # must include 0
-        except:
+                return (self.num_cur_steps+1)  # must include 0
+        except AttributeError as e:
+            logger.warning("%s current steps of %s",
+                           e, self.calculationMode)
             pass
         return 1

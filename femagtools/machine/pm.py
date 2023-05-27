@@ -183,7 +183,7 @@ class PmRelMachine(object):
         return so.fsolve(
             lambda id: self.torque_iqd(np.array([iq]), id)-torque, id0)[0]
 
-    def iqd_torque_umax(self, torque, w1, u1max):
+    def iqd_torque_umax(self, torque, w1, u1max, log=0):
         "return d-q current and torque at stator frequency and max voltage"
         res = so.minimize(lambda iqd: la.norm(iqd), self.io, method='SLSQP',
                           constraints=(
@@ -193,6 +193,8 @@ class PmRelMachine(object):
                               {'type': 'ineq',
                                'fun': lambda iqd:
                                np.sqrt(2)*u1max - la.norm(self.uqd(w1, *iqd))}))
+        if log:
+            log(res.x)
         return res.x[0], res.x[1], self.torque_iqd(*res.x)
 
     def iqd_torque_imax_umax(self, torque, n, umax):

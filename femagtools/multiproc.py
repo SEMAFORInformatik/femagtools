@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 numpat = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
 
 class LicenseError(Exception):
-    pass 
+    pass
 
 class ProtFile:
     def __init__(self, dirname, num_cur_steps):
@@ -48,11 +48,12 @@ class ProtFile:
     def update(self):
         p = list(pathlib.Path(self.dirname).glob('*.PROT'))
         if p:
+            buf = ''
             if self.size < p[0].stat().st_size:
                 with p[0].open() as fp:
                     fp.seek(self.size)
                     buf = fp.read()
-                return self.append(buf)
+            return self.append(buf)
         return ''
 
     def append(self, buf):
@@ -141,14 +142,14 @@ def run_femag(cmd, workdir, fslfile):
         except OSError as e:
             logger.error("Starting process failed: %s, Command: %s", e, cmd)
             raise
-        
+
     # raise License Error
-    if proc.returncode != 0: 
-        with open(os.path.join(workdir, "femag.err"), "r") as err: 
-            for line in err: 
-                if 'license' in line: 
+    if proc.returncode != 0:
+        with open(os.path.join(workdir, "femag.err"), "r") as err:
+            for line in err:
+                if 'license' in line:
                     raise LicenseError(line)
-                
+
     logger.info("Finished pid: %d return %d", proc.pid, proc.returncode)
     return proc.returncode
 
@@ -175,7 +176,7 @@ class Engine:
                 self.cmd.append('-m')
 
         self.progressLogger = 0
-        self.progress_timestep = kwargs.get('timestep', 3)
+        self.progress_timestep = kwargs.get('timestep', 5)
 
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`Job`
@@ -257,4 +258,3 @@ class Engine:
             self.pool.close()
         except AttributeError:
             logger.warn("%s", e)
-

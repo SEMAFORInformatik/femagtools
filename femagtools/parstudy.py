@@ -280,7 +280,7 @@ class ParameterStudy(object):
                         builder.create_model(model, self.femag.magnets) +
                         builder.create_analysis(fea) +
                         ['save_model("close")'])
-                    
+
                 if hasattr(fea, 'poc'):
                     task.add_file(fea.pocfilename,
                                   fea.poc.content())
@@ -407,7 +407,7 @@ class LatinHypercube(ParameterStudy):
         u_bounds = [d['bounds'][1] for d in dvars]
 
         N = num_samples
-        sampler = sc.stats.qmc.LatinHypercube(d=len(l_bounds), centered=True)
+        sampler = sc.stats.qmc.LatinHypercube(d=len(l_bounds), scramble=False)
         sample = sampler.random(n=N)
         par_range = sc.stats.qmc.scale(sample, l_bounds, u_bounds)
         domain = par_range.T.tolist()

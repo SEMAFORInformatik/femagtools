@@ -66,11 +66,11 @@ def parident(workdir, engine, machine,
         exc_logspace = True
         if exc_logspace:
             excur = np.logspace(np.log(ifnom/10), np.log(1.5*ifnom),
-                                kwargs.get("num_exc_steps", 8),
+                                kwargs.get("num_exc_steps", 6),
                                 base=np.exp(1)).tolist()
         else:
             excur = np.linspace(ifnom/10, 1.5*ifnom,
-                                kwargs.get("num_exc_steps", 8))
+                                kwargs.get("num_exc_steps", 6))
 
         parvardef = {
             "decision_vars": [

@@ -342,10 +342,10 @@ def dqparident(workdir, engine, temp, machine,
 
     optional arguments:
     num_cur_steps: number of current steps (default 5)
-    num_beta_steps: number of current steps (default 13)
+    num_beta_steps: number of current steps (default 7 per quadrant)
     speed: rotor speed in 1/s (default 160/p)
     i1_max: maximum current in A rms (default approx 3*i1nom)
-    use_multiprocessing: (boolean) perfom FE simulations in parallel (default: True)
+    period_frac: fraction of rotating angle (default 6)
     """
     import pathlib
 
@@ -363,7 +363,7 @@ def dqparident(workdir, engine, temp, machine,
 
     i1_max = round(0.28*np.pi*hs*(da1+hs)/Q1/N*Jmax*1e5)*10 * \
         machine['windings'].get('num_par_wdgs', 1)
-    period_frac = 6
+    period_frac = kwargs.get('period_frac', 6)
     if machine.get('external_rotor', False):
         period_frac = 1  # TODO: missing femag support
 

@@ -455,9 +455,14 @@ def dqparident(workdir, engine, temp, machine,
         for k in ('hf', 'ef'):
             ldq[j]['losses'][k] = results['f'][i]['lossPar'][k]
 
-    return {'m': machine['windings']['num_phases'],
-            'p': machine['poles']//2,
-            'r1': machine['windings'].get('resistance', r1),
-            'ls1': ls1,
-            "rotor_mass": rotor_mass, "kfric_b": 1,
-            'ldq': ldq}
+    dqpars = {
+        'm': machine['windings']['num_phases'],
+        'p': machine['poles']//2,
+        'r1': machine['windings'].get('resistance', r1),
+        'ls1': ls1,
+        "rotor_mass": rotor_mass, "kfric_b": 1,
+        'ldq': ldq}
+
+    if 'current_angles' in results['f'][0]:
+        dqpars['current_angles'] = results['f'][0]['current_angles']
+    return dqpars

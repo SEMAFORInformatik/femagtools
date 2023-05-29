@@ -511,17 +511,14 @@ class Writer(Mcv):
             nind = len(self.losses['B'])
             if nind < 1 or nfreq < 1:
                 return
+            fo = self.losses.get('fo',
+                                 self.mc1_base_frequency)
+            Bo = self.losses.get('Bo',
+                                 self.mc1_base_induction)
             if np.isscalar(self.losses['B'][0]):
                 B = self.losses['B']
                 pfe = self.losses['pfe']
-                cw = self.losses['cw']
-                alfa = self.losses['cw_freq']
-                beta = self.losses['b_coeff']
             else:
-                fo = self.losses.get('fo',
-                                     self.mc1_base_frequency)
-                Bo = self.losses.get('Bo',
-                                     self.mc1_base_induction)
                 cw, alfa, beta = lc.fitsteinmetz(
                     self.losses['f'], self.losses['B'], self.losses['pfe'], Bo, fo)
                 B, pfe = norm_pfe(self.losses['B'], self.losses['pfe'])
@@ -538,12 +535,19 @@ class Writer(Mcv):
 
             for f, p in zip(self.losses['f'], pfe):
                 if f is not None:
-                    pl = [px if px is not None else lc.pfe_steinmetz(
-                        f, b, cw, alfa, beta,
-                        self.losses['fo'],
-                        self.losses['Bo'])
-
-                        for px, b in zip(p, B)]
+                    y = np.array(p)
+                    losses = y[y != np.array(None)].tolist()
+                    if len(losses) == len(p):
+                        pl = p
+                    else:
+                        n = len(losses)
+                        cw, alfa, beta = lc.fitsteinmetz(
+                            f, B[:n], losses, Bo, fo)
+                        pl = [px if px is not None else lc.pfe_steinmetz(
+                            f, b, cw, alfa, beta,
+                            self.losses['fo'],
+                            self.losses['Bo'])
+                              for px, b in zip(p, B)]
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - len(pl)))
                     self.writeBlock(f)

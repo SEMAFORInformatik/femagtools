@@ -1144,7 +1144,7 @@ def felosses(losses, coeffs, title='', log=True, ax=0):
 
     fo = losses['fo']
     Bo = losses['Bo']
-    B = plt.np.linspace(0.9*np.min(losses['B']),
+    B = np.linspace(0.9*np.min(losses['B']),
                         1.1*0.9*np.max(losses['B']))
 
     for i, f in enumerate(losses['f']):
@@ -1154,8 +1154,8 @@ def felosses(losses, coeffs, title='', log=True, ax=0):
                 ax.plot(B, lc.pfe_jordan(f, B, *coeffs, fo=fo, Bo=Bo))
             elif len(coeffs) == 3:
                 ax.plot(B, lc.pfe_steinmetz(f, B, *coeffs, fo=fo, Bo=Bo))
-        plt.plot(losses['B'][:len(pfe)], pfe,
-                 marker='o', label="{} Hz".format(f))
+            ax.plot(losses['B'][:len(pfe)], pfe,
+                    marker='o', label="{} Hz".format(f))
 
     ax.set_title("Fe Losses/(W/kg) " + title)
     if log:

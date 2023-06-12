@@ -428,7 +428,7 @@ class Machine(object):
     def airgap_y(self):
         return 0.1
 
-    def part_of_circle(self, pos=3):
+    def part_of_circle(self, pos=2):
         return part_of_circle(self.startangle, self.endangle, pos)
 
     def delete_center_circle(self):

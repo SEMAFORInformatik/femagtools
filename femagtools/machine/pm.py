@@ -42,10 +42,12 @@ class PmRelMachine(object):
         self.io = (1, -1)
         self.fo = 50.0
         self.tcu1 = 20
-        self.zeta1 = 0.2
+        self.zeta1 = 0.3
         self.gam = 0.7
         self.kh = 2
         self.kfric_b = 1
+        # TODO: need this for speedranges and idq_imax_umax mtpv only
+        self.check_extrapolation = True
         for k in kwargs.keys():
             setattr(self, k, kwargs[k])
 
@@ -76,10 +78,15 @@ class PmRelMachine(object):
         """return minimum d-q-current for torque"""
         if np.abs(torque) < 1e-2:
             return (0, 0)
-        res = so.minimize(lambda iqd: la.norm(iqd), self.io, method='SLSQP',
-                          constraints=({'type': 'eq',
-                                        'fun': lambda iqd:
-                                        self.torque_iqd(*iqd) - torque}))
+        if torque > 0:
+            iqd0 = self.i1range[1]/2, 0
+        else:
+            iqd0 = -self.i1range[1]/2, 0
+        res = so.minimize(
+            lambda iqd: la.norm(iqd), self.io, method='SLSQP',
+            constraints=({'type': 'eq',
+                          'fun': lambda iqd:
+                          self.torque_iqd(*iqd) - torque}))
         if not res.success:
             raise ValueError(f'Torque {torque} out of current range')
         return res.x
@@ -99,7 +106,7 @@ class PmRelMachine(object):
         psid, psiq = self.psi(iq, id)
         uqd = (self.r1*iq + w1*(self.ls*id + psid),
                self.r1*id - w1*(self.ls*iq + psiq))
-        logger.debug('beta i1 %s u1 %f', betai1(iq, id), la.norm(uqd))
+        #logger.debug('beta i1 %s u1 %f', betai1(iq, id), la.norm(uqd))
         return uqd
 
     def w1_umax(self, u, iq, id):
@@ -179,12 +186,13 @@ class PmRelMachine(object):
 
     def id_torque(self, torque, iq):
         "return d current with given torque and d-current"
-        id0 = min(self.io[1]/4, iq/np.tan(self.betarange[0]))
+        id0 = self.iqd_torque(torque)[1]
         return so.fsolve(
             lambda id: self.torque_iqd(np.array([iq]), id)-torque, id0)[0]
 
     def iqd_torque_umax(self, torque, w1, u1max, log=0):
-        "return d-q current and torque at stator frequency and max voltage"
+        """return d-q current and torque at stator frequency and max voltage
+        with minmal current"""
         res = so.minimize(lambda iqd: la.norm(iqd), self.io, method='SLSQP',
                           constraints=(
                               {'type': 'eq',
@@ -195,45 +203,134 @@ class PmRelMachine(object):
                                np.sqrt(2)*u1max - la.norm(self.uqd(w1, *iqd))}))
         if log:
             log(res.x)
+        logger.debug("iqd_torque_umax w1=%f torque=%f %f iq=%f id=%f u1 u1 %f %f",
+                    w1, torque, self.torque_iqd(*res.x), res.x[0], res.x[1],
+                    u1max, np.linalg.norm(
+                        self.uqd(w1, *res.x))/np.sqrt(2))
         return res.x[0], res.x[1], self.torque_iqd(*res.x)
 
-    def iqd_torque_imax_umax(self, torque, n, umax):
-        """return iq, id, torque for constant torque or field weakening"""
+    def iqd_torque_imax_umax(self, torque, n, u1max, log=0):
+        """return d-q current and torque at stator frequency w1,
+        max voltage  and current"""
         iq, id = self.iqd_torque(torque)
         w1 = 2*np.pi*n*self.p
         # Constant torque range
-        if np.linalg.norm(self.uqd(w1, iq, id)) <= umax*np.sqrt(2):
+        if np.linalg.norm(self.uqd(w1, iq, id)) <= u1max*np.sqrt(2):
+            if log:
+                log((iq, id, torque))
             return (iq, id, torque)
         # Field weaking range
         imax = betai1(iq, id)[1]
-        iq, id = self.iqd_imax_umax(imax, w1, umax, maxtorque=torque > 0)
-        return iq, id, self.torque_iqd(iq, id)
+        iq, id, tq = self.iqd_imax_umax(imax, w1, u1max, torque, with_mtpv=False)
+        if log:
+            log((iq, id, tq))
+        return iq, id, tq
 
-    def iqd_imax_umax(self, i1max, w1, u1max, maxtorque=True):
-        """return d-q current at stator frequency and max voltage
+    def iqd_maxtorque_imax_umax(self, i1max, w1, u1max):
+        """return d-q current and max torque at stator frequency w1,
+        max voltage  and current"""
+        sign = -1 if i1max > 0 else 1
+        res = so.minimize(lambda iqd: sign*self.torque_iqd(*iqd),
+                          self.mtpa(i1max)[:2],
+                          method='SLSQP',
+                          constraints=(
+                              {'type': 'ineq',
+                               'fun': lambda iqd:
+                               np.sqrt(2)*abs(i1max) - betai1(*iqd)[1]},
+                              {'type': 'eq',
+                               'fun': lambda iqd:
+                               np.sqrt(2)*u1max - la.norm(self.uqd(w1, *iqd))}
+                          ))
+        return res.x[0], res.x[1], self.torque_iqd(*res.x)
+
+    def iqd_torque_umax0(self, torque, w1, u1max):
+        def func(iqd):
+            return (
+                u1max*np.sqrt(2) - np.linalg.norm(self.uqd(w1, *iqd)),
+                torque - self.torque_iqd(*iqd))
+        res, _, ier, mesg = so.fsolve(func, self.iqd_torque(torque),
+                                      full_output=True)
+        if ier in (1, 5):
+            iq, id = res
+            tq = self.torque_iqd(iq, id)
+            logger.info("iqd_torque_umax w1=%f torque=%f %f iq=%f id=%f u1 %f %f",
+                        w1, torque, tq, iq, id, u1max, np.linalg.norm(
+                            self.uqd(w1, iq, id))/np.sqrt(2))
+            return iq, id, tq
+        raise ValueError(f"w1={w1} ier={ier} {mesg}")
+
+    def iqd_imax_umax(self, i1max, w1, u1max, torque, with_mtpv=True):
+        """return d-q current and torque at stator frequency and max voltage
         and max current (for motor operation if maxtorque else generator operation)"""
 
-        if maxtorque:
-            btab = np.linspace(max(-np.pi/2, self.betarange[0]), 0)
+        if torque > 0:
+            # -pi/2 --> 0
+            b0, b1 = max(-np.pi/2, self.betarange[0]), 0
+            if max(self.betarange) < b1:
+                raise ValueError(
+                    f"invalid betarange for maxtorque>0: {self.betarange}")
         else:
-            btab = np.linspace(min(-np.pi/2, self.betarange[1]),
-                               self.betarange[0])
-        u1b = [np.linalg.norm(self.uqd(w1, *iqd(b, i1max)))
-               for b in btab]
-        if np.max(u1b) > np.sqrt(2)*u1max:
-            beta0 = btab[0]
-            for bx, ux in zip(btab, u1b):
-                if ux/np.sqrt(2) > u1max:
+            # -pi/2 --> -pi
+            b0, b1 = -np.pi/2, max(-np.pi, self.betarange[0])
+            if min(self.betarange) > b0:
+                raise ValueError(
+                    f"invalid betarange for maxtorque<0: {self.betarange}")
+
+        deps = 1e-6
+        kmax = 100
+
+        def u1norm(b):
+            return np.linalg.norm(
+                self.uqd(w1, *iqd(b, abs(i1max))))/np.sqrt(2)
+        if u1norm(b1) < u1max:
+            # must reduce current (torque)
+            iq, id, tq = self.iqd_torque_umax_imin(torque, w1, u1max)
+            if not with_mtpv:
+                return iq, id, tq
+            beta, i1 = betai1(iq, id)
+        else:
+            for k in range(kmax):
+                bx = b0 + (b1-b0)/2
+                ux = u1norm(bx)
+                #logger.info("%d: bx %f ux %f", k, bx, ux)
+                if ux > u1max:
+                    b1 = bx
+                else:
+                    b0 = bx
+                if abs(b1-b0) < deps:
                     break
-                beta0 = bx
-            beta, info, ier, mesg = so.fsolve(
-                lambda b: la.norm(
-                    self.uqd(w1, *iqd(b, i1max))) - u1max*np.sqrt(2),
-                beta0,
-                full_output=True)
-            if ier == 1:
-                return iqd(beta[0], i1max)
-        return self.mtpv(w1, u1max, i1max, maxtorque)[:2]
+            beta, i1 = bx, i1max
+            du = ux - u1max
+            logger.debug("iqd_imax_umax n %f beta %f iter=%d du=%f",
+                         w1/2/np.pi/self.p*60, beta/np.pi*180, k, du)
+            if abs(du) < 0.1:
+                iq, id = iqd(beta, abs(i1max))
+            else:
+                iq, id = self.iqd_torque(torque)
+        if with_mtpv:
+            # must check mtpv
+            self.check_extrapolation = False
+            try:
+                def voltw1(wx):
+                    return np.linalg.norm(
+                        self.mtpv(wx, u1max,
+                                  maxtorque=torque>0)[:2]) - np.sqrt(2)*i1,
+                w, _, ier, _ = so.fsolve(voltw1, w1, full_output=True)
+                logger.info("3: ier %d w %f w1 %f", ier, w, w1)
+                if ier in (1,5) and abs(w[0]) <= w1:
+                    self.check_extrapolation = True
+                    return self.mtpv(w1, u1max)
+            except ValueError as e:
+                logger.warning("MTPV w1=%f i1max=%f, u1max %f %s",
+                               w1, i1, u1max, e)
+            self.check_extrapolation = True
+
+        iq, id = iqd(beta, abs(i1))
+        tq = self.torque_iqd(iq, id)
+        logger.debug("iqd_imax_umax w1=%f torque=%f %f iq=%f id=%f u1 %f %f",
+                    w1, torque, tq, iq, id, u1max, np.linalg.norm(
+                            self.uqd(w1, iq, id))/np.sqrt(2))
+        return iq, id, tq
 
     def mtpa(self, i1):
         """return iq, id, torque at maximum torque of current i1"""
@@ -246,23 +343,26 @@ class PmRelMachine(object):
         iq, id = iqd(bopt[0], abs(i1))
         return [iq, id, sign*fopt]
 
-    def mtpv(self, w1, u1, i1max, maxtorque=True):
+    def mtpv(self, w1, u1, iqd0=0, maxtorque=True):
         """return d-q-current, torque for voltage and frequency
         with maximum (maxtorque=True) or minimum torque """
         sign = -1 if maxtorque else 1
-        i0 = (-sign*self.i1range[1]/10, -self.i1range[1]/10)
+        if np.isscalar(iqd0):
+            i0 = (-sign*self.i1range[1]/20, -self.i1range[1]/np.sqrt(2))
+        else:
+            i0 = iqd0
         res = so.minimize(
             lambda iqd: sign*self.torque_iqd(*iqd),
             i0, method='SLSQP',
+            #bounds=((0, self.i1range[1]),
+            #        (-self.i1range[1], 0)),
             constraints=(
-                {'type': 'ineq',
+                {'type': 'eq',
                  'fun': lambda iqd:
-                 np.sqrt(2)*u1 - la.norm(self.uqd(w1, *iqd))},
-                {'type': 'ineq',
-                 'fun': lambda iqd:
-                 i1max - betai1(*iqd)[1]}))
-
-        return res.x[0], res.x[1], sign*res.fun
+                 np.sqrt(2)*u1 - la.norm(self.uqd(w1, *iqd))},))
+        if res['success']:
+            return res.x[0], res.x[1], sign*res.fun
+        raise ValueError(f"mtpv w1={w1} u1={u1} maxtorque={maxtorque} res: {res['message']}")
 
     def _set_losspar(self, pfe):
         self.fo = pfe['speed']*self.p
@@ -300,7 +400,59 @@ class PmRelMachine(object):
                        self.iqd_plmag(iq, id, f),
                        self.iqd_plcu(iq, id, 2*np.pi*f)], axis=0)
 
-    def characteristics(self, T, n, u1max, nsamples=30):
+    def speedranges(self, i1max, u1max, speedmax, with_mtpv, weps=1e-4):
+        """calculate speed range intervals:
+        1. const current MTPA (u < u1max)
+        2. const voltage: flux reduction / MTPA and MTPV (if enabled)
+        returns list of speed limit for each interval
+        """
+        iq, id, T = self.mtpa(i1max)
+        logger.debug("speedrange i1 %f T %f", i1max, T)
+        w1max = 2*np.pi*speedmax*self.p
+        w1type = self.w1_umax(u1max, iq, id)
+        wl, wu = [w1type, w1max]
+        if with_mtpv:
+            kmax = 6
+            self.check_extrapolation = False
+        else:
+            kmax = 0
+            k = kmax
+        for k in range(kmax):
+            wx = wl + (wu-wl)/2
+            try:
+                iq, id = self.iqd_imax_umax(i1max, wx, u1max,
+                                            T, with_mtpv=False)[:2]
+                i1 = betai1(iq, id)[1]
+                try:
+                    def voltw1(wx):
+                        return np.linalg.norm(
+                            self.mtpv(wx, u1max,
+                                      maxtorque=T > 0)[:2]) - np.sqrt(2)*i1
+                    w, _, ier, _ = so.fsolve(voltw1, wx, full_output=True)
+                    logger.debug("3: ier %d i1 %f w %f w1 %f", ier, i1, w, wx)
+                    if ier in (1, 4, 5):
+                        self.check_extrapolation = True
+                        if abs(w[0]) <= wx:
+                            return [w/2/np.pi/self.p
+                                    for w in (w1type, w[0], w1max)]  # ['MTPA', 'MTPV']
+                        wl = w[0]
+                except ValueError as e:
+                    logger.debug(e)
+                    wl = wx
+                    pass
+            except ValueError as e:
+                logger.warning(e)
+                wu = wx
+            logger.debug("%d: wx %f wl %f wu %f --> %f",
+                         k, wx, wl, wu, 100*(wu-wl)/wl)
+
+        self.check_extrapolation = True
+        w1max = min(w1max, self.w1_umax(
+            u1max, *iqd(-np.pi/2, abs(i1max))))
+        return [w/2/np.pi/self.p for w in (w1type, w1max)]  # ['MTPA']
+
+
+    def characteristics(self, T, n, u1max, nsamples=60, with_mtpv=True):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -311,97 +463,75 @@ class PmRelMachine(object):
         n -- the maximum speed or the list of speed values in 1/s
         u1max -- the maximum voltage in V rms
         nsamples -- (optional) number of speed samples
+        with_mtpv -- (optional) use mtpv if true (default)
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
         if np.isscalar(T):
             iq, id = self.iqd_torque(T)
             i1max = betai1(iq, id)[1]
+            if T < 0:
+                i1max = -i1max
             w1 = self.w1_umax(u1max, iq, id)
-            iqmin, idmin = self.iqdmin(i1max)
-            if (iqmin < 0):
-                iqmin = 0
-            w1max = self.w1_umax(u1max, iqmin, idmin)
-            nmax = max(w1, w1max)/2/np.pi/self.p
-            n1 = min(w1/2/np.pi/self.p, nmax)
+            n1 = w1/2/np.pi/self.p
             r['n_type'] = n1
+            nmax = n
             logger.info("Type speed %f n: %f nmax %f",
                         60*n1, 60*n, 60*nmax)
-            try:
-                w1 = self.w2_imax_umax(i1max, u1max, maxtorque=(T > 0))
-                n2 = w1/2/np.pi/self.p
-                iqmtpv, idmtpv, tq = self.mtpv(
-                    w1, u1max, i1max, maxtorque=T > 0)
-                if not self._inrange((iqmtpv, idmtpv)):
-                    if n > 0:
-                        n2 = min(nmax, n)
-                    else:
-                        n2 = nmax
-                logger.info("n1: %f n2: %f ",
-                            60*n1, 60*n2)
-            except ValueError:
-                if n > 0:
-                    n2 = min(nmax, n)
+
+            n1 = min(n1, nmax)
+            if n1 < nmax:
+                speedrange = [0] + self.speedranges(i1max, u1max,
+                                                     nmax, with_mtpv)
+                if len(speedrange) > 3:
+                    interv = 'MTPA', 'MTPV'
                 else:
-                    n2 = nmax
-            if n > 0:
-                nmax = min(nmax, n)
-                speedrange = sorted(
-                    list(set([nx for nx in [n1, n2, n] if nx < 1.01*nmax])))
+                    interv = 'MTPA',
             else:
-                speedrange = sorted(list(set([n1, n2])))
-            logger.info("speedrange %s (T = %s Nm)",
-                        speedrange, T)
-            speedrange.insert(0, 0)
+                speedrange = [0, n1]
+                interv = []
+
+            logger.info("Speedrange T=%g %s", T, speedrange)
             n3 = speedrange[-1]
             nstab = [int(nsamples*(x1-x2)/n3)
                      for x1, x2 in zip(speedrange[1:],
                                        speedrange)]
+            logger.info("sample intervals %s", nstab)
             for nx in np.linspace(0, n1, nstab[0]):
                 r['id'].append(id)
                 r['iq'].append(iq)
                 r['n'].append(nx)
                 r['T'].append(T)
 
-            n1 = speedrange[1]
-            try:
-                n2 = speedrange[2]
-            except IndexError:
-                n2 = n1
-            if n1 < n2:  # find id, iq, torque in fieldweakening range
-                dn = r['n'][-1] - r['n'][-2]
-                for nn in np.linspace(r['n'][-1]+dn, n2, nstab[1]):
-                    w1 = 2*np.pi*nn*self.p
-                    logger.debug("fieldweakening: n %g T %g i1max %g w1 %g u1 %g",
-                                 nn*60, T, i1max, w1, u1max)
-                    iq, id = self.iqd_imax_umax(i1max, w1, u1max,
-                                                maxtorque=T > 0)
-                    tq = self.torque_iqd(iq, id)
-                    if (T > 0 and tq > 0) or (T < 0 and tq < 0):
-                        r['id'].append(id)
-                        r['iq'].append(iq)
-                        r['n'].append(nn)
-                        r['T'].append(tq)
-                    else:
-                        logger.warning("fieldweakening: n %g T %g tq %g i1max %g w1 %g u1 %g",
-                                       nn*60, T, tq, i1max, w1, u1max)
-
-            if n2 < n3:
-                for nn in np.linspace(r['n'][-1]+dn/2, n3, nstab[2]):
-                    w1 = 2*np.pi*nn*self.p
-                    try:
-                        iq, id, tq = self.mtpv(
-                            w1, u1max, i1max, maxtorque=T > 0)
-                        if not self._inrange((iq, id)):
-                            break
-                    except ValueError:
-                        logger.warn("ValueError at speed %f", 60*nx)
-                        break
-                    r['id'].append(id)
-                    r['iq'].append(iq)
-                    r['n'].append(nn)
-                    r['T'].append(tq)
-
+            for ns, nu, iv in zip(nstab[1:], speedrange[2:], interv):
+                # find id, iq, torque in fieldweakening range
+                if ns == 0:
+                    ns = 1
+                dn = (nu - r['n'][-1])/ns
+                logger.info("RANGE %s %d: %f -- %f",
+                            iv, ns, r['n'][-1] + dn, nu)
+                try:
+                    for nn in np.linspace(r['n'][-1]+dn, nu, ns):
+                        w1 = 2*np.pi*nn*self.p
+                        logger.debug("fieldweakening: n %g T %g i1max %g w1 %g u1 %g",
+                                     nn*60, T, i1max, w1, u1max)
+                        if iv == 'MTPA':
+                            iq, id, tq = self.iqd_imax_umax(i1max, w1, u1max, T,
+                                                            with_mtpv=False)
+                        else:
+                            iq, id, tq = self.mtpv(w1, u1max,
+                                                   maxtorque=T > 0)
+                        if (T > 0 and tq > 0) or (T < 0 and tq < 0):
+                            r['id'].append(id)
+                            r['iq'].append(iq)
+                            r['n'].append(nn)
+                            r['T'].append(tq)
+                        else:
+                            logger.warning("fieldweakening: n %g T %g tq %g i1max %g w1 %g u1 %g",
+                                           nn*60, T, tq, i1max, w1, u1max)
+                except ValueError as e:
+                    nmax = r['n'][-1]
+                    logger.warning("%s: adjusted nmax %f", e, nmax)
         else:
             for t, nx in zip(T, n):
                 w1 = 2*np.pi*nx*self.p
@@ -619,19 +749,20 @@ class PmRelMachineLdq(PmRelMachine):
     def psi(self, iq, id):
         """return psid, psiq of currents iq, id"""
         beta, i1 = betai1(np.asarray(iq), np.asarray(id))
-        logger.debug('beta %f (%f, %f) i1 %f %f',
-                     beta, self.betarange[0], self.betarange[1],
-                     i1, self.i1range[1])
-        if (self.betarange[0] <= beta <= self.betarange[1] and
-                i1 <= 1.01*self.i1range[1]):
-            if self.psid:
-                return (self.psid(beta, i1), self.psiq(beta, i1))
+        #logger.debug('beta %f (%f, %f) i1 %f %f',
+        #             beta, self.betarange[0], self.betarange[1],
+        #             i1, self.i1range[1])
+        if self.check_extrapolation:
+            if (self.betarange[0] > beta or
+                self.betarange[1] < beta or
+                i1 > 1.01*self.i1range[1]):
+                return (np.nan, np.nan)
+        if self.psid:
+            return (self.psid(beta, i1), self.psiq(beta, i1))
 
-            psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
-            psiq = self.lq(beta, i1)*iq
-            return (psid, psiq)
-
-        return (np.nan, np.nan)
+        psid = self.ld(beta, i1)*id + np.sqrt(2)*self.psim(beta, i1)
+        psiq = self.lq(beta, i1)*iq
+        return (psid, psiq)
 
     def iqdmin(self, i1):
         """max iq, min id for given current"""

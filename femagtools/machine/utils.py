@@ -130,7 +130,7 @@ def skin_resistance(r0, w, temp, zeta, gam=0, nh=1, kth=KTH):
     w: (float) current frequency in rad
     temp: (float) conductor temperature in deg Celsius
     zeta: (float) skin effect coefficient (penetration depth)
-    gam: (float) constant coefficient (0..1)
+    gam: (float) ratio of length of end winding and length of slot (0..1)
     nh: (int) number of vertical conductors in slot
     kth: (float) temperature coefficient (Default = 0.0039, Cu)"""
     xi = xiskin(w, temp, zeta)
@@ -378,8 +378,12 @@ def dqparident(workdir, engine, temp, machine,
 
     lfe = machine['lfe']
     g = machine['windings'].get('num_par_wdgs', 1)
-    if 'dia_wire' in machine['windings']:
+    if 'wire_gauge' in machine['windings']:
+        aw = machine['windings']['wire_gauge']
+    elif 'dia_wire' in machine['windings']:
         aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
+    elif ('wire_width' in machine['windings']) and ('wire_height' in machine['windings']):
+        aw = machine['windings']['wire_width']*machine['windings']['wire_height']
     else:  # wire diameter from slot area
         aw = 0.75 * \
             machine['windings'].get('cufilfact', 0.45)*np.pi*da1*hs/Q1/2/N
@@ -399,6 +403,9 @@ def dqparident(workdir, engine, temp, machine,
         magnetizingCurves=magnetizingCurves,
         magnets=magnetMat)
 
+    leakfile = pathlib.Path(workdir) / 'end_wind_leak.dat'
+    leakfile.unlink(missing_ok=True)
+
     simulation = dict(
         calculationMode='ld_lq_fast',
         i1_max=kwargs.get('i1_max', i1_max),
@@ -416,11 +423,10 @@ def dqparident(workdir, engine, temp, machine,
     # TODO: cleanup()  # remove previously created files in workdir
     # start calculation
     results = parvar(parvardef, machine, simulation, engine)
-    import json
-    with open('results.json', 'w') as fp:
-        json.dump(results, fp)
+    #import json
+    #with open('results.json', 'w') as fp:
+    #    json.dump(results, fp)
     ls1 = 0
-    leakfile = pathlib.Path(workdir) / 'end_wind_leak.dat'
     try:
         leakages = [float(x)
                     for x in leakfile.read_text().split()]

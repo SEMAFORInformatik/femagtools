@@ -243,22 +243,6 @@ class PmRelMachine(object):
                           ))
         return res.x[0], res.x[1], self.torque_iqd(*res.x)
 
-    def iqd_torque_umax0(self, torque, w1, u1max):
-        def func(iqd):
-            return (
-                u1max*np.sqrt(2) - np.linalg.norm(self.uqd(w1, *iqd)),
-                torque - self.torque_iqd(*iqd))
-        res, _, ier, mesg = so.fsolve(func, self.iqd_torque(torque),
-                                      full_output=True)
-        if ier in (1, 5):
-            iq, id = res
-            tq = self.torque_iqd(iq, id)
-            logger.info("iqd_torque_umax w1=%f torque=%f %f iq=%f id=%f u1 %f %f",
-                        w1, torque, tq, iq, id, u1max, np.linalg.norm(
-                            self.uqd(w1, iq, id))/np.sqrt(2))
-            return iq, id, tq
-        raise ValueError(f"w1={w1} ier={ier} {mesg}")
-
     def iqd_imax_umax(self, i1max, w1, u1max, torque, with_mtpv=True):
         """return d-q current and torque at stator frequency and max voltage
         and max current (for motor operation if maxtorque else generator operation)"""

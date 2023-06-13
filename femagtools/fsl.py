@@ -336,7 +336,29 @@ class Builder:
         if (model.get('move_action') == 0 and (
                 model.connect_full or
                 model.stator['num_slots'] > model.stator['num_slots_gen'])):
-            return ['pre_models("connect_models")\n']
+            fslcmds = ['pre_models("connect_models")\n']
+            if 'thcond' in model.stator:
+                fslcmds += [
+                    '-- thermal properties in airgap',
+                    'ag_cond = 0.063',
+                    'thcap = 1007',
+                    'beta = math.pi*m.npols_gen/m.num_poles + m.zeroangl/180*math.pi',
+                    'xai, yai = pr2c((da1+da2)/4, beta)',
+                    'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
+                    'xai, yai = pr2c((da1+da2)/4-ag/4, beta)',
+                    'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
+                    'xai, yai = pr2c((da1+da2)/4+ag/4, beta)',
+                    'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
+                    '',
+                    'state_of_problem("therm_static") -- thermic boundary conditions',
+                    'x1,y1 = pd2c(dy2/2,m.zeroangl)',
+                    'x2,y2 = pd2c(dy1/2,m.zeroangl)',
+                    'beta = 360*m.npols_gen/m.num_poles',
+                    'x3,y3 = pd2c(dy1/2,beta+m.zeroangl)',
+                    'x4,y4 = pd2c(dy2/2,beta+m.zeroangl)',
+                    'def_bcond_tp(x1,y1,x2,y2,x3,y3,x4,y4, 4)',
+                    'state_of_problem("mag_static")']
+            return fslcmds
         return []
 
     def create_open(self, model):
@@ -379,13 +401,24 @@ class Builder:
                     'conductor material {} not found'.format(
                         windings['material']))
             windings['cuconduct'] = cond['elconduct']
+            for k in ('thcond', 'thcap'):
+                if k in cond:
+                    windings[k] = cond[k]
+
         return self.__render(windings, 'cu_losses')
 
     def create_fe_losses(self, model):
-        if any(model.get(k, 0) for k in ('ffactor', 'cw', 'ch', 'hyscoef',
-                                         'edycof', 'indcof', 'fillfact',
-                                         'basfreq', 'basind')):
-            return self.__render(model, 'FE-losses')
+        for part in ('stator', 'rotor', 'commutator', 'magnet'):
+            if model.get(part, 0):
+                submod = model.get(part)
+                if any(submod.get(k, 0) for k in (
+                        'ffactor', 'cw', 'ch', 'hyscoef',
+                        'edycof', 'indcof', 'fillfact',
+                        'fillfac','basfreq', 'basind',
+                        'ffactor')):
+                    if submod.get('fillfac', 0):
+                        submod['fillfact'] = submod['fillfac']
+                    return self.__render(submod, 'FE-losses')
         return []
 
     def create_gen_winding(self, model):
@@ -394,6 +427,22 @@ class Builder:
                   'leak_evol_wind',
                   'leak_tooth_wind'}.intersection(model.windings))
         if k:
+            logger.info("LEAK %s ---------------", k)
+            if 'wiredia' not in model.windings[k[0]]:
+                if 'wire_gauge' in model.windings:
+                    import numpy as np
+                    d = 2*np.sqrt(model.windings['wire_gauge']/np.pi)
+                    model.windings[k[0]]['wiredia'] = d
+                elif 'dia_wire' in model.windings:
+                    model.windings[k[0]]['wiredia'] = model.windings['dia_wire']
+                elif 'wire_width' in model.windings:
+                    import numpy as np
+                    w = model.windings['wire_width']
+                    h = model.windings['wire_height']
+                    d = 2*np.sqrt(h*w/np.pi)
+                    model.windings[k[0]]['wiredia'] = d
+                elif 'wire_diam' in model.windings:
+                    model.windings[k[0]]['wiredia'] = model.windings['wire_diam']
             return (genwdg +
                     self.__render(model.windings[k[0]], k[0]) +
                     ['post_models("end_wind_leak","leak")',
@@ -489,6 +538,10 @@ class Builder:
                         'remanenc', 1.2)
                     model['magnet']['relperm'] = magnetMat.get('relperm', 1.05)
                     model['magnet']['rlen'] = magnetMat.get('rlen', 1.0)
+                    for k in ('thcond', 'thcap'):
+                        if k in magnetMat:
+                            model['magnet'][k] = magnetMat[k]
+
                 rotor = (self.create_magnet(model) +
                          self.create_magnet_model(model))
                 if magnetMat:
@@ -630,7 +683,10 @@ class Builder:
 
         if 'poc' in sim:
             poc = sim['poc']
-            poc.pole_pitch = 2*360/num_poles
+            try:
+                poc.pole_pitch = 2*360/num_poles
+            except UnboundLocalError:
+                pass
             sim['pocfilename'] = poc.filename()
         elif 'pocfilename' not in sim:
             try:

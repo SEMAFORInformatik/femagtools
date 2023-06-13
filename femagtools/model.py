@@ -180,11 +180,6 @@ class MachineModel(Model):
             self.windings['cufilfact'] = self.windings['fillfac']
         except (KeyError, AttributeError):
             pass
-        try:
-            if 'leak_dist_wind' in self.windings:
-                self.windings['leak_dist_wind']['wiredia'] = self.windings['dia_wire']
-        except:
-            pass
 
     def set_num_slots_gen(self):
         if 'num_slots_gen' not in self.stator:

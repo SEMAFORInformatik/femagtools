@@ -2,6 +2,9 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.3
+	- TH module for static and dynamic thermal simulations included
+
 ## Release 1.2.2
 	- femag: temperature dependency of magnet material improved (muer)
     - windings: check unbalanced windings

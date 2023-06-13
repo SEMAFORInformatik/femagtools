@@ -1,23 +1,23 @@
 % if model.windings['wdgtype'] == 'CMM':
 --  GEN_CMM_WDG
 
-m.s_or_w_windg    = ${model.windings.get('s_or_w_windg', 1)} --   Lap/wave/frog-leg winding = 1/2/3       
-m.numpl_sw        = ${model.windings.get('numpl_sw', 1)} --   Number of plex of lap winding: m_l      
-m.numpl_ww        = ${model.windings.get('numpl_ww', 1)} --   Number of plex of wave winding: m_w     
-m.foreward        = ${model.windings.get('foreward', 1)} --   Progressive = 1 / retrogressive = 2     
-m.num_wires       = ${model.windings.get('num_wires', 1)} --   Number of wires per slot side w_sp      
-m.current         =       0     --   Armat.-Wdg-Current[A] or flux[Vs/mm]    
-m.wind_type       =       1     --   Wdg-coil:1=w&cur;2=w&flux;3=bar&cur     
-m.num_layers      = ${model.windings.get('num_layers', 1)} --   Number of coil sides per slot layer:u   
-m.pitch_fact      = ${model.windings.get('pitch_fact', 1)} --   Short pitch factor : beta_v             
-m.dc_ac           = ${model.windings.get('dc_ac', 0)}     --   Current: DC: 0; AC: 1                   
- 
+m.s_or_w_windg    = ${model.windings.get('s_or_w_windg', 1)} --   Lap/wave/frog-leg winding = 1/2/3
+m.numpl_sw        = ${model.windings.get('numpl_sw', 1)} --   Number of plex of lap winding: m_l
+m.numpl_ww        = ${model.windings.get('numpl_ww', 1)} --   Number of plex of wave winding: m_w
+m.foreward        = ${model.windings.get('foreward', 1)} --   Progressive = 1 / retrogressive = 2
+m.num_wires       = ${model.windings.get('num_wires', 1)} --   Number of wires per slot side w_sp
+m.current         =       0     --   Armat.-Wdg-Current[A] or flux[Vs/mm]
+m.wind_type       =       1     --   Wdg-coil:1=w&cur;2=w&flux;3=bar&cur
+m.num_layers      = ${model.windings.get('num_layers', 1)} --   Number of coil sides per slot layer:u
+m.pitch_fact      = ${model.windings.get('pitch_fact', 1)} --   Short pitch factor : beta_v
+m.dc_ac           = ${model.windings.get('dc_ac', 0)}     --   Current: DC: 0; AC: 1
+
  pre_models("GEN_CMM_WDG")
 -- gen cmm
 pre_models("GEN_CMM"); -- autm. generate cmm File (requires femag rel >=9.2)"
 % elif 'wdgfile' in model.windings:
 def_new_wdg('${model.windings.get("wdgfile")}')
-pre_models("gen_pocfile") 
+pre_models("gen_pocfile")
 % else:
 --  Gen_winding
 if m.xcoil_1 ~= nil then
@@ -33,7 +33,7 @@ m.num_poles       =  ${model.get(['windings','num_poles'])}
 % endif
 % if model.get('move_action', 0) == 0:
 m.current         =   0.0
-m.mat_type        =   1.0 -- rotating 
+m.mat_type        =   1.0 -- rotating
 m.wind_type       =   1.0 -- winding & current
 m.win_asym        =   1.0 -- sym
 
@@ -45,7 +45,7 @@ def_new_wdg(m.xcoil_1, m.ycoil_1, "green", "1", m.num_wires, 0.0, "wi")
 add_to_wdg(m.xcoil_2, m.ycoil_2, "wsamekey", "wo", "wser")
 % else:
 pre_models("Gen_winding")
-pre_models("gen_pocfile") 
+pre_models("gen_pocfile")
 % endif
 % else:
 color={"green", "yellow", "magenta", "lightgrey", "darkred", "skyblue", "violet"}
@@ -56,7 +56,7 @@ bz = m.width_bz
 ys = m.slot_height/2
 
 dirl = 1
-for i=1, m.num_phases do	
+for i=1, m.num_phases do
   wdg = "w"..i
   for g=1, m.num_sl_gen/m.num_phases/2 do
     xs = 2*bz*((i-1) + (g-1)*m.num_phases)
@@ -81,7 +81,7 @@ for i=1, m.num_phases do
 end
 
 ----------------------------------------------------------------------
--- create poc-File 
+-- create poc-File
 ----------------------------------------------------------------------
 base_angle = 0.0
 period = 2*m.tot_num_slot*m.width_bz/m.num_poles
@@ -113,3 +113,30 @@ io.close(f);
 m.num_poles       =  ${model.poles}
 % endif
 % endif
+
+% if 'thcap' in model.windings:
+-- Thermal Material properties
+rw = da1/2 +(m.slot_height-m.slot_h1)/2
+dw = 0
+dr = 0
+if m.middle_line == 1 then
+  dw = 1/60
+elseif m.middle_line == 2 then
+  dr = 1
+end
+lamCu = 400
+capCu = 385
+da = 1.0785
+dCu = 1.0
+lam = lamCu*(dCu/(da-dCu)+(da-dCu)/da)
+cap = capCu*da^2/(dCu^2*math.pi/4)
+for i=1,m.num_sl_gen do
+  a = (2*i-1)*math.pi/m.tot_num_sl + m.zeroangl/180*math.pi
+  xwl,ywl = pr2c(rw+dr,a+dw)
+  def_mat_therm(xwl,ywl,'yellow',8920,lam,cap,1)
+  if m.middle_line > 0 then
+    xwr,ywr = pr2c(rw-dr,a-dw)
+    def_mat_therm(xwr,ywr,'yellow',8920,lam,cap,1)
+  end
+end
+%endif

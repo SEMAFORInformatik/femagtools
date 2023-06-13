@@ -94,7 +94,7 @@ class FslBuilderTest(unittest.TestCase):
             slot_width=0.003)
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_stator_model(model)
-        self.assertEqual(len(fsl), 40)
+        self.assertEqual(len(fsl), 41)
 
     def test_stator4(self):
         self.m['stator']['stator4'] = dict(
@@ -257,7 +257,7 @@ class FslBuilderTest(unittest.TestCase):
                 iron_shape=0))
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_magnet_model(model)
-        self.assertEqual(len(fsl), 27)
+        self.assertEqual(len(fsl), 28)
 
     def test_magnetFC2(self):
         self.m['magnet'] = dict(
@@ -390,7 +390,7 @@ class FslBuilderTest(unittest.TestCase):
         model = femagtools.MachineModel(self.m)
 
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 20)
+        self.assertEqual(len(fsl), 21)
 
         model.windings['leak_dist_wind'] = dict(
             perimrad=1,
@@ -398,7 +398,7 @@ class FslBuilderTest(unittest.TestCase):
             endheight=1,
             wiredia=1)
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 33)
+        self.assertEqual(len(fsl), 34)
 
         model.windings.pop('leak_dist_wind')
         model.windings['leak_evol_wind'] = dict(
@@ -410,7 +410,7 @@ class FslBuilderTest(unittest.TestCase):
             evolbend=1,
             wiredia=1)
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 38)
+        self.assertEqual(len(fsl), 39)
 
         model.windings.pop('leak_evol_wind')
         model.windings['leak_tooth_wind'] = dict(
@@ -418,7 +418,7 @@ class FslBuilderTest(unittest.TestCase):
             bendrad=1,
             wiredia=1)
         fsl = self.builder.create_gen_winding(model)
-        self.assertEqual(len(fsl), 34)
+        self.assertEqual(len(fsl), 35)
 
     def test_create_model_with_magnet_material(self):
         magnetmat = [dict(
@@ -486,7 +486,7 @@ class FslBuilderTest(unittest.TestCase):
         magnets = femagtools.magnet.Magnet(magnetmat)
         condMat = femagtools.magnet.Magnet([dict(name='Cu', elconduct=56e6)])
         fsl = self.builder.create_model(model, magnets, condMat)
-        self.assertEqual(len(fsl), 185)
+        self.assertEqual(len(fsl), 186)
         brem = [l.strip() for l in fsl
                 if l.split('=')[0].strip() == 'm.remanenc']
         self.assertEqual(brem[-1].split('=')[-1].strip(),

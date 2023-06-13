@@ -427,7 +427,7 @@ class Builder:
                   'leak_evol_wind',
                   'leak_tooth_wind'}.intersection(model.windings))
         if k:
-            logger.info("LEAK %s ---------------", k)
+            logger.info("Leakage type %s", k)
             if 'wiredia' not in model.windings[k[0]]:
                 if 'wire_gauge' in model.windings:
                     import numpy as np

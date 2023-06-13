@@ -1357,7 +1357,7 @@ class Geometry(object):
 
         for n_angle, n_c, n_info_next in nbrs[1:]:
             n_info_next['angle'] = n_angle
-            if np.isclose(f_angle, n_angle):
+            if np.isclose(f_angle, n_angle, 0.01, 0.01):
                 logger.debug("   SAME DIRECTION")
                 # ACHTUNG
                 if self.is_lefthand_edge(alpha, f_info_next, n_info_next):

@@ -288,7 +288,7 @@ def is_same_angle(angle1, angle2, atol=0.001):
             np.isclose(np.sin(angle1), np.sin(angle2), atol=atol))
 
 
-def part_of_circle(startangle, endangle, dec_place=3):
+def part_of_circle(startangle, endangle, dec_place=2):
     """ returns the number of segments included in the circle
       if an integer number, 0 otherwise
     """

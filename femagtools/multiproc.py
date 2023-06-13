@@ -39,6 +39,7 @@ class ProtFile:
         self.n = 0
         self.num_loops = 0
         self.dirname = dirname
+        self.name = 'samples'
 
     def percent(self):
         if self.looplen > 0:
@@ -76,6 +77,8 @@ class ProtFile:
                 self.n += 1
             elif line.startswith('Number movesteps Fe-Losses'):
                 return ''
+            elif line.startswith('begin'):
+                self.name = line.split()[1].strip()
 
         return f'{self.percent():3.1f}%'  # {self.n}/{self.looplen}'
 
@@ -99,7 +102,10 @@ class ProgressLogger(threading.Thread):
                        for i, l in enumerate(logmsg)
                        if l]
             if summary:
-                logger.info('Samples %s', ', '.join(summary))
+                labels = set([p.name for p in protfiles])
+                logger.info('%s: %s',
+                            ', '.join(labels),
+                            ', '.join(summary))
             else:
                 logger.info('collecting FE losses ...')
                 return

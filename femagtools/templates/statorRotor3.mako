@@ -28,7 +28,7 @@ m.slot_r2     = ${model['slot_r2']*1e3}
 m.wedge_width1= ${model['wedge_width1']*1e3}
 m.wedge_width2= ${model['wedge_width2']*1e3}
 m.middle_line = ${model.get('middle_line',0)}
-m.tooth_width = ${model['tooth_width']*1e3}
+m.tooth_width = ${model.get('tooth_width',0)*1e3}
 m.slot_top_sh = ${model['slot_top_sh']}
 
 m.zeroangl    = ${model.get('zeroangle',0)}
@@ -142,4 +142,29 @@ if mcvkey_teeth ~= nil then
   x0, y0 = pr2c(r, 2*math.pi/m.tot_num_slot + m.zeroangl/180*math.pi)
    def_mat_fm_nlin(x0, y0, "blue", mcvkey_teeth, m.rlength)
 end
+%endif
+
+%if model.get('thcond', 0) and model.get('thcap', 0):
+
+-- Thermal properties: iron in yoke and tooth
+xst,yst = pd2c(m.inside_diam/2+1,m.zeroangl+0.1)    -- stator tooth
+xsj,ysj = pd2c(m.yoke_diam/2-1,m.zeroangl+0.1)  -- stator yoke
+thcond = 24
+thcap = 480
+def_mat_therm(xst,yst,'darkblue',7700,thcond,thcap,1)
+def_mat_therm(xsj,ysj,'darkblue',7700,thcond,thcap,1)
+-- insulation
+if m.slot_indul > 0 then
+  thickness = 0.25 -- mm
+  thcond = 0.31
+  thcap = 1100
+  xip, yip = pr2c(m.slot_height + m.inside_diam/2-m.slot_indul/2,
+                  math.pi/m.tot_num_slot+m.zeroangl/180*math.pi)
+  def_insulation(xip,yip,'darkred',thickness,1340,thcond,thcap)
+end
+-- air in slot opening
+xnl, ynl = pr2c(m.inside_diam/2+m.slot_h1/2, math.pi/m.tot_num_slot+m.zeroangl/180*math.pi)
+sl_cond = 0.15
+sl_cap = 1007
+def_mat_therm(xnl,ynl,'cyan',1.19,sl_cond,sl_cap,1)
 %endif

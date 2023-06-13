@@ -32,7 +32,7 @@ class McvWriterTest(unittest.TestCase):
         # TEST
         reader2 = femagtools.mcv.Reader()
         reader2.readMcv(writeMcvFile)
-        
+
         for attr in ['version_mc_curve', 'mc1_curves', 'mc1_title']:
             self.assertAlmostEqual(getattr(reader, attr),
                                    getattr(reader2, attr))
@@ -75,7 +75,7 @@ class McvWriterTest(unittest.TestCase):
         # TEST
         reader2 = femagtools.mcv.Reader()
         reader2.readMcv(writeMcvFile)
-        
+
         for attr in ['version_mc_curve', 'mc1_curves', 'mc1_title']:
             self.assertAlmostEqual(getattr(reader, attr),
                                    getattr(reader2, attr))
@@ -87,9 +87,10 @@ class McvWriterTest(unittest.TestCase):
         for attr in ['hi', 'bi']:
             self.assertAlmostEqual(reader.curve[0][attr],
                                    reader2.curve[0][attr], 3)
-        for attr in ['f', 'B']:
-            np.testing.assert_almost_equal(reader.losses[attr],
-                                           reader2.losses[attr], 5)
+        np.testing.assert_almost_equal(reader.losses['f'],
+                                       reader2.losses['f'], 5)
+        np.testing.assert_almost_equal(reader.losses['B'],
+                                       reader2.losses['B'], 5)
 
 if __name__ == '__main__':
     unittest.main()

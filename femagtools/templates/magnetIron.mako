@@ -39,3 +39,32 @@ for i = 0, m.npols_gen-1 do
     end
 end
 %endif
+%if model.get('thcond', 0) and model.get('thcap', 0):
+beta = math.pi/m.num_poles
+xrb,yrb = pr2c(m.yoke_rad+0.1, beta)  -- rotor lamination
+thcond = ${model['thcond']}
+thcap = ${model['thcap']}
+def_mat_therm(xrb,yrb,'blue',7700,thcond,thcap,1)
+def_mat_therm(m.yoke_rad/2,0.1,'blue',7700,thcond,thcap,1) -- Shaft
+
+rm = m.magn_rad*math.cos(beta)
+thcond = 8
+thcap = 440
+for i = 1,m.npols_gen do -- Magnete
+  alfa = (2*i-1) * beta
+  xmx,ymx = pr2c(rm,alfa)
+  def_mat_therm(xmx,ymx,darkgreen-i%2,7500,thcond,thcap,1)
+end
+
+if m.air_triangle > 0 then
+  rs = math.sqrt(rm^2 + m.magn_width^2/4)
+  gam = math.atan(m.magn_width/2, rm)
+  for i = 1,m.npols_gen do -- air triangle
+    alfa = (2*i-1) * beta
+    xsx,ysx = pr2c(rs,alfa + gam + 1e-2)
+    def_mat_therm(xsx,ysx,skyblue,1.12,0.026,1007,1)
+    xsx,ysx = pr2c(rs,alfa - gam - 1e-2)
+    def_mat_therm(xsx,ysx,skyblue,1.12,0.026,1007,1)
+  end
+end
+%endif

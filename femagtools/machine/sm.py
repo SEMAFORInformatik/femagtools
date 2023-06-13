@@ -17,7 +17,7 @@ import femagtools.bch
 EPS = 1e-13
 
 eecdefaults = dict(
-    zeta1=0.2,
+    zeta1=0.3,
     zeta2=0,
     gam=0.7,
     kh=2,

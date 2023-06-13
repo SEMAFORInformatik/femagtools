@@ -1646,6 +1646,7 @@ class Reader:
                                            'date',
                                            'areas',
                                            'inertia',
+                                           'current_angles',
                                            'torque',
                                            'torque_fft',
                                            'psidq',

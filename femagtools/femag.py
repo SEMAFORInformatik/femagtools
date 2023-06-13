@@ -8,6 +8,7 @@
 
 """
 import subprocess
+import pathlib
 import os
 import glob
 import logging
@@ -459,6 +460,12 @@ class Femag(BaseFemag):
                         simulation['current'],
                         simulation['angl_i_up'])))
                 # TODO: add r1, m
+            if simulation['calculationMode'] == 'therm-dynamic':
+                load = simulation['load']
+                (pathlib.Path(self.workdir)/'load.csv').write_text(
+                    '\n'.join([','.join([f"{load[k][i]}"
+                                         for k in ('t', 'n', 'T', 'i1', 'beta')])
+                               for i in range(0, len(load['t']))]))
         else:
             stateofproblem = 'mag_static'
 
@@ -475,6 +482,12 @@ class Femag(BaseFemag):
 
             if simulation['calculationMode'] == 'modal_analysis':
                 return self.read_modal(self.modelname)
+
+            if simulation['calculationMode'] == 'therm-dynamic':
+                temp = [[float(n) for n in l.split()]
+                        for l in (pathlib.Path(self.workdir) / 'temperature.dat').read_text().split('\n') if l]
+                ttemp = list(zip(*temp))
+                return {'t': ttemp[0], 'temperature': ttemp[1]}
 
             bch = self.read_bch(self.modelname)
             if simulation['calculationMode'] == 'pm_sym_fast':
@@ -510,6 +523,7 @@ class Femag(BaseFemag):
 
                     bch.torque += bchsc.torque
                     bch.demag += bchsc.demag
+
             if 'airgap_induc' in simulation:
                 try:
                     pmod = bch.machine['p_sim']

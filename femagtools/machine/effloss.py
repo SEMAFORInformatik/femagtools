@@ -38,9 +38,13 @@ def _generate_mesh(n, T, nb, Tb, npoints):
         t0 = tbip(nx)
         t1 = tip(nx)
         npnts = max(round((t1-t0) / (tmax-tmin) * tnum), 2)
-        for t in np.concatenate(
-                (np.linspace(t0, 0.015*tmin, npnts),
-                 np.linspace(0.015*tmax, t1, npnts))):
+        if nb:
+            a = np.concatenate(
+                        (np.linspace(t0, 0.015*tmin, npnts),
+                         np.linspace(0.015*tmax, t1, npnts)))
+        else:
+            a = np.linspace(0.015*tmax, t1, npnts)
+        for t in a:
             nxtx.append((nx, t))
     return np.array(nxtx).T
 
@@ -71,7 +75,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
         rb = {'T': [], 'n': []}
     else:  # calculate speed,torque characteristics
         nmax = n
-        nsamples = 10
+        nsamples = npoints[0]
         rb = {}
         r = m.characteristics(T, nmax, u1, nsamples=nsamples)  # driving mode
         if isinstance(m, (PmRelMachineLdq, SynchronousMachineLdq)):
@@ -95,8 +99,9 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
         def __call__(self, iqd):
             self.n += 1
             if self.n % self.num_iv == 0:
-                logger.info("Samples %d%%",
+                logger.info("Losses/Eff Map: %d%%",
                             round(100*self.n/self.nsamples))
+
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
         progress = ProgressLogger(ntmesh.shape[1])
         iqd = np.array([

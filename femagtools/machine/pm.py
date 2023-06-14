@@ -42,7 +42,7 @@ class PmRelMachine(object):
         self.io = (1, -1)
         self.fo = 50.0
         self.tcu1 = 20
-        self.zeta1 = 0.3
+        self.zeta1 = 0.2
         self.gam = 0.7
         self.kh = 2
         self.kfric_b = 1

@@ -118,9 +118,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                 for nt in ntmesh.T]).T
         else:
             iqd = np.array([
-                (np.sqrt(2)*m.i1_torque(
-                    tq, 0, log=progress)[0], 0)
-                           for tq in ntmesh[1, :]]).T
+                (np.sqrt(2)*m.i1_torque(tq, 0)[0], 0)
+                for tq in ntmesh[1, :]]).T
         beta, i1 = betai1(iqd[0], iqd[1])
         uqd = [m.uqd(2*np.pi*n*m.p, *i)
                for n, i in zip(ntmesh[0], iqd.T)]

@@ -162,15 +162,13 @@ class PmRelMachine(object):
                          np.array((uq, ud)) - self.uqd(w1, *iqd),
                          (0, self.io[1]))
 
-    def i1_torque(self, torque, beta, log=0):
+    def i1_torque(self, torque, beta):
         "return i1 current with given torque and beta"
         i1, info, ier, mesg = so.fsolve(
             lambda i1: self.torque_iqd(*iqd(beta, i1))-torque,
             self.io[1],
             full_output=True)
         if ier == 1:
-            if log:
-                log((*iqd(0, i1), torque))
             return i1
         raise ValueError("no solution found for torque {}, beta {} io {}".format(
             torque, beta, self.io))

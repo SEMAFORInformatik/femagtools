@@ -162,16 +162,18 @@ class PmRelMachine(object):
                          np.array((uq, ud)) - self.uqd(w1, *iqd),
                          (0, self.io[1]))
 
-    def i1_torque(self, torque, beta):
+    def i1_torque(self, torque, beta, log=0):
         "return i1 current with given torque and beta"
         i1, info, ier, mesg = so.fsolve(
             lambda i1: self.torque_iqd(*iqd(beta, i1))-torque,
-            self.io[0],
+            self.io[1],
             full_output=True)
         if ier == 1:
+            if log:
+                log((*iqd(0, i1), torque))
             return i1
-        raise ValueError("no solution found for torque {}, beta {}".format(
-            torque, beta))
+        raise ValueError("no solution found for torque {}, beta {} io {}".format(
+            torque, beta, self.io))
 
     def i1_voltage(self, w1, u1, beta):
         "return i1 current with given w1, u1 and beta"
@@ -436,7 +438,8 @@ class PmRelMachine(object):
         return [w/2/np.pi/self.p for w in (w1type, w1max)]  # ['MTPA']
 
 
-    def characteristics(self, T, n, u1max, nsamples=60, with_mtpv=True):
+    def characteristics(self, T, n, u1max, nsamples=60,
+                        with_mtpv=True, with_mtpa=True):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -447,13 +450,18 @@ class PmRelMachine(object):
         n -- the maximum speed or the list of speed values in 1/s
         u1max -- the maximum voltage in V rms
         nsamples -- (optional) number of speed samples
-        with_mtpv -- (optional) use mtpv if true (default)
+        with_mtpv -- (optional) use mtpv if True (default)
+        with_mtpa -- (optional) use mtpa if True (default), disables mtpv if False
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
         if np.isscalar(T):
-            iq, id = self.iqd_torque(T)
-            i1max = betai1(iq, id)[1]
+            if with_mtpa:
+                iq, id = self.iqd_torque(T)
+                i1max = betai1(iq, id)[1]
+            else:
+                i1max = self.i1_torque(T, 0)
+                iq, id = iqd(0, i1max)
             if T < 0:
                 i1max = -i1max
             w1 = self.w1_umax(u1max, iq, id)
@@ -464,7 +472,7 @@ class PmRelMachine(object):
                         60*n1, 60*n, 60*nmax)
 
             n1 = min(n1, nmax)
-            if n1 < nmax:
+            if with_mtpa and n1 < nmax:
                 speedrange = [0] + self.speedranges(i1max, u1max,
                                                      nmax, with_mtpv)
                 if len(speedrange) > 3:
@@ -473,6 +481,7 @@ class PmRelMachine(object):
                     interv = 'MTPA',
             else:
                 speedrange = [0, n1]
+                nmax = n1
                 interv = []
 
             logger.info("Speedrange T=%g %s", T, speedrange)

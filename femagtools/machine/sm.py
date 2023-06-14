@@ -146,7 +146,7 @@ def parident(workdir, engine, machine,
             r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
 
         if simulation['calculationMode'] == 'ld_lq_fast':
-            return dict(m=3, p=b['machine']['p'],
+                dqpars = dict(m=3, p=b['machine']['p'],
                         r1=r1,
                         r2=machine['rotor'].get('resistance', 1),
                         rotor_mass=rotor_mass, kfric_b=1,
@@ -162,7 +162,8 @@ def parident(workdir, engine, machine,
                                 losses={k: b['ldq']['losses'][k]
                                         for k in losskeys})
                              for b in results['f']])
-        return dict(m=3, p=b['machine']['p'],
+        else:
+                dqpars = dict(m=3, p=b['machine']['p'],
                     r1=r1,
                     r2=machine['rotor'].get('resistance', 1),
                     rotor_mass=rotor_mass, kfric_b=1,
@@ -176,6 +177,9 @@ def parident(workdir, engine, machine,
                             losses={k: b['psidq']['losses'][k]
                                     for k in losskeys})
                            for b in results['f']])
+        if 'current_angles' in results['f'][0]:
+                dqpars['current_angles'] = results['f'][0]['current_angles']
+        return dqpars
 
 def _linsampl(exc, excl, a):
     """auxiliary func for linear sampling of nonlinear sequence
@@ -381,7 +385,7 @@ class SynchronousMachine(object):
             lambda w1: np.linalg.norm(self.uqd(w1, iq, id, iex))-u*np.sqrt(2),
             w10)[0]
 
-    def characteristics(self, T, n, u1max, nsamples=50):
+    def characteristics(self, T, n, u1max, nsamples=50, **kwargs):
         """calculate torque speed characteristics.
         return dict with list values of
         n, T, u1, i1, beta, cosphi, pmech, n_type

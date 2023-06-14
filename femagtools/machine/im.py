@@ -397,7 +397,7 @@ class InductionMachine(Component):
 
         return r
 
-    def characteristics(self, T, n, u1max, nsamples=50, kpo=0.9):
+    def characteristics(self, T, n, u1max, nsamples=50, kpo=0.9, **kwargs):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -657,7 +657,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     # prepare calculation
     job = engine.create_job(workdir)
-    task = job.add_task(_eval_noloadrot(), extra_result_files)
+    pmod = model.poles * model.stator['num_slots_gen'] / model.stator['num_slots']
+    task = job.add_task(_eval_noloadrot(pmod), extra_result_files)
     logger.debug("Task %s noload workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
     # create model
@@ -862,8 +863,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
 class _eval_noloaddc():
     """ Result Functor for noloadflux dc calc"""
 
-    def __init__(self):
-        pass
+    def __init__(self, pmod):
+        self.pmod = pmod
 
     def __call__(self, task):
         basedir = pathlib.Path(task.directory)
@@ -877,7 +878,7 @@ class _eval_noloaddc():
 
         bag = np.loadtxt(basedir / 'noloadbag.dat').T
         Bamp = [b['Bamp'] for b in [
-            femagtools.airgap.fft(bag[0], b)
+            femagtools.airgap.fft(bag[0], b, self.pmod)
             for b in bag[1:]]]
         return {'i1_0': i0, 'psi1_0': psi0, 'Bamp': Bamp}
 
@@ -885,8 +886,8 @@ class _eval_noloaddc():
 class _eval_noloadrot():
     """ Result Functor for noloadflux rot calc"""
 
-    def __init__(self):
-        pass
+    def __init__(self, pmod):
+        self.pmod = pmod
 
     def __call__(self, task):
         basedir = pathlib.Path(task.directory)
@@ -906,7 +907,7 @@ class _eval_noloadrot():
             for k in range(ncurs)])
 
         # matrix (i x j x k) of curr, rotor pos, angle
-        Bamp = [[femagtools.airgap.fft(bags[:, 0], b)['Bamp']
+        Bamp = [[femagtools.airgap.fft(bags[:, 0], b, self.pmod)['Bamp']
                  for b in bags.T[1:]]
                 for bags in [np.loadtxt(p) for p in sorted(
                     basedir.glob(f"noloadbag-*.dat"),

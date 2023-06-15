@@ -898,6 +898,29 @@ def transientsc(bch, title=''):
         fig.subplots_adjust(top=0.92)
 
 
+def transientsc_demag(demag, magnet=0, title='', ax=0):
+    """creates a demag plot of a transient short circuit"""
+    if ax == 0:
+        ax = plt.gca()
+    pos = [d['displ'] for d in demag if 'displ' in d]
+    hmax = [-d['H_max'] for d in demag if 'H_max' in d]
+    havg = [-d['H_av'] for d in demag if 'H_av' in d]
+    hclim = [-d['lim_hc'] for d in demag if 'lim_hc' in d]*2
+
+    ax.set_title('Transient Short Circuit Demagnetization [kA/m]')
+    ax.plot(pos, hmax,
+            label='H Max {:4.2f} kA/m'.format(max(hmax)))
+    ax.plot(pos, havg,
+            label='H Avg {:4.2f} kA/m'.format(max(havg)))
+    ax.plot([pos[0], pos[-1]], hclim, color='C3', linestyle='dashed',
+            label='Hc {:4.2f} kA/m'.format(hclim[0]))
+    ax.set_xlabel('Rotor Position / °')
+    ax.grid(True)
+    if magnet:
+        ax.legend(title=f"Magnet Temperature {magnet['Tmag']}°C")
+    else:
+        ax.legend()
+
 def i1beta_torque(i1, beta, torque, title='', ax=0):
     """creates a surface plot of torque vs i1, beta"""
     if ax == 0:

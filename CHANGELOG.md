@@ -5,6 +5,8 @@
 ## Release 1.3.1
 	- with_mtpv, with_mtpa switches for effloss and pm characteristics added
         - added plot transientsc_demag
+	- added hxy read module
+
 ## Release 1.3
 	- TH module for static and dynamic thermal simulations included
 

@@ -268,7 +268,7 @@ class PmRelMachine(object):
                 self.uqd(w1, *iqd(b, abs(i1max))))/np.sqrt(2)
         if u1norm(b1) < u1max:
             # must reduce current (torque)
-            iq, id, tq = self.iqd_torque_umax_imin(torque, w1, u1max)
+            iq, id, tq = self.iqd_torque_umax(torque, w1, u1max)
             if not with_mtpv:
                 return iq, id, tq
             beta, i1 = betai1(iq, id)

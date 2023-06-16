@@ -2930,6 +2930,17 @@ class Geometry(object):
                         shaft.type = 6  # iron shaft (Zahn)
                         return
 
+    def mark_connecting_edges(self, windings):
+        logger.debug("begin of mark_connecting_edges")
+        for a in windings:
+            logger.debug("- id of winding: %s", a.identifier())
+            for w in windings:
+                if a.id != w.id:
+                    elist = [e for e in a.list_of_equal_edges(w)]
+                    logger.debug(" --> %s equal egdes", len(elist))
+                    for e in elist:
+                        e.init_attributes('lightblue', 'no_fsl')
+
     def search_subregions(self):
         if self.is_stator():
             return self.search_stator_subregions()
@@ -2982,6 +2993,8 @@ class Geometry(object):
                 windings = []
             elif len(windings) < windings_found:
                 logger.info("%d windings remaining", len(windings))
+            if len(windings) > 2:
+                self.mark_connecting_edges(windings)
 
         wdg_min_angle = 99999
         wdg_max_angle = 0

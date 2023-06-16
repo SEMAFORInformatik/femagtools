@@ -209,6 +209,37 @@ class PmRelMachine(object):
                         self.uqd(w1, *res.x))/np.sqrt(2))
         return res.x[0], res.x[1], self.torque_iqd(*res.x)
 
+    def iqd_power_umax(self, n, P, u1, kpfe, plfric, imax=0):
+        """return d-q current and torque at speed n, P const and max voltage"""
+        T = P / n / 2 / np.pi
+        w1 =  n * self.p * 2 * np.pi
+        logging.debug("field weakening mode {:.2f}kW @ {:.0f}rpm ({:.1f}Nm; "
+                      "u1={:.0f}V; plfric={:.2f}W".format(
+                          P/1000, n*60, T, u1, plfric))
+
+        con1 = {'type': 'eq',
+                'fun': lambda iqd: self.tmech_iqd(*iqd, n, kpfe, plfric) - T}
+        con2 = {'type': 'ineq',
+                'fun': lambda iqd: (u1 * np.sqrt(2))- la.norm(self.uqd(w1, *iqd))}
+        con3 = {'type': 'ineq',
+                'fun': lambda iqd: imax * np.sqrt(2) - la.norm(iqd)}
+
+        if imax > 0:
+            constraints = [con1, con2, con3]
+        else:
+            constraints = [con1, con2]
+        iqd = self.iqd_torque_imax_umax(T, n, u1)
+        res = so.minimize(lambda iqd: la.norm(iqd), (iqd[2], iqd[1]), method='SLSQP',
+                          options={'maxiter': 50}, tol=0.1, constraints=constraints)
+        if not res.success:
+            logging.warning(f"current or voltage limits exceeded at n={n*60}rpm. Calculation terminated!")
+        logging.debug(f"num iterations {res.nit}")
+        iq, id = res.x
+        tq = self.tmech_iqd(iq, id, n, kpfe, plfric)
+        if not np.isclose(T, tq, 0.5/100) and n > 0:
+            logging.warning("Field weakening: Torque calc {:.2f}Nm @ {:.0f}rpm; requested {:.2f}Nm!".format(tq, n*60, T))
+        return iq, id, tq
+
     def iqd_torque_imax_umax(self, torque, n, u1max, log=0):
         """return d-q current and torque at stator frequency w1,
         max voltage  and current"""
@@ -470,9 +501,9 @@ class PmRelMachine(object):
                         60*n1, 60*n, 60*nmax)
 
             n1 = min(n1, nmax)
-            if with_mtpa and n1 < nmax:
+            if n1 < nmax:
                 speedrange = [0] + self.speedranges(i1max, u1max,
-                                                     nmax, with_mtpv)
+                                                    nmax, with_mtpv)
                 if len(speedrange) > 3:
                     interv = 'MTPA', 'MTPV'
                 else:

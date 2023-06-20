@@ -109,17 +109,12 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
 
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
         progress = ProgressLogger(ntmesh.shape[1])
-        if with_mtpa:
-            iqd = np.array([
-                m.iqd_torque_umax(
-                    nt[1],
-                    2*np.pi*nt[0]*m.p,
-                    u1, log=progress)[:-1]
-                for nt in ntmesh.T]).T
-        else:
-            iqd = np.array([
-                (np.sqrt(2)*m.i1_torque(tq, 0)[0], 0)
-                for tq in ntmesh[1, :]]).T
+        iqd = np.array([
+            m.iqd_tmech_umax(
+                nt[1],
+                2*np.pi*nt[0]*m.p,
+                u1, log=progress)[:-1]
+            for nt in ntmesh.T]).T
         beta, i1 = betai1(iqd[0], iqd[1])
         uqd = [m.uqd(2*np.pi*n*m.p, *i)
                for n, i in zip(ntmesh[0], iqd.T)]
@@ -167,7 +162,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             tfric = 0
 
     plfric = 2*np.pi*ntmesh[0]*tfric
-    ntmesh[1] -= tfric
+    #ntmesh[1] -= tfric
     pmech = np.array(
         [2*np.pi*nt[0]*nt[1]
          for nt in ntmesh.T])

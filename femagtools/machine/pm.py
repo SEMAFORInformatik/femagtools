@@ -9,7 +9,7 @@
 import logging
 import numpy as np
 import numpy.linalg as la
-from .utils import iqd, betai1, skin_resistance, dqparident
+from .utils import iqd, betai1, skin_resistance, dqparident, KTH
 import scipy.optimize as so
 import scipy.interpolate as ip
 
@@ -42,12 +42,23 @@ class PmRelMachine(object):
         self.io = (1, -1)
         self.fo = 50.0
         self.tcu1 = 20
+        self.tmag = 20
         self.zeta1 = 0.2
         self.gam = 0.7
         self.kh = 2
         self.kfric_b = 1
+        self.rotor_mass = 0
+        self.kth1 = KTH
         # TODO: need this for speedranges and idq_imax_umax mtpv only
         self.check_extrapolation = True
+        self.skin_resistance = None  # here you can set a user defined function for calculating the skin-resistance
+                                     # according to the current frequency w. If None, the femagtools intern default
+                                     # implementation is used. User defined functions need to have the following
+                                     # arguments:
+                                     # - r0: (float) dc-resistance at 20°C
+                                     # - w: (float)  current frequency in rad (2*pi*f)
+                                     # - tcu: (float) conductor temperature in deg Celsius
+                                     # - kth: (float) temperature coefficient (Default = 0.0039, Cu)
         for k in kwargs.keys():
             setattr(self, k, kwargs[k])
 
@@ -63,10 +74,15 @@ class PmRelMachine(object):
             'rotor_hyst', 'rotor_eddy',
             'magnet')}
 
+
+
     def rstat(self, w):
         """stator resistance"""
-        return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
-                               self.gam, self.kh)
+        if self.skin_resistance is not None:
+            return self.skin_resistance(self.r1, w, self.tcu1, kth=self.kth1)
+        else:
+            return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
+                                   self.gam, self.kh)
 
     def torque_iqd(self, iq, id):
         "torque at q-d-current"
@@ -74,7 +90,7 @@ class PmRelMachine(object):
         tq = self.m*self.p/2*(psid*iq - psiq*id)
         return tq
 
-    def iqd_torque(self, torque):
+    def iqd_torque(self, torque, maxiter=100, tol=0.1):
         """return minimum d-q-current for torque"""
         if np.abs(torque) < 1e-2:
             return (0, 0)
@@ -83,13 +99,27 @@ class PmRelMachine(object):
         else:
             iqd0 = -self.i1range[1]/2, 0
         res = so.minimize(
-            lambda iqd: la.norm(iqd), self.io, method='SLSQP',
+            lambda iqd: la.norm(iqd), self.io, method='SLSQP', tol=tol, options={'maxiter': maxiter},
             constraints=({'type': 'eq',
                           'fun': lambda iqd:
                           self.torque_iqd(*iqd) - torque}))
         if not res.success:
             raise ValueError(f'Torque {torque} out of current range')
         return res.x
+
+    def iqd_tmech(self, torque, n, kpfe=1, pfw=0, maxiter=100, tol=0.1):
+        """return minimum d-q-current for shaft torque at given speed, considering iron loss correction factor
+          and friction windage losses"""
+        if np.abs(torque) < 1e-2:
+            return (0, 0)
+        res = so.minimize(lambda iqd: la.norm(iqd), self.io, method='SLSQP', tol=0.01, options={'maxiter': maxiter},
+                          constraints=({'type': 'eq',
+                                        'fun': lambda iqd:
+                                        self.tmech_iqd(*iqd, n, kpfe, pfw) - torque}))
+        if not res.success:
+            raise ValueError(f'Torque {torque} out of current range')
+        return res.x
+
 
     def tmech_iqd(self, iq, id, n, kpfe, pfw):
         """return shaft torque with given d-q current, iron loss correction factor
@@ -436,6 +466,126 @@ class PmRelMachine(object):
         return [w/2/np.pi/self.p for w in (w1type, w1max)]  # ['MTPA']
 
 
+    def iqd_tmech_imax_umax(self, torque, n, umax, kpfe=1, pfw=0, maxiter=100, tol=0.1):
+        """return iq, id, shft torque for constant torque or field weakening"""
+        iq, id = self.iqd_tmech(torque, n, kpfe, pfw, maxiter=maxiter, tol=tol)
+        w1 = 2 * np.pi * n * self.p
+        # Constant torque range
+        if np.linalg.norm(self.uqd(w1, iq, id)) <= umax * np.sqrt(2):
+            return (iq, id, torque)
+        # Field weaking range
+        imax = betai1(iq, id)[1]
+        iq, id = self.iqd_imax_umax(imax, w1, umax, torque)
+        return iq, id, self.tmech_iqd(iq, id, n, kpfe, pfw)
+
+    def operating_point(self, T, n, u1max, Tfric=None, kpfe=1, maxiter=100, tol=0.1):
+        """
+        calculate single operating point.
+
+        return dict with values for
+            f1 -- (float) stator frequency in Hz
+            u1 -- (float) stator phase voltage in V rms
+            i1 -- (float) stator phase current in A rms
+            beta -- (float) current angle in rad
+            id -- (float) D-current in A peak
+            iq -- (float) Q-current in A peak
+            ud -- (float) D-voltage in A peak
+            uq -- (float) Q-voltgae in A peak
+            p1 -- (float) electrical power in W
+            pmech -- (float) mechanical power in W
+            plcu1 -- (float) stator copper losses in W
+            plfe1 -- (float) stator iron losses in W
+            plfe2 -- (float) rotor iron losses in W
+            plmag -- (float) magnet losses in W
+            plfric -- (float) friction losses in W, according to Tfric
+            losses -- (float) total losses in W
+            cosphi -- (float) power factor for this op
+            eta -- (float) efficiency for this op
+            T -- (float) torque for this op in Nm, copy of argument T
+            Tfric -- (float) friction torque in Nm
+            n -- (float) speed for this op in 1/s, copy of argument n
+            tcu1/2 -- (float) temperature of statur/rotor in deg. C
+
+        Keyword arguments:
+            T -- (float) the output torque at the shaft in Nm
+            n -- (float) the speed of the machine in 1/s
+            u1max -- (float) the maximum phase voltage in V rms
+            Tfric -- (float, optional) the friction torque to consider in Nm.
+                     If Tfric is None, the friction torque is calculated according to the rotor-mass and the
+                     frition factor of the machine (kfric_b). Friction is written to the result dict!
+            kpfe -- (float) iron loss factor. Default = 1
+        """
+
+        r = {}  # result dit
+
+        if Tfric:
+            tfric = Tfric
+        else:
+            # formula from
+            # PERMANENT MAGNET MOTOR TECHNOLOGY: DESIGN AND APPLICATIONS
+            # Jacek Gieras
+            #
+            # plfric = kfric_b m_r n 1e-3 W
+            # -- kfric_b : 1..3 W/kg/rpm
+            # -- m_r: rotor mass in kg
+            # -- n: rotor speed in rpm
+            try:
+                kfric_b = self.kfric_b
+            except:
+                kfric_b = 1.1
+            tfric = kfric_b * self.rotor_mass * 30e-3 / np.pi
+            # TODO: make frictiontorque speed depended?
+
+        plfric = tfric * n * 2 * np.pi
+
+        iq, id, tq = self.iqd_tmech_imax_umax(T, n, u1max, kpfe, plfric, maxiter=maxiter, tol=tol)
+        f1 = n * self.p
+        w1 = f1 * 2 * np.pi
+        uq, ud = self.uqd(w1, iq, id)
+        u1 = la.norm((ud, uq)) / np.sqrt(2.0)
+        i1 = la.norm((id, iq)) / np.sqrt(2.0)
+        beta = np.arctan2(id, iq)
+        gamma = np.arctan2(ud, uq)
+        cosphi = np.cos(beta - gamma)
+        pmech = tq * n * 2 * np.pi
+        plfe1 = self.iqd_plfe1(iq, id, f1)
+        plfe2 = self.iqd_plfe2(iq, id, f1)
+        plmag = self.iqd_plmag(iq, id, f1)
+        plfe = plfe1 + plfe2 + plmag
+        plcu = self.betai1_plcu(i1, 2 * np.pi * f1)
+        pltotal = plfe + plcu
+        p1 = pmech + pltotal
+        if np.abs(pmech) < 1e-12:
+            eta = 0  # power to low for eta calculation
+        elif p1 > pmech:
+            eta = pmech/p1  # motor
+        else:
+            eta = p1/pmech  # generator
+        r['i1'] = float(i1)
+        r['u1'] = float(u1)
+        r['iq'] = float(iq)
+        r['id'] = float(id)
+        r['beta'] = float(beta/ np.pi * 180)
+        r['uq'] = float(uq)
+        r['ud'] = float(ud)
+        r['pmech'] = float(pmech)
+        r['p1'] = float(p1)
+        r['plfe1']= float(plfe1)
+        r['plfe2'] = float(plfe2)
+        r['plmag'] = float(plmag)
+        r['plfric'] = float(plfric)
+        r['losses'] = float(pltotal)
+        r['T'] = float(tq)
+        r['Tfric'] = float(tfric)
+        r['n'] = float(n)
+        r['f1'] = float(f1)
+        r['eta'] = eta
+        r['cosphi'] = cosphi
+        r['t_cu1'] = self.tcu1
+        r['t_mag'] = self.tmag
+
+        return r
+
     def characteristics(self, T, n, u1max, nsamples=60,
                         with_mtpv=True, with_mtpa=True):
         """calculate torque speed characteristics.
@@ -642,7 +792,7 @@ class PmRelMachineLdq(PmRelMachine):
     def __init__(self,  m, p, psim=[], ld=[], lq=[],
                  r1=0, beta=[], i1=[], ls=0, **kwargs):
 
-        super(self.__class__, self).__init__(m, p, r1, ls)
+        super(self.__class__, self).__init__(m, p, r1, ls, **kwargs)
         self.psid = None
         self.betarange = (-np.pi, np.pi)
         self.i1range = (0, np.inf)
@@ -807,7 +957,7 @@ class PmRelMachinePsidq(PmRelMachine):
     """
 
     def __init__(self, m, p, psid, psiq, r1, id, iq, ls=0, **kwargs):
-        super(self.__class__, self).__init__(m, p, r1, ls)
+        super(self.__class__, self).__init__(m, p, r1, ls, **kwargs)
 
         if isinstance(psid, (float, int)):
             self._psid = lambda id, iq: np.array([[psid]])

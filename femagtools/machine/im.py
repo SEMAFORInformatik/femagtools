@@ -141,6 +141,16 @@ class InductionMachine(Component):
             if not hasattr(self, k):
                 setattr(self, k, eecdefaults[k])
 
+        self.skin_resistance = [None, None]
+        # here you can set user defined functions for calculating the skin-resistance,
+        # according to the current frequency w. First function in list is for stator, second for rotor.
+        # If None, the femagtools intern default implementation is used.
+        # User defined functions need to have the following arguments:
+        # - r0: (float) dc-resistance at 20°C
+        # - w: (float)  current frequency in rad (2*pi*f)
+        # - tcu: (float) conductor temperature in deg Celsius
+        # - kth: (float) temperature coefficient (Default = 0.0039, Cu)
+
     def imag(self, psi):
         """magnetizing current"""
         if np.isscalar(psi):
@@ -174,13 +184,21 @@ class InductionMachine(Component):
 
     def rrot(self, w):
         """rotor resistance"""
-        return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
-                               0.0, 1, kth=self.kth2)
+        sr = self.skin_resistance[1]
+        if sr is not None:
+            return sr(self.r2, w, self.tcu2, kth=self.kth2)
+        else:
+            return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
+                                   0.0, 1, kth=self.kth2)
 
     def rstat(self, w):
         """stator resistance"""
-        return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
-                               self.gam, self.kh, kth=self.kth1)
+        sr = self.skin_resistance[0]
+        if sr is not None:
+            return sr(self.r1, w, self.tcu1, kth=self.kth1)
+        else:
+            return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
+                                   self.gam, self.kh, kth=self.kth1)
         # return self.r1
 
     def sigma(self, w, psi):

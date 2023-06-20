@@ -10,7 +10,7 @@ import warnings
 import numpy as np
 import scipy.optimize as so
 import scipy.interpolate as ip
-from .utils import skin_resistance, wdg_resistance
+from .utils import skin_resistance, wdg_resistance, KTH
 from .. import parstudy, windings
 import femagtools.bch
 
@@ -234,6 +234,17 @@ def gradient_respecting_bounds(bounds, fun, eps=1e-8):
 
 class SynchronousMachine(object):
     def __init__(self, eecpars):
+        self.kth1 = KTH
+        self.kth2 = KTH
+        self.skin_resistance = [None, None]
+        # here you can set user defined functions for calculating the skin-resistance,
+        # according to the current frequency w. First function in list is for stator, second for rotor.
+        # If None, the femagtools intern default implementation is used.
+        # User defined functions need to have the following arguments:
+        # - r0: (float) dc-resistance at 20°C
+        # - w: (float)  current frequency in rad (2*pi*f)
+        # - tcu: (float) conductor temperature in deg Celsius
+        # - kth: (float) temperature coefficient (Default = 0.0039, Cu)
         for k in eecdefaults.keys():
             setattr(self, k, eecdefaults[k])
 
@@ -260,13 +271,21 @@ class SynchronousMachine(object):
 
     def rstat(self, w):
         """stator resistance"""
-        return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
-                               self.gam, self.kh)
+        sr = self.skin_resistance[0]
+        if sr is not None:
+            return sr(self.r1, w, self.tcu1, kth=self.kth1)
+        else:
+            return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
+                                   self.gam, self.kh, kth=self.kth1)
 
     def rrot(self, w):
         """rotor resistance"""
-        return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
-                               0.0, 1)
+        sr = self.skin_resistance[1]
+        if sr is not None:
+            return sr(self.r2, w, self.tcu2, kth=self.kth2)
+        else:
+            return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
+                                   0.0, 1, kth=self.kth2)
 
     def torque_iqd(self, iq, id, iex):
         "torque at q-d-current"

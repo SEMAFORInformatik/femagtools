@@ -410,23 +410,10 @@ class PmRelMachine(object):
                 iq, id = self.iqd_tmech(torque, w1/2/np.pi/self.p,
                                         iqd(beta, i1))
         if with_mtpv:
-            # must check mtpv
-            self.check_extrapolation = False
             try:
-                def voltw1(wx):
-                    return np.linalg.norm(
-                        self.mtpv_tmech(wx, u1max, iqd0=(iq, id),
-                                        maxtorque=torque>0)[:2]) - np.sqrt(2)*i1,
-                w, _, ier, _ = so.fsolve(voltw1, w1, full_output=True)
-                logger.debug("fsolve: ier %d w %f w1 %f", ier, w, w1)
-                if ier in (1, 5) and abs(w[0]) <= w1:
-                    self.check_extrapolation = True
-                    return self.mtpv_tmech(w1, u1max, iqd0=(iq, id))
+                return self.mtpv_tmech(w1, u1max, iqd0=(iq, id))
             except ValueError as e:
-                logger.warning("MTPV w1=%f i1max=%f, u1max %f %s",
-                               w1, i1, u1max, e)
-            self.check_extrapolation = True
-
+                logger.warning(e)
         iq, id = iqd(beta, abs(i1))
         tq = self.tmech_iqd(iq, id, w1/2/np.pi/self.p)
         logger.debug("iqd_imax_umax w1=%f torque=%f %f iq=%f id=%f u1 %f %f",

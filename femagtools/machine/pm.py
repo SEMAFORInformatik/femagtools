@@ -71,6 +71,7 @@ class PmRelMachine(object):
             'magnet')}
 
     def pfric(self, n):
+        """friction and windage losses"""
         return 2*np.pi*n*self.tfric
 
     def rstat(self, w):
@@ -714,10 +715,12 @@ class PmRelMachine(object):
         plmag = self.iqd_plmag(np.array(r['iq']), np.array(r['id']), f1)
         plfe = plfe1 + plfe2 + plmag
         plcu = self.betai1_plcu(np.array(r['i1']), 2*np.pi*f1)
-        pltotal = plfe + plcu
+        plfw = self.pfric(2*np.pi*f1)
+        pltotal = plfe + plcu + plfw
         r['pmech'] = pmech.tolist()
         r['plfe'] = plfe.tolist()
         r['plcu'] = plcu.tolist()
+        r['plfw'] = plfw.tolist()
         r['losses'] = pltotal.tolist()
         if pmech.any():
             p1 = pmech + pltotal

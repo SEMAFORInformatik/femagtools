@@ -1724,6 +1724,12 @@ def characteristics(char, title=''):
     pl = np.array(char['losses'])*1e-3
     axs[1, 1].plot(n, plcu, 'C0-', label='Cu Losses')
     axs[1, 1].plot(n, plfe, 'C1-', label='Fe Losses')
+    try:
+        if char['plfw'] and char['plfw'][-1] > 0:
+            plfw = np.array(char['plfw'])*1e-3
+            axs[1, 1].plot(n, plfw, 'C2-', label='Friction + Windage')
+    except KeyError:
+            pass
     axs[1, 1].set_ylabel("Losses / kW")
     axs[1, 1].legend(loc='center left')
     axs[1, 1].grid()

@@ -233,13 +233,21 @@ def gradient_respecting_bounds(bounds, fun, eps=1e-8):
 
 
 class SynchronousMachine(object):
-    def __init__(self, eecpars):
+    def __init__(self, eecpars, **kwargs):
         for k in eecdefaults.keys():
             setattr(self, k, eecdefaults[k])
 
         for k in eecpars:
             if k not in ('ldq', 'psidq'):
                 setattr(self, k, eecpars[k])
+
+        for k in kwargs:
+            setattr(self, k, kwargs[k])
+
+        try:
+            self.tfric = self.kfric_b*self.rotor_mass*30e-3/np.pi
+        except AttributeError:
+            self.tfric = 0
 
         self.fo = 50
         self.plexp = {'styoke_hyst': 1.0,
@@ -257,6 +265,10 @@ class SynchronousMachine(object):
                       'stteeth_eddy': ef,
                       'rotor_hyst': hf,
                       'rotor_eddy': ef}
+
+    def pfric(self, n):
+        """friction and windage losses"""
+        return 2*np.pi*n*self.tfric
 
     def rstat(self, w):
         """stator resistance"""
@@ -427,7 +439,6 @@ class SynchronousMachine(object):
         r = dict(u1=[], i1=[], id=[], iq=[], iex=[], T=[], cosphi=[], n=[],
                  beta=[], plfe1=[], plcu1=[], plcu2=[])
         T = [tload(wx) for wx in wmtab]
-        tfric = self.kfric_b*self.rotor_mass*30e-3/np.pi
         w1tab = []
         for wm, tq in zip(wmtab, T):
             #            try:
@@ -460,7 +471,7 @@ class SynchronousMachine(object):
             r['plfe1'].append(self.iqd_plfe1(iq, id, iex, f1))
             r['plcu1'].append(self.m*i1**2*self.rstat(w1))
             r['plcu2'].append(iex**2*self.rrot(0))
-            r['T'].append(tq-tfric)
+            r['T'].append(tq-self.tfric)
             r['n'].append(wm/2/np.pi)
             # except ValueError as ex:
             #    logger.warning("ex %s wm %f T %f", ex, wm, tq)
@@ -468,10 +479,10 @@ class SynchronousMachine(object):
 
         r['plfe'] = r['plfe1']
         r['plcu'] = (np.array(r['plcu1']) + np.array(r['plcu2'])).tolist()
-        r['plfric'] = [2*np.pi*n*tfric for n in r['n']]
+        r['plfw'] = [self.pfric(n) for n in r['n']]
         r['pmech'] = [2*np.pi*n*tq for n, tq in zip(r['n'], r['T'])]
         pmech = np.array(r['pmech'])
-        pltotal = (np.array(r['plfe1']) + np.array(r['plfric']) +
+        pltotal = (np.array(r['plfe1']) + np.array(r['plfw']) +
                    np.array(r['plcu1']) + np.array(r['plcu2']))
         r['losses'] = pltotal.tolist()
 
@@ -493,9 +504,9 @@ class SynchronousMachine(object):
 
 class SynchronousMachinePsidq(SynchronousMachine):
 
-    def __init__(self, eecpars, lfe=1, wdg=1):
+    def __init__(self, eecpars, lfe=1, wdg=1, **kwargs):
         super(self.__class__, self).__init__(
-                eecpars)
+                eecpars, **kwargs)
         self.iqrange = (eecpars['psidq'][0]['iq'][0],
                         eecpars['psidq'][0]['iq'][-1])
         self.idrange = (eecpars['psidq'][0]['id'][0],
@@ -582,8 +593,8 @@ class SynchronousMachinePsidq(SynchronousMachine):
 
 
 class SynchronousMachineLdq(SynchronousMachine):
-    def __init__(self, eecpars, lfe=1, wdg=1):
-        super(self.__class__, self).__init__(eecpars)
+    def __init__(self, eecpars, lfe=1, wdg=1, **kwargs):
+        super(self.__class__, self).__init__(eecpars, **kwargs)
         self.betarange = (eecpars['ldq'][0]['beta'][0]/180*np.pi,
                           eecpars['ldq'][0]['beta'][-1]/180*np.pi)
         self.i1range = (0, eecpars['ldq'][0]['i1'][-1])

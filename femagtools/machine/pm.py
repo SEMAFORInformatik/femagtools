@@ -597,6 +597,8 @@ class PmRelMachine(object):
             if with_mtpa:
                 iq, id = self.iqd_torque(T)
                 i1max = betai1(iq, id)[1]
+                if T < 0:
+                    i1max = -i1max
             else:
                 i1max = self.i1_torque(T, 0)
             if with_mtpa:

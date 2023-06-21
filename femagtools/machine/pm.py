@@ -894,7 +894,7 @@ class PmRelMachineLdq(PmRelMachine):
     def psi(self, iq, id):
         """return psid, psiq of currents iq, id"""
         beta, i1 = betai1(np.asarray(iq), np.asarray(id))
-        if beta >= np.pi:
+        if beta > 0:
             beta -= np.pi
         #logger.debug('beta %f (%f, %f) i1 %f %f',
         #             beta, self.betarange[0], self.betarange[1],

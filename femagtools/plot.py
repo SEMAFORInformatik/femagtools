@@ -1679,15 +1679,26 @@ def characteristics(char, title=''):
         fig.suptitle(title)
 
     n = np.array(char['n'])*60
-    pmech = np.array(char['pmech'])*1e-3
+    punit = 'kW'
+    k = 1e-3
+    if max(char['pmech']) > 1e6:
+        punit = 'MW'
+        k = 1e-6
+    pmech = np.array(char['pmech'])*k
+    tunit = 'Nm'
+    if max(char['T']) > 1e3:
+        tunit = 'kNm'
+        tq = np.array(char['T'])*1e-3
+    else:
+        tq = np.array(char['T'])
 
-    axs[0, 0].plot(n, np.array(char['T']), 'C0-', label='Torque')
-    axs[0, 0].set_ylabel("Torque / Nm")
+    axs[0, 0].plot(n, tq, 'C0-', label='Torque')
+    axs[0, 0].set_ylabel(f"Torque / {tunit}")
     axs[0, 0].grid()
     axs[0, 0].legend(loc='center left')
     ax1 = axs[0, 0].twinx()
     ax1.plot(n, pmech, 'C1-', label='P mech')
-    ax1.set_ylabel("Power / kW")
+    ax1.set_ylabel(f"Power / {punit}")
     ax1.legend(loc='lower center')
 
     axs[0, 1].plot(n[1:], np.array(char['u1'][1:]), 'C0-', label='Voltage')

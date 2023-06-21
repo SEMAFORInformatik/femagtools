@@ -102,7 +102,7 @@ class PmRelMachine(object):
             raise ValueError(f'Torque {torque} out of current range')
         return res.x
 
-    def iqd_tmech(self, torque, n, iqd0=0):
+    def iqd_tmech(self, torque, n, iqd0=0, with_mtpa=True):
         """return minimum d-q-current for shaft torque"""
         if np.abs(torque) < 1e-2:
             return (0, 0)
@@ -110,18 +110,25 @@ class PmRelMachine(object):
             i0 = self.io
         else:
             i0 = iqd0
-        res = so.minimize(
-            lambda iqd: la.norm(iqd), i0, method='SLSQP',
-            options={'maxiter': 100}, tol=0.1,
-            constraints=({'type': 'eq',
-                          'fun': lambda iqd:
-                          self.tmech_iqd(*iqd, n) - torque}))
-        if not res.success:
-            logger.warning(
-                f"n: %s, torque %s: %s %s",
-                60*n, torque, res.message, i0)
-            raise ValueError(f'Torque {torque:.1f} speed {60*n:.1f} out of current range')
-        return res.x
+
+        if with_mtpa:
+            res = so.minimize(
+                lambda iqd: la.norm(iqd), i0, method='SLSQP',
+                options={'maxiter': 100}, tol=0.1,
+                constraints=({'type': 'eq',
+                              'fun': lambda iqd:
+                              self.tmech_iqd(*iqd, n) - torque}))
+            if not res.success:
+                logger.warning(
+                    f"n: %s, torque %s: %s %s",
+                    60*n, torque, res.message, i0)
+                raise ValueError(f'Torque {torque:.1f} speed {60*n:.1f} out of current range')
+            return res.x
+
+        def tqiq(iq):
+            return torque - self.tmech_iqd(float(iq), 0, n)
+        iq = so.fsolve(tqiq, (i0[0],))[0]
+        return iq, 0, self.tmech_iqd(iq, 0, n)
 
     def tloss_iqd(self, iq, id, n):
         """return loss torque of d-q current, iron loss correction factor
@@ -175,22 +182,6 @@ class PmRelMachine(object):
                     self.uqd(2*np.pi*n*self.p,
                              *self.mtpa_tmech(i1max, n)[:2]))})
         return 2*np.pi*res.x[0]*self.p, self.mtpa_tmech(i1max, res.x[0])[2]
-
-    def w1_tmech_umax(self, u, T):
-        """return frequency w1 at given voltage u and shaft torque
-
-        Keyword arguments:
-        u -- the maximum voltage (RMS)
-        T -- the torque"""
-        iq, id = self.iqd_torque(T)
-        w10 = u/la.norm(self.psi(iq, id))
-        iq, id = self.iqd_tmech(T, w10/2/np.pi/self.p, (iq, id))
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            w1 = so.fsolve(lambda w1: la.norm(
-                self.uqd(w1, iq, id))-u*np.sqrt(2),
-                           w10)[0]
-        return w1
 
     def w1_u(self, u, iq, id):
         """return frequency w1 at given voltage u and id, iq current
@@ -262,11 +253,16 @@ class PmRelMachine(object):
         return so.fsolve(
             lambda id: self.torque_iqd(np.array([iq]), id)-torque, id0)[0]
 
-    def iqd_tmech_umax(self, torque, w1, u1max, log=0):
+    def iqd_tmech_umax(self, torque, w1, u1max, log=0, with_mtpa=True):
         """return d-q current and shaft torque at stator frequency and max voltage
         with minimal current"""
         n = w1/2/np.pi/self.p
-        i0 = self.iqd_torque(torque)
+        if with_mtpa:
+            i0 = self.iqd_torque(torque)
+        else:
+            i1 = self.i1_torque(torque, 0)
+            i0 = iqd(0, i1)
+
         if np.linalg.norm(self.uqd(w1, *i0))/np.sqrt(2) > u1max:
             beta, i1 = betai1(*i0)
             with warnings.catch_warnings():
@@ -408,7 +404,7 @@ class PmRelMachine(object):
                 iq, id = iqd(beta, abs(i1max))
             else:
                 iq, id = self.iqd_tmech(torque, w1/2/np.pi/self.p,
-                                        iqd(beta, i1))
+                                        iqd(beta, i1))[:2]
         if with_mtpv:
             try:
                 return self.mtpv_tmech(w1, u1max, iqd0=(iq, id))
@@ -603,10 +599,16 @@ class PmRelMachine(object):
                 i1max = betai1(iq, id)[1]
             else:
                 i1max = self.i1_torque(T, 0)
+            if with_mtpa:
+                w1, Tf = self.w1_imax_umax(i1max, u1max)
+            else:
                 iq, id = iqd(0, i1max)
-            if T < 0:
-                i1max = -i1max
-            w1, Tf = self.w1_imax_umax(i1max, u1max)
+                def voltw1(w):
+                    return np.sqrt(2)*u1max - la.norm(
+                        self.uqd(w, iq, 0))
+                w0 = u1max/np.linalg.norm(self.psi(iq, 0))
+                w1 = so.fsolve(voltw1, w0)[0]
+                Tf = self.tmech_iqd(iq, 0, w1/2/np.pi/self.p)
             n1 = w1/2/np.pi/self.p
             r['n_type'] = n1
             nmax = n
@@ -615,12 +617,14 @@ class PmRelMachine(object):
 
             n1 = min(n1, nmax)
             if n1 < nmax:
-                speedrange = [0] + self.speedranges(i1max, u1max,
-                                                    nmax, with_mtpv)
-                if len(speedrange) > 3:
-                    interv = 'MTPA', 'MTPV'
+                interv = 'MTPA', # fw range is always MTPA (aka PCONST)
+                if with_mtpa:
+                    speedrange = [0] + self.speedranges(i1max, u1max,
+                                                        nmax, with_mtpv)
+                    if len(speedrange) > 3:
+                        interv = 'MTPA', 'MTPV'
                 else:
-                    interv = 'MTPA',
+                    speedrange = [0, n1, nmax]
             else:
                 nmax = min(nmax, self.w1_umax(
                     u1max, *iqd(-np.pi/2, abs(i1max))))/2/np.pi/self.p
@@ -633,7 +637,7 @@ class PmRelMachine(object):
                                        speedrange)]
             logger.info("sample intervals %s", nstab)
             for nx in np.linspace(0, n1, nstab[0]):
-                iq, id = self.iqd_tmech(Tf, nx, (iq, id))
+                iq, id = self.iqd_tmech(Tf, nx, (iq, id), with_mtpa)[:2]
                 r['id'].append(id)
                 r['iq'].append(iq)
                 r['n'].append(nx)
@@ -655,13 +659,9 @@ class PmRelMachine(object):
                         if iv == 'MTPA':
                             iq, id, tq = self.iqd_pmech_umax(
                                 nn, Pmax, u1max)
-                            #logger.info("MTPA n %f i1 %f tq %f",
-                            #            nn, betai1(iq, id)[1], tq)
                         else:
                             iq, id, tq = self.mtpv_tmech(w1, u1max,
-                                                   maxtorque=T > 0)
-                            #logger.info("MTPV n %f i1 %f tq %f",
-                            #            nn, betai1(iq, id)[1], tq)
+                                                         maxtorque=T > 0)
                         if (T > 0 and tq > 0) or (T < 0 and tq < 0):
                             r['id'].append(id)
                             r['iq'].append(iq)
@@ -892,6 +892,8 @@ class PmRelMachineLdq(PmRelMachine):
     def psi(self, iq, id):
         """return psid, psiq of currents iq, id"""
         beta, i1 = betai1(np.asarray(iq), np.asarray(id))
+        if beta >= np.pi:
+            beta -= np.pi
         #logger.debug('beta %f (%f, %f) i1 %f %f',
         #             beta, self.betarange[0], self.betarange[1],
         #             i1, self.i1range[1])

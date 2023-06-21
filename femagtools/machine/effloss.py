@@ -113,7 +113,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             m.iqd_tmech_umax(
                 nt[1],
                 2*np.pi*nt[0]*m.p,
-                u1, log=progress)[:-1]
+                u1, log=progress, with_mtpa=with_mtpa)[:-1]
             for nt in ntmesh.T]).T
         beta, i1 = betai1(iqd[0], iqd[1])
         uqd = [m.uqd(2*np.pi*n*m.p, *i)

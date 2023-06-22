@@ -128,6 +128,12 @@ class Area(object):
         except Exception as e:
             return
 
+    def has_fsl(self):
+        try:
+            return self.fsl
+        except AttributeError:
+            return True
+
     def list_of_equal_edges(self, a):
         for e1 in self.area:
             for e2 in a.area:

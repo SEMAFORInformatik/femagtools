@@ -342,6 +342,11 @@ class SynchronousMachine(object):
                        startvals)
         raise ValueError(res['message'])
 
+    def iqd_tmech_umax(self, torque, w1, u1max, log=0, with_mtpa=True):
+        """return currents and shaft torque at stator frequency and
+         with minimal losses at max voltage"""
+        return self.iqd_torque_umax(torque, w1, u1max, log=log)
+
     def iqd_torque_umax(self, torque, w1, u1max,
                         disp=False, maxiter=500, log=0):
         """return currents for torque with minimal losses"""

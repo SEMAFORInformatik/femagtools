@@ -1725,7 +1725,7 @@ def get_nT_boundary(n, T):
     return np.array(bnd[0] + bnd[1][::-1])
 
 
-def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True):
+def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True, cmap='YlOrRd'):
     from matplotlib.path import Path
     from matplotlib.patches import PathPatch
     x = [60*n for n in speed]
@@ -1748,8 +1748,8 @@ def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True):
     if clabel:
         ax.clabel(cont, inline=True, colors='k', fontsize=8)
     contf = ax.tricontourf(x, y, z,
-                           levels=levels, cmap='YlOrRd')
-    #
+                           levels=levels, cmap=cmap)
+
     ax.spines['top'].set_color('none')
     ax.spines['right'].set_color('none')
 
@@ -1766,11 +1766,11 @@ def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True):
     ax.set_title(title)
     return contf
 
-def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True):
+def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True, cmap='YlOrRd', levels=None):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
     contf = plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
-                         title=title, clabel=clabel)
+                         title=title, clabel=clabel, cmap=cmap, levels=levels)
     return contf
 
 

@@ -496,8 +496,7 @@ class Writer(Mcv):
             pfe = self.losses['pfe']
             f = self.losses['f']
             B = self.losses['B']
-            colsize = len(f)
-            losses = [list(p) + [0]*(colsize-len(p)) for p in pfe]
+            losses = [list(p) + [None]*(len(B)-len(p)) for p in pfe]
             fo = self.mc1_base_frequency
             Bo = self.mc1_base_induction
             fit_jordan = False
@@ -557,28 +556,27 @@ class Writer(Mcv):
                 self.losses['fo'] = fo
 
             self.writeBlock([nfreq, nind])
-            self.writeBlock(B +
-                            [0.0]*(M_LOSS_INDUCT - nind))
+            self.writeBlock([float(b) for b in B] + [0.0]*(M_LOSS_INDUCT - nind))
 
             for f, p in zip(self.losses['f'], pfe):
                 if f > 0:
                     y = np.array(p)
-                    losses = y[y != np.array(None)].tolist()
+                    losses = [float(x) for x in y[y != np.array(None)]]
                     if len(losses) == nind:
                         pl = p
                     else:
                         n = len(losses)
                         cw, alfa, beta = lc.fitsteinmetz(
                             f, B[:n], losses, Bo, fo)
-                        pl = [lc.pfe_steinmetz(
+                        pl = losses + [lc.pfe_steinmetz(
                             f, b, cw, alfa, beta,
                             self.losses['fo'],
                             self.losses['Bo'])
-                              for b in B]
-                    logger.debug("%s", pl)
+                                       for b in B[n:]]
+                    logger.info("%s", pl)
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - len(pl)))
-                    self.writeBlock(f)
+                    self.writeBlock(float(f))
             for m in range(M_LOSS_FREQ - len(pfe)):
                 self.writeBlock([0.0]*M_LOSS_INDUCT)
                 self.writeBlock(0.0)

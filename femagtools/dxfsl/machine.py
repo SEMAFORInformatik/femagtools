@@ -721,5 +721,5 @@ class Machine(object):
         if self.geom.create_lines_outside_windings(pts):
             self.geom.area_list = []
             logger.debug("create subregions again")
-            self.geom.create_list_of_areas(crunch=True)
+            self.geom.create_list_of_areas()
             self.geom.search_subregions()

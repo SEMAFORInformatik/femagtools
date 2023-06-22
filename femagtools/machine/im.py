@@ -140,6 +140,22 @@ class InductionMachine(Component):
         for k in eecdefaults.keys():
             if not hasattr(self, k):
                 setattr(self, k, eecdefaults[k])
+        try:
+            self.tfric = self.kfric_b*self.rotor_mass*30e-3/np.pi
+            # formula from
+            # PERMANENT MAGNET MOTOR TECHNOLOGY: DESIGN AND APPLICATIONS
+            # Jacek Gieras
+            #
+            # plfric = kfric_b m_r n 1e-3 W
+            # -- kfric_b : 1..3 W/kg/rpm
+            # -- m_r: rotor mass in kg
+            # -- n: rotor speed in rpm
+        except AttributeError:
+            self.tfric = 0
+
+    def pfric(self, n):
+        """friction and windage losses"""
+        return 2*np.pi*n*self.tfric
 
         self.skin_resistance = [None, None]
         # here you can set user defined functions for calculating the skin-resistance,
@@ -365,15 +381,7 @@ class InductionMachine(Component):
         if Tfric:
             tfric = Tfric
         else:
-            # formula from
-            # PERMANENT MAGNET MOTOR TECHNOLOGY: DESIGN AND APPLICATIONS
-            # Jacek Gieras
-            #
-            # plfric = kfric_b m_r n 1e-3 W
-            # -- kfric_b : 1..3 W/kg/rpm
-            # -- m_r: rotor mass in kg
-            # -- n: rotor speed in rpm
-            tfric = self.kfric_b * self.rotor_mass * 30e-3 / np.pi
+            tfric = self.tfric
             # TODO: make frictiontorque speed depended?
 
         tq = T + tfric
@@ -393,10 +401,10 @@ class InductionMachine(Component):
         r['plcu1'] = float(self.m * np.abs(i1) ** 2 * self.rstat(w1))
         r['plcu2'] = float(self.m * np.abs(i2) ** 2 *
                            self.rrot(w1 - self.p * wm))
-        r['plfric'] = float(2 * np.pi * n * tfric)
+        r['plfw'] = float(2 * np.pi * n * tfric)
         pmech = 2 * np.pi * n * tq
         r['pmech'] = float(pmech)
-        pltotal = r['plfe1'] + r['plfric'] + r['plcu1'] + r['plcu2']
+        pltotal = r['plfe1'] + r['plfw'] + r['plcu1'] + r['plcu2']
         r['losses'] = float(pltotal)
         p1 = pmech + pltotal
         r['p1'] = float(p1)
@@ -498,7 +506,7 @@ class InductionMachine(Component):
         r = dict(u1=[], i1=[], T=[], cosphi=[], n=[], s=[], sk=[],
                  plfe1=[], plcu1=[], plcu2=[])
         T = [tload2(wx) for wx in wmtab]
-        tfric = self.kfric_b*self.rotor_mass*30e-3/np.pi
+        tfric = self.tfric
         w1tab = []
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -523,10 +531,10 @@ class InductionMachine(Component):
                 r['sk'].append(self.sk(w1, u1/w1))
 #            except ValueError as ex:
 #                break
-        r['plfric'] = [2*np.pi*n*tfric for n in r['n']]
+        r['plfw'] = [self.pfric(n) for n in r['n']]
         r['pmech'] = [2*np.pi*n*tq for n, tq in zip(r['n'], r['T'])]
         pmech = np.array(r['pmech'])
-        pltotal = (np.array(r['plfe1']) + np.array(r['plfric']) +
+        pltotal = (np.array(r['plfe1']) + np.array(r['plfw']) +
                    np.array(r['plcu1']) + np.array(r['plcu2']))
         r['losses'] = pltotal.tolist()
 
@@ -1002,7 +1010,7 @@ if __name__ == '__main__':
         fec=9100,
         fee=0,
         fexp=7.0,
-        pfric=2544.6,
+        #pfric=2544.6,
         rexp=2.4,
         iml=79.8286,
         ims=27.5346,

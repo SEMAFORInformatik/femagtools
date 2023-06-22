@@ -2,13 +2,19 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.3.1
+	- with_mtpv, with_mtpa switches for effloss and pm characteristics added
+        - added plot transientsc_demag
+	- added hxy read module
+	- characteristics with friction and windage losses
+
 ## Release 1.3
 	- TH module for static and dynamic thermal simulations included
 
 ## Release 1.2.2
 	- femag: temperature dependency of magnet material improved (muer)
-    - windings: check unbalanced windings
-    - effmap: drive mode only
+        - windings: check unbalanced windings
+        - effmap: drive mode only
 
 ## Release 1.1.26
 	- amela interface added

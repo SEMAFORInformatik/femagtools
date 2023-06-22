@@ -898,6 +898,33 @@ def transientsc(bch, title=''):
         fig.subplots_adjust(top=0.92)
 
 
+def transientsc_demag(demag, magnet=0, title='', ax=0):
+    """creates a demag plot of a transient short circuit
+    Args:
+      demag: list of dicts with 'displ', 'H_av', 'H_max', 'lim_hc'
+      magnet dict with 'Tmag'
+    """
+    if ax == 0:
+        ax = plt.gca()
+    pos = [d['displ'] for d in demag if 'displ' in d]
+    hmax = [-d['H_max'] for d in demag if 'H_max' in d]
+    havg = [-d['H_av'] for d in demag if 'H_av' in d]
+    hclim = [-d['lim_hc'] for d in demag if 'lim_hc' in d]*2
+
+    ax.set_title('Transient Short Circuit Demagnetization [kA/m]')
+    ax.plot(pos, hmax,
+            label='H Max {:4.2f} kA/m'.format(max(hmax)))
+    ax.plot(pos, havg,
+            label='H Avg {:4.2f} kA/m'.format(max(havg)))
+    ax.plot([pos[0], pos[-1]], hclim, color='C3', linestyle='dashed',
+            label='Hc {:4.2f} kA/m'.format(hclim[0]))
+    ax.set_xlabel('Rotor Position / °')
+    ax.grid(True)
+    if magnet:
+        ax.legend(title=f"Magnet Temperature {magnet['Tmag']}°C")
+    else:
+        ax.legend()
+
 def i1beta_torque(i1, beta, torque, title='', ax=0):
     """creates a surface plot of torque vs i1, beta"""
     if ax == 0:
@@ -1652,15 +1679,26 @@ def characteristics(char, title=''):
         fig.suptitle(title)
 
     n = np.array(char['n'])*60
-    pmech = np.array(char['pmech'])*1e-3
+    punit = 'kW'
+    k = 1e-3
+    if max(char['pmech']) > 1e6:
+        punit = 'MW'
+        k = 1e-6
+    pmech = np.array(char['pmech'])*k
+    tunit = 'Nm'
+    if max(char['T']) > 1e3:
+        tunit = 'kNm'
+        tq = np.array(char['T'])*1e-3
+    else:
+        tq = np.array(char['T'])
 
-    axs[0, 0].plot(n, np.array(char['T']), 'C0-', label='Torque')
-    axs[0, 0].set_ylabel("Torque / Nm")
+    axs[0, 0].plot(n, tq, 'C0-', label='Torque')
+    axs[0, 0].set_ylabel(f"Torque / {tunit}")
     axs[0, 0].grid()
     axs[0, 0].legend(loc='center left')
     ax1 = axs[0, 0].twinx()
     ax1.plot(n, pmech, 'C1-', label='P mech')
-    ax1.set_ylabel("Power / kW")
+    ax1.set_ylabel(f"Power / {punit}")
     ax1.legend(loc='lower center')
 
     axs[0, 1].plot(n[1:], np.array(char['u1'][1:]), 'C0-', label='Voltage')
@@ -1697,6 +1735,12 @@ def characteristics(char, title=''):
     pl = np.array(char['losses'])*1e-3
     axs[1, 1].plot(n, plcu, 'C0-', label='Cu Losses')
     axs[1, 1].plot(n, plfe, 'C1-', label='Fe Losses')
+    try:
+        if char['plfw'] and char['plfw'][-1] > 0:
+            plfw = np.array(char['plfw'])*1e-3
+            axs[1, 1].plot(n, plfw, 'C2-', label='Friction + Windage')
+    except KeyError:
+            pass
     axs[1, 1].set_ylabel("Losses / kW")
     axs[1, 1].legend(loc='center left')
     axs[1, 1].grid()
@@ -1725,7 +1769,8 @@ def get_nT_boundary(n, T):
     return np.array(bnd[0] + bnd[1][::-1])
 
 
-def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True, cmap='YlOrRd'):
+def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True,
+                 cmap='YlOrRd'):
     from matplotlib.path import Path
     from matplotlib.patches import PathPatch
     x = [60*n for n in speed]
@@ -1749,7 +1794,7 @@ def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True, cmap='Y
         ax.clabel(cont, inline=True, colors='k', fontsize=8)
     contf = ax.tricontourf(x, y, z,
                            levels=levels, cmap=cmap)
-
+    #
     ax.spines['top'].set_color('none')
     ax.spines['right'].set_color('none')
 

@@ -35,6 +35,13 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     PM, EESM or IM"""
     rlfe = lfe
     rwdg = wdg
+    opts = {k: eecpars[k] for k in ('zeta1', 'gam', 'kh', 'kpfe',
+                                    'kfric_b') if k in eecpars}
+    try:
+        opts['rotor_mass'] = rlfe*eecpars['rotor_mass']
+    except KeyError:
+        pass
+
     if 'ldq' in eecpars or 'psidq' in eecpars:  # this is a PM (or EESM)
         try:
             dqpars = eecpars['ldq']
@@ -48,13 +55,9 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
             smpars['tcu1'] = temp[0]
             smpars['tcu2'] = temp[1]
             if 'ldq' in smpars:
-                machine = SynchronousMachineLdq(smpars, lfe=rlfe, wdg=rwdg)
+                machine = SynchronousMachineLdq(smpars, lfe=rlfe, wdg=rwdg, **opts)
             else:
-                machine = SynchronousMachinePsidq(smpars, lfe=rlfe, wdg=rwdg)
-            try:
-                machine.rotor_mass = rlfe*eecpars['rotor_mass']
-            except KeyError:
-                pass
+                machine = SynchronousMachinePsidq(smpars, lfe=rlfe, wdg=rwdg, **opts)
             return machine
 
         if isinstance(dqpars, list) and len(dqpars) > 1:
@@ -84,7 +87,8 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
                 losses=losses,
                 id=np.array(dqp['id'])/rwdg,
                 iq=np.array(dqp['iq'])/rwdg,
-                tcu1=temp[0])
+                tcu1=temp[0],
+                **opts)
         else:
             beta = dqp['beta']
             i1 = np.array(dqp['i1'])/rwdg
@@ -97,11 +101,8 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
                 losses=losses,
                 beta=beta,
                 i1=i1,
-                tcu1=temp[0])
-        try:
-            machine.rotor_mass = rlfe*eecpars['rotor_mass']
-        except KeyError:
-            pass
+                tcu1=temp[0],
+                **opts)
         return machine
 
     # must be an induction machine (TODO: check scaling)
@@ -111,7 +112,6 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     pars['lsigma2'] = rlfe*pars['lsigma2']
     pars['psiref'] = rwdg*rlfe*pars['psiref']
     pars['u1ref'] = rwdg*rlfe*pars['u1ref']
-    pars['rotor_mass'] = rlfe*pars['rotor_mass']
     pars['r2'] = rlfe*pars['r2']
     pars['fec'] = rlfe*pars['fec']
     pars['fee'] = rlfe*pars['fee']
@@ -119,6 +119,7 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     pars['psi'] = [psi*rwdg*rlfe for psi in pars['psi']]
     pars['tcu1'] = temp[0]
     pars['tcu2'] = temp[1]
+    pars.update(opts)
     return InductionMachine(pars)
 
 

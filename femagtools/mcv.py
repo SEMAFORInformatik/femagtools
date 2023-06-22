@@ -573,7 +573,7 @@ class Writer(Mcv):
                             self.losses['fo'],
                             self.losses['Bo'])
                                        for b in B[n:]]
-                    logger.info("%s", pl)
+                    logger.debug("%s", pl)
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - len(pl)))
                     self.writeBlock(float(f))

@@ -114,7 +114,6 @@ class PmRelMachine(object):
         if with_mtpa:
             res = so.minimize(
                 lambda iqd: la.norm(iqd), i0, method='SLSQP',
-                options={'maxiter': 100}, tol=0.1,
                 constraints=({'type': 'eq',
                               'fun': lambda iqd:
                               self.tmech_iqd(*iqd, n) - torque}))
@@ -317,7 +316,6 @@ class PmRelMachine(object):
         iqd0 = self.iqd_torque_imax_umax(T, n, u1)[:2]
         res = so.minimize(lambda iqd: np.linalg.norm(iqd), iqd0,
                           method='SLSQP',
-                          options={'maxiter': 50}, tol=0.1,
                           constraints=[{'type': 'eq',
                                         'fun': lambda iqd:
                                         self.tmech_iqd(*iqd, n) - T},
@@ -450,7 +448,6 @@ class PmRelMachine(object):
         n = w1/2/np.pi/self.p
         res = so.minimize(lambda iqd: sign*self.torque_iqd(*iqd), i0,
                           method='SLSQP',
-                          #options={'maxiter': 50}, tol=0.1,
                           constraints={
                               'type': 'eq',
                               'fun': lambda iqd:
@@ -471,7 +468,6 @@ class PmRelMachine(object):
         res = so.minimize(lambda iqd: sign*self.tmech_iqd(
             *iqd, n), i0,
                           method='SLSQP',
-                          #options={'maxiter': 50}, tol=0.1,
                           constraints={'type': 'eq',
                                        'fun': lambda iqd:
                                        np.sqrt(2)*u1 - la.norm(
@@ -895,7 +891,7 @@ class PmRelMachineLdq(PmRelMachine):
         """return psid, psiq of currents iq, id"""
         beta, i1 = betai1(np.asarray(iq), np.asarray(id))
         if beta > 0:
-            beta -= np.pi
+            beta -= 2*np.pi
         #logger.debug('beta %f (%f, %f) i1 %f %f',
         #             beta, self.betarange[0], self.betarange[1],
         #             i1, self.i1range[1])

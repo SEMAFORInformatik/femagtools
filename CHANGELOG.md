@@ -6,6 +6,7 @@
 	- with_mtpv, with_mtpa switches for effloss and pm characteristics added
         - added plot transientsc_demag
 	- added hxy read module
+	- characteristics with friction and windage losses
 
 ## Release 1.3
 	- TH module for static and dynamic thermal simulations included

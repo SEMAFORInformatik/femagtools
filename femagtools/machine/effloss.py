@@ -34,7 +34,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
         def tbip(x): return 0
 
     nxtx = []
-    for nx in np.linspace(1, nmax, npoints[0]):
+    for nx in np.linspace(n[1], nmax, npoints[0]):
         t0 = tbip(nx)
         t1 = tip(nx)
         npnts = max(round((t1-t0) / (tmax-tmin) * tnum), 2)

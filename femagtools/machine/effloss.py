@@ -50,7 +50,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
 
 
 def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
-                          with_mtpv=True, with_mtpa=True):
+                          with_mtpv=True, with_mtpa=True, with_pmax=True):
     """return speed, torque efficiency and losses
 
     arguments:
@@ -62,6 +62,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     n: (float) maximum speed (1/s)
     npoints: (list) number of values of speed and torque
     with_mtpv -- (optional) use mtpv if True (default)
+    with_pmax -- (optional) use pmax if True (default)
     with_mtpa -- (optional) use mtpa if True (default), disables mtpv if False
 
     """
@@ -81,7 +82,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         nsamples = npoints[0]
         rb = {}
         r = m.characteristics(T, nmax, u1, nsamples=nsamples,
-                              with_mtpv=with_mtpv, with_mtpa=with_mtpa)  # driving mode
+                              with_mtpv=with_mtpv, with_mtpa=with_mtpa, with_pmax=with_pmax)  # driving mode
         if isinstance(m, (PmRelMachineLdq, SynchronousMachineLdq)):
             if min(m.betarange) >= -np.pi/2:  # driving mode only
                 rb['n'] = None
@@ -92,7 +93,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                 rb['T'] = None
         if 'n' not in rb:
             rb = m.characteristics(-T, max(r['n']), u1, nsamples=nsamples,
-                                   with_mtpv=with_mtpv, with_mtpa=with_mtpa)  # braking mode
+                                   with_mtpv=with_mtpv, with_mtpa=with_mtpa, with_pmax=with_pmax)  # braking mode
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)
 

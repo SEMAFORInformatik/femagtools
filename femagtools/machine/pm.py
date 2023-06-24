@@ -573,7 +573,7 @@ class PmRelMachine(object):
 
 
     def characteristics(self, T, n, u1max, nsamples=60,
-                        with_mtpv=True, with_mtpa=True):
+                        with_mtpv=True, with_mtpa=True, with_pmax=True):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -653,10 +653,15 @@ class PmRelMachine(object):
                     for nn in np.linspace(r['n'][-1]+dn, nu, ns):
                         w1 = 2*np.pi*nn*self.p
                         logger.debug("fieldweakening: n %g T %g i1max %g w1 %g u1 %g",
-                                     nn*60, T, i1max, w1, u1max)
+                                     nn*60, Tf, i1max, w1, u1max)
                         if iv == 'MTPA':
-                            iq, id, tq = self.iqd_pmech_umax(
-                                nn, Pmax, u1max)
+                            if with_pmax:
+                                iq, id, tq = self.iqd_pmech_umax(
+                                    nn, Pmax, u1max)
+                            else:
+                                iq, id, tq = self.iqd_imax_umax(
+                                    i1max, w1, u1max,
+                                    Tf, with_mtpv=False)
                         else:
                             iq, id, tq = self.mtpv_tmech(w1, u1max,
                                                          maxtorque=T > 0)

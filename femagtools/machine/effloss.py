@@ -50,7 +50,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
 
 
 def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
-                          with_mtpv=True, with_mtpa=True, with_pmax=True):
+                          with_mtpv=True, with_mtpa=True, with_pmconst=True, with_fw=True):
     """return speed, torque efficiency and losses
 
     arguments:
@@ -62,8 +62,9 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     n: (float) maximum speed (1/s)
     npoints: (list) number of values of speed and torque
     with_mtpv -- (optional) use mtpv if True (default)
-    with_pmax -- (optional) use pmax if True (default)
+    with_pmconst -- (optional) use pmax if True (default)
     with_mtpa -- (optional) use mtpa if True (default), disables mtpv if False
+    with_fw -- (optional) use friction and windage losses (default)
 
     """
     if isinstance(eecpars, dict):
@@ -82,7 +83,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         nsamples = npoints[0]
         rb = {}
         r = m.characteristics(T, nmax, u1, nsamples=nsamples,
-                              with_mtpv=with_mtpv, with_mtpa=with_mtpa, with_pmax=with_pmax)  # driving mode
+                              with_mtpv=with_mtpv, with_mtpa=with_mtpa,
+                              with_pmconst=with_pmconst, with_fw=with_fw)  # driving mode
         if isinstance(m, (PmRelMachineLdq, SynchronousMachineLdq)):
             if min(m.betarange) >= -np.pi/2:  # driving mode only
                 rb['n'] = None
@@ -93,7 +95,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                 rb['T'] = None
         if 'n' not in rb:
             rb = m.characteristics(-T, max(r['n']), u1, nsamples=nsamples,
-                                   with_mtpv=with_mtpv, with_mtpa=with_mtpa, with_pmax=with_pmax)  # braking mode
+                                   with_mtpv=with_mtpv, with_mtpa=with_mtpa,
+                                   with_pmconst=with_pmconst, with_fw=with_fw)  # braking mode
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)
 
@@ -110,12 +113,21 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
 
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
         progress = ProgressLogger(ntmesh.shape[1])
-        iqd = np.array([
-            m.iqd_tmech_umax(
-                nt[1],
-                2*np.pi*nt[0]*m.p,
-                u1, log=progress, with_mtpa=with_mtpa)[:-1]
-            for nt in ntmesh.T]).T
+        if with_fw:
+            iqd = np.array([
+                m.iqd_tmech_umax(
+                    nt[1],
+                    2*np.pi*nt[0]*m.p,
+                    u1, log=progress, with_mtpa=with_mtpa)[:-1]
+                for nt in ntmesh.T]).T
+        else:
+            iqd = np.array([
+                m.iqd_torque_umax(
+                    nt[1],
+                    2*np.pi*nt[0]*m.p,
+                    u1, log=progress, with_mtpa=with_mtpa)[:-1]
+                for nt in ntmesh.T]).T
+
         beta, i1 = betai1(iqd[0], iqd[1])
         uqd = [m.uqd(2*np.pi*n*m.p, *i)
                for n, i in zip(ntmesh[0], iqd.T)]
@@ -144,10 +156,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plmag = m.iqd_plmag(iqd[0], iqd[1], f1)
         plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
         plcu2 = m.iqd_plcu2(*iqd)
-        try:
-            tfric = m.kfric_b*m.rotor_mass*30e-3/np.pi
-        except AttributeError:
-            tfric = 0
+        tfric = m.tfric
     else:
         plfe1 = np.array(r['plfe1'])
         plfe2 = np.zeros(ntmesh.shape[1])
@@ -163,7 +172,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             tfric = 0
 
     plfric = 2*np.pi*ntmesh[0]*tfric
-    #ntmesh[1] -= tfric
+    if not with_fw:
+        ntmesh[1] -= tfric
     pmech = np.array(
         [2*np.pi*nt[0]*nt[1]
          for nt in ntmesh.T])

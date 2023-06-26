@@ -657,7 +657,8 @@ class PmRelMachine(object):
                 if with_fw:
                     w1, Tf = self.w1_imax_umax(i1max, u1max)
                 else:
-                    iq, id, Tf = self.iqd_torque(T)
+                    iq, id = self.iqd_torque(T)
+                    Tf = T
                     w1 = self.w1_umax(u1max, iq, id)
             else:
                 iq, id = iqd(0, i1max)

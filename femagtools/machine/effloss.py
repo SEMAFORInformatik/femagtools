@@ -34,7 +34,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
         def tbip(x): return 0
 
     nxtx = []
-    for nx in np.linspace(1, nmax, npoints[0]):
+    for nx in np.linspace(n[0], nmax, npoints[0]):
         t0 = tbip(nx)
         t1 = tip(nx)
         npnts = max(round((t1-t0) / (tmax-tmin) * tnum), 2)
@@ -49,7 +49,8 @@ def _generate_mesh(n, T, nb, Tb, npoints):
     return np.array(nxtx).T
 
 
-def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40)):
+def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
+                          with_mtpa=True, with_fw=False):
     """return speed, torque efficiency and losses
 
     arguments:

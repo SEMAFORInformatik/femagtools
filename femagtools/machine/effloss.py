@@ -34,7 +34,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
         def tbip(x): return 0
 
     nxtx = []
-    for nx in np.linspace(1, nmax, npoints[0]):
+    for nx in np.linspace(0.01, nmax, npoints[0]):
         t0 = tbip(nx)
         t1 = tip(nx)
         npnts = max(round((t1-t0) / (tmax-tmin) * tnum), 2)
@@ -50,7 +50,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
 
 
 def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
-                          with_mtpv=True, with_mtpa=True):
+                          with_mtpv=True, with_mtpa=True, progress=None):
     """return speed, torque efficiency and losses
 
     arguments:
@@ -108,12 +108,16 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                             round(100*self.n/self.nsamples))
 
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
-        progress = ProgressLogger(ntmesh.shape[1])
+        if progress is None:
+            log = ProgressLogger(ntmesh.shape[1])
+        else:
+            log = progress
+            log.nsamples=ntmesh.shape[1]
         iqd = np.array([
             m.iqd_tmech_umax(
                 nt[1],
                 2*np.pi*nt[0]*m.p,
-                u1, log=progress, with_mtpa=with_mtpa)[:-1]
+                u1, log=log, with_mtpa=with_mtpa)[:-1]
             for nt in ntmesh.T]).T
         beta, i1 = betai1(iqd[0], iqd[1])
         uqd = [m.uqd(2*np.pi*n*m.p, *i)

@@ -292,7 +292,10 @@ class PmRelMachine(object):
                                'fun': lambda iqd:
                                np.sqrt(2)*u1max - la.norm(self.uqd(w1, *iqd))}))
         if log:
-            log(res.x)
+            try:
+                log(res.x)
+            except:
+                pass  # logger is not correct
         logger.debug("iqd_tmech_umax w1=%f torque=%f %f iq=%f id=%f u1 u1 %f %f",
                      w1, torque, self.torque_iqd(*res.x), res.x[0], res.x[1],
                      u1max, np.linalg.norm(
@@ -745,7 +748,6 @@ class PmRelMachine(object):
             nmax = n
             logger.info("Type speed %f n: %f nmax %f",
                         60*n1, 60*n, 60*nmax)
-
             n1 = min(n1, nmax)
             if n1 < nmax:
                 interv = 'MTPA', # fw range is always MTPA (aka PCONST)

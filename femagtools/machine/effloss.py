@@ -133,7 +133,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
 
 
 def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
-                          with_mtpv=True, with_mtpa=True, with_pmconst=True, with_fw=True,
+                          with_mtpv=True, with_mtpa=True, with_pmconst=True, with_tmech=True,
                           num_proc=0):
     """return speed, torque efficiency and losses
 
@@ -148,7 +148,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     with_mtpv -- (optional) use mtpv if True (default)
     with_pmconst -- (optional) use pmax if True (default)
     with_mtpa -- (optional) use mtpa if True (default), disables mtpv if False
-    with_fw -- (optional) use friction and windage losses (default)
+    with_tmech -- (optional) use friction and windage losses (default)
     num_proc -- (optional) number of parallel processes (default 0)
     """
     if isinstance(eecpars, dict):
@@ -168,7 +168,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         rb = {}
         r = m.characteristics(T, nmax, u1, nsamples=nsamples,
                               with_mtpv=with_mtpv, with_mtpa=with_mtpa,
-                              with_pmconst=with_pmconst, with_fw=with_fw)  # driving mode
+                              with_pmconst=with_pmconst, with_tmech=with_tmech)  # driving mode
         if isinstance(m, (PmRelMachineLdq, SynchronousMachineLdq)):
             if min(m.betarange) >= -np.pi/2:  # driving mode only
                 rb['n'] = None
@@ -180,7 +180,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         if 'n' not in rb:
             rb = m.characteristics(-T, max(r['n']), u1, nsamples=nsamples,
                                    with_mtpv=with_mtpv, with_mtpa=with_mtpa,
-                                   with_pmconst=with_pmconst, with_fw=with_fw)  # braking mode
+                                   with_pmconst=with_pmconst, with_tmech=with_tmech)  # braking mode
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)
 
@@ -200,7 +200,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                                     round(100*self.n/self.nsamples))
 
             progress = ProgressLogger(ntmesh.shape[1])
-            if with_fw:
+            if with_tmech:
                 iqd = np.array([
                     m.iqd_tmech_umax(
                         nt[1],
@@ -259,7 +259,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             tfric = 0
 
     plfric = 2*np.pi*ntmesh[0]*tfric
-    if not with_fw:
+    if not with_tmech:
         ntmesh[1] -= tfric
     pmech = np.array(
         [2*np.pi*nt[0]*nt[1]

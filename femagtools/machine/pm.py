@@ -947,7 +947,7 @@ class PmRelMachineLdq(PmRelMachine):
                 return
             elif len(i1) == 1:
                 def interp(x, b, i):
-                    return ip.ip.InterpolatedUnivariateSpline(beta, x, k=1)(b)
+                    return ip.InterpolatedUnivariateSpline(beta, x, k=1)(b)
                 self.ld = partial(interp, ld)
                 self.psim = partial(interp, psim)
                 self.lq = partial(interp, lq)
@@ -955,14 +955,14 @@ class PmRelMachineLdq(PmRelMachine):
                 return
             if len(beta) == 1:
                 def interp(x, b, i):
-                    return ip.ip.InterpolatedUnivariateSpline(i1, x, k=1)(i)
+                    return ip.InterpolatedUnivariateSpline(i1, x, k=1)(i)
                 self.ld = partial(interp, ld)
                 self.psim = partial(interp, psim)
                 self.lq = partial(interp, lq)
                 logger.debug("interpolatedunivariatespline i1 %s", i1)
                 return
 
-            raise ValueError("unsupported array size {}x{}".format(
+            raise ValueError("unsupported array size {0}x{1}".format(
                 len(beta), len(i1)))
 
         self.betarange = min(beta), max(beta)
@@ -1071,16 +1071,18 @@ class PmRelMachinePsidq(PmRelMachine):
                 return
             if len(id) == 1 or psid.shape[1] == 1:
                 def interp(x, q, d):
-                    return ip.InterpolatedUnivariateSpline(iq, x).ev(q)
+                    return ip.InterpolatedUnivariateSpline(iq, x)(q)
                 self._psid = partial(interp, psid)
                 self._psiq = partial(interp, psiq)
+                return
             if len(iq) == 1 or psid.shape[0] == 1:
                 def interp(x, q, d):
-                    return ip.InterpolatedUnivariateSpline(id, x).ev(d)
+                    return ip.InterpolatedUnivariateSpline(id, x)(d)
                 self._psid = partial(interp, psid)
                 self._psiq = partial(interp, psiq)
-            raise ValueError("unsupported array size {}x{}".format(
-                len(psid.shape[0]), psid.shape[1]))
+                return
+            raise ValueError("unsupported array size {}".format(
+                psid.shape))
 
         self._psid = ip.RectBivariateSpline(iq, id, psid).ev
         self._psiq = ip.RectBivariateSpline(iq, id, psiq).ev

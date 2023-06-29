@@ -56,14 +56,22 @@ xcoil, ycoil = ${model['temp_coords'][0]},${model['temp_coords'][1]}
 local load = read_load_file("load.csv")
 
 f = io.open('temperature.dat', 'w')
+f:write(string.format("0.0 0.0\n"))
+
 i = 1
 for _, load_data in ipairs(load) do  -- use pairs or ipairs to iterate over tables
   if i == 1 then
     t1 = load_data.t
+    i1 = load_data.i1
+    beta = load_data.beta
+    speed = load_data.n
     printf("\nTotal steps: %d\n", #load)
   else
     t2 = load_data.t
     end_time = t2 - t1
+    i1 = load_data.i1
+    beta = load_data.beta
+    speed = load_data.n
 
     m.current   = i1 * math.sqrt(2)/m.num_par_wdgs
     m.angl_i_up = beta
@@ -82,20 +90,18 @@ for _, load_data in ipairs(load) do  -- use pairs or ipairs to iterate over tabl
     else
       start_mode = temp_load
     end
-    time_step = 10
+    time_step = end_time/5
     calc_therm_field_tstep(start_mode,time_step,end_time)
 
     export_calc_results("temp-"..string.format("%03d",i)..".vtu")
     temp = temperature_xy(xcoil, ycoil)
-    printf(" %f\n", temp)
+    printf("%4d, time: %6.1fs, current: %5.1fA, speed: %6.1frpm, Temp incr.: %2.2fK, time-step: %3.1fs\n", i-1, t2, i1, m.speed, temp, time_step)
     f:write(string.format("%g %g\n", t2, temp))
     t1 = t2
   end
 
-    i1 = load_data.i1
-    beta = load_data.beta
-    speed = load_data.n
-    i = i+1
+  i = i+1
+
 end
 f:close()
 save_model('close')

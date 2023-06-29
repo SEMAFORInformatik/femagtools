@@ -50,6 +50,10 @@ class Machine(object):
                                                    self.endangle) + \
                "Mirror: {}\n".format(self.mirror_geom is not None)
 
+    def log_machine(self, what):
+        logger.info("Machine %s", what)
+        self.geom.log_geom()
+
     def is_a_machine(self):
         return self.radius > 0.0
 
@@ -723,3 +727,14 @@ class Machine(object):
             logger.debug("create subregions again")
             self.geom.create_list_of_areas()
             self.geom.search_subregions()
+
+    def check_and_correct_geom(self, what):
+        geom = self.geom.check_geom(what)
+        if geom:
+            logger.warning("=== Angle correction (%s) ===", what)
+            self.geom = geom
+            self.startangle = 0.0
+            self.endangle = self.geom.alfa
+            self.clear_cut_lines()
+            self.repair_hull()
+            self.set_alfa_and_corners()

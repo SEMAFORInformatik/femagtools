@@ -817,6 +817,44 @@ class Geometry(object):
                    for n, r in zip(self.g.nodes(), rotnodes)}
         nx.relabel_nodes(self.g, mapping, copy=False)
 
+    def check_geom(self, what):
+        logger.debug("check geometry of %s", what)
+        parts = int(round(np.pi * 2 / self.alfa, 1))
+        logger.debug(" --parts......: %s", parts)
+        logger.debug(" --ist alpha..: %s", self.alfa)
+        real_alfa = np.pi * 2 / parts
+        logger.debug(" --soll alpha.: %s", real_alfa)
+        if not np.isclose(self.alfa, real_alfa):
+            logger.debug(" --BAD angle ==> get corrected machine")
+            return self.correct_geom(real_alfa)
+        return None
+
+    def correct_geom(self, correct_alpha):
+        elements = []
+        for e in self.g.edges(data=True):
+            o = e[2]['object'].correct(self.alfa, correct_alpha, ndec)
+            elements.append(o)
+        geom = Geometry(elements, self.rtol, self.atol)
+        geom.center = self.center
+        geom.alfa = correct_alpha
+        geom.min_radius = self.min_radius
+        geom.max_radius = self.max_radius
+        geom.is_inner = self.is_inner
+        geom.kind = self.kind
+        geom.sym_part = self.sym_part
+        return geom
+
+    def log_geom(self):
+        logger.info("Center..........: %s", self.center)
+        logger.info("Alpha...........: %s", self.alfa)
+        logger.info("Is Inner........: %s", self.is_inner)
+        logger.info("Min Radius......: %s", self.min_radius)
+        logger.info("Max Radius......: %s", self.max_radius)
+        logger.info("Mirror Corners..: %s", self.mirror_corners)
+        logger.info("Start Corners...: %s", self.start_corners)
+        logger.info("End Corners.....: %s", self.end_corners)
+        logger.info("Edges...........: %s", self.num_edges)
+
     def scale(self, factor):
         """scales all objects"""
         for e in self.g.edges(data=True):
@@ -2081,11 +2119,20 @@ class Geometry(object):
             return self.alfa
 
     def __str__(self):
+        real_alfa = 0
+        if self.sym_part > 0:
+            if self.is_mirrored():
+                real_alfa = np.pi / self.sym_part
+            else:
+                real_alfa = 2*np.pi / self.sym_part
         return "name...........: {}\n".format(self._name) + \
                "kind...........: {}\n".format(self.kind) + \
                "sym_part.......: {}\n".format(self.sym_part) + \
                "sym_counterpart: {}\n".format(self.sym_counterpart) + \
                "alpha..........: {}\n".format(self.alfa) + \
+               "alpha real.....: {}\n".format(real_alfa) + \
+               "circle.........: {}\n".format(self.alfa * self.sym_part) + \
+               "mirrored.......: {}\n".format(self.is_mirrored()) + \
                "radius.........: {} -- {}\n".format(self.min_radius,
                                                     self.max_radius)
 
@@ -2981,12 +3028,15 @@ class Geometry(object):
             windings_surface.sort(reverse=True)
             max_size = windings_surface[0][0]
             for sz, w in windings_surface:
+                logger.info("winding size = %s", sz)
                 if sz / max_size < 0.95:
                     w.set_type(0)
-
+                    if sz / max_size < 0.2:
+                        windings_found -= 1
             windings = [a for a in self.list_of_areas()
                         if a.is_winding()]
             if windings_found > 2 and len(windings) == 1:
+                logger.info("no windings remaining")
                 # no windings
                 [w.set_type(0) for w in windings]
                 [a.set_type(1) for a in self.list_of_areas() if a.is_iron()]

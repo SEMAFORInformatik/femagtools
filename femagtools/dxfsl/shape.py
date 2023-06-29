@@ -10,7 +10,7 @@
 from __future__ import print_function
 import numpy as np
 import logging
-from .functions import less_equal
+from .functions import less_equal, greater_equal
 from .functions import distance, line_m, line_n
 from .functions import point, points_are_close, points_on_arc
 from .functions import alpha_line, alpha_angle, alpha_triangle
@@ -128,6 +128,32 @@ class Shape(object):
         n = T.dot(np.array((self.n2[0], self.n2[1])))
         self.n2 = (round(n[0], ndec),
                    round(n[1], ndec))
+        return self
+
+    def correct(self, src_alpha, dest_alpha, ndec):
+        alpha_ref = min(src_alpha, dest_alpha)
+        alpha_p = alpha_line((0.0, 0.0), self.n1)
+        if greater_equal(alpha_p, alpha_ref):
+            delta = dest_alpha - alpha_p
+            T = np.array(((np.cos(delta), -np.sin(delta)),
+                          (np.sin(delta), np.cos(delta))))
+            n = T.dot(np.array((self.p1[0], self.p1[1])))
+            self.p1 = (n[0], n[1])
+            n = T.dot(np.array((self.n1[0], self.n1[1])))
+            self.n1 = (round(n[0], ndec),
+                       round(n[1], ndec))
+
+        alpha_p = alpha_line((0.0, 0.0), self.n2)
+        if greater_equal(alpha_p, alpha_ref):
+            delta = dest_alpha - alpha_p
+            T = np.array(((np.cos(delta), -np.sin(delta)),
+                          (np.sin(delta), np.cos(delta))))
+            n = T.dot(np.array((self.p2[0], self.p2[1])))
+            self.p2 = (n[0], n[1])
+            n = T.dot(np.array((self.n2[0], self.n2[1])))
+            self.n2 = (round(n[0], ndec),
+                       round(n[1], ndec))
+
         return self
 
     def overlapping_shapes(self, n, e, rtol=1e-03, atol=1e-03):
@@ -596,7 +622,7 @@ class Arc(Circle):
 
     def length(self):
         """returns length of this arc"""
-        d = abs(self.endangle - self.startangle)
+        d = alpha_angle(self.startangle, self.endangle)
         if d > 2*np.pi:
             d -= 2*np.pi
         return self.radius*abs(d)
@@ -814,6 +840,20 @@ class Arc(Circle):
 
     def transform(self, T, alpha, ndec):
         super(Arc, self).transform(T, alpha, ndec)
+        p1, p2 = ((self.p1[0]-self.center[0],
+                   self.p1[1]-self.center[1]),
+                  (self.p2[0]-self.center[0],
+                   self.p2[1]-self.center[1]))
+
+        self.startangle = np.arctan2(p1[1], p1[0])
+        self.endangle = np.arctan2(p2[1], p2[0])
+        if self.rtheta is not None:
+            self.rtheta = self.rtheta + alpha
+        return self
+
+    def correct(self, src_alpha, dest_alpha, ndec):
+        super(Arc, self).correct(src_alpha, dest_alpha, ndec)
+
         p1, p2 = ((self.p1[0]-self.center[0],
                    self.p1[1]-self.center[1]),
                   (self.p2[0]-self.center[0],

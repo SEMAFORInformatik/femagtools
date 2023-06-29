@@ -238,7 +238,7 @@ class PmRelMachine(object):
         "return i1 current with given torque and beta"
         i1, info, ier, mesg = so.fsolve(
             lambda i1: self.torque_iqd(*iqd(beta, i1))-torque,
-            self.io[1],
+            self.i1range[1]/2,
             full_output=True)
         if ier == 1:
             return i1
@@ -372,7 +372,7 @@ class PmRelMachine(object):
             log((iq, id, tq))
         return iq, id, tq
 
-    def iqd_torque_imax_umax(self, torque, n, u1max, with_tmech, log=0):
+    def iqd_torque_imax_umax(self, torque, n, u1max, with_tmech=False, log=0):
         """return d-q current and torque at stator frequency w1,
         max voltage  and current"""
         iq, id = self.iqd_torque(torque)

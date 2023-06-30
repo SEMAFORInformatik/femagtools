@@ -113,6 +113,7 @@ class PmRelMachine(object):
 
     def iqd_tmech(self, torque, n, iqd0=0, with_mtpa=True):
         """return minimum d-q-current for shaft torque"""
+
         if np.abs(torque) < 1e-2:
             return (0, 0)
         if np.isscalar(iqd0):
@@ -126,12 +127,18 @@ class PmRelMachine(object):
                 constraints=({'type': 'eq',
                               'fun': lambda iqd:
                               self.tmech_iqd(*iqd, n) - torque}))
-            if not res.success:
-                logger.warning("n: %s, torque %s: %s %s",
-                               60*n, torque, res.message, i0)
-                raise ValueError(
-                    f'Torque {torque:.1f} speed {60*n:.1f} {res.message}')
-            return res.x
+            if res.success:
+                return res.x
+
+            #logger.warning("n: %s, torque %s: %s %s",
+            #                   60*n, torque, res.message, i0)
+            # try a different approach:
+            #raise ValueError(
+            #    f'Torque {torque:.1f} speed {60*n:.1f} {res.message}')
+            def func(i1):
+                return torque - self.mtpa_tmech(i1, n)[2]
+            i1 = so.fsolve(func, res.x[0])[0]
+            return self.mtpa_tmech(i1, n)[:2]
 
         def tqiq(iq):
             return torque - self.tmech_iqd(float(iq), 0, n)
@@ -150,7 +157,8 @@ class PmRelMachine(object):
 
     def tmech_iqd(self, iq, id, n):
         """return shaft torque of d-q current and speed"""
-        return self.torque_iqd(iq, id) - self.tloss_iqd(iq, id, n)
+        tq = self.torque_iqd(iq, id)
+        return tq - self.tloss_iqd(iq, id, n)
 
     def uqd(self, w1, iq, id):
         """return uq, ud of frequency w1 and d-q current"""
@@ -687,7 +695,7 @@ class PmRelMachine(object):
 
             n1 = min(n1, nmax)
             if n1 < nmax:
-                interv = 'MTPA', # fieldweakening range is always MTPA
+                interv = 'MTPA',  # fieldweakening range is always MTPA
                 if with_mtpa:
                     speedrange = [0] + self.speedranges(
                         i1max, u1max, nmax,

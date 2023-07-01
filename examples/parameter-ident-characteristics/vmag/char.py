@@ -42,9 +42,9 @@ if __name__ == '__main__':
     rep.append((w1/2/np.pi*60/pm.p, tq, i1, beta/np.pi*180, u1))
 
     print("""
-      n/rpm  T/Nm I1/A beta/°  U1/V
-    -------------------------------
-    """)
+  n/rpm  T/Nm I1/A beta/°  U1/V
+  -------------------------------
+  """)
     for r in rep:
         print(f" {r[0]:5.0f}  {r[1]:5.1f} {r[2]:5.1f} {r[3]:5.1f} {r[4]:5.1f}")
     print()

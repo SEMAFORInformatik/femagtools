@@ -1783,11 +1783,12 @@ def plot_contour(speed, torque, z, ax, title='', levels=[],
     x = 60*np.asarray(speed)
     y = np.asarray(torque)
     xscale = yscale = 1
+    # check x,y value ratios to help tricontour
     if np.max(x) > 10*np.max(y):
         xscale = 10
         x /= xscale
-    if np.max(y) > 1000:
-        yscale = 1000
+    if np.max(y) > 10*max(x):
+        yscale = 100
         y /= yscale
 
     if not levels:

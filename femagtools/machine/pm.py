@@ -102,9 +102,18 @@ class PmRelMachine(object):
                 constraints=({'type': 'eq',
                               'fun': lambda iqd:
                               self.torque_iqd(*iqd) - torque}))
-            if not res.success:
-                raise ValueError(f'Torque {torque}, io {i0}: {res.message}')
-            return res.x
+            if res.success:
+                return res.x
+
+            #logger.warning("n: %s, torque %s: %s %s",
+            #                   60*n, torque, res.message, i0)
+            # try a different approach:
+            #raise ValueError(
+            #    f'Torque {torque:.1f} speed {60*n:.1f} {res.message}')
+            def func(i1):
+                return torque - self.mtpa(i1)[2]
+            i1 = so.fsolve(func, res.x[0])[0]
+            return self.mtpa(i1)[:2]
 
         def tqiq(iq):
             return torque - self.torque_iqd(float(iq), 0)

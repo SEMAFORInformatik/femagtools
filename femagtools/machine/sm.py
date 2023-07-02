@@ -511,7 +511,7 @@ class SynchronousMachine(object):
             w10)[0]
 
     def characteristics(self, T, n, u1max, nsamples=50,
-                        with_fw=True, **kwargs):
+                        with_tmech=True, **kwargs):
         """calculate torque speed characteristics.
         return dict with list values of
         n, T, u1, i1, beta, cosphi, pmech, n_type
@@ -521,10 +521,11 @@ class SynchronousMachine(object):
         n -- (float) the maximum speed in 1/s
         u1max -- (float) the maximum voltage in V rms
         nsamples -- (optional) number of speed samples
-        with_fw -- (optional) use friction and windage losses
+        with_tmech -- (optional) use friction and windage losses
         """
         iq, id, iex = self.iqd_torque(T)
-        if with_fw:
+        logger.info("--- start ---")
+        if with_tmech:
             i1max = betai1(iq, id)[1]
             if T < 0:
                 i1max = -i1max
@@ -532,6 +533,7 @@ class SynchronousMachine(object):
         else:
             Tf = T
             w1type = self.w1_umax(u1max, iq, id, iex)
+        logger.info("w1type %f", w1type)
         wmType = w1type/self.p
         pmax = Tf*wmType
 
@@ -566,7 +568,7 @@ class SynchronousMachine(object):
             #            if w1 <= w1type:
             #                iq, id, iex = self.iqd_torque(tq)
             #            else:
-            if with_fw:
+            if with_tmech:
                 iq, id, iex, tqx = self.iqd_tmech_umax(
                         tq, w1, u1max)
             else:

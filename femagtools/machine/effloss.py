@@ -183,6 +183,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)
 
+    logger.info("total speed,torque samples %d", ntmesh.shape[1])
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
         if num_proc > 1:
             iqd = iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa)

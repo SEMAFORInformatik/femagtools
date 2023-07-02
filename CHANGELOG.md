@@ -3,10 +3,12 @@
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
 ## Release 1.3.1
-	- with_mtpv, with_mtpa switches for effloss and pm characteristics added
-        - added plot transientsc_demag
-	- added hxy read module
-	- characteristics with friction and windage losses
+	- with_mtpv, with_mtpa, with_pmconst, with_tmech switches for effloss and pm characteristics added
+        - new plot func transientsc_demag
+	- new hxy file read module
+	- characteristics with friction and windage losses (with_tmech)
+	- effmap with multiprocessing support
+	- improved dxf-fsl conversion
 
 ## Release 1.3
 	- TH module for static and dynamic thermal simulations included

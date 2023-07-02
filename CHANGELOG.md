@@ -9,6 +9,8 @@
 	- characteristics with friction and windage losses (with_tmech)
 	- effmap with multiprocessing support
 	- improved dxf-fsl conversion
+        - improved contour plots
+	- demag_pos plot with pos at max demag
 
 ## Release 1.3
 	- TH module for static and dynamic thermal simulations included

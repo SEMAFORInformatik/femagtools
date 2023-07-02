@@ -1249,7 +1249,7 @@ def _contour(ax, title, elements, values, label='', isa=None):
     if ax == 0:
         ax = plt.gca()
     ax.set_aspect('equal')
-    ax.set_title(title, fontsize=18)
+    ax.set_title(title)
     if isa:
         for se in isa.superelements:
             ax.add_patch(Polygon([n.xy
@@ -1263,13 +1263,13 @@ def _contour(ax, title, elements, values, label='', isa=None):
     p = PatchCollection(patches, alpha=1.0, match_original=False)
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
-    cb = plt.colorbar(p)
+    cb = plt.colorbar(p, shrink=0.9)
     for patch in np.array([Polygon([v.xy for v in e.vertices],
                                    fc='white', alpha=1.0)
                            for e in elements])[np.isnan(values)]:
         ax.add_patch(patch)
     if label:
-        cb.set_label(label=label, fontsize=18)
+        cb.set_label(label=label)
     ax.autoscale(enable=True)
     ax.axis('off')
 
@@ -1281,29 +1281,35 @@ def demag(isa, ax=0):
     """
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
-    _contour(ax, f'Demagnetization at {isa.MAGN_TEMPERATURE} °C',
+    _contour(ax, f'Demagnetization at {isa.MAGN_TEMPERATURE} °C (max -{np.max(demag):.1f} kA/m)',
              emag, demag, '-H / kA/m', isa)
     logger.info("Max demagnetization %f", np.max(demag))
 
 
-def demag_pos(isa, pos, icur=-1, ibeta=-1, ax=0):
+def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, ax=0):
     """plot demag of NC/I7/ISA7 model at rotor position
     Args:
       isa: Isa7/NC object
-      pos: rotor position in degree
+      pos: rotor position in degree (maximum h
       icur: cur amplitude index or last index if -1
       ibeta: beta angle index or last index if -1
     """
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([isa.demagnetization(e, icur, ibeta)[1]
                       for e in emag])
-    for i, x in enumerate(isa.pos_el_fe_induction):
-        if x >= pos/180*np.pi:
-            break
+    if pos>=0:
+        for i, x in enumerate(isa.pos_el_fe_induction):
+            if x >= pos/180*np.pi:
+                break
+    else:
+        demagmax = np.max(demag, axis=0)
+        i = np.argmax(demagmax)
+        x = isa.pos_el_fe_induction[i]
 
     hpol = demag[:, i]
     hpol[hpol == 0] = np.nan
-    _contour(ax, f'Demagnetization at Pos. {round(x/np.pi*180)}° ({isa.MAGN_TEMPERATURE} °C)',
+    _contour(ax, f'Demagnetization at pos. {round(x/np.pi*180):.1f}°,'
+    f'{isa.MAGN_TEMPERATURE} °C (max -{np.max(hpol):.1f} kA/m)',
              emag, hpol, '-H / kA/m', isa)
     logger.info("Max demagnetization %f kA/m", np.nanmax(hpol))
 
@@ -1324,7 +1330,7 @@ def flux_density(isa, subreg=[], ax=0):
         elements = [e for e in isa.elements]
 
     fluxd = np.array([np.linalg.norm(e.flux_density()) for e in elements])
-    _contour(ax, f'Flux Density T', elements, fluxd)
+    _contour(ax, f'Flux Density T (max {np.max(fluxd):.1f} T)', elements, fluxd)
     logger.info("Max flux dens %f", np.max(fluxd))
 
 

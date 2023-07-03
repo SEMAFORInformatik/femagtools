@@ -83,7 +83,6 @@ def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa):
     for p in procs:
         p.join()
     if iex:
-        logger.info("SM %s", iex[-1])
         return np.array([np.array(iq).flatten(),
                          np.array(id).flatten(),
                          np.array(iex).flatten()])

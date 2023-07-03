@@ -530,7 +530,7 @@ class SynchronousMachine(object):
             w10)[0]
 
     def characteristics(self, T, n, u1max, nsamples=50,
-                        with_fw=True, **kwargs):
+                        with_tmech=True, **kwargs):
         """calculate torque speed characteristics.
         return dict with list values of
         n, T, u1, i1, beta, cosphi, pmech, n_type
@@ -540,10 +540,10 @@ class SynchronousMachine(object):
         n -- (float) the maximum speed in 1/s
         u1max -- (float) the maximum voltage in V rms
         nsamples -- (optional) number of speed samples
-        with_fw -- (optional) use friction and windage losses
+        with_tmech -- (optional) use friction and windage losses
         """
         iq, id, iex = self.iqd_torque(T)
-        if with_fw:
+        if with_tmech:
             i1max = betai1(iq, id)[1]
             if T < 0:
                 i1max = -i1max
@@ -551,6 +551,7 @@ class SynchronousMachine(object):
         else:
             Tf = T
             w1type = self.w1_umax(u1max, iq, id, iex)
+        logger.debug("w1type %f", w1type)
         wmType = w1type/self.p
         pmax = Tf*wmType
 
@@ -580,22 +581,14 @@ class SynchronousMachine(object):
         r = dict(u1=[], i1=[], id=[], iq=[], iex=[], T=[], cosphi=[], n=[],
                  beta=[], plfe1=[], plcu1=[], plcu2=[])
         for wm, tq in zip(wmtab, [tload(wx) for wx in wmtab]):
-            #            try:
             w1 = wm*self.p
-            #            if w1 <= w1type:
-            #                iq, id, iex = self.iqd_torque(tq)
-            #            else:
-            if with_fw:
+            if with_tmech:
                 iq, id, iex, tqx = self.iqd_tmech_umax(
                         tq, w1, u1max)
             else:
                 iq, id, iex, tqx = self.iqd_torque_umax(
                         tq, w1, u1max)
                 tqx -= self.tfric
-                #                        (0.9*iq, 0.9*id,
-                #                         min(self.bounds[-1][0], 0.9*iex)))[:-1]
-            #logger.info("w1 %g tq %g: iq %g iex %g tqx %g",
-            #            w1, tq, iq, iex, tqx)
             uq, ud = self.uqd(w1, iq, id, iex)
             u1 = np.linalg.norm((uq, ud))/np.sqrt(2)
             f1 = w1/2/np.pi
@@ -616,9 +609,6 @@ class SynchronousMachine(object):
             r['plcu2'].append(iex**2*self.rrot(0))
             r['T'].append(tqx)
             r['n'].append(wm/2/np.pi)
-            # except ValueError as ex:
-            #    logger.warning("ex %s wm %f T %f", ex, wm, tq)
-            #    break
 
         r['plfe'] = r['plfe1']
         r['plcu'] = (np.array(r['plcu1']) + np.array(r['plcu2'])).tolist()

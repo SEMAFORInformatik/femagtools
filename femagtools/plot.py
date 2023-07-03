@@ -1769,12 +1769,28 @@ def get_nT_boundary(n, T):
     return np.array(bnd[0] + bnd[1][::-1])
 
 
-def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True,
-                 cmap='YlOrRd', cbar=True, nsamples=[128, 128]):
+def plot_contour(speed, torque, z, ax, title='', levels=[],
+                 clabel=True, cmap='YlOrRd', cbar=False):
+    """ contour plot of speed, torque, z values
+    Arguments:
+    levels: (list of floats)
+    clabel: contour labels if True
+    cmap: colour map
+    cbar: (bool) create color bar if True (default False)
+    """
     from matplotlib.path import Path
     from matplotlib.patches import PathPatch
-    x = np.asarray([60*n for n in speed])
+    x = 60*np.asarray(speed)
     y = np.asarray(torque)
+    xscale = yscale = 1
+    # check x,y value ratios to help tricontour
+    if np.max(x) > 10*np.max(y):
+        xscale = 10
+        x /= xscale
+    if np.max(y) > 10*max(x):
+        yscale = 100
+        y /= yscale
+
     if not levels:
         if max(z) <= 1:
             if max(z) > 0.96:
@@ -1788,71 +1804,58 @@ def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True,
                 levels.append(np.ceil(max(z)*100)/100)
         else:
             levels = 14
-
-    # First normalize the irregular grid of x/y/z points
-
-    def normalize(v):
-        norm = np.linalg.norm(v)
-        if norm == 0:
-            return (v, 1)  # here we want no normalisation
-        return (v / norm, norm)
-
-    xn, norm_x = normalize(x)
-    yn, norm_y = normalize(y)
-    zn, norm_z = normalize(z)
-
-    # This is necesarry, that the interpolation onto a regular grid can handle
-    # many orders of magnitude differences in the data
-
-    xin = np.linspace(min(xn), max(xn), nsamples[0])
-    yin = np.linspace(min(yn), max(yn), nsamples[1])
-    xin, yin = np.meshgrid(xin, yin)
-    zin = ip.griddata((xn, yn), np.asarray(zn), (xin, yin), method='cubic')
-
-    # Now invert the normalisation to get back the original magnitude of the values
-
-    xi = xin * norm_x
-    yi = yin * norm_y
-    zi = zin * norm_z
-
-    # Finally plot the contour
-
-    cont = ax.contour(xi, yi, zi,
-                      linewidths=0.4, levels=levels, colors='k')
-    if clabel:
-        ax.clabel(cont, inline=True, colors='k', fontsize=8)
-    contf = ax.contourf(xi, yi, zi,
-                        levels=levels, cmap=cmap)
-
+    #
     ax.spines['top'].set_color('none')
     ax.spines['right'].set_color('none')
+
+    cont = ax.tricontour(x, y, z,
+                         linewidths=0.4, levels=levels,
+                         colors='k')
+    contf = ax.tricontourf(x, y, z,
+                           levels=levels, cmap=cmap)
 
     clippath = Path(get_nT_boundary(x, y))
     patch = PathPatch(clippath, facecolor='none')
     ax.add_patch(patch)
     for c in cont.collections:
         c.set_clip_path(patch)
+    #ax.plot(x, y, "k.", ms=3)
+    if clabel:
+        ax.clabel(cont, inline=True, colors='k', fontsize=8)
+
     for c in contf.collections:
         c.set_clip_path(patch)
-    ax.set_ylabel('Torque / Nm', fontsize=9)
-    ax.set_xlabel('Speed / rpm', fontsize=9)
+
+    if xscale > 1:
+        def format_fn(tick_val, tick_pos):
+            return round(xscale*tick_val)
+        ax.xaxis.set_major_formatter(format_fn)
+    if yscale > 1:
+        def format_fn(tick_val, tick_pos):
+            return round(yscale*tick_val)
+        ax.yaxis.set_major_formatter(format_fn)
+
+    ax.set_ylabel('Torque / Nm')
+    ax.set_xlabel('Speed / rpm')
     ax.set_title(title)
     if cbar:
         cfig = ax.get_figure()
-        col_bar = cfig.colorbar(contf, ax = ax, location='bottom', aspect=30)
-        col_bar.set_label(label=title, size=9)
-
+        cfig.colorbar(contf, ax=ax,
+                      orientation='vertical')
     return contf
 
-def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True, cmap='YlOrRd', levels=None, cbar=True):
+def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True,
+                   cmap='YlOrRd', levels=None, cbar=False):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
     contf = plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
-                         title=title, clabel=clabel, cmap=cmap, levels=levels, cbar=cbar)
+                         title=title, clabel=clabel, cmap=cmap,
+                         levels=levels, cbar=cbar)
     return contf
 
 
-def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True):
+def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True,
+               cmap='YlOrRd', cbar=False):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
     return plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3, ax,

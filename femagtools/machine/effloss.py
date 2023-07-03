@@ -133,7 +133,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
 
 def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                           with_mtpv=True, with_mtpa=True, with_pmconst=True, with_tmech=True,
-                          num_proc=0):
+                          num_proc=0, progress=None):
     """return speed, torque efficiency and losses
 
     arguments:
@@ -149,6 +149,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     with_mtpa -- (optional) use mtpa if True (default), disables mtpv if False
     with_tmech -- (optional) use friction and windage losses (default)
     num_proc -- (optional) number of parallel processes (default 0)
+    progress  -- (optional) custom function for progress logging
     """
     if isinstance(eecpars, dict):
         if isinstance(temp, (list, tuple)):
@@ -183,6 +184,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     ntmesh = _generate_mesh(r['n'], r['T'],
                             rb['n'], rb['T'], npoints)
 
+    logger.info("total speed,torque samples %d", ntmesh.shape[1])
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
         if num_proc > 1:
             iqd = iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa)
@@ -197,8 +199,16 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                     if self.n % self.num_iv == 0:
                         logger.info("Losses/Eff Map: %d%%",
                                     round(100*self.n/self.nsamples))
-
-            progress = ProgressLogger(ntmesh.shape[1])
+            if progress is None:
+                progress = ProgressLogger(ntmesh.shape[1])
+            else:
+                try:
+                    progress.nsamples=ntmesh.shape[1]
+                    progress(0)  # To check conformity
+                    progress.n = 0
+                except:
+                    logger.warning("Invalid ProgressLogger given to efficiency_losses_map, using default one!")
+                    progress = ProgressLogger(ntmesh.shape[1])
             if with_tmech:
                 iqd = np.array([
                     m.iqd_tmech_umax(

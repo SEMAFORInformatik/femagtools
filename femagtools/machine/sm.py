@@ -359,8 +359,8 @@ class SynchronousMachine(object):
             warnings.simplefilter("ignore")
             def sqrtculoss(iqde):
                 pcu = self.culoss(iqde)
-                #logger.info("iqde %s --> pcu %f", iqde, pcu)
                 return pcu
+
             res = so.minimize(
                 self.culoss, startvals, method='SLSQP',  # trust-constr
                 bounds=self.bounds,
@@ -371,6 +371,7 @@ class SynchronousMachine(object):
                     #options={'disp': disp, 'maxiter': maxiter})
             if res['success']:
                 return res.x
+
         logger.warning("%s: torque=%f %f, io=%s",
                        res['message'], torque, self.tmech_iqd(*startvals, n),
                        startvals)
@@ -424,7 +425,7 @@ class SynchronousMachine(object):
         iq, id, iex = self.iqd_tmech(tq, n)
         return iq, id, iex, tq
 
-    def iqd_tmech_umax(self, torque, w1, u1max, log=0, with_mtpa=True):
+    def iqd_tmech_umax(self, torque, w1, u1max, log=0, **kwargs):
         """return currents and shaft torque at stator frequency and
          with minimal losses at max voltage"""
         iqde = self.iqd_tmech(torque, w1/2/np.pi/self.p)
@@ -440,7 +441,6 @@ class SynchronousMachine(object):
             return np.sqrt(2)*u1max - np.linalg.norm(
                          self.uqd(w1, *iqd(b, i1), iex))
         beta = -np.pi/4 if torque>0 else -3*np.pi/4
-        #beta = so.fsolve(ubeta, b0)[0]
         io = *iqd(beta, i1), iex
 
         #    logger.debug("--- torque %g io %s", torque, io)
@@ -470,7 +470,7 @@ class SynchronousMachine(object):
         #raise ValueError(res['message'])
 
     def iqd_torque_umax(self, torque, w1, u1max,
-                        disp=False, maxiter=500, log=0, with_mtpa=False):
+                        disp=False, maxiter=500, log=0, **kwargs):
         """return currents for torque with minimal losses"""
         iqde = self.iqd_torque(torque, disp, maxiter)
         if np.linalg.norm(

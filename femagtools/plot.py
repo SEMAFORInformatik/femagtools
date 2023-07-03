@@ -896,7 +896,7 @@ def transientsc(bch, title=''):
     fig.tight_layout(h_pad=2)
     if title:
         fig.subplots_adjust(top=0.92)
-
+    return fig
 
 def transientsc_demag(demag, magnet=0, title='', ax=0):
     """creates a demag plot of a transient short circuit
@@ -1774,6 +1774,20 @@ def get_nT_boundary(n, T):
     bnd[1].append((nx, tx))
     return np.array(bnd[0] + bnd[1][::-1])
 
+def normalize10(v):
+    """
+    Normalizes the input-array using the nearest (ceiling) power of 10.
+
+    Arguments:
+        v: array to normalize
+
+    Returns:
+        normalized array
+        normalisation factor (power of 10)
+    """
+    norm = 10**(np.ceil(np.log10(np.linalg.norm(v))))
+    return v / norm, norm
+
 
 def plot_contour(speed, torque, z, ax, title='', levels=[],
                  clabel=True, cmap='YlOrRd', cbar=False):
@@ -1783,19 +1797,18 @@ def plot_contour(speed, torque, z, ax, title='', levels=[],
     clabel: contour labels if True
     cmap: colour map
     cbar: (bool) create color bar if True (default False)
+
+    Note: the x and y axes are scaled
+
+    returns tricontourf, xscale, yscale
     """
     from matplotlib.path import Path
     from matplotlib.patches import PathPatch
     x = 60*np.asarray(speed)
     y = np.asarray(torque)
-    xscale = yscale = 1
-    # check x,y value ratios to help tricontour
-    if np.max(x) > 10*np.max(y):
-        xscale = 10
-        x /= xscale
-    if np.max(y) > 10*max(x):
-        yscale = 100
-        y /= yscale
+
+    x, xscale = normalize10(x)
+    y, yscale = normalize10(y)
 
     if not levels:
         if max(z) <= 1:
@@ -1827,7 +1840,7 @@ def plot_contour(speed, torque, z, ax, title='', levels=[],
         c.set_clip_path(patch)
     #ax.plot(x, y, "k.", ms=3)
     if clabel:
-        ax.clabel(cont, inline=True, colors='k', fontsize=8)
+        ax.clabel(cont, inline=True, colors='k', fontsize=8, inline_spacing=0)
 
     for c in contf.collections:
         c.set_clip_path(patch)
@@ -1848,16 +1861,16 @@ def plot_contour(speed, torque, z, ax, title='', levels=[],
         cfig = ax.get_figure()
         cfig.colorbar(contf, ax=ax,
                       orientation='vertical')
-    return contf
+    return contf, xscale, yscale
+
 
 def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True,
                    cmap='YlOrRd', levels=None, cbar=False):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
-    contf = plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
-                         title=title, clabel=clabel, cmap=cmap,
-                         levels=levels, cbar=cbar)
-    return contf
+    return plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
+                        title=title, clabel=clabel, cmap=cmap,
+                        levels=levels, cbar=cbar)
 
 
 def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True,

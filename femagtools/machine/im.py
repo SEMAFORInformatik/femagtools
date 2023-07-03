@@ -48,6 +48,7 @@ eecdefaults = dict(
     gam=0,  # gam=0.7, 0..1
     kh=1,  # kh=2, number of vertical conductors in slot
     tcu1=20,
+    kpfe=1,
     rotor_mass=0,
     kfric_b=1,
     pl2v=0.5,
@@ -140,6 +141,33 @@ class InductionMachine(Component):
         for k in eecdefaults.keys():
             if not hasattr(self, k):
                 setattr(self, k, eecdefaults[k])
+        try:
+            self.tfric = self.kfric_b*self.rotor_mass*30e-3/np.pi
+            # formula from
+            # PERMANENT MAGNET MOTOR TECHNOLOGY: DESIGN AND APPLICATIONS
+            # Jacek Gieras
+            #
+            # plfric = kfric_b m_r n 1e-3 W
+            # -- kfric_b : 1..3 W/kg/rpm
+            # -- m_r: rotor mass in kg
+            # -- n: rotor speed in rpm
+        except AttributeError:
+            self.tfric = 0
+
+        self.skin_resistance = [None, None]
+        # here you can set user defined functions for calculating the skin-resistance,
+        # according to the current frequency w. First function in list is for stator, second for rotor.
+        # If None, the femagtools intern default implementation is used.
+        # User defined functions need to have the following arguments:
+        # - r0: (float) dc-resistance at 20°C
+        # - w: (float)  current frequency in rad (2*pi*f)
+        # - tcu: (float) conductor temperature in deg Celsius
+        # - kth: (float) temperature coefficient (Default = 0.0039, Cu)
+
+    def pfric(self, n):
+        """friction and windage losses"""
+        return 2*np.pi*n*self.tfric
+
 
     def imag(self, psi):
         """magnetizing current"""
@@ -153,15 +181,16 @@ class InductionMachine(Component):
             if np.isclose(w, 0):
                 return 0
             else:
-                return self.m*((w*w)*(psi * psi)) / (
-                    (self.fec + self.fee *
-                     np.power(np.abs(psi)/self.psiref, self.fexp)) *
-                    (0.75 + 0.25*(np.abs(w)/self.wref)) *
-                    (np.abs(w)/self.wref) *
-                    np.power((np.abs(psi)/self.psiref), 2.0))
+                return self.m*(w*psi)**2 / self.plfe1(w, psi)
         except AttributeError:
             pass
         return self.rh
+
+    def plfe1(self, w1, psi):
+        return ((self.fec + self.fee *
+                 np.power(np.abs(psi)/self.psiref, self.fexp)) *
+                (0.75 + 0.25*(np.abs(w1)/self.wref)) *
+                (np.abs(w1)/self.wref) * np.power((np.abs(psi)/self.psiref), 2.0))
 
     def lrot(self, w):
         """rotor leakage inductance"""
@@ -174,13 +203,21 @@ class InductionMachine(Component):
 
     def rrot(self, w):
         """rotor resistance"""
-        return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
-                               0.0, 1, kth=self.kth2)
+        sr = self.skin_resistance[1]
+        if sr is not None:
+            return sr(self.r2, w, self.tcu2, kth=self.kth2)
+        else:
+            return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
+                                   0.0, 1, kth=self.kth2)
 
     def rstat(self, w):
         """stator resistance"""
-        return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
-                               self.gam, self.kh, kth=self.kth1)
+        sr = self.skin_resistance[0]
+        if sr is not None:
+            return sr(self.r1, w, self.tcu1, kth=self.kth1)
+        else:
+            return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
+                                   self.gam, self.kh, kth=self.kth1)
         # return self.r1
 
     def sigma(self, w, psi):
@@ -221,6 +258,17 @@ class InductionMachine(Component):
                 psi)[0]
         return self.torque(w1, self.psi, wm)
 
+    def w1tmech(self, w1, u1max, psi, wm):
+        """calculate motor shaft torque"""
+        # check stator voltage
+        u1 = self.u1(w1, psi, wm)
+        self.psi = psi
+        if abs(u1) > u1max:  # must adjust flux
+            self.psi = so.fsolve(
+                lambda psix: u1max - abs(self.u1(w1, psix, wm)),
+                psi)[0]
+        return self.tmech(w1, self.psi, wm)
+
     def pullouttorque(self, w1, u1):
         """pull out torque"""
         sk = self.sk(w1, u1/w1)
@@ -255,6 +303,11 @@ class InductionMachine(Component):
         i2 = self.i2(w1, psi, wm)
         return self.m*self.p/w2*r2*(i2*i2.conjugate()).real
 
+    def tmech(self, w1, psi, wm):
+        """shaft torque"""
+        u1 = self.u1(w1, psi, wm)
+        return self.torque(w1, psi, wm) - self.tfric
+
     def torqueu(self, w1, u1max, wm):
         """electric torque (in airgap)"""
         if np.isclose(w1, self.p*wm):
@@ -268,7 +321,20 @@ class InductionMachine(Component):
                 psi)[0]
         return self.torque(w1, self.psi, wm)
 
-    def w1(self, u1max, psi, tload, wm):
+    def tmechu(self, w1, u1max, wm):
+        """shaft torque"""
+        if np.isclose(w1, self.p*wm):
+            return 0.
+        # find psi
+        psi = u1max/w1
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.psi = so.fsolve(
+                lambda psi: u1max - abs(self.u1(w1, psi, wm)),
+                psi)[0]
+        return self.torque(w1, self.psi, wm)
+
+    def w1(self, u1max, psi, tload, wm, with_tmech=True):
         """calculate stator frequency with given torque and speed"""
         wsync = max(wm*self.p, 0.001)
         # sk = self.rrot(0.)/(wsync*(self.lstat(wsync) + self.lrot(0.0)))
@@ -276,27 +342,36 @@ class InductionMachine(Component):
             b = 0.999*wsync
         else:
             b = 1.001*wsync
+        if with_tmech:
+            logger.debug("wm %s tload %s w1tmech %s",
+                         wm, tload, self.w1tmech(b, u1max, psi, wm))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                return so.fsolve(
+                    lambda w1: self.w1tmech(w1, u1max, psi, wm) - tload, b)[0]
+
         logger.debug("wm %s tload %s w1torque %s",
-                     wm, tload, self.w1torque(b, u1max, psi, wm))
+                     wm, tload, self.w1tmech(b, u1max, psi, wm))
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             return so.fsolve(
                 lambda w1: self.w1torque(w1, u1max, psi, wm) - tload, b)[0]
 
-    def wmfweak(self, u1max, psi, torque):
+    def wmfweak(self, u1max, psi, torque, with_tmech=True):
         """return lower speed limit of field weakening range"""
         wm0 = u1max/psi/self.p
         return so.fsolve(
             lambda wm: u1max - np.abs(self.u1(
-                self.w1(u1max, psi, torque, wm), psi, wm)),
+                self.w1(u1max, psi, torque, wm, with_tmech), psi, wm)),
             wm0)[0]
 
-    def torque_chart(self, smin=-0.1, smax=0.1, nsamples=100):
+    def torque_chart(self, smin=-0.1, smax=0.1, nsamples=100, with_tmech=True):
         """
         calculate torque(s) curve
 
         :param smin: min slip
         :param smax: max slip
+        :param with_tmech: use friction and windage losses (shaft torque)
         :return: dict with slip and torque lists
         """
 
@@ -307,10 +382,13 @@ class InductionMachine(Component):
         wm = (1-s) * w1 / self.p
         r = {}
         r['s'] = list(s)
-        r['T'] = [self.torqueu(w1, u1, wx) for wx in wm]
+        if with_tmech:
+            r['T'] = [self.tmechu(w1, u1, wx) for wx in wm]
+        else:
+            r['T'] = [self.torqueu(w1, u1, wx) for wx in wm]
         return r
 
-    def operating_point(self, T, n, u1max, Tfric=None):
+    def operating_point(self, T, n, u1max, Tfric=None, **kwargs):
         """
         calculate single operating point.
 
@@ -340,6 +418,7 @@ class InductionMachine(Component):
             Tfric -- (float, optional) the friction torque to consider in Nm.
                      If Tfric is None, the friction torque is calculated according to the rotor-mass and the
                      frition factor of the machine (kfric_b). Friction is written to the result dict!
+            with_tmech -- (optional) use friction and windage losses
         """
 
         r = {}  # result dit
@@ -347,20 +426,16 @@ class InductionMachine(Component):
         if Tfric:
             tfric = Tfric
         else:
-            # formula from
-            # PERMANENT MAGNET MOTOR TECHNOLOGY: DESIGN AND APPLICATIONS
-            # Jacek Gieras
-            #
-            # plfric = kfric_b m_r n 1e-3 W
-            # -- kfric_b : 1..3 W/kg/rpm
-            # -- m_r: rotor mass in kg
-            # -- n: rotor speed in rpm
-            tfric = self.kfric_b * self.rotor_mass * 30e-3 / np.pi
+            tfric = self.tfric
             # TODO: make frictiontorque speed depended?
 
-        tq = T + tfric
+        with_tmech = kwargs.get('with_tmech', True)
+        if with_tmech:
+            tq = T + tfric
+        else:
+            tq = T
         wm = 2*np.pi*n
-        w1 = self.w1(u1max, self.psiref, tq, wm)
+        w1 = self.w1(u1max, self.psiref, tq, wm, with_tmech)
         s = (w1 - self.p*wm) / w1
         r['s'] = float(s)
         r['f1'] = float(w1/2/np.pi)
@@ -369,16 +444,16 @@ class InductionMachine(Component):
         i1 = self.i1(w1, self.psi, wm)
         r['i1'] = float(np.abs(i1))
         r['cosphi'] = float(np.cos(np.angle(u1) - np.angle(i1)))
-        r['plfe1'] = float(self.m * np.abs(u1) ** 2 / self.rfe(w1, self.psi))
+        r['plfe1'] = self.plfe1(w1, self.psi)
         i2 = self.i2(w1, self.psi, wm)
         r['i2'] = float(np.abs(i2))
         r['plcu1'] = float(self.m * np.abs(i1) ** 2 * self.rstat(w1))
         r['plcu2'] = float(self.m * np.abs(i2) ** 2 *
                            self.rrot(w1 - self.p * wm))
-        r['plfric'] = float(2 * np.pi * n * tfric)
+        r['plfw'] = float(self.pfric(n))
         pmech = 2 * np.pi * n * tq
         r['pmech'] = float(pmech)
-        pltotal = r['plfe1'] + r['plfric'] + r['plcu1'] + r['plcu2']
+        pltotal = r['plfe1'] + r['plfw'] + r['plcu1'] + r['plcu2']
         r['losses'] = float(pltotal)
         p1 = pmech + pltotal
         r['p1'] = float(p1)
@@ -397,10 +472,10 @@ class InductionMachine(Component):
 
         return r
 
-    def characteristics(self, T, n, u1max, nsamples=50, kpo=0.9):
+    def characteristics(self, T, n, u1max, nsamples=70, kpo=0.9, **kwargs):
         """calculate torque speed characteristics.
         return dict with list values of
-        id, iq, n, T, ud, uq, u1, i1,
+        id, iq, n, T, ud, uq, u1, i1, s, pullout slip
         beta, gamma, phi, cosphi, pmech, n_type
 
         Keyword arguments:
@@ -408,9 +483,12 @@ class InductionMachine(Component):
         n -- (float) the maximum speed in 1/s
         u1max -- (float) the maximum phase voltage in V rms
         nsamples -- (optional) number of speed samples
-        """
+        with_tmech -- (optional) use friction and windage losses
 
-        wmType = self.wmfweak(u1max, self.psiref, T)
+        """
+        with_tmech = kwargs.get('with_tmech', True)
+
+        wmType = self.wmfweak(u1max, self.psiref, T, with_tmech)
         pmmax = wmType*T
         wmPullout = so.fsolve(
             lambda wx: (kpo*self.pullouttorque(self.p *
@@ -421,7 +499,7 @@ class InductionMachine(Component):
             logger.debug("u1 %g psi %g tq %g wm %g",
                          u1max, self.psiref, tq, wm)
             try:
-                w1 = self.w1(u1max, self.psiref, tq, wm)
+                w1 = self.w1(u1max, self.psiref, tq, wm, with_tmech)
             except ValueError:
                 wmPullout = wm
                 break
@@ -435,7 +513,7 @@ class InductionMachine(Component):
                 logger.debug("u1 %g psi %g tq %g wm %g",
                              u1max, self.psiref, tq, wm)
                 try:
-                    w1 = self.w1(u1max, self.psiref, tq, wm)
+                    w1 = self.w1(u1max, self.psiref, tq, wm, with_tmech)
                 except ValueError:
                     wmMax = wm
                     break
@@ -464,7 +542,7 @@ class InductionMachine(Component):
         if len(wmlin) > 1:
             wmtab = np.concatenate(wmlin)
         else:
-            wmtab = wmlin[0]
+            wmtab = wmlin[1:]
 
         def tload2(wm):
             if wm < wmType and wm < wmPullout:
@@ -478,37 +556,39 @@ class InductionMachine(Component):
             return min(wmPullout*pmmax/wm**2, T)
 
         r = dict(u1=[], i1=[], T=[], cosphi=[], n=[], s=[], sk=[],
-                 plfe1=[], plcu1=[], plcu2=[])
+                 plfe1=[], plcu1=[], plcu2=[], f1=[])
         T = [tload2(wx) for wx in wmtab]
-        tfric = self.kfric_b*self.rotor_mass*30e-3/np.pi
-        w1tab = []
+        tfric = self.tfric
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             for wm, tq in zip(wmtab, T):
                 logger.debug("u1 %g psi %g tq %g wm %g",
                              u1max, self.psiref, tq, wm)
     #            try:
-                w1 = self.w1(u1max, self.psiref, tq, wm)
-                w1tab.append(w1)
+                w1 = self.w1(u1max, self.psiref, tq, wm, with_tmech)
+                r['f1'].append(w1/np.pi/2)
                 u1 = self.u1(w1, self.psi, wm)
                 r['u1'].append(np.abs(u1))
                 i1 = self.i1(w1, self.psi, wm)
                 r['i1'].append(np.abs(i1))
                 r['cosphi'].append(np.cos(np.angle(u1) - np.angle(i1)))
-                r['plfe1'].append(self.m*np.abs(u1)**2/self.rfe(w1, self.psi))
+                r['plfe1'].append(self.plfe1(w1, self.psi))
                 i2 = self.i2(w1, self.psi, wm)
                 r['plcu1'].append(self.m*np.abs(i1)**2*self.rstat(w1))
                 r['plcu2'].append(self.m*np.abs(i2)**2*self.rrot(w1-self.p*wm))
-                r['T'].append(tq - tfric)
+                if with_tmech:
+                    r['T'].append(tq)
+                else:
+                    r['T'].append(tq - tfric)
                 r['n'].append(wm/2/np.pi)
                 r['s'].append(float((w1 - self.p * wm) / w1))
                 r['sk'].append(self.sk(w1, u1/w1))
-#            except ValueError as ex:
-#                break
-        r['plfric'] = [2*np.pi*n*tfric for n in r['n']]
+                #            except ValueError as ex:
+                #                break
+        r['plfw'] = [self.pfric(n) for n in r['n']]
         r['pmech'] = [2*np.pi*n*tq for n, tq in zip(r['n'], r['T'])]
         pmech = np.array(r['pmech'])
-        pltotal = (np.array(r['plfe1']) + np.array(r['plfric']) +
+        pltotal = (np.array(r['plfe1']) + np.array(r['plfw']) +
                    np.array(r['plcu1']) + np.array(r['plcu2']))
         r['losses'] = pltotal.tolist()
 
@@ -657,7 +737,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     # prepare calculation
     job = engine.create_job(workdir)
-    task = job.add_task(_eval_noloadrot(), extra_result_files)
+    pmod = model.poles * model.stator['num_slots_gen'] / model.stator['num_slots']
+    task = job.add_task(_eval_noloadrot(pmod), extra_result_files)
     logger.debug("Task %s noload workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
     # create model
@@ -862,8 +943,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
 class _eval_noloaddc():
     """ Result Functor for noloadflux dc calc"""
 
-    def __init__(self):
-        pass
+    def __init__(self, pmod):
+        self.pmod = pmod
 
     def __call__(self, task):
         basedir = pathlib.Path(task.directory)
@@ -877,7 +958,7 @@ class _eval_noloaddc():
 
         bag = np.loadtxt(basedir / 'noloadbag.dat').T
         Bamp = [b['Bamp'] for b in [
-            femagtools.airgap.fft(bag[0], b)
+            femagtools.airgap.fft(bag[0], b, self.pmod)
             for b in bag[1:]]]
         return {'i1_0': i0, 'psi1_0': psi0, 'Bamp': Bamp}
 
@@ -885,8 +966,8 @@ class _eval_noloaddc():
 class _eval_noloadrot():
     """ Result Functor for noloadflux rot calc"""
 
-    def __init__(self):
-        pass
+    def __init__(self, pmod):
+        self.pmod = pmod
 
     def __call__(self, task):
         basedir = pathlib.Path(task.directory)
@@ -906,7 +987,7 @@ class _eval_noloadrot():
             for k in range(ncurs)])
 
         # matrix (i x j x k) of curr, rotor pos, angle
-        Bamp = [[femagtools.airgap.fft(bags[:, 0], b)['Bamp']
+        Bamp = [[femagtools.airgap.fft(bags[:, 0], b, self.pmod)['Bamp']
                  for b in bags.T[1:]]
                 for bags in [np.loadtxt(p) for p in sorted(
                     basedir.glob(f"noloadbag-*.dat"),
@@ -983,7 +1064,7 @@ if __name__ == '__main__':
         fec=9100,
         fee=0,
         fexp=7.0,
-        pfric=2544.6,
+        #pfric=2544.6,
         rexp=2.4,
         iml=79.8286,
         ims=27.5346,

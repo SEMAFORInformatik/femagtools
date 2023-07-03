@@ -4,6 +4,7 @@ import logging
 
 poc = femagtools.poc.Poc(50, parameters=dict(
     phi_voltage_winding=[251, 11, 131]))
+# D-Axis: phi_voltage_winding[0] - 90 --> 161
 
 machine = dict(
     name="PM lin",

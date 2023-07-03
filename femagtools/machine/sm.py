@@ -10,21 +10,23 @@ import warnings
 import numpy as np
 import scipy.optimize as so
 import scipy.interpolate as ip
-from .utils import skin_resistance, wdg_resistance
+from .utils import skin_resistance, wdg_resistance, betai1, iqd, KTH
 from .. import parstudy, windings
 import femagtools.bch
 
 EPS = 1e-13
 
 eecdefaults = dict(
-    zeta1=0.3,
-    zeta2=0,
-    gam=0.7,
-    kh=2,
-    tcu1=20,
-    tcu2=20,
-    rotor_mass=0,
-    kfric_b=1)
+        zeta1=0.3,
+        zeta2=0,
+        gam=0.7,
+        kh=2,
+        tcu1=20,
+        tcu2=20,
+        rotor_mass=0,
+        kfric_b=1,
+        kpfe = 1 # iron loss factor
+)
 
 logger = logging.getLogger('sm')
 logging.captureWarnings(True)
@@ -146,7 +148,7 @@ def parident(workdir, engine, machine,
             r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
 
         if simulation['calculationMode'] == 'ld_lq_fast':
-            return dict(m=3, p=b['machine']['p'],
+                dqpars = dict(m=3, p=b['machine']['p'],
                         r1=r1,
                         r2=machine['rotor'].get('resistance', 1),
                         rotor_mass=rotor_mass, kfric_b=1,
@@ -162,7 +164,8 @@ def parident(workdir, engine, machine,
                                 losses={k: b['ldq']['losses'][k]
                                         for k in losskeys})
                              for b in results['f']])
-        return dict(m=3, p=b['machine']['p'],
+        else:
+                dqpars = dict(m=3, p=b['machine']['p'],
                     r1=r1,
                     r2=machine['rotor'].get('resistance', 1),
                     rotor_mass=rotor_mass, kfric_b=1,
@@ -176,6 +179,9 @@ def parident(workdir, engine, machine,
                             losses={k: b['psidq']['losses'][k]
                                     for k in losskeys})
                            for b in results['f']])
+        if 'current_angles' in results['f'][0]:
+                dqpars['current_angles'] = results['f'][0]['current_angles']
+        return dqpars
 
 def _linsampl(exc, excl, a):
     """auxiliary func for linear sampling of nonlinear sequence
@@ -229,13 +235,32 @@ def gradient_respecting_bounds(bounds, fun, eps=1e-8):
 
 
 class SynchronousMachine(object):
-    def __init__(self, eecpars):
+    def __init__(self, eecpars, **kwargs):
+        self.kth1 = KTH
+        self.kth2 = KTH
+        self.skin_resistance = [None, None]
+        # here you can set user defined functions for calculating the skin-resistance,
+        # according to the current frequency w. First function in list is for stator, second for rotor.
+        # If None, the femagtools intern default implementation is used.
+        # User defined functions need to have the following arguments:
+        # - r0: (float) dc-resistance at 20°C
+        # - w: (float)  current frequency in rad (2*pi*f)
+        # - tcu: (float) conductor temperature in deg Celsius
+        # - kth: (float) temperature coefficient (Default = 0.0039, Cu)
         for k in eecdefaults.keys():
             setattr(self, k, eecdefaults[k])
 
         for k in eecpars:
             if k not in ('ldq', 'psidq'):
                 setattr(self, k, eecpars[k])
+
+        for k in kwargs:
+            setattr(self, k, kwargs[k])
+
+        try:
+            self.tfric = self.kfric_b*self.rotor_mass*30e-3/np.pi
+        except AttributeError:
+            self.tfric = 0
 
         self.fo = 50
         self.plexp = {'styoke_hyst': 1.0,
@@ -254,20 +279,45 @@ class SynchronousMachine(object):
                       'rotor_hyst': hf,
                       'rotor_eddy': ef}
 
+    def pfric(self, n):
+        """friction and windage losses"""
+        return 2*np.pi*n*self.tfric
+
     def rstat(self, w):
         """stator resistance"""
-        return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
-                               self.gam, self.kh)
+        sr = self.skin_resistance[0]
+        if sr is not None:
+            return sr(self.r1, w, self.tcu1, kth=self.kth1)
+        else:
+            return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
+                                   self.gam, self.kh, kth=self.kth1)
 
     def rrot(self, w):
         """rotor resistance"""
-        return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
-                               0.0, 1)
+        sr = self.skin_resistance[1]
+        if sr is not None:
+            return sr(self.r2, w, self.tcu2, kth=self.kth2)
+        else:
+            return skin_resistance(self.r2, w, self.tcu2, self.zeta2,
+                                   0.0, 1, kth=self.kth2)
 
     def torque_iqd(self, iq, id, iex):
         "torque at q-d-current"
         psid, psiq = self.psi(iq, id, iex)
         return self.m*self.p/2*(psid*iq - psiq*id)
+
+    def tloss_iqd(self, iq, id, iex, n):
+        """return loss torque of d-q current, iron loss correction factor
+        and friction windage losses"""
+        if n > 1e-3:
+            f1 = self.p*n
+            plfe = self.kpfe * (self.iqd_plfe1(iq, id, iex, f1) + self.iqd_plfe2(iq, id, f1))
+            return (plfe + self.pfric(n))/(2*np.pi*n)
+        return 0
+
+    def tmech_iqd(self, iq, id, iex, n):
+        """return shaft torque of d-q current and speed"""
+        return self.torque_iqd(iq, id, iex) - self.tloss_iqd(iq, id, iex, n)
 
     def uqd(self, w1, iq, id, iex):
         """return uq, ud of frequency w1 and d-q current"""
@@ -298,12 +348,41 @@ class SynchronousMachine(object):
     def iqd_plmag(self, iq, id, f1):
         return np.zeros(np.asarray(iq).shape)
 
+    def iqd_tmech(self, torque, n, disp=False, maxiter=500):
+        """return currents for shaft torque with minimal losses"""
+        if torque > 0:
+            startvals = self.bounds[0][1], 0, sum(self.bounds[-1])
+        else:
+            startvals = -self.bounds[0][1], 0, sum(self.bounds[-1])
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            def sqrtculoss(iqde):
+                pcu = self.culoss(iqde)
+                return pcu
+
+            res = so.minimize(
+                self.culoss, startvals, method='SLSQP',  # trust-constr
+                bounds=self.bounds,
+                #            jac=gradient_respecting_bounds(self.bounds, self.culoss),
+                constraints=[
+                    {'type': 'eq',
+                     'fun': lambda iqd: self.tmech_iqd(*iqd, n) - torque}])
+                    #options={'disp': disp, 'maxiter': maxiter})
+            if res['success']:
+                return res.x
+
+        logger.warning("%s: torque=%f %f, io=%s",
+                       res['message'], torque, self.tmech_iqd(*startvals, n),
+                       startvals)
+        raise ValueError(res['message'])
+
     def iqd_torque(self, torque, disp=False, maxiter=500):
         """return currents for torque with minimal losses"""
         if torque > 0:
-            startvals = self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
+            startvals = self.bounds[0][1], 0, sum(self.bounds[-1])
         else:
-            startvals = -self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
+            startvals = -self.bounds[0][1], 0, sum(self.bounds[-1])
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -317,8 +396,8 @@ class SynchronousMachine(object):
                 #            jac=gradient_respecting_bounds(self.bounds, self.culoss),
                 constraints=[
                     {'type': 'eq',
-                     'fun': lambda iqd: self.torque_iqd(*iqd) - torque}],
-                options={'disp': disp, 'maxiter': maxiter})
+                     'fun': lambda iqd: self.torque_iqd(*iqd) - torque}])
+                #options={'disp': disp, 'maxiter': maxiter})
             if res['success']:
                 return res.x
         logger.warning("%s: torque=%f %f, io=%s",
@@ -326,14 +405,73 @@ class SynchronousMachine(object):
                        startvals)
         raise ValueError(res['message'])
 
+    def mtpa(self, i1max):
+        """return iq, id, iex currents and maximum torque per current """
+        T0 = self.torque_iqd(np.sqrt(2)*i1max, 0, self.bounds[-1][1])
+        def i1tq(tq):
+            return abs(i1max) - np.linalg.norm(self.iqd_torque(tq)[:2])/np.sqrt(2)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            tq = so.fsolve(i1tq, T0)[0]
+        iq, id, iex = self.iqd_torque(tq)
+        return iq, id, iex, tq
+
+    def mtpa_tmech(self, i1max, n):
+        """return iq, id, iex currents and maximum torque per current """
+        T0 = self.torque_iqd(np.sqrt(2)*i1max, 0, self.bounds[-1][0])
+        def i1tq(tq):
+            return i1max - np.linalg.norm(self.iqd_tmech(tq, n)[:2])/np.sqrt(2)
+        tq = so.fsolve(i1tq, T0)[0]
+        iq, id, iex = self.iqd_tmech(tq, n)
+        return iq, id, iex, tq
+
+    def iqd_tmech_umax(self, torque, w1, u1max, log=0, **kwargs):
+        """return currents and shaft torque at stator frequency and
+         with minimal losses at max voltage"""
+        iqde = self.iqd_tmech(torque, w1/2/np.pi/self.p)
+        if np.linalg.norm(
+            self.uqd(w1, *iqde)) <= u1max*np.sqrt(2):
+            if log:
+                log(iqde)
+            return (*iqde, torque)
+        beta, i1 = betai1(iqde[0], iqde[1])
+        iex = iqde[2]
+
+        def ubeta(b):
+            return np.sqrt(2)*u1max - np.linalg.norm(
+                         self.uqd(w1, *iqd(b, i1), iex))
+        beta = -np.pi/4 if torque>0 else -3*np.pi/4
+        io = *iqd(beta, i1), iex
+
+        #    logger.debug("--- torque %g io %s", torque, io)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            n = w1/2/np.pi/self.p
+            def sqrtculoss(iqde):
+                pcu = self.culoss(iqde)
+                #logger.info("iqde %s pcu %g", iqde, pcu)
+                return pcu
+
+            res = so.minimize(
+                self.culoss, io, method='SLSQP',  # trust-constr
+                bounds=self.bounds,
+                constraints=[
+                    {'type': 'eq',
+                     'fun': lambda iqd: self.tmech_iqd(*iqd, n) - torque},
+                    {'type': 'eq',
+                     'fun': lambda iqd: np.linalg.norm(
+                         self.uqd(w1, *iqd)) - u1max*np.sqrt(2)}])
+            #if res['success']:
+        if log:
+            log(res.x)
+        return *res.x, self.tmech_iqd(*res.x, n)
+        #logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
+        #               res['message'], w1, torque, u1max, io)
+        #raise ValueError(res['message'])
+
     def iqd_torque_umax(self, torque, w1, u1max,
-                        disp=False, maxiter=500, log=0):
+                        disp=False, maxiter=500, log=0, **kwargs):
         """return currents for torque with minimal losses"""
-        #logger.info(">> torque %g w1 %g u1 %g io %s", torque, w1, u1max, io)
-        #if torque > 0:
-        #    io = self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
-        #else:
-        #    io = -self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
         iqde = self.iqd_torque(torque, disp, maxiter)
         if np.linalg.norm(
             self.uqd(w1, *iqde)) <= u1max*np.sqrt(2):
@@ -342,8 +480,6 @@ class SynchronousMachine(object):
                 return (*iqde, torque)
         io = iqde[0], 0, iqde[2]
         #    logger.debug("--- torque %g io %s", torque, io)
-        #logger.info(">>      io %s", io)
-
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             def sqrtculoss(iqde):
@@ -354,7 +490,7 @@ class SynchronousMachine(object):
             res = so.minimize(
                 self.culoss, io, method='SLSQP',  # trust-constr
                 bounds=self.bounds,
-                options={'disp': disp, 'maxiter': maxiter},
+                #options={'disp': disp, 'maxiter': maxiter},
                 #            jac=gradient_respecting_bounds(self.bounds, self.culoss),
                 constraints=[
                     {'type': 'eq',
@@ -363,12 +499,24 @@ class SynchronousMachine(object):
                      'fun': lambda iqd: np.linalg.norm(
                          self.uqd(w1, *iqd)) - u1max*np.sqrt(2)}])
             if res['success']:
+
                 if log:
                     log(res.x)
                 return *res.x, self.torque_iqd(*res.x)
         logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
                        res['message'], w1, torque, u1max, io)
         raise ValueError(res['message'])
+
+    def w1_imax_umax(self, i1max, u1max):
+        """return frequency w1 and shaft torque at voltage u1max and current i1max
+
+        Keyword arguments:
+        u1max -- the maximum voltage (Vrms)
+        i1max -- the maximum current (Arms)"""
+        iq, id, iex, T = self.mtpa(i1max)
+        n0 = np.sqrt(2)*u1max/np.linalg.norm(
+                self.psi(iq, id, iex))/2/np.pi/self.p
+        return self.w1_umax(u1max, iq, id, iex), T
 
     def w1_umax(self, u, iq, id, iex):
         """return frequency w1 at given voltage u and id, iq current
@@ -381,7 +529,8 @@ class SynchronousMachine(object):
             lambda w1: np.linalg.norm(self.uqd(w1, iq, id, iex))-u*np.sqrt(2),
             w10)[0]
 
-    def characteristics(self, T, n, u1max, nsamples=50):
+    def characteristics(self, T, n, u1max, nsamples=50,
+                        with_tmech=True, **kwargs):
         """calculate torque speed characteristics.
         return dict with list values of
         n, T, u1, i1, beta, cosphi, pmech, n_type
@@ -391,15 +540,24 @@ class SynchronousMachine(object):
         n -- (float) the maximum speed in 1/s
         u1max -- (float) the maximum voltage in V rms
         nsamples -- (optional) number of speed samples
+        with_tmech -- (optional) use friction and windage losses
         """
         iq, id, iex = self.iqd_torque(T)
-        w1type = self.w1_umax(u1max, iq, id, iex)
+        if with_tmech:
+            i1max = betai1(iq, id)[1]
+            if T < 0:
+                i1max = -i1max
+            w1type, Tf = self.w1_imax_umax(i1max, u1max)
+        else:
+            Tf = T
+            w1type = self.w1_umax(u1max, iq, id, iex)
+        logger.debug("w1type %f", w1type)
         wmType = w1type/self.p
-        pmax = T*wmType
+        pmax = Tf*wmType
 
         def tload(wm):
-            if abs(wm*T) < abs(pmax):
-                return T
+            if abs(wm*Tf) < abs(pmax):
+                return Tf
             return pmax/wm
 
         wmtab = []
@@ -417,27 +575,20 @@ class SynchronousMachine(object):
             wmtab = (np.linspace(0, wmType, nx).tolist() +
                      np.linspace(wmType+dw, wmMax, nsamples-nx).tolist())
 
-        logger.info("Speed range %s", wmrange)
+        logger.info("Speed range T %f %s", Tf, wmrange)
         wmtab[0] = 0
 
         r = dict(u1=[], i1=[], id=[], iq=[], iex=[], T=[], cosphi=[], n=[],
                  beta=[], plfe1=[], plcu1=[], plcu2=[])
-        T = [tload(wx) for wx in wmtab]
-        tfric = self.kfric_b*self.rotor_mass*30e-3/np.pi
-        w1tab = []
-        for wm, tq in zip(wmtab, T):
-            #            try:
+        for wm, tq in zip(wmtab, [tload(wx) for wx in wmtab]):
             w1 = wm*self.p
-            tqx = tq
-            #            if w1 <= w1type:
-            #                iq, id, iex = self.iqd_torque(tq)
-            #            else:
-            iq, id, iex, tqx = self.iqd_torque_umax(
-                tq, w1, u1max)
-                #                        (0.9*iq, 0.9*id,
-                #                         min(self.bounds[-1][0], 0.9*iex)))[:-1]
-            #logger.info("w1 %g tq %g: iq %g iex %g tqx %g",
-            #            w1, tq, iq, iex, tqx)
+            if with_tmech:
+                iq, id, iex, tqx = self.iqd_tmech_umax(
+                        tq, w1, u1max)
+            else:
+                iq, id, iex, tqx = self.iqd_torque_umax(
+                        tq, w1, u1max)
+                tqx -= self.tfric
             uq, ud = self.uqd(w1, iq, id, iex)
             u1 = np.linalg.norm((uq, ud))/np.sqrt(2)
             f1 = w1/2/np.pi
@@ -456,18 +607,16 @@ class SynchronousMachine(object):
             r['plfe1'].append(self.iqd_plfe1(iq, id, iex, f1))
             r['plcu1'].append(self.m*i1**2*self.rstat(w1))
             r['plcu2'].append(iex**2*self.rrot(0))
-            r['T'].append(tq-tfric)
+            r['T'].append(tqx)
             r['n'].append(wm/2/np.pi)
-            # except ValueError as ex:
-            #    logger.warning("ex %s wm %f T %f", ex, wm, tq)
-            #    break
 
         r['plfe'] = r['plfe1']
         r['plcu'] = (np.array(r['plcu1']) + np.array(r['plcu2'])).tolist()
-        r['plfric'] = [2*np.pi*n*tfric for n in r['n']]
-        r['pmech'] = [2*np.pi*n*tq for n, tq in zip(r['n'], r['T'])]
+        r['plfw'] = [self.pfric(n) for n in r['n']]
+        r['pmech'] = [2*np.pi*n*tq
+                      for n, tq in zip(r['n'], r['T'])]
         pmech = np.array(r['pmech'])
-        pltotal = (np.array(r['plfe1']) + np.array(r['plfric']) +
+        pltotal = (np.array(r['plfe1']) + np.array(r['plfw']) +
                    np.array(r['plcu1']) + np.array(r['plcu2']))
         r['losses'] = pltotal.tolist()
 
@@ -489,9 +638,9 @@ class SynchronousMachine(object):
 
 class SynchronousMachinePsidq(SynchronousMachine):
 
-    def __init__(self, eecpars, lfe=1, wdg=1):
+    def __init__(self, eecpars, lfe=1, wdg=1, **kwargs):
         super(self.__class__, self).__init__(
-                eecpars)
+                eecpars, **kwargs)
         self.iqrange = (eecpars['psidq'][0]['iq'][0],
                         eecpars['psidq'][0]['iq'][-1])
         self.idrange = (eecpars['psidq'][0]['id'][0],
@@ -578,8 +727,8 @@ class SynchronousMachinePsidq(SynchronousMachine):
 
 
 class SynchronousMachineLdq(SynchronousMachine):
-    def __init__(self, eecpars, lfe=1, wdg=1):
-        super(self.__class__, self).__init__(eecpars)
+    def __init__(self, eecpars, lfe=1, wdg=1, **kwargs):
+        super(self.__class__, self).__init__(eecpars, **kwargs)
         self.betarange = (eecpars['ldq'][0]['beta'][0]/180*np.pi,
                           eecpars['ldq'][0]['beta'][-1]/180*np.pi)
         self.i1range = (0, eecpars['ldq'][0]['i1'][-1])
@@ -610,12 +759,15 @@ class SynchronousMachineLdq(SynchronousMachine):
                     [_splinterp(beta, i1, betax, i1x, l['psiq'])
                      for l in eecpars['ldq']]))
 
+        # extrapolate outside range
         self.psidf = ip.RegularGridInterpolator(
                 (exc, betax, i1x), np.sqrt(2)*psid,
-                method='cubic', bounds_error=False, fill_value=None)
+                method='cubic',
+                bounds_error=False, fill_value=None)
         self.psiqf = ip.RegularGridInterpolator(
                 (exc, betax, i1x), np.sqrt(2)*psiq,
-                method='cubic', bounds_error=False, fill_value=None)
+                method='cubic'
+                , bounds_error=False, fill_value=None)
         i1max = np.sqrt(2)*(max(i1))
         self.bounds = [(np.cos(min(beta))*i1max, i1max),
                        (-i1max, 0),
@@ -632,6 +784,7 @@ class SynchronousMachineLdq(SynchronousMachine):
                                     np.array([l['losses'][k]
                                              for l in eecpars[idname]]))
                        for k in keys}
+        # fill value with nan outside range
             self._losses = {k: ip.RegularGridInterpolator(
                     (exc, beta, i1), lfe*np.array(pfe[k]),
                     method='cubic', bounds_error=False, fill_value=None)
@@ -655,7 +808,8 @@ class SynchronousMachineLdq(SynchronousMachine):
         try:
             return self.psidf((iex, beta, i1)), self.psiqf((iex, beta, i1))
         except ValueError as ex:
-            logger.error(iex, iq, id, beta, i1)
+            logger.error("iex %s iq %f id %f beta %f i1 %f",
+                         iex, iq, id, beta, i1)
             raise ex
 
     def plfe1(self, beta, i1, iex, f1):

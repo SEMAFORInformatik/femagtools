@@ -896,7 +896,34 @@ def transientsc(bch, title=''):
     fig.tight_layout(h_pad=2)
     if title:
         fig.subplots_adjust(top=0.92)
+    return fig
 
+def transientsc_demag(demag, magnet=0, title='', ax=0):
+    """creates a demag plot of a transient short circuit
+    Args:
+      demag: list of dicts with 'displ', 'H_av', 'H_max', 'lim_hc'
+      magnet dict with 'Tmag'
+    """
+    if ax == 0:
+        ax = plt.gca()
+    pos = [d['displ'] for d in demag if 'displ' in d]
+    hmax = [-d['H_max'] for d in demag if 'H_max' in d]
+    havg = [-d['H_av'] for d in demag if 'H_av' in d]
+    hclim = [-d['lim_hc'] for d in demag if 'lim_hc' in d]*2
+
+    ax.set_title('Transient Short Circuit Demagnetization [kA/m]')
+    ax.plot(pos, hmax,
+            label='H Max {:4.2f} kA/m'.format(max(hmax)))
+    ax.plot(pos, havg,
+            label='H Avg {:4.2f} kA/m'.format(max(havg)))
+    ax.plot([pos[0], pos[-1]], hclim, color='C3', linestyle='dashed',
+            label='Hc {:4.2f} kA/m'.format(hclim[0]))
+    ax.set_xlabel('Rotor Position / °')
+    ax.grid(True)
+    if magnet:
+        ax.legend(title=f"Magnet Temperature {magnet['Tmag']}°C")
+    else:
+        ax.legend()
 
 def i1beta_torque(i1, beta, torque, title='', ax=0):
     """creates a surface plot of torque vs i1, beta"""
@@ -1222,7 +1249,7 @@ def _contour(ax, title, elements, values, label='', isa=None):
     if ax == 0:
         ax = plt.gca()
     ax.set_aspect('equal')
-    ax.set_title(title, fontsize=18)
+    ax.set_title(title)
     if isa:
         for se in isa.superelements:
             ax.add_patch(Polygon([n.xy
@@ -1236,13 +1263,13 @@ def _contour(ax, title, elements, values, label='', isa=None):
     p = PatchCollection(patches, alpha=1.0, match_original=False)
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
-    cb = plt.colorbar(p)
+    cb = plt.colorbar(p, shrink=0.9)
     for patch in np.array([Polygon([v.xy for v in e.vertices],
                                    fc='white', alpha=1.0)
                            for e in elements])[np.isnan(values)]:
         ax.add_patch(patch)
     if label:
-        cb.set_label(label=label, fontsize=18)
+        cb.set_label(label=label)
     ax.autoscale(enable=True)
     ax.axis('off')
 
@@ -1254,29 +1281,35 @@ def demag(isa, ax=0):
     """
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
-    _contour(ax, f'Demagnetization at {isa.MAGN_TEMPERATURE} °C',
+    _contour(ax, f'Demagnetization at {isa.MAGN_TEMPERATURE} °C (max -{np.max(demag):.1f} kA/m)',
              emag, demag, '-H / kA/m', isa)
     logger.info("Max demagnetization %f", np.max(demag))
 
 
-def demag_pos(isa, pos, icur=-1, ibeta=-1, ax=0):
+def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, ax=0):
     """plot demag of NC/I7/ISA7 model at rotor position
     Args:
       isa: Isa7/NC object
-      pos: rotor position in degree
+      pos: rotor position in degree (maximum h
       icur: cur amplitude index or last index if -1
       ibeta: beta angle index or last index if -1
     """
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([isa.demagnetization(e, icur, ibeta)[1]
                       for e in emag])
-    for i, x in enumerate(isa.pos_el_fe_induction):
-        if x >= pos/180*np.pi:
-            break
+    if pos>=0:
+        for i, x in enumerate(isa.pos_el_fe_induction):
+            if x >= pos/180*np.pi:
+                break
+    else:
+        demagmax = np.max(demag, axis=0)
+        i = np.argmax(demagmax)
+        x = isa.pos_el_fe_induction[i]
 
     hpol = demag[:, i]
     hpol[hpol == 0] = np.nan
-    _contour(ax, f'Demagnetization at Pos. {round(x/np.pi*180)}° ({isa.MAGN_TEMPERATURE} °C)',
+    _contour(ax, f'Demagnetization at pos. {round(x/np.pi*180):.1f}°,'
+    f'{isa.MAGN_TEMPERATURE} °C (max -{np.max(hpol):.1f} kA/m)',
              emag, hpol, '-H / kA/m', isa)
     logger.info("Max demagnetization %f kA/m", np.nanmax(hpol))
 
@@ -1297,7 +1330,7 @@ def flux_density(isa, subreg=[], ax=0):
         elements = [e for e in isa.elements]
 
     fluxd = np.array([np.linalg.norm(e.flux_density()) for e in elements])
-    _contour(ax, f'Flux Density T', elements, fluxd)
+    _contour(ax, f'Flux Density T (max {np.max(fluxd):.1f} T)', elements, fluxd)
     logger.info("Max flux dens %f", np.max(fluxd))
 
 
@@ -1652,15 +1685,26 @@ def characteristics(char, title=''):
         fig.suptitle(title)
 
     n = np.array(char['n'])*60
-    pmech = np.array(char['pmech'])*1e-3
+    punit = 'kW'
+    k = 1e-3
+    if max(char['pmech']) > 1e6:
+        punit = 'MW'
+        k = 1e-6
+    pmech = np.array(char['pmech'])*k
+    tunit = 'Nm'
+    if max(char['T']) > 1e3:
+        tunit = 'kNm'
+        tq = np.array(char['T'])*1e-3
+    else:
+        tq = np.array(char['T'])
 
-    axs[0, 0].plot(n, np.array(char['T']), 'C0-', label='Torque')
-    axs[0, 0].set_ylabel("Torque / Nm")
+    axs[0, 0].plot(n, tq, 'C0-', label='Torque')
+    axs[0, 0].set_ylabel(f"Torque / {tunit}")
     axs[0, 0].grid()
     axs[0, 0].legend(loc='center left')
     ax1 = axs[0, 0].twinx()
     ax1.plot(n, pmech, 'C1-', label='P mech')
-    ax1.set_ylabel("Power / kW")
+    ax1.set_ylabel(f"Power / {punit}")
     ax1.legend(loc='lower center')
 
     axs[0, 1].plot(n[1:], np.array(char['u1'][1:]), 'C0-', label='Voltage')
@@ -1697,6 +1741,12 @@ def characteristics(char, title=''):
     pl = np.array(char['losses'])*1e-3
     axs[1, 1].plot(n, plcu, 'C0-', label='Cu Losses')
     axs[1, 1].plot(n, plfe, 'C1-', label='Fe Losses')
+    try:
+        if char['plfw'] and char['plfw'][-1] > 0:
+            plfw = np.array(char['plfw'])*1e-3
+            axs[1, 1].plot(n, plfw, 'C2-', label='Friction + Windage')
+    except KeyError:
+            pass
     axs[1, 1].set_ylabel("Losses / kW")
     axs[1, 1].legend(loc='center left')
     axs[1, 1].grid()
@@ -1724,12 +1774,42 @@ def get_nT_boundary(n, T):
     bnd[1].append((nx, tx))
     return np.array(bnd[0] + bnd[1][::-1])
 
+def normalize10(v):
+    """
+    Normalizes the input-array using the nearest (ceiling) power of 10.
 
-def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True):
+    Arguments:
+        v: array to normalize
+
+    Returns:
+        normalized array
+        normalisation factor (power of 10)
+    """
+    norm = 10**(np.ceil(np.log10(np.linalg.norm(v))))
+    return v / norm, norm
+
+
+def plot_contour(speed, torque, z, ax, title='', levels=[],
+                 clabel=True, cmap='YlOrRd', cbar=False):
+    """ contour plot of speed, torque, z values
+    Arguments:
+    levels: (list of floats)
+    clabel: contour labels if True
+    cmap: colour map
+    cbar: (bool) create color bar if True (default False)
+
+    Note: the x and y axes are scaled
+
+    returns tricontourf, xscale, yscale
+    """
     from matplotlib.path import Path
     from matplotlib.patches import PathPatch
-    x = [60*n for n in speed]
-    y = torque
+    x = 60*np.asarray(speed)
+    y = np.asarray(torque)
+
+    x, xscale = normalize10(x)
+    y, yscale = normalize10(y)
+
     if not levels:
         if max(z) <= 1:
             if max(z) > 0.96:
@@ -1743,38 +1823,58 @@ def plot_contour(speed, torque, z, ax, title='', levels=[], clabel=True):
                 levels.append(np.ceil(max(z)*100)/100)
         else:
             levels = 14
-    cont = ax.tricontour(x, y, z,
-                         linewidths=0.4, levels=levels, colors='k')
-    if clabel:
-        ax.clabel(cont, inline=True, colors='k', fontsize=8)
-    contf = ax.tricontourf(x, y, z,
-                           levels=levels, cmap='YlOrRd')
     #
     ax.spines['top'].set_color('none')
     ax.spines['right'].set_color('none')
+
+    cont = ax.tricontour(x, y, z,
+                         linewidths=0.4, levels=levels,
+                         colors='k')
+    contf = ax.tricontourf(x, y, z,
+                           levels=levels, cmap=cmap)
 
     clippath = Path(get_nT_boundary(x, y))
     patch = PathPatch(clippath, facecolor='none')
     ax.add_patch(patch)
     for c in cont.collections:
         c.set_clip_path(patch)
+    #ax.plot(x, y, "k.", ms=3)
+    if clabel:
+        ax.clabel(cont, inline=True, colors='k', fontsize=8, inline_spacing=0)
+
     for c in contf.collections:
         c.set_clip_path(patch)
-    #ax.plot(x, y, "k.", ms=3)
+
+    if xscale > 1:
+        def format_fn(tick_val, tick_pos):
+            return round(xscale*tick_val)
+        ax.xaxis.set_major_formatter(format_fn)
+    if yscale > 1:
+        def format_fn(tick_val, tick_pos):
+            return round(yscale*tick_val)
+        ax.yaxis.set_major_formatter(format_fn)
+
     ax.set_ylabel('Torque / Nm')
     ax.set_xlabel('Speed / rpm')
     ax.set_title(title)
-    return contf
+    if cbar:
+        cfig = ax.get_figure()
+        cfig.colorbar(contf, ax=ax,
+                      orientation='vertical')
+    return contf, xscale, yscale
 
-def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True):
+
+def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True,
+                   cmap='YlOrRd', levels=None, cbar=False):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
-    contf = plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
-                         title=title, clabel=clabel)
-    return contf
+    return plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
+                        title=title, clabel=clabel, cmap=cmap,
+                        levels=levels, cbar=cbar)
 
 
-def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True):
+def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True,
+               cmap='YlOrRd', cbar=False):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
     return plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3, ax,

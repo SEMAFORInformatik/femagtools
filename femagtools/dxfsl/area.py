@@ -128,6 +128,18 @@ class Area(object):
         except Exception as e:
             return
 
+    def has_fsl(self):
+        try:
+            return self.fsl
+        except AttributeError:
+            return True
+
+    def list_of_equal_edges(self, a):
+        for e1 in self.area:
+            for e2 in a.area:
+                if e1.n1 == e2.n1 and e1.n2 == e2.n2:
+                    yield e1
+
     def virtual_nodes(self, render=False):
         if len(self.area) < 2:
             return

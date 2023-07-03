@@ -29,7 +29,8 @@ def test_noloadrot_eval(data_dir):
     i1tab = [2.0384197650236815, 4.076839530047363,
              6.115259295071045, 8.153679060094726, 10.192098825118407]
     u1ph = 400/np.sqrt(3)
-    eval = femagtools.machine.im._eval_noloadrot()
+    pmod = 0
+    eval = femagtools.machine.im._eval_noloadrot(pmod)
     r = eval(task)
     i0 = [2.0384,  4.0768,  6.1153,  8.1537, 10.1921]
     psi1_0 = [0.2725, 0.5301, 0.7106, 0.8091, 0.8641]

@@ -1,0 +1,20 @@
+
+Parameter Identification, Characteristics and Efficiency Map
+============================================================
+
+For machine types: vmag (PMSM), eesm (WFSM), im (Induction Machine)
+
+To run the examples change to the machine type directory and
+follow these steps:
+
+1. Create EEC parameters from machine (dqpars.json):
+
+  $ python parident.py
+
+2. Create speed characteristics plot (speedchar.pdf)
+
+  $ python char.py
+
+3. Create efficiency map (effmap.pdf)
+
+  $ python effmap.py

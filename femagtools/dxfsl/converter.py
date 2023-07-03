@@ -240,6 +240,7 @@ def convert(dxfile,
                                         cols=2,  # columns
                                         num=3)   # start num
         machine_inner.set_inner()
+        machine_inner.check_and_correct_geom("Inner")
 
         machine_outer = machine.copy(0.0, 2*np.pi, True, False)
         machine_outer = symmetry_search(machine_outer,
@@ -251,6 +252,7 @@ def convert(dxfile,
                                         rows=3,  # rows
                                         cols=2,  # columns
                                         num=4)   # start num
+        machine_outer.check_and_correct_geom("Outer")
 
         machine_inner.sync_with_counterpart(machine_outer)
 

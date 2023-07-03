@@ -401,8 +401,8 @@ class Reader(object):
                 offset += chunksize
             logger.debug("%s: %d %d", fmt_, blockSize, len(unpacked))
         except struct.error as e:
-            logger.warning("Invalid Blocksize %s",
-                           blockSize)
+            logger.warning("Invalid Blocksize %s at pos %i",
+                           blockSize, self.pos-4)
 
         self.pos += blockSize + 4
 

@@ -154,10 +154,6 @@ class InductionMachine(Component):
         except AttributeError:
             self.tfric = 0
 
-    def pfric(self, n):
-        """friction and windage losses"""
-        return 2*np.pi*n*self.tfric
-
         self.skin_resistance = [None, None]
         # here you can set user defined functions for calculating the skin-resistance,
         # according to the current frequency w. First function in list is for stator, second for rotor.
@@ -167,6 +163,11 @@ class InductionMachine(Component):
         # - w: (float)  current frequency in rad (2*pi*f)
         # - tcu: (float) conductor temperature in deg Celsius
         # - kth: (float) temperature coefficient (Default = 0.0039, Cu)
+
+    def pfric(self, n):
+        """friction and windage losses"""
+        return 2*np.pi*n*self.tfric
+
 
     def imag(self, psi):
         """magnetizing current"""

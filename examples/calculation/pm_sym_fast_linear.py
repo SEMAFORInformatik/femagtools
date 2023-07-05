@@ -7,8 +7,8 @@ machine = dict(
     lfe=0.05,
     poles=10,
     airgap=0.0015,
-    coord_system=1,
-     
+    coord_system=1,  # 1: 'x/y', 2: 'r/z'
+
     stator=dict(
         num_slots=12,
         num_slots_gen=6,
@@ -70,7 +70,7 @@ r = femag(machine,
           operatingConditions)
 
 print("""
-Force [Nm] = {}
+Force [N] = {}
 """.format(r.dqPar['force']))
 print("""
 Losses [W]:

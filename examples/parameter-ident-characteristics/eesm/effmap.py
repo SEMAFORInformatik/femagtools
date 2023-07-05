@@ -24,7 +24,7 @@ w1, Tmax = m.w1_imax_umax(i1max, u1max)
 nmax = 12000/60
 
 effmap = femagtools.machine.effloss.efficiency_losses_map(
-    m, u1max, Tmax, [], nmax, num_proc=3)
+    m, u1max, Tmax, [], nmax, num_proc=4)
 
 fig, ax = plt.subplots(figsize=(12,12))
 ax.set_title('')

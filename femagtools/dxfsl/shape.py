@@ -1258,6 +1258,10 @@ class Point(Shape):
     def render(self, renderer):
         renderer.point(self.p1)
 
+    def transform(self, T, alpha, ndec):
+        n = T.dot(np.array((self.p1[0], self.p1[1])))
+        self.p1 = (n[0], n[1])
+        return self
 
 def is_Circle(e):
     return isinstance(e, Circle) and not isinstance(e, Arc)

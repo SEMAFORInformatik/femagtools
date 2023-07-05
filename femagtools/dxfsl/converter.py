@@ -275,22 +275,25 @@ def convert(dxfile,
 
         machine_inner.delete_tiny_elements(mindist)
         machine_outer.delete_tiny_elements(mindist)
+        machine_inner.geom.create_corner_areas()
         logger.info("END of work: %s", basename)
 
         if show_plots:
             p.render_elements(machine_inner.geom, Shape,
                               draw_inside=True, title=inner_name,
                               rows=3, cols=2, num=5, show=False,
-                              # with_nodes=True,
-                              # neighbors=True,
+                              with_corners=False,
+                              with_nodes=False,
+                              neighbors=False,
                               write_id=write_id,
                               fill_areas=True)
 
             p.render_elements(machine_outer.geom, Shape,
                               draw_inside=True, title=outer_name,
                               rows=3, cols=2, num=6, show=False,
-                              # with_nodes=True,
-                              # neighbors=True,
+                              with_corners=False,
+                              with_nodes=False,
+                              neighbors=False,
                               write_id=write_id,
                               fill_areas=True)
             if write_png:
@@ -409,14 +412,16 @@ def convert(dxfile,
             machine.geom.search_subregions()
 
         machine.delete_tiny_elements(mindist)
+        machine.geom.create_corner_areas()
         logger.info("END of work: %s", basename)
 
         if show_plots:
             p.render_elements(machine.geom, Shape,
                               draw_inside=True, title=name,
                               rows=3, cols=2, num=5, show=False,
-                              # with_nodes=True,
-                              # neighbors=True,
+                              with_corners=False,
+                              with_nodes=False,
+                              neighbors=False,
                               write_id=write_id,
                               fill_areas=True)
             if write_png:

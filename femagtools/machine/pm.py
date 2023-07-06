@@ -52,6 +52,15 @@ class PmRelMachine(object):
         self.kfric_b = 1
         self.rotor_mass = 0
         self.kth1 = KTH
+
+        # overwritable function: skin_resistance(r0, w, tcu, kth)
+        # Arguments:
+        # r0: (float) dc resistance in Ohm at 20°C
+        # w: (float) frequency in rad
+        # tcu: (float) conductor temperature in °C
+        # kth: (float) temperature coefficient (default 3.9 e-3)
+        self.skin_resistance = None
+
         # TODO: need this for speedranges and idq_imax_umax mtpv only
         self.check_extrapolation = True
         for k in kwargs.keys():
@@ -80,7 +89,11 @@ class PmRelMachine(object):
         return 2*np.pi*n*self.tfric
 
     def rstat(self, w):
-        """stator resistance"""
+        """stator resistance
+        """
+        if self.skin_resistance is not None:
+            return self.skin_resistance(self.r1, w, self.tcu1, kth=self.kth1)
+
         return skin_resistance(self.r1, w, self.tcu1, self.zeta1,
                                self.gam, self.kh)
 

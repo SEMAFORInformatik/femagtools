@@ -3,7 +3,7 @@
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
 ## Release 1.3.1
-	- with_mtpv, with_mtpa, with_pmconst, with_tmech switches for effloss and pm characteristics added
+	- new flags: with_mtpv, with_mtpa, with_pmconst, with_tmech for effloss and pm characteristics
         - new plot func transientsc_demag
 	- new hxy file read module
 	- characteristics with friction and windage losses (with_tmech)
@@ -11,6 +11,7 @@
 	- improved dxf-fsl conversion
         - improved contour plots
 	- demag_pos plot with pos at max demag
+        - stator resistance: frequency dependent calculation with user defined function
 
 ## Release 1.3
 	- TH module for static and dynamic thermal simulations included

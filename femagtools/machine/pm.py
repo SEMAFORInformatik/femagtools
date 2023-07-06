@@ -701,9 +701,9 @@ class PmRelMachine(object):
 
         r = {}  # result dit
 
-        iq, id, tq = self.iqd_tmech_umax(T, n, u1max, with_mtpa=with_mtpa)
         f1 = n * self.p
         w1 = f1 * 2 * np.pi
+        iq, id, tq = self.iqd_tmech_umax(T, w1, u1max, with_mtpa=with_mtpa)
         uq, ud = self.uqd(w1, iq, id)
         u1 = la.norm((ud, uq)) / np.sqrt(2.0)
         i1 = la.norm((id, iq)) / np.sqrt(2.0)

@@ -82,13 +82,14 @@ def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa):
                     collected_msg = []
     for p in procs:
         p.join()
+    siz = ntmesh.shape[1]
     if iex:
         return np.array([np.array(iq).flatten(),
                          np.array(id).flatten(),
-                         np.array(iex).flatten()])
+                         np.array(iex).flatten()])[:, :siz]
 
     return np.array([np.array(iq).flatten(),
-                        np.array(id).flatten()])
+                        np.array(id).flatten()])[:, :siz]
 
 
 def _generate_mesh(n, T, nb, Tb, npoints):

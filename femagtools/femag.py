@@ -31,6 +31,8 @@ import femagtools.asm
 import femagtools.airgap as ag
 import femagtools.fsl
 import femagtools.config
+import femagtools.ecloss
+
 from femagtools import ntib
 
 
@@ -531,7 +533,23 @@ class Femag(BaseFemag):
                     pmod = 0
                 bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'),
                                      pmod=pmod)
+                
+            if simulation.get('magnet_loss', False):
+                logger.info('Evaluating magnet losses...')
+                ops = [k for k in range(len(bch.torque))]
+                m = femagtools.ecloss.MagnLoss(self.workdir, self.modelname, ibeta=ops)
+                try:
+                    magn_losses = m.calc_losses()
+                except: 
+                    magn_losses = [0 for i in range(len(ops))]
 
+                if len(ops) != len(bch.losses): 
+                    magn_losses.insert(0, magn_losses[0])
+                try:
+                    for i in range(len(bch.losses)): 
+                        bch.losses[i].update({"magnetH": magn_losses[i]})
+                except: 
+                    pass
             return bch
         return dict(status='ok', message=self.modelname)
 

@@ -11,12 +11,110 @@ import logging
 from pathlib import Path
 import femagtools.nc
 import numpy as np
-from numpy import pi
+from numpy import pi, sin, cos
 import subprocess
 
 #  set logging
 logger = logging.getLogger(__name__)
 
+def geometry_id(bndx, bndy):
+    '''identify the magnet geometry''' 
+    # caculate magnet area 
+    xy = 0
+    yx = 0
+    for i in range(len(bndy)):
+        if i < (len(bndy)-1):
+            xy += bndx[i]*bndy[i+1]
+            yx += bndy[i]*bndx[i+1]
+        else:
+            xy += bndx[i]*bndy[0]
+            yx += bndy[i]*bndx[0]
+    area = np.abs(yx-xy)*0.5
+
+    x0, y0 = np.mean(bndx), np.mean(bndy)
+    distances = [] 
+    for i in range(len(bndx)): 
+        for j in range(len(bndy)): 
+            dist = np.sqrt((bndx[i] - bndx[j])**2 + (bndy[i] - bndy[j])**2)
+            distances.append([dist, bndx[i], bndx[j], bndy[i], bndy[j]])
+    
+    distances.sort(reverse=True)
+    xe = [distances[0][2], distances[2][1], distances[0][1], distances[2][2]]
+    ye = [distances[0][4], distances[2][3], distances[0][3], distances[2][4]]
+
+    # dimension 
+    dim = np.zeros((3, 5))
+    x1, y1 = xe[0], ye[0]
+
+    for i in range(3): 
+        x2, y2 = xe[i+1], ye[i+1]
+        dim[i, 0] = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+        dim[i, 1:3] = [x1, x2]
+        dim[i, 3:5] = [y1, y2]
+
+    dim = dim[np.lexsort((dim[:, 2], dim[:, 1], dim[:, 0]))]
+    dx12, dy12 = dim[1, 1] - dim[1, 2],  dim[1, 3] - dim[1, 4]
+    dx14, dy14 = dim[0, 1] - dim[0, 2],  dim[0, 3] - dim[0, 4]
+    
+    alp1 = np.arctan2(dy12, dx12)
+    alp2 = np.arctan2(dy14, dx14)
+
+    if alp1 < 0: alp1 += 2*np.pi
+    if alp2 < 0: alp2 += 2*np.pi
+    if alp2 < alp1: 
+        alp2 += np.pi
+        alpha = (alp1 + (alp2 - np.pi/2))/2
+    else: 
+        alpha = (alp1 + (alp2 - np.pi/2))/2 + np.pi
+    
+    wm = dim[1, 0]
+    hm = area/wm 
+
+    return dict(wm=wm, 
+                hm=hm, 
+                x0=x0, 
+                y0=y0,
+                area=area, 
+                alpha=alpha)
+
+def tf(b1, b2, alpha):
+    '''Tranformation Matrix'''
+    T = np.array([[cos(alpha), sin(alpha)], 
+                [-sin(alpha), cos(alpha)]]) 
+    if b1.ndim > 1: 
+        r = T.dot(((b1.ravel()), (b2.ravel())))
+        return [r[0, :].reshape(*b1.shape), 
+                r[1, :].reshape(*b1.shape)]
+    else: 
+        return T.dot(((b1), (b2)))
+
+def transform_coord(geometry, xcp, ycp): 
+    '''transform from global coord to local coord'''
+    # transformation 
+    elcp = tf(b1=np.array(xcp)-geometry['x0'], 
+              b2=np.array(ycp)-geometry['y0'], 
+              alpha=geometry['alpha'])
+    return dict(excpl=elcp[0, :]+geometry['wm']/2, 
+                eycpl=elcp[1, :]+geometry['hm']/2, 
+                excp=np.array(xcp), 
+                eycp=np.array(ycp))
+
+def transform_flux_denstiy(geometry, bx, by): 
+    '''transform the magnet flux density to local coordinate system'''
+    # transformation 
+    bxy = tf(b1=bx, 
+             b2=by, 
+             alpha=geometry['alpha'])
+
+    # remove DC component
+    bxf = np.mean(bxy[0].T - np.mean(bxy[0],axis=1).T,axis=1)
+    byf = np.mean(bxy[1].T - np.mean(bxy[1],axis=1).T,axis=1)               
+     
+    return dict(bxl=bxy[0],
+                byl=bxy[1],
+                bxf=bxf, 
+                byf=byf 
+                )
 
 class Amela():
     '''Run Amela Calculation
@@ -66,7 +164,7 @@ class Amela():
         if 'nseglen' in self.magn:
             self.cmd.append(f"--nseglen {self.magn['nseglen']}")
 
-    def get_magnet_data(self):
+    def get_magnet_data(self, ibeta=None):
         '''Extract magnet data from nc file
         Parameters
         ----------
@@ -92,7 +190,15 @@ class Amela():
         ycp = [[] for i in range(len(spel_key))]
         bndx = [[] for i in range(len(spel_key))]
         bndy = [[] for i in range(len(spel_key))]
-
+        # prepare data for ialh method
+        wm = []
+        hm = []
+        alpha = []
+        x0 = [] 
+        y0 = []
+        geometry = []
+        elcp = []
+        bl = []
         # conductivity and permeability of the magnets
         cond = 0
         mur = 0
@@ -124,15 +230,26 @@ class Amela():
                 bndkey[k].pop(-1)
                 bndx[k].pop(-1)
                 bndy[k].pop(-1)
+            geo = geometry_id(bndx=bndx[k], bndy=bndy[k])
+            geometry.append(geo)
+            # necessary?
+            hm.append(geo['hm'])
+            wm.append(geo['wm'])
+            x0.append(geo['x0'])
+            y0.append(geo['y0'])
+            alpha.append(geo['alpha'])
 
         # default load angle (input beta I vs Up)
-        num_cases = r.el_fe_induction_1.shape[3] - 1
-        if 'loadcase' in self.magn:
-            indx = self.magn['loadcase'] - 1
+        if ibeta is not None:
+            indx = ibeta
         else:
-            indx = num_cases
-        if indx == 3:
-            indx = num_cases  # avoid error
+            num_cases = r.el_fe_induction_1.shape[3] - 1
+            if 'loadcase' in self.magn:
+                indx = self.magn['loadcase'] - 1
+            else:
+                indx = num_cases
+            if indx == 3:
+                indx = num_cases  # avoid error
 
         # stationary case, no rotation
         poles = 0
@@ -159,6 +276,10 @@ class Amela():
                     by[i][0][index, :] = fd['bx']*np.sin(theta) + \
                         fd['by']*np.cos(theta)
 
+            elcp.append(transform_coord(geometry[i], xcp[i], ycp[i]))
+            bl.append(transform_flux_denstiy(geometry[i], bx[i][0], by[i][0]))
+
+
         if poles == 0:
             freq = self.magn.get('f', r.speed)
             time_vec = np.linspace(0, 1/freq, len(r.pos_el_fe_induction))
@@ -177,9 +298,10 @@ class Amela():
         pm_data = []
         for i in range(len(spel_key)):
             pm_data.append(dict(name='pm_data_se' + str(spel_key[i]),
-                                hm=self.magn.get('hm', 0),
-                                wm=self.magn.get('wm', 0),
+                                hm=self.magn.get('hm', hm[i]),
+                                wm=self.magn.get('wm', wm[i]),
                                 lm=self.magn.get('lm', r.arm_length*1e3),
+                                alpha=alpha[i],
                                 ls=r.arm_length*1e3,
                                 sigma=float(self.magn.get('sigma', cond)),
                                 mur=float(self.magn.get('mur', mur)),
@@ -190,6 +312,8 @@ class Amela():
                                 bndkeys=bndkey[i],
                                 bndx=[float(c) for c in bndx[i]],
                                 bndy=[float(c) for c in bndy[i]],
+                                bl=bl[i],
+                                elcp=elcp[i],
                                 area=spel_area[i]))
             pm_data[i].update(pos)
 
@@ -215,6 +339,14 @@ class Amela():
         else:
             return [pm_data[0]]
 
+    def get_magnet_data_all(self, num_op): 
+        '''get all magnet data for all loadcases'''
+        pm_data = []
+        for i in num_op:
+            pmd = self.get_magnet_data(ibeta=i)
+            pm_data.append(pmd)
+        return pm_data
+
     def export_json(self, pm_data):
         '''Export magnet data to json files
         Parameters
@@ -230,6 +362,9 @@ class Amela():
         for i in pm_data:
             filename = (pm_dir / i['name']).with_suffix('.json')
             self.jsonfile.append(str(filename))  # for the future use
+            # pop out non necessary data
+            i.pop('bl')
+            i.pop('elcp')
             with filename.open('w') as f:
                 json.dump(i, f)
             logger.info('Exporting %s ...', i['name'])
@@ -279,4 +414,3 @@ class Amela():
         with log_file.open('w') as output:
             subprocess.run(cmd, stdout=output)
         return self.read_loss(r)
-        

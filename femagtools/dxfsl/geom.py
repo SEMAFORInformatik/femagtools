@@ -845,9 +845,11 @@ class Geometry(object):
         return geom
 
     def log_geom(self):
+        logger.info("Kind............: %s", self.kind)
         logger.info("Center..........: %s", self.center)
         logger.info("Alpha...........: %s", self.alfa)
         logger.info("Is Inner........: %s", self.is_inner)
+        logger.info("Is Outer........: %s", self.is_outer)
         logger.info("Min Radius......: %s", self.min_radius)
         logger.info("Max Radius......: %s", self.max_radius)
         logger.info("Mirror Corners..: %s", self.mirror_corners)
@@ -989,8 +991,8 @@ class Geometry(object):
         for e in edges:
             self.remove_edge(e)
 
-    def add_line(self, n1, n2):
-        line = Line(Element(start=n1, end=n2))
+    def add_line(self, n1, n2, color=None):
+        line = Line(Element(start=n1, end=n2), color=color)
         add_or_join(self,
                     line.node1(ndec),
                     line.node2(ndec),
@@ -1114,6 +1116,36 @@ class Geometry(object):
         d = distance(self.center, self.end_corners[0])
         logger.debug("end of dist_end_min_corner: %s", d)
         return d
+
+    def get_start_airgap_corner(self):
+        if self.is_inner:
+            p = (self.max_radius, 0.0)
+            cp = self.start_corners[-1]
+        else:
+            p = (self.min_radius, 0.0)
+            cp = self.start_corners[0]
+        if points_are_close(p, cp, atol=0.5):
+            return cp, True
+        return p, False
+
+    def get_end_airgap_corner(self):
+        if self.is_inner:
+            p = point(self.center, self.max_radius, self.alfa, ndec)
+            cp = self.end_corners[-1]
+        else:
+            p = point(self.center, self.min_radius, self.alfa, ndec)
+            cp = self.end_corners[0]
+        if points_are_close(p, cp, atol=0.5):
+            return cp, True
+        return p, False
+
+    def get_start_airgap_corner_point(self):
+        p, b = self.get_start_airgap_corner()
+        return Point(p)
+
+    def get_end_airgap_corner_point(self):
+        p, b = self.get_end_airgap_corner()
+        return Point(p)
 
     def area_size(self):
         pts = [p for p in self.start_corners]
@@ -1439,7 +1471,7 @@ class Geometry(object):
                 'alpha_n1': alpha_n1,
                 'alpha_n2': e.get_alpha(n2),
                 'alpha_start': normalise_angle(alpha_n1 + np.pi),
-                'tracked': e_dict[x],
+                'tracked': e_dict.get(x, False),
                 'reverse': False}
         return info
 
@@ -1465,9 +1497,9 @@ class Geometry(object):
         logger.debug('   node2 = %s', info['n2'])
         logger.debug('   x     = %s', info['x'])
         logger.debug('   lock  = (%s, %s, %s)',
-                     info['data'][0],
-                     info['data'][1],
-                     info['data'][2])
+                     info['data'].get(0, False),
+                     info['data'].get(1, False),
+                     info['data'].get(2, False))
 
     def set_edge_tracked(self, info):
         x = info['x']
@@ -1578,6 +1610,16 @@ class Geometry(object):
         result['ok'] = True
         return result
 
+    def set_edge_attributes(self):
+        if nxversion == 1:
+            nx.set_edge_attributes(self.g, 0, True)
+            nx.set_edge_attributes(self.g, 1, False)
+            nx.set_edge_attributes(self.g, 2, False)
+        else:
+            nx.set_edge_attributes(self.g, True, 0)
+            nx.set_edge_attributes(self.g, False, 1)
+            nx.set_edge_attributes(self.g, False, 2)
+
     def create_list_of_areas(self, crunch=False):
         """ return list of areas for each node and their neighbors
         """
@@ -1592,15 +1634,7 @@ class Geometry(object):
             area_list.append(a)
 
         logger.debug("create new area list")
-
-        if nxversion == 1:
-            nx.set_edge_attributes(self.g, 0, True)
-            nx.set_edge_attributes(self.g, 1, False)
-            nx.set_edge_attributes(self.g, 2, False)
-        else:
-            nx.set_edge_attributes(self.g, True, 0)
-            nx.set_edge_attributes(self.g, False, 1)
-            nx.set_edge_attributes(self.g, False, 2)
+        self.set_edge_attributes()
 
         crunched = 0
         for n in self.g.nodes():
@@ -2999,18 +3033,19 @@ class Geometry(object):
         return self.search_unknown_subregions()
 
     def search_stator_subregions(self, place=''):
-        is_inner = self.is_inner
+        logger.debug("Begin of search_stator_subregions")
+
         if place == 'in':
-            is_inner = True
+            self.is_inner = True
         elif place == 'out':
-            is_inner = False
+            self.is_inner = False
 
         if self.alfa == 0.0:
             self.alfa = np.pi * 2.0
 
         stator_size = self.area_size()
         for area in self.list_of_areas():
-            area.mark_stator_subregions(is_inner,
+            area.mark_stator_subregions(self.is_inner,
                                         stator_size,
                                         self.is_mirrored(),
                                         self.alfa,
@@ -3151,19 +3186,19 @@ class Geometry(object):
             self.check_shaft_area(shaft_areas[0])
 
     def search_rotor_subregions(self, place=''):
-        logger.debug("begin of search_rotor_subregions")
-        is_inner = self.is_inner
+        logger.debug("Begin of search_rotor_subregions")
+
         if place == 'in':
-            is_inner = True
+            self.is_inner = True
         elif place == 'out':
-            is_inner = False
+            self.is_inner = False
 
         if self.alfa == 0.0:
             self.alfa = np.pi * 2.0
 
         types = {}
         for area in self.list_of_areas():
-            t = area.mark_rotor_subregions(is_inner,
+            t = area.mark_rotor_subregions(self.is_inner,
                                            self.is_mirrored(),
                                            self.alfa,
                                            self.center,
@@ -3624,6 +3659,142 @@ class Geometry(object):
             if a.is_touching_both_sides():
                 return True
         return False
+
+    def get_inner_airgap_line(self):
+        if not self.is_inner:
+            return []
+        area = [a for a in self.area_list if a.close_to_endangle and a.close_to_ag]
+        if len(area) != 1:
+            return []
+
+        end_corner = self.end_corners[-1]
+        logger.debug("END CORNER %s", end_corner)
+        nodes = [n for n in area[0].list_of_nodes()]
+        if not nodes:
+            return []
+        n1 = nodes[0]
+        if points_are_close(end_corner, n1):
+            n2 = nodes[-1]
+        else:
+            n2 = n1
+            for n1 in nodes[1:]:
+                if points_are_close(end_corner, n1):
+                    break
+                n2 = n1
+
+        if not points_are_close(end_corner, n1):
+            return []
+
+        start_corner = self.start_corners[-1]
+
+        logger.debug("EDGE FOUND: %s - %s", n1, n2)
+        nodes = [n1, n2]
+        info = self.get_edge_info(n1, n2)
+        while not points_are_close(start_corner, n2):
+            info = self.next_edge_lefthand_side(info)
+            if not info:
+                return []
+            n2 = info['n2']
+            nodes.append(n2)
+
+        return nodes
+
+    def create_corner_areas(self):
+        self.set_edge_attributes()
+        self.create_inner_corner_areas()
+
+    def create_and_append_area(self, n1, n2):
+        rslt = self.get_new_area(n1, n2, False)
+        logger.debug("create_and_append_area: %s", rslt)
+        if rslt.get('ok', False):
+            area = rslt['area']
+            a = Area(area, self.center, 0.0)
+            a.type = 0  # air
+            self.area_list.append(a)
+            return True
+        logger.error("No area for air near airgap!!")
+        return False
+
+    def create_inner_corner_areas(self):
+        start_cp, start_exists = self.get_start_airgap_corner()
+        end_cp, end_exists = self.get_end_airgap_corner()
+        if start_exists and end_exists:
+            return
+        logger.info("*** Corner correction ***")
+        airgap_line = self.get_inner_airgap_line()
+        if not airgap_line:
+            logger.debug("no airgapline found")
+            return
+
+        logger.debug("airgapline found !!")
+        airgap_nodes = [n for n in airgap_line[1:]]
+        del airgap_nodes[-1]
+        if not airgap_nodes:
+            return  # strange
+
+        if not start_exists:
+            cp = self.start_corners[-1]
+            logger.debug("Start Corner: %s -- %s", cp, start_cp)
+            start_line = Line(Element(start=cp, end=start_cp), color='red')
+            start_cp = start_line.node2(ndec)
+            i = 0
+            for n in airgap_nodes:
+                i += 1
+                if not self.search_intersection(i, self.max_radius,
+                                                n, start_cp,
+                                                airgap_nodes):
+                    self.add_line(start_cp, n, color='red')
+                    self.add_edge(cp, start_cp, start_line)
+                    self.create_and_append_area(start_cp, n)
+                    self.start_corners = self.get_corner_nodes(self.center,
+                                                               0.0)
+                    break
+
+        if not end_exists:
+            cp = self.end_corners[-1]
+            logger.debug("End Corner: %s -- %s", cp, end_cp)
+            end_line = Line(Element(start=cp, end=end_cp), color='red')
+            end_cp = end_line.node2(ndec)
+            airgap_nodes.reverse()
+            i = 0
+            for n in airgap_nodes:
+                i += 1
+                if not self.search_intersection(i, self.max_radius,
+                                                n, end_cp,
+                                                airgap_nodes):
+                    self.add_line(end_cp, n, color='red')
+                    self.add_edge(cp, end_cp, end_line)
+                    self.create_and_append_area(n, end_cp)
+                    self.end_corners = self.get_corner_nodes(self.center,
+                                                             self.alfa)
+                    break
+
+    def search_intersection(self, start_i, r, n1, n2, airgap_nodes):
+        logger.debug("begin of search_intersection")
+
+        ag_line = Line(Element(start=n1, end=n2))
+        for i in range(start_i, len(airgap_nodes)):
+            n = airgap_nodes[i]
+            alfa = alpha_line(self.center, n)
+            dist_n = distance(self.center, n)
+            p = point(self.center, r, alfa)
+            line = Line(Element(start=self.center, end=p))
+            pts = line.intersect_line(ag_line, include_end=True)
+            if not pts:
+                # no intersection
+                return  # ok
+            if len(pts) != 1:
+                logger.error("-- no intersection found ?!? %s", pts)
+                logger.debug("end of search_intersection: bad")
+                return True  # fatal
+            dist_p = distance(self.center, pts[0])
+            logger.info("-- check point %s[%s] -- %s[%s]", n, dist_n, pts[0], dist_p)
+            if not less(dist_n, dist_p):
+                logger.debug("end of search_intersection: found")
+                return True  # intersection
+            logger.debug("-- dist %s <= %s", dist_n, dist_p)
+        logger.debug("end of search_intersection: ok")
+        return False  # ok
 
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))

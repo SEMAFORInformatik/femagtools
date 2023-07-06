@@ -134,7 +134,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
 
 def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                           with_mtpv=True, with_mtpa=True, with_pmconst=True,
-                          with_tmech=True,
+                          with_tmech=True, driving_only=False,
                           num_proc=0, progress=None):
     """return speed, torque efficiency and losses
 
@@ -146,6 +146,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     temp: temperature (°C) (ignored if eecpars is machine objectb)
     n: (float) maximum speed (1/s)
     npoints: (list) number of values of speed and torque
+    driving_only: (bool) do not calculate braking speed/torque samples if True
     with_mtpv -- (optional) use mtpv if True (default)
     with_pmconst -- (optional) use pmax if True (default)
     with_mtpa -- (optional) use mtpa if True (default), disables mtpv if False
@@ -171,11 +172,14 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         r = m.characteristics(T, nmax, u1, nsamples=nsamples,
                               with_mtpv=with_mtpv, with_mtpa=with_mtpa,
                               with_pmconst=with_pmconst, with_tmech=with_tmech)  # driving mode
-        if isinstance(m, (PmRelMachineLdq, SynchronousMachineLdq)):
+        if driving_only:
+            rb['n'] = None
+            rb['T'] = None
+        elif isinstance(m, (PmRelMachineLdq, SynchronousMachineLdq)):
             if min(m.betarange) >= -np.pi/2:  # driving mode only
                 rb['n'] = None
                 rb['T'] = None
-        if isinstance(m, (PmRelMachinePsidq, SynchronousMachinePsidq)):
+        elif isinstance(m, (PmRelMachinePsidq, SynchronousMachinePsidq)):
             if min(m.iqrange) >= 0:  # driving mode only
                 rb['n'] = None
                 rb['T'] = None

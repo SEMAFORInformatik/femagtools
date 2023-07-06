@@ -318,7 +318,7 @@ class PmRelMachine(object):
             iq, id = i0
         if log:
             try:
-                log(res.x)
+                log((iq,id))
             except:
                 pass  # logger is not correct
         logger.debug("iqd_tmech_umax w1=%f torque=%f %f iq=%f id=%f u1 u1 %f %f",

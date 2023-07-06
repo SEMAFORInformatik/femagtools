@@ -44,6 +44,7 @@ class PmRelMachine(object):
         self.io = (1, -1)
         self.fo = 50.0
         self.tcu1 = 20
+        self.tmag = 20
         self.zeta1 = 0.2
         self.gam = 0.7
         self.kh = 2
@@ -234,6 +235,17 @@ class PmRelMachine(object):
                          np.array((uq, ud)) - self.uqd(w1, *iqd),
                          (0, self.io[1]))
 
+    def i1_tmech(self, torque, beta, n):
+        "return i1 current with given torque and beta"
+        i1, info, ier, mesg = so.fsolve(
+            lambda i1: self.tmech_iqd(*iqd(beta, i1), n)-torque,
+            self.i1range[1]/2,
+            full_output=True)
+        if ier == 1:
+            return i1
+        raise ValueError("no solution found for torque {}, beta {} io {}".format(
+            torque, beta, self.io))
+
     def i1_torque(self, torque, beta):
         "return i1 current with given torque and beta"
         i1, info, ier, mesg = so.fsolve(
@@ -267,9 +279,9 @@ class PmRelMachine(object):
         with minimal current"""
         n = w1/2/np.pi/self.p
         if with_mtpa:
-            i0 = self.iqd_torque(torque)
+            i0 = self.iqd_tmech(torque, n)
         else:
-            i1 = self.i1_torque(torque, 0)
+            i1 = self.i1_tmech(torque, 0, n)
             i0 = iqd(0, i1)
 
         if np.linalg.norm(self.uqd(w1, *i0))/np.sqrt(2) > u1max:
@@ -280,7 +292,7 @@ class PmRelMachine(object):
                     self.uqd(w1, *iqd(b, i1)))/np.sqrt(2),
                                    beta)[0], i1)
 
-        res = so.minimize(lambda iqd: np.linalg.norm(iqd), i0, method='SLSQP',
+            res = so.minimize(lambda iqd: np.linalg.norm(iqd), i0, method='SLSQP',
                           constraints=(
                               {'type': 'eq',
                                'fun': lambda iqd:
@@ -288,16 +300,19 @@ class PmRelMachine(object):
                               {'type': 'ineq',
                                'fun': lambda iqd:
                                np.sqrt(2)*u1max - la.norm(self.uqd(w1, *iqd))}))
+            iq, id = res.x
+        else:
+            iq, id = i0
         if log:
             try:
                 log(res.x)
             except:
                 pass  # logger is not correct
         logger.debug("iqd_tmech_umax w1=%f torque=%f %f iq=%f id=%f u1 u1 %f %f",
-                     w1, torque, self.torque_iqd(*res.x), res.x[0], res.x[1],
+                     w1, torque, self.torque_iqd(iq, id), iq, id,
                      u1max, np.linalg.norm(
-                         self.uqd(w1, *res.x))/np.sqrt(2))
-        return res.x[0], res.x[1], self.tmech_iqd(*res.x, n)
+                         self.uqd(w1, iq, id))/np.sqrt(2))
+        return iq, id, self.tmech_iqd(iq, id, n)
 
     def iqd_torque_umax(self, torque, w1, u1max, log=0, with_mtpa=True):
         """return d-q current and torque at stator frequency and max voltage
@@ -637,19 +652,7 @@ class PmRelMachine(object):
         return [w/2/np.pi/self.p for w in (w1type, w1max)]  # ['MTPA']
 
 
-    def iqd_tmech_imax_umax(self, torque, n, umax, kpfe=1, pfw=0, maxiter=100, tol=0.1):
-        """return iq, id, shft torque for constant torque or field weakening"""
-        iq, id = self.iqd_tmech(torque, n, kpfe, pfw, maxiter=maxiter, tol=tol)
-        w1 = 2 * np.pi * n * self.p
-        # Constant torque range
-        if np.linalg.norm(self.uqd(w1, iq, id)) <= umax * np.sqrt(2):
-            return (iq, id, torque)
-        # Field weaking range
-        imax = betai1(iq, id)[1]
-        iq, id = self.iqd_imax_umax(imax, w1, umax, torque)
-        return iq, id, self.tmech_iqd(iq, id, n, kpfe, pfw)
-
-    def operating_point(self, T, n, u1max, Tfric=None, kpfe=1, maxiter=100, tol=0.1):
+    def operating_point(self, T, n, u1max, with_mtpa=True):
         """
         calculate single operating point.
 
@@ -681,35 +684,11 @@ class PmRelMachine(object):
             T -- (float) the output torque at the shaft in Nm
             n -- (float) the speed of the machine in 1/s
             u1max -- (float) the maximum phase voltage in V rms
-            Tfric -- (float, optional) the friction torque to consider in Nm.
-                     If Tfric is None, the friction torque is calculated according to the rotor-mass and the
-                     frition factor of the machine (kfric_b). Friction is written to the result dict!
-            kpfe -- (float) iron loss factor. Default = 1
         """
 
         r = {}  # result dit
 
-        if Tfric:
-            tfric = Tfric
-        else:
-            # formula from
-            # PERMANENT MAGNET MOTOR TECHNOLOGY: DESIGN AND APPLICATIONS
-            # Jacek Gieras
-            #
-            # plfric = kfric_b m_r n 1e-3 W
-            # -- kfric_b : 1..3 W/kg/rpm
-            # -- m_r: rotor mass in kg
-            # -- n: rotor speed in rpm
-            try:
-                kfric_b = self.kfric_b
-            except:
-                kfric_b = 1.1
-            tfric = kfric_b * self.rotor_mass * 30e-3 / np.pi
-            # TODO: make frictiontorque speed depended?
-
-        plfric = tfric * n * 2 * np.pi
-
-        iq, id, tq = self.iqd_tmech_imax_umax(T, n, u1max, kpfe, plfric, maxiter=maxiter, tol=tol)
+        iq, id, tq = self.iqd_tmech_umax(T, n, u1max, with_mtpa=with_mtpa)
         f1 = n * self.p
         w1 = f1 * 2 * np.pi
         uq, ud = self.uqd(w1, iq, id)
@@ -723,8 +702,9 @@ class PmRelMachine(object):
         plfe2 = self.iqd_plfe2(iq, id, f1)
         plmag = self.iqd_plmag(iq, id, f1)
         plfe = plfe1 + plfe2 + plmag
+        plfric = self.pfric(n)
         plcu = self.betai1_plcu(i1, 2 * np.pi * f1)
-        pltotal = plfe + plcu
+        pltotal = plfe + plcu + plfric
         p1 = pmech + pltotal
         if np.abs(pmech) < 1e-12:
             eta = 0  # power to low for eta calculation
@@ -747,7 +727,7 @@ class PmRelMachine(object):
         r['plfric'] = float(plfric)
         r['losses'] = float(pltotal)
         r['T'] = float(tq)
-        r['Tfric'] = float(tfric)
+        r['Tfric'] = float(self.tfric)
         r['n'] = float(n)
         r['f1'] = float(f1)
         r['eta'] = eta

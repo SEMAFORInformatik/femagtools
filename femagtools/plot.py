@@ -1290,7 +1290,7 @@ def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, ax=0):
     """plot demag of NC/I7/ISA7 model at rotor position
     Args:
       isa: Isa7/NC object
-      pos: rotor position in degree (maximum h
+      pos: rotor position in degree (maximum h if -1)
       icur: cur amplitude index or last index if -1
       ibeta: beta angle index or last index if -1
     """
@@ -1785,7 +1785,7 @@ def normalize10(v):
         normalized array
         normalisation factor (power of 10)
     """
-    norm = 10**(np.ceil(np.log10(np.linalg.norm(v))))
+    norm = 10**(np.floor(np.log10(np.max(np.abs(v)))))
     return v / norm, norm
 
 

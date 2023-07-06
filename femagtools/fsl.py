@@ -308,7 +308,8 @@ class Builder:
         params['airgap'] = -1.0
         pos = 'out' if model.external_rotor else 'in'
         params['part'] = ('rotor', pos)
-        logger.info("Conv rotor from %s", templ + '.dxf')
+        logger.info("Conv rotor from %s",
+                    model.magnet[templ]['name'])
         conv = convert(model.magnet[templ]['name'], **params)
         model.set_value('poles', int(conv.get('num_poles')))
         self.set_diameter_parameter(model, conv)

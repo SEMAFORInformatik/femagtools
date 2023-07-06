@@ -1785,7 +1785,7 @@ def normalize10(v):
         normalized array
         normalisation factor (power of 10)
     """
-    norm = 10**(np.floor(np.log10(np.max(np.abs(v)))))
+    norm = 10**(np.ceil(np.log10(np.max(np.abs(v)))))
     return v / norm, norm
 
 

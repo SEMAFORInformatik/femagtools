@@ -156,7 +156,7 @@ class MachineModel(Model):
             for mcv in ('mcvkey_yoke', 'mcvkey_shaft'):
                 if mcv not in self.magnet:
                     self.magnet[mcv] = 'dummy'
-        if 'coord_system' in parameters:
+        if 'coord_system' in parameters or 'afmtype' in parameters:
             self.move_action = 1
         else:
             self.coord_system = 0

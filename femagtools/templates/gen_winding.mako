@@ -47,7 +47,7 @@ add_to_wdg(m.xcoil_2, m.ycoil_2, "wsamekey", "wo", "wser")
 pre_models("Gen_winding")
 pre_models("gen_pocfile")
 % endif
-% else:
+% else:  # move_action > 0
 color={"green", "yellow", "magenta", "lightgrey", "darkred", "skyblue", "violet"}
 wkey={0,0,0,0,0,0}
 --

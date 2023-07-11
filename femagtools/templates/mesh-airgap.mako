@@ -12,6 +12,7 @@ if not airgap_created then
     if alfa == nil then
       alfa = m.npols_gen*2*math.pi/m.num_poles
     end
+% if hasattr(model, 'bore_diam'):
     r1 = m.fc_radius - ag/6
     x1, y1 = pr2c(r1, alfa)
     n = math.floor(m.fc_radius*alfa/agndst + 1.5)
@@ -41,4 +42,41 @@ if not airgap_created then
     create_mesh_se(x0, y0)
     x0, y0 = pr2c(r2+ag/6, alfa/2)
     create_mesh_se(x0, y0)
+% else:
+  -- airgap nodechains for axial flux
+  x1, y1 = 0, -ag/2 -- airgap center
+  x2, y2 = m.num_slots*(m.tooth_width+m.slot_width), y1
+  nc_line(x1, -ag/3, x2, -ag/3, num_agnodes)
+  nc_line(x1, -ag/3, x1, 0, 0)
+  nc_line(x2, -ag/3, x2, 0, 0)
+  create_mesh_se((x1+x2)/2, -ag/6)
+
+  nc_line(x1, -2*ag/3, x2, -2*ag/3, num_agnodes)
+  nc_line(x1, -2*ag/3, x1, -ag, 0)
+  nc_line(x2, -2*ag/3, x2, -ag, 0)
+  create_mesh_se((x1+x2)/2, -5*ag/6)
+
+  nc_line(x1, -ag/3, x1, -2*ag/3, 0)
+  nc_line(x2, -ag/3, x2, -2*ag/3, 0)
+  create_mesh_se((x1+x2)/2, -ag/2)
+
+  --  set boundary conditions
+  del_bcond()
+  x1,y1 = 0, m.tooth_width/2+m.slot_width/2
+  x2,y2 = x1, -ag - m.magn_height -m.yoke_height
+  x3,y3 = m.npols_gen*m.pole_width, y2
+  x4,y4 = x3, y1
+  if m.npols_gen%2 == 1 then
+    def_bcond_only(x1,y1, x2,y2, x3,y3, x4,y4, 3)
+  else
+    def_bcond_only(x1,y1, x2,y2, x3,y3, x4,y4, 4)
+  end
+  if (m.model_type ~= "S1R2") then
+   def_bcond_vpo(x4,y4, x1,y1)
+  end
+  if (m.model_type ~= "S2R1") then
+   def_bcond_vpo(x2,y2, x3,y3)
+  end
+
+% endif
 end

@@ -116,27 +116,31 @@ m.num_poles       =  ${model.poles}
 
 % if 'thcap' in model.windings:
 -- Thermal Material properties
-rw = da1/2 +(m.slot_height-m.slot_h1)/2
-dw = 0
-dr = 0
-if m.middle_line == 1 then
-  dw = 1/60
-elseif m.middle_line == 2 then
-  dr = 1
-end
-lamCu = 400
-capCu = 385
-da = 1.0785
-dCu = 1.0
-lam = lamCu*(dCu/(da-dCu)+(da-dCu)/da)
-cap = capCu*da^2/(dCu^2*math.pi/4)
-for i=1,m.num_sl_gen do
-  a = (2*i-1)*math.pi/m.tot_num_sl + m.zeroangl/180*math.pi
-  xwl,ywl = pr2c(rw+dr,a+dw)
-  def_mat_therm(xwl,ywl,'yellow',8920,lam,cap,1)
-  if m.middle_line > 0 then
-    xwr,ywr = pr2c(rw-dr,a-dw)
-    def_mat_therm(xwr,ywr,'yellow',8920,lam,cap,1)
+if m.slot_height ~= nil then 
+  -- FEMAG slot model 
+  -- TODO: slot model from user
+  rw = da1/2 +(m.slot_height-m.slot_h1)/2
+  dw = 0
+  dr = 0
+  if m.middle_line == 1 then
+    dw = 1/60
+  elseif m.middle_line == 2 then
+    dr = 1
+  end
+  lamCu = 400
+  capCu = 385
+  da = 1.0785
+  dCu = 1.0
+  lam = lamCu*(dCu/(da-dCu)+(da-dCu)/da)
+  cap = capCu*da^2/(dCu^2*math.pi/4)
+  for i=1,m.num_sl_gen do
+    a = (2*i-1)*math.pi/m.tot_num_sl + m.zeroangl/180*math.pi
+    xwl,ywl = pr2c(rw+dr,a+dw)
+    def_mat_therm(xwl,ywl,'yellow',8920,lam,cap,1)
+    if m.middle_line > 0 then
+      xwr,ywr = pr2c(rw-dr,a-dw)
+      def_mat_therm(xwr,ywr,'yellow',8920,lam,cap,1)
+    end
   end
 end
 %endif

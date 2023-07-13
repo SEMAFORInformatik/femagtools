@@ -351,7 +351,7 @@ class MagnLoss(Amela):
                                 with warnings.catch_warnings():
                                     warnings.simplefilter('ignore')
                                     px_se[iy,ix,c] = self.calc_pvpm(bx_fft[iy,ix,c], max(c/self.tgrid, 1e-6),
-                                                                    mu[iy], wm/self.segx[jj], hm, 0)
+                                                                    mu[iy], hm, wm/self.segx[jj], 0)
                                 
                             if mu[iy] < 2:
                                 with warnings.catch_warnings():
@@ -383,7 +383,6 @@ class MagnLoss(Amela):
                     i[j]*=1e-3
                 self.consider_bx(i['wm'], i['hm'], bx_fft, by_fft)
                 bfft = self.bpm_fft(nx, ny, nt, i['elcp'], i['bl'])
-                #loss = self.loss(bfft[0], bfft[1], bfft[2], bfft[3], i['wm'], i['hm'])
                 loss = self.loss(*bfft, i['wm'], i['hm'])
                 ialh_loss += loss
             all_load_cases.append(ialh_loss)

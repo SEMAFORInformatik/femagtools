@@ -269,7 +269,10 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         u1 = np.array(r['u1'])
         i1 = np.array(r['i1'])
         try:
-            tfric = eecpars['kfric_b']*eecpars['rotor_mass']*30e-3/np.pi
+            if isinstance(eecpars, dict):
+                tfric = eecpars['kfric_b']*eecpars['rotor_mass']*30e-3/np.pi
+            else:
+                tfric = m.kfric_b * m.rotor_mass * 30e-3 / np.pi
         except KeyError:
             tfric = 0
 

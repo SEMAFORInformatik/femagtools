@@ -1,7 +1,4 @@
---[[
-Create model of the rotor of the axial flow machine
---]]
--- @param  m.nodedist          -- Node distance [mm]
+-- Create model of the rotor of the axial flow machine
 
 m.yoke_height  = ${model['yoke_height']*1e3}  -- Yoke height [mm]
 m.magn_height     = ${model['magn_height']*1e3}  -- Magnet height [mm]

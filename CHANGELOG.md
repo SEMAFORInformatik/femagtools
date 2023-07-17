@@ -2,6 +2,9 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.4
+	- new machine type AFM (Axial Flux Machine)
+
 ## Release 1.3.1
 	- new flags: with_mtpv, with_mtpa, with_pmconst, with_tmech for effloss and pm characteristics
         - new plot func transientsc_demag

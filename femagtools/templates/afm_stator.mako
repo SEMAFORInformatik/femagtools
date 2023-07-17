@@ -4,7 +4,7 @@
 "S1R2_all"  -- 1 stator, 2 rotor, all simulated
 "S2R1"      -- 2 stator, 1 rotor, 1 half simulated
 "S2R1_all"  -- 2 stator, 1 rotor, all simulated
---]]
+b--]]
 m.slot_height     =  ${model['slot_height']*1e3}    -- Total slot height [mm]
 m.slot_h1         =  ${model['slot_h1']*1e3}        -- Slot opening height [mm]
 m.slot_h2         =  ${model['slot_h2']*1e3}        -- Distance to radius [mm]

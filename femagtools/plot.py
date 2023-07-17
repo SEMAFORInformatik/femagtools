@@ -229,7 +229,7 @@ def airgap_fft(airgap, bmin=1e-2, ax=0):
         pass
 
 
-def torque(pos, torque, ax=0):
+def torque(pos, torque, title='', ax=0):
     """creates plot from torque vs position"""
     k = 20
     alpha = np.linspace(pos[0], pos[-1],
@@ -242,7 +242,10 @@ def torque(pos, torque, ax=0):
         unit = 'kNm'
     if ax == 0:
         ax = plt.gca()
-    ax.set_title('Torque / {}'.format(unit))
+    if title:
+        ax.set_title(title)
+    else:
+        ax.set_title('Torque / {}'.format(unit))
     ax.grid(True)
     ax.plot(pos, [scale*t for t in torque], 'go')
     ax.plot(alpha, scale*f(alpha))

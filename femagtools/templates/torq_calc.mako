@@ -25,17 +25,15 @@ m.range_y         =    0.0
 
 m.fc_force_points =  5
 m.fcpx_mm1        =   m.npols_gen*m.pole_width +1.0
-m.fcpy_mm1        =   -3*ag/4
+m.fcpy_mm1        =   -ag/2
 m.fcpx_mm2        =   -1.0
 m.fcpy_mm2        =   m.fcpy_mm1
 m.fcpx_mm3        =   m.fcpx_mm2
-m.fcpy_mm3        =   -m.magn_height -m.yoke_height -m.gap_ma_yoke -4
+m.fcpy_mm3        =   -m.magn_height -m.yoke_height -m.gap_ma_yoke -ag -1
 m.fcpx_mm4        =   m.fcpx_mm1
 m.fcpy_mm4        =   m.fcpy_mm3
 m.fcpx_mm5        =   m.fcpx_mm1
 m.fcpy_mm5        =   m.fcpy_mm1
-
-m.npols_gen       =  1 -- number of sectors simulated
 
 % endif
 m.nu_force_pat    =    0.0

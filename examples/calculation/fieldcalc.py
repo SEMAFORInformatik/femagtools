@@ -4,7 +4,7 @@ import femagtools.plot
 import os
 import matplotlib.pyplot as plt
 import logging
-
+import math
 
 machine = dict(
     name="PM 130 L4",
@@ -72,8 +72,16 @@ simulation = dict(
 r = femag(machine,
           simulation)
 
+# determine poles_gen 
+if 'num_slots_gen' in machine['stator']: 
+    pgen = machine['poles']*machine['stator']['num_slots_gen']/ \
+        machine['stator']['num_slots']
+else: 
+    pgen = machine['poles']/ \
+        math.gcd(machine['stator']['num_slots'], machine['poles'])
+    
 rag = femagtools.airgap.read(
-    os.path.join(workdir, 'bag.dat'))
+    os.path.join(workdir, 'bag.dat'), pmod=pgen)
 
 fig, ax = plt.subplots(nrows=2, ncols=1)
 plt.subplot(2,1,1)

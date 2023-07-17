@@ -583,5 +583,6 @@ if __name__ == "__main__":
     plt.show()
 
     svg = wdgs.diagram()
-    ET.ElementTree(svg).write('wind.svg')
+    tree = ET.ElementTree(ET.fromstring(svg))
+    tree.write('wind.svg')
     print('SVG file "wind.svg" created')

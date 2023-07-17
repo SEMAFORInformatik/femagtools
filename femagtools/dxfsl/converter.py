@@ -399,6 +399,7 @@ def convert(dxfile,
                     machine = machine.undo_mirror()
                     machine.geom.set_stator()
                     machine.geom.search_stator_subregions(part[1])
+                    machine.geom.looking_for_corners()
                     machine.create_mirror_lines_outside_windings()
 
                 params = create_femag_parameters_stator(machine,
@@ -406,6 +407,7 @@ def convert(dxfile,
             else:
                 machine.geom.set_rotor()
                 machine.geom.search_rotor_subregions(part[1])
+                machine.geom.looking_for_corners()
                 params = create_femag_parameters_rotor(machine,
                                                        part[1])
         else:

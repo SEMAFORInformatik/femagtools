@@ -39,6 +39,8 @@ class Area(object):
         self.min_air_angle = 0.0
         self.max_air_angle = 0.0
         self.close_to_ag = False
+        self.close_to_ag_startcorner = False
+        self.close_to_ag_endcorner = False
         self.close_to_startangle = False
         self.close_to_endangle = False
         self.mag_rectangle = False
@@ -1331,6 +1333,15 @@ class Area(object):
         logger.debug(">>> air remains")
         return self.type
 
+    def mark_airgap_corners(self, start_cp, end_cp):
+        for n in self.list_of_nodes():
+            if self.close_to_startangle:
+                if points_are_close(n, start_cp):
+                    self.close_to_ag_startcorner = True
+            if self.close_to_endangle:
+                if points_are_close(n, end_cp):
+                    self.close_to_ag_endcorner = True
+
     def area_size(self):
         nodes = [n for n in self.list_of_nodes()]
         return area_size(nodes)
@@ -1467,14 +1478,19 @@ class Area(object):
 
     def __str__(self):
         return "Area {}\n".format(self.id) + \
-            "distance: from {} to {}\n".\
+            "distance...............: from {} to {}\n".\
             format(round(self.min_dist, 4), round(self.max_dist, 4)) + \
-            "height..: {}\n".format(self.height) + \
-            "alpha...: {}\n".format(self.alpha) + \
-            "angle...: from {} to {}\n".\
+            "height.................: {}\n".format(self.height) + \
+            "alpha..................: {}\n".format(self.alpha) + \
+            "angle..................: from {} to {}\n".\
             format(round(self.min_angle, 6), round(self.max_angle, 6)) + \
-            "delta...: {}\n".format(self.delta) + \
-            "number..: {}\n".format(self.count) + \
-            "equal...: {}\n".format(len(self.equal_areas)) + \
-            "symmetry: {}\n".format(self.symmetry) + \
-            "sym_type: {}".format(self.sym_type)
+            "delta..................: {}\n".format(self.delta) + \
+            "number.................: {}\n".format(self.count) + \
+            "equal areas............: {}\n".format(len(self.equal_areas)) + \
+            "symmetry...............: {}\n".format(self.symmetry) + \
+            "symmetry type..........: {}\n".format(self.sym_type) + \
+            "close to airgap........: {}\n".format(self.close_to_ag) + \
+            "close to startangle....: {}\n".format(self.close_to_startangle) + \
+            "close to endangle......: {}\n".format(self.close_to_endangle) + \
+            "close to ag startcorner: {}\n".format(self.close_to_ag_startcorner) + \
+            "close to ag endcorner..: {}\n".format(self.close_to_ag_endcorner)

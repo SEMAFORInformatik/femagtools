@@ -994,11 +994,27 @@ class Geometry(object):
     def add_line(self, n1, n2, color=None):
         line = Line(Element(start=n1, end=n2), color=color)
         add_or_join(self,
-                    line.node1(ndec),
-                    line.node2(ndec),
+                    n1,
+                    n2,
                     line,
                     self.rtol,
                     self.atol)
+
+    def add_arc(self, n1, n2, center, radius, color=None):
+        angle_n1 = alpha_line(center, n1)
+        angle_n2 = alpha_line(center, n2)
+        arc = Arc(Element(center=center,
+                          radius=radius,
+                          start_angle=angle_n1*180/np.pi,
+                          end_angle=angle_n2*180/np.pi),
+                  color=color)
+        add_or_join(self,
+                    n1,
+                    n2,
+                    arc,
+                    self.rtol,
+                    self.atol)
+
 
     def elements(self, type):
         """return lists of objects"""
@@ -3024,13 +3040,13 @@ class Geometry(object):
 
     def search_subregions(self):
         if self.is_stator():
-            return self.search_stator_subregions()
-
-        if self.is_rotor():
-            return self.search_rotor_subregions()
-
-        logger.warning("no stator or rotor assigned")
-        return self.search_unknown_subregions()
+            self.search_stator_subregions()
+        elif self.is_rotor():
+            self.search_rotor_subregions()
+        else:
+            logger.warning("no stator or rotor assigned")
+            self.search_unknown_subregions()
+        self.looking_for_corners()
 
     def search_stator_subregions(self, place=''):
         logger.debug("Begin of search_stator_subregions")
@@ -3063,7 +3079,7 @@ class Geometry(object):
             windings_surface.sort(reverse=True)
             max_size = windings_surface[0][0]
             for sz, w in windings_surface:
-                logger.info("winding size = %s", sz)
+                logger.debug("winding size = %s", sz)
                 if sz / max_size < 0.95:
                     w.set_type(0)
                     if sz / max_size < 0.2:
@@ -3328,7 +3344,21 @@ class Geometry(object):
                     if a.surface < max_surface * 0.20:  # too small
                         a.set_type(0)  # air
 
-        logger.debug("begin of search_unknown_subregions")
+        logger.debug("end of search_unknown_subregions")
+
+    def looking_for_corners(self):
+        if self.is_inner:
+            logger.debug("looking_for_corners: inner")
+            start_cp = self.start_corners[-1]
+            end_cp = self.end_corners[-1]
+        else:
+            logger.debug("looking_for_corners: outer")
+            start_cp = self.start_corners[0]
+            end_cp = self.end_corners[0]
+        logger.debug("looking_for_corners: start=%s, end=%s",
+                     start_cp, end_cp)
+        for area in self.list_of_areas():
+            area.mark_airgap_corners(start_cp, end_cp)
         return
 
     def num_areas_of_type(self, type):
@@ -3661,16 +3691,23 @@ class Geometry(object):
         return False
 
     def get_inner_airgap_line(self):
+        logger.debug("begin of get_inner_airgap_line")
+
         if not self.is_inner:
+            logger.debug("end of get_inner_airgap_line: not inner")
             return []
-        area = [a for a in self.area_list if a.close_to_endangle and a.close_to_ag]
+        for a in self.area_list:
+            logger.debug("%s", a)
+        area = [a for a in self.area_list if a.close_to_ag_endcorner]
         if len(area) != 1:
+            logger.debug("end of get_inner_airgap_line: %s areas found", len(area))
             return []
 
         end_corner = self.end_corners[-1]
         logger.debug("END CORNER %s", end_corner)
         nodes = [n for n in area[0].list_of_nodes()]
         if not nodes:
+            logger.debug("end of get_inner_airgap_line: no nodes found")
             return []
         n1 = nodes[0]
         if points_are_close(end_corner, n1):
@@ -3683,6 +3720,7 @@ class Geometry(object):
                 n2 = n1
 
         if not points_are_close(end_corner, n1):
+            logger.debug("end of get_inner_airgap_line: not close to endcorner")
             return []
 
         start_corner = self.start_corners[-1]
@@ -3697,6 +3735,7 @@ class Geometry(object):
             n2 = info['n2']
             nodes.append(n2)
 
+        logger.debug("end of get_inner_airgap_line #%s", len(nodes))
         return nodes
 
     def create_corner_areas(self):
@@ -3743,7 +3782,11 @@ class Geometry(object):
                 if not self.search_intersection(i, self.max_radius,
                                                 n, start_cp,
                                                 airgap_nodes):
-                    self.add_line(start_cp, n, color='red')
+                    d = distance(self.center, n)
+                    if np.isclose(d, self.max_radius):
+                        self.add_arc(start_cp, n, self.center, self.max_radius, color='red')
+                    else:
+                        self.add_line(start_cp, n, color='red')
                     self.add_edge(cp, start_cp, start_line)
                     self.create_and_append_area(start_cp, n)
                     self.start_corners = self.get_corner_nodes(self.center,
@@ -3762,7 +3805,11 @@ class Geometry(object):
                 if not self.search_intersection(i, self.max_radius,
                                                 n, end_cp,
                                                 airgap_nodes):
-                    self.add_line(end_cp, n, color='red')
+                    d = distance(self.center, n)
+                    if np.isclose(d, self.max_radius):
+                        self.add_arc(n, end_cp, self.center, self.max_radius, color='red')
+                    else:
+                        self.add_line(end_cp, n, color='red')
                     self.add_edge(cp, end_cp, end_line)
                     self.create_and_append_area(n, end_cp)
                     self.end_corners = self.get_corner_nodes(self.center,
@@ -3788,7 +3835,7 @@ class Geometry(object):
                 logger.debug("end of search_intersection: bad")
                 return True  # fatal
             dist_p = distance(self.center, pts[0])
-            logger.info("-- check point %s[%s] -- %s[%s]", n, dist_n, pts[0], dist_p)
+            logger.debug("-- check point %s[%s] -- %s[%s]", n, dist_n, pts[0], dist_p)
             if not less(dist_n, dist_p):
                 logger.debug("end of search_intersection: found")
                 return True  # intersection

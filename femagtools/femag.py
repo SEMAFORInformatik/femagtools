@@ -492,7 +492,8 @@ class Femag(BaseFemag):
                 return {'t': ttemp[0], 'temperature': ttemp[1]}
 
             bch = self.read_bch(self.modelname)
-            if simulation['calculationMode'] == 'pm_sym_fast':
+            if simulation['calculationMode'] == 'pm_sym_fast' or \
+                simulation['calculationMode'] == 'torq_calc':
                 if simulation.get('shortCircuit', False):
                     logger.info("short circuit simulation")
                     simulation.update(

@@ -170,6 +170,7 @@ class Reader:
         self.dqPar = {}
         self.ldq = {}
         self.losses = []
+        self.magnet_loss_th = []
         self.demag = []
         self.weights = []
         self.weight = {}

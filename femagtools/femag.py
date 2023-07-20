@@ -492,7 +492,8 @@ class Femag(BaseFemag):
                 return {'t': ttemp[0], 'temperature': ttemp[1]}
 
             bch = self.read_bch(self.modelname)
-            if simulation['calculationMode'] == 'pm_sym_fast':
+            if simulation['calculationMode'] == 'pm_sym_fast' or \
+                simulation['calculationMode'] == 'torq_calc':
                 if simulation.get('shortCircuit', False):
                     logger.info("short circuit simulation")
                     simulation.update(
@@ -548,6 +549,11 @@ class Femag(BaseFemag):
                 try:
                     for i in range(len(bch.losses)): 
                         bch.losses[i].update({"magnetH": magn_losses[i]})
+                except: 
+                    pass
+                # pass losses to bch object for th usage
+                try: 
+                    bch.magnet_loss_th = m.th_loss
                 except: 
                     pass
             return bch

@@ -115,7 +115,7 @@ class MagnLoss(Amela):
         self.tgrid = 60/self.speed*(self.theta[-1] - self.theta[0])/360
         self.lt = len(self.theta)
         self.ls = self.pm[-1][-1]['ls']
-
+        self.th_loss = []
         try:
             self.numpoles = self.pm[-1][-1]['numpoles']
         except KeyError: 
@@ -374,6 +374,7 @@ class MagnLoss(Amela):
         all_load_cases = []
         for k in self.pm:
             ialh_loss = 0
+            loss_detail = []
             for i in k: 
                 logger.info(f'magnet width and height: {i["wm"]:.2f}mm {i["hm"]:.2f}mm')
                 [nt, bx_fft, by_fft] = self.periodicity_id(i['bl'])
@@ -385,6 +386,8 @@ class MagnLoss(Amela):
                 bfft = self.bpm_fft(nx, ny, nt, i['elcp'], i['bl'])
                 loss = self.loss(*bfft, i['wm'], i['hm'])
                 ialh_loss += loss
+                loss_detail.append([i['spel_key'], loss/self.numpoles])
+            self.th_loss.append(loss_detail)
             all_load_cases.append(ialh_loss)
 
         return all_load_cases

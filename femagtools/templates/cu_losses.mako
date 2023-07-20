@@ -23,5 +23,6 @@ m.spconweight     =  ${model.get('spmaweight', 7.6)} -- mass density g/cm³
 m.relconlength    =  ${model.get('rlen', 1)*100} -- rel cond length %
 pre_models('conduct-data')
 pre_models("CU-Losses-2") -- inside
-% endif
+% else:
 pre_models("CU-Losses-1")
+% endif

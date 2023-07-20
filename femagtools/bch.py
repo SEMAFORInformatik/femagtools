@@ -1497,14 +1497,29 @@ class Reader:
             if l.find('Fe-Losses-Rotor') > -1:
                 rec = self.__findNums(content[i+3])
                 if len(rec) == 2:
-                    if content[i+1].find('Iron') > -1 and content[i+1].find('StJo') > 0:
+                    if (content[i+1].find('Iron') > -1 and content[i+1].find('StJo') > 0 or
+                        content[i+1].split() == ['RoZa', 'RoJo']):
                         self.external_rotor = True
                         # TODO: there might be better places to check this
-                        losses['stajo'] = floatnan(rec[0])
-                        losses['staza'] = floatnan(rec[1])
+                        losses['staza'] = floatnan(rec[0])
+                        losses['stajo'] = floatnan(rec[1])
                         losses['total'] += losses['staza']+losses['stajo']
                     else:
                         losses['rotfe'] = floatnan(rec[1])
+                        losses['total'] += losses['rotfe']
+                i += 4
+                continue
+
+            if l.find('Fe-Losses-Stator') > -1:
+                rec = self.__findNums(content[i+3])
+                if len(rec) == 2:
+                    if content[i+1].split() == ['StJo', 'StZa']:
+                        losses['stajo'] = floatnan(rec[0])
+                        losses['staza'] = floatnan(rec[1])
+                        losses['total'] += losses['staza']+losses['stajo']
+
+                    if content[i+1].split() == ['rotf', '----']:
+                        losses['rotfe'] = sum([floatnan(x) for x in rec])
                         losses['total'] += losses['rotfe']
                 i += 4
                 continue

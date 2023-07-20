@@ -1777,7 +1777,7 @@ def get_nT_boundary(n, T):
     bnd[1].append((nx, tx))
     return np.array(bnd[0] + bnd[1][::-1])
 
-def normalize10(v):
+def normalize10(v, **kwargs):
     """
     Normalizes the input-array using the nearest (ceiling) power of 10.
 
@@ -1788,12 +1788,32 @@ def normalize10(v):
         normalized array
         normalisation factor (power of 10)
     """
-    norm = 10**(np.ceil(np.log10(np.max(np.abs(v)))))
+    n_type = kwargs.get('n_type', 'norm')
+    r_type = kwargs.get('r_type', 'floor')
+    if n_type == 'norm':
+        norm = np.log10(np.linalg.norm(v))
+    elif n_type == 'abs':
+        norm = np.log10(np.max(np.abs(v)))
+    else:
+        raise AttributeError('Unknown norm-type. Allowed values are: "norm", "abs".')
+
+    if r_type == 'floor':
+        norm = 10 ** np.floor(norm)
+    elif r_type == 'ceil':
+        norm = 10 ** np.ceil(norm)
+    elif r_type == 'round':
+        norm = 10 ** np.round(norm)
+    else:
+        raise AttributeError('Unknown rounding type. Allowed values are: "floor", "ceil", "round".')
+    # norm = 10**(np.ceil(np.log10(np.max(np.abs(v)))))
+    # norm = 10 ** (np.ceil(np.log10(np.linalg.norm(v))))
+    # norm = 10 ** (np.floor(np.log10(np.max(np.abs(v)))))
+    # norm = 10 ** (np.floor(np.log10(np.linalg.norm(v))))
     return v / norm, norm
 
 
 def plot_contour(speed, torque, z, ax, title='', levels=[],
-                 clabel=True, cmap='YlOrRd', cbar=False):
+                 clabel=True, cmap='YlOrRd', cbar=False, **kwargs):
     """ contour plot of speed, torque, z values
     Arguments:
     levels: (list of floats)
@@ -1810,8 +1830,8 @@ def plot_contour(speed, torque, z, ax, title='', levels=[],
     x = 60*np.asarray(speed)
     y = np.asarray(torque)
 
-    x, xscale = normalize10(x)
-    y, yscale = normalize10(y)
+    x, xscale = normalize10(x, **kwargs)
+    y, yscale = normalize10(y, **kwargs)
 
     if not levels:
         if max(z) <= 1:

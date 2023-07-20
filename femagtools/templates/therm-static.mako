@@ -23,6 +23,18 @@ def_heat_transfer(x,y,yellow,heat_transfer_coefficient, area_factor)
 ---------------------------------------------
 --  import losses
 import_losses_from_femag_dc()
+-- overwrite magnet losses (IALH)
+%if not isinstance(model.get('magnet_loss_th', 0), list):
+printf('magnet losses from B2 Method')
+%else:
+printf('magnet losses from IAlH Method')
+%for i in model['magnet_loss_th']: 
+elkeys = get_spel_data("elkeys", ${i[0]})
+x, y = get_elem_data("xycp", elkeys[1])
+def_losses ( x,y,'red', ${i[1]})
+%endfor
+%endif
+
 color_gradation_th(0,0,tot,Losses,0,0,model.."_losses.svg")
 
 ---------------------------------------------

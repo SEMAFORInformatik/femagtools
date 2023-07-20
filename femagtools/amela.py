@@ -314,7 +314,8 @@ class Amela():
                                 bndy=[float(c) for c in bndy[i]],
                                 bl=bl[i],
                                 elcp=elcp[i],
-                                area=spel_area[i]))
+                                area=spel_area[i], 
+                                spel_key=spel_key[i]))
             pm_data[i].update(pos)
 
         for k in range(len(pm_node_key)):

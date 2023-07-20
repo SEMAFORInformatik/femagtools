@@ -551,6 +551,11 @@ class Femag(BaseFemag):
                         bch.losses[i].update({"magnetH": magn_losses[i]})
                 except: 
                     pass
+                # pass losses to bch object for th usage
+                try: 
+                    bch.magnet_loss_th = m.th_loss
+                except: 
+                    pass
             return bch
         return dict(status='ok', message=self.modelname)
 

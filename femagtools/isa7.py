@@ -697,10 +697,10 @@ class Isa7(object):
             pass
 
         try:
-            el_fe_ind = [np.array(reader.el_fe_induction_1),
-                         np.array(reader.el_fe_induction_2)]
-            eddy_cu_vpot = np.array(reader.eddy_cu_vpot)
-        except ValueError as e:
+            el_fe_ind = [np.array(reader.el_fe_induction_1).T/1000,
+                         np.array(reader.el_fe_induction_2).T/1000]
+            eddy_cu_vpot = np.array(reader.eddy_cu_vpot).T/1000
+        except (ValueError, TypeError) as e:
             # inhomogenous array
             l = len(reader.el_fe_induction_1[0][0])
             shape = []
@@ -711,23 +711,15 @@ class Isa7(object):
                         if len(k) < l:
                             break
                         n += 1
-                    if n>0:
+                    if n > 0:
                         shape.append(n)
-            el_fe_ind = [np.array([[reader.el_fe_induction_1[0][0][:shape[0]]]]),
-                         np.array([[reader.el_fe_induction_2[0][0][:shape[0]]]])]
-            eddy_cu_vpot = np.array([[reader.eddy_cu_vpot[0][0][:shape[0]]]])
+            el_fe_ind = [np.array([[reader.el_fe_induction_1[0][0][:shape[0]]]]).T/1000,
+                         np.array([[reader.el_fe_induction_2[0][0][:shape[0]]]]).T/1000]
+            eddy_cu_vpot = np.array([[reader.eddy_cu_vpot[0][0][:shape[0]]]]).T/1000
 
-        if len(el_fe_ind[0].shape) > 2:
-            self.el_fe_induction_1 = el_fe_ind[0].T/1000
-            self.el_fe_induction_2 = el_fe_ind[1].T/1000
-            self.eddy_cu_vpot = eddy_cu_vpot.T/1000
-        else:
-            self.el_fe_induction_1 = np.array(
-                [e for e in el_fe_ind[0] if e[0]]).T/1000
-            self.el_fe_induction_2 = np.asarray(
-                [e for e in el_fe_ind[1] if e[0]]).T/1000
-            self.eddy_cu_vpot = np.asarray(
-                [e for e in eddy_cu_vpot if e[0]]).T/1000
+        self.el_fe_induction_1 = el_fe_ind[0]
+        self.el_fe_induction_2 = el_fe_ind[1]
+        self.eddy_cu_vpot = eddy_cu_vpot
 
         self.iron_loss_coefficients = getattr(
             reader, 'iron_loss_coefficients', [])

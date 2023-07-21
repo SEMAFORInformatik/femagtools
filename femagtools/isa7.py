@@ -196,7 +196,9 @@ class Reader(object):
             self.el_fe_induction_1.append([[]])
             self.el_fe_induction_2.append([[]])
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
-                self.el_fe_induction_1[0][0].append(self.next_block("h"))
+                b = self.next_block("h")
+                logger.debug("el_fe_induction move step %d: %d", i, len(b))
+                self.el_fe_induction_1[0][0].append(b)
                 self.el_fe_induction_2[0][0].append(self.next_block("h"))
 
         FC_NUM_MOVE_CALC_LOAD_PMS, FC_NUM_FLX = self.next_block("i")[0:2]
@@ -270,7 +272,9 @@ class Reader(object):
             self.el_fe_induction_2.append([[]])
             self.eddy_cu_vpot.append([[]])
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
-                self.el_fe_induction_1[1][0].append(self.next_block("h"))
+                b = self.next_block("h")
+                logger.debug("el_fe_induction move losses step %d: %d", i, len(b))
+                self.el_fe_induction_1[1][0].append(b)
                 self.el_fe_induction_2[1][0].append(self.next_block("h"))
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
                 self.eddy_cu_vpot[1][0].append(self.next_block("h"))
@@ -335,7 +339,10 @@ class Reader(object):
             self.el_fe_induction_2.append([[]])
             self.eddy_cu_vpot.append([[]])
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
-                self.el_fe_induction_1[2][0].append(self.next_block("h"))
+                b = self.next_block("h")
+                logger.debug("el_fe_induction move losses (2) step %d: %d",
+                            i, len(b))
+                self.el_fe_induction_1[2][0].append(b)
                 self.el_fe_induction_2[2][0].append(self.next_block("h"))
             for i in range(NUM_FE_EVAL_MOVE_STEP + 1):
                 self.eddy_cu_vpot[2][0].append(self.next_block("h"))
@@ -688,25 +695,39 @@ class Isa7(object):
             self.curr_loss = np.array([c/np.sqrt(2) for c in reader.curr_loss])
         except AttributeError:
             pass
-        logger.debug(reader.el_fe_induction_1)
-        if len(np.asarray(reader.el_fe_induction_1).shape) > 2:
-            self.el_fe_induction_1 = np.asarray(
-                reader.el_fe_induction_1).T/1000
-            self.el_fe_induction_2 = np.asarray(
-                reader.el_fe_induction_2).T/1000
-            self.eddy_cu_vpot = np.asarray(reader.eddy_cu_vpot).T/1000
+
+        try:
+            el_fe_ind = [np.array(reader.el_fe_induction_1),
+                         np.array(reader.el_fe_induction_2)]
+            eddy_cu_vpot = np.array(reader.eddy_cu_vpot)
+        except ValueError as e:
+            # inhomogenous array
+            l = len(reader.el_fe_induction_1[0][0])
+            shape = []
+            for i in reader.el_fe_induction_1:
+                for j in i:
+                    n = 0
+                    for k in j:
+                        if len(k) < l:
+                            break
+                        n += 1
+                    if n>0:
+                        shape.append(n)
+            el_fe_ind = [np.array([[reader.el_fe_induction_1[0][0][:shape[0]]]]),
+                         np.array([[reader.el_fe_induction_2[0][0][:shape[0]]]])]
+            eddy_cu_vpot = np.array([[reader.eddy_cu_vpot[0][0][:shape[0]]]])
+
+        if len(el_fe_ind[0].shape) > 2:
+            self.el_fe_induction_1 = el_fe_ind[0].T/1000
+            self.el_fe_induction_2 = el_fe_ind[1].T/1000
+            self.eddy_cu_vpot = eddy_cu_vpot.T/1000
         else:
-            try:
-                self.el_fe_induction_1 = np.asarray(
-                    [e for e in reader.el_fe_induction_1 if e[0]]).T/1000
-                self.el_fe_induction_2 = np.asarray(
-                    [e for e in reader.el_fe_induction_2 if e[0]]).T/1000
-                self.eddy_cu_vpot = np.asarray(
-                    [e for e in reader.eddy_cu_vpot if e[0]]).T/1000
-                logger.debug('El Fe Induction %s', np.asarray(
-                    reader.el_fe_induction_1).shape)
-            except:
-                pass
+            self.el_fe_induction_1 = np.array(
+                [e for e in el_fe_ind[0] if e[0]]).T/1000
+            self.el_fe_induction_2 = np.asarray(
+                [e for e in el_fe_ind[1] if e[0]]).T/1000
+            self.eddy_cu_vpot = np.asarray(
+                [e for e in eddy_cu_vpot if e[0]]).T/1000
 
         self.iron_loss_coefficients = getattr(
             reader, 'iron_loss_coefficients', [])

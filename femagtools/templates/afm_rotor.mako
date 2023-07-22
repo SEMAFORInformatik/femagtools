@@ -81,6 +81,11 @@ m.nodedist        = ${model.get('nodedist', 1)}
     x,y = (P12.x+P42.x)/2,(P42.y+P43.y)/2
     create_mesh_se(x,y)
     def_new_sreg(x,y, "rofe", "blue")
+    if (mcvkey_yoke == 'dummy') then
+      def_mat_fm(x,y, blue, 1000, 100)
+    else
+      def_mat_fm_nlin(x,y, blue, mcvkey_yoke, 100, 0)
+    end
   end
 
   translate_copy_nodechains(P11.x,P11.y, P13.x,P13.y, P43.x,P43.y, P41.x,P41.y, m.npols_gen-1)

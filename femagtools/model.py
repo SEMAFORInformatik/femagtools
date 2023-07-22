@@ -11,6 +11,7 @@
 import logging
 import string
 import numpy as np
+from . import windings
 
 logger = logging.getLogger(__name__)
 #
@@ -158,6 +159,15 @@ class MachineModel(Model):
                     self.magnet[mcv] = 'dummy'
         if 'coord_system' in parameters or 'afmtype' in parameters:
             self.move_action = 1
+            wdg = windings.Winding({'Q': self.stator['num_slots'],
+                                    'p': self.poles//2,
+                                    'm': self.windings.get('num_phases', 3),
+                                    'l': self.windings.get('num_layers', 1)})
+            self.windings['wdgscheme'] = ''.join([
+                '{'] + [','.join([''.join(['{']+[','.join([''.join([
+                    '{', ','.join(
+                        [str(n) for n in z]), '}']) for z in l])] + ['}'])
+                                  for l in wdg.zoneplan()])] + ['}'])
         else:
             self.coord_system = 0
             self.move_action = 0

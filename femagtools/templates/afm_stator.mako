@@ -111,7 +111,9 @@ m.nodedist        =  ${model.get('m.nodedist', 1)}  -- Node distance
     nc_circle_m(P45.x,P45.y, P24.x,P24.y, P44.x,P44.y, m.slot_r2, 0)
   end
 
-  create_mesh_se((P51.x+P61.x)/2, (P51.y + P52.y)/2)
+  if m.slot_h1 > 0 then
+    create_mesh_se((P51.x+P61.x)/2, (P51.y + P52.y)/2)
+  end
   create_mesh_se((P23.x+P62.x)/2, (P62.y + P65.y)/2)
 
   x,y = (P11.x+P26.x)/2,(P11.y+P26.y)/2
@@ -136,33 +138,4 @@ m.nodedist        =  ${model.get('m.nodedist', 1)}  -- Node distance
     def_mat_fm_nlin(x,y, blue, m.mcvkey_yoke, 100, 0)
   end
 
-  m.st_corners = {}
-  m.st_corners["left"] = P11.x
-  m.st_corners["right"] = 2*m.num_slots*P61.x
-  m.st_corners["top"] = P16.y
-  m.st_corners["bottom"] = P11.y
-
-  -- x1 Position links von Zahn
-  -- x2 Position rechts vom Zahn
-  -- x2 negativ = erste Wicklungszweig bei negativen Randbedingungen
-  tauq = m.slot_width+m.tooth_width
-  m.xcoil_1, m.ycoil_1 = (P51.x + P23.x)/2, (P23.y + P25.y)/2
-  m.xcoil_2 = m.xcoil_1 + m.slot_width/2
-  m.ycoil_2 = m.ycoil_1
-  point(m.xcoil_1, m.ycoil_1, 'red', 'o')
-  point(m.xcoil_2, m.ycoil_2, 'red', 'o')
-
-  m.wdg_pos = {}
-  m.wdg_pos[1] = {}
-  m.wdg_pos[1]["y"] = (P33.y+P44.y)/2
-  m.wdg_pos[1]["x1"] = (P23.x+P61.x)/2+m.slot_width/2
-  m.wdg_pos[1]["x2"] = (P23.x+P61.x)/2+tauq
-  for i = 2,m.num_slots do
-    m.wdg_pos[i] = {}
-    m.wdg_pos[i]["y"] = m.wdg_pos[i-1]["y"]
-    m.wdg_pos[i]["x1"] = m.wdg_pos[i-1]["x1"]+tauq
-    m.wdg_pos[i]["x2"] = m.wdg_pos[i-1]["x2"]+tauq
-    if (m.wdg_pos[i]["x2"] > tauq*m.num_slots) then
-      m.wdg_pos[i]["x2"] = m.wdg_pos[i]["x2"]-tauq*m.num_slots
-    end
-  end
+  m.middle_line     = 1  -- vertical slot parts

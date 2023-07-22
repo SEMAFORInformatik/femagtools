@@ -70,19 +70,16 @@ m.nodedist        = ${model.get('nodedist', 1)}
   nc_line(P31.x,P31.y, P32.x,P32.y, 0)
   nc_line(P41.x,P41.y, P42.x,P42.y, 0)
 
+  create_mesh_se((P12.x+P22.x)/2, (P11.y + P12.y)/2)
+  create_mesh_se((P22.x+P32.x)/2, (P21.y + P22.y)/2)
+  create_mesh_se((P32.x+P42.x)/2, (P31.y + P32.y)/2)
+
   if (m.yoke_height > 0) then
     nc_line(P13.x,P13.y, P43.x,P43.y, 0)
     nc_line(P12.x,P12.y, P13.x,P13.y, 0)
     nc_line(P42.x,P42.y, P43.x,P43.y, 0)
-  end
-
-  create_mesh_se((P13.x+P22.x)/2, (P11.y + P13.y)/2)
-  create_mesh_se((P22.x+P32.x)/2, (P21.y + P22.y)/2)
-  create_mesh_se((P32.x+P43.x)/2, (P31.y + P32.y)/2)
-
-  if (m.yoke_height > 0) then
+    x,y = (P12.x+P42.x)/2,(P42.y+P43.y)/2
     create_mesh_se(x,y)
-    x,y = (P12.x+P43.x)/2,(P12.y+P43.y)/2
     def_new_sreg(x,y, "rofe", "blue")
   end
 
@@ -98,14 +95,3 @@ m.nodedist        = ${model.get('nodedist', 1)}
     end
     x = x + m.pole_width
   end
-
-  m.ro_corners = {}
-  m.ro_corners["left"] = P11.x
-  m.ro_corners["right"] = m.npols_gen*P41.x
-  m.ro_corners["top"] = P11.y
-  m.ro_corners["bottom"] = P13.y
-  --[[
-  point(m.ro_corners.left,m.ro_corners.top,"green","*")
-  point(m.ro_corners.left,m.ro_corners.bottom,"green","*")
-  point(m.ro_corners.right,m.ro_corners.bottom,"green","*")
-  point(m.ro_corners.right,m.ro_corners.top,"green","*") --]]

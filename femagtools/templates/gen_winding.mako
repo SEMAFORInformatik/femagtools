@@ -50,32 +50,33 @@ pre_models("gen_pocfile")
 % else:  # move_action > 0
 color={"green", "yellow", "magenta", "lightgrey", "darkred", "skyblue", "violet"}
 wkey={0,0,0,0,0,0}
---
-bz = m.width_bz
---
-ys = m.slot_height/2
 
-dirl = 1
-for i=1, m.num_phases do
-  wdg = "w"..i
-  for g=1, m.num_sl_gen/m.num_phases/2 do
-    xs = 2*bz*((i-1) + (g-1)*m.num_phases)
-    if g == 1 then
-      wkey[i]=def_new_wdg(xs + bz/3, ys, color[i], wdg, m.num_wires, 0, dirl)
-    else
-      add_to_wdg(xs + bz/3, ys, color[i], wkey[i], dirl, "wser")
-    end
-    if m.num_layers > 1 then
-      add_to_wdg(xs + bz - bz/3, ys, wkey[i], dirl, "wser")
-    end
-    dirl = -dirl
-    if i > 1 or g > 1 then
-      add_to_wdg(xs - bz/3, ys, wkey[i], dirl, "wser")
-    else
-      add_to_wdg(m.num_sl_gen*bz - bz/3, ys, wkey[i], -dirl, "wser")
-    end
-    if m.num_layers > 1 then
-      add_to_wdg(xs + bz + bz/3, ys, wkey[i], dirl, "wser")
+bz = m.width_bz
+sw = m.slot_width
+ys = m.slot_height/2
+wdgscheme = ${model.windings.get('wdgscheme', '{}')}
+-- TODO: m.middle_line = 1 only
+for l=1, #wdgscheme do
+  for z=1, #wdgscheme[l] do
+    for i=1, #wdgscheme[l][z] do
+      k = wdgscheme[l][z][i]
+      if math.abs(k) < m.num_sl_gen+1 then
+        xs = (2*math.abs(k)-1)*bz/2
+        dir = 1
+        if k < 0 then
+          dir = -1
+        end
+        if wkey[z] == 0 then
+         wdg = "wdg"..z
+         wkey[z]=def_new_wdg(xs + sw/4, ys, color[z], wdg, m.num_wires, 0, dir)
+        else
+          if l == 1 then
+             add_to_wdg(xs + sw/4, ys, wkey[z], dir, "wser")
+          else
+             add_to_wdg(xs - sw/4, ys, wkey[z], dir, "wser")
+          end
+        end
+      end
     end
   end
 end
@@ -104,7 +105,7 @@ f = assert(io.open(model..'_'..m.num_poles.."p.poc","w"));
   elseif period<1000 then f:write(string.format("   %10.6f\n",period));
   end
   f:write("sin\n");
-  f:write("   0.00000000\n");
+  f:write("   0.0\n");
   f:write("          0\n");
 io.close(f);
 
@@ -116,8 +117,8 @@ m.num_poles       =  ${model.poles}
 
 % if 'thcap' in model.windings:
 -- Thermal Material properties
-if m.slot_height ~= nil then 
-  -- FEMAG slot model 
+if m.slot_height ~= nil then
+  -- FEMAG slot model
   -- TODO: slot model from user
   rw = da1/2 +(m.slot_height-m.slot_h1)/2
   dw = 0

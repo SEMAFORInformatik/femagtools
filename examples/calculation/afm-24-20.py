@@ -11,7 +11,7 @@ Ronald Tanner, Werner Vetter
 gtisoft.com, 2023
 """
 machine = {
-    "name": "AFM-8",
+    "name": "AFM-10",
     "desc": "Axial flux machine",
     "afmtype": "S2R1",
     "poles": 20,

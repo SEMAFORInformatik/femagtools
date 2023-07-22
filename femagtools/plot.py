@@ -1788,8 +1788,8 @@ def normalize10(v, **kwargs):
         normalized array
         normalisation factor (power of 10)
     """
-    n_type = kwargs.get('n_type', 'norm')
-    r_type = kwargs.get('r_type', 'floor')
+    n_type = kwargs.get('n_type', 'abs') # 'norm')
+    r_type = kwargs.get('r_type', 'round') # 'floor')
     if n_type == 'norm':
         norm = np.log10(np.linalg.norm(v))
     elif n_type == 'abs':

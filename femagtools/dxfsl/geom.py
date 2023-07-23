@@ -276,6 +276,31 @@ def lw_polyline(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
                    xoff=xoff, yoff=yoff,
                    rotation=rotation)
 
+def ellipse(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
+    w = np.linalg.norm(entity.major_axis) * 2
+    h = entity.ratio * w
+    theta = np.arctan2(entity.major_axis[1], entity.major_axis[0])
+    start_angle = entity.start_param
+    end_angle = entity.end_param
+    if end_angle < start_angle:
+        end_angle += 2*np.pi
+    alfa = np.linspace(start_angle, end_angle, 20)
+    x = 0.5 * w * np.cos(alfa)
+    y = 0.5 * h * np.sin(alfa)
+    R = np.array([
+        [np.cos(theta), -np.sin(theta)],
+        [np.sin(theta),  np.cos(theta)]
+    ])
+    x, y = np.dot(R, [x, y])
+    x += entity.center[0]
+    y += entity.center[1]
+    points = np.array((x,y)).T
+    p1 = points[0]
+    for p2 in points[1:]:
+        yield Line(Element(start=p1, end=p2), lf,
+                   xoff=xoff, yoff=yoff,
+                   rotation=rotation)
+
 
 def spline(entity, lf, min_dist=0.001, xoff=0.0, yoff=0.0, rotation=0.0):
     if False:
@@ -493,22 +518,26 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
                 for l in insert_block(dwg, e, lf, rf, block, min_dist=mindist):
                     yield l
             elif e.dxftype == 'ELLIPSE':
-                w = np.linalg.norm(e.major_axis) * 2
-                h = e.ratio * w
-                rtheta = np.arctan2(e.major_axis[1], e.major_axis[0])
-                angle = rtheta*180/np.pi
-                start_angle = e.start_param*180/np.pi + angle
-                end_angle = e.end_param*180/np.pi + angle
-                arc = Arc(Element(center=e.center,
-                                  radius=w/2,
-                                  start_angle=start_angle,
-                                  end_angle=end_angle,
-                                  width=w,
-                                  height=h,
-                                  rtheta=rtheta,
-                                  start_param=e.start_param,
-                                  end_param=e.end_param))
-                yield arc
+                for l in ellipse(e, lf):
+                    yield l
+                #w = np.linalg.norm(e.major_axis) * 2
+                #h = e.ratio * w
+                #rtheta = np.arctan2(e.major_axis[1], e.major_axis[0])
+                #angle = rtheta*180/np.pi
+                #start_angle = e.start_param*180/np.pi + angle
+                #end_angle = e.end_param*180/np.pi + angle
+                #if end_angle < start_angle:
+                #    end_angle += 360
+                #arc = Arc(Element(center=e.center,
+                #                  radius=w/2,
+                #                  start_angle=start_angle,
+                #                  end_angle=end_angle,
+                #                  width=w,
+                #                  height=h,
+                #                  rtheta=rtheta,
+                #                  start_param=e.start_param,
+                #                  end_param=e.end_param))
+                #yield arc
 
             elif e.dxftype == 'POINT':
                 logger.debug("Id %d4: type %s ignored", id, e.dxftype)

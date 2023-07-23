@@ -300,6 +300,7 @@ def ellipse(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
         yield Line(Element(start=p1, end=p2), lf,
                    xoff=xoff, yoff=yoff,
                    rotation=rotation)
+        p1 = p2
 
 
 def spline(entity, lf, min_dist=0.001, xoff=0.0, yoff=0.0, rotation=0.0):

@@ -1,13 +1,16 @@
 """
-    femagtools.afm
-    ~~~~~~~~~~~~~~~~
+    femagtools.machine.afpm
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
-    Axial Flux Machine
+    Axial Flux PM Machine
 
 """
 import logging
 import numpy as np
-import femagtools.parstudy
+from . import poc
+from . import parstudy
+from . import model
+from . import utils
 from scipy.interpolate import RegularGridInterpolator
 from scipy.integrate import quad
 
@@ -29,33 +32,46 @@ def integrate(radius, pos, val):
             for p in pos]
 
 
-def process(lfe, pole_width, machine, results):
+def process(lfe, pole_width, machine, bch):
     # process results: torque, voltage, losses
     model_type = machine['afmtype']
     num_slots = machine['stator']['num_slots']
-    model = femagtools.model.MachineModel(machine)
-    slots_gen = model.stator['num_slots_gen']
+    mmod = model.MachineModel(machine)
+    slots_gen = mmod.stator['num_slots_gen']
     scale_factor = get_scale_factor(model_type, num_slots, slots_gen)
     endpos = [2*pw*1e3 for pw in pole_width]
     displ = [[d for d in r['linearForce'][0]['displ']
               if d < e*(1+1/len(r['linearForce'][0]['displ']))]
-             for e, r in zip(endpos, results['f'])]
+             for e, r in zip(endpos, bch)]
     radius = [pw*machine['poles']/2/np.pi for pw in pole_width]
     rotpos = [np.array(d)/r/1000 for r, d in zip(radius, displ)]
     torque = [r*scale_factor*np.array(fx)/l
               for l, r, fx in zip(lfe, radius,
                                   [r['linearForce'][0]['force_x']
-                                   for r in results['f']])]
+                                   for r in bch])]
     voltage = {k: [scale_factor * np.array(ux)/l
                    for l, ux in zip(lfe, [r['flux'][k][0]['voltage_dpsi']
-                                          for r in results['f']])]
-               for k in results['f'][0]['flux']}
+                                          for r in bch])]
+               for k in bch[0]['flux']}
+
     n = len(rotpos[0])
+    currents = [bch[0]['flux'][k][0]['current_k'][:n]
+                for k in bch[0]['flux']]
+    emf = [integrate(radius, rotpos[0], np.array(voltage[k])[:, :n])
+           for k in voltage]
+    pos = (rotpos[0]/np.pi*180)
+    emffft = utils.fft(pos, np.array(emf[0]))
+
+    freq = bch[0]['losses'][0]['stator']['stfe']['freq'][0]
+    w1 = 2*np.pi*freq
+
     return {
-        'pos': (rotpos[0]/np.pi*180).tolist(),
+        'pos': pos.tolist(),
         'torque': integrate(radius, rotpos[0], np.array(torque)[:, :n]),
-        'voltage': [integrate(radius, rotpos[0], np.array(voltage[k])[:, :n])
-                    for k in voltage]}
+        'emf': emf,
+        'emf_amp': emffft['a'], 'emf_angle': emffft['alfa0'],
+        'freq': freq,
+        'currents': currents}
 
 
 def get_scale_factor(model_type, num_slots, slots_gen):
@@ -92,16 +108,58 @@ def get_pole_widths(outer_diam, inner_diam, poles, num_slices):
         for i in range(1, num_slices-1)] + [np.pi * outer_diam/poles]
 
 
+def get_copper_losses(json_data,bch):
+    # relative length of winding = 1
+    # winding losses are without winding head
+    cu_losses = 0
+    for i in range(len(bch)):
+        cu_losses = cu_losses + bch[i].losses[0]["winding"]
+
+    # approx length of winding head
+    winding_wide_out = (
+        json_data[0]["wdg_pos"][0]["x2"]
+        - json_data[0]["wdg_pos"][0]["x1"]
+    )
+    winding_height_out = (
+        json_data[0]["wdg_pos"][1]["x1"]
+        - json_data[0]["wdg_pos"][0]["x2"]
+    )
+
+    winding_wide_in = (
+        json_data[-1]["wdg_pos"][0]["x2"]
+        - json_data[-1]["wdg_pos"][0]["x1"]
+    )
+    winding_height_in = (
+        json_data[-1]["wdg_pos"][1]["x1"]
+        - json_data[-1]["wdg_pos"][0]["x2"]
+    )
+
+    head_len = (
+        winding_wide_in
+        + 2 * winding_height_in
+        + winding_wide_out
+        + 2 * winding_height_out
+    )
+
+    arm_len = (json_data[0]["outer_diameter"] - json_data[0]["inner_diameter"]) / 2
+
+    rel_len = (head_len + 2 * arm_len) / (2 * arm_len)
+    scale_factor = get_scale_factor(json_data)
+    #print(arm_len,rel_len,scale_factor)
+
+    # scale losses by rel length
+    cu_losses = scale_factor*rel_len * cu_losses
+
+    return cu_losses
+
 class AFM:
     def __init__(self, workdir, magnetizingCurves='.', magnetMat='',
                  condMat=''):
-        self.parstudy = femagtools.parstudy.List(
+        self.parstudy = parstudy.List(
             workdir, condMat=condMat, magnets=magnetMat,
             magnetizingCurves=magnetizingCurves)
 
     def cogg_calc(self, speed, machine):
-        machine['pole_width'] = np.pi * machine['inner_diam']/machine['poles']
-        machine['lfe'] = machine['outer_diam'] - machine['inner_diam']
 
         simulation = dict(
             calculationMode="cogg_calc",
@@ -115,14 +173,6 @@ class AFM:
         # check afm type
         if machine['afmtype'] not in AFM_TYPES:
             raise ValueError(f"invalid afm type {machine['afmtype']}")
-
-        if 'poc' not in simulation:
-            rcogg = self.cogg_calc(simulation['speed'], machine)
-            simulation['poc'] = femagtools.poc.Poc(
-                999,
-                parameters={
-                    'phi_voltage_winding': rcogg.current_angles})
-            logger.info("Current angles: %s", rcogg.current_angles)
 
         lfe = get_arm_lengths(machine['outer_diam'],
                               machine['inner_diam'],
@@ -144,6 +194,46 @@ class AFM:
                 {"values": linspeed, "name": "speed"}
             ]
         }
+        machine['pole_width'] = np.pi * machine['inner_diam']/machine['poles']
+        machine['lfe'] = machine['outer_diam'] - machine['inner_diam']
+
+        if simulation['calculationMode'] != 'cogg_calc':
+            nlcalc = dict(
+                calculationMode="cogg_calc",
+                magn_temp=simulation.get('magn_temp', 20),
+                num_move_steps=60,
+                speed=0)
+            logging.info("Noload simulation")
+            nlresults = self.parstudy(parvardef, machine, nlcalc, engine)
+            nlresults.update(process(lfe, pole_width, machine, nlresults['f']))
+
+            if 'poc' not in simulation:
+                current_angles = nlresults['f'][0]['current_angles']
+                simulation['poc'] = poc.Poc(
+                    999,
+                    parameters={
+                        'phi_voltage_winding': current_angles})
+                logger.info("Current angles: %s", current_angles)
+
         results = self.parstudy(parvardef, machine, simulation, engine)
-        results.update(process(lfe, pole_width, machine, results))
+        results.update(process(lfe, pole_width, machine, results['f']))
+        gamma = -(results['emf_angle'] - nlresults['emf_angle'])
+        w1 = 2*np.pi*results['freq']
+        results['psid'] = np.cos(gamma)*results['emf_amp']/w1
+        results['psiq'] = np.sin(gamma)*results['emf_amp']/w1
+        results['psim'] = nlresults['emf_amp']/w1
+        results['i1'] = np.mean([np.max(c)
+                                 for c in results['currents']])/np.sqrt(2)
+        beta = results['f'][0]['losses']['beta']/180*np.pi
+        results['beta'] = beta/np.pi*180
+        results['id'] = np.sqrt(2)*results['i1']*np.cos(beta)
+        results['iq'] = np.sqrt(2)*results['i1']*np.sin(beta)
+        try:
+            results['Ld'] = (results['psid'] - results['psim'])/results['id']
+        except ZeroDivisionError:
+            pass
+        try:
+            results['Lq'] = results['psiq']/results['iq']
+        except ZeroDivisionError:
+            pass
         return results

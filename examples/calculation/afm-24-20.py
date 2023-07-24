@@ -59,7 +59,7 @@ if __name__ == '__main__':
     import pathlib
     import json
     import matplotlib.pyplot as plt
-    from femagtools.afm import AFM
+    from femagtools.machine.afpm import AFPM
     import femagtools.plot
     from femagtools.multiproc import Engine
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     workdir = pathlib.Path('work')
     workdir.mkdir(exist_ok=True)
 
-    afm = AFM(workdir, magnetizingCurves='.',
+    afm = AFPM(workdir, magnetizingCurves='.',
               magnetMat='', condMat='')
 
     simulation = dict(
@@ -85,5 +85,15 @@ if __name__ == '__main__':
     num_slices = 3
     r = afm(engine, machine, simulation, num_slices)
     pathlib.Path('results.json').write_text(json.dumps(r))
-    femagtools.plot.torque(r['pos'], r['torque'])
+
+    fig, axs = plt.subplots(nrows=2)
+    femagtools.plot.torque(r['pos'], r['torque'], ax=axs[0])
+
+    axs[1].set_title(f"Phase EMF (Amp {r['emf_amp']:.1f})/ V")
+    axs[1].plot(r['pos'], r['emf'][0])
+    axs[1].plot(r['pos'], r['emf'][1])
+    axs[1].plot(r['pos'], r['emf'][2])
+    axs[1].set_xlabel("Pos / °")
+    axs[1].grid()
+    fig.tight_layout()
     plt.show()

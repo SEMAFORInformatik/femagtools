@@ -7,10 +7,10 @@
 """
 import logging
 import numpy as np
-from . import poc
-from . import parstudy
-from . import model
-from . import utils
+from .. import poc
+from .. import parstudy
+from .. import model
+from .. import utils
 from scipy.interpolate import RegularGridInterpolator
 from scipy.integrate import quad
 
@@ -152,7 +152,7 @@ def get_copper_losses(json_data,bch):
 
     return cu_losses
 
-class AFM:
+class AFPM:
     def __init__(self, workdir, magnetizingCurves='.', magnetMat='',
                  condMat=''):
         self.parstudy = parstudy.List(

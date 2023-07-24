@@ -1,4 +1,4 @@
-import femagtools.afm
+import femagtools.machine.afpm
 import pathlib
 import pytest
 import numpy as np
@@ -37,14 +37,13 @@ def bch():
 
 def test_process(bch):
     num_slots = 24
-    slots_gen = 3
     poles = 16
     inner_diam = 143e-3
     outer_diam = 164.6e-3
     num_slices = 3
-    lfe = femagtools.afm.get_arm_lengths(
+    lfe = femagtools.machine.afpm.get_arm_lengths(
         outer_diam, inner_diam, poles, num_slices)
-    pole_width = femagtools.afm.get_pole_widths(
+    pole_width = femagtools.machine.afpm.get_pole_widths(
         outer_diam, inner_diam, poles, num_slices)
 
     machine = {'afmtype': "S1R1",
@@ -60,5 +59,5 @@ def test_process(bch):
                    "culength": 1.4,
                    "num_par_wdgs": 1}}
 
-    r = femagtools.afm.process(lfe, pole_width, machine, bch)
+    r = femagtools.machine.afpm.process(lfe, pole_width, machine, bch)
     assert pytest.approx(np.mean(r['torque']), abs=0.1) == 17.5

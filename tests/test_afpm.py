@@ -26,9 +26,12 @@ def bch():
                     "force_x": [6.782, 6.05, 5.939, 6.636, 7.686, 8.425, 8.424, 7.726, 6.779, 6.049, 5.939, 6.636, 7.686, 8.425, 8.422, 7.727, 6.779, 6.05, 5.938, 6.636, 7.687, 8.424, 8.423, 7.727, 6.778, 6.05, 5.939, 6.636, 7.687, 8.427, 8.423, 7.725, 6.778, 6.049, 5.938, 6.636, 7.69, 8.423, 8.423, 7.726, 6.779, 6.05, 5.939, 6.636, 7.69, 8.425, 8.42, 7.727, 6.779, 6.049]}]
 
     losses = [
-        [{"stator": {"stfe": {"freq": [1667.0]}}}],
-        [{"stator": {"stfe": {"freq": [1667.0]}}}],
-        [{"stator": {"stfe": {"freq": [1667.0]}}}],
+        [{"staza": 0.0, "stajo": 1.479, "rotfe": 0.0, "magnetJ": 2.132,
+          "stator": {"stfe": {"freq": [1667.0]}}}],
+        [{"staza": 0.0, "stajo": 3.094, "rotfe": 0.0, "magnetJ": 9.805,
+          "stator": {"stfe": {"freq": [1667.0]}}}],
+        [{"staza": 0.0, "stajo": 1.691, "rotfe": 0.0, "magnetJ": 3.027,
+          "stator": {"stfe": {"freq": [1667.0]}}}],
     ]
     return [
         {"flux": flux[0], "linearForce": [linearForce[0]], "losses": losses[0]},
@@ -42,7 +45,7 @@ def test_process(bch):
     outer_diam = 164.6e-3
     num_slices = 3
     lfe = femagtools.machine.afpm.get_arm_lengths(
-        outer_diam, inner_diam, poles, num_slices)
+        outer_diam, inner_diam, num_slices)
     pole_width = femagtools.machine.afpm.get_pole_widths(
         outer_diam, inner_diam, poles, num_slices)
 

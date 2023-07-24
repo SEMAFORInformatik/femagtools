@@ -11,7 +11,7 @@ from .. import poc
 from .. import parstudy
 from .. import model
 from .. import utils
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator, interp1d
 from scipy.integrate import quad
 
 logger = logging.getLogger(__name__)
@@ -30,6 +30,12 @@ def integrate(radius, pos, val):
         return interp((x, y))
     return [quad(func, radius[0], radius[-1], args=(p,))[0]
             for p in pos]
+
+def integrate1d(radius, val):
+    interp = interp1d(radius, val)
+    def func(x):
+        return interp((x))
+    return quad(func, radius[0], radius[-1])[0]
 
 
 def process(lfe, pole_width, machine, bch):
@@ -62,8 +68,16 @@ def process(lfe, pole_width, machine, bch):
     pos = (rotpos[0]/np.pi*180)
     emffft = utils.fft(pos, np.array(emf[0]))
 
+    pfelosses = [integrate1d(radius, scale_factor*np.array(
+        [(b['losses'][0]["staza"] + b['losses'][0]["stajo"])/l
+         for l, b in zip(lfe, bch)])),
+                 integrate1d(radius, scale_factor*np.array(
+                     [b['losses'][0]['rotfe']/l
+                      for l, b in zip(lfe, bch)]))]
+    maglosses = integrate1d(radius, scale_factor*np.array(
+        [b['losses'][0]["magnetJ"]/l for l, b in zip(lfe, bch)]))
+
     freq = bch[0]['losses'][0]['stator']['stfe']['freq'][0]
-    w1 = 2*np.pi*freq
 
     return {
         'pos': pos.tolist(),
@@ -71,7 +85,8 @@ def process(lfe, pole_width, machine, bch):
         'emf': emf,
         'emf_amp': emffft['a'], 'emf_angle': emffft['alfa0'],
         'freq': freq,
-        'currents': currents}
+        'currents': currents,
+        'plfe': pfelosses, 'plmag': maglosses}
 
 
 def get_scale_factor(model_type, num_slots, slots_gen):
@@ -94,7 +109,7 @@ def get_scale_factor(model_type, num_slots, slots_gen):
     return segments
 
 
-def get_arm_lengths(outer_diam, inner_diam, poles, num_slices):
+def get_arm_lengths(outer_diam, inner_diam, num_slices):
     d = outer_diam - inner_diam
     return [d/(4*(num_slices-1))] + [
         d/(2*(num_slices-1))
@@ -152,6 +167,7 @@ def get_copper_losses(json_data,bch):
 
     return cu_losses
 
+
 class AFPM:
     def __init__(self, workdir, magnetizingCurves='.', magnetMat='',
                  condMat=''):
@@ -176,7 +192,6 @@ class AFPM:
 
         lfe = get_arm_lengths(machine['outer_diam'],
                               machine['inner_diam'],
-                              machine['poles'],
                               num_slices)
         pole_width = get_pole_widths(machine['outer_diam'],
                                      machine['inner_diam'],
@@ -224,7 +239,7 @@ class AFPM:
         results['psim'] = nlresults['emf_amp']/w1
         results['i1'] = np.mean([np.max(c)
                                  for c in results['currents']])/np.sqrt(2)
-        beta = results['f'][0]['losses']['beta']/180*np.pi
+        beta = results['f'][0]['losses'][0]['beta']/180*np.pi
         results['beta'] = beta/np.pi*180
         results['id'] = np.sqrt(2)*results['i1']*np.cos(beta)
         results['iq'] = np.sqrt(2)*results['i1']*np.sin(beta)

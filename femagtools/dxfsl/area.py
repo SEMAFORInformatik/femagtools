@@ -1058,6 +1058,12 @@ class Area(object):
                         return True
         return False
 
+    def is_touching_areas(self, areas):
+        for a in areas:
+            if self.is_touching(a):
+                return True
+        return False
+
     def mark_stator_subregions(self,
                                is_inner,
                                stator_size,
@@ -1157,18 +1163,37 @@ class Area(object):
                 logger.debug("***** air (part of a circle)\n")
                 return self.type
 
+        def bad_winding_position():
+            if is_inner:
+                radius_third = airgap_radius - (airgap_radius - opposite_radius) * 0.33
+                if self.max_dist < radius_third:
+                    return True
+            else:  # outer
+                radius_third = airgap_radius + (opposite_radius - airgap_radius) * 0.33
+                if self.min_dist > radius_third:
+                    return True
+            return False
+
         if self.min_angle > 0.001:
             if self.max_angle < alpha - 0.001:
-                self.type = 2  # windings
-                logger.debug("***** windings #1\n")
+                if bad_winding_position():
+                    self.type = 12  # windings or air
+                    logger.debug("***** windings or air #1\n")
+                else:
+                    self.type = 2  # windings
+                    logger.debug("***** windings #1\n")
                 return self.type
             if mirrored:
-                self.type = 2  # windings
-                logger.debug("***** windings #2\n")
+                if bad_winding_position():
+                    self.type = 12  # windings or air
+                    logger.debug("***** windings or air #2\n")
+                else:
+                    self.type = 2  # windings
+                    logger.debug("***** windings #2\n")
                 return self.type
 
             self.type = 0  # air
-            logger.debug("***** air #2")
+            logger.debug("***** air #3")
 
         if self.close_to_startangle or self.close_to_endangle:
             f = self.surface / stator_size
@@ -1181,7 +1206,7 @@ class Area(object):
                 logger.debug("***** air or iron close to border\n")
             return self.type
 
-        logger.debug("***** air #3\n")
+        logger.debug("***** air #4\n")
         return 0
 
     def mark_rotor_subregions(self, is_inner, mirrored, alpha,

@@ -3078,6 +3078,24 @@ class Geometry(object):
             self.search_unknown_subregions()
         self.looking_for_corners()
 
+    def collect_windings(self):
+        found = True
+        while found:
+            windings = [a for a in self.list_of_areas()
+                        if a.type == 2]
+            bad_windings = [a for a in self.list_of_areas()
+                            if a.type == 12]
+            if not bad_windings:
+                return windings
+
+            found = False
+            for a in bad_windings:
+                if a.is_touching_areas(windings):
+                    a.type = 2
+                    found = True
+
+        return [a for a in self.list_of_areas() if a.type == 2]
+
     def search_stator_subregions(self, place=''):
         logger.debug("Begin of search_stator_subregions")
 
@@ -3099,8 +3117,8 @@ class Geometry(object):
                                         self.min_radius,
                                         self.max_radius)
 
-        windings = [a for a in self.list_of_areas()
-                    if a.type == 2]
+        windings = self.collect_windings()
+        [a.set_type(0) for a in self.list_of_areas() if a.type == 12]
         windings_found = len(windings)
         logger.info("%d windings found", windings_found)
 

@@ -86,7 +86,8 @@ def process(lfe, pole_width, machine, bch):
         'emf_amp': emffft['a'], 'emf_angle': emffft['alfa0'],
         'freq': freq,
         'currents': currents,
-        'plfe': pfelosses, 'plmag': maglosses}
+        'plfe': pfelosses, 'plmag': maglosses,
+        'plcu': get_copper_losses(scale_factor, bch)}
 
 
 def get_scale_factor(model_type, num_slots, slots_gen):
@@ -123,49 +124,11 @@ def get_pole_widths(outer_diam, inner_diam, poles, num_slices):
         for i in range(1, num_slices-1)] + [np.pi * outer_diam/poles]
 
 
-def get_copper_losses(json_data,bch):
+def get_copper_losses(scale_factor, bch):
     # relative length of winding = 1
     # winding losses are without winding head
-    cu_losses = 0
-    for i in range(len(bch)):
-        cu_losses = cu_losses + bch[i].losses[0]["winding"]
-
-    # approx length of winding head
-    winding_wide_out = (
-        json_data[0]["wdg_pos"][0]["x2"]
-        - json_data[0]["wdg_pos"][0]["x1"]
-    )
-    winding_height_out = (
-        json_data[0]["wdg_pos"][1]["x1"]
-        - json_data[0]["wdg_pos"][0]["x2"]
-    )
-
-    winding_wide_in = (
-        json_data[-1]["wdg_pos"][0]["x2"]
-        - json_data[-1]["wdg_pos"][0]["x1"]
-    )
-    winding_height_in = (
-        json_data[-1]["wdg_pos"][1]["x1"]
-        - json_data[-1]["wdg_pos"][0]["x2"]
-    )
-
-    head_len = (
-        winding_wide_in
-        + 2 * winding_height_in
-        + winding_wide_out
-        + 2 * winding_height_out
-    )
-
-    arm_len = (json_data[0]["outer_diameter"] - json_data[0]["inner_diameter"]) / 2
-
-    rel_len = (head_len + 2 * arm_len) / (2 * arm_len)
-    scale_factor = get_scale_factor(json_data)
-    #print(arm_len,rel_len,scale_factor)
-
-    # scale losses by rel length
-    cu_losses = scale_factor*rel_len * cu_losses
-
-    return cu_losses
+    cu_losses = sum([b['losses'][0]['winding'] for b in bch])
+    return scale_factor*cu_losses
 
 
 class AFPM:
@@ -243,12 +206,8 @@ class AFPM:
         results['beta'] = beta/np.pi*180
         results['id'] = np.sqrt(2)*results['i1']*np.cos(beta)
         results['iq'] = np.sqrt(2)*results['i1']*np.sin(beta)
-        try:
+        if np.abs(results['id']) > 0:
             results['Ld'] = (results['psid'] - results['psim'])/results['id']
-        except ZeroDivisionError:
-            pass
-        try:
+        if np.abs(results['iq']) > 0:
             results['Lq'] = results['psiq']/results['iq']
-        except ZeroDivisionError:
-            pass
         return results

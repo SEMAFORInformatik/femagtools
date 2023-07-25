@@ -368,13 +368,16 @@ def dqparident(workdir, engine, temp, machine,
         period_frac = 1  # TODO: missing femag support
 
     # winding resistance
-    yd = machine['windings'].get('coil_span', Q1/machine['poles'])
-    wdg = windings.Winding(
-        {'Q': machine['stator']['num_slots'],
-         'm': machine['windings']['num_phases'],
-         'p': machine['poles']//2,
-         'l': machine['windings']['num_layers'],
-         'yd': yd})
+    wpar = {'Q': machine['stator']['num_slots'],
+            'm': machine['windings']['num_phases'],
+            'p': machine['poles']//2}
+
+    if 'coil_span' in machine['windings']:
+        wpar['yd'] = machine['windings']['coil_span']
+    if 'num_layers' in machine['windings']:
+        wpar['l'] = machine['windings']['num_layers']
+
+    wdg = windings.Winding(wpar)
 
     lfe = machine['lfe']
     g = machine['windings'].get('num_par_wdgs', 1)

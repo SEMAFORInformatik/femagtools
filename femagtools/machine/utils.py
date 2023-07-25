@@ -346,6 +346,7 @@ def dqparident(workdir, engine, temp, machine,
     speed: rotor speed in 1/s (default 160/p)
     i1_max: maximum current in A rms (default approx 3*i1nom)
     period_frac: fraction of rotating angle (default 6)
+    cmd: femag executable
     """
     import pathlib
 
@@ -404,7 +405,7 @@ def dqparident(workdir, engine, temp, machine,
     parvar = parstudy.List(
         workdir, condMat=condMat,
         magnetizingCurves=magnetizingCurves,
-        magnets=magnetMat)
+        magnets=magnetMat, cmd=kwargs.get('cmd', None))
 
     leakfile = pathlib.Path(workdir) / 'end_wind_leak.dat'
     leakfile.unlink(missing_ok=True)

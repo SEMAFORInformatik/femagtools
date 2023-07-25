@@ -195,14 +195,14 @@ class AFPM:
         gamma = -(results['emf_angle'] - nlresults['emf_angle'])
         w1 = 2*np.pi*results['freq']
         results['psid'] = np.cos(gamma)*results['emf_amp']/w1
-        results['psiq'] = np.sin(gamma)*results['emf_amp']/w1
+        results['psiq'] = -np.sin(gamma)*results['emf_amp']/w1
         results['psim'] = nlresults['emf_amp']/w1
         results['i1'] = np.mean([np.max(c)
                                  for c in results['currents']])/np.sqrt(2)
         beta = results['f'][0]['losses'][0]['beta']/180*np.pi
         results['beta'] = beta/np.pi*180
-        results['id'] = np.sqrt(2)*results['i1']*np.cos(beta)
-        results['iq'] = np.sqrt(2)*results['i1']*np.sin(beta)
+        results['id'] = np.sqrt(2)*results['i1']*np.sin(beta)
+        results['iq'] = np.sqrt(2)*results['i1']*np.cos(beta)
         if np.abs(results['id']) > 0:
             results['Ld'] = (results['psid'] - results['psim'])/results['id']
         if np.abs(results['iq']) > 0:

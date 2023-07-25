@@ -127,8 +127,11 @@ def get_pole_widths(outer_diam, inner_diam, poles, num_slices):
 def get_copper_losses(scale_factor, bch):
     # relative length of winding = 1
     # winding losses are without winding head
-    cu_losses = sum([b['losses'][0]['winding'] for b in bch])
-    return scale_factor*cu_losses
+    try:
+        cu_losses = sum([b['losses'][0]['winding'] for b in bch])
+        return scale_factor*cu_losses
+    except KeyError:
+        return 0  # noload calc has no winding losses
 
 
 class AFPM:
@@ -137,16 +140,6 @@ class AFPM:
         self.parstudy = parstudy.List(
             workdir, condMat=condMat, magnets=magnetMat,
             magnetizingCurves=magnetizingCurves)
-
-    def cogg_calc(self, speed, machine):
-
-        simulation = dict(
-            calculationMode="cogg_calc",
-            magn_temp=20.0,
-            num_move_steps=60,
-            speed=speed*machine['pole_width']*machine['poles'])
-        logging.info("Noload simulation")
-        return self.parstudy.femag(machine, simulation)
 
     def __call__(self, engine, machine, simulation, num_slices):
         # check afm type
@@ -162,6 +155,10 @@ class AFPM:
                                      num_slices)
         linspeed = [simulation['speed']*machine['poles']*pw
                     for pw in pole_width]
+
+        if "num_agnodes" not in machine:
+            for pw in pole_width:
+                machine['num_agnodes'] = 3*round(pw/machine['airgap']/2)
 
         parvardef = {
             "decision_vars": [

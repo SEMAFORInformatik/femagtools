@@ -46,12 +46,12 @@ if not airgap_created then
   -- airgap nodechains for axial flux
   x1, y1 = 0, -ag/2 -- airgap center
   x2, y2 = m.num_slots*(m.tooth_width+m.slot_width), y1
-  nc_line(x1, -ag/3, x2, -ag/3, num_agnodes)
+  nc_line(x1, -ag/3, x2, -ag/3, num_agnodes+1)
   nc_line(x1, -ag/3, x1, 0, 1)
   nc_line(x2, -ag/3, x2, 0, 1)
   create_mesh_se((x1+x2)/2, -ag/6)
 
-  nc_line(x1, -2*ag/3, x2, -2*ag/3, num_agnodes)
+  nc_line(x1, -2*ag/3, x2, -2*ag/3, num_agnodes+1)
   nc_line(x1, -2*ag/3, x1, -ag, 1)
   nc_line(x2, -2*ag/3, x2, -ag, 1)
   create_mesh_se((x1+x2)/2, -5*ag/6)

@@ -91,7 +91,7 @@ m.arm_length      =   ${model.get(['lfe'])*1e3}
 pre_models("basic_modpar")
 % endif
 % if hasattr(model, 'num_agnodes'):
-num_agnodes = ${model.num_agnodes}
+num_agnodes = m.npols_gen*${model.num_agnodes}
 % if hasattr(model, 'bore_diam'):
 agndst = 2*math.pi*m.fc_radius/num_agnodes
 % else:

@@ -18,7 +18,6 @@ machine = {
     "outer_diam": 280e-3,
     "inner_diam": 180e-3,
     "airgap": 0.003,
-    "num_agnodes": 151,
     "stator": {
         "num_slots": 24,
         #"mcvkey_yoke": "M330-50A",

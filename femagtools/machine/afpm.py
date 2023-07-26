@@ -11,6 +11,7 @@ from .. import poc
 from .. import parstudy
 from .. import model
 from .. import utils
+from .. import windings
 from scipy.interpolate import RegularGridInterpolator, interp1d
 from scipy.integrate import quad
 
@@ -79,15 +80,30 @@ def process(lfe, pole_width, machine, bch):
 
     freq = bch[0]['losses'][0]['stator']['stfe']['freq'][0]
 
+    wdg = windings.Winding(
+        dict(
+            Q=mmod.stator['num_slots'],
+            p=mmod.poles//2,
+            m=mmod.windings['num_phases'],
+            l=mmod.windings['num_layers']))
+    aw = (mmod.stator['afm_stator']['slot_width']*
+          mmod.stator['afm_stator']['slot_height']*
+          mmod.windings['cufilfact']/mmod.windings['num_wires']/2)
+    r1 = wdg_resistance(wdg, mmod.windings['num_wires'],
+                        mmod.windings['num_par_wdgs'],
+                        aw,
+                        mmod.outer_diam, mmod.outer_diam)
+    i1 = np.mean([np.max(c) for c in currents])/np.sqrt(2)
+    plcu = mmod.windings['num_phases']*i1**2*r1
     return {
-        'pos': pos.tolist(),
+        'pos': pos.tolist(), 'r1': r1,
         'torque': integrate(radius, rotpos[0], np.array(torque)[:, :n]),
         'emf': emf,
         'emf_amp': emffft['a'], 'emf_angle': emffft['alfa0'],
         'freq': freq,
         'currents': currents,
         'plfe': pfelosses, 'plmag': maglosses,
-        'plcu': get_copper_losses(scale_factor, bch)}
+        'plcu': plcu}
 
 
 def get_scale_factor(model_type, num_slots, slots_gen):
@@ -122,6 +138,24 @@ def get_pole_widths(outer_diam, inner_diam, poles, num_slices):
     return [np.pi * inner_diam/poles] + [
         np.pi * (inner_diam + d*i/(num_slices - 1))/poles
         for i in range(1, num_slices-1)] + [np.pi * outer_diam/poles]
+
+
+def wdg_resistance(wdg, n, g, aw, outer_diam, inner_diam,
+                   sigma=56e6):
+    """return winding resistance per phase in Ohm
+    Arguments:
+    wdg: (Winding) winding
+    n: (int) number of wires per coil side
+    g: (int) number of parallel coil groups
+    lfe: length of stator lamination stack in m
+    aw: wire cross section area m2
+    da1: bore diameter m
+    hs: slot height
+    sigma: (float) conductivity of wire material 1/Ohm m
+    """
+    # mean length of one turn
+    lt = (outer_diam-inner_diam)+np.pi/wdg.Q*(outer_diam+inner_diam) + 16e-3
+    return wdg.turns_per_phase(n, g)*lt/sigma/aw/g
 
 
 def get_copper_losses(scale_factor, bch):

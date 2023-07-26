@@ -53,7 +53,11 @@ def test_process(bch):
                'poles': poles,
                'outer_diam': outer_diam,
                'inner_diam': inner_diam,
-               'stator': {'num_slots': num_slots},
+               'stator': {'num_slots': num_slots,
+                          'afm_stator': {
+                              "slot_height": 0.023,
+                              "slot_width": 0.008}
+                          },
                'windings':{
                    "num_phases": 3,
                    "num_layers": 2,
@@ -63,7 +67,8 @@ def test_process(bch):
                    "num_par_wdgs": 1}}
 
     r = femagtools.machine.afpm.process(lfe, pole_width, machine, bch)
-    assert 17.5 == pytest.approx(np.mean(r['torque']), abs=0.1)
-    assert 17.7 == pytest.approx(np.mean(r['plfe']), abs=0.1)
-    assert 51.2 == pytest.approx(np.mean(r['plmag']), abs=0.1)
-    assert 112.8 == pytest.approx(np.mean(r['plcu']), abs=0.1)
+    assert pytest.approx(r['r1'], abs=1e-3) == 10e-3
+    assert pytest.approx(np.mean(r['torque']), abs=0.1) == 17.5
+    assert pytest.approx(np.mean(r['plfe']), abs=0.1) == 17.7
+    assert pytest.approx(np.mean(r['plmag']), abs=0.1) == 51.2
+    assert pytest.approx(np.mean(r['plcu']), abs=0.1) == 292.7

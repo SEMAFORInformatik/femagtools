@@ -713,20 +713,97 @@ class Machine(object):
     def delete_tiny_elements(self, mindist):
         self.geom.delete_tiny_elements(mindist)
 
+    def create_arc(self, radius):
+        arc = Arc(Element(center=self.center,
+                          radius=radius,
+                          start_angle=(self.startangle-0.1)*180/np.pi,
+                          end_angle=(self.endangle+0.1)*180/np.pi),
+                  color='red')
+        pts = self.geom.split_and_get_intersect_points(arc)
+        if len(pts) != 2:
+            logger.warning("create_arc(): Bad Points: %s", pts)
+            # self.geom.add_edge(arc.node1(4), arc.node2(4), arc)
+            return False
+
+        arc = Arc(Element(center=self.center,
+                          radius=radius,
+                          start_angle=self.startangle*180/np.pi,
+                          end_angle=self.endangle*180/np.pi))
+        n = self.geom.find_nodes(pts[0], pts[1])
+        self.geom.add_edge(n[0], n[1], arc)
+        return True
+
+    def get_iron_separator(self, radius_list):
+        if len(radius_list) < 2:
+            return 0.0
+
+        r_min = radius_list[0][0]
+        for r in radius_list[1:]:
+            if np.isclose(r[2], r_min, atol=0.001):
+                return r[2]
+            r_min = r[0]
+
+        return 0.0
+
     def create_mirror_lines_outside_windings(self):
+        logger.debug("create_mirror_lines_outside_windings")
+
         if not self.geom.has_areas_touching_both_sides():
+            logger.debug("end create_mirror_lines_outside_windings: not done")
             return
 
+        radius = self.radius+10
+        ag_list = self.geom.detect_airgaps(self.center,
+                                           self.startangle, self.endangle,
+                                           atol=0.001,
+                                           with_end=True)
+        radius_list = [(ag[0], (ag[0] + ag[1]) / 2, ag[1]) for ag in ag_list]
+        radius_list.sort(reverse=True)
+
         midangle = middle_angle(self.startangle, self.endangle)
-        pts = self.geom.split_and_get_intersect_points(self.center,
-                                                       self.radius+10,
-                                                       midangle)
+        line = Line(
+            Element(start=self.center,
+                    end=point(self.center, radius, midangle)))
+
+        pts = self.geom.split_and_get_intersect_points(line, aktion=False)
         pts.sort()
+
+        p_critical = self.geom.critical_touch_point(pts)
+        if p_critical:
+            d_critical = distance(self.center, p_critical)
+            logger.info("Critical Point: %s, len=%s", p_critical, d_critical)
+            sep_radius = self.get_iron_separator(radius_list)
+            logger.debug("Iron Separator found: %s", sep_radius)
+            if sep_radius > 0.0 and sep_radius < d_critical:
+                radius = sep_radius
+            else:
+                for r in radius_list:
+                    logger.debug("Gap Radius = %s", r[1])
+                    if r[1] < d_critical:
+                        if self.create_arc(r[1]):
+                            radius = r[1]
+                        break
+#        else:
+#            sep_radius = self.get_iron_separator(radius_list)
+#            if sep_radius > 0.0:
+#                logger.debug("Iron Separator found: %s", sep_radius)
+#                radius = sep_radius
+
+        # install line
+        line = Line(
+            Element(start=self.center,
+                    end=point(self.center, radius, midangle)))
+
+        pts = self.geom.split_and_get_intersect_points(line)
+        pts.sort()
+
         if self.geom.create_lines_outside_windings(pts):
             self.geom.area_list = []
             logger.debug("create subregions again")
             self.geom.create_list_of_areas()
             self.geom.search_subregions()
+
+        logger.debug("end create_mirror_lines_outside_windings")
 
     def check_and_correct_geom(self, what):
         geom = self.geom.check_geom(what)

@@ -2677,7 +2677,7 @@ class Geometry(object):
             dist_max = max(dist_max, g[1])
         return airgaps
 
-    def detect_airgaps(self, center, startangle, endangle, atol):
+    def detect_airgaps(self, center, startangle, endangle, atol=0.1, with_end=False):
         """ Die Funktion sucht Luftspalt-Kandidaten und liefert eine Liste
             von Möglichkeiten mit jeweils einem minimalen und einem maximalen
             Radius als Begrenzung des Luftspalts.
@@ -2697,6 +2697,8 @@ class Geometry(object):
         min_radius = self.min_radius + 1.0
         cur_radius = gaplist[0][1]
         max_radius = self.max_radius - 1.0
+        if with_end:
+            max_radius = self.max_radius + 1.0
 
         for g in gaplist:
             if greater(g[0], cur_radius) and \
@@ -3659,19 +3661,16 @@ class Geometry(object):
             c += self.remove_appendix(n2, nbrs[0], incr_text + '.')
         return c
 
-    def split_and_get_intersect_points(self, center, outer_radius, angle):
+    def split_and_get_intersect_points(self, el, aktion=True):
         logger.debug("begin of split_and_get_intersect_points")
         rtol = 1e-03
         atol = 1e-03
-        line = Line(
-            Element(start=center,
-                    end=point(center, outer_radius+1, angle)))
         points = []
         for e in self.elements(Shape):
-            pts = e.intersect_line(line,
-                                   rtol=rtol,
-                                   atol=atol,
-                                   include_end=True)
+            pts = e.intersect_shape(el,
+                                    rtol=rtol,
+                                    atol=atol,
+                                    include_end=True)
             if pts:
                 pts_inside = []
                 pts_real = []
@@ -3686,7 +3685,7 @@ class Geometry(object):
                         pts_real.append(p)
                         pts_inside.append(p)
 
-                if pts_inside:
+                if pts_inside and aktion:
                     self.remove_edge(e)
                     elements = e.split(pts_inside, rtol, atol)
                     for e in elements:
@@ -3708,6 +3707,31 @@ class Geometry(object):
                     if area.is_point_inside(p2):
                         return True
         return False
+
+    def inside_area_list(self, p):
+        for area in self.list_of_areas():
+            if area.is_point_inside(p):
+                yield area
+
+    def critical_touch_point(self, points):
+        logger.debug("looking for critical touch-point")
+        winding_touched = False
+        for p in points[1:]:
+            d = distance(self.center, p)
+            logger.debug("-- p = %s, dist = %s", p, d)
+            for a in self.inside_area_list(p):
+                logger.debug("-- Area type = %s", a.type)
+                logger.debug("        min=%s,  max= %s", a.min_dist, a.max_dist)
+                logger.debug("        close to start = %s", a.close_to_startangle)
+                logger.debug("        close to end   = %s", a.close_to_endangle)
+                if a.is_winding():
+                    winding_touched = True
+                else:
+                    if winding_touched and greater(a.max_dist, d, atol=0.001):
+                        if not (a.close_to_startangle and a.close_to_endangle):
+                            logger.debug("-- return %s", p)
+                            return p
+        return None
 
     def create_lines_outside_windings(self, points):
         if not points:

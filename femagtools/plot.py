@@ -1347,8 +1347,9 @@ def loss_density(isa, subreg=[], ax=0):
             sr = subreg
         else:
             sr = [subreg]
-        elements = [e for s in sr for sre in isa.get_subregion(s).elements()
-                    for e in sre]
+        elements = [e
+                    for s in sr
+                    for e in isa.get_subregion(s).elements()]
     else:
         elements = [e for e in isa.elements]
 

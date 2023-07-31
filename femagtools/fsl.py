@@ -750,7 +750,7 @@ class Builder:
         """extracts parameters from content and creates template"""
         parpat = re.compile(
             r'''([\w\.]+)\s*= # key
-            \s*(([+-]?\d+((?:\.\d+)?(?:[eE][+-]\d+)?))|
+            \s*(([+-]?(\d+\.?\d*|\d*\.?\d+)([eE][+-]?\d+)?)|
             (['"][^'"]*['"]))\s*-- # value
             \s*(.+)$''', re.X)
         content = []

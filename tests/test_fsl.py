@@ -386,6 +386,18 @@ class FslBuilderTest(unittest.TestCase):
         for p in result['parameter']:
             self.assertTrue(p['key'] in ['dshaft', 'hm', 'bm', 'ws'])
 
+    def test_readfslexp(self):
+        from io import StringIO
+        with StringIO("""
+        varname1 = 1. -- equals 1.0
+        varname2 = .1 -- equals 0.1
+        varname3 = 1e3 -- equals 1000""") as f:
+            fsltmpl = self.builder.read(f)
+        self.assertEqual(fsltmpl['parameter'], [
+            {'key': 'varname1', 'value': '1.', 'comment': 'equals 1.0'},
+            {'key': 'varname2', 'value': '.1', 'comment': 'equals 0.1'},
+            {'key': 'varname3', 'value': '1e3', 'comment': 'equals 1000'}])
+
     def test_gen_winding(self):
         model = femagtools.MachineModel(self.m)
 

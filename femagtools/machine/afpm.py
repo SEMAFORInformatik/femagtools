@@ -147,10 +147,8 @@ def wdg_resistance(wdg, n, g, aw, outer_diam, inner_diam,
     wdg: (Winding) winding
     n: (int) number of wires per coil side
     g: (int) number of parallel coil groups
-    lfe: length of stator lamination stack in m
     aw: wire cross section area m2
-    da1: bore diameter m
-    hs: slot height
+    outer_diam, inner_diam: diameters m
     sigma: (float) conductivity of wire material 1/Ohm m
     """
     # mean length of one turn
@@ -159,8 +157,7 @@ def wdg_resistance(wdg, n, g, aw, outer_diam, inner_diam,
 
 
 def get_copper_losses(scale_factor, bch):
-    # relative length of winding = 1
-    # winding losses are without winding head
+    """return copper losses from bch files"""
     try:
         cu_losses = sum([b['losses'][0]['winding'] for b in bch])
         return scale_factor*cu_losses
@@ -192,7 +189,7 @@ class AFPM:
 
         if "num_agnodes" not in machine:
             for pw in pole_width:
-                machine['num_agnodes'] = 3*round(pw/machine['airgap']/2)
+                machine['num_agnodes'] = 6*round(pw/machine['airgap']/4)
 
         parvardef = {
             "decision_vars": [

@@ -11,7 +11,7 @@ Ronald Tanner, Werner Vetter
 gtisoft.com, 2023
 """
 machine = {
-    "name": "AFM-10",
+    "name": "AFPM-10",
     "desc": "Axial flux machine",
     "afmtype": "S2R1",
     "poles": 20,
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     workdir = pathlib.Path('work')
     workdir.mkdir(exist_ok=True)
 
-    afm = AFPM(workdir, magnetizingCurves='.',
+    afm = AFPM(workdir, magnetizingCurves='../magnetcurves',
               magnetMat='', condMat='')
 
     simulation = dict(
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         wind_temp=20.0,
         magn_temp=20.0,
         current=7.0711,
-        num_move_steps=60,
+        num_move_steps=90,
         speed=50.0)
 
     engine = Engine()
@@ -86,7 +86,8 @@ if __name__ == '__main__':
     pathlib.Path('results.json').write_text(json.dumps(r))
 
     fig, axs = plt.subplots(nrows=2)
-    femagtools.plot.torque(r['pos'], r['torque'], ax=axs[0])
+    femagtools.plot.torque(r['pos'], r['torque'],
+                           title=f"Torque {machine['name']}", ax=axs[0])
 
     axs[1].set_title(f"Phase EMF (Amp {r['emf_amp']:.1f})/ V")
     axs[1].plot(r['pos'], r['emf'][0])

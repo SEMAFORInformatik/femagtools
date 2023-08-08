@@ -176,6 +176,10 @@ class Builder:
                            'ndt(agndst)'] + templ), model.stator['statorFsl'])
 
         statmodel = model.stator.copy()
+        if 'middle_line' not in statmodel:
+            statmodel['middle_line'] = 0 if model.windings.get(
+                'num_layers', 1) == 1 else 1
+
         statmodel.update(model.stator[templ])
         k = 'zeroangle'
         if k not in statmodel:

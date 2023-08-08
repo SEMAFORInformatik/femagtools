@@ -177,19 +177,25 @@ class AFPM:
         if machine['afmtype'] not in AFM_TYPES:
             raise ValueError(f"invalid afm type {machine['afmtype']}")
 
+        Q = machine['stator']['num_slots']
+        p = machine['poles']
         lfe = get_arm_lengths(machine['outer_diam'],
                               machine['inner_diam'],
                               num_slices)
         pole_width = get_pole_widths(machine['outer_diam'],
                                      machine['inner_diam'],
-                                     machine['poles'],
+                                     p,
                                      num_slices)
-        linspeed = [simulation['speed']*machine['poles']*pw
+        linspeed = [simulation['speed']*p*pw
                     for pw in pole_width]
 
+        nper = np.lcm(Q, p)
         if "num_agnodes" not in machine:
             for pw in pole_width:
                 machine['num_agnodes'] = 6*round(pw/machine['airgap']/4)
+
+                #if machine['num_agnodes'] < nper:
+                #    machine['num_agnodes'] = 8*round(pw/machine['airgap']/4)
 
         parvardef = {
             "decision_vars": [

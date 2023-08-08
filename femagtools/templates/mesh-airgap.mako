@@ -83,5 +83,14 @@ if not airgap_created then
    def_bcond_vpo(x2,y2, x3,y3)
   end
 
+  if m.model_type == 'S2R1_all' then
+    x1,y1 = 0, -ag -m.magn_height/2 -m.yoke_height -m.gap_ma_yoke
+    x2,y2 = m.npols_gen*m.pole_width, y1
+    mirror_nodechains(x1,y1, x2,y2)
+  elseif m.model_type == 'S1R2_all' then
+    x1,y1 = m.npols_gen*m.pole_width, m.slot_height/2
+    x2,y2 = 0, y1
+    mirror_nodechains(x1,y1, x2,y2)
+  end
 % endif
 end

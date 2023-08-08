@@ -29,7 +29,11 @@ m.fcpy_mm1        =   -ag/2
 m.fcpx_mm2        =   -1.0
 m.fcpy_mm2        =   m.fcpy_mm1
 m.fcpx_mm3        =   m.fcpx_mm2
+if m.model_type == 'S2R1_all' then
+m.fcpy_mm3        =   -m.magn_height -m.yoke_height -m.gap_ma_yoke -ag -ag/2
+else
 m.fcpy_mm3        =   -m.magn_height -m.yoke_height -m.gap_ma_yoke -ag -1
+end
 m.fcpx_mm4        =   m.fcpx_mm1
 m.fcpy_mm4        =   m.fcpy_mm3
 m.fcpx_mm5        =   m.fcpx_mm1

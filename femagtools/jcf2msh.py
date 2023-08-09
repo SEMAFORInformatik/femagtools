@@ -76,8 +76,15 @@ def create_msh(jcfile):
         except StopIteration:
             break
 
+        entities = set([e.entity for e in elements])
+        physicalgroups = {}
     msh = ["$MeshFormat\n2.2 0 8\n$EndMeshFormat"]
-
+    msh.append("$PhysicalNames")
+    msh.append(f"{len(entities)}")
+    for i, g in enumerate(entities):
+        msh.append(f'1 {i+1} "{g}"')
+        physicalgroups[g] = i+1
+    msh.append("$EndPhysicalNames")
     msh.append("$Nodes")
     msh.append(str(len(nodes)))
     for i, n in enumerate(nodes):
@@ -88,11 +95,15 @@ def create_msh(jcfile):
     msh.append(str(len(elements)))
     for i, e in enumerate(elements):
         if e.nodes[3]:
-            msh.append("{} 3 2 0 {} {} {} {} {}".format(
-                i + 1, e.entity, e.nodes[0], e.nodes[1], e.nodes[2], e.nodes[3]))
+            msh.append(
+                "{} 3 2 {} {} {} {} {} {}".format(
+                    i + 1, physicalgroups[e.entity], e.entity,
+                    e.nodes[0], e.nodes[1], e.nodes[2], e.nodes[3]))
         else:
-            msh.append("{} 2 2 0 {} {} {} {}".format(
-                i + 1, e.entity, e.nodes[0], e.nodes[1], e.nodes[2]))
+            msh.append(
+                "{} 2 2 {} {} {} {} {}".format(
+                    i + 1, physicalgroups[e.entity], e.entity,
+                    e.nodes[0], e.nodes[1], e.nodes[2]))
     msh.append("$EndElements")
 
     return msh

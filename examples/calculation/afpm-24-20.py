@@ -1,4 +1,4 @@
-""" Axial Flux Machine (AFM) demo
+""" Axial Flux PM Machine (AFPM) example
 
  Suppported types
  "S1R1"      -- 1 stator, 1 rotor
@@ -38,18 +38,13 @@ machine = {
             "magn_height": 0.012,
             "rel_magn_width": 0.8,
             "yoke_height": 0,
-            "spoke_width": 0
         }
     },
     "windings": {
         "num_phases": 3,
         "num_layers": 2,
         "num_wires": 10,
-        "cufilfact": 0.4,
-        "culength": 1.4,
-        "dia_wire": 1.5e-3,
-        "num_par_wdgs": 1,
-        "slot_indul": 1e-3,
+        "num_par_wdgs": 1
     }
 }
 
@@ -68,8 +63,8 @@ if __name__ == '__main__':
     workdir = pathlib.Path('work')
     workdir.mkdir(exist_ok=True)
 
-    afm = AFPM(workdir, magnetizingCurves='../magnetcurves',
-              magnetMat='', condMat='')
+    afm = AFPM(workdir, magnetizingCurves='',
+               magnetMat='', condMat='')
 
     simulation = dict(
         angl_i_up=0.0,
@@ -77,7 +72,6 @@ if __name__ == '__main__':
         wind_temp=20.0,
         magn_temp=20.0,
         current=7.0711,
-        num_move_steps=90,
         speed=50.0)
 
     engine = Engine()

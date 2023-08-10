@@ -19,25 +19,28 @@ logger = logging.getLogger(__name__)
 
 AFM_TYPES = (
     "S1R1",      # 1 stator, 1 rotor
-    "S1R2",      # 1 stator, 2 rotor, 1 half simulated
+    "S1R2",      # 1 stator, 2 rotor, 1 half simulated  0.035546949189428106
     "S1R2_all",  # 1 stator, 2 rotor, all simulated
     "S2R1",      # 2 stator, 1 rotor, 1 half simulated
     "S2R1_all"   # 2 stator, 1 rotor, all simulated
 )
 
 def integrate(radius, pos, val):
-    interp = RegularGridInterpolator((radius, pos), val)
-    def func(x, y):
-        return interp((x, y))
-    return [quad(func, radius[0], radius[-1], args=(p,))[0]
-            for p in pos]
+    if len(radius) > 2:
+        interp = RegularGridInterpolator((radius, pos), val)
+        def func(x, y):
+            return interp((x, y))
+        return [quad(func, radius[0], radius[-1], args=(p,))[0]
+                for p in pos]
+    return val
 
 def integrate1d(radius, val):
-    interp = interp1d(radius, val)
-    def func(x):
-        return interp((x))
-    return quad(func, radius[0], radius[-1])[0]
-
+    if len(radius) > 2:
+        interp = interp1d(radius, val)
+        def func(x):
+            return interp((x))
+        return quad(func, radius[0], radius[-1])[0]
+    return val
 
 def process(lfe, pole_width, machine, bch):
     # process results: torque, voltage, losses
@@ -86,13 +89,15 @@ def process(lfe, pole_width, machine, bch):
             p=mmod.poles//2,
             m=mmod.windings['num_phases'],
             l=mmod.windings['num_layers']))
+
+    cufill = mmod.windings.get('cufilfact', 0.4)
     aw = (mmod.stator['afm_stator']['slot_width']*
-          mmod.stator['afm_stator']['slot_height']*
-          mmod.windings['cufilfact']/mmod.windings['num_wires']/2)
+              mmod.stator['afm_stator']['slot_height']*
+              cufill/mmod.windings['num_wires']/2)
     r1 = wdg_resistance(wdg, mmod.windings['num_wires'],
                         mmod.windings['num_par_wdgs'],
                         aw,
-                        mmod.outer_diam, mmod.outer_diam)
+                        mmod.outer_diam, mmod.inner_diam)
     i1 = np.mean([np.max(c) for c in currents])/np.sqrt(2)
     plcu = mmod.windings['num_phases']*i1**2*r1
     return {
@@ -128,17 +133,19 @@ def get_scale_factor(model_type, num_slots, slots_gen):
 
 def get_arm_lengths(outer_diam, inner_diam, num_slices):
     d = outer_diam - inner_diam
-    return [d/(4*(num_slices-1))] + [
-        d/(2*(num_slices-1))
-        for i in range(1,num_slices-1)] + [d/(4*(num_slices-1))]
-
+    if num_slices > 2:
+        return [d/(4*(num_slices-1))] + [
+            d/(2*(num_slices-1))
+            for i in range(1,num_slices-1)] + [d/(4*(num_slices-1))]
+    return [d]
 
 def get_pole_widths(outer_diam, inner_diam, poles, num_slices):
     d = outer_diam - inner_diam
-    return [np.pi * inner_diam/poles] + [
-        np.pi * (inner_diam + d*i/(num_slices - 1))/poles
-        for i in range(1, num_slices-1)] + [np.pi * outer_diam/poles]
-
+    if num_slices > 2:
+        return [np.pi * inner_diam/poles] + [
+            np.pi * (inner_diam + d*i/(num_slices - 1))/poles
+            for i in range(1, num_slices-1)] + [np.pi * outer_diam/poles]
+    return [np.pi * (machine['outer_diam']+machine['inner_diam'])/2/machine['poles']]
 
 def wdg_resistance(wdg, n, g, aw, outer_diam, inner_diam,
                    sigma=56e6):
@@ -152,7 +159,7 @@ def wdg_resistance(wdg, n, g, aw, outer_diam, inner_diam,
     sigma: (float) conductivity of wire material 1/Ohm m
     """
     # mean length of one turn
-    lt = (outer_diam-inner_diam)+np.pi/wdg.Q*(outer_diam+inner_diam) + 16e-3
+    lt = 2.4*((outer_diam-inner_diam)+np.pi/wdg.Q*(outer_diam+inner_diam) + 16e-3)
     return wdg.turns_per_phase(n, g)*lt/sigma/aw/g
 
 
@@ -227,8 +234,8 @@ class AFPM:
                         'phi_voltage_winding': current_angles})
                 logger.info("Current angles: %s", current_angles)
 
-        results = self.parstudy(parvardef, machine, simulation, engine)
-        results.update(process(lfe, pole_width, machine, results['f']))
+        lresults = self.parstudy(parvardef, machine, simulation, engine)
+        results = process(lfe, pole_width, machine, lresults['f'])
         gamma = -(results['emf_angle'] - nlresults['emf_angle'])
         w1 = 2*np.pi*results['freq']
         results['psid'] = np.cos(gamma)*results['emf_amp']/w1
@@ -236,7 +243,7 @@ class AFPM:
         results['psim'] = nlresults['emf_amp']/w1
         results['i1'] = np.mean([np.max(c)
                                  for c in results['currents']])/np.sqrt(2)
-        beta = results['f'][0]['losses'][0]['beta']/180*np.pi
+        beta = lresults['f'][0]['losses'][0]['beta']/180*np.pi
         results['beta'] = beta/np.pi*180
         results['id'] = np.sqrt(2)*results['i1']*np.sin(beta)
         results['iq'] = np.sqrt(2)*results['i1']*np.cos(beta)

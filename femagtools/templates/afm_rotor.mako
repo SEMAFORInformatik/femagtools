@@ -3,11 +3,9 @@
 m.yoke_height  = ${model['yoke_height']*1e3}  -- Yoke height [mm]
 m.magn_height     = ${model['magn_height']*1e3}  -- Magnet height [mm]
 m.magn_width      = ${model['rel_magn_width']*1e2}  -- Magnet width: >0:[%]; <0: [mm]
-m.spoke_width     = ${model['spoke_width']*1e3}  -- Spoke width: >0 magn_width will be calculated
+m.spoke_width     = ${model.get('spoke_width', 0)*1e3}  -- Spoke width: >0 magn_width will be calculated
 m.gap_ma_yoke     = 0
 m.nodedist        = ${model.get('nodedist', 1)}
---@param  m.npols_gen         -- Number of poles generated
-
 
   if (m.model_type == "S2R1") or  (m.model_type == "S2R1_all") then
     if (m.yoke_height > 0) then

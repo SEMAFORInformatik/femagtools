@@ -168,6 +168,8 @@ class MachineModel(Model):
                     '{', ','.join(
                         [str(n) for n in z]), '}']) for z in l])] + ['}'])
                                   for l in wdg.zoneplan()])] + ['}'])
+            if not hasattr(self, 'pole_width'):  # note: for preview usage only
+                self.pole_width = np.pi * self.outer_diam/self.poles
         else:
             self.coord_system = 0
             self.move_action = 0

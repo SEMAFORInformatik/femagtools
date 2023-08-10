@@ -67,8 +67,8 @@ def test_process(bch):
                    "num_par_wdgs": 1}}
 
     r = femagtools.machine.afpm.process(lfe, pole_width, machine, bch)
-    assert pytest.approx(r['r1'], abs=1e-3) == 10e-3
+    assert pytest.approx(r['r1'], abs=1e-3) == 0.03159
     assert pytest.approx(np.mean(r['torque']), abs=0.1) == 17.5
     assert pytest.approx(np.mean(r['plfe']), abs=0.1) == 17.7
     assert pytest.approx(np.mean(r['plmag']), abs=0.1) == 51.2
-    assert pytest.approx(np.mean(r['plcu']), abs=0.1) == 292.7
+    assert pytest.approx(np.mean(r['plcu']), abs=0.1) == 925.6

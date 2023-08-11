@@ -1,6 +1,6 @@
 -- Create model of the rotor of the axial flow machine
 
-m.yoke_height  = ${model['yoke_height']*1e3}  -- Yoke height [mm]
+m.yoke_height  = ${model.get('yoke_height', 0)*1e3}  -- Yoke height [mm]
 m.magn_height     = ${model['magn_height']*1e3}  -- Magnet height [mm]
 m.magn_width      = ${model['rel_magn_width']*1e2}  -- Magnet width: >0:[%]; <0: [mm]
 m.spoke_width     = ${model.get('spoke_width', 0)*1e3}  -- Spoke width: >0 magn_width will be calculated

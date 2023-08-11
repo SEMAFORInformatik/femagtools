@@ -93,7 +93,7 @@ def process(lfe, pole_width, machine, bch):
     cufill = mmod.windings.get('cufilfact', 0.4)
     aw = (mmod.stator['afm_stator']['slot_width']*
               mmod.stator['afm_stator']['slot_height']*
-              cufill/mmod.windings['num_wires']/2)
+              cufill/mmod.windings['num_wires']/mmod.windings['num_layers'])
     r1 = wdg_resistance(wdg, mmod.windings['num_wires'],
                         mmod.windings['num_par_wdgs'],
                         aw,

@@ -90,6 +90,11 @@ m.nodedist        = ${model.get('nodedist', 1)}
 
   x = (P12.x+P32.x)/2
   y = (P12.y+P32.y)/2
+  if m.remanenc == nil then
+    m.remanenc = 1.2
+    m.relperm = 1.05
+    m.rlen = 100
+  end
   for i = 1,m.npols_gen do
     if i%2 == 0 then
       def_mat_pm(x,y, 'red', m.remanenc, m.relperm, 90, "parallel", 0, m.rlen)

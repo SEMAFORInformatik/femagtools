@@ -534,27 +534,27 @@ class Femag(BaseFemag):
                     pmod = 0
                 bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'),
                                      pmod=pmod)
-                
+
             if simulation.get('magnet_loss', False):
                 logger.info('Evaluating magnet losses...')
                 ops = [k for k in range(len(bch.torque))]
                 m = femagtools.ecloss.MagnLoss(self.workdir, self.modelname, ibeta=ops)
                 try:
                     magn_losses = m.calc_losses()
-                except: 
+                except:
                     magn_losses = [0 for i in range(len(ops))]
 
-                if len(ops) != len(bch.losses): 
+                if len(ops) != len(bch.losses):
                     magn_losses.insert(0, magn_losses[0])
                 try:
-                    for i in range(len(bch.losses)): 
+                    for i in range(len(bch.losses)):
                         bch.losses[i].update({"magnetH": magn_losses[i]})
-                except: 
+                except:
                     pass
                 # pass losses to bch object for th usage
-                try: 
+                try:
                     bch.magnet_loss_th = m.th_loss
-                except: 
+                except:
                     pass
             return bch
         return dict(status='ok', message=self.modelname)
@@ -994,9 +994,12 @@ class ZmqFemag(BaseFemag):
         """get svg format from fsl commands (if any graphic created)
         (since FEMAG 8.5 Rev 3343) """
         response = self.send_request(['SVG', fslcmds], timeout=timeout)
-        rc = json.loads(response[0].decode('latin1'))
-        if rc['status'] == 'ok':
-            return self.getfile(rc['result_file'][0])
+        try:
+            rc = json.loads(response[0].decode('latin1'))
+            if rc['status'] == 'ok':
+                return self.getfile(rc['result_file'][0])
+        except json.decoder.JSONDecodeError:
+            logger.warning(response[0])
         return [s.decode('latin1') for s in response]
 
     def interrupt(self):

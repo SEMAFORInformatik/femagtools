@@ -146,7 +146,7 @@ def flux_density(isa, subreg=[], ax=0):
       isa: Isa7/NC object
     """
     elements = [e for e in __elements_of_subreg(isa, subreg)]
-    fluxd = np.array([e.flux_density() for e in elements])
+    fluxd = np.array([np.linalg.norm(e.flux_density()) for e in elements])
     _contour(ax, f'Flux Density T (max {np.max(fluxd):.1f} T)',
              elements, fluxd)
     logger.info("Max flux dens %f", np.max(fluxd))

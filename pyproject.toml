@@ -38,7 +38,7 @@ zmq = ['pyzmq']
 test = ['pytest']
 
 [project.scripts]
-femagtools-plot = "femagtools.plot:main"
+femagtools-plot = "femagtools.plot.bch:main"
 femagtools-convert = "femagtools.convert:main"
 femagtools-bchxml = "femagtools.bchxml:main"
 femagtools-dxfsl = "femagtools.dxfsl.conv:main"

@@ -8,13 +8,18 @@ def model():
     filename = 'tests/data/minimal.nc'
     return nc.read(filename)
 
+@pytest.fixture
+def pm():
+    filename = 'tests/data/pm_data.nc'
+    return nc.read(filename)
+
 
 def test_read(model):
     assert len(model.points) == 39
-    assert len(model.lines) == 39 
+    assert len(model.lines) == 39
     assert model.points[0].x == pytest.approx(0.008339,
                                             abs=1e-5)
-    
+
 
 def test_objects(model):
     assert len(model.nodes) == 1729
@@ -75,6 +80,8 @@ def test_elements(model):
     assert el.vertices[0].xy == pytest.approx((0.002202, 0.003197),
                                               abs=1e-5)
 
+def test_airgap_center_elements(pm):
+    assert len(pm.airgap_center_elements) == 0
 
 def test_superelements(model):
     se = model.superelements[0]
@@ -86,7 +93,7 @@ def test_superelements(model):
         assert type(ndc) == isa7.NodeChain
         assert ndc.key == se.nc_keys[se.nodechains.index(ndc)]
 
-        
+
 @pytest.fixture
 def disp_stat():
     filename = 'tests/data/test_disp_stat.nc'
@@ -106,7 +113,7 @@ def test_subregions(disp_stat):
 
 def test_windings(disp_stat):
     wd = disp_stat.windings[0]
-    
+
     assert type(wd) == isa7.Winding
     assert wd.name == "Stra"
     for sr in wd.subregions:

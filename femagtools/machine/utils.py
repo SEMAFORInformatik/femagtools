@@ -389,8 +389,8 @@ def dqparident(workdir, engine, temp, machine,
     elif ('wire_width' in machine['windings']) and ('wire_height' in machine['windings']):
         aw = machine['windings']['wire_width']*machine['windings']['wire_height']
     else:  # wire diameter from slot area
-        aw = 0.75 * \
-            machine['windings'].get('cufilfact', 0.45)*np.pi*da1*hs/Q1/2/N
+        aw = 0.75 * machine['windings'].get('cufilfact', 0.45)*\
+            np.pi*da1*hs/Q1/wpar['l']/N
     r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
 
     n = len(temp)

@@ -30,16 +30,24 @@ def fft(pos, y, pmod=0):
             y[0])
 
     N = len(yx)
-    # compute DFT from induction
-    Y = np.fft.fft(yx)
+    # compute DFT from induction (eliminate DC offset)
+    a0 = np.mean(yx)
+    Y = np.fft.fft(yx-a0)
 
     # find the peak (amplitude of base harmonic)
     i = np.argmax(np.abs(Y[:N//2]))
+
     a = 2*np.abs(Y[i])/N
     freq = np.fft.fftfreq(N, d=pos[1]-pos[0])
-    T0 = np.abs(1/freq[i])
-    npoles = 2*int(np.ceil(360/T0))
+    nmax = min(18*ntiles, N//2)
+    T0 = 0
+    if abs(freq[i]) > 0:
+        T0 = np.abs(1/freq[i])
+        npoles = 2*int(np.ceil(360/T0))
+        nmax = min(9*npoles, N//2)
 
-    return {'a': a, 'freq': freq, 'T0': T0, 'alfa0': np.angle(Y[i]),
-            'nue': (2*np.abs(Y[:9*npoles])/N).tolist(),
+    alfa0 = np.angle(Y[i])
+
+    return {'a': a, 'a0': a0, 'T0': T0, 'alfa0': alfa0,
+            'nue': (2*np.abs(Y[:nmax])/N).tolist(),
             'yi': yx.tolist()}

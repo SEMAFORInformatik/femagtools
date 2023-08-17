@@ -790,7 +790,7 @@ def main():
     import io
     import sys
     import argparse
-    from .__init__ import __version__
+    from ..__init__ import __version__
     from femagtools.bch import Reader
 
     argparser = argparse.ArgumentParser(

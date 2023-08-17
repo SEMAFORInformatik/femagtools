@@ -13,7 +13,7 @@ def test_read(isa):
     assert len(isa.lines) == 39
     assert isa.points[0].x == pytest.approx(0.008339,
                                             abs=1e-5)
-    
+
 
 def test_objects(isa):
     assert len(isa.points) == 39
@@ -56,6 +56,8 @@ def test_nodes(isa):
     assert nd.xy == (nd.x, nd.y) == pytest.approx(
         (0.008787, 0.007736), abs=1e-5)
 
+def test_airgap_center_elements(isa):
+    assert len(isa.airgap_center_elements) == 0
 
 def test_nodechains(isa):
     nc = isa.nodechains[0]
@@ -89,7 +91,7 @@ def test_superelements(isa):
         assert type(nc) == isa7.NodeChain
         assert nc.key == se.nc_keys[se.nodechains.index(nc)]
 
-        
+
 @pytest.fixture
 def disp_stat():
     filename = 'tests/data/test_disp_stat.ISA7'
@@ -109,7 +111,7 @@ def test_subregions(disp_stat):
 
 def test_windings(disp_stat):
     wd = disp_stat.windings[0]
-    
+
     assert type(wd) == isa7.Winding
     assert wd.name == "Stra"
     for sr in wd.subregions:

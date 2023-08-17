@@ -548,6 +548,7 @@ class Isa7(object):
                         reader.BR_TEMP_COEF/100,
                         temperature)   # in 1/K
             )
+
         logger.debug("SuperElements")
         self.superelements = []
         for se in range(len(reader.SUPEL_ISA_SE_NDCHN_PNTR)):
@@ -689,6 +690,27 @@ class Isa7(object):
             self.arm_length = reader.arm_length*1e-3  # in m
         except:
             pass
+
+        airgap_center_elements = []
+        self.airgap_inner_elements = []
+        self.airgap_outer_elements = []
+        if hasattr(self, 'FC_RADIUS'):  # Note: cosys r/phi only
+            for n in self.nodes:
+                n.outside = np.sqrt(n.x**2 + n.y**2) > self.FC_RADIUS
+        airgap_center_elements = []
+        for e in self.elements:
+            outside = [v.outside
+                       for v in e.vertices]
+            if all(outside):
+                self.airgap_outer_elements.append(e)
+            elif any(outside):
+                airgap_center_elements.append(e)
+            else:
+                self.airgap_inner_elements.append(e)
+
+        self.airgap_center_elements = sorted(airgap_center_elements,
+                                             key=lambda e: np.arctan2(
+                                                 e.center[1], e.center[0]))
         self.pos_el_fe_induction = np.asarray(reader.pos_el_fe_induction)
         try:
             self.beta_loss = np.asarray(reader.beta_loss)
@@ -813,6 +835,20 @@ class Isa7(object):
                 pos=self.pos_el_fe_induction[ind[1]]))
         return results
 
+    def rotate(self, alpha):
+        if alpha:
+            for n in self.nodes:
+                if not n.outside:
+                    n.xy = (np.cos(alpha)*n.x -np.sin(alpha)*n.y,
+                            np.sin(alpha)*n.x + np.cos(alpha)*n.y)
+            self.elements = self.airgap_outer_elements + self.airgap_inner_elements
+        else: # reset rotation
+            for n in self.nodes:
+                if not n.outside:
+                    n.xy = n.x, n.y
+            self.elements = (self.airgap_outer_elements + self.airgap_center_elements +
+                             self.airgap_inner_elements)
+
     def scale_factor(self):
         '''Returns the scale factor
         Parameters
@@ -866,6 +902,7 @@ class Node(BaseEntity):
         self.y = y
         self.xy = x, y
         self.vpot = vpot_re, vpot_im
+        self.outside = True
 
     def on_boundary(self):
         return self.bndcnd != 0 or self.pernod != 0
@@ -993,7 +1030,7 @@ class Element(BaseEntity):
 
     def demagnetization(self, temperature=20):
         """return demagnetization Hx, Hy of this element"""
-        return self.demag_b(self.flux_density(), temperature)
+        return self.demag_b(self.flux_density(cosys='cartes'), temperature)
 
     def demag_b(self, b, temperature):
         """return demagnetization Hx, Hy of this element at flux density b

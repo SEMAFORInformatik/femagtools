@@ -9,7 +9,7 @@ import re
 import sys
 import struct
 import logging
-from collections import Counter
+from collections import Counter, defaultdict
 import numpy as np
 
 logger = logging.getLogger('femagtools.isa7')
@@ -708,6 +708,9 @@ class Isa7(object):
             else:
                 self.airgap_inner_elements.append(e)
 
+        for sr in self.subregions:
+            sr.outside = sr.nodechains[0].node1.outside
+
         self.airgap_center_elements = sorted(airgap_center_elements,
                                              key=lambda e: np.arctan2(
                                                  e.center[1], e.center[0]))
@@ -796,6 +799,28 @@ class Isa7(object):
             pos=self.pos_el_fe_induction,
             bx=b1,
             by=b2)
+
+    def get_areas(self):
+        """ return areas (in m²) of regions slot, iron (stator, rotor), magnet
+        """
+        try:
+            return self.areas
+        except AttributeError:
+            self.areas = [{'iron': 0, 'slots': 0, 'magnets': 0},
+                          {'iron': 0, 'slots': 0, 'magnets': 0}]
+        scf = self.scale_factor()
+        for sr in self.subregions:
+            r = 0 if sr.outside else 1
+            if sr.winding:
+                self.areas[r]['slots'] += scf*sr.area()
+            else:
+                for se in sr.superelements:
+                    if se.mcvtype:
+                        self.areas[r]['iron'] += se.area()*scf
+                    else:
+                        a = [e.area for e in se.elements if e.is_magnet()]
+                        self.areas[r]['magnets'] += sum(a)*scf
+        return self.areas
 
     def flux_dens(self, x, y, icur, ibeta):
         el = self.get_element(x, y)
@@ -1108,7 +1133,6 @@ class SuperElement(BaseEntity):
         """return area of this superelement"""
         return sum([e.area for e in self.elements])
 
-
 class SubRegion(BaseEntity):
     def __init__(self, key, sr_type, color, name, nturns, curdir, wb_key,
                  superelements, nodechains):
@@ -1124,6 +1148,7 @@ class SubRegion(BaseEntity):
         for se in superelements:
             se.subregion = self
         self.nodechains = nodechains
+        self.outside = True
 
     def elements(self):
         """return elements of this subregion"""

@@ -10,5 +10,5 @@ from .nc import spel, mesh, demag, demag_pos, \
     flux_density, max_flux_density, min_flux_density, \
     airgap_flux_density_pos, loss_density
 from .mcv import mcv_hbj, mcv_muer, felosses
-from phasor import i1beta_phasor, iqd_phasor, phasor
+from .phasor import i1beta_phasor, iqd_phasor, phasor
 from .wdg import mmf, mmf_fft, zoneplan, winding_factors, winding

@@ -83,6 +83,11 @@ def test_elements(model):
 def test_airgap_center_elements(pm):
     assert len(pm.airgap_center_elements) == 0
 
+def test_areas(pm):
+    assert pm.get_areas() == [{'iron': 0, 'slots': 0.0018406821200755985,
+                               'magnets': 0.0}, {'iron': 0,
+                                                 'slots': 0, 'magnets': 0}]
+
 def test_superelements(model):
     se = model.superelements[0]
 

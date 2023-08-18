@@ -198,6 +198,7 @@ class Reader(object):
             self.arm_length = int(grp.variables['arm_length'].getValue().data)
         except:
             pass
+
         self.MAGN_TEMPERATURE = 20
         self.BR_TEMP_COEF = 0
         try:
@@ -206,8 +207,13 @@ class Reader(object):
                 grp.variables['temperature'].getValue().data)
             self.BR_TEMP_COEF = float(
                 grp.variables['br_temp_coef'].getValue().data)
-        except:
-            pass
+            self.HC_TEMP_COEF = float(
+                grp.variables['hc_temp_coef'].getValue().data)
+            self.MA_SPEZ_WEIGHT = float(
+                grp.variables['spec_mass'].getValue().data)
+        except Exception as e:
+            logger.warning("*** MAGNET %s", e)
+            #pass
         try:
             grp = ds.groups['el_induction']
             (self.curr_loss,
@@ -279,6 +285,8 @@ class Reader(object):
                 spec_weight = float(lcgrp.variables['spec_mass_fe'][j].data)
                 fillfactor = float(lcgrp.variables['fill_factor_fe'][j].data)
                 shapefactor = float(lcgrp.variables['shape_factor'][j].data)
+
+                self.CU_SPEZ_WEIGHT = float(lcgrp.variables['spec_mass_cu'][j].data)
 
             kh = ch/(base_induction**ch_ind_exp*base_frequency**ch_freq_exp)
 

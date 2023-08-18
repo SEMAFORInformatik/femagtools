@@ -180,8 +180,11 @@ class Reader(object):
 
         self.skip_block(3)
         self.skip_block(FC_NUM_CUR_ID * 2)
-        self.skip_block(1 + 10 * 5 + 3 + 1 * 5 + 14)
-
+        self.skip_block(1 + 10 * 5)
+        self.HC_TEMP_COEF, self.NHARM_MAX_MULTI_FILE = self.next_block("f")[0:2]
+        self.CU_SPEZ_WEIGHT, self.MA_SPEZ_WEIGHT = self.next_block("f")[0:2]
+        self.PS_IND_LOW, self.PS_IND_HIGH = self.next_block("f")[0:2]
+        self.skip_block(5 + 14)
         NUM_FE_EVAL_MOVE_STEP = self.next_block("i")[0]
         if NUM_FE_EVAL_MOVE_STEP < 0:
             NUM_FE_EVAL_MOVE_STEP = 0
@@ -678,7 +681,8 @@ class Isa7(object):
 
         for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim',
                   'delta_node_angle', 'speed',
-                  'MAGN_TEMPERATURE', 'BR_TEMP_COEF'):
+                  'MAGN_TEMPERATURE', 'BR_TEMP_COEF',
+                  'MA_SPEZ_WEIGHT', 'CU_SPEZ_WEIGHT'):
             v = getattr(reader, a, '')
             if v:
                 setattr(self, a, v)
@@ -785,7 +789,7 @@ class Isa7(object):
             return None
 
     def flux_density(self, el, icur, ibeta):
-        """return move pos and flux density in cartesian coordinates (bx, by)
+        """return move pos and flux density in model coordinates (bx, by)
         of element for current and beta
 
         Arguments:
@@ -801,7 +805,7 @@ class Isa7(object):
             by=b2)
 
     def get_areas(self):
-        """ return areas (in m²) of regions slot, iron (stator, rotor), magnet
+        """ return areas (in m²) of inner and outer regions slots, iron, magnets
         """
         try:
             return self.areas
@@ -822,9 +826,36 @@ class Isa7(object):
                         self.areas[r]['magnets'] += sum(a)*scf
         return self.areas
 
+    def get_mass(self):
+        """ return mass (in kg) of material conductors, iron, magnets
+        """
+        try:
+            return self.mass
+        except AttributeError:
+            self.mass = [{'iron': 0, 'conductors': 0, 'magnets': 0},
+                         {'iron': 0, 'conductors': 0, 'magnets': 0}]
+        scf = self.scale_factor()
+        for sr in self.subregions:
+            r = 0 if sr.outside else 1
+            if sr.winding:
+                spw = self.CU_SPEZ_WEIGHT*1e3
+                self.mass[r]['conductors'] += scf*sr.area()*self.arm_length*spw
+            else:
+                for se in sr.superelements:
+                    if se.mcvtype:
+                        spw = self.iron_loss_coefficients[se.mcvtype-1][
+                            'spec_weight']*1e3  # kg/m³
+                        m = scf*self.arm_length*se.area()*spw
+                        self.mass[r]['iron'] += m
+                    else:
+                        spw = self.MA_SPEZ_WEIGHT*1e3
+                        a = [e.area for e in se.elements if e.is_magnet()]
+                        self.mass[r]['magnets'] += sum(a)*scf*self.arm_length*spw
+        return self.mass
+
     def flux_dens(self, x, y, icur, ibeta):
         el = self.get_element(x, y)
-        return self.flux_density(x, y, icur, ibeta)
+        return self.flux_density(el, icur, ibeta)
 
     def demagnetization(self, el, icur, ibeta):
         """return demagnetization Hx, Hy at element

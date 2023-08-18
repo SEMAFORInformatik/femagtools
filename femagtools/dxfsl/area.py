@@ -353,12 +353,12 @@ class Area(object):
         for p1 in self.list_of_nodes():
             for p2 in a.list_of_nodes():
                 d = distance(p1, p2)
-                gap_list.append((d, (p1, p2), dist_id))
+                gap_list.append((d, (p1, p2), dist_id, a.get_id()))
 
         d, p1, p2 = a.get_nearest_point(center, radius, rightangle)
-        gap_list.append((d, (p1, p2), dist_id))
+        gap_list.append((d, (p1, p2), dist_id, a.get_id()))
         d, p1, p2 = a.get_nearest_point(center, radius, leftangle)
-        gap_list.append((d, (p1, p2), dist_id))
+        gap_list.append((d, (p1, p2), dist_id, a.get_id()))
         gap_list.sort()
         return [gap_list[0]]
 
@@ -1064,6 +1064,12 @@ class Area(object):
                 return True
         return False
 
+    def has_iron_separator(self):
+        for e in self.area:
+            if e.has_attribute('iron_sep'):
+                return True
+        return False
+
     def mark_stator_subregions(self,
                                is_inner,
                                stator_size,
@@ -1251,6 +1257,11 @@ class Area(object):
         logger.debug(" - alpha              : %3.12f", alpha)
         logger.debug(" - min_angle          : %3.12f", self.min_angle)
         logger.debug(" - max_angle          : %3.12f", self.max_angle)
+
+        if self.has_iron_separator():
+            logger.debug("***** iron (has iron separator)\n")
+            self.type = 1  # iron
+            return self.type
 
         if is_inner:
             # looking for shaft

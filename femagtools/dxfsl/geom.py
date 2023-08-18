@@ -942,6 +942,20 @@ class Geometry(object):
                     return nodes[idx]
         return None
 
+    def find_the_node(self, p, **kwargs):
+        """return closest nodes to points in arg within pickdist"""
+        nodes = list(kwargs.get('g', self.g))
+        if nodes:
+            anodes = np.asarray(nodes)
+            # la.norm on numpy below 1.8 does not accept axis
+            c = anodes - p
+            dist = np.sqrt(np.einsum('ij, ij->i', c, c))
+            # dist = la.norm(np.asarray(nodes) - p, axis=1)
+            idx = dist.argmin()
+            if dist[idx] < self.atol:
+                return nodes[idx]
+        return None
+
     def polyline_paths(self):
         """return lists of line paths"""
         paths = []
@@ -1021,8 +1035,10 @@ class Geometry(object):
         for e in edges:
             self.remove_edge(e)
 
-    def add_line(self, n1, n2, color=None):
-        line = Line(Element(start=n1, end=n2), color=color)
+    def add_line(self, n1, n2, color=None, linestyle=None):
+        line = Line(Element(start=n1, end=n2),
+                    color=color,
+                    linestyle=linestyle)
         add_or_join(self,
                     n1,
                     n2,
@@ -1030,14 +1046,15 @@ class Geometry(object):
                     self.rtol,
                     self.atol)
 
-    def add_arc(self, n1, n2, center, radius, color=None):
+    def add_arc(self, n1, n2, center, radius, color=None, linestyle=None):
         angle_n1 = alpha_line(center, n1)
         angle_n2 = alpha_line(center, n2)
         arc = Arc(Element(center=center,
                           radius=radius,
                           start_angle=angle_n1*180/np.pi,
                           end_angle=angle_n2*180/np.pi),
-                  color=color)
+                  color=color,
+                  linestyle=linestyle)
         add_or_join(self,
                     n1,
                     n2,
@@ -2698,7 +2715,10 @@ class Geometry(object):
         cur_radius = gaplist[0][1]
         max_radius = self.max_radius - 1.0
         if with_end:
-            max_radius = self.max_radius + 1.0
+            if self.is_inner:
+                min_radius = self.min_radius - 1.0
+            else:
+                max_radius = self.max_radius + 1.0
 
         for g in gaplist:
             if greater(g[0], cur_radius) and \
@@ -2768,16 +2788,29 @@ class Geometry(object):
                 logger.debug(" -- remove %s inside %s", id, area.identifier())
                 del area.areas_inside[id]
 
+    def get_minmax_magnet(self):
+        logger.debug("get_minmax_magnet")
+        maglist = [a for a in self.list_of_areas() if a.is_magnet()]
+        min_r = 9999
+        max_r = -9999
+        for m in maglist:
+            min_r = min(min_r, m.min_dist)
+            max_r = max(max_r, m.max_dist)
+        return min_r, max_r
+
     def create_auxiliary_lines(self, rightangle, leftangle):
         logger.debug("begin of create_auxiliary_lines")
         self.set_areas_inside_for_all_areas()
 
         logger.debug("-> start create_auxiliary_lines")
 
+        done = False
         for area in self.list_of_areas():
-            self.create_aux_lines(area, rightangle, leftangle)
+            if self.create_aux_lines(area, rightangle, leftangle):
+                done = True
 
         logger.debug("end of create_auxiliary_lines")
+        return done
 
     def create_aux_lines(self, area, rightangle, leftangle):
         logger.debug("begin of create_aux_lines(%s)", area.get_id())
@@ -2786,9 +2819,12 @@ class Geometry(object):
         if not areas_inside:
             logger.debug("end create_aux_lines() for %s (no areas inside)",
                          area.get_id())
-            return
+            return False
 
         logger.debug("areas found inside area(%s)", area.get_id())
+
+        aux_color = 'red'
+        aux_linestyle = 'dotted'
 
         areas_border = {a.get_id(): a for a in areas_inside
                         if area.has_connection(self, a, ndec)}
@@ -2845,6 +2881,7 @@ class Geometry(object):
 
             low_gaps_to_parent = []
             low_gaps_to_childs = []
+
             for a in my_areas:
                 logger.debug("==> get lowest gap from %s to %s",
                              area.get_id(),
@@ -2887,25 +2924,32 @@ class Geometry(object):
                     pattern = gap_to_child[2]
                     line = Line(Element(start=points[0],
                                         end=points[1]),
-                                color='red',
+                                color=aux_color,
+                                linestyle=aux_linestyle,
                                 attr='auxline')
                     aux_lines['int'] = {'distance': dist_to_child,
                                         'p1': points[0],
                                         'p2': points[1],
                                         'line': line,
-                                        'pattern': pattern}
+                                        'pattern': pattern,
+                                        'connect': 'child',
+                                        'id': gap_to_child[3]}
 
             my_notouch = [a for i, a in areas_notouch.items()
                           if i not in my_keys]
 
             points = gap_to_parent[1]
             pattern = gap_to_parent[2]
+            id = gap_to_parent[3]
+            connect = 'parent'
             logger.debug("   ==> try line from %s to %s",
                          points[0],
                          points[1])
+            logger.debug("   Pattern is %s", pattern)
             line = Line(Element(start=points[0],
                                 end=points[1]),
-                        color='orange',
+                        color=aux_color,
+                        linestyle=aux_linestyle,
                         attr='auxline')
 
             intersection = False
@@ -2929,9 +2973,13 @@ class Geometry(object):
                 dist = inner_gap_list[0][0]
                 points = inner_gap_list[0][1]
                 pattern = inner_gap_list[0][2]
+                id = inner_gap_list[0][3]
+                connect = 'child'
+                logger.debug("  ==> intersection with other child area")
                 line = Line(Element(start=points[0],
                                     end=points[1]),
-                            color='orange',
+                            color=aux_color,
+                            linestyle=aux_linestyle,
                             attr='auxline')
 
             logger.debug("   +++ auxiliary line from %s to %s",
@@ -2941,7 +2989,9 @@ class Geometry(object):
                                 'p1': points[0],
                                 'p2': points[1],
                                 'line': line,
-                                'pattern': pattern}
+                                'pattern': pattern,
+                                'connect': connect,
+                                'id': id}
 
             if aux_lines:
                 aux_lines['keys'] = my_keys
@@ -2949,7 +2999,10 @@ class Geometry(object):
                 notouch_dist_list.append([dist_to_parent, x, aux_lines])
 
         # sort over distances to parent
+        done = False
+        area_to_parent_list = []
         notouch_dist_list.sort(reverse=True)
+
         for d, x, aux in notouch_dist_list:
             aux_line = aux.get('int', None)
             if aux_line:
@@ -2959,16 +3012,102 @@ class Geometry(object):
                 aux_line = aux.get('ext', None)
             if aux_line:
                 line = aux_line['line']
-                add_or_join(self,
-                            aux_line['p1'],
-                            aux_line['p2'],
-                            aux_line['line'],
-                            self.rtol,
-                            self.atol)
-                created_lines.append(aux_line['pattern'])
+                n1 = self.find_the_node(aux_line['p1'])
+                n2 = self.find_the_node(aux_line['p2'])
+                if not (n1 and n2):
+                    pts = self.split_and_get_intersect_points(line)
+                    if len(pts) != 2:
+                        logger.error("ERROR in create_aux_lines()")
+                        logger.debug("Points: %s", pts)
+
+                    n1 = self.find_the_node(line.node1(ndec))
+                    n2 = self.find_the_node(line.node2(ndec))
+                if n1 and n2:
+                    add_or_join(self,
+                                n1,
+                                n2,
+                                aux_line['line'],
+                                self.rtol,
+                                self.atol)
+                    logger.debug("=== Create auxiliary line: %s", aux_line)
+                    if aux_line['connect'] == 'child':
+                        for a in areas_inside:
+                            if a.get_id() == aux_line['id']:
+                                area_to_parent_list.append(a)
+                                break
+                    done = True
+                    created_lines.append(aux_line['pattern'])
+
+        if not area.is_iron():
+            logger.debug("end create_aux_lines() for %s (no iron)",
+                         area.get_id())
+            return done
+
+        #   -----------------
+        def id_of_inside_area(p):
+            for a in areas_inside:
+                if a.is_point_inside(p):
+                    return a.id
+            return 0
+        #   --------
+        #   -------------------------
+        def connection_thru_main_area(pts):
+            if len(pts) < 3:
+                return True  #ok
+            if len(areas_inside) < 2:
+                return True  #ok
+
+            id = id_of_inside_area(pts[0])
+            if id == 0:  # strange
+                return False  #bad
+
+            next_id = id_of_inside_area(pts[1])
+            if next_id == 0:
+                return True  #ok
+
+            id = next_id
+            next_id = id_of_inside_area(pts[2])
+            if id == next_id:  # thru inside-area
+                return True  #ok
+
+            return False
+        #   ------------
+
+        # Arcs as additional auxiliary connections thru iron
+        for a in area_to_parent_list:
+            mid_dist = (a.min_dist + a.max_dist) / 2
+            mid_angle = (a.min_angle + a.max_angle) / 2
+            arc = Arc(Element(center=self.center,
+                              radius=mid_dist,
+                              start_angle=(rightangle)*180/np.pi,
+                              end_angle=(mid_angle)*180/np.pi))
+            pts = self.split_and_get_intersect_points(arc, aktion=False)
+            pts.sort()
+            if not connection_thru_main_area(pts):
+                logger.info("connection in nested areas")
+                continue
+
+            if len(pts) > 2:
+                pts = pts[0:2]
+
+            if len(pts) == 2:
+                pts.sort(reverse=True)
+                start_angle = alpha_line(self.center, pts[0])
+                end_angle = alpha_line(self.center, pts[1])
+                arc = Arc(Element(center=self.center,
+                                  radius=mid_dist,
+                                  start_angle=start_angle*180/np.pi,
+                                  end_angle=end_angle*180/np.pi),
+                          color=aux_color,
+                          linestyle=aux_linestyle)
+                arc.set_attribute('iron_sep')
+                p = self.split_and_get_intersect_points(arc)
+                n = self.find_nodes(pts[0], pts[1])
+                self.add_edge(n[0], n[1], arc)
 
         logger.debug("end create_aux_lines() for %s",
                      area.get_id())
+        return done
 
     def set_rotor(self):
         self.sym_counterpart = 1
@@ -3677,7 +3816,15 @@ class Geometry(object):
                 for p in pts:
                     if not e.is_point_inside(p, rtol, atol, False):
                         # get the real point
-                        if e.get_point_number(p) == 1:
+                        n = self.find_the_node(p)
+                        if n:
+                            for pt in points:
+                                if points_are_close(pt, n):
+                                    n = None
+                                    break
+                            if n:
+                                pts_real.append(n)
+                        elif e.get_point_number(p) == 1:  # strange
                             pts_real.append(e.p1)
                         else:
                             pts_real.append(e.p2)
@@ -3748,7 +3895,8 @@ class Geometry(object):
 
                 n = self.find_nodes(p1, p2)
                 line = Line(Element(start=p1, end=p2),
-                            color='darkred')
+                            color='darkred',
+                            linestyle='dotted')
                 self.add_edge(n[0], n[1], line)
                 logger.debug("add line(%s, %s)", n[0], n[1])
                 created = True
@@ -3846,7 +3994,9 @@ class Geometry(object):
         if not start_exists:
             cp = self.start_corners[-1]
             logger.debug("Start Corner: %s -- %s", cp, start_cp)
-            start_line = Line(Element(start=cp, end=start_cp), color='red')
+            start_line = Line(Element(start=cp, end=start_cp),
+                              color='red',
+                              linestyle='dotted')
             start_cp = start_line.node2(ndec)
             i = 0
             for n in airgap_nodes:
@@ -3856,9 +4006,13 @@ class Geometry(object):
                                                 airgap_nodes):
                     d = distance(self.center, n)
                     if np.isclose(d, self.max_radius):
-                        self.add_arc(start_cp, n, self.center, self.max_radius, color='red')
+                        self.add_arc(start_cp, n, self.center, self.max_radius,
+                                     color='red',
+                                     linestyle='dotted')
                     else:
-                        self.add_line(start_cp, n, color='red')
+                        self.add_line(start_cp, n,
+                                      color='red',
+                                      linestyle='dotted')
                     self.add_edge(cp, start_cp, start_line)
                     self.create_and_append_area(start_cp, n)
                     self.start_corners = self.get_corner_nodes(self.center,
@@ -3868,7 +4022,9 @@ class Geometry(object):
         if not end_exists:
             cp = self.end_corners[-1]
             logger.debug("End Corner: %s -- %s", cp, end_cp)
-            end_line = Line(Element(start=cp, end=end_cp), color='red')
+            end_line = Line(Element(start=cp, end=end_cp),
+                            color='red',
+                            linestyle='dotted')
             end_cp = end_line.node2(ndec)
             airgap_nodes.reverse()
             i = 0
@@ -3879,9 +4035,13 @@ class Geometry(object):
                                                 airgap_nodes):
                     d = distance(self.center, n)
                     if np.isclose(d, self.max_radius):
-                        self.add_arc(n, end_cp, self.center, self.max_radius, color='red')
+                        self.add_arc(n, end_cp, self.center, self.max_radius,
+                                     color='red',
+                                     linestyle='dotted')
                     else:
-                        self.add_line(end_cp, n, color='red')
+                        self.add_line(end_cp, n,
+                                      color='red',
+                                      linestyle='dotted')
                     self.add_edge(cp, end_cp, end_line)
                     self.create_and_append_area(n, end_cp)
                     self.end_corners = self.get_corner_nodes(self.center,

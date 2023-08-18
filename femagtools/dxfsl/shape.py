@@ -31,13 +31,35 @@ class Element(object):
 
 
 class Shape(object):
-    def init_attributes(self, color, attr):
+    def init_attributes(self, color=None, attr=None, linestyle=None):
         if color is not None:
             self.my_color = color
+        if linestyle is not None:
+            self.my_linestyle = linestyle
         if attr is not None:
             if not hasattr(self, 'my_attrs'):
                 self.my_attrs = []
             self.my_attrs.append(attr)
+
+    def copy_attributes(self, s):
+        if hasattr(s, 'my_color'):
+            self.my_color = s.my_color
+        if hasattr(s, 'my_linestyle'):
+            self.my_linestyle = s.my_linestyle
+        if hasattr(s, 'my_attrs'):
+            self.my_attrs = []
+            for a in s.my_attrs:
+               self.my_attrs.append(a)
+
+    def get_my_color(self):
+        if hasattr(self, 'my_color'):
+            return self.my_color
+        return None
+
+    def get_my_linestyle(self):
+        if hasattr(self, 'my_linestyle'):
+            return self.my_linestyle
+        return None
 
     def set_attribute(self, attr):
         if attr is None:
@@ -264,9 +286,10 @@ class Shape(object):
 class Circle(Shape):
     """a circle with center and radius"""
 
-    def __init__(self, e, lf=1, color=None, attr=None,
+    def __init__(self, e, lf=1,
+                 color=None, attr=None, linestyle=None,
                  xoff=0.0, yoff=0.0, rotation=0.0):
-        self.init_attributes(color, attr)
+        self.init_attributes(color, attr, linestyle)
         if rotation != 0.0:
             alpha = rotation * np.pi/180
             T = np.array(((np.cos(alpha), -np.sin(alpha)),
@@ -282,12 +305,14 @@ class Circle(Shape):
         self.n2 = None
 
     def render(self, renderer, color='blue', with_nodes=False):
-        tmp_color = color
-        if hasattr(self, 'my_color'):
-            if self.my_color is not None:
-                tmp_color = self.my_color
+        tmp_color = self.get_my_color()
+        if not tmp_color:
+            tmp_color = color
+        tmp_linestyle = self.get_my_linestyle()
 
-        renderer.circle(self.center, self.radius, color=tmp_color)
+        renderer.circle(self.center, self.radius,
+                        color=tmp_color,
+                        linestyle=tmp_linestyle)
         if with_nodes:
             renderer.point(self.center, 'ro', 'white')
 
@@ -517,16 +542,19 @@ class Circle(Shape):
             arc = Arc(Element(center=self.center, radius=self.radius,
                               start_angle=alpha1*180/np.pi,
                               end_angle=alpha2*180/np.pi))
+            arc.copy_attributes(self)
             split_arcs.append(arc)
 
             arc = Arc(Element(center=self.center, radius=self.radius,
                               start_angle=alpha2*180/np.pi,
                               end_angle=alpha3*180/np.pi))
+            arc.copy_attributes(self)
             split_arcs.append(arc)
 
             arc = Arc(Element(center=self.center, radius=self.radius,
                               start_angle=alpha3*180/np.pi,
                               end_angle=alpha1*180/np.pi))
+            arc.copy_attributes(self)
             split_arcs.append(arc)
             return split_arcs
 
@@ -563,12 +591,14 @@ class Circle(Shape):
 class Arc(Circle):
     """a counter clockwise segment of a circle with start and end point"""
 
-    def __init__(self, e, lf=1, rf=np.pi/180, color=None, attr=None,
+    def __init__(self, e, lf=1, rf=np.pi/180,
+                 color=None, attr=None, linestyle=None,
                  xoff=0.0, yoff=0.0, rotation=0.0):
         super(self.__class__, self).__init__(e, lf,
                                              xoff=xoff, yoff=yoff,
                                              rotation=rotation)
-        self.init_attributes(color, attr)
+        self.init_attributes(color, attr, linestyle)
+
         self.startangle = (e.start_angle + rotation) * rf
         self.endangle = (e.end_angle + rotation) * rf
         if self.endangle < self.startangle:
@@ -596,21 +626,23 @@ class Arc(Circle):
             self.rtheta = None
 
     def render(self, renderer, color='blue', with_nodes=False):
-        tmp_color = color
-        if hasattr(self, 'my_color'):
-            if self.my_color is not None:
-                tmp_color = self.my_color
+        tmp_color = self.get_my_color()
+        if not tmp_color:
+            tmp_color = color
+        tmp_linestyle = self.get_my_linestyle()
 
         if self.rtheta is None:
             renderer.arc(self.startangle, self.endangle,
                          self.center, self.radius,
-                         color=tmp_color)
+                         color=tmp_color,
+                         linestyle=tmp_linestyle)
         else:
             renderer.ellipse(self.center, self.width, self.height,
                              self.rtheta,
                              self.start_param,
                              self.end_param,
-                             color=tmp_color)
+                             color=tmp_color,
+                             linestyle=tmp_linestyle)
         if with_nodes:
             renderer.point(self.p1, 'ro', color)
             renderer.point(self.p2, 'ro', color)
@@ -770,11 +802,13 @@ class Arc(Circle):
             arc = Arc(Element(center=self.center, radius=self.radius,
                               start_angle=self.startangle*180/np.pi,
                               end_angle=alpha*180/np.pi))
+            arc.copy_attributes(self)
             split_arcs.append(arc)
 
             arc = Arc(Element(center=self.center, radius=self.radius,
                               start_angle=alpha*180/np.pi,
                               end_angle=self.endangle*180/np.pi))
+            arc.copy_attributes(self)
             split_arcs.append(arc)
             return split_arcs
 
@@ -1009,9 +1043,10 @@ class Arc(Circle):
 class Line(Shape):
     """straight connection between start and end point"""
 
-    def __init__(self, e, lf=1, color=None, attr=None,
+    def __init__(self, e, lf=1,
+                 color=None, attr=None, linestyle=None,
                  xoff=0.0, yoff=0.0, rotation=0.0):
-        self.init_attributes(color, attr)
+        self.init_attributes(color, attr, linestyle)
         if rotation != 0.0:
             alpha = rotation * np.pi/180
             T = np.array(((np.cos(alpha), -np.sin(alpha)),
@@ -1027,12 +1062,15 @@ class Line(Shape):
         self.n2 = None
 
     def render(self, renderer, color='blue', with_nodes=False):
-        tmp_color = color
-        if hasattr(self, 'my_color'):
-            if self.my_color is not None:
-                tmp_color = self.my_color
+        tmp_color = self.get_my_color()
+        if not tmp_color:
+            tmp_color = color
+        tmp_linestyle = self.get_my_linestyle()
 
-        renderer.line(self.p1, self.p2, color=tmp_color, e=self)
+        renderer.line(self.p1, self.p2,
+                      color=tmp_color,
+                      linestyle=tmp_linestyle,
+                      e=self)
         if with_nodes:
             renderer.point(self.p1, 'ro', tmp_color)
             renderer.point(self.p2, 'ro', tmp_color)
@@ -1147,7 +1185,9 @@ class Line(Shape):
             p_start = None
             for d, p in points_inside:
                 if p_start is not None:
-                    split_lines.append(Line(Element(start=p_start, end=p)))
+                    line = Line(Element(start=p_start, end=p))
+                    line.copy_attributes(self)
+                    split_lines.append(line)
 
                 p_start = p
             return split_lines

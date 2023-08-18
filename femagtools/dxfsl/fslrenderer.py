@@ -51,7 +51,8 @@ class FslRenderer(object):
     def material(self, p0):
         self.fm_nlin = p0
 
-    def circle(self, center, radius, color='blue'):
+    def circle(self, center, radius,
+               color='blue', linestyle=None):
         num = int(2*np.pi*radius)
         if num < 8:
             num = 8
@@ -61,7 +62,8 @@ class FslRenderer(object):
                   u'create_mesh_se(cx, cy)\n']
         self.content += circle
 
-    def arc(self, startangle, endangle, center, radius, color='blue'):
+    def arc(self, startangle, endangle, center, radius,
+            color='blue', linestyle=None):
         num = 0
         #d = (endangle - startangle) % 2*np.pi
         #num = int(radius*d/self.agndst + 1)
@@ -80,7 +82,8 @@ class FslRenderer(object):
                 center[0], center[1], num))
 
     def ellipse(self, center, width, height,
-                rtheta, start_param, end_param, color='blue'):
+                rtheta, start_param, end_param,
+                color='blue', linestyle=None):
         theta = np.arange(start_param, end_param, 0.2)
         xbegin = 0.5 * width * np.cos(theta)
         ybegin = 0.5 * height * np.sin(theta)
@@ -105,7 +108,8 @@ class FslRenderer(object):
                     n0[0], n0[1], n1[0], n1[1], 0))
             n0 = n1
 
-    def line(self, p1, p2, color='blue', e=None):
+    def line(self, p1, p2, e=None,
+             color='blue', linestyle=None):
         num = 0
         # if self.nodedist > 0:
         #     l = la.norm(np.asarray(p1)-p2)
@@ -152,8 +156,10 @@ class FslRenderer(object):
                 self.agndst = ndt_list[n][1] * self.agndst
                 self.content.append(u'\nndt({}*agndst)\n'.
                                     format(ndt_list[n][1]))
-                while len(ndt_list) and ndt_list[n][0] < d_percent:
+                while n < len(ndt_list) and ndt_list[n][0] < d_percent:
                     n += 1
+            if n >= len(ndt_list):
+                break
             e.render(self)
 
         self.content.append(u'\n')

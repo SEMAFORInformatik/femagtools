@@ -44,7 +44,6 @@ def symmetry_search(machine,
             sys.exit(1)
         machine_ok = machine.get_forced_symmetry(sympart)
         machine_ok.set_minmax_radius()
-        machine_ok.create_auxiliary_lines()
         machine_ok.set_kind(kind)
         logger.info("*** End of symmetry search for %s ***", kind)
         return machine_ok
@@ -95,7 +94,6 @@ def symmetry_search(machine,
 
     machine_ok.set_minmax_radius()
     # machine_ok.complete_hull(is_inner, is_outer)
-    machine_ok.create_auxiliary_lines()
     machine_ok.set_kind(kind)
 
     logger.info("*** End of symmetry search for %s ***", kind)
@@ -259,19 +257,33 @@ def convert(dxfile,
         machine_inner.search_subregions()
         machine_outer.search_subregions()
 
-        if machine_inner.has_mirrored_windings():
-            logger.info("undo mirrored windings of %s", inner_name)
-            machine_inner = machine_inner.undo_mirror()
-            machine_inner.sync_with_counterpart(machine_outer)
-            machine_inner.search_subregions()
-            machine_inner.create_mirror_lines_outside_windings()
+        if machine_inner.geom.is_rotor():
+            if machine_inner.create_rotor_auxiliary_lines():
+                machine_inner.rebuild_subregions()
 
-        elif machine_outer.has_mirrored_windings():
-            logger.info("undo mirrored windings of %s", outer_name)
-            machine_outer = machine_outer.undo_mirror()
-            machine_inner.sync_with_counterpart(machine_outer)
-            machine_outer.search_subregions()
-            machine_outer.create_mirror_lines_outside_windings()
+        elif machine_outer.geom.is_rotor():
+            if machine_outer.create_rotor_auxiliary_lines():
+                machine_outer.rebuild_subregions()
+
+        if machine_inner.geom.is_stator():
+            if machine_inner.has_mirrored_windings():
+                logger.debug("undo mirrored windings of %s", inner_name)
+                machine_inner = machine_inner.undo_mirror()
+                machine_inner.sync_with_counterpart(machine_outer)
+                machine_inner.search_subregions()
+                machine_inner.create_mirror_lines_outside_windings()
+            if machine_inner.create_stator_auxiliary_lines():
+                machine_inner.rebuild_subregions()
+
+        elif machine_outer.geom.is_stator():
+            if machine_outer.has_mirrored_windings():
+                logger.debug("undo mirrored windings of %s", outer_name)
+                machine_outer = machine_outer.undo_mirror()
+                machine_inner.sync_with_counterpart(machine_outer)
+                machine_outer.search_subregions()
+                machine_outer.create_mirror_lines_outside_windings()
+            if machine_outer.create_stator_auxiliary_lines():
+                machine_outer.rebuild_subregions()
 
         machine_inner.delete_tiny_elements(mindist)
         machine_outer.delete_tiny_elements(mindist)
@@ -401,6 +413,8 @@ def convert(dxfile,
                     machine.geom.search_stator_subregions(part[1])
                     machine.geom.looking_for_corners()
                     machine.create_mirror_lines_outside_windings()
+                if machine.create_stator_auxiliary_lines():
+                    machine.rebuild_subregions()
 
                 params = create_femag_parameters_stator(machine,
                                                         part[1])
@@ -408,6 +422,9 @@ def convert(dxfile,
                 machine.geom.set_rotor()
                 machine.geom.search_rotor_subregions(part[1])
                 machine.geom.looking_for_corners()
+                if machine.create_rotor_auxiliary_lines():
+                    machine.rebuild_subregions()
+
                 params = create_femag_parameters_rotor(machine,
                                                        part[1])
         else:

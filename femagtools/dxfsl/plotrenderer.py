@@ -62,30 +62,40 @@ class PlotRenderer(object):
             pl.show()
             self.fig = None
 
-    def arc(self, startangle, endangle, center, radius, color='blue'):
+    def arc(self, startangle, endangle, center, radius,
+            color='blue', linestyle=None):
         self.ax.add_patch(pch.Arc(center, 2*radius, 2*radius,
                                   angle=0,
                                   theta1=startangle*180/np.pi,
                                   theta2=endangle*180/np.pi,
-                                  color=color))
+                                  color=color,
+                                  linestyle=linestyle))
 
     def ellipse(self, center, width, height,
-                rtheta, start_param, end_param, color='blue'):
+                rtheta, start_param, end_param,
+                color='blue', linestyle=None):
         self.ax.add_patch(pch.Arc(center,
                                   width,
                                   height,
                                   angle=rtheta*180/np.pi,
                                   theta1=start_param*180/np.pi,
                                   theta2=end_param*180/np.pi,
-                                  color=color))
+                                  color=color,
+                                  linestyle=linestyle))
 
-    def line(self, p1, p2, color='blue', e=None):
+    def line(self, p1, p2, e=None,
+             color='blue', linestyle=None):
         self.ax.add_line(pl.Line2D((p1[0], p2[0]),
-                                   (p1[1], p2[1]), color=color))
+                                   (p1[1], p2[1]),
+                                   color=color,
+                                   linestyle=linestyle))
 
-    def circle(self, center, radius, color='blue'):
+    def circle(self, center, radius,
+               color='blue', linestyle=None):
         self.ax.add_patch(pch.Circle(center, radius,
-                                     fill=False, color=color))
+                                     fill=False,
+                                     color=color,
+                                     linestyle=linestyle))
 
     def point(self, p, marker, color='blue'):
         pl.plot([p[0]], [p[1]], marker, color=color)
@@ -94,7 +104,7 @@ class PlotRenderer(object):
         pl.text(p[0], p[1], txt)
 
     def fill(self, x, y, color, alpha):
-        self.ax.fill(x, y, color, alpha=alpha, edgecolor='blue')
+        self.ax.fill(x, y, color, alpha=alpha, edgecolor=None)
 
     def fill_circle(self, center, radius, color, alpha):
         circle = pl.Circle(center, radius, color=color, alpha=alpha)

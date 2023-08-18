@@ -169,7 +169,6 @@ class Machine(object):
         m.part = self.part
 
         m.set_minmax_radius()
-        m.create_auxiliary_lines()
         m.set_alfa_and_corners()
         m.set_kind(self.geom.kind)
         return m
@@ -266,7 +265,6 @@ class Machine(object):
         self.previous_machine.set_minmax_radius()
         # self.previous_machine.complete_hull()
         self.set_alfa_and_corners()
-        self.previous_machine.create_auxiliary_lines()
         self.previous_machine.set_kind(self.geom.kind)
         return self.previous_machine
 
@@ -507,8 +505,46 @@ class Machine(object):
 
         self.set_alfa_and_corners()
 
-    def create_auxiliary_lines(self):
-        self.geom.create_auxiliary_lines(self.startangle, self.endangle)
+    def create_stator_auxiliary_lines(self):
+        logger.debug("create_stator_auxiliary_lines")
+        return self.geom.create_auxiliary_lines(self.startangle, self.endangle)
+
+    def create_rotor_auxiliary_lines(self):
+        logger.debug("create_rotor_auxiliary_lines")
+        done = False
+        ag_list = self.geom.detect_airgaps(self.center,
+                                           self.startangle, self.endangle,
+                                           atol=0.001,
+                                           with_end=True)
+        if ag_list:
+            radius_list = [(ag[0], (ag[0] + ag[1]) / 2, ag[1]) for ag in ag_list]
+
+            min_mag, max_mag = self.geom.get_minmax_magnet()
+            if self.geom.is_inner:
+                radius_list.sort()
+                rmin, rmid, rmax = radius_list[0]
+                start = 0
+                for r in radius_list[1:]:
+                    if np.isclose(rmax, r[0]):
+                        # SHAFT
+                        rmin, rmid, rmax = r
+                        start = 1
+                    break
+
+                for r in radius_list[start:]:
+                    if (r[2] - r[0]) > 4:
+                        radius = (r[1] + r[2]) / 2
+                    elif (r[2] - r[1]) > 1:
+                        radius = r[1]
+                    else:
+                        radius = min_mag + 1
+                    if radius < min_mag:
+                        if self.create_arc(radius, attr='iron_sep'):
+                            done = True
+
+        if self.geom.create_auxiliary_lines(self.startangle, self.endangle):
+            done = True
+        return done
 
     def set_alfa_and_corners(self):
         self.geom.start_corners = self.geom.get_corner_nodes(self.center,
@@ -708,17 +744,25 @@ class Machine(object):
         cp_machine.geom.sym_part = cp_machine.get_symmetry_part()
 
     def search_subregions(self):
+        logger.debug("Search subregions")
+        self.geom.search_subregions()
+
+    def rebuild_subregions(self):
+        logger.debug("Rebuild subregions")
+        self.geom.set_edge_attributes()
+        self.geom.area_list = []
         self.geom.search_subregions()
 
     def delete_tiny_elements(self, mindist):
         self.geom.delete_tiny_elements(mindist)
 
-    def create_arc(self, radius):
+    def create_arc(self, radius,
+                   color='red', linestyle='dotted',
+                   attr=None):
         arc = Arc(Element(center=self.center,
                           radius=radius,
                           start_angle=(self.startangle-0.1)*180/np.pi,
-                          end_angle=(self.endangle+0.1)*180/np.pi),
-                  color='red')
+                          end_angle=(self.endangle+0.1)*180/np.pi))
         pts = self.geom.split_and_get_intersect_points(arc)
         if len(pts) != 2:
             logger.warning("create_arc(): Bad Points: %s", pts)
@@ -728,7 +772,10 @@ class Machine(object):
         arc = Arc(Element(center=self.center,
                           radius=radius,
                           start_angle=self.startangle*180/np.pi,
-                          end_angle=self.endangle*180/np.pi))
+                          end_angle=self.endangle*180/np.pi),
+                  color=color,
+                  linestyle=linestyle)
+        arc.set_attribute(attr)
         n = self.geom.find_nodes(pts[0], pts[1])
         self.geom.add_edge(n[0], n[1], arc)
         return True

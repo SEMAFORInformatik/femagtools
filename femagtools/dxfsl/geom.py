@@ -3049,7 +3049,6 @@ class Geometry(object):
                 if a.is_point_inside(p):
                     return a.id
             return 0
-        #   --------
         #   -------------------------
         def connection_thru_main_area(pts):
             if len(pts) < 3:
@@ -3071,7 +3070,10 @@ class Geometry(object):
                 return True  #ok
 
             return False
-        #   ------------
+        #   ----------
+        def takeSecond(elem):
+            return elem[1]
+        #   ----------
 
         # Arcs as additional auxiliary connections thru iron
         for a in area_to_parent_list:
@@ -3082,16 +3084,16 @@ class Geometry(object):
                               start_angle=(rightangle)*180/np.pi,
                               end_angle=(mid_angle)*180/np.pi))
             pts = self.split_and_get_intersect_points(arc, aktion=False)
-            pts.sort()
+            pts.sort(key=takeSecond, reverse=True)
             if not connection_thru_main_area(pts):
-                logger.info("connection in nested areas")
+                logger.debug("connection in nested areas")
                 continue
 
             if len(pts) > 2:
                 pts = pts[0:2]
 
             if len(pts) == 2:
-                pts.sort(reverse=True)
+                pts.sort(key=takeSecond)
                 start_angle = alpha_line(self.center, pts[0])
                 end_angle = alpha_line(self.center, pts[1])
                 arc = Arc(Element(center=self.center,

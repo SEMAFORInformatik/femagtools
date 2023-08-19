@@ -185,6 +185,7 @@ class FslRenderer(object):
                              u'inner_da_end = {}'
                              .format(geom.dist_end_max_corner())]
         if outer:
+            slice = 1 if machine.is_mirrored() else 2
             self.content += [
                 u'-- create air layer outside',
                 u'x0, y0 = {}, {}'.format(
@@ -195,8 +196,8 @@ class FslRenderer(object):
                 u'r1 = {} + hair'.format(geom.max_radius),
                 u'r, phi = c2pr(x0, y0)',
                 u'x1, y1 = pr2c(r1, phi)',
-                u'x2, y2 = pr2c(r1, 2*math.pi/parts)',
-                u'x3, y3 = pr2c(r, 2*math.pi/parts)',
+                u'x2, y2 = pr2c(r1, {}*math.pi/parts)'.format(slice),
+                u'x3, y3 = pr2c(r, {}*math.pi/parts)'.format(slice),
                 u'nc_line(x0, y0, x1, y1, 0)',
                 u'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
                 u'nc_line(x2, y2, x3, y3, 0)',

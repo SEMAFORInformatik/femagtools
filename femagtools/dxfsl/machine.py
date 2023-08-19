@@ -390,6 +390,10 @@ class Machine(object):
         else:
             print("{} airgap candidate(s) found:"
                   .format(len(airgap_candidates)))
+
+        if self.geom.max_radius == 0.0:
+            self.geom.set_minmax_radius(self.center)
+
         dist = 999
         circle = None
         pos_list = []

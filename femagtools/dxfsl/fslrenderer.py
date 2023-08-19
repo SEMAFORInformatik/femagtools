@@ -151,15 +151,13 @@ class FslRenderer(object):
 
         n = 0
         for d, e in el_sorted:
-            d_percent = d / dist
+            d_percent = min( 1.0, d / dist)
             if ndt_list[n][0] < d_percent:
                 self.agndst = ndt_list[n][1] * self.agndst
                 self.content.append(u'\nndt({}*agndst)\n'.
                                     format(ndt_list[n][1]))
-                while n < len(ndt_list) and ndt_list[n][0] < d_percent:
+                while ndt_list[n][0] < d_percent:
                     n += 1
-            if n >= len(ndt_list):
-                break
             e.render(self)
 
         self.content.append(u'\n')

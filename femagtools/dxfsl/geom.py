@@ -1300,9 +1300,9 @@ class Geometry(object):
         self.min_radius = 99999.0
         self.max_radius = 0.0
         for e in self.elements(Shape):
-            mm_dist = e.minmax_from_center(center)
-            self.min_radius = min(self.min_radius, mm_dist[0])
-            self.max_radius = max(self.max_radius, mm_dist[1])
+            min_dist, max_dist = e.minmax_from_center(center)
+            self.min_radius = min(self.min_radius, min_dist)
+            self.max_radius = max(self.max_radius, max_dist)
 
     def complete_hull_line(self, center, angle):
         if self.max_radius == 0.0:
@@ -2699,26 +2699,27 @@ class Geometry(object):
             von Möglichkeiten mit jeweils einem minimalen und einem maximalen
             Radius als Begrenzung des Luftspalts.
         """
-
         gaplist = []
         for e in self.elements(Shape):
             if not self.is_border_line(center, startangle, endangle, e, atol):
                 gaplist += [e.minmax_from_center(center)]
+            else:
+                min_r, max_r = e.minmax_from_center(center)
+                if with_end and np.isclose(min_r, 0.0):
+                    gaplist += [(0.0, 0.0)]
 
         gaplist.sort()
 
-        self.min_radius = gaplist[0][0]
-        self.max_radius = gaplist[-1][1]
-
-        airgaps = []
-        min_radius = self.min_radius + 1.0
+        min_radius = gaplist[0][0] + 1
+        max_radius = gaplist[-1][1] - 1
         cur_radius = gaplist[0][1]
-        max_radius = self.max_radius - 1.0
+        airgaps = []
+
         if with_end:
             if self.is_inner:
-                min_radius = self.min_radius - 1.0
+                min_radius = gaplist[0][0] - 1
             else:
-                max_radius = self.max_radius + 1.0
+                max_radius = gaplist[-1][1] + 1
 
         for g in gaplist:
             if greater(g[0], cur_radius) and \

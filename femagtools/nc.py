@@ -212,8 +212,8 @@ class Reader(object):
             self.MA_SPEZ_WEIGHT = float(
                 grp.variables['spec_mass'].getValue().data)
         except Exception as e:
-            logger.warning("*** MAGNET %s", e)
-            #pass
+            #logger.warning("*** MAGNET %s", e)
+            pass
         try:
             grp = ds.groups['el_induction']
             (self.curr_loss,

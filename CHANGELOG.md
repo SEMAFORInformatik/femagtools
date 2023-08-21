@@ -4,6 +4,8 @@
 
 ## Release 1.4
 	- new machine type AFM (Axial Flux Machine)
+        - added isa/nc methods (properties): get_areas, elements (inner,outer,center), calc_iron_loss
+	- split plot module into subpackage
 
 ## Release 1.3.1
 	- new flags: with_mtpv, with_mtpa, with_pmconst, with_tmech for effloss and pm characteristics

@@ -15,6 +15,28 @@ import numpy as np
 logger = logging.getLogger('femagtools.isa7')
 
 
+def jordanpfe(Bxnu, Bynu, fnu, losscoeffs):
+    """example of custom core loss calculation
+    """
+    basfrq = losscoeffs['base_frequency']
+    basind = losscoeffs['base_induction']
+    ch = losscoeffs['ch']
+    cw = losscoeffs['cw']
+    hyscoef = losscoeffs['ch_freq_exp']
+    edycoef = losscoeffs['cw_freq_exp']
+    indcoef = losscoeffs['cw_ind_exp']
+    fillfact = losscoeffs['fillfactor']
+    kh = 1
+    b21 = np.linalg.norm((Bxnu, Bynu), axis=0)/fillfact
+    b2 = (b21/basind)**indcoef
+    hi = fnu/basfrq
+    hch = hi**hyscoef
+    hcw = hi**edycoef
+    ph = kh*ch*hch*b2
+    pw = cw*hcw*b2
+    return ph, pw, (0,)
+
+
 class Reader(object):
     """
     Open and Read I7/ISA7 file
@@ -848,10 +870,87 @@ class Isa7(object):
                         m = scf*self.arm_length*se.area()*spw
                         self.mass[r]['iron'] += m
                     else:
-                        spw = self.MA_SPEZ_WEIGHT*1e3
-                        a = [e.area for e in se.elements if e.is_magnet()]
-                        self.mass[r]['magnets'] += sum(a)*scf*self.arm_length*spw
+                        try:
+                            spw = self.MA_SPEZ_WEIGHT*1e3
+                            a = [e.area for e in se.elements if e.is_magnet()]
+                            self.mass[r]['magnets'] += sum(a)*scf*self.arm_length*spw
+                        except AttributeError:
+                            pass
         return self.mass
+
+    def get_iron_subregions(self):
+        """return names and coordinates of subregions with lamination
+        returns
+          subregs: list of str
+          coordinates: list of float arrays (x, y)
+        """
+        subregs = []
+        coordinates = []
+        for sr in self.subregions:
+            if sr.superelements[0].mcvtype:
+                subregs.append(sr.name)
+                coordinates.append(
+                    [round(1e3*c, 3)
+                     for c in sr.superelements[0].elements[0].center])
+        return subregs, coordinates
+
+    def calc_iron_loss(self, icur, ibeta, pfefun, bmin=0.1):
+        """ calculate iron loss using last simulation results
+        Parameters:
+          icur (int): current index
+          ibeta (int): beta index
+          pfefun (function): custom function with parameters:
+            Bxnu, Bynu (1d array): flux density values in T
+            fnu (1d array): frequency values in Hz
+            losscoeffs (dict): material properties
+          bmin (float): lower limit of flux density amplitudes
+
+        returns:
+          sreg (dict):
+            name of subregion (string)
+            eddy current loss, hysteresis loss, exc loss
+        """
+        from .utils import fft
+        pos = self.pos_el_fe_induction
+        apos = np.array(pos)/np.pi*180
+
+        sreg = {}
+        n = self.speed/60
+        scf = self.scale_factor()
+        for sr in [self.get_subregion(n)
+                   for n in self.get_iron_subregions()[0]]:
+            losses = []
+            for se in sr.superelements:
+                spw = self.iron_loss_coefficients[se.mcvtype-1]['spec_weight']
+                for e in se.elements:
+                    b1 = fft(apos, self.el_fe_induction_1[e.key-1, :, icur, ibeta],
+                             pmod=2)
+                    b2 = fft(apos, self.el_fe_induction_2[e.key-1, :, icur, ibeta],
+                             pmod=2)
+                    blen = max(len(b1['nue']), len(b2['nue']))
+                    if len(b1['nue']) < blen:
+                        b1['nue'] = b1['nue'] + [0]*(blen-len(b1['nue']))
+                    if len(b2) < blen:
+                        b2['nue'] = b2['nue'] + [0]*(blen-len(b2['nue']))
+                    bnxy = np.array(
+                        [(n, b[0], b[1]) for n, b in enumerate(
+                            zip(b1['nue'], b2['nue']))
+                         if b[0] > bmin or b[1] > bmin]).T
+                    if bnxy.size > 0:
+                        ph, pw, pe = pfefun(bnxy[1], bnxy[2], np.array(
+                            [n*nue for nue in bnxy[0]]),
+                                     self.iron_loss_coefficients[se.mcvtype-1])
+                        pl = [1e3*spw*e.area*l for l in (sum(pw), sum(ph), sum(pe))]
+                        losses.append(pl)
+                    else:
+                        logger.debug("Empty %s, %s", b1, b2)
+            logger.debug("%s: %s", sr.name, losses)
+            if losses:
+                sreg[sr.name] = scf*self.arm_length*np.sum(losses, axis=0)
+            else:
+                sreg[sr.name] = (0,0,0)
+        return sreg
+
 
     def flux_dens(self, x, y, icur, ibeta):
         el = self.get_element(x, y)

@@ -867,7 +867,9 @@ class Isa7(object):
                     if se.mcvtype:
                         spw = self.iron_loss_coefficients[se.mcvtype-1][
                             'spec_weight']*1e3  # kg/m³
-                        m = scf*self.arm_length*se.area()*spw
+                        fillfact = self.iron_loss_coefficients[se.mcvtype-1][
+                            'fillfactor']
+                        m = scf*self.arm_length*se.area()*spw*fillfact
                         self.mass[r]['iron'] += m
                     else:
                         try:
@@ -922,6 +924,7 @@ class Isa7(object):
             losses = []
             for se in sr.superelements:
                 spw = self.iron_loss_coefficients[se.mcvtype-1]['spec_weight']
+                fillfact = self.iron_loss_coefficients[se.mcvtype-1]['fillfactor']
                 for e in se.elements:
                     b1 = fft(apos, self.el_fe_induction_1[e.key-1, :, icur, ibeta],
                              pmod=2)
@@ -937,10 +940,12 @@ class Isa7(object):
                             zip(b1['nue'], b2['nue']))
                          if b[0] > bmin or b[1] > bmin]).T
                     if bnxy.size > 0:
-                        ph, pw, pe = pfefun(bnxy[1], bnxy[2], np.array(
-                            [n*nue for nue in bnxy[0]]),
-                                     self.iron_loss_coefficients[se.mcvtype-1])
-                        pl = [1e3*spw*e.area*l for l in (sum(pw), sum(ph), sum(pe))]
+                        ph, pw, pe = pfefun(
+                            bnxy[1]/fillfact, bnxy[2]/fillfact,
+                            np.array([n*nue for nue in bnxy[0]]),
+                            self.iron_loss_coefficients[se.mcvtype-1])
+                        pl = [1e3*spw*e.area*l
+                              for l in (sum(pw), sum(ph), sum(pe))]
                         losses.append(pl)
                     else:
                         logger.debug("Empty %s, %s", b1, b2)

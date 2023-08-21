@@ -840,7 +840,7 @@ class Isa7(object):
                 self.areas[r]['slots'] += scf*sr.area()
             else:
                 for se in sr.superelements:
-                    if se.mcvtype:
+                    if se.mcvtype or se.elements[0].permeability() > 1:
                         self.areas[r]['iron'] += se.area()*scf
                     else:
                         a = [e.area for e in se.elements if e.is_magnet()]
@@ -863,7 +863,7 @@ class Isa7(object):
                 self.mass[r]['conductors'] += scf*sr.area()*self.arm_length*spw
             else:
                 for se in sr.superelements:
-                    if se.mcvtype:
+                    if se.mcvtype or se.elements[0].permeability() > 1:
                         spw = self.iron_loss_coefficients[se.mcvtype-1][
                             'spec_weight']*1e3  # kg/m³
                         fillfact = self.iron_loss_coefficients[se.mcvtype-1][
@@ -888,7 +888,7 @@ class Isa7(object):
         subregs = []
         coordinates = []
         for sr in self.subregions:
-            if sr.superelements[0].mcvtype:
+            if sr.superelements[0].mcvtype or sr.superelements[0].elements[0].permeability() > 1:
                 subregs.append(sr.name)
                 coordinates.append(
                     [round(1e3*c, 3)
@@ -950,9 +950,9 @@ class Isa7(object):
                         logger.debug("Empty %s, %s", b1, b2)
             logger.debug("%s: %s", sr.name, losses)
             if losses:
-                sreg[sr.name] = scf*self.arm_length*np.sum(losses, axis=0)
+                sreg[sr.name] = (scf*self.arm_length*np.sum(losses, axis=0)).tolist()
             else:
-                sreg[sr.name] = (0,0,0)
+                sreg[sr.name] = [0,0,0]
         return sreg
 
 

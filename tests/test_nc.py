@@ -81,12 +81,38 @@ def test_elements(model):
                                               abs=1e-5)
 
 def test_airgap_center_elements(pm):
-    assert len(pm.airgap_center_elements) == 0
+    assert len(pm.airgap_center_elements) == 180
 
 def test_areas(pm):
-    assert pm.get_areas() == [{'iron': 0, 'slots': 0.0018406821200755985,
-                               'magnets': 0.0}, {'iron': 0,
-                                                 'slots': 0, 'magnets': 0}]
+    a = pm.get_areas()
+    assert a[0]['iron'] == pytest.approx(0.003550, abs=1e-5)
+    assert a[0]['slots'] ==  pytest.approx(0.00184, abs=1e-5)
+    assert a[0]['magnets'] == 0.0
+    assert a[1]['iron'] == pytest.approx(0.0007222, abs=1e-5)
+    assert a[1]['slots'] == 0
+    assert a[1]['magnets'] == 0
+
+def test_calc_iron_loss(pm):
+    import numpy as np
+    def pfe(Bxnu, Bynu, fnu, losscoeffs):
+        basfrq = 50
+        basind = 1.5
+        b21 = np.linalg.norm((Bxnu, Bynu), axis=0)
+        b2 = (b21/basind)
+        f = fnu/basfrq
+        hch = f
+        hcw = f**2
+        ph = f*b2
+        pw = f**2*b2**2
+        pexc = f**1.5*b2**1.5
+        return ph, pw, pexc
+
+    icur = 0
+    ibeta = 0
+    pfe = pm.calc_iron_loss(icur, ibeta, pfe)
+    assert pfe['Rüc'] == [0, 0, 0]
+    assert pfe['Stat'] == pytest.approx([46.95,  5.61, 15.92], abs=1e-2)
+
 
 def test_superelements(model):
     se = model.superelements[0]

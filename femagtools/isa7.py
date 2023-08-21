@@ -25,9 +25,8 @@ def jordanpfe(Bxnu, Bynu, fnu, losscoeffs):
     hyscoef = losscoeffs['ch_freq_exp']
     edycoef = losscoeffs['cw_freq_exp']
     indcoef = losscoeffs['cw_ind_exp']
-    fillfact = losscoeffs['fillfactor']
     kh = 1
-    b21 = np.linalg.norm((Bxnu, Bynu), axis=0)/fillfact
+    b21 = np.linalg.norm((Bxnu, Bynu), axis=0)
     b2 = (b21/basind)**indcoef
     hi = fnu/basfrq
     hch = hi**hyscoef

@@ -1,4 +1,4 @@
-from .airgap import airgap, airgap_fft
+from .fluxdens import airgap, airgap_fft
 from .bch import torque, torque_fft, force, force_fft,\
     fluxdens_surface, winding_current, winding_flux, \
     voltage, voltage_fft, transientsc_demag, \

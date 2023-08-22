@@ -608,7 +608,7 @@ fo         reference frequency              Hz       50
 fillfac    iron fill factor                          1
 bsat       saturation induction             T        2.15
 rho        specific weight                  kg/dm3   7.65
-lossses    dict of loss values (optional)
+losses    dict of loss values (optional)
 =========  ================================ ======== =======
 
 The loss factors and exponents are used in the Jordan loss calculation formula:

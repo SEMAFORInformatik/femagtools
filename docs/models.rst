@@ -6,6 +6,12 @@ The models are dictionaries with the properties of a machine or a calculation.
 **Machine**
 ===========
 
+Three different types of machines are supported:
+
+* RFM: Radial Flux Machines),
+* LM: Linear Machines,
+* AFM: Axial Flux Machine.
+
 Machines have a set of basic parameters, a stator, a magnet and a winding:
 
 ==============  ======================================  ======
@@ -13,6 +19,7 @@ Parameter        Description                            Unit
 ==============  ======================================  ======
 name             Name of machine
 lfe              Lenght of iron                         m
+afmtype          "S1R1", "S2R1", "S1R2"
 poles            Number of poles
 outer_diam       Outer diameter (yoke side)             m
 bore_diam        Bore diameter  (airgap side)           m
@@ -21,8 +28,14 @@ shaft_diam       Shaft diameter                         m
 airgap           airgap width                           m
 external_rotor   True, False                            False
 ffactor          processing factor for iron losses
+coord_system     1 (x/y) or 2 (r/z)                     0
 dxffile          (see :ref:'model_creation_with_dxf')
 ==============  ======================================  ======
+
+.. Note::
+
+   depending on the type (RFM, AFM, LM) not all combinations are useful
+   A LM for example does not have a diameter.
 
 **Stator**
 ----------
@@ -50,9 +63,9 @@ nodedist         Factor for node distance        1.0
 
 Stator Slots
 ^^^^^^^^^^^^
-============    ===========================================
+==============  ===========================================
 Name             Parameter
-============    ===========================================
+==============  ===========================================
 stator1
                  slot_rf1,
                  tip_rh1,
@@ -90,7 +103,7 @@ stator4
                  wedge_width2,
                  wedge_width3
 statorBG
-                 yoke_diam_ins
+                 yoke_diam_ins,
                  slot_h1,
                  slot_h3,
                  slot_width,
@@ -100,11 +113,30 @@ statorBG
                  tooth_width,
 		 tip_rad,
 		 slottooth
+stator3Linear
+                 slot_height,
+                 slot_h1,
+                 slot_h2,
+                 tip_slot,
+                 yoke_height,
+                 slot_r1,
+                 slot_r2,
+                 width_bz,
+                 tooth_width
+afm_stator
+                 slot_height,
+                 slot_h1,
+                 slot_h2,
+                 yoke_height,
+                 slot_width,
+                 slot_open_width,
+                 slot_r1,
+                 slot_r2
 <filename>
                  (see :ref:`stator_slots_fsl`)
 dxffile
                  (see :ref:`stator_slots_dxf`)
-============    ===========================================
+==============  ===========================================
 
 .. Note::
 
@@ -358,6 +390,11 @@ magnetFC2       yoke_height,
 		iron_shape,
 		iron_hp,
 		magn_num
+afm_rotor       yoke_height
+                magn_height
+                magn_width
+                spoke_width
+
 <filename>      see :ref:`rotor_slots_fsl`
 dxffile         see :ref:`rotor_slots_dxf`
 ============    ===========================================
@@ -432,8 +469,8 @@ it can be used for the model creation as an empty dict (see Note in `stator_slot
 
 .. _rotor_slots_dxf:
 
-User defined Rotor Slots with DXF
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+User defined Magnet Slots with DXF
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a DXF file that defines the magnet geometry exists and is readable
 it can be used to create the FSL for the model.
@@ -520,15 +557,18 @@ Conductors
 ----------
 
 The conductors is a list of dict items that describe the material properties of
-==============  ====== ===============================================
-Name            Unit   Descipription
-==============  ====== ===============================================
-name                   identifier
+
+==============  ======== ===============================================
+Name            Unit     Description
+==============  ======== ===============================================
+name                     identifier
 desc
-spmaweight      g/cm³  specific mass (density)
-elconduct       S/m    electrical conductivity at 20°C
-tempcoef        1/K    temperature coefficient
-==============  ====== ===============================================
+spmaweight      g/cm³    specific mass (density)
+elconduct       S/m      electrical conductivity at 20°C
+tempcoef        1/K      temperature coefficient
+thcond          W/(m K)  thermal conductivity
+thcap           J/K      thermal capacity
+==============  ======== ===============================================
 
 Example::
 
@@ -568,6 +608,7 @@ fo         reference frequency              Hz       50
 fillfac    iron fill factor                          1
 bsat       saturation induction             T        2.15
 rho        specific weight                  kg/dm3   7.65
+lossses    dict of loss values (optional)
 =========  ================================ ======== =======
 
 The loss factors and exponents are used in the Jordan loss calculation formula:
@@ -624,6 +665,39 @@ Using a magnetizingcurve to write a mcv file::
 .. Note::
 
    if the curve data is used in a stator or magnet slot model there is no need to create the file explicitly. Femagtools will take care of that during the model creation.
+
+Loss Values:
+
+=======  ============================  ==== ====
+Key                                    unit dim.
+=======  ============================  ==== ====
+B        list of flux density values    T    n
+f        list of frequency values       Hz   m
+pfe      list of loss values                nxm
+cw       eddy current loss coeff
+cw_freq  eddy current exp
+b_coeff  flux density exp
+fo       base frequency
+Bo       base flux density
+=======  ============================  ==== ====
+
+Example::
+
+ {"B": [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.8],
+  "f": [50.0, 400.0, 1000.0],
+  "pfe": [[0.08, 0.38, 0.69, 0.92, 1.1, 1.31, 1.56, 1.92, 2.25, 2.53, 2.75, 2.94],
+          [0.137, 4.73, 9.87, 20.3, 31.7],
+          [5.5, 18.5, 25.8, 71.5]],
+  "cw": 1.248, "cw_freq": 1.6631, "b_coeff": 2.19661, "fo": 50.0, "Bo": 1.5}
+
+.. Note::
+
+   missing values are extrapolated using the steinmetz formula
+
+
+.. image:: img/loss.png
+  :height: 290pt
+
 
 Magnet Material
 ---------------
@@ -723,6 +797,7 @@ plots           Create plots                            []
 airgap_induc    calculate airgap induction              False
 period_frac     Rotate Fraction of Period               1
 calc_noload     Calculate no load                       1
+magnet_loss     Extended magnet loss calc  (IALH)       False
 poc             Current shape definition                (none)
 vtu_movie       Create VTU files                        False
 ==============  ======================================= ========  ============
@@ -925,6 +1000,8 @@ Example::
 
 PM/Rel Torque Calc (torq_calc)
 
+similar to pm_sym_fast without noload calc (Note: requires a correct Poc)
+
 ==============  ============================= ==========  ============
 Parameter        Description                   Default      Unit
 ==============  ============================= ==========  ============
@@ -936,6 +1013,7 @@ wind_temp       Winding Temperature             20        °C
 num_move_steps  Number of move steps            49
 num_par_wdgs    Number of parallel windings     1
 current         Phase current                             A (RMS)
+poc             Current shape definition        (none)
 angl_i_up       Angle I vs. Up                  0         deg
 ==============  ============================= ==========  ============
 

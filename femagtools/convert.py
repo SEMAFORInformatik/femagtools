@@ -22,40 +22,13 @@ def _from_isa(isa, filename, target_format,
               extrude=0, layers=0, recombine=False):
 
     try:
-        if not isa.FC_RADIUS:
-            logger.warning("airgap radius is not set in source file")
+        airgap_outer_vertices = [v for e in isa.airgap_outer_elements
+                                 for v in e.vertices]
     except AttributeError:
-        isa.FC_RADIUS=0
-    airgap_center_elements = []
-    for e in isa.elements:
-        outside = [np.sqrt(v.x**2 + v.y**2) > isa.FC_RADIUS
-                   for v in e.vertices]
-        if any(outside) and not all(outside):
-            airgap_center_elements.append(e)
-
-    airgap_center_vertices = [v for e in airgap_center_elements
-                              for v in e.vertices]
-
-    airgap_inner_elements = []
-    airgap_outer_elements = []
-    for e in isa.elements:
-        if e in airgap_center_elements:
-            continue
-        for v in e.vertices:
-            if v not in airgap_center_vertices:
-                continue
-            if np.sqrt(v.x**2 + v.y**2) > isa.FC_RADIUS:
-                airgap_outer_elements.append(e)
-                break
-            else:
-                airgap_inner_elements.append(e)
-                break
-
-    airgap_outer_vertices = [v for e in airgap_outer_elements
-                             for v in e.vertices]
+        logger.warning("airgap radius is not set in source file")
 
     airgap_lines = []
-    for e in airgap_center_elements:
+    for e in isa.airgap_center_elements:
         ev = e.vertices
         for i, v1 in enumerate(ev):
             v2 = ev[i-1]
@@ -127,16 +100,15 @@ def _from_isa(isa, filename, target_format,
                 return surface_id("PM3")
             return surface_id("PM4")
 
-        if e in airgap_inner_elements or e in airgap_center_elements:
+        if e in isa.airgap_inner_elements or e in isa.airgap_center_elements:
             return surface_id("Airgap_Inner")
 
-        if e in airgap_outer_elements:
+        if e in isa.airgap_outer_elements:
             return surface_id("Airgap_Outer")
 
         sr_key = isa.superelements[e.se_key].sr_key
         if sr_key == -1:
-            v = e.vertices[0]
-            if np.sqrt(v.x**2 + v.y**2) > isa.FC_RADIUS:
+            if e.vertices[0].outside:
                 return surface_id("Air_Outer")
             return surface_id("Air_Inner")
 
@@ -174,9 +146,9 @@ def _from_isa(isa, filename, target_format,
     mag_losses = dict(triangle=[], quad=[])
     wdg_losses = dict(triangle=[], quad=[])
     for e in isa.elements:
-        
+
         ev = e.vertices
-        
+
         for i, v in enumerate(ev):
             v1, v2 = v, ev[i-1]
             if line_on_boundary(v1, v2):
@@ -337,7 +309,7 @@ def _from_isa(isa, filename, target_format,
                     "+=" if name in used else "=",
                     se.key))
             used.add(name)
-        
+
         with open(filename, "w") as f:
             f.write("\n".join(geo))
 
@@ -507,7 +479,7 @@ def to_msh(source, filename, infile_type=None):
     else:
         raise ValueError("cannot convert {} to .msh".format(source))
 
-    
+
 def to_geo(source, filename, extrude=0, layers=0,
            recombine=False, infile_type=None):
     """
@@ -518,19 +490,19 @@ def to_geo(source, filename, extrude=0, layers=0,
         filename: name of converted file
         extrude: extrude surfaces using a translation along the z-axis
         layers: number of layers to create when extruding
-        recombine: when extruding, recombine triangles into quadrangles and 
+        recombine: when extruding, recombine triangles into quadrangles and
                  tetraedra into to prisms, hexahedra or pyramids
         infile_type: format of source file
     """
     if isinstance(source, isa7.Isa7):
         _from_isa(source, filename, "geo", extrude, layers, recombine)
-        
+
     elif type(source) == str:
         if infile_type:
             file_ext = infile_type.lower()
         else:
             file_ext = source.split(".")[-1].lower()
-        
+
         if file_ext in ["isa7", "i7", "nc"]:
             isa = nc.read(source) if file_ext == 'nc' else isa7.read(source)
             _from_isa(isa, filename, "geo", extrude, layers, recombine)
@@ -576,7 +548,7 @@ def main(argv=None):
 
     if not args.output_format:
         args.output_format = args.outfile.split('.')[-1]
-        
+
     if args.output_format == 'msh':
         to_msh(args.infile, args.outfile)
     elif args.output_format == 'geo':
@@ -596,7 +568,7 @@ def _get_parser():
     import argparse
     import sys
     from .__init__ import __version__
-    
+
     parser = argparse.ArgumentParser(description=("Convert to mesh formats."))
 
     parser.add_argument("infile", type=str, help="mesh file to be read from")
@@ -617,7 +589,7 @@ def _get_parser():
         help="extrusion length",
         default=None,
     )
-    
+
     parser.add_argument(
         "--layers",
         "-l",

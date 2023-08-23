@@ -582,7 +582,7 @@ class InductionMachine(Component):
                     r['T'].append(tq - tfric)
                 r['n'].append(wm/2/np.pi)
                 r['s'].append(float((w1 - self.p * wm) / w1))
-                r['sk'].append(self.sk(w1, u1/w1))
+                r['sk'].append(self.sk(w1, np.abs(u1)/w1))
                 #            except ValueError as ex:
                 #                break
         r['plfw'] = [self.pfric(n) for n in r['n']]

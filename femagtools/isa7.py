@@ -840,7 +840,7 @@ class Isa7(object):
                 self.areas[r]['slots'] += scf*sr.area()
             else:
                 for se in sr.superelements:
-                    if se.mcvtype or se.elements[0].permeability() > 1:
+                    if se.mcvtype or se.elements[0].is_lamination():
                         self.areas[r]['iron'] += se.area()*scf
                     else:
                         a = [e.area for e in se.elements if e.is_magnet()]
@@ -863,7 +863,7 @@ class Isa7(object):
                 self.mass[r]['conductors'] += scf*sr.area()*self.arm_length*spw
             else:
                 for se in sr.superelements:
-                    if se.mcvtype or se.elements[0].permeability() > 1:
+                    if se.mcvtype or se.elements[0].is_lamination():
                         spw = self.iron_loss_coefficients[se.mcvtype-1][
                             'spec_weight']*1e3  # kg/m³
                         fillfact = self.iron_loss_coefficients[se.mcvtype-1][

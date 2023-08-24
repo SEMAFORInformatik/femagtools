@@ -888,7 +888,7 @@ class Isa7(object):
         subregs = []
         coordinates = []
         for sr in self.subregions:
-            if sr.superelements[0].mcvtype or sr.superelements[0].elements[0].permeability() > 1:
+            if sr.superelements[0].mcvtype or sr.superelements[0].elements[0].is_lamination():
                 subregs.append(sr.name)
                 coordinates.append(
                     [round(1e3*c, 3)
@@ -1187,6 +1187,10 @@ class Element(BaseEntity):
         """return True if the element is a permanent magnet"""
         return abs(self.mag[0]) > 1e-5 or abs(self.mag[1]) > 1e-5
 
+    def is_lamination(self):
+        """return True if the element has lamination properties"""
+        return self.reluc != (1.0, 1.0) and self.mag == (0.0, 0.0)
+
     def demagnetization(self, temperature=20):
         """return demagnetization Hx, Hy of this element"""
         return self.demag_b(self.flux_density(cosys='cartes'), temperature)
@@ -1220,7 +1224,7 @@ class Element(BaseEntity):
 
     def iron_loss_density(self):
         """return loss_density if element in iron (eg. lamination region)"""
-        if self.reluc != (1.0, 1.0) and self.mag == (0.0, 0.0):
+        if self.is_lamination():
             return self.loss_density
         return 0
 

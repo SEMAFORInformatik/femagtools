@@ -6,10 +6,11 @@
     Convert FEMAG files to various unstructured grid file formats
 """
 import logging
+import io
 import numpy as np
 from femagtools import isa7
 from femagtools import nc
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 logger = logging.getLogger('femagtools.convert')
 
@@ -146,7 +147,6 @@ def _from_isa(isa, filename, target_format,
     mag_losses = dict(triangle=[], quad=[])
     wdg_losses = dict(triangle=[], quad=[])
     for e in isa.elements:
-
         ev = e.vertices
 
         for i, v in enumerate(ev):
@@ -167,6 +167,7 @@ def _from_isa(isa, filename, target_format,
             magtemp = isa.MAGN_TEMPERATURE
         except AttributeError:
             magtemp = 20
+
         physical_ids[cell_type].append(physical_surface(e))
         geometrical_ids[cell_type].append(e.se_key)
         b[cell_type].append(e.flux_density())
@@ -175,6 +176,9 @@ def _from_isa(isa, filename, target_format,
         iron_losses[cell_type].append(e.iron_loss_density())
         mag_losses[cell_type].append(e.mag_loss_density())
         wdg_losses[cell_type].append(e.wdg_loss_density())
+
+    logger.info("%s: Lines %d, Triangles %d, Quads %d",
+                filename, len(lines), len(triangles), len(quads))
 
     if target_format == "msh":
         import meshio
@@ -375,18 +379,105 @@ def _from_isa(isa, filename, target_format,
                                   binary=True)
 
 
-def _nastran_real_to_float(s):
+def _from_jmag(designer):
+    """ Designer.jplot: plotmesh.data
+    (older version Designer.jcf: mesh.dat
+    """
+    from zipfile import ZipFile
+    def get_recs():
+        with ZipFile(designer) as jplt:
+            with jplt.open('plotmesh.dat') as f:
+                numsecs = 0
+                seclen = 0
+                nline = 0
+                for line in io.TextIOWrapper(f, 'utf-8'):
+                    rec = line.strip().split()
+                    nline += 1
+                    if seclen == 0 and (rec[-1]=='*Node' or rec[-1]=='*Element'):
+                        seclen = int(rec[0])
+                        nline = 0
+                        if numsecs>0:
+                            yield []
+                    elif nline < seclen:
+                        yield rec
+                    else:
+                        if numsecs > 1:
+                            break
+                        seclen = 0
+                        numsecs += 1
+                        yield rec
 
-    s = s.strip()
+    Node = namedtuple("Node", ["id", "x", "y"])
+    nodes = []
+    Element = namedtuple("Element", ["nodes", "entity"])
+    elements = []
+    state = 'Node'
+    for rec in get_recs():
+        if rec == []:
+            state = 'Element'
+            continue
+        if state == 'Node':
+            nodes.append(Node(rec[1], rec[2], rec[3]))
+        else:
+            if rec[1] == "3":
+                elements.append(Element([rec[-3], rec[-2], rec[-1], None], rec[2]))
+            elif rec[1] == "4":
+                elements.append(Element([rec[-4], rec[-3], rec[-2], rec[-1]], rec[2]))
 
-    if "E" not in s:
-        s = s[0] + s[1:].replace("+", "e+").replace("-", "e-")
+    replace = {}
+    for i, n1 in enumerate(nodes):
+        for n2 in nodes[i+1:]:
+            if n1.x == n2.x and n1.y == n2.y and n1.id != n2.id:
+                if n1.id not in replace:
+                    replace[n2.id] = n1.id
 
-    return float(s)
+    nodes = [n for n in nodes if n not in replace]
+
+    for e in elements:
+        for i, n in enumerate(e.nodes):
+            if n in replace:
+                e.nodes[i] = replace[n]
+    entities = set([e.entity for e in elements])
+    logger.info("%s: nodes %d elements %d physical names %d",
+                designer, len(nodes), len(elements), len(entities))
+    physicalgroups = {}
+    msh = ["$MeshFormat\n2.2 0 8\n$EndMeshFormat"]
+    msh.append("$PhysicalNames")
+    msh.append(f"{len(entities)}")
+    for i, g in enumerate(entities):
+        msh.append(f'1 {i+1} "{g}"')
+        physicalgroups[g] = i+1
+    msh.append("$EndPhysicalNames")
+    msh.append("$Nodes")
+    msh.append(str(len(nodes)))
+    for i, n in enumerate(nodes):
+        msh.append("{} {} {} 0.0".format(n.id, n.x, n.y))
+    msh.append("$EndNodes")
+
+    msh.append("$Elements")
+    msh.append(str(len(elements)))
+    for i, e in enumerate(elements):
+        if e.nodes[3]:
+            msh.append(
+                "{} 3 2 {} {} {} {} {} {}".format(
+                    i + 1, physicalgroups[e.entity], e.entity,
+                    e.nodes[0], e.nodes[1], e.nodes[2], e.nodes[3]))
+        else:
+            msh.append(
+                "{} 2 2 {} {} {} {} {}".format(
+                    i + 1, physicalgroups[e.entity], e.entity,
+                    e.nodes[0], e.nodes[1], e.nodes[2]))
+    msh.append("$EndElements")
+    return msh
 
 
 def _from_nastran(source, filename):
     import meshio
+    def _nastran_real_to_float(s):
+        s = s.strip()
+        if "E" not in s:
+            s = s[0] + s[1:].replace("+", "e+").replace("-", "e-")
+        return float(s)
 
     points = []
     point_index = 0
@@ -452,10 +543,10 @@ def _from_nastran(source, filename):
 
 def to_msh(source, filename, infile_type=None):
     """
-    Convert a femag model or NASTRAN Model Input File to msh format.
+    Convert a FEMAG, NASTRAN or JMAG Model Input File to msh format.
 
     Arguments:
-        source: instance of femagtools.isa7.Isa7 or name of I7/ISA7/NAS file
+        source: instance of femagtools.isa7.Isa7 or name of I7/ISA7/NAS/JPLOT file
         filename: name of converted file
         infile_type: format of source file
     """
@@ -473,6 +564,10 @@ def to_msh(source, filename, infile_type=None):
             _from_isa(isa, filename, "msh")
         elif file_ext == "nas":
             _from_nastran(source, filename)
+        elif file_ext == "jplot":
+            msh = _from_jmag(source)
+            with open(filename, 'w') as fp:
+                fp.write('\n'.join(msh))
         else:
             raise ValueError(
                 "cannot convert files of format {} to .msh".format(file_ext))
@@ -542,6 +637,8 @@ def to_vtu(source, filename, infile_type=None):
 
 
 def main(argv=None):
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
     # Parse command line arguments.
     parser = _get_parser()
     args = parser.parse_args(argv)
@@ -618,4 +715,6 @@ def _get_parser():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
     main()

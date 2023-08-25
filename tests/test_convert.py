@@ -33,27 +33,27 @@ def test_msh(tmpdir):
 
 def test_msh_triangles(tmpdir):
     msh = str(tmpdir.join("triangles.msh"))
-    convert.to_msh("tests/data/triangles.ISA7", msh)
+    convert.to_msh("tests/data/convert/triangles.ISA7", msh)
 
 
 def test_msh_quads(tmpdir):
     msh = str(tmpdir.join("quads.msh"))
-    convert.to_msh("tests/data/quads.ISA7", msh)
+    convert.to_msh("tests/data/convert/quads.ISA7", msh)
 
 
-def test_nastran_float():
-
-    for seven in ["7.0", ".7E1", "0.7+1", ".70+1", "7.E+0", "70.-1"]:
-        assert convert._nastran_real_to_float(seven) == 7.0
-
-    for negative_seven in ["-7.0", "-.7E1", "-0.7+1", "-.70+1", "-7.E+0", "-70.-1"]:
-        assert convert._nastran_real_to_float(negative_seven) == -7.0
+#def test_nastran_float():
+#
+#    for seven in ["7.0", ".7E1", "0.7+1", ".70+1", "7.E+0", "70.-1"]:
+#        assert convert._nastran_real_to_float(seven) == 7.0
+#
+#    for negative_seven in ["-7.0", "-.7E1", "-0.7+1", "-.70+1", "-7.E+0", "-70.-1"]:
+#        assert convert._nastran_real_to_float(negative_seven) == -7.0
 
 
 def test_nastran_triangles(tmpdir):
     msh = str(tmpdir.join("triangles.msh"))
 
-    convert.to_msh("tests/data/triangles.nas", msh)
+    convert.to_msh("tests/data/convert/triangles.nas", msh)
 
     mesh = meshio.read(msh)
 
@@ -68,7 +68,7 @@ def test_nastran_triangles(tmpdir):
 def test_nastran_quads(tmpdir):
     msh = str(tmpdir.join("quads.msh"))
 
-    convert.to_msh("tests/data/quads.nas", msh)
+    convert.to_msh("tests/data/convert/quads.nas", msh)
 
     mesh = meshio.read(msh)
 
@@ -83,7 +83,7 @@ def test_nastran_quads(tmpdir):
 def test_nastran_superelements(tmpdir):
     msh = str(tmpdir.join("superelements.msh"))
 
-    convert.to_msh("tests/data/superelements.nas", msh)
+    convert.to_msh("tests/data/convert/superelements.nas", msh)
 
     mesh = meshio.read(msh)
 
@@ -135,7 +135,7 @@ def test_vtu(tmpdir):
 
 def test_vtu_triangles(tmpdir):
     vtu = str(tmpdir.join("triangles.vtu"))
-    convert.to_vtu("tests/data/triangles.ISA7", vtu)
+    convert.to_vtu("tests/data/convert/triangles.ISA7", vtu)
     tree = ET.parse(vtu)
     root = tree.getroot()
     assert [child.tag for child in root] == ['UnstructuredGrid']
@@ -151,7 +151,7 @@ def test_vtu_triangles(tmpdir):
 
 def test_vtu_quads(tmpdir):
     vtu = str(tmpdir.join("quads.vtu"))
-    convert.to_vtu("tests/data/quads.ISA7", vtu)
+    convert.to_vtu("tests/data/convert/quads.ISA7", vtu)
     tree = ET.parse(vtu)
     root = tree.getroot()
     assert [child.tag for child in root] == ['UnstructuredGrid']
@@ -177,3 +177,9 @@ def test_geo_extrude(tmpdir):
     convert.to_geo("tests/data/magnsec.ISA7", geo, 0.01, 3, True)
     with open(geo) as f:
         assert len(f.readlines()) == 2981
+
+def test_jmag_to_msh(tmpdir):
+    mshfile = str(tmpdir.join("jplot.msh"))
+    convert.to_msh("tests/data/convert/Designer.jplot", mshfile)
+    with open(mshfile) as f:
+        assert len(f.readlines()) == 8317

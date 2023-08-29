@@ -26,17 +26,20 @@ def bch():
                     "force_x": [6.782, 6.05, 5.939, 6.636, 7.686, 8.425, 8.424, 7.726, 6.779, 6.049, 5.939, 6.636, 7.686, 8.425, 8.422, 7.727, 6.779, 6.05, 5.938, 6.636, 7.687, 8.424, 8.423, 7.727, 6.778, 6.05, 5.939, 6.636, 7.687, 8.427, 8.423, 7.725, 6.778, 6.049, 5.938, 6.636, 7.69, 8.423, 8.423, 7.726, 6.779, 6.05, 5.939, 6.636, 7.69, 8.425, 8.42, 7.727, 6.779, 6.049]}]
 
     losses = [
-        [{"staza": 0.0, "stajo": 1.479, "rotfe": 0.0, "magnetJ": 2.132, "winding": 4.698,
-          "stator": {"stfe": {"freq": [1667.0]}}}],
-        [{"staza": 0.0, "stajo": 3.094, "rotfe": 0.0, "magnetJ": 9.805, "winding": 9.396,
-          "stator": {"stfe": {"freq": [1667.0]}}}],
-        [{"staza": 0.0, "stajo": 1.691, "rotfe": 0.0, "magnetJ": 3.027, "winding": 4.698,
-          "stator": {"stfe": {"freq": [1667.0]}}}],
+        [{"beta": 0.0, "magnetJ": 2.132, "winding": 4.698,
+          "stator": {"stfe": {"freq": [1667.0], "hyst": [0,0], "eddy": [1.479,0]}},
+          "rotor": {"----": {"freq": [1667.0], "hyst": [0.0,0], "eddy": [0,0]}}}],
+        [{"magnetJ": 9.805, "winding": 9.396,
+          "stator": {"stfe": {"freq": [1667.0], "hyst": [0.0,0], "eddy": [3.094,0]}},
+          "rotor": {"----": {"freq": [1667.0], "hyst": [0.0,0], "eddy": [0,0]}}}],
+        [{"magnetJ": 3.027, "winding": 4.698,
+          "stator": {"stfe": {"freq": [1667.0], "hyst": [0.0,0], "eddy": [1.691,0]}},
+          "rotor": {"----": {"freq": [1667.0], "hyst": [0.0,0], "eddy": [0,0]}}}]
     ]
     return [
         {"flux": flux[0], "linearForce": [linearForce[0]], "losses": losses[0]},
-        {"flux": flux[1], "linearForce": [linearForce[1]], "losses": losses[0]},
-        {"flux": flux[2], "linearForce": [linearForce[2]], "losses": losses[0]}]
+        {"flux": flux[1], "linearForce": [linearForce[1]], "losses": losses[1]},
+        {"flux": flux[2], "linearForce": [linearForce[2]], "losses": losses[2]}]
 
 def test_process(bch):
     num_slots = 24
@@ -69,6 +72,7 @@ def test_process(bch):
     r = femagtools.machine.afpm.process(lfe, pole_width, machine, bch)
     assert pytest.approx(r['r1'], abs=1e-3) == 0.03159
     assert pytest.approx(np.mean(r['torque']), abs=0.1) == 17.5
-    assert pytest.approx(np.mean(r['plfe']), abs=0.1) == 17.7
-    assert pytest.approx(np.mean(r['plmag']), abs=0.1) == 51.2
+    assert pytest.approx(
+        sum([r['plfe'][k] for k in r['plfe']]), abs=0.1) == 50.1
+    assert pytest.approx(np.mean(r['plmag']), abs=0.1) == 119.7
     assert pytest.approx(np.mean(r['plcu']), abs=0.1) == 925.6

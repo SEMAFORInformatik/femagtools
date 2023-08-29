@@ -2,6 +2,10 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.4.1
+	- convert from JMAG/JPLOT to msh
+	- added parident of AFM
+
 ## Release 1.4
 	- new machine type AFM (Axial Flux Machine)
         - added isa/nc methods (properties): get_areas, elements (inner,outer,center), calc_iron_loss

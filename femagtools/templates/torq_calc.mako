@@ -22,7 +22,18 @@ m.line            =    0
 m.two_pole_wi     =    2*m.pole_width
 m.range_x         =    m.two_pole_wi
 m.range_y         =    0.0
-
+% if model.get('magn_height', 0):
+m.magn_height = ${model['magn_height']*1e3}
+% endif
+% if model.get('yoke_height', 0):
+m.yoke_height = ${model['yoke_height']*1e3}
+% endif
+if m.yoke_height == nil then
+m.yoke_height = 0
+end
+if m.gap_ma_yoke == nil then
+m.gap_ma_yoke = 0
+end
 m.fc_force_points =  5
 m.fcpx_mm1        =   m.npols_gen*m.pole_width +1.0
 m.fcpy_mm1        =   -ag/2

@@ -21,8 +21,8 @@ if __name__ == '__main__':
     temp = [90, 90]
     pm = femagtools.machine.create_from_eecpars(temp, dqpars)
 
-    i1max = 50
-    Udc = 600
+    i1max = 80
+    Udc = 800
     u1max = round(0.9*Udc/np.sqrt(2)/np.sqrt(3))
 
     rep = []

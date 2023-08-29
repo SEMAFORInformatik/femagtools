@@ -36,10 +36,11 @@ def bch():
           "stator": {"stfe": {"freq": [1667.0], "hyst": [0.0,0], "eddy": [1.691,0]}},
           "rotor": {"----": {"freq": [1667.0], "hyst": [0.0,0], "eddy": [0,0]}}}]
     ]
+    lossPar = { 'hf': (1,1), 'ef': (1,1)}
     return [
-        {"flux": flux[0], "linearForce": [linearForce[0]], "losses": losses[0]},
-        {"flux": flux[1], "linearForce": [linearForce[1]], "losses": losses[1]},
-        {"flux": flux[2], "linearForce": [linearForce[2]], "losses": losses[2]}]
+        {"flux": flux[0], "linearForce": [linearForce[0]], "losses": losses[0], "lossPar": lossPar},
+        {"flux": flux[1], "linearForce": [linearForce[1]], "losses": losses[1], "lossPar": lossPar},
+        {"flux": flux[2], "linearForce": [linearForce[2]], "losses": losses[2], "lossPar": lossPar}]
 
 def test_process(bch):
     num_slots = 24

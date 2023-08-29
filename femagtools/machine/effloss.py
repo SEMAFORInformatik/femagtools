@@ -100,20 +100,41 @@ def rectangular_grid(ntmesh):
     """
     n = ntmesh[0, :]
     T = ntmesh[1, :]
-
     nmesh = [] 
     tmesh = []
-    n_unique = np.unique(n)
-    npoints = len(np.argwhere(n == n_unique[0]).squeeze())
-    for i in n_unique: 
+    ngrid = np.unique(n)
+
+    npoints = len(np.argwhere(n == ngrid[0]).squeeze())
+    if npoints%2: 
+        npoints = npoints + 1
+    
+    tp = []
+    tn = []
+
+    for i in ngrid: 
         idx = np.argwhere(n == i).squeeze()
         if len(idx) > 0: 
             tinp = T[idx]
-            tmesh += np.linspace(np.amin(tinp), np.amax(tinp), npoints).tolist()
+            # search pos. and neg. torque
+            idx_pos = np.argwhere(tinp > 0).squeeze()
+            idx_neg = np.argwhere(tinp < 0).squeeze()
+
+            # pos. half; motor range
+            tmax_pos, tmin_pos = np.amax(tinp[idx_pos]), np.amin(tinp[idx_pos])
+            tp = np.linspace(tmin_pos, tmax_pos, int(npoints/2), endpoint=True)
+
+            # neg. half; generator range
+            if len(idx_neg) > 0: 
+                tmax_neg, tmin_neg = np.amax(tinp[idx_neg]), np.amin(tinp[idx_neg])
+                tn = np.linspace(tmin_neg, tmax_neg, int(npoints/2), endpoint=True)
+                tmesh += tn.tolist() + tp.tolist()
+            else: 
+                tmesh += tp.tolist()
+
             nmesh += npoints*[i]
         else: 
             pass
-    return np.array([nmesh, tmesh])
+    return np.array([[i, j] for i, j in zip(nmesh, tmesh)]).T
 
 def _generate_mesh(n, T, nb, Tb, npoints):
     """return speed and torque list for driving/braking speed range

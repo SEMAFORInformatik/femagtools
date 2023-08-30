@@ -40,8 +40,5 @@ femagtools-convert = "femagtools.convert:main"
 femagtools-bchxml = "femagtools.bchxml:main"
 femagtools-dxfsl = "femagtools.dxfsl.conv:main"
 
-[tool.setuptools.packages.find]
-exclude = ["docs*", "src/tests*", "notebooks*"]
-
 [tool.setuptools.dynamic]
 version = {attr = "femagtools.__version__"}

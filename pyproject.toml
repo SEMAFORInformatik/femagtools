@@ -1,8 +1,5 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
-]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -31,7 +28,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dxfsl = ['lxml', 'dxfgrabber', 'networkx']
-plot =  ['matplotlib']
+mplot =  ['matplotlib']
 meshio = ['meshio']
 vtk = ['vtk']
 zmq = ['pyzmq']
@@ -42,10 +39,6 @@ femagtools-plot = "femagtools.plot.bch:main"
 femagtools-convert = "femagtools.convert:main"
 femagtools-bchxml = "femagtools.bchxml:main"
 femagtools-dxfsl = "femagtools.dxfsl.conv:main"
-
-[tool.setuptools.packages.find]
-include = ["femagtools"]
-exclude = ["docs*", "tests*", "notebooks*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "femagtools.__version__"}

@@ -311,7 +311,7 @@ class Reader(object):
                 "shapefactor": shapefactor
             }
             self.iron_loss_coefficients.append(coeffdict)
-
+        ds.close()
 
 def read(filename):
     """

@@ -124,7 +124,7 @@ def parident(workdir, engine, temp, machine,
     parvardef = {
         "decision_vars": [
             #            {"values": sorted(2*temp), "name": "magn_temp"},
-            {"steps": num_beta_steps, "bounds": [0, beta_min], "name": "angl_i_up"},
+            {"steps": num_beta_steps, "bounds": [beta_min, 0], "name": "angl_i_up"},
             {"steps": num_cur_steps,
              "bounds": [i1_max/num_cur_steps, i1_max], "name": "current"}
         ]
@@ -132,7 +132,8 @@ def parident(workdir, engine, temp, machine,
 
     pstudy = parstudy.List(
         workdir, condMat=condMat, magnets=magnetMat,
-        magnetizingCurves=magnetizingCurves)
+        magnetizingCurves=magnetizingCurves,
+        cmd=kwargs.get('cmd', None))
 
     ldq = []
     for magtemp in temp:
@@ -156,7 +157,8 @@ def parident(workdir, engine, temp, machine,
 
             gpstudy = parstudy.Grid(
                 subdir, condMat=condMat, magnets=magnetMat,
-                magnetizingCurves=magnetizingCurves)
+                magnetizingCurves=magnetizingCurves,
+                cmd=kwargs.get('cmd', None))
 
             simulation = dict(
                 calculationMode="torq_calc",
@@ -191,13 +193,13 @@ def parident(workdir, engine, temp, machine,
 
         r1 = postp[0]['r1']
         i1 = [r['i1'] for r in postp][::num_beta_steps]
-        beta = [r['beta'] for r in postp][:num_beta_steps][::-1]
-        psid = np.flip(np.reshape([r['psid'] for r in postp],
-                                  (-1, num_beta_steps)), axis=1).T
-        psiq = np.flip(np.reshape([r['psiq'] for r in postp],
-                                  (-1, num_beta_steps)), axis=1).T
-        torque = np.flip(np.reshape([r['torque'] for r in postp],
-                                  (-1, num_beta_steps)), axis=1).T
+        beta = [r['beta'] for r in postp][:num_beta_steps]
+        psid = np.reshape([r['psid'] for r in postp],
+                          (-1, num_beta_steps)).T
+        psiq = np.reshape([r['psiq'] for r in postp],
+                          (-1, num_beta_steps)).T
+        torque = np.reshape([r['torque'] for r in postp],
+                            (-1, num_beta_steps)).T
         losses = {k: np.flip(np.reshape([r['plfe'][k] for r in postp],
                                         (-1, num_beta_steps)),
                              axis=1).T.tolist()

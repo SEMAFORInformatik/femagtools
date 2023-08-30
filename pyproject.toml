@@ -1,8 +1,5 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
-]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -44,8 +41,7 @@ femagtools-bchxml = "femagtools.bchxml:main"
 femagtools-dxfsl = "femagtools.dxfsl.conv:main"
 
 [tool.setuptools.packages.find]
-include = ["femagtools"]
-exclude = ["docs*", "tests*", "notebooks*"]
+exclude = ["docs*", "src/tests*", "notebooks*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "femagtools.__version__"}

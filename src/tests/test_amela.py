@@ -2,22 +2,18 @@ import os
 import sys
 import json
 from femagtools import amela
-
+from pathlib import Path
 
 def read_output():
-    with open('tests/data/amela.out', 'r') as f:
-        data = f.readline()
-    return data.split('\n')[0]
-
+    return (Path(__file__).parent/ "data/amela.out").read_text().split('\n')[0]
 
 def read_json():
-    with open('tests/data/pm_data/pm_data_se38.json', 'r') as f:
-        data = json.load(f)
-    return data
+    return json.loads(
+        (Path(__file__).parent/"data/pm_data/pm_data_se38.json").read_text())
 
 
 def test_amela():
-    al = amela.Amela(workdir='tests/data',
+    al = amela.Amela(workdir='src/tests/data',
                      magnet_data=dict(name='pm_data'))
     loss = al()
     r = read_json()

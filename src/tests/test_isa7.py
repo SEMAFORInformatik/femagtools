@@ -4,7 +4,7 @@ from femagtools import isa7
 
 @pytest.fixture
 def isa():
-    filename = 'tests/data/minimal.ISA7'
+    filename = 'src/tests/data/minimal.ISA7'
     return isa7.read(filename)
 
 
@@ -94,7 +94,7 @@ def test_superelements(isa):
 
 @pytest.fixture
 def disp_stat():
-    filename = 'tests/data/test_disp_stat.ISA7'
+    filename = 'src/tests/data/test_disp_stat.ISA7'
     return isa7.read(filename)
 
 

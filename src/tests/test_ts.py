@@ -4,8 +4,8 @@ from femagtools import ts
 
 @pytest.fixture
 def losses():
-    dirname = 'tests/data/zzz_pm_model_ts_results_1'
-    modelname = 'tests/data/zzz_pm_model_ts'
+    dirname = 'src/tests/data/zzz_pm_model_ts_results_1'
+    modelname = 'src/tests/data/zzz_pm_model_ts'
     return ts.Losses(modelname, dirname)
 
 

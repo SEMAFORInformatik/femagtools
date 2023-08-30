@@ -3,7 +3,7 @@ from femagtools import forcedens
 
 
 def test_plt_read():
-    filename = 'tests/data/PLT.0'
+    filename = 'src/tests/data/PLT.0'
     fdens = forcedens.ForceDensity()
     fdens.read(filename)
 
@@ -13,4 +13,3 @@ def test_plt_read():
                                                  'Radius', 'X',
                                                  'column_units', 'position',
                                                  'unit']
-

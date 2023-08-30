@@ -5,12 +5,12 @@ from femagtools import isa7
 
 @pytest.fixture
 def model():
-    filename = 'tests/data/minimal.nc'
+    filename = 'src/tests/data/minimal.nc'
     return nc.read(filename)
 
 @pytest.fixture
 def pm():
-    filename = 'tests/data/pm_data.nc'
+    filename = 'src/tests/data/pm_data.nc'
     return nc.read(filename)
 
 
@@ -127,7 +127,7 @@ def test_superelements(model):
 
 @pytest.fixture
 def disp_stat():
-    filename = 'tests/data/test_disp_stat.nc'
+    filename = 'src/tests/data/test_disp_stat.nc'
     return nc.read(filename)
 
 

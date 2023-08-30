@@ -4,7 +4,7 @@ from femagtools import vtu
 
 @pytest.fixture
 def vtu_data():
-    filename = 'tests/data/zzz_pm_model_ts_results_1/zzz_pm_model_ts_0000.vtu'
+    filename = 'src/tests/data/zzz_pm_model_ts_results_1/zzz_pm_model_ts_0000.vtu'
     return vtu.read(filename)
 
 

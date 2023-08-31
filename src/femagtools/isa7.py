@@ -43,7 +43,7 @@ def bertotti_pfe(Bxnu, Bynu, fnu, losscoeffs):
 
     ch = losscoeffs['ch'] # hysteresis
     cw = losscoeffs['cw'] # eddy current
-    cx = losscoeffs['cx'] # excess
+    ce = losscoeffs['ce'] # excess
 
     '''
     hyscoef = losscoeffs['ch_freq_exp']
@@ -58,9 +58,10 @@ def bertotti_pfe(Bxnu, Bynu, fnu, losscoeffs):
     b = (b21/basind)
     hi = fnu/basfrq
 
+    # classic bertotti formula
     ph = ch*hi*b
     pw = cw*(hi**2)*(b**2)
-    pe = cx*(hi**1.5)*(b**1.5)
+    pe = ce*(hi**1.5)*(b**1.5)
 
     return ph, pw, pe
 

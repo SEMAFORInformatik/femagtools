@@ -1,1 +1,1 @@
-include femagtools/templates/*.mako
+include src/femagtools/templates/*.mako

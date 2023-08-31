@@ -57,7 +57,7 @@ nodedist         Factor for node distance        1.0
 .. Note::
 
    if no value for num_slots_gen is given its value is calculated from
-   the the number of slots Q and pole pairs p. (version added 0.0.16)
+   the number of slots Q and pole pairs p.
 
 .. _stator:
 
@@ -608,7 +608,7 @@ fo         reference frequency              Hz       50
 fillfac    iron fill factor                          1
 bsat       saturation induction             T        2.15
 rho        specific weight                  kg/dm3   7.65
-losses    dict of loss values (optional)
+losses     dict of loss values (optional)
 =========  ================================ ======== =======
 
 The loss factors and exponents are used in the Jordan loss calculation formula:

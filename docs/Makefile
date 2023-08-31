@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXAPIDOC  = sphinx-apidoc -o _build/tmp ../femagtools
+SPHINXAPIDOC  = sphinx-apidoc -o _build/tmp ../src/femagtools
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build

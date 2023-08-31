@@ -35,6 +35,35 @@ def jordanpfe(Bxnu, Bynu, fnu, losscoeffs):
     pw = cw*hcw*b2
     return ph, pw, (0,)
 
+def bertotti_pfe(Bxnu, Bynu, fnu, losscoeffs):
+    """bertotti core loss formula
+    """
+    basfrq = losscoeffs['base_frequency']
+    basind = losscoeffs['base_induction']
+
+    ch = losscoeffs['ch'] # hysteresis
+    cw = losscoeffs['cw'] # eddy current
+    cx = losscoeffs['cx'] # excess
+
+    '''
+    hyscoef = losscoeffs['ch_freq_exp']
+    edycoef = losscoeffs['cw_freq_exp']
+    exccoef = losscoeffs['cx_freq_exp']
+    hys_indcoef = losscoeffs['ch_ind_exp']
+    edy_indcoef = losscoeffs['cw_ind_exp']
+    exc_indcoef = losscoeffs['cx_ind_exp']
+    '''
+
+    b21 = np.linalg.norm((Bxnu, Bynu), axis=0)
+    b = (b21/basind)
+    hi = fnu/basfrq
+
+    ph = ch*hi*b
+    pw = cw*(hi**2)*(b**2)
+    pe = cx*(hi**1.5)*(b**1.5)
+
+    return ph, pw, pe
+
 
 class Reader(object):
     """

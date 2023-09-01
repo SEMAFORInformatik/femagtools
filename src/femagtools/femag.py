@@ -39,9 +39,6 @@ from femagtools import ntib
 logger = logging.getLogger(__name__)
 
 
-BCHEXT = 'BATCH' if sys.platform.startswith('linux') else 'BCH'  # win32
-
-
 class FemagError(Exception):
     pass
 
@@ -249,7 +246,7 @@ class BaseFemag(object):
         return result
 
     def get_bch_file(self, modelname, offset=0):
-        return self.get_result_file(modelname, BCHEXT, offset)
+        return self.get_result_file(modelname, 'B*CH', offset)
 
     def get_asm_file(self, modelname, offset=0):
         return self.get_result_file(modelname, 'ASM', offset)

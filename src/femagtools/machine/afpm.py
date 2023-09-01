@@ -194,10 +194,11 @@ def parident(workdir, engine, temp, machine,
         r1 = postp[0]['r1']
         i1 = [r['i1'] for r in postp][::num_beta_steps]
         beta = [r['beta'] for r in postp][:num_beta_steps]
+        # Note: Psi RMS Values aligned with BCH/BATCH
         psid = np.reshape([r['psid'] for r in postp],
-                          (-1, num_beta_steps)).T
+                          (-1, num_beta_steps)).T/np.sqrt(2)
         psiq = np.reshape([r['psiq'] for r in postp],
-                          (-1, num_beta_steps)).T
+                          (-1, num_beta_steps)).T/np.sqrt(2)
         torque = np.reshape([r['torque'] for r in postp],
                             (-1, num_beta_steps)).T
         losses = {k: np.flip(np.reshape([r['plfe'][k] for r in postp],

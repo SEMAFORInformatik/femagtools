@@ -43,7 +43,7 @@ class ProtFile:
 
     def percent(self):
         if self.looplen > 0:
-            return 100 * self.n / self.looplen
+            return max(100 * self.n / self.looplen, 100)
         return 0
 
     def update(self):

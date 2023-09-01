@@ -15,7 +15,7 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 * create and analyse symmetrical windings
 * create a machine and winding layout from basic requirements
 * identify the model parameters of equivalent circuit
-* calculate machine characteristics by using analytic machine models
+* calculate machine characteristics and efficiency maps by using analytic machine models
 * create a variety of plots
 * execute parameter studies and multi-objective optimization
 
@@ -31,10 +31,6 @@ Femagtools can be installed on any 3.x Python distribution with Numpy, Scipy and
 
   $ pip install femagtools
 
-Or with Anaconda::
-
-  $ conda install -c semafor -c conda-forge femagtools
-
 Prerequisite: a fairly recent FEMAG version
 (see http://www.profemag.ch) must be found in one of the
 directories listed in your PATH variable.
@@ -42,13 +38,6 @@ directories listed in your PATH variable.
 If a proxy is needed::
 
   $ pip --proxy http://proxy.hell:3128 install femagtools
-
-For Anaconda you can setup the environment variables HTTP_PROXY and
-HTTPS_PROXY or the file .condarc::
-
-  proxy_servers:
-    http: http://user:pass@corp.com:8080
-    https: https://user:pass@corp.com:8080
 
 For further information: <https://conda.io/docs/user-guide/configuration>_.
 
@@ -80,7 +69,7 @@ User Guide
    dakota
    engine
    amela
-   
+
 References
 ==========
 
@@ -100,6 +89,6 @@ Indices and tables
 Copyright
 =========
 
-Copyright: 2017-2021 Semafor Informatik & Energie AG, Basel
+Copyright: 2017-2023 Semafor Informatik & Energie AG, Basel
 
 License: BSD, see LICENSE for more details.

@@ -486,28 +486,33 @@ class PmRelMachine(object):
                 if abs(b1-b0) < deps:
                     break
             beta, i1 = bx, i1max
+            iq, id = iqd(beta, abs(i1))
             du = ux - u1max
             logger.debug("iqd_imax_umax n %f beta %f iter=%d du=%f",
                          w1/2/np.pi/self.p*60, beta/np.pi*180, k, du)
-            if abs(du) < 0.1:
-                iq, id = iqd(beta, abs(i1max))
-            else:
+            if abs(du) > 0.1:
                 logger.debug('oops? iqd_imax_umax one more torque reduction')
                 if with_tmech:
                     iq, id = self.iqd_tmech(torque, w1/2/np.pi/self.p,
-                                            iqd(beta, i1))[:2]
+                                            iq, id)[:2]
                 else:
                     iq, id = self.iqd_torque(torque, w1/2/np.pi/self.p,
-                                            iqd(beta, i1))[:2]
+                                             iq, id)[:2]
         if with_mtpv:
             try:
                 if with_tmech:
-                    return self.mtpv_tmech(w1, u1max, iqd0=(iq, id))
+                    iq, id, tq = self.mtpv_tmech(w1, u1max,
+                                                 iqd0=(iq, id),
+                                                 maxtorque=torque>0,
+                                                 i1max=i1max)
                 else:
-                    return self.mtpv(w1, u1max, iqd0=(iq, id))
+                    iq, id, tq = self.mtpv(w1, u1max, iqd0=(iq, id),
+                                           maxtorque=torque>0,
+                                           i1max=i1max)
+                return iq, id, tq
             except ValueError as e:
                 logger.warning(e)
-        iq, id = iqd(beta, abs(i1))
+
         if with_tmech:
             tq = self.tmech_iqd(iq, id, w1/2/np.pi/self.p)
         else:
@@ -539,7 +544,7 @@ class PmRelMachine(object):
         iq, id = iqd(bopt[0], abs(i1))
         return [iq, id, sign*fopt]
 
-    def mtpv(self, w1, u1, iqd0=0, maxtorque=True):
+    def mtpv(self, w1, u1, iqd0=0, maxtorque=True, i1max=0):
         """return d-q-current, torque for voltage and frequency
         with maximum (maxtorque=True) or minimum torque """
         sign = -1 if maxtorque else 1
@@ -548,17 +553,22 @@ class PmRelMachine(object):
         else:
             i0 = iqd0
         n = w1/2/np.pi/self.p
+        constraints=[{
+            'type': 'eq',
+            'fun': lambda iqd:
+            np.sqrt(2)*u1 - la.norm(self.uqd(w1, *iqd))}]
+        if i1max:
+            constraints.append({'type': 'ineq',
+                                'fun': lambda iqd:
+                                 i1max - betai1(*iqd)[1]})
         res = so.minimize(lambda iqd: sign*self.torque_iqd(*iqd), i0,
-                          method='SLSQP',
-                          constraints={
-                              'type': 'eq',
-                              'fun': lambda iqd:
-                              np.sqrt(2)*u1 - la.norm(self.uqd(w1, *iqd))})
+                          method='SLSQP', constraints=constraints)
+        #logger.info("mtpv %s", res)
         if res['success']:
             return res.x[0], res.x[1], sign*res.fun
         raise ValueError(f"mtpv w1={w1} u1={u1} maxtorque={maxtorque} res: {res['message']}")
 
-    def mtpv_tmech(self, w1, u1, iqd0=0, maxtorque=True):
+    def mtpv_tmech(self, w1, u1, iqd0=0, maxtorque=True, i1max=0):
         """return d-q-current, shaft torque for voltage and frequency
         with maximum (maxtorque=True) or minimum torque """
         sign = -1 if maxtorque else 1
@@ -567,13 +577,18 @@ class PmRelMachine(object):
         else:
             i0 = iqd0
         n = w1/2/np.pi/self.p
-        res = so.minimize(lambda iqd: sign*self.tmech_iqd(
-            *iqd, n), i0,
+        constraints=[{'type': 'eq',
+                     'fun': lambda iqd:
+                     np.sqrt(2)*u1 - la.norm(
+                         self.uqd(w1, *iqd))}]
+        if i1max:
+            constraints.append({'type': 'ineq',
+                                'fun': lambda iqd:
+                                 i1max - betai1(*iqd)[1]})
+        res = so.minimize(lambda iqd: sign*self.tmech_iqd(*iqd, n), i0,
                           method='SLSQP',
-                          constraints={'type': 'eq',
-                                       'fun': lambda iqd:
-                                       np.sqrt(2)*u1 - la.norm(
-                                           self.uqd(w1, *iqd))})
+                          constraints=constraints)
+        #logger.info("mtpv_torque %s", res)
         if res['success']:
             return res.x[0], res.x[1], sign*res.fun
         #logger.warning("w1=%.1f u1=%.1f maxtorque=%s %s: %s", w1, u1, maxtorque, res.x, res.message)

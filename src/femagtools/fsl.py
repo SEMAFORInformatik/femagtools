@@ -177,9 +177,11 @@ class Builder:
 
         statmodel = model.stator.copy()
         if 'middle_line' not in statmodel:
-            statmodel['middle_line'] = 0 if model.windings.get(
-                'num_layers', 1) == 1 else 1
-
+            try:
+                statmodel['middle_line'] = 0 if model.windings.get(
+                    'num_layers', 1) == 1 else 1
+            except AttributeError:
+                pass # no windings
         statmodel.update(model.stator[templ])
         k = 'zeroangle'
         if k not in statmodel:
@@ -636,11 +638,16 @@ class Builder:
             return []
 
     def create_analysis(self, sim):
+        pfefunc = sim.get('loss_funct', '')
+        if pfefunc:
+            sim['loss_funct'] = 2 # 3?
         airgap_induc = (self.create_airgap_induc()
                         if sim.get('airgap_induc', 0) else [])
-        felosses = self.create_fe_losses(sim)
+        felosses = pfefunc.split('\n') + self.create_fe_losses(sim)
         fslcalc = (self.__render(sim, sim.get('calculationMode')) +
                    airgap_induc)
+        if pfefunc:
+            sim['loss_funct'] = pfefunc
 
         if sim.get('calculationMode') in ('cogg_calc',
                                           'ld_lq_fast',

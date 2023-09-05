@@ -246,7 +246,7 @@ class BaseFemag(object):
         return result
 
     def get_bch_file(self, modelname, offset=0):
-        return self.get_result_file(modelname, 'B*CH', offset)
+        return self.get_result_file(modelname, 'B(AT)?CH', offset)
 
     def get_asm_file(self, modelname, offset=0):
         return self.get_result_file(modelname, 'ASM', offset)
@@ -256,10 +256,11 @@ class BaseFemag(object):
 
     def get_result_file(self, modelname, ext, offset=0):
         """return latest result (bch, asm) file (if any)"""
-        filelist = sorted(glob.glob(os.path.join(
-            self.workdir, modelname+'_[0-9][0-9][0-9].'+ext)))
+        filelist = glob.glob(os.path.join(
+            self.workdir, modelname+'_[0-9][0-9][0-9].*'))
         if (filelist):
-            return filelist[-1-offset]
+            return sorted([f for f in filelist
+                           if re.search(ext, f.split('.')[-1])])[-1-offset]
         return ''
 
     def get_result_file_list(self, modelname, ext):

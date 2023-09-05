@@ -1,7 +1,7 @@
 --
 -- Ld-Lq- Identification
 --
-	 
+
 m.move_action     =    0.0 -- rotate
 % if isinstance(model, dict) and 'lfe' in model:
 m.arm_length      =    ${model.get('lfe')*1e3}
@@ -21,6 +21,9 @@ m.num_cur_steps   =    ${model['num_cur_steps']}
 m.nu_beta_steps   =    ${model['num_beta_steps']}
 m.beta_max        =    ${model['beta_max']}
 m.beta_min        =    ${model['beta_min']}
+% if  model.get('loss_funct',0):
+m.loss_funct      =    ${model.get('loss_funct')}
+% endif
 
 m.pm_eff_aktiv    =    0.0
 m.calc_noload     =    ${model.get('calc_noload', 1)}

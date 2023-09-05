@@ -4,7 +4,7 @@
 % if model.get('magn_temp',0):
 set_dev_data("magn_temp", ${model.get('magn_temp')})
 %endif
-	 
+
 m.move_action     =    0.0 -- rotate
 m.speed           =    ${model.get('speed')*60}
 m.skew_angle      =    ${model.get('skew_angle',0)}
@@ -24,9 +24,11 @@ m.delta_iq        =    ${model['delta_iq']}/m.num_par_wdgs
 % if model.get('load_ex_cur',0):
 m.load_ex_cur     =    ${model['load_ex_cur']}
 %endif
+% if  model.get('loss_funct',0):
+m.loss_funct      =    ${model.get('loss_funct')}
+% endif
 m.pm_eff_aktiv    =    0.0
 m.calc_noload     =    ${model.get('calc_noload', 1)}
 m.period_frac     =    ${model.get('period_frac', 1)}
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 run_models("psd_psq_fast")
-

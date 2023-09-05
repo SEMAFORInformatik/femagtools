@@ -23,6 +23,9 @@ m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 % if model.get('vtu_movie', 0):
 m.movie_type = 'vtu'
 %endif
+% if  model.get('loss_funct',0):
+m.loss_funct      =    ${model.get('loss_funct')}
+% endif
 -- Excitation current
 m.nloa_ex_cur   = ${model.get('nload_ex_cur', 0)} -- No Load Exciting current
 m.load_ex_cur   = ${model.get('load_ex_cur', 0)} -- Load Exciting current

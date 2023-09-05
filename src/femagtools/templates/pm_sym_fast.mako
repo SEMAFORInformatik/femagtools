@@ -11,6 +11,9 @@ m.move_action     =    ${model.get('move_action', 0)}
 % if  model.get('lfe',0):
 m.arm_length      =    ${model.get('lfe')*1e3}
 % endif
+% if  model.get('loss_funct',0):
+m.loss_funct      =    ${model.get('loss_funct')}
+% endif
 % if model.get('move_action', 0) == 0:
 m.speed           =    ${model.get('speed')*60}
 m.skew_angle      =    ${model.get('skew_angle',0)}
@@ -23,9 +26,9 @@ m.skew_linear     =    ${model.get('skew_displ',0)}
 m.line            =    0
 m.two_pole_wi     =    2*m.pole_width
 m.range_x         =    m.two_pole_wi
-m.range_y         =    0.0 
+m.range_y         =    0.0
 
-m.fc_force_points =  5                                                
+m.fc_force_points =  5
 m.fcpx_mm1        =   m.npols_gen*m.pole_width +1.0
 m.fcpy_mm1        =   -3*ag/4
 m.fcpx_mm2        =   -1.0

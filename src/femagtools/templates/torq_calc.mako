@@ -2,6 +2,9 @@
 -- Torque/Force calculation
 --
 m.move_action     =    ${model.get('move_action', 0)}
+% if  model.get('loss_funct',0):
+m.loss_funct      =    ${model.get('loss_funct')}
+% endif
 % if model.get('lfe',0):
 m.arm_length      =    ${model.get('lfe')*1e3}
 % endif

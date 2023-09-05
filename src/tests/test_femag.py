@@ -70,7 +70,7 @@ def test_run_script(monkeypatch, tmpdir):
                                    magnetizingCurves=mcv, magnets=magnetmat)
 
     fsl = femag.create_fsl(machine, simulation)
-    assert len(fsl) == 93
+    assert len(fsl) == 94
     assert femag.model.magnet['temp_prop']['magntemp'] == 60.0
 
     r = femag(machine, simulation)

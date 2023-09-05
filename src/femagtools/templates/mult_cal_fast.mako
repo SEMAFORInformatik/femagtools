@@ -21,7 +21,7 @@ m.speed           =    ${model.get('speed')*60}
 m.fc_mult_move_type =  1.0 --  Type of move path in air gap
 m.fc_force_points   =  0.0 --    number move points in air gap
 m.loss_funct    = ${model.get('loss_funct', 0)}     -- loss functon 0: own 1: ext
-m.loss_fact     = ${}   -- loss multiplication factor
+m.loss_fact     = ${model.get('loss_fact', 1)}   -- loss multiplication factor
 
 % if model.get('vtu_movie', 0):
 m.movie_type = 'vtu'

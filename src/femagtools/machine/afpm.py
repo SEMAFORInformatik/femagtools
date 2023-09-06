@@ -27,21 +27,18 @@ AFM_TYPES = (
 )
 
 def integrate(radius, pos, val):
-    if len(radius) > 2:
-        interp = RegularGridInterpolator((radius, pos), val)
-        def func(x, y):
-            return interp((x, y))
-        return [quad(func, radius[0], radius[-1], args=(p,))[0]
-                for p in pos]
-    return val[0]
+    interp = RegularGridInterpolator((radius, pos), val)
+    def func(x, y):
+        return interp((x, y))
+    return [quad(func, radius[0], radius[-1], args=(p,))[0]
+            for p in pos]
+
 
 def integrate1d(radius, val):
-    if len(radius) > 2:
-        interp = interp1d(radius, val)
-        def func(x):
-            return interp((x))
-        return quad(func, radius[0], radius[-1])[0]
-    return val[0]
+    interp = interp1d(radius, val)
+    def func(x):
+        return interp((x))
+    return quad(func, radius[0], radius[-1])[0]
 
 
 def parident(workdir, engine, temp, machine,
@@ -277,9 +274,9 @@ def process(lfe, pole_width, machine, bch):
                for k in voltage]
     else:
         r = radius[0]
-        torque = [r*scale_factor*fx/2
+        torque = [r*scale_factor*fx
                   for fx in bch[0]['linearForce'][0]['force_x'][:-1]]
-        voltage = {k: [scale_factor * ux/2
+        voltage = {k: [scale_factor * ux
                        for ux in bch[0]['flux'][k][0]['voltage_dpsi'][:-1]]
                    for k in bch[0]['flux']}
         emf = [voltage[k][:n] for k in voltage]
@@ -401,7 +398,7 @@ def get_arm_lengths(outer_diam, inner_diam, num_slices):
         return [d/(4*(num_slices-1))] + [
             d/(2*(num_slices-1))
             for i in range(1,num_slices-1)] + [d/(4*(num_slices-1))]
-    return [d]
+    return [d/2]
 
 
 def get_pole_widths(outer_diam, inner_diam, poles, num_slices):

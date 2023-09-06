@@ -33,7 +33,7 @@ def integrate(radius, pos, val):
             return interp((x, y))
         return [quad(func, radius[0], radius[-1], args=(p,))[0]
                 for p in pos]
-    return val
+    return val[0]
 
 def integrate1d(radius, val):
     if len(radius) > 2:
@@ -41,7 +41,7 @@ def integrate1d(radius, val):
         def func(x):
             return interp((x))
         return quad(func, radius[0], radius[-1])[0]
-    return val
+    return val[0]
 
 
 def parident(workdir, engine, temp, machine,
@@ -259,22 +259,33 @@ def process(lfe, pole_width, machine, bch):
              for e, r in zip(endpos, bch)]
     radius = [pw*machine['poles']/2/np.pi for pw in pole_width]
     rotpos = [np.array(d)/r/1000 for r, d in zip(radius, displ)]
-    torque = [r*scale_factor*np.array(fx)/l
-              for l, r, fx in zip(lfe, radius,
-                                  [r['linearForce'][0]['force_x']
-                                   for r in bch])]
-    voltage = {k: [scale_factor * np.array(ux)/l
-                   for l, ux in zip(lfe, [r['flux'][k][0]['voltage_dpsi']
-                                          for r in bch])]
-               for k in bch[0]['flux']}
-
     n = len(rotpos[0])
     currents = [bch[0]['flux'][k][0]['current_k'][:n]
                 for k in bch[0]['flux']]
-    emf = [integrate(radius, rotpos[0], np.array(voltage[k])[:, :n])
-           for k in voltage]
+    if len(pole_width) > 1:
+        torque = integrate(radius, rotpos[0], np.array(
+            [r*scale_factor*np.array(fx[:-1])/l
+             for l, r, fx in zip(lfe, radius,
+                                 [r['linearForce'][0]['force_x']
+                                  for r in bch])]))
+
+        voltage = {k: [scale_factor * np.array(ux[:-1])/l
+                       for l, ux in zip(lfe, [r['flux'][k][0]['voltage_dpsi']
+                                              for r in bch])]
+                   for k in bch[0]['flux']}
+        emf = [integrate(radius, rotpos[0], np.array(voltage[k]))
+               for k in voltage]
+    else:
+        r = radius[0]
+        torque = [r*scale_factor*fx/2
+                  for fx in bch[0]['linearForce'][0]['force_x'][:-1]]
+        voltage = {k: [scale_factor * ux/2
+                       for ux in bch[0]['flux'][k][0]['voltage_dpsi'][:-1]]
+                   for k in bch[0]['flux']}
+        emf = [voltage[k][:n] for k in voltage]
+
     pos = (rotpos[0]/np.pi*180)
-    emffft = utils.fft(pos, np.array(emf[0]))
+    emffft = utils.fft(pos, emf[0])
 
     styoke = {}
     stteeth = {'hyst':0, 'eddy':0}
@@ -297,11 +308,10 @@ def process(lfe, pole_width, machine, bch):
     freq = bch[0]['losses'][0]['stator']['stfe']['freq'][0]
 
     wdg = windings.Winding(
-        dict(
-            Q=mmod.stator['num_slots'],
-            p=mmod.poles//2,
-            m=mmod.windings['num_phases'],
-            l=mmod.windings['num_layers']))
+        dict(Q=mmod.stator['num_slots'],
+             p=mmod.poles//2,
+             m=mmod.windings['num_phases'],
+             l=mmod.windings['num_layers']))
 
     cufill = mmod.windings.get('cufilfact', 0.4)
     aw = (mmod.stator['afm_stator']['slot_width']*
@@ -316,7 +326,7 @@ def process(lfe, pole_width, machine, bch):
 
     return {
         'pos': pos.tolist(), 'r1': r1,
-        'torque': integrate(radius, rotpos[0], np.array(torque)[:, :n]),
+        'torque': torque,
         'emf': emf,
         'emf_amp': emffft['a'], 'emf_angle': emffft['alfa0'],
         'freq': freq,
@@ -400,7 +410,7 @@ def get_pole_widths(outer_diam, inner_diam, poles, num_slices):
         return [np.pi * inner_diam/poles] + [
             np.pi * (inner_diam + d*i/(num_slices - 1))/poles
             for i in range(1, num_slices-1)] + [np.pi * outer_diam/poles]
-    return [np.pi * (machine['outer_diam']+machine['inner_diam'])/2/machine['poles']]
+    return [np.pi * (outer_diam+inner_diam)/2/poles]
 
 
 def wdg_resistance(wdg, n, g, aw, outer_diam, inner_diam,
@@ -490,6 +500,7 @@ class AFPM:
         machine['pole_width'] = np.pi * machine['inner_diam']/machine['poles']
         machine['lfe'] = machine['outer_diam'] - machine['inner_diam']
 
+        nlresults = {}
         if (simulation['calculationMode'] != 'cogg_calc' and
             'poc' not in simulation):
             nlcalc = dict(

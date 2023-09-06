@@ -2,6 +2,9 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.4.2
+	- custom loss calc func for pm_sym_fast, torq_calc, ld_ld, psd_psq simulations, mult_cal
+
 ## Release 1.4.1
 	- convert from JMAG/JPLOT to msh
 	- added parident of AFM

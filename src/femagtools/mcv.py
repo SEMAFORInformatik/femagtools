@@ -492,25 +492,28 @@ class Writer(Mcv):
                                          self.PARAMETER_PM_CURVE):
                 self.writeBlock([self.mc1_angle[K], self.mc1_db2[K]])
 
-        if not (self.mc1_ch_factor or self.mc1_cw_factor) and self.losses:
-            pfe = self.losses['pfe']
-            f = self.losses['f']
-            B = self.losses['B']
-            losses = [list(p) + [None]*(len(B)-len(p)) for p in pfe]
-            fo = self.mc1_base_frequency
-            Bo = self.mc1_base_induction
-            fit_jordan = False
-            if fit_jordan:
-                ch, alfa, cw, beta, gamma = lc.fitjordan(f, B, losses, Bo, fo)
-                self.mc1_ch_factor = ch
-                self.mc1_ch_freq_factor = alfa
-            else:
-                cw, beta, gamma = lc.fitsteinmetz(f, B, losses, Bo, fo)
-                self.mc1_ch_factor = 0
-                self.mc1_ch_freq_factor = 0
-            self.mc1_cw_factor = cw
-            self.mc1_cw_freq_factor = beta
-            self.mc1_induction_factor = gamma
+        try:
+            if not (self.mc1_ch_factor or self.mc1_cw_factor) and self.losses:
+                pfe = self.losses['pfe']
+                f = self.losses['f']
+                B = self.losses['B']
+                losses = [list(p) + [None]*(len(B)-len(p)) for p in pfe]
+                fo = self.mc1_base_frequency
+                Bo = self.mc1_base_induction
+                fit_jordan = False
+                if fit_jordan:
+                    ch, alfa, cw, beta, gamma = lc.fitjordan(f, B, losses, Bo, fo)
+                    self.mc1_ch_factor = ch
+                    self.mc1_ch_freq_factor = alfa
+                else:
+                    cw, beta, gamma = lc.fitsteinmetz(f, B, losses, Bo, fo)
+                    self.mc1_ch_factor = 0
+                    self.mc1_ch_freq_factor = 0
+                self.mc1_cw_factor = cw
+                self.mc1_cw_freq_factor = beta
+                self.mc1_induction_factor = gamma
+        except AttributeError:
+            pass
         self.writeBlock([float(self.mc1_base_frequency),
                          float(self.mc1_base_induction),
                          float(self.mc1_ch_factor),

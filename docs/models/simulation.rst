@@ -2,6 +2,7 @@
 =================
 
 Cogging (cogg_calc)
+~~~~~~~~~~~~~~~~~~~
 
 ==============  ============================= ==========  ============
 Parameter        Description                   Default      Unit
@@ -26,6 +27,7 @@ Example::
     speed=50.0)
 
 PM/Rel Machine Simulation (pm_sym_fast)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ==============  ======================================= ========  ============
 Parameter        Description                            Default      Unit
@@ -82,7 +84,7 @@ Example::
    B_fft           Values of base harmonic       T
    ==============  ============================= ============
 
-   .. image:: img/airgapinduc.png
+   .. image:: ../img/airgapinduc.png
       :height: 240pt
 
 .. Note::
@@ -96,6 +98,7 @@ Example::
    ==============  ============================= ============
 
 Short circuit calculation (shortcircuit)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The short circuit calculation is executed subsequentially to a pm_sym_fast simulation
 if shortCircuit is set True. (version added 0.9.30). The results are included in scData dict of bch
@@ -150,10 +153,11 @@ if shortCircuit is set True. (version added 0.9.30). The results are included in
      femagtools.plot.transientsc(r)
      plt.show()
 
-.. image:: img/shortcircuit.png
+.. image:: ../img/shortcircuit.png
   :height: 290pt
 
 SM Machine Simulation (pm_sym_f_cur)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ==============  ======================================= ========  ============
 Parameter        Description                            Default      Unit
@@ -180,6 +184,7 @@ vtu_movie       Create VTU files                        False
 ==============  ======================================= ========  ============
 
 Ld-Lq Identification (ld_lq_fast)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ==============  ============================= ==========  ============
 Parameter        Description                   Default      Unit
@@ -214,6 +219,7 @@ Example::
 
 
 Psid-Psiq Identification (psd_psq_fast)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ==============  ============================= ==========  ============
 Parameter        Description                   Default      Unit
@@ -250,6 +256,7 @@ Example::
 
 
 PM/Rel Torque Calc (torq_calc)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 similar to pm_sym_fast without noload calc (Note: requires a correct Poc)
 

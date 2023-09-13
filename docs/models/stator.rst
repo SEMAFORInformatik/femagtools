@@ -17,15 +17,15 @@ nodedist         Factor for node distance        1.0
 
 .. Note::
 
-   if no value for num_slots_gen is given its value is calculated from
-   the number of slots Q and pole pairs p.
+   * if a value for num_slots_gen is missing its value is calculated from the number of slots Q and pole pairs p.
+   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the :ref:`magnetizingCurve`_ object.
 
 .. _stator:
 
-Stator (stator1)
-~~~~~~~~~~~~~~~~
+stator1
+~~~~~~~
 
-  .. image:: slot-parameters/stator1.svg
+  .. image:: ../slot-parameters/stator1.svg
 
 ==============  ====  ====== =============================================
 Name                  Unit   Comment
@@ -49,10 +49,12 @@ stator2
                  corner_width
 ==============  ===========================================
 
-Stator (statorRotor3)
-~~~~~~~~~~~~~~~~~~~~~
+.. _statorRotor3:
 
-  .. image:: slot-parameters/statorRotor3.svg
+statorRotor3
+~~~~~~~~~~~~
+
+  .. image:: ../slot-parameters/statorRotor3.svg
 
 ==============  ====  ====== =============================================
 Name                  Unit   Comment
@@ -70,20 +72,29 @@ tooth_width     TW    m      overwrites B1, B2 if > 0
 slot_top_sh                  0: arc 1: line, 2: corner
 ==============  ====  ====== =============================================
 
+stator4
+~~~~~~~
+
+  .. image:: ../slot-parameters/stator4.svg
+
+==============  ====  ====== =============================================
+Name                  Unit   Comment
+==============  ====  ====== =============================================
+slot_height     H     m
+slot_h1         H1    m
+slot_h2         H2    m
+slot_h3         H3    m
+slot_h4         H4    m
+slot_width      SW    m
+slot_r1         R1    m
+wedge_width1    B1    m
+wedge_width2    B2    m
+wedge_width3    B3    m
+==============  ====  ====== =============================================
+
 ==============  ===========================================
 Name             Parameter
 ==============  ===========================================
-stator4
-                 slot_height,
-                 slot_h1,
-                 slot_h2,
-                 slot_h3,
-                 slot_h4,
-                 slot_width,
-                 slot_r1,
-                 wedge_width1,
-                 wedge_width2,
-                 wedge_width3
 statorBG
                  yoke_diam_ins,
                  slot_h1,
@@ -127,7 +138,7 @@ dxffile
 .. _stator_slots_fsl:
 
 User defined Stator Slots with FSL
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If a Mako or FSL file that includes the definition of stator geometry exists and is readable it can be used for the model creation.
 
@@ -149,7 +160,7 @@ Example with file mystator.fsl::
 .. _stator_slots_dxf:
 
 User defined Stator Slots with DXF
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If a DXF file that defines the stator geometry exists and is readable
 it can be used to create the FSL of the model.

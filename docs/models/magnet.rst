@@ -15,37 +15,150 @@ nodedist         Factor for node distance         1.0
 
 .. Note::
 
-   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the `magnetizingCurve`_ object.
-   * the material parameter references a name of the `Magnet Material`_ list.
+   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the :ref:`magnetizingCurve` object.
+   * the material parameter references a name of the :ref:`magnetMaterial` list.
 
-Magnet Slots
-^^^^^^^^^^^^
+
+magnetSector
+~~~~~~~~~~~~
+
+  .. image:: ../slot-parameters/magnetSector.svg
+
+==============  ======  ====== =============================================
+Name                    Unit   Comment
+==============  ======  ====== =============================================
+magn_num                       number of magnets per pole
+magn_height     HM      m
+magn_width_pct                 magnet width per pole width
+magn_width      BM      m      used if magn_width_pct is undefined or 0
+condshaft_r             m      conducting shaft radius
+magn_rfe                m      inner radius of magnet
+magn_len                       relative magnet length
+magn_shape              m
+bridge_height   BH
+bridge_width    BW
+magn_ori                       orientation 1: parallel, 2: polar, 3: halbach
+magn_type                      1: arc 2: arc par. 3: rect. 4: curved rect.
+==============  ======  ====== =============================================
+
+  .. image:: ../slot-parameters/magntype1.png
+             :width: 140
+  .. image:: ../slot-parameters/magntype2.png
+             :width: 140
+  .. image:: ../slot-parameters/magntype3.png
+             :width: 140
+  .. image:: ../slot-parameters/magntype4.png
+             :width: 140
+
+magnetIron
+~~~~~~~~~~
+
+  .. image:: ../slot-parameters/magnetIron.svg
+
+==============  ======  ====== =============================================
+Name                    Unit   Comment
+==============  ======  ====== =============================================
+magn_height     HM      m
+magn_width      BM      m
+gap_ma_iron     DE_FEM  m
+air_triangle    BS      m
+iron_height     HS      m
+magn_rem                T      magn. remanenc
+condshaft_r             m      conducting shaft radius if < RI
+magn_ori                       orientation 1: parallel, 2: polar, 3: halbach
+bridge_height   BH      m
+bridge_width    BW      m
+iron_shape      HA      m
+==============  ======  ====== =============================================
+
+magnetIron3
+~~~~~~~~~~~
+
+  .. image:: ../slot-parameters/magnetIron3.svg
+
+==============  ======  ====== =============================================
+Name                    Unit   Comment
+==============  ======  ====== =============================================
+magn_height     HM      m
+magn_width      BM      m
+gap_ma_iron     DE_FEM  m
+air_triangle    BS      m
+iron_height     HS      m
+magn_num                       number of magnets
+shaft_rad               m      conducting shaft radius if < RI
+magn_ori                       orientation 1: parallel, 2: polar, 3: halbach
+gap_ma_right    BR      m
+gap_ma_left     BL      m
+iron_shape      HA      m
+==============  ======  ====== =============================================
+
+magnetIron4
+~~~~~~~~~~~
+
+  .. image:: ../slot-parameters/magnetIron4.svg
+
+==============  ======  ====== =============================================
+Name                    Unit   Comment
+==============  ======  ====== =============================================
+magn_height     HM      m
+magn_width      BM      m
+gap_ma_iron     DE_FEM  m
+air_triangle    BS      m
+iron_height     HS      m
+air_space_h     H_air   m
+corner_r        R1      m
+magn_dist_ra    DM      m
+air_sp_ori                     orientation 0: lin 1: par RA
+magn_ori                       orientation 1: parallel, 2: polar, 3: halbach
+magn_num                       number of magnets (1 or 2)
+iron_shape      HA      m
+==============  ======  ====== =============================================
+
+magnetIron5
+~~~~~~~~~~~
+
+  .. image:: ../slot-parameters/magnetIron5.svg
+
+==============  ======  ====== =============================================
+Name                    Unit   Comment
+==============  ======  ====== =============================================
+magn_height     HM      m
+magn_width      BM      m
+gap_ma_iron     DE_M    m
+iron_bfe        BFE     m
+iron_height     HS      m
+air_space_h     H_air   m
+air_space_b     B_air   m
+corner_r        R1      m
+magn_dist_ra    DM      m
+air_sp_ori                     orientation 0: lin 1: par RA
+magn_num                       number of magnets (1 or 2)
+iron_shape      HA      m
+==============  ======  ====== =============================================
+
+magnetIronV
+~~~~~~~~~~~
+
+  .. image:: ../slot-parameters/magnetIronV.svg
+
+==============  ======  ====== =============================================
+Name                    Unit   Comment
+==============  ======  ====== =============================================
+magn_height     HM      m
+magn_width      BM      m
+magn_angle      ALPHA   Deg
+gap_ma_iron     DE_M    m
+iron_hs         HS      m
+iron_height     BR      m
+iron_shape      HA      m
+air_triangle    BS      m
+condshaft_r             m
+magn_num                       number of magnets
+==============  ======  ====== =============================================
 
 ============    ===========================================
 Name             Parameter
 ============    ===========================================
-magnetSector    magn_num,
-                magn_width_pct,
-                magn_height,
-                magn_shape,
-                bridge_height,
-                magn_type,
-                condshaft_r,
-                magn_ori,
-                magn_rfe,
-                bridge_width,
-                magn_len
-magnetIron      magn_height,
-                magn_width,
-		gap_ma_iron,
-		air_triangle,
-		iron_height,
-		magn_rem,
-		condshaft_r,
-		magn_ori,
-		bridge_height,
-		bridge_width,
-		iron_shape
 magnetIron2     magn_height,
                 magn_width,
 		gap_ma_iron,
@@ -57,50 +170,6 @@ magnetIron2     magn_height,
 		gap_ma_left,
 		magn_ori,
 		iron_shape
-magnetIron3     magn_height,
-                iron_bfe,
-		gap_ma_iron,
-		air_triangle,
-		iron_height,
-		gap_ma_right,
-		gap_ma_left,
-		condshaft_r,
-		magn_num,
-		magn_ori,
-		iron_shape
-magnetIron4     magn_height,
-                magn_width,
-		gap_ma_iron,
-		iron_shape,
-		air_space_h,
-		iron_bfe,
-		magn_di_ra,
-		corner_r,
-		air_sp_ori,
-		magn_ori,
-		magn_num
-magnetIron5     magn_height,
-                magn_width,
-		gap_ma_iron,
-		iron_bfe,
-		air_space_h,
-		corner_r,
-		air_sp_ori,
-		magn_num,
-		iron_shape,
-		air_space_b,
-		magn_di_ra
-magnetIronV     magn_height,
-                magn_width,
-		magn_angle,
-		magn_num,
-		iron_hs,
-		iron_height,
-		iron_shape,
-		air_triangle,
-		gap_ma_iron,
-		magn_rem,
-		condshaft_r
 magnetFC2       yoke_height,
                 iron_h1,
 		iron_h2,
@@ -177,7 +246,7 @@ User defined Magnet Slots with FSL
 **Example**
 
 If a Mako or FSL file that creates the magnet geometry exists and is readable
-it can be used for the model creation as an empty dict (see Note in `stator_slots_fsl`_)::
+it can be used for the model creation as an empty dict (see Note in :ref:`stator_slots_fsl`)::
 
   machine = dict(
       name="Motor",
@@ -225,22 +294,5 @@ plot         creates the plot              False
 
 .. Note:: The split option is required only if intersecting lines have no common point.
 
-**Rotor**
----------
-Rotors have a excitation or short circuit cage winding
-and following basic parameters and slots:
-
-==============  ================================  =======
-Parameter        Description                      Default
-==============  ================================  =======
-mcvkey_yoke      Name of lamination material      dummy
-mcvkey_shaft     Name of shaft material           dummy
-fillfac          stacking factor of lamination    1.0
-nodedist         Factor for node distance         1.0
-==============  ================================  =======
-
-.. Note::
-
-   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the `magnetizingCurve`_ object.
 
 .. include:: userspec.rst

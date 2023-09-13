@@ -3,7 +3,7 @@
 
 Magnet geometries not covered by the built in models can be specified by fsl code. Here is a example:
 
-.. figure:: img/spoke-diagram.png
+.. figure:: ../img/spoke-diagram.png
 
    Example of a user specified geometry (created with `TikZ <http://www.texample.net/tikz>`_)
 
@@ -77,7 +77,7 @@ Magnet definition in Python file with included mako file (eg in this case ''spok
 
 The resulting model:
 
-.. figure:: img/spoke.png
+.. figure:: ../img/spoke.png
 
 .. note::
 

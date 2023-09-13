@@ -1,5 +1,4 @@
 
-
 **Material**
 ============
 
@@ -111,7 +110,7 @@ Using a magnetizingcurve to write a mcv file::
 
     mcv.writefile('m270-35a')
 
-.. image:: img/mcv.png
+.. image:: ../img/mcv.png
   :height: 290pt
 
 .. Note::
@@ -147,9 +146,11 @@ Example::
    missing values are extrapolated using the steinmetz formula
 
 
-.. image:: img/loss.png
+.. image:: ../img/loss.png
   :height: 290pt
 
+
+.. _magnetMaterial:
 
 Magnet Material
 ---------------

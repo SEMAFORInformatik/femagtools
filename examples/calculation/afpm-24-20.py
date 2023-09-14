@@ -40,7 +40,7 @@ machine = {
             "yoke_height": 0,
         }
     },
-    "windings": {
+    "winding": {
         "num_phases": 3,
         "num_layers": 2,
         "num_wires": 10,

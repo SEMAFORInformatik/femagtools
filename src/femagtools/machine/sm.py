@@ -58,11 +58,11 @@ def parident(workdir, engine, machine,
             hs = machine['stator']['stator1']['slot_rf1'] - machine['stator']['stator1']['tip_rh1']
         elif 'stator4' in machine['stator']:
             hs = machine['stator']['stator4']['slot_height']
-        N = machine['windings']['num_wires']
         Jmax = 15  # max current density in A/mm2
-
+        wdgk = 'windings' if 'windings' in machine else 'winding'
+        N = machine[wdgk]['num_wires']
         i1_max = round(0.28*np.pi*hs*(da1+hs)/Q1/N*Jmax*1e5)*10 * \
-            machine['windings'].get('num_par_wdgs', 1)
+            machine[wdgk].get('num_par_wdgs', 1)
 
         ifnom = machine['rotor']['ifnom']
         exc_logspace = True
@@ -102,7 +102,7 @@ def parident(workdir, engine, machine,
                 load_ex_cur=0.5,
                 num_cur_steps=kwargs.get('num_cur_steps', 5),
                 num_beta_steps=kwargs.get('num_beta_steps', 13),
-                num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
+                num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
                 period_frac=6,
                 speed=50.0)
 
@@ -128,23 +128,23 @@ def parident(workdir, engine, machine,
 
         # winding resistance
         try:
-            r1 = machine['windings']['resistance']
+            r1 = machine[wdgk]['resistance']
         except KeyError:
-            yd = machine['windings'].get('coil_span', Q1/machine['poles'])
+            yd = machine[wdgk].get('coil_span', Q1/machine['poles'])
             wdg = windings.Winding(
             {'Q': machine['stator']['num_slots'],
-             'm': machine['windings']['num_phases'],
+             'm': machine[wdgk]['num_phases'],
              'p': machine['poles']//2,
-             'l': machine['windings']['num_layers'],
+             'l': machine[wdgk]['num_layers'],
              'yd': yd})
 
             lfe = machine['lfe']
-            g = machine['windings'].get('num_par_wdgs', 1)
-            if 'dia_wire' in machine['windings']:
-                aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
+            g = machine[wdgk].get('num_par_wdgs', 1)
+            if 'dia_wire' in machine[wdgk]:
+                aw = np.pi*machine[wdgk].get('dia_wire', 1e-3)**2/4
             else:  # wire diameter from slot area
                 aw = 0.75 * \
-                        machine['windings'].get('cufilfact', 0.45)*np.pi*da1*hs/Q1/2/N
+                        machine[wdgk].get('cufilfact', 0.45)*np.pi*da1*hs/Q1/2/N
             r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
 
         if simulation['calculationMode'] == 'ld_lq_fast':

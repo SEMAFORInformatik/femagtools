@@ -1,5 +1,5 @@
-**Windings**
-------------
+**Winding**
+-----------
 
 ============    ============================  =======
 Name             Parameter                    Default
@@ -17,7 +17,7 @@ material        name of material
 ============    ============================  =======
 
 .. Note:: The material parameter references a dict item in
-  the list of `conductor`_ material. It overrides the cuconduc value and is the preferred method.
+  the list of :ref:`conductor` material. It overrides the cuconduc value and is the preferred method.
 
 
 End-Winding Leakage
@@ -62,7 +62,7 @@ Windings may contain a leakage dict: leak_dist_wind, leak_evol_wind, leak_tooth_
 
   Example::
 
-    windings=dict(
+    winding=dict(
         num_phases=3,
         num_wires=100,
         coil_span=3.0,

@@ -42,7 +42,7 @@ def create_fsl():
                 iron_shape=33.5e-3)
         ),
 
-        windings=dict(
+        winding=dict(
             num_phases=3,
             num_wires=100,
             coil_span=3.0,

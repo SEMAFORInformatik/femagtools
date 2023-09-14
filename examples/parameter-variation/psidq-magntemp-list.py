@@ -102,7 +102,7 @@ machine = {
             "iron_shape": 0.0802
         }
     },
-    "windings": {
+    "winding": {
         "num_phases": 3,
         "num_layers": 1,
         "num_wires": 9,

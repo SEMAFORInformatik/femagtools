@@ -1,22 +1,22 @@
-% if model.windings['wdgtype'] == 'CMM':
+% if model.winding['wdgtype'] == 'CMM':
 --  GEN_CMM_WDG
 
-m.s_or_w_windg    = ${model.windings.get('s_or_w_windg', 1)} --   Lap/wave/frog-leg winding = 1/2/3
-m.numpl_sw        = ${model.windings.get('numpl_sw', 1)} --   Number of plex of lap winding: m_l
-m.numpl_ww        = ${model.windings.get('numpl_ww', 1)} --   Number of plex of wave winding: m_w
-m.foreward        = ${model.windings.get('foreward', 1)} --   Progressive = 1 / retrogressive = 2
-m.num_wires       = ${model.windings.get('num_wires', 1)} --   Number of wires per slot side w_sp
+m.s_or_w_windg    = ${model.winding.get('s_or_w_windg', 1)} --   Lap/wave/frog-leg winding = 1/2/3
+m.numpl_sw        = ${model.winding.get('numpl_sw', 1)} --   Number of plex of lap winding: m_l
+m.numpl_ww        = ${model.winding.get('numpl_ww', 1)} --   Number of plex of wave winding: m_w
+m.foreward        = ${model.winding.get('foreward', 1)} --   Progressive = 1 / retrogressive = 2
+m.num_wires       = ${model.winding.get('num_wires', 1)} --   Number of wires per slot side w_sp
 m.current         =       0     --   Armat.-Wdg-Current[A] or flux[Vs/mm]
 m.wind_type       =       1     --   Wdg-coil:1=w&cur;2=w&flux;3=bar&cur
-m.num_layers      = ${model.windings.get('num_layers', 1)} --   Number of coil sides per slot layer:u
-m.pitch_fact      = ${model.windings.get('pitch_fact', 1)} --   Short pitch factor : beta_v
-m.dc_ac           = ${model.windings.get('dc_ac', 0)}     --   Current: DC: 0; AC: 1
+m.num_layers      = ${model.winding.get('num_layers', 1)} --   Number of coil sides per slot layer:u
+m.pitch_fact      = ${model.winding.get('pitch_fact', 1)} --   Short pitch factor : beta_v
+m.dc_ac           = ${model.winding.get('dc_ac', 0)}     --   Current: DC: 0; AC: 1
 
  pre_models("GEN_CMM_WDG")
 -- gen cmm
 pre_models("GEN_CMM"); -- autm. generate cmm File (requires femag rel >=9.2)"
-% elif 'wdgfile' in model.windings:
-def_new_wdg('${model.windings.get("wdgfile")}')
+% elif 'wdgfile' in model.winding:
+def_new_wdg('${model.winding.get("wdgfile")}')
 pre_models("gen_pocfile")
 % else:
 --  Gen_winding
@@ -24,12 +24,12 @@ if m.xcoil_1 ~= nil then
   m.wdg_location = 1 --stator
 end
 
-m.num_phases      =  ${model.get(['windings','num_phases'])}
-m.num_layers      =  ${model.get(['windings','num_layers'])}
-m.num_wires       =  ${model.get(['windings','num_wires'])}
-m.coil_span       =  ${model.get(['windings','coil_span'])}
-% if 'num_poles' in model.windings:
-m.num_poles       =  ${model.get(['windings','num_poles'])}
+m.num_phases      =  ${model.get(['winding','num_phases'])}
+m.num_layers      =  ${model.get(['winding','num_layers'])}
+m.num_wires       =  ${model.get(['winding','num_wires'])}
+m.coil_span       =  ${model.get(['winding','coil_span'])}
+% if 'num_poles' in model.winding:
+m.num_poles       =  ${model.get(['winding','num_poles'])}
 % endif
 % if model.get('move_action', 0) == 0:
 m.current         =   0.0
@@ -54,7 +54,7 @@ wkey={0,0,0,0,0,0}
 bz = m.width_bz
 sw = m.slot_width
 ys = m.slot_height/2
-wdgscheme = ${model.windings.get('wdgscheme', '{}')}
+wdgscheme = ${model.winding.get('wdgscheme', '{}')}
 -- TODO: m.middle_line = 1 only
 for l=1, #wdgscheme do
   for z=1, #wdgscheme[l] do
@@ -110,12 +110,12 @@ f = assert(io.open(model..'_'..m.num_poles.."p.poc","w"));
 io.close(f);
 
 %endif
-% if 'num_poles' in model.windings:
+% if 'num_poles' in model.winding:
 m.num_poles       =  ${model.poles}
 % endif
 % endif
 
-% if 'thcap' in model.windings:
+% if 'thcap' in model.winding:
 -- Thermal Material properties
 if m.slot_height ~= nil then
   -- FEMAG slot model

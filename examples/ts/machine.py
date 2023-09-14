@@ -23,7 +23,7 @@ machine = {
             'magnet_width': 30e-3
         }
     },
-    'windings': {
+    'winding': {
         'num_phases': 3,
         'num_wires': 10,
         'coil_span': 3,

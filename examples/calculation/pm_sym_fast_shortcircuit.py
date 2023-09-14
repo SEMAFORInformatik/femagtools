@@ -57,7 +57,7 @@ machine = dict(
             condshaft_r=55.32e-3)
     ),
 
-    windings=dict(
+    winding=dict(
         num_phases=3,
         num_wires=9,
         coil_span=6.0,

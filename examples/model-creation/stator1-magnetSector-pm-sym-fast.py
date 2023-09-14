@@ -41,7 +41,7 @@ def create_fsl():
                 magn_len=1.0)
         ),
 
-        windings=dict(
+        winding=dict(
             num_phases=3,
             num_wires=100,
             coil_span=3.0,
@@ -73,4 +73,3 @@ if __name__ == '__main__':
 
     logger.info("FSL %s created",
                 os.path.join(workdir, modelname+'.fsl'))
-

@@ -96,7 +96,7 @@ machine = dict(
             magn_len=1)
     ),
 
-    windings=dict(
+    winding=dict(
         num_phases=3,
         num_wires=20,
         coil_span=3.0,

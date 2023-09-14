@@ -4,19 +4,19 @@
 Cogging (cogg_calc)
 ~~~~~~~~~~~~~~~~~~~
 
-==============  ============================= ==========  ============
+==============  ============================== ==========  ============
 Parameter        Description                   Default      Unit
-==============  ============================= ==========  ============
-speed           Speed                                     1/s
-skew_angle      Skewing angle                   0         deg
+==============  ============================== ==========  ============
+speed           Speed                                      1/s
+skew_angle      Skewing angle                   0          deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        °C
+magn_temp       Magnet Temperature                         °C
 num_move_steps  Number of move steps
-num_par_wdgs    Number of parallel windings     1
+num_par_wdgs    Number of parallel coil groups  1
 eval_force      Evaluate force                  0
 period_frac     Rotate Fraction of Period       1
 vtu_movie       Create VTU files                False
-==============  ============================= ==========  ============
+==============  ============================== ==========  ============
 
 Example::
 
@@ -38,7 +38,7 @@ num_skew_steps  Number of skew steps                    0
 magn_temp       Magnet Temperature                                 °C
 wind_temp       Winding Temperature                     20         °C
 num_move_steps  Number of move steps                    49
-num_par_wdgs    Number of parallel windings             1
+num_par_wdgs    Number of parallel coil groups          1
 eval_force      Evaluate force                          0
 current         Phase current                                      A (RMS)
 angl_i_up       Angle I vs. Up                          0          deg
@@ -167,7 +167,7 @@ skew_angle      Skewing angle                           0          deg
 num_skew_steps  Number of skew steps                    0
 wind_temp       Winding Temperature                     20         °C
 num_move_steps  Number of move steps                    49
-num_par_wdgs    Number of parallel windings             1
+num_par_wdgs    Number of parallel coil groups          1
 eval_force      Evaluate force                          0
 current         Phase current                                      A (RMS)
 nload_ex_cur    No-Load excitation current              0          A
@@ -186,23 +186,23 @@ vtu_movie       Create VTU files                        False
 Ld-Lq Identification (ld_lq_fast)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-==============  ============================= ==========  ============
+==============  ============================== ==========  ============
 Parameter        Description                   Default      Unit
-==============  ============================= ==========  ============
-speed           Speed                                     1/s
-skew_angle      Skewing angle                   0         deg
+==============  ============================== ==========  ============
+speed           Speed                                      1/s
+skew_angle      Skewing angle                   0          deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        °C
+magn_temp       Magnet Temperature                         °C
 num_move_steps  Number of move steps
-num_par_wdgs    Number of parallel windings     1
+num_par_wdgs    Number of parallel coil groups  1
 eval_force      Evaluate force                  0
-i1_max          Max. phase current                        A (RMS)
-beta_min        Min. Beta angle                           deg
-beta_max        Max. beta angle                           deg
+i1_max          Max. phase current                         A (RMS)
+beta_min        Min. Beta angle                            deg
+beta_max        Max. beta angle                            deg
 num_cur_steps   Number of current steps
 num_beta_steps  Number of beta steps
 period_frac     Rotate Fraction of Period       1
-==============  ============================= ==========  ============
+==============  ============================== ==========  ============
 
 Example::
 
@@ -221,24 +221,24 @@ Example::
 Psid-Psiq Identification (psd_psq_fast)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-==============  ============================= ==========  ============
+==============  ============================== ==========  ============
 Parameter        Description                   Default      Unit
-==============  ============================= ==========  ============
-speed           Speed                                     1/s
-skew_angle      Skewing angle                   0         deg
+==============  ============================== ==========  ============
+speed           Speed                                      1/s
+skew_angle      Skewing angle                   0          deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        °C
+magn_temp       Magnet Temperature                         °C
 num_move_steps  Number of move steps
-num_par_wdgs    Number of parallel windings     1
+num_par_wdgs    Number of parallel coil groups  1
 eval_force      Evaluate force                  0
-maxid           Max. Amplitude Id current                 A
-minid           Min. Amplitude Id current                 A
-maxiq           Max. Amplitude Iq current                 A
-miniq           Min. Amplitude Iq current                 A
-delta_id        Delta of Id current steps                 A
-delta_iq        Delta of Iq current steps                 A
+maxid           Max. Amplitude Id current                  A
+minid           Min. Amplitude Id current                  A
+maxiq           Max. Amplitude Iq current                  A
+miniq           Min. Amplitude Iq current                  A
+delta_id        Delta of Id current steps                  A
+delta_iq        Delta of Iq current steps                  A
 period_frac     Rotate Fraction of Period       1
-==============  ============================= ==========  ============
+==============  ============================== ==========  ============
 
 Example::
 
@@ -260,20 +260,20 @@ PM/Rel Torque Calc (torq_calc)
 
 similar to pm_sym_fast without noload calc (Note: requires a correct Poc)
 
-==============  ============================= ==========  ============
+==============  ============================== ==========  ============
 Parameter        Description                   Default      Unit
-==============  ============================= ==========  ============
-speed           Speed                                     1/s
-skew_angle      Skewing angle                   0         deg
+==============  ============================== ==========  ============
+speed           Speed                                      1/s
+skew_angle      Skewing angle                   0          deg
 num_skew_steps  Number of skew steps            0
-magn_temp       Magnet Temperature                        °C
-wind_temp       Winding Temperature             20        °C
+magn_temp       Magnet Temperature                         °C
+wind_temp       Winding Temperature             20         °C
 num_move_steps  Number of move steps            49
-num_par_wdgs    Number of parallel windings     1
-current         Phase current                             A (RMS)
+num_par_wdgs    Number of parallel coil groups  1
+current         Phase current                              A (RMS)
 poc             Current shape definition        (none)
-angl_i_up       Angle I vs. Up                  0         deg
-==============  ============================= ==========  ============
+angl_i_up       Angle I vs. Up                  0          deg
+==============  ============================== ==========  ============
 
 Example::
 

@@ -203,15 +203,15 @@ class BaseFemag(object):
             dict(
                 Q=model.stator['num_slots'],
                 p=model.poles//2,
-                m=len(model.windings['wdgdef']),
-                windings=model.windings['wdgdef']))
+                m=len(model.winding['wdgdef']),
+                windings=model.winding['wdgdef']))
         self.copy_winding_file(name, w)
         return name
 
     def create_fsl(self, machine, simulation):
         """create list of fsl commands
         Args:
-          machine: dict of fe machine model (stator, rotor/magnet, windings)
+          machine: dict of fe machine model (stator, rotor/magnet, winding)
           simulation: dict of FE simulation (can be empty)
         """
         self.model = femagtools.model.MachineModel(machine)
@@ -221,8 +221,8 @@ class BaseFemag(object):
             recsin = simulation.get('recsin', '')
         self.copy_magnetizing_curves(self.model, recsin=recsin)
         try:
-            if 'wdgdef' in self.model.windings:
-                self.model.windings['wdgfile'] = self.create_wdg_def(
+            if 'wdgdef' in self.model.winding:
+                self.model.winding['wdgfile'] = self.create_wdg_def(
                     self.model)
         except AttributeError:
             pass

@@ -43,7 +43,7 @@ machine = dict(
             airgap_shape=0.0,
             magn_type=1)
     ),
-    windings=dict(
+    winding=dict(
         num_phases=3,
         num_wires=20,
         coil_span=1.0,

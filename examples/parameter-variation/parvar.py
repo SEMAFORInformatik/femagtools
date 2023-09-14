@@ -4,10 +4,10 @@
  """
 import pathlib
 import json
-from femagtools.multiproc import Engine
+#from femagtools.multiproc import Engine
 # instead you can use on of the following
 #
-#from femagtools.docker import Engine
+from femagtools.docker import Engine
 #from femagtools.condor import Engine
 # fr
 # from femagtools.google import Engine
@@ -28,7 +28,9 @@ parvardef = {
         {"name": "torque[-1].ripple",
          "label": "Torque Ripple/Nm"},
         {"name": "machine.plfe[-1]",
-         "label": "Iron Losses/W"}
+         "label": "Iron Losses/W"},
+        {"name": "airgap.Bamp",
+         "label": "Airgap Induction/T"}
     ],
     "population_size": 25,
     "decision_vars": [
@@ -58,7 +60,8 @@ simulation = {
     "calc_fe_loss": 1,
     "speed": 50.0,
     "poc": poc,
-    "optim_i_up": 0
+    "optim_i_up": 0,
+    "airgap_induc": True
 }
 
 magnetMat = [{
@@ -68,12 +71,12 @@ magnetMat = [{
     "spmaweight": 7.5,
     "magntemp": 20.0,
     "temcoefhc": -0.001,
-    "hcb": 810000.4,
+    "HcB": 810000.4,   # Note: relperm = remanenc/mue0/HcB
     "relperm": 1.05,
     "magncond": 833333,
     "magnwidth": 15.0e-3,
     "magnlength": 100.0e-3,
-    "hc_min": 760000.0}
+    "HcJ": 760000.0}
 ]
 
 magnetizingCurve = "../magnetcurves"
@@ -125,7 +128,7 @@ machine = {
             "iron_shape": 0.0802
         }
     },
-    "windings": {
+    "winding": {
         "num_phases": 3,
         "num_layers": 1,
         "num_wires": 9,
@@ -140,7 +143,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s')
 
 if __name__ == '__main__':
-    engine = Engine()
+    engine = Engine(num_threads=8)
 
     workdir = pathlib.Path.home() / 'parvar'
     workdir.mkdir(parents=True, exist_ok=True)

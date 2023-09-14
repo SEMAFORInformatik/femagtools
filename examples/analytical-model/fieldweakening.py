@@ -4,7 +4,13 @@ import femagtools
 import femagtools.machine
 import numpy as np
 import matplotlib.pylab as pl
+import warnings
+import logging
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(message)s')
+
+warnings.simplefilter("error")
 bch = femagtools.read_bchfile('../bch-erg/TEST_001.BCH')
 
 beta = bch.ldq['beta']
@@ -25,8 +31,9 @@ i1 = femagtools.machine.betai1(iqx, idx)[1]
 
 fig, ax = pl.subplots()
 
-id = np.linspace(1.5*idx,
-                 femagtools.machine.iqd(np.sin(beta[-1] / 180 * np.pi), i1)[1])
+id = np.linspace(pm.iqdmin(i1)[1],
+                 pm.iqdmax(i1)[1])
+
 iq = [pm.iq_u(w1, u1, ix) for ix in id]
 ax.plot(id, iq, label='U1={} V'.format(u1))
 

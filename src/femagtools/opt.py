@@ -71,8 +71,8 @@ class Optimizer(object):
             for mc in self.femag.copy_magnetizing_curves(self.model,
                                                          task.directory):
                 task.add_file(mc)
-            if 'wdgdef' in self.model.windings:
-                self.model.windings['wdgfile'] = self.femag.create_wdg_def(
+            if 'wdgdef' in self.model.winding:
+                self.model.winding['wdgfile'] = self.femag.create_wdg_def(
                     self.model)
             set_magnet_properties(self.model, self.fea, self.femag.magnets)
             task.add_file('femag.fsl',
@@ -128,7 +128,7 @@ class Optimizer(object):
         self.builder = femagtools.fsl.Builder(self.templatedirs)
         self.model = femagtools.model.MachineModel(pmMachine)
         self.fea = operatingConditions
-        self.fea.update(self.model.windings)
+        self.fea.update(self.model.winding)
         self.fea['lfe'] = self.model.lfe
         self.fea['move_action'] = self.model.move_action
         self.fea['phi_start'] = 0.0

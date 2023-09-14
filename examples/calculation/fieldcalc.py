@@ -14,7 +14,7 @@ machine = dict(
     bore_diam=0.07,
     inner_diam=0.015,
     airgap=0.001,
-     
+
     stator=dict(
         num_slots=12,
         num_slots_gen=3,
@@ -27,7 +27,7 @@ machine = dict(
             tooth_width=0.009,
             slot_width=0.003)
     ),
-    
+
     magnet=dict(
         mcvkey_shaft="dummy",
         mcvkey_yoke="dummy",
@@ -44,8 +44,8 @@ machine = dict(
             bridge_width=0.0,
             magn_len=1.0)
     ),
-    
-    windings=dict(
+
+    winding=dict(
         num_phases=3,
         num_wires=100,
         coil_span=3.0,
@@ -72,14 +72,14 @@ simulation = dict(
 r = femag(machine,
           simulation)
 
-# determine poles_gen 
-if 'num_slots_gen' in machine['stator']: 
+# determine poles_gen
+if 'num_slots_gen' in machine['stator']:
     pgen = machine['poles']*machine['stator']['num_slots_gen']/ \
         machine['stator']['num_slots']
-else: 
+else:
     pgen = machine['poles']/ \
         math.gcd(machine['stator']['num_slots'], machine['poles'])
-    
+
 rag = femagtools.airgap.read(
     os.path.join(workdir, 'bag.dat'), pmod=pgen)
 

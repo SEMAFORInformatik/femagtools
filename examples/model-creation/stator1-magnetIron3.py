@@ -36,11 +36,15 @@ def create_fsl():
                 iron_shape=0)
         ),
 
-        windings=dict(
-            num_phases=3,
-            num_wires=100,
-            coil_span=3.0,
-            num_layers=1)
+        winding={
+            'wdgdef': {
+                1: {'N': [100.0, 100.0, 100.0, 100.0],
+                    'layer': [1, 2, 1, 2], 'slots': [1, 1, -2, 6]},
+                2: {'N': [100.0, 100.0, 100.0, 100.0],
+                    'layer': [2, 1, 2, 1], 'slots': [-4, 5, 5, -6]},
+                3: {'N': [100.0, 100.0, 100.0, 100.0],
+                    'layer': [2, 1, 2, 1], 'slots': [2, -3, -3, 4]}}
+        }
     )
     return femagtools.create_fsl(machine)
 

@@ -42,7 +42,7 @@ machine = dict(
         )
     ),
 
-    windings=dict(
+    winding=dict(
         wdgdef={
             1: {'N': [100.0, 100.0, 100.0, 100.0],
                 'layer': [1, 2, 1, 2], 'slots': [1, 1, -2, 6]},

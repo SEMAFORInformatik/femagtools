@@ -74,13 +74,14 @@ def parident(workdir, engine, temp, machine,
     Q1 = machine['stator']['num_slots']
     slotmodel = 'afm_stator'
     hs = machine['stator'][slotmodel]['slot_height']
-    N = machine['windings']['num_wires']
+    wdgk = 'windings' if 'windings' in machine else 'winding'
+    N = machine[wdgk]['num_wires']
     Jmax = 15  # max current density in A/mm2
 
     i1_max = kwargs.get(
         'i1_max',
         round(0.28*np.pi*hs*(di+hs)/Q1/N*Jmax*1e5)*10 * \
-        machine['windings'].get('num_par_wdgs', 1))
+        machine[wdgk].get('num_par_wdgs', 1))
 
     p = machine['poles']
     num_slices = kwargs.get('num_slices', 3)
@@ -171,7 +172,7 @@ def parident(workdir, engine, temp, machine,
                                 'phi_voltage_winding': current_angles}),
                 num_move_steps=60,
                 speed=linspeed[i],
-                num_par_wdgs=machine['windings'].get('num_par_wdgs', 1))
+                num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1))
 
             lresults = gpstudy(parvardef, mpart, simulation, engine)
             f = [{k: bch[k] for k in ('linearForce', 'flux', 'losses', 'lossPar')}
@@ -217,7 +218,7 @@ def parident(workdir, engine, temp, machine,
         # T = 3/2 p (Psid iq - Psiq id)
         #iq, id = femagtools.machine.utils.iqd(*np.meshgrid(beta, i1))
 
-    return {'m': machine['windings']['num_phases'],
+    return {'m': machine[wdgk]['num_phases'],
             'p': machine['poles']//2,
             'ls1': 0, 'r1': r1, 'ldq': ldq}
 
@@ -307,19 +308,19 @@ def process(lfe, pole_width, machine, bch):
     wdg = windings.Winding(
         dict(Q=mmod.stator['num_slots'],
              p=mmod.poles//2,
-             m=mmod.windings['num_phases'],
-             l=mmod.windings['num_layers']))
+             m=mmod.winding['num_phases'],
+             l=mmod.winding['num_layers']))
 
-    cufill = mmod.windings.get('cufilfact', 0.4)
+    cufill = mmod.winding.get('cufilfact', 0.4)
     aw = (mmod.stator['afm_stator']['slot_width']*
               mmod.stator['afm_stator']['slot_height']*
-              cufill/mmod.windings['num_wires']/mmod.windings['num_layers'])
-    r1 = wdg_resistance(wdg, mmod.windings['num_wires'],
-                        mmod.windings['num_par_wdgs'],
+              cufill/mmod.winding['num_wires']/mmod.winding['num_layers'])
+    r1 = wdg_resistance(wdg, mmod.winding['num_wires'],
+                        mmod.winding['num_par_wdgs'],
                         aw,
                         mmod.outer_diam, mmod.inner_diam)
     i1 = np.mean([np.max(c) for c in currents])/np.sqrt(2)
-    plcu = mmod.windings['num_phases']*i1**2*r1
+    plcu = mmod.winding['num_phases']*i1**2*r1
 
     return {
         'pos': pos.tolist(), 'r1': r1,
@@ -429,7 +430,7 @@ def wdg_resistance(wdg, n, g, aw, outer_diam, inner_diam,
 def get_copper_losses(scale_factor, bch):
     """return copper losses from bch files"""
     try:
-        cu_losses = sum([b['losses'][0]['winding'] for b in bch])
+        cu_losses = sum([b['losses'][0][wdgk] for b in bch])
         return scale_factor*cu_losses
     except KeyError:
         return 0  # noload calc has no winding losses

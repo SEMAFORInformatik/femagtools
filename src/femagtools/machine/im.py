@@ -4,7 +4,6 @@
 
   induction machine (electrical circuit model)
 
-  Copyright 2022: Semafor Informatik & Energie AG, Switzerland
 """
 import numpy as np
 import scipy.interpolate as ip
@@ -67,7 +66,7 @@ def ring_leakage_inductance(machine):
     mue0 = 4*np.pi*1e-7
 
     Qr = machine['rotor']['num_slots']
-    m = machine['windings']['num_phases']
+    m = machine['winding']['num_phases']
     p = machine['poles']//2
     lbar = machine['lfe']
     ls = lbar
@@ -635,17 +634,18 @@ def parident(workdir, engine, f1, u1, wdgcon,
     slip = 1e-2
     u1ph = u1
     w1 = 2*np.pi*f1
+    wdgk = 'windings' if 'windings' in machine else 'winding'
     if CON[wdgcon] == 1:
         u1ph /= np.sqrt(3)
     wdg = femagtools.windings.Winding(
         {'Q': machine['stator']['num_slots'],
-         'm': machine['windings']['num_phases'],
+         'm': machine[wdgk]['num_phases'],
          'p': machine['poles']//2,
-         'l': machine['windings']['num_layers'],
-         'yd': machine['windings']['coil_span']})
+         'l': machine[wdgk]['num_layers'],
+         'yd': machine[wdgk]['coil_span']})
     L1 = wdg.inductance(
-        nwires=machine['windings']['num_wires'],
-        g=machine['windings']['num_par_wdgs'],
+        nwires=machine[wdgk]['num_wires'],
+        g=machine[wdgk]['num_par_wdgs'],
         da1=machine['bore_diam'],
         lfe=machine['lfe'],
         ag=machine['airgap'])
@@ -667,7 +667,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     noloadsim = dict(
         calculationMode="noloadflux-rot",
         curvec=i1tab,
-        num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
+        num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
         Q2=Q2)
 
     da1 = m['bore_diam']
@@ -677,7 +677,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     nper = np.lcm(wdg.Q, Q2)/Q2
     m['num_agnodes'] = Q2*np.ceil(2*(da1-ag)*np.pi/Q2/ag/nper)*nper
     try:
-        m['windings'].pop('resistance')
+        m[wdgk].pop('resistance')
     except KeyError:
         pass
 
@@ -708,12 +708,12 @@ def parident(workdir, engine, f1, u1, wdgcon,
         f1=f1)
 
     rotorbar = copy.deepcopy(machine)
-    # remove stator slot model and windings
+    # remove stator slot model and winding
     for k in rotorbar['stator']:
         if isinstance(rotorbar['stator'][k], dict):
             d = rotorbar['stator'].pop(k)
             break
-    d = rotorbar.pop('windings')
+    d = rotorbar.pop(wdgk)
     if 'shaft_diam' in rotorbar:
         rotorbar['inner_diam'] = rotorbar.pop('shaft_diam')
     # use one rotor slot only
@@ -731,7 +731,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
         bar_temp=20,
         speed=(1-slip)*f1/p,
         f1=f1,
-        num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
+        num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
         wdgcon=CON[wdgcon],  # 0:open, 1:star, 2:delta
         u1=u1ph)  # phase voltage
 
@@ -812,8 +812,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
     bamp = results[0]['Bamp']
     taup = np.pi*(da1-ag)/2/p
     lfe = machine['lfe']
-    n1 = wdg.turns_per_phase(machine['windings']['num_wires'],
-                             machine['windings']['num_par_wdgs'])
+    n1 = wdg.turns_per_phase(machine[wdgk]['num_wires'],
+                             machine[wdgk]['num_par_wdgs'])
     # main flux per phase at no load in airgap
     kfe = machine['stator'].get('fillfac', 1.0)
     psih = np.mean([[2/np.pi*n1*wdg.kw()*taup*lfe*b/np.sqrt(2)
@@ -842,7 +842,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     logger.debug("w1 %s", w1)
     logger.debug("L1 %s", L1)
     try:
-        r1 = machine['windings']['resistance']
+        r1 = machine[wdgk]['resistance']
     except KeyError:
         from .utils import wdg_resistance
         slotmodel = [k for k in machine['stator'] if isinstance(
@@ -853,19 +853,19 @@ def parident(workdir, engine, f1, u1, wdgcon,
         else:
             hs = machine['stator'][slotmodel].get('slot_height',
                                                   0.33*(machine['outer_diam']-da1))
-        n = machine['windings']['num_wires']
-        if 'dia_wire' in machine['windings']:
-            aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
+        n = machine[wdgk]['num_wires']
+        if 'dia_wire' in machine[wdgk]:
+            aw = np.pi*machine[wdgk].get('dia_wire', 1e-3)**2/4
         else:  # wire diameter from slot area
             aw = 0.75 * \
-                machine['windings'].get(
+                machine[wdgk].get(
                     'cufilfact', 0.45)*np.pi*da1*hs/wdg.Q/2/n
         # TODO: read nc file and get slot area:
         # as = nc.windings[0].subregions[0].area()
         # aw = as/wdg.l/n*fillfac
         # TODO: sigma = 58e6
-        # if 'material' in machine['windings']:
-        #    sigma = condMat[machine['windings']]['elconduct']
+        # if 'material' in machine[wdgk]:
+        #    sigma = condMat[machine[wdgk]]['elconduct']
         g = loadsim['num_par_wdgs']
         r1 = wdg_resistance(
             wdg, n, g, aw, da1, hs, lfe)
@@ -914,7 +914,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     rotor_mass = sum([results[2].get('conweight', 0),
                       results[2].get('lamweight', 0)])
 
-    n = machine['windings']['num_wires']
+    n = machine[wdgk]['num_wires']
     g = loadsim['num_par_wdgs']
     impars = {
         'p': p, 'm': m,
@@ -927,7 +927,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
         'fec': pfe, 'fee': 0, 'fexp': 7.0,
         'im': i1tab, 'psi': psih.tolist()}
     try:
-        wmat = machine['windings']['material']
+        wmat = machine[wdgk]['material']
         impars['kth1'] = parstudy.femag.condMat.find(wmat)['tempcoef']
     except KeyError:
         logger.warning('Missing winding material id')

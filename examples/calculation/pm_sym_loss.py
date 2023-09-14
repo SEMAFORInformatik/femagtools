@@ -11,7 +11,7 @@ machine = dict(
     bore_diam=0.07,
     inner_diam=0.015,
     airgap=0.001,
-     
+
     stator=dict(
         num_slots=12,
         num_slots_gen=3,
@@ -24,7 +24,7 @@ machine = dict(
             tooth_width=0.009,
             slot_width=0.003)
     ),
-    
+
     magnet=dict(
         mcvkey_shaft="dummy",
         mcvkey_yoke="dummy",
@@ -41,8 +41,8 @@ machine = dict(
             bridge_width=0.0,
             magn_len=1.0)
     ),
-    
-    windings=dict(
+
+    winding=dict(
         num_phases=3,
         num_wires=100,
         coil_span=3.0,
@@ -86,4 +86,3 @@ for x in zip(
         r['total']):
     print("{0:6.1f}{1:9.1f}{2:8.2f}{3:9.1f}{4:9.1f}{5:8.1f}{6:10.1f}".format(
         60*x[0], x[1], x[2], x[3], x[4], x[5], x[6]))
-

@@ -1,3 +1,5 @@
+.. _machine-model:
+
 **Machine**
 ===========
 
@@ -24,7 +26,7 @@ airgap           airgap width                           m
 external_rotor   True, False                            False
 ffactor          processing factor for iron losses
 coord_system     1 (x/y) or 2 (r/z)                     0
-dxffile          (see :ref:'model_creation_with_dxf')
+dxffile          (see :ref:`model_creation_with_dxf`)
 ==============  ======================================  ======
 
 .. Note::

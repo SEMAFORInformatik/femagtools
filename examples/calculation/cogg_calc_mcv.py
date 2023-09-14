@@ -26,7 +26,7 @@ mcvData = [
         bi=[-0.0178, 0.08683, 0.19248, 0.29856, 0.40417,
             0.51, 0.6157, 0.72186, 0.8281, 0.93357, 1.0396,
             1.14526, 1.240],
-        
+
         hi=[-878813.5,
             -848291.125,
             -804114.125,
@@ -69,7 +69,7 @@ machine = dict(
     bore_diam=0.1615,
     inner_diam=0.120,
     airgap=0.0015,
-     
+
     stator=dict(
         num_slots=48,
         mcvkey_yoke="m270-35a",
@@ -87,7 +87,7 @@ machine = dict(
             middle_line=1,
             slot_top_sh=1)
     ),
-    
+
     magnet=dict(
         mcvkey_shaft="dummy",
         material='M45',
@@ -105,8 +105,8 @@ machine = dict(
             bridge_width=0.0,
             magn_len=1.0)
     ),
-    
-    windings=dict(
+
+    winding=dict(
         num_phases=3,
         num_wires=4,
         coil_span=5,
@@ -142,4 +142,3 @@ print("Order    T/Nm      %")
 tq = r.torque_fft[-1]
 for l in zip(tq['order'], tq['torque'], tq['torque_perc']):
     print('{0:<5} {1:9.2f} {2:6.1f}'.format(*l))
-

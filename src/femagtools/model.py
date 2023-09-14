@@ -136,8 +136,12 @@ class MachineModel(Model):
         name = 'DRAFT'
         if isinstance(parameters, str):
             name = parameters
-        elif 'name' in parameters:
-            name = parameters['name']
+        else:
+            if 'name' in parameters:
+                name = parameters['name']
+            if 'windings' in parameters:
+                self.winding = self.windings
+
         # connect model even for complete model (see fsl connect_models)
         self.connect_full = True
         # must sanitize name to prevent femag complaints
@@ -161,9 +165,9 @@ class MachineModel(Model):
             self.move_action = 1
             wdg = windings.Winding({'Q': self.stator['num_slots'],
                                     'p': self.poles//2,
-                                    'm': self.windings.get('num_phases', 3),
-                                    'l': self.windings.get('num_layers', 1)})
-            self.windings['wdgscheme'] = ''.join([
+                                    'm': self.winding.get('num_phases', 3),
+                                    'l': self.winding.get('num_layers', 1)})
+            self.winding['wdgscheme'] = ''.join([
                 '{'] + [','.join([''.join(['{']+[','.join([''.join([
                     '{', ','.join(
                         [str(n) for n in z]), '}']) for z in l])] + ['}'])
@@ -179,24 +183,24 @@ class MachineModel(Model):
         except (AttributeError):
             pass
         try:
-            if 'wdgtype' not in self.windings:
-                self.windings['wdgtype'] = 'SYM'
+            if 'wdgtype' not in self.winding:
+                self.winding['wdgtype'] = 'SYM'
         except AttributeError:
             pass
 
         try:
-            self.commutator = self.windings['wdgtype'] == 'CMM'
+            self.commutator = self.winding['wdgtype'] == 'CMM'
         except AttributeError:
             self.commutator = False
         try:
-            self.windings['cufilfact'] = self.windings['fillfac']
+            self.winding['cufilfact'] = self.winding['fillfac']
         except (KeyError, AttributeError):
             pass
 
     def set_num_slots_gen(self):
         if 'num_slots_gen' not in self.stator:
             try:
-                m = self.windings['num_phases']
+                m = self.winding['num_phases']
             except (KeyError, AttributeError):
                 m = 1
 
@@ -205,15 +209,15 @@ class MachineModel(Model):
             else:
                 slotgen = [self.poles]
             try:
-                slotgen.append(self.stator['num_slots'])
+                slotgen.append(int(self.stator['num_slots']))
             except KeyError:
                 pass
 
             try:
-                slotgen.append(self.rotor['num_slots'])
+                slotgen.append(int(self.rotor['num_slots']))
             except (AttributeError, KeyError):
                 pass
-
+            logging.info(slotgen)
             g = np.gcd.reduce(slotgen)
             if hasattr(self, 'magnet') and g > 1:
                 g /= m

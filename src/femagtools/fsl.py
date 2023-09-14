@@ -56,8 +56,8 @@ class Builder:
             dict(
                 Q=model.stator['num_slots'],
                 p=model.poles//2,
-                m=len(model.windings['wdgdef']),
-                windings=model.windings['wdgdef']))
+                m=len(model.winding['wdgdef']),
+                windings=model.winding['wdgdef']))
         self.copy_winding_file(name, w)
         return name
 
@@ -178,7 +178,7 @@ class Builder:
         statmodel = model.stator.copy()
         if 'middle_line' not in statmodel:
             try:
-                statmodel['middle_line'] = 0 if model.windings.get(
+                statmodel['middle_line'] = 0 if model.winding.get(
                     'num_layers', 1) == 1 else 1
             except AttributeError:
                 pass # no windings
@@ -432,26 +432,26 @@ class Builder:
         genwdg = self.__render(model, 'gen_winding')
         k = list({'leak_dist_wind',
                   'leak_evol_wind',
-                  'leak_tooth_wind'}.intersection(model.windings))
+                  'leak_tooth_wind'}.intersection(model.winding))
         if k:
             logger.info("Leakage type %s", k)
-            if 'wiredia' not in model.windings[k[0]]:
-                if 'wire_gauge' in model.windings:
+            if 'wiredia' not in model.winding[k[0]]:
+                if 'wire_gauge' in model.winding:
                     import numpy as np
-                    d = 2*np.sqrt(model.windings['wire_gauge']/np.pi)
-                    model.windings[k[0]]['wiredia'] = d
-                elif 'dia_wire' in model.windings:
-                    model.windings[k[0]]['wiredia'] = model.windings['dia_wire']
-                elif 'wire_width' in model.windings:
+                    d = 2*np.sqrt(model.winding['wire_gauge']/np.pi)
+                    model.winding[k[0]]['wiredia'] = d
+                elif 'dia_wire' in model.winding:
+                    model.winding[k[0]]['wiredia'] = model.winding['dia_wire']
+                elif 'wire_width' in model.winding:
                     import numpy as np
-                    w = model.windings['wire_width']
-                    h = model.windings['wire_height']
+                    w = model.winding['wire_width']
+                    h = model.winding['wire_height']
                     d = 2*np.sqrt(h*w/np.pi)
-                    model.windings[k[0]]['wiredia'] = d
-                elif 'wire_diam' in model.windings:
-                    model.windings[k[0]]['wiredia'] = model.windings['wire_diam']
+                    model.winding[k[0]]['wiredia'] = d
+                elif 'wire_diam' in model.winding:
+                    model.winding[k[0]]['wiredia'] = model.winding['wire_diam']
             return (genwdg +
-                    self.__render(model.windings[k[0]], k[0]) +
+                    self.__render(model.winding[k[0]], k[0]) +
                     ['post_models("end_wind_leak","leak")',
                      'file_leak = io.open("end_wind_leak.dat","w")',
                      'file_leak:write(string.format("%g %g %g\\n", leak[1], leak[2], leak[3]))',
@@ -557,7 +557,7 @@ class Builder:
                 rotor = self.create_rotor_model(
                     model, condMat, ignore_material)
             try:
-                windings = model.windings
+                windings = model.winding
             except:
                 windings = {}
             windings['winding_inside'] = model.external_rotor
@@ -687,9 +687,9 @@ class Builder:
         except AttributeError:
             pass
         try:
-            sim.update(model.windings)
-            if 'num_poles' in model.windings:
-                num_poles = model.windings['num_poles']
+            sim.update(model.winding)
+            if 'num_poles' in model.winding:
+                num_poles = model.winding['num_poles']
         except AttributeError:
             pass
 

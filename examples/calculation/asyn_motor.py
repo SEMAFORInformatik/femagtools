@@ -66,7 +66,7 @@ machine = dict(
 
     ),
 
-    windings=dict(
+    winding=dict(
         dia_wire=1.5e-3,
         num_phases=3,
         num_layers=1,

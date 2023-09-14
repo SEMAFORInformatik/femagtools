@@ -40,7 +40,7 @@ def create_fsl():
                 magn_len=1.0)
         ),
 
-        windings=dict(
+        winding=dict(
             num_phases=3,
             num_wires=10,
             coil_span=1,

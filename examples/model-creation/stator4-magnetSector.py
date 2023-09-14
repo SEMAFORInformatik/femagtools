@@ -4,6 +4,7 @@ import femagtools
 def create_fsl():
     magnetmat = [dict(
         name='M45',
+        rlen=0.9,
         remanenc=1.1,
         relperm=1.04,
         spmaweight=7.4,
@@ -11,7 +12,7 @@ def create_fsl():
         temcoefhc=-0.0013,
         magncond=625000.0
     )]
-    
+
     machine = dict(
         name="PM 886 32",
         lfe=0.224,
@@ -57,7 +58,7 @@ def create_fsl():
             )
         ),
 
-        windings=dict(
+        winding=dict(
             num_phases=3,
             num_wires=5,
             coil_span=1,
@@ -81,4 +82,3 @@ if __name__ == '__main__':
 
     logger.info("FSL %s created",
                 os.path.join(workdir, modelname+'.fsl'))
-

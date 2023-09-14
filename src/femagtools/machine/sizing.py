@@ -94,7 +94,7 @@ def wdg_resistance(w1, l, d):
 
 
 def current_losses(w1, l, d, i1):
-    # w1: num windings/phase
+    # w1: num turns/phase
     # l: wire length/slot
     # d: wire diameter
     return wdg_resistance(w1, l, d) * i1**2
@@ -292,7 +292,7 @@ def get_stator_dimensions(par, slots=[]):
    # ---------------------------------------------
     f1nom = speednom*p
 
-    # stator windings
+    # stator winding
     psi1 = 2.0/np.pi*taup*lfe*Bd1
 
     Ui = Ui_U * u1nom
@@ -387,7 +387,7 @@ def get_stator_dimensions(par, slots=[]):
     r1 = wdg_resistance(N, relculen*lfe, dwire)
     r['pcu'] = round(m*r1*I1**2, 1)
 
-    r['windings'] = dict(
+    r['winding'] = dict(
         wire_diam=round(dwire, 5),
         num_phases=m,
         cufilfact=kq,
@@ -748,7 +748,7 @@ if __name__ == "__main__":
     print("Current loading      [kA/m] {:10.2f}".format(r['A']*1e-3))
     print("Thermal load       [A²/mm³] {:10.2f}".format(r['AJ']*1e-9))
     print("Esson           [kVAmin/m³] {:10.2f}".format(r['ess']))
-#    print("Windings                    {:7}".format(r['windings']))
+#    print("Winding                    {:7}".format(r['winding']))
     print("Windingfactor                {:10.3f}".format(r['kw']))
     print("Slots/Pole Phase            {:9.1f}".format(r['q']))
     print("Current                 [A] {:10.2f}".format(r['i1']))

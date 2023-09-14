@@ -119,8 +119,8 @@ class ParameterStudy(object):
         if model.is_complete():
             logger.info("setup model in %s", self.femag.workdir)
             filename = 'femag.fsl'
-            if 'wdgdef' in model.windings:
-                model.windings['wdgfile'] = self.femag.create_wdg_def(
+            if 'wdgdef' in model.winding:
+                model.winding['wdgfile'] = self.femag.create_wdg_def(
                     model)
 
             with open(os.path.join(self.femag.workdir, filename), 'w') as f:
@@ -188,7 +188,7 @@ class ParameterStudy(object):
         simulation['move_action'] = model.move_action
         simulation['phi_start'] = 0.0
         simulation['range_phi'] = 720/model.get('poles')
-        simulation.update(model.windings)
+        simulation.update(model.winding)
         if 'pocfilename' not in simulation:
             simulation['pocfilename'] = f"{model.name}_{model.poles}p.poc"
         fea = femagtools.model.FeaModel(simulation)

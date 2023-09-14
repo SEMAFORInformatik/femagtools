@@ -26,7 +26,7 @@ def create_fsl():
             ring=dict(
                 magn_height=0.005)
         ),
-        windings=dict(
+        winding=dict(
             num_phases=3,
             num_layers=2,
             num_wires=100,
@@ -34,7 +34,7 @@ def create_fsl():
             cufilfact=0.4,
             culength=1.4)
     )
-    return femagtools.create_fsl(machine)
+    return femagtools.create_fsl(machine, templatedir='templ')
 
 
 if __name__ == '__main__':

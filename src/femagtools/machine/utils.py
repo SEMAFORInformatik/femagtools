@@ -169,12 +169,12 @@ def wdg_leakage_inductances(machine):
     from ..windings import Winding
     wdg = Winding(
         {'Q': machine['stator']['num_slots'],
-         'm': machine['windings']['num_phases'],
+         'm': machine['winding']['num_phases'],
          'p': machine['poles']//2,
-         'l': machine['windings']['num_layers'],
-         'yd': machine['windings']['coil_span']})
-    n1 = wdg.turns_per_phase(machine['windings']['num_wires'],
-                             machine['windings']['num_par_wdgs'])
+         'l': machine['winding']['num_layers'],
+         'yd': machine['winding']['coil_span']})
+    n1 = wdg.turns_per_phase(machine['winding']['num_wires'],
+                             machine['winding']['num_par_wdgs'])
     m = wdg.m
     p = wdg.p
     Q = wdg.Q
@@ -359,37 +359,38 @@ def dqparident(workdir, engine, temp, machine,
             machine['stator']['stator1']['tip_rh1']
     else:
         hs = machine['stator'][slotmodel].get('slot_height', 0)
-    N = machine['windings']['num_wires']
+    wdgk = 'windings' if 'windings' in machine else 'winding'
+    N = machine[wdgk]['num_wires']
     Jmax = 15  # max current density in A/mm2
 
     i1_max = round(0.28*np.pi*hs*(da1+hs)/Q1/N*Jmax*1e5)*10 * \
-        machine['windings'].get('num_par_wdgs', 1)
+        machine[wdgk].get('num_par_wdgs', 1)
     period_frac = kwargs.get('period_frac', 6)
     if machine.get('external_rotor', False):
         period_frac = 1  # TODO: missing femag support
 
     # winding resistance
     wpar = {'Q': machine['stator']['num_slots'],
-            'm': machine['windings']['num_phases'],
+            'm': machine[wdgk]['num_phases'],
             'p': machine['poles']//2}
 
-    if 'coil_span' in machine['windings']:
-        wpar['yd'] = machine['windings']['coil_span']
-    if 'num_layers' in machine['windings']:
-        wpar['l'] = machine['windings']['num_layers']
+    if 'coil_span' in machine[wdgk]:
+        wpar['yd'] = machine[wdgk]['coil_span']
+    if 'num_layers' in machine[wdgk]:
+        wpar['l'] = machine[wdgk]['num_layers']
 
     wdg = windings.Winding(wpar)
 
     lfe = machine['lfe']
-    g = machine['windings'].get('num_par_wdgs', 1)
-    if 'wire_gauge' in machine['windings']:
-        aw = machine['windings']['wire_gauge']
-    elif 'dia_wire' in machine['windings']:
-        aw = np.pi*machine['windings'].get('dia_wire', 1e-3)**2/4
-    elif ('wire_width' in machine['windings']) and ('wire_height' in machine['windings']):
-        aw = machine['windings']['wire_width']*machine['windings']['wire_height']
+    g = machine[wdgk].get('num_par_wdgs', 1)
+    if 'wire_gauge' in machine[wdgk]:
+        aw = machine[wdgk]['wire_gauge']
+    elif 'dia_wire' in machine[wdgk]:
+        aw = np.pi*machine[wdgk].get('dia_wire', 1e-3)**2/4
+    elif ('wire_width' in machine[wdgk]) and ('wire_height' in machine[wdgk]):
+        aw = machine['windings']['wire_width']*machine[wdgk]['wire_height']
     else:  # wire diameter from slot area
-        aw = 0.75 * machine['windings'].get('cufilfact', 0.45)*\
+        aw = 0.75 * machine[wdgk].get('cufilfact', 0.45)*\
             np.pi*da1*hs/Q1/wpar['l']/N
     r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
 
@@ -418,7 +419,7 @@ def dqparident(workdir, engine, temp, machine,
         beta_max=0,
         beta_min=-90,
         num_move_steps=26,
-        num_par_wdgs=machine['windings'].get('num_par_wdgs', 1),
+        num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
         num_cur_steps=kwargs.get('num_cur_steps', 5),
         num_beta_steps=kwargs.get('num_beta_steps', 7),
         speed=kwargs.get('speed', 160/machine['poles']),
@@ -466,9 +467,9 @@ def dqparident(workdir, engine, temp, machine,
             ldq[j]['losses'][k] = results['f'][i]['lossPar'][k]
 
     dqpars = {
-        'm': machine['windings']['num_phases'],
+        'm': machine[wdgk]['num_phases'],
         'p': machine['poles']//2,
-        'r1': machine['windings'].get('resistance', r1),
+        'r1': machine[wdgk].get('resistance', r1),
         'ls1': ls1,
         "rotor_mass": rotor_mass, "kfric_b": 1,
         'ldq': ldq}

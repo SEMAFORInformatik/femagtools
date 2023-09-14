@@ -28,7 +28,7 @@ machine = dict(
         )
     ),
 
-    windings=dict(
+    winding=dict(
         num_phases=3,
         num_wires=10,
         coil_span=1,
@@ -42,28 +42,25 @@ workdir = pathlib.Path().home() / 'femag'
 workdir.mkdir(parents=True, exist_ok=True)
 
 # remove old results (if any)
-for i in workdir.glob('*_Mode_*'): 
+for i in workdir.glob('*_Mode_*'):
     i.unlink()
 
 femag = femagtools.Femag(workdir)
 
-# mechanical material can be passed in a list: 
+# mechanical material can be passed in a list:
 # [mass_density, Young's Modulus, Possion's number]
 #  kg/m3, Gpa, #
 simulation = dict(
     num_modes=15,
     calculationMode="modal_analysis",
-    stator_material=[7700, 210, 0.3], 
+    stator_material=[7700, 210, 0.3],
     slot_material=[5000, 1.5, 0.3],
     export_figure=True
 )
 # return eigenfrequency, eigenvectors
 r = femag(machine,
           simulation)
-          
+
 if simulation['export_figure']:
     femagtools.plot.eigenmode(r)
     plt.show()
-
-
-

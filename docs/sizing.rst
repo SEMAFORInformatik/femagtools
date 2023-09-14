@@ -4,8 +4,8 @@
 **********
 
 The machine sizing module includes functions that
-creates a machine model dict for following types of
-machine:
+creates a machine model dict (see :ref:`machine-model`) for following types of
+radial flux machines:
 
 * Surface Mounted PM (spm)
 * Interior Magnet PM (ipm)
@@ -15,7 +15,7 @@ machine:
 Each function has three mandatory parameters:
 
 * pnom: nominal (rated) power in W
-* speed: speed in 1/s
+* speed: shaft speed in 1/s
 * p: pole pairs
 
 In addition a couple of optional parameters with
@@ -28,7 +28,7 @@ airgap          airgap width                            m           1.5e-3
 eta             efficiency                                          0.92
 cos_phi         power factor                                        0.95
 m               number of phases                                    3
-ui_u            U ind / U                                           0.62
+ui_u            ratio U ind / U                                     0.62
 lda             length/taup ratio                                   1.33
 J               current density 3 .. 6                  A/m²        3.8e6
 sigmas          shear force 10 .. 45 kN/m2              N/m²        17e3
@@ -59,7 +59,7 @@ cos_phi         power factor                                        0.8
 ==============  ======================================  ==========  ========
 
 
-Example::
+Sizing Example for a SPM::
 
   p2 = 1.5e3
   speed = 1500/60

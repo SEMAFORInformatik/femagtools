@@ -28,7 +28,7 @@ machine = dict(
         )
     ),
 
-    windings=dict(
+    winding=dict(
         num_phases=3,
         num_wires=10,
         coil_span=1,
@@ -62,6 +62,3 @@ amela_dir = '../../amela_interface'
 amela = femagtools.amela.Amela(workdir, dict(name=machine['name']), amela_dir)
 # magnet_loss is a python dict that contains the loss data
 magnet_loss = amela()
-
-
-

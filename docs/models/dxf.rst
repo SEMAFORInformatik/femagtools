@@ -37,8 +37,8 @@ Example with a single dxf file motor.dxf::
       ...
 
 .. Note::
-    The parameters *poles*, *outer_diam*, *bore_diam* and *airgap* as well as *num_slots* and *num_slots_gen* will be set automatically
-
+    * The parameters *poles*, *outer_diam*, *bore_diam* and *airgap* as well as *num_slots* and *num_slots_gen* will be set automatically
+    * for additional keys of dxffile see :ref:`stator_slots_dxf`.
 
 Example with two separate dxf files for stator and rotor::
 

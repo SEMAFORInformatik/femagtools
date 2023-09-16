@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 AFM_TYPES = (
     "S1R1",      # 1 stator, 1 rotor
-    "S1R2",      # 1 stator, 2 rotor, 1 half simulated  0.035546949189428106
+    "S1R2",      # 1 stator, 2 rotor, 1 half simulated
     "S1R2_all",  # 1 stator, 2 rotor, all simulated
     "S2R1",      # 2 stator, 1 rotor, 1 half simulated
     "S2R1_all"   # 2 stator, 1 rotor, all simulated
@@ -289,19 +289,28 @@ def process(lfe, pole_width, machine, bch):
     stteeth = {'hyst':0, 'eddy':0}
     rotor = {}
     for k in ('hyst', 'eddy'):
-        styoke[k] = integrate1d(radius, scale_factor*np.array(
-            [sum(b['losses'][0]['stator']['stfe'][k])/l
-             for l, b in zip(lfe, bch)]))
-        rotor[k] = integrate1d(radius, scale_factor*np.array(
-            [sum(b['losses'][0]['rotor']['----'][k])/l
-             for l, b in zip(lfe, bch)]))
+        if len(pole_width) > 1:
+            styoke[k] = integrate1d(radius, scale_factor*np.array(
+                [sum(b['losses'][0]['stator']['stfe'][k])/l
+                 for l, b in zip(lfe, bch)]))
+            rotor[k] = integrate1d(radius, scale_factor*np.array(
+                [sum(b['losses'][0]['rotor']['----'][k])/l
+                 for l, b in zip(lfe, bch)]))
+        else:
+            styoke[k] = scale_factor*sum(
+                bch[0]['losses'][0]['stator']['stfe'][k])
+            rotor[k] = scale_factor*sum(
+                bch[0]['losses'][0]['rotor']['----'][k])
 
     if 'magnetH' in bch[0]['losses'][0]:
         k = 'magnetH'
     else:
-        k ='magnetJ'
-    maglosses = integrate1d(radius, scale_factor*np.array(
-        [b['losses'][0][k]/l for l, b in zip(lfe, bch)]))
+        k = 'magnetJ'
+    if len(pole_width) > 1:
+        maglosses = integrate1d(radius, scale_factor*np.array(
+            [b['losses'][0][k]/l for l, b in zip(lfe, bch)]))
+    else:
+        maglosses = scale_factor*bch[0]['losses'][0][k]
 
     freq = bch[0]['losses'][0]['stator']['stfe']['freq'][0]
 

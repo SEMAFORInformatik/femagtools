@@ -96,6 +96,7 @@ afm_stator
 ~~~~~~~~~~
 
   .. image:: ../slot-parameters/afm_stator.svg
+     :width: 200
 
 ==============  ====  ====== ===============
 Name                  Unit   Comment

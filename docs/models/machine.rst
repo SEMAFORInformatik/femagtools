@@ -53,7 +53,7 @@ For the simulation the AFPM is split into a number of slices (usually 3) each of
 .. Note::
 
    Machine models with any of the above listed types must use the models :ref:`afm_stator`
-   and :ref:`afm_rotor`
+   and :ref:`afm_rotor`.
 
 .. toctree::
    :maxdepth: 2

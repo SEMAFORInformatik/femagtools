@@ -161,6 +161,7 @@ afm_rotor
 ~~~~~~~~~
 
   .. image:: ../slot-parameters/afm_rotor.svg
+     :width: 240
 
 ==============  ======  ====== ============================
 Name                    Unit   Comment
@@ -196,11 +197,6 @@ magnetFC2       yoke_height,
 		iron_shape,
 		iron_hp,
 		magn_num
-afm_rotor       yoke_height
-                magn_height
-                magn_width
-                spoke_width
-
 <filename>      see :ref:`rotor_slots_fsl`
 dxffile         see :ref:`rotor_slots_dxf`
 ============    ===========================================

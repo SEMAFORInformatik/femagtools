@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "femagtools"
 authors = [
     {name = "Ronald Tanner", email = "tar@semafor.ch"},
-    {name = "Dapu Zhang", email = "d.zhan@gtisoft.com"},
+    {name = "Dapu Zhang", email = "dzhang@gtisoft.com"},
     {name = "Beat Holm", email = "hob@semafor.ch"},
     {name = "Günther Amsler", email = "amg@semafor.ch"},
     {name = "Nicolas Mauchle", email = "mau@semafor.ch"}

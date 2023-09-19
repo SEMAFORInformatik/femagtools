@@ -8,7 +8,7 @@
 """
 import numpy as np
 import matplotlib.pyplot as plt
-
+from matplotlib import cm
 
 def _create_3d_axis():
     """creates a subplot with 3d projection if one does not already exist"""

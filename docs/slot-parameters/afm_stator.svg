@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="-1.25 -36.25 113.38583 181.04646"
+   version="1.1"
+   width="240"
+   height="384"
+   id="svg67"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <style
+     type="text/css"
+     id="style2"><![CDATA[text { font-family:monospace;font-size:12;} svg { font-size:12;}
+       ]]></style>
+    <marker id="triangle-end" viewBox="0 0 10 10" refX="0" refY="5" markerUnits="strokeWidth" markerWidth="16" markerHeight="8" orient="auto">
+      <path fill="rgb(0, 128, 255)" stroke="rgb(0, 128, 255)" d="M 0 0 L 10 5 L 0 10 z"/>
+    </marker>
+    <marker id="triangle-start" viewBox="-10 0 10 10" refX="0" refY="5" markerUnits="strokeWidth" markerWidth="16" markerHeight="8" orient="auto">
+      <path stroke="rgb(0, 128, 255)" fill="rgb(0, 128, 255)" d="M 0 0 L -10 5 L 0 10 z"/>
+    </marker>
+
+  <path
+     vector-effect="non-scaling-stroke"
+     d="M 55.442912,26.613366 V 132.2238 h 12.57268 l 2.2187,-1.18331 a 10.05813,10.05813 0 0 0 5.3249,-8.87483 l -10e-6,-85.494178 A 10.058142,10.058142 0 0 0 65.501042,26.613356 l -10.05813,10e-6"
+     style="fill:#fffff0;stroke:#000000;stroke-width:0"
+     id="6" />
+  <path
+     vector-effect="non-scaling-stroke"
+     d="m 40.651542,131.04049 2.2187,1.18331 h 12.57267 V 26.613366 l -10.05813,10e-6 a 10.058142,10.058142 0 0 0 -10.05814,10.058116 v 85.494168 a 10.05813,10.05813 0 0 0 5.3249,8.87483"
+     style="fill:#fffff0;stroke:#000000;stroke-width:0"
+     id="3" />
+  <path
+     vector-effect="non-scaling-stroke"
+     d="m 55.442912,132.2238 v 10.05813 h 12.57268 V 132.2238 h -12.57268"
+     style="fill:#fffff0;stroke:#000000;stroke-width:0"
+     id="5" />
+  <path
+     vector-effect="non-scaling-stroke"
+     d="m 42.870242,132.2238 v 10.05813 h 12.57267 V 132.2238 h -12.57267"
+     style="fill:#fffff0;stroke:#000000;stroke-width:0"
+     id="2" />
+
+  <g
+     vector-effect="non-scaling-stroke"
+     style="fill:none;stroke:#000000;stroke-width:1"
+     id="g58"
+     transform="matrix(5.0290685,0,0,5.0290685,1.2645343,142.28193)">
+    <line
+       x1="0"
+       y1="0"
+       x2="8.2730446"
+       y2="0"
+       inx="1"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line8" />
+    <line
+       x1="8.2730446"
+       y1="0"
+       x2="8.2730446"
+       y2="-2"
+       inx="2"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line10" />
+    <line
+       x1="8.2730446"
+       y1="-2"
+       x2="7.8318686"
+       y2="-2.2352941"
+       inx="3"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line12" />
+    <path
+       d="m 6.7730446,-3.9999998 a 1.9999987,1.9999987 0 0 0 1.058824,1.7647057"
+       inx="4"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="path14" />
+    <path
+       d="m 8.7730455,-22.999998 a 2.000001,2.000001 0 0 0 -2.0000004,1.999996"
+       inx="5"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="path16" />
+    <line
+       x1="6.7730446"
+       y1="-3.9999998"
+       x2="6.7730451"
+       y2="-21.000002"
+       inx="6"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line18" />
+    <line
+       x1="8.7730455"
+       y1="-22.999998"
+       x2="10.773045"
+       y2="-23"
+       inx="7"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line20" />
+    <line
+       x1="10.773045"
+       y1="-24"
+       x2="10.773045"
+       y2="-34"
+       inx="8"
+       stroke="rgb(0,128,255)"
+       stroke-width="1"
+       marker-start="url(#triangle-start)"
+       marker-end="url(#triangle-end)"
+       vector-effect="non-scaling-stroke"
+       id="line22" />
+    <line
+       x1="10.773045"
+       y1="-35"
+       x2="2.1431318e-15"
+       y2="-35"
+       inx="9"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line24" />
+    <line
+       x1="2.1431318e-15"
+       y1="-35"
+       x2="0"
+       y2="0"
+       inx="10"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line26" />
+    <line
+       x1="8.2730446"
+       y1="0"
+       x2="10.773045"
+       y2="0"
+       inx="11"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line28" />
+    <line
+       x1="16.247622"
+       y1="-2.9"
+       x2="16.247622"
+       y2="-4.6567798"
+       inx="12"
+       stroke="rgb(0,128,255)"
+       style="stroke-width:0.99578563;marker-start:url(#triangle-start);stroke-dasharray:none"
+       vector-effect="non-scaling-stroke"
+       id="line30" />
+    <line
+       x1="4.5566654"
+       y1="-4.7"
+       x2="4.5566654"
+       y2="-6.5007153"
+       inx="12"
+       style="fill:none;stroke:#0080ff;stroke-width:1;marker-start:url(#triangle-start);stroke-opacity:1"
+       vector-effect="non-scaling-stroke"
+       id="line30-1" />
+    <line
+       x1="7.8"
+       y1="-3.4"
+       x2="9.2189388"
+       y2="-4.9370394"
+       inx="12"
+       style="fill:none;stroke:rgb(0, 128, 255);stroke-width:1.07211;marker-start:url(#triangle-start)"
+       vector-effect="non-scaling-stroke"
+       id="line30-1-0" />
+    <line
+       x1="7.5"
+       y1="-11.748477"
+       x2="9.4387856"
+       y2="-11.787152"
+       inx="12"
+       style="fill:none;stroke:rgb(0, 128, 255);stroke-width:1.04706;marker-start:url(#triangle-start)"
+       vector-effect="non-scaling-stroke"
+       id="line30-1-0-4" />
+    <line
+       x1="12.141924"
+       y1="-11.781276"
+       x2="14"
+       y2="-11.819951"
+       inx="12"
+       style="fill:none;stroke:rgb(0, 128, 255);stroke-width:1.04706;marker-end:url(#triangle-end);stroke-dasharray:none"
+       vector-effect="non-scaling-stroke"
+       id="line30-1-0-4-0" />
+    <line
+       x1="8"
+       y1="-21.8"
+       x2="9.4588966"
+       y2="-20.273129"
+       inx="12"
+       style="fill:none;stroke:rgb(0, 128, 255);stroke-width:1.07211;marker-start:url(#triangle-start)"
+       vector-effect="non-scaling-stroke"
+       id="line30-1-0-6" />
+    <line
+       x1="10.773045"
+       y1="-2"
+       x2="8.2730446"
+       y2="-2"
+       inx="13"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line32" />
+    <line
+       x1="10.773045"
+       y1="-0.6885367"
+       x2="10.773045"
+       y2="-22.19875"
+       inx="14"
+       stroke="rgb(0,128,255)"
+       style="stroke-width:1.01208;marker-start:url(#triangle-start);marker-end:url(#triangle-end)"
+       vector-effect="non-scaling-stroke"
+       id="line34" />
+    <line
+       x1="12.773044"
+       y1="-23.000002"
+       x2="10.773045"
+       y2="-23"
+       inx="15"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line36" />
+    <path
+       d="m 14.773043,-21.000004 a 2.000001,2.000001 0 0 0 -1.999999,-1.999998"
+       inx="16"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="path38" />
+    <line
+       x1="14.773045"
+       y1="-4.0000005"
+       x2="14.773043"
+       y2="-21.000004"
+       inx="17"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line40" />
+    <path
+       d="m 13.714222,-2.2352943 a 1.9999987,1.9999987 0 0 0 1.058823,-1.7647062"
+       inx="18"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="path42" />
+    <line
+       x1="13.273046"
+       y1="-2.0000002"
+       x2="13.714222"
+       y2="-2.2352943"
+       inx="19"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line44" />
+    <line
+       x1="13.273046"
+       y1="-2.1855701e-07"
+       x2="13.273046"
+       y2="-2.0000002"
+       inx="20"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line46" />
+    <line
+       x1="21.546089"
+       y1="-9.418095e-07"
+       x2="13.273046"
+       y2="-2.1855701e-07"
+       inx="21"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line48" />
+    <line
+       x1="21.546085"
+       y1="-35"
+       x2="21.546089"
+       y2="-9.418095e-07"
+       inx="22"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line50" />
+    <line
+       x1="10.773045"
+       y1="-35"
+       x2="21.546085"
+       y2="-35"
+       inx="23"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line52" />
+    <line
+       x1="13.273046"
+       y1="-2.1855701e-07"
+       x2="10.773045"
+       y2="0"
+       inx="24"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line54" />
+    <line
+       x1="10.773045"
+       y1="-2"
+       x2="13.273046"
+       y2="-2.0000002"
+       inx="25"
+       style="stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line56" />
+    <line
+       x1="4.302906"
+       y1="-3.8294535"
+       x2="6.802907"
+       y2="-3.8294537"
+       inx="25"
+       style="fill:none;stroke:#000000;stroke-width:1"
+       vector-effect="non-scaling-stroke"
+       id="line56-6" />
+    <line
+       x1="13.27966"
+       y1="-1.9936438"
+       x2="17.017479"
+       y2="-1.993644"
+       inx="25"
+       style="fill:none;stroke:#000000;stroke-width:1.22275"
+       vector-effect="non-scaling-stroke"
+       id="line56-5" />
+ </g>
+  <text
+     xml:space="preserve"
+     x="87.764885"
+     y="125.00797"
+     id="text2592"><tspan
+       id="tspan2590"
+       x="87.764885"
+       y="125.00797">h1</tspan></text>
+  <text
+     xml:space="preserve"
+     x="6.3600564"
+     y="115.84229"
+     id="text2592-3"><tspan
+       id="tspan2590-6"
+       x="6.3600564"
+       y="115.84229">h2</tspan></text>
+  <text
+     xml:space="preserve"
+     x="24.773552"
+     y="23.228085"
+     id="text2592-3-1"><tspan
+       id="tspan2590-6-0"
+       x="24.773552"
+       y="23.228085">r2</tspan></text>
+  <text
+     xml:space="preserve"
+     x="22.065248"
+     y="137.42953"
+     id="text2592-3-1-2"><tspan
+       id="tspan2590-6-0-0"
+       x="22.065248"
+       y="137.42953">r1</tspan></text>
+  <text
+     xml:space="preserve"
+     x="58.649036"
+     y="-7.2518396"
+     id="text2592-5"><tspan
+       id="tspan2590-0"
+       x="58.649036"
+       y="-7.2518396">hy</tspan></text>
+  <text
+     xml:space="preserve"
+     x="56.79837"
+     y="53.694786"
+     id="text2592-5-6"><tspan
+       id="tspan2590-0-3"
+       x="56.79837"
+       y="53.694786">sh</tspan></text>
+  <text
+     xml:space="preserve"
+     x="48.590706"
+     y="78.702728"
+     id="text2592-5-6-7"><tspan
+       id="tspan2590-0-3-8"
+       x="48.590706"
+       y="78.702728">sw</tspan></text>
+</svg>

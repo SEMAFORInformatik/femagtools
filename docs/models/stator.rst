@@ -18,7 +18,7 @@ nodedist         Factor for node distance        1.0
 .. Note::
 
    * if a value for num_slots_gen is missing its value is calculated from the number of slots Q and pole pairs p.
-   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the :ref:`magnetizingCurve`_ object.
+   * the mcvkey parameters either reference a filename without extension (Example 'M330-50A') which must be found in the directory defined by the parameter magnetizingCurves of the Femag constructor or the name of an entry in the :ref:`magnetizingCurve` object.
 
 .. _stator:
 
@@ -91,6 +91,23 @@ wedge_width1    B1    m
 wedge_width2    B2    m
 wedge_width3    B3    m
 ==============  ====  ====== =============================================
+
+afm_stator
+~~~~~~~~~~
+
+  .. image:: ../slot-parameters/afm_stator.svg
+
+==============  ====  ====== ===============
+Name                  Unit   Comment
+==============  ====  ====== ===============
+slot_height     sh    m
+slot_h1         h1    m
+slot_h2         h2    m
+slot_width      sw    m
+slot_r1         r1    m
+slot_r1         r2    m
+yoke_height     hy    m
+==============  ====  ====== ===============
 
 ==============  ===========================================
 Name             Parameter

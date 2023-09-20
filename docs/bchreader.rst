@@ -5,7 +5,7 @@ The BchReader object holds the most important FEMAG results. It has
 following attributes which mostly correspond to the text sections in the file:
 
 ================  =======================================================
-Attribute          Description     
+Attribute          Description
 ================  =======================================================
 project            Name of model file
 filename           Name of BCH file
@@ -15,6 +15,7 @@ nodes              number of nodes
 elements           number of elements
 quality            meshing quality
 windings           Winding properties
+current_angles     Current Angles from no-load test
 flux               Flux observed
 flux_fft           Fourier-Analysis of flux values
 torque             Torque-Force values
@@ -34,6 +35,8 @@ losses             Losses in iron, magnets and conductors from Move-calc
 demag              Demagnetisation
 weights            Total weight and weight of iron, conductor and magnets
 inertia            Inertia of stator and rotor
+characteristics    Characteristics of Permanent-Magnet-Motors
+powerSituation     Power situation (VZS)
 leak_dist_wind     End Winding Leakage
 ================  =======================================================
 
@@ -43,22 +46,22 @@ Flux
 * Flux: list of dictionaries for each winding
 
   ================  =======================================================
-  Attribute          Description     
+  Attribute          Description
   ================  =======================================================
   displ             position
   displunit         unit (mm, deg) of position values
-  flux_k            flux 
+  flux_k            flux
   voltage_dpsi      voltage dpsi/dt
   voltage_four      voltage (fourier transformation)
   current_k         current
   voltage_ir        voltage
   ================  =======================================================
 
-  
+
 * flux_fft: list of dictionaries for each winding
 
   ================  =======================================================
-  Attribute          Description     
+  Attribute          Description
   ================  =======================================================
   order             order of harmonic
   flux              flux amplitude
@@ -75,12 +78,12 @@ Torque
 * torque: list of dictionaries for each current and/or beta angle (No load, load current with beta=0 and load current with beta)
 
   ================  =======================================================
-  Attribute          Description     
+  Attribute          Description
   ================  =======================================================
   angle             Position
   current_1         Current
-  force_x           Force in x-direction 
-  force_y           Force in y-direction 
+  force_x           Force in x-direction
+  force_y           Force in y-direction
   t_idpsi           Torque with dq-parameters
   torque            Torque with Maxwell stress tensor
   ripple            Diff between max and min torque value
@@ -92,7 +95,7 @@ Torque
 * torque_fft: list of dictionaries for each current and/or beta angle
 
   ================  =======================================================
-  Attribute          Description     
+  Attribute          Description
   ================  =======================================================
   order             order of harmonic list
   torque            Torque amplitude list
@@ -107,19 +110,19 @@ Linear Force
 * linearForce: list of dictionaries for each current and/or beta angle
 
   ================  =======================================================
-  Attribute          Description     
+  Attribute          Description
   ================  =======================================================
   displ             Position
   magnet_1          Current
-  force_x           Force in x direction 
-  force_y           Force in y direction 
+  force_x           Force in x direction
+  force_y           Force in y direction
   ================  =======================================================
 
 
 * linearForce_fft: list of dictionaries for each current and/or beta angle in x- and y-direction
 
   ================  =======================================================
-  Attribute          Description     
+  Attribute          Description
   ================  =======================================================
   order             order of harmonic list
   force             Force amplitude list
@@ -139,15 +142,15 @@ Psidq
   psid              Psid matrix (n x m)            Vs
   psiq              Psiq matrix (n x m)            Vs
   torque            Torque matrix (n x m)          Nm
-  losses            dict of loss values          
+  losses            dict of loss values
   ================  =============================  ========================
 
   * losses
-    
+
   ================  ====================================  =====
   Attribute          Description                          Unit
   ================  ====================================  =====
-  styoke            Losses of stator yoke (n x m)         W 
+  styoke            Losses of stator yoke (n x m)         W
   stteeth           Losses of stator teeth (n x m)        W
   rotor             Losses of rotor (n x m)               W
   magnet            Losses of magnet (n x m)              W
@@ -159,7 +162,7 @@ Psidq
   rotor_eddy        Eddy Losses of rotor (n x m)          W
   speed             Speed                                 1/s
   ================  ====================================  =====
-    
+
 Psidq Ldq
 =========
 
@@ -192,7 +195,7 @@ Ldq
   torque            Torque matrix (n x m)          Nm
   ================  =============================  ========================
 
-  
+
 Machine
 =======
 
@@ -228,25 +231,25 @@ Machine
   lpfe1_0           Iron Losses in stator at noload             W
   lpfe2_0           Iron Losses in rotor at noload              W
   lpmag_0           Magnet losses at noload                     W
-  pocfile           Name of POC file used                 
+  pocfile           Name of POC file used
   ================  ========================================== =============
-  
+
   Example::
-    
+
     {'m': 3,
     'p': 4,
     'qs_sim': 12,
     'p_sim': 2,
     'Q': 48,
     'n': 50.0,
-    
+
     'kcu': 40.0,
     'r1': 0.055,
     'AJ': 84365.4609,
     'A': 213.2994,
     'fd': 119.0008,
     'J': 39.5526,
-    
+
     'lfe': 0.08356,
     'ld': 0.0008625,
     'lq': 0.00132,
@@ -300,7 +303,7 @@ DqPar
   kt                Torque factor (peak)
   dag               Airgap diameter                             m
   ================  ========================================== =============
-  
+
     Example::
 
       {'i1': [0, 243.3, 243.3],
@@ -335,9 +338,9 @@ Magnet
   ================  ========================================== =============
   Attribute          Description                               Unit
   ================  ========================================== =============
-  Br                 Remanence                                 T 
+  Br                 Remanence                                 T
   Hc                 Coercitivity                              kA/m
-  muer               rel Permeability                            
+  muer               rel Permeability
   Tmag               Temperature                               °C
   alpha              Temperature coefficient of Br             1/K
   demag_pc           Demag Limit                               %
@@ -347,7 +350,7 @@ Magnet
   ================  ========================================== =============
 
   Example::
-    
+
     {Br': 1.2,
     'Hc': -909.457,
     'muer': 1.05,
@@ -358,7 +361,7 @@ Magnet
     'area': 4136.087,
     'sigma_PM': 625000.0}
 
-    
+
 Weight
 ======
 
@@ -372,7 +375,7 @@ Weight
   ================  ========================================== =============
 
   Example::
-    
+
     {'total': 28.188,
     'iron': 24.165,
     'conductor': 2.853,
@@ -384,7 +387,7 @@ Weights
     List of weights (iron, conductors, magnets): in stator and rotor in kg
 
     Example::
-      
+
        [[18.802, 2.853, 0.0],
         [5.363, 0.0, 1.17],
 
@@ -394,18 +397,18 @@ Inertia
     List of inertia (Stator, rotor) [Unit kg m²/mm]
 
     Example::
-      
+
        [0.23, 0.39]
 
 Windings
 ========
 
   Dictionary with winding key:
-  
+
   ================  ========================================== =============
   Attribute          Description                               Unit
   ================  ========================================== =============
-  dir                list of winding directions 
+  dir                list of winding directions
   N                  list with number of conductors
   R                  list of radius                            m
   PHI                list of angles                            deg
@@ -426,7 +429,7 @@ Windings
             'dir': [-1, -1, -1, -1],
             'PHI': [10.5202, 18.0202, 19.4797, 26.9797]}
      }
- 
+
 Losses
 ======
 
@@ -451,7 +454,7 @@ Losses
   ================  ========================================== =============
 
   Example::
-    
+
     {'beta': 0.0,
      'current': 0.0,
      'magnetB': 0.0,
@@ -539,4 +542,55 @@ scData (Short Circuit)
   ib                     Phase b Current vector                  A
   ic                     Phase c Current vector                  A
   peakWindingCurrents    peak current of each phase              A
+  ===================    =================================== =========
+
+characteristics
+===============
+
+  List of Dict values of Characteristics of Permanent-Magnet-Motors
+
+  ===================    =================================== =========
+  Attribute              Description                            Unit
+  ===================    =================================== =========
+  u1nom                  Voltage (operat. limit) RMS             V
+  i1nom                  Current (operat. limit) RMS             A
+  beta0                  Angle I vs Up (speed = 0)               Deg
+  r1                     Stator winding resistance               Ohm
+  Ldnom                  Ld Inductance I, Angle I-Up             H
+  Lqnom                  Lq Inductance I, Angle I-Up             H
+  Pnom                   Power                                   W
+  Le                     Le end winding inductance               H
+  Lex                    Ext. Inductance                         H
+  psinom                 Magn. Flux RMS                          Vs
+  lfe                    Eff armature length                     m
+  nc                     Power cut off speed                     rpm
+  p                      Number of pole pairs
+  i1max                  max. current (RMS)                      A
+  relw                   Rel number wdg turns
+  m                      number of phases
+  nmin                   min. speed                              rpm
+  nmax                   max. speed                              rpm
+  speed_torque           speed torque characteristics
+  ldq                    Ld, Lq, Psi_mag, Torque Table
+  ===================    =================================== =========
+
+current_angles
+==============
+
+  list of current angles from no load test (Example: [30.0, 150.0, 270.0])
+
+powerSituation
+==============
+
+  dict of windings and beta. Values for each phase:
+
+  ===================    =================================== =========
+  Attribute              Description                            Unit
+  ===================    =================================== =========
+  voltage                voltage                                V
+  current_1              current                                A
+  beta                   angle I vs Up                          deg
+  cosphi                 power factor
+  powerp                 True Power                             W
+  powerq                 Reactive Power                         VA
   ===================    =================================== =========

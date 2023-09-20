@@ -271,9 +271,10 @@ Speed-Torque characteristics with max power::
 Parameter Identification
 ++++++++++++++++++++++++
 
-For each type of machine (im, pm, sm)
+For each type of machine (im, pm, sm, afpm)
 the parameters of the analytical model such inductances, resistances etc.
-can be determined fastly based by the function parident::
+can be determined for a sequence of temperatures
+with the function parident::
 
   machine = {
     'poles': 4,

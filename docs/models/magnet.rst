@@ -41,14 +41,12 @@ magn_ori                       orientation 1: parallel, 2: polar, 3: halbach
 magn_type                      1: arc 2: arc par. 3: rect. 4: curved rect.
 ==============  ======  ====== =============================================
 
-  .. image:: ../slot-parameters/magntype1.png
-             :width: 140
-  .. image:: ../slot-parameters/magntype2.png
-             :width: 140
-  .. image:: ../slot-parameters/magntype3.png
-             :width: 140
-  .. image:: ../slot-parameters/magntype4.png
-             :width: 140
++---------------------------------------------+---------------------------------------------+---------------------------------------------+---------------------------------------------+
+| magn_type=1 (arc)                           | magn_type=2 (arc par)                       | magn_type=3 (rect)                          | magn_type=4 (curved rect)                   |
+|                                             |                                             |                                             |                                             |
+| .. image:: ../slot-parameters/magntype1.png | .. image:: ../slot-parameters/magntype2.png | .. image:: ../slot-parameters/magntype3.png | .. image:: ../slot-parameters/magntype4.png |
+|    :width: 120                              |    :width: 120                              |    :width: 120                              |    :width: 120                              |
++---------------------------------------------+---------------------------------------------+---------------------------------------------+---------------------------------------------+
 
 magnetIron
 ~~~~~~~~~~

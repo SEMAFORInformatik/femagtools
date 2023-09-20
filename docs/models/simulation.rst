@@ -285,6 +285,28 @@ Example::
     angl_i_up=0.0,
     speed=50.0)
 
+Axial Flux Machine (torq_calc)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Axial flux machines are split into concentric slices each simulated as a linear machine.
+
+Example::
+
+    afpm = femagtools.machine.afpm.AFPM(workdir, magnetizingCurves='.',
+              magnetMat=magnetMat, condMat='')
+
+    simulation = dict(
+        angl_i_up=0.0,
+        calculationMode="torq_calc",
+        wind_temp=90.0,
+        magn_temp=90.0,
+        current=100,
+        speed=12500/60)
+
+    engine = Engine()
+    num_slices = 3
+    r = afpm(engine, machine, simulation, num_slices)
+
 FE-Simulation with existing model
 ---------------------------------
 

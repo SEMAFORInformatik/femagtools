@@ -84,13 +84,33 @@ if not airgap_created then
   end
 
   if m.model_type == 'S2R1_all' then
-    x1,y1 = 0, -ag -m.magn_height/2 -m.yoke_height -m.gap_ma_yoke
+    x1,y1 = 0, -ag -m.magn_height/2
     x2,y2 = m.npols_gen*m.pole_width, y1
     mirror_nodechains(x1,y1, x2,y2)
+-- TODO: only needed for geom preview
+    x,y = (P22.x+P32.x)/2, -ag - 3*m.magn_height/4
+    for i = 1,m.npols_gen do
+      if i%2 == 0 then
+        def_mat_pm(x,y, 'red', m.remanenc, m.relperm, 90, "parallel", 0, m.rlen)
+      else
+        def_mat_pm(x,y, 'green', m.remanenc, m.relperm, 270, "parallel", 0, m.rlen)
+      end
+      x = x + m.pole_width
+    end
   elseif m.model_type == 'S1R2_all' then
     x1,y1 = m.npols_gen*m.pole_width, m.slot_height/2
     x2,y2 = 0, y1
     mirror_nodechains(x1,y1, x2,y2)
+-- TODO: only needed for geom preview
+    x,y = (P22.x+P32.x)/2, m.slot_height - (P21.y+P22.y)/2
+    for i = 1,m.npols_gen do
+      if i%2 == 0 then
+        def_mat_pm(x,y, 'red', m.remanenc, m.relperm, 90, "parallel", 0, m.rlen)
+      else
+        def_mat_pm(x,y, 'green', m.remanenc, m.relperm, 270, "parallel", 0, m.rlen)
+      end
+      x = x + m.pole_width
+    end
   end
 % endif
 end

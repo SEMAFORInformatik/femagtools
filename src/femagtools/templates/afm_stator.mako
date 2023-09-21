@@ -101,7 +101,7 @@ m.nodedist        =  ${model.get('m.nodedist', 1)}  -- Node distance
 
   x, y = (P11.x+P26.x)/2, (P11.y + P16.y)/2
   create_mesh_se(x, y)
-  def_new_sreg(x,y, "stfe", "blue")
+  def_new_sreg(x,y, "stfe", "skyblue")
 
   nc_line(P51.x, P51.y, P61.x, P61.y, 0)
   nc_line_cont(P62.x, P62.y, 0)
@@ -126,21 +126,25 @@ m.nodedist        =  ${model.get('m.nodedist', 1)}  -- Node distance
 
   x,y = (P11.x+P26.x)/2,(P11.y+P26.y)/2
   if (m.mcvkey_yoke == 'dummy') then
-    def_mat_fm(x,y, blue, 1000, 100)
+    def_mat_fm(x,y, 'blue', 1000, 100)
   else
-    def_mat_fm_nlin(x,y, blue, m.mcvkey_yoke, 100, 0)
+    def_mat_fm_nlin(x,y, 'blue', m.mcvkey_yoke, 100, 0)
   end
 
   m.middle_line  = ${model.get('middle_line', 0)}  -- vertical slot parts if 1
-  if m.middle_line == 0 then
      for n = 1, m.num_sl_gen do
-       s = tostring(n)
+       s = 'S'..n
        x, y = (2*n-1)*m.width_bz/2 -(m.width_bz/2-m.xcoil_1), m.ycoil_1
        def_new_sreg(x, y, s, 'white')
        x = x + 2*(m.width_bz/2-m.xcoil_1)
-       add_to_sreg(x, y, s)
+       if m.middle_line == 0 then
+         add_to_sreg(x, y, s)
+       else
+         def_new_sreg(x, y, s..'2', 'white')
+       end
      end
-  else
-    m.xcoil_2 = m.width_bz/2 + (m.width_bz/2-m.xcoil_1)
-    m.ycoil_2 = m.ycoil_1
-  end
+
+    if m.middle_line == 1 then
+      m.xcoil_2 = m.width_bz/2 + (m.width_bz/2-m.xcoil_1)
+      m.ycoil_2 = m.ycoil_1
+    end

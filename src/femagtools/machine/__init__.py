@@ -1,9 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-    femagtools.machine
-    ~~~~~~~~~~~~~~~~~~
-
-    Analytical machine models
+""":mod:`femagtools.machine` -- Analytical machine models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 """
 import numpy as np

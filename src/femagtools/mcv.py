@@ -902,11 +902,11 @@ class Reader(Mcv):
 
 
 class MagnetizingCurve(object):
+    """Magnetizing curve
+        Args:
+          mcvpar: a list of mcv objects or a single mcv or a directory
+    """
     def __init__(self, mcvpar):
-        """initialize this object either from
-          a list of mcv objects or
-          a single mcv or
-          a directory"""
         self.mcv = {}
         if isinstance(mcvpar, list):
             logger.info("MagnetizingCurve is list")
@@ -1067,10 +1067,8 @@ class MagnetizingCurve(object):
         Arguments:
           name: key of mcv dict (name or id)
           directory: destination directory (must be writable)
-          fillfac: (float) new fill factor (curves will be recalulated
-                if not None or 0)
-          recsin: (str) either 'flux' or 'cur' recalculates for
-             eddy current calculation (dynamic simulation)
+          fillfac: (float) new fill factor (curves will be recalulated if not None or 0)
+          recsin: (str) either 'flux' or 'cur' recalculates for eddy current calculation (dynamic simulation)
 
         returns filename if found else None
         """

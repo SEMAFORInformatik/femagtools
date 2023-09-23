@@ -1,9 +1,7 @@
-"""
-  femagtools.sm
-  ~~~~~~~~~~~~~
-  wound-rotor synchronous machine (EESM) electrical circuit model
+""":mod:`femagtools.sm` -- wound-rotor synchronous machine (EESM) electrical circuit model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  Copyright 2022: Semafor Informatik & Energie AG, Switzerland
+
 """
 import logging
 import warnings
@@ -39,9 +37,9 @@ def parident(workdir, engine, machine,
         electrically excited synchronous machines
 
         arguments:
-        machine -- dict() with machine parameters
-        magnetizingCurves -- list of dict() with BH curves
-        condMat -- list of dict() with conductor material properties
+        machine: dict() with machine parameters
+        magnetizingCurves: list of dict() with BH curves
+        condMat: list of dict() with conductor material properties
 
         optional arguments:
         num_cur_steps: number of current steps (default 5)
@@ -220,7 +218,7 @@ def _islinear(exc):
         np.linspace(exc[0], exc[-1], len(exc))**2)) < 1e-2
 
 
-def gradient_respecting_bounds(bounds, fun, eps=1e-8):
+def _gradient_respecting_bounds(bounds, fun, eps=1e-8):
     """bounds: list of tuples (lower, upper)"""
     def gradient(x):
         logger.info(x)
@@ -235,6 +233,11 @@ def gradient_respecting_bounds(bounds, fun, eps=1e-8):
 
 
 class SynchronousMachine(object):
+    """ represent Synchronous machine with wound rotor (EESM)
+
+    Arguments:
+    eecpars: dict() electrical circuit parameters
+    """
     def __init__(self, eecpars, **kwargs):
         self.kth1 = KTH
         self.kth2 = KTH

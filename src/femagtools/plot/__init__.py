@@ -1,3 +1,7 @@
+""":mod:`femagtools.plot` --- Creating plots
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+"""
 from .fluxdens import airgap, airgap_fft
 from .bch import torque, torque_fft, force, force_fft,\
     fluxdens_surface, winding_current, winding_flux, \

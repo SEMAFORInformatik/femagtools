@@ -1,8 +1,6 @@
-"""
-  femagtools.im
-  ~~~~~~~~~~~~~
+""":mod:`femagtools.im` -- induction machine (electrical circuit model)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  induction machine (electrical circuit model)
 
 """
 import numpy as np
@@ -622,10 +620,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
     condMat -- list of dict() with conductor material properties
 
     optional:
-    num_steps: (int) number of current steps for the no-load
-        calculation (default 5)
-    logspace: (bool) uses log distributed current samples if true
-         (linear otherwise) (default true)
+    num_steps: (int) number of current steps for the no-load calculation (default 5)
+    logspace: (bool) uses log distributed current samples if true linear otherwise (default true)
     i_max_fact: (float) factor for maximum current to calculate no_load flux (default=2.5)
     templatedirs: (list of str) names of directories to search for templates
     """

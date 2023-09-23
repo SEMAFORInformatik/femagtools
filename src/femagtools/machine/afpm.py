@@ -1,8 +1,6 @@
-"""
-    femagtools.machine.afpm
-    ~~~~~~~~~~~~~~~~~~~~~~~
+""":mod:`femagtools.machine.afpm` -- Axial Flux PM Machine
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Axial Flux PM Machine
 
 """
 import logging
@@ -26,7 +24,7 @@ AFM_TYPES = (
     "S2R1_all"   # 2 stator, 1 rotor, all simulated
 )
 
-def integrate(radius, pos, val):
+def _integrate(radius, pos, val):
     interp = RegularGridInterpolator((radius, pos), val)
     def func(x, y):
         return interp((x, y))
@@ -34,7 +32,7 @@ def integrate(radius, pos, val):
             for p in pos]
 
 
-def integrate1d(radius, val):
+def _integrate1d(radius, val):
     interp = interp1d(radius, val)
     def func(x):
         return interp((x))
@@ -47,14 +45,14 @@ def parident(workdir, engine, temp, machine,
     """return list of parameters of equivalent circuit for AFPM
 
     arguments:
-    workdir -- directory for intermediate files
-    engine -- calculation driver (multiproc, docker, condor)
+    workdir: (str) directory for intermediate files
+    engine: (object) calculation driver (multiproc, docker, condor)
 
-    temp -- list of magnet temperatures in degree Celsius
-    machine -- dict() with machine parameters
-    magnetizingCurves -- list of dict() with BH curves
-    magnetMat -- list of dict() with magnet material properties
-    condMat -- list of dict() with conductor material properties
+    temp: list of magnet temperatures in degree Celsius
+    machine: dict() with machine parameters
+    magnetizingCurves: list of dict() with BH curves
+    magnetMat: list of dict() with magnet material properties
+    condMat: list of dict() with conductor material properties
 
     optional arguments:
     num_slices: number of slices (default 3)
@@ -186,7 +184,7 @@ def parident(workdir, engine, temp, machine,
                         for bch in zip(*[r['f'] for r in results])]:
             torque = np.mean(results.pop('torque'))
             results['torque'] = torque
-            results.update(psidq_ldq(results, nlresults))
+            results.update(_psidq_ldq(results, nlresults))
             postp.append(results)
 
         r1 = postp[0]['r1']
@@ -226,16 +224,13 @@ def parident(workdir, engine, temp, machine,
 def process(lfe, pole_width, machine, bch):
     """process results: torque, voltage (emf), losses
 
-    Parameters:
-    -----------
+    Arguments:
     lfe: (float) active machine length
     pole_width: (float) pole width
     machine: (dict) machine
     bch: (list of dict) linearForce, flux, losses
 
-    Return
-    ------
-    dict with keys:
+    Returns dict with keys:
     pos: (list of float)
     r1: winding resistance
     torque: (list of float)
@@ -250,7 +245,7 @@ def process(lfe, pole_width, machine, bch):
     num_slots = machine['stator']['num_slots']
     mmod = model.MachineModel(machine)
     slots_gen = mmod.stator['num_slots_gen']
-    scale_factor = get_scale_factor(model_type, num_slots, slots_gen)
+    scale_factor =_get_scale_factor(model_type, num_slots, slots_gen)
     endpos = [2*pw*1e3 for pw in pole_width]
     displ = [[d for d in r['linearForce'][0]['displ']
               if d < e*(1+1/len(r['linearForce'][0]['displ']))]
@@ -261,7 +256,7 @@ def process(lfe, pole_width, machine, bch):
     currents = [bch[0]['flux'][k][0]['current_k'][:n]
                 for k in bch[0]['flux']]
     if len(pole_width) > 1:
-        torque = integrate(radius, rotpos[0], np.array(
+        torque = _integrate(radius, rotpos[0], np.array(
             [r*scale_factor*np.array(fx[:-1])/l
              for l, r, fx in zip(lfe, radius,
                                  [r['linearForce'][0]['force_x']
@@ -271,7 +266,7 @@ def process(lfe, pole_width, machine, bch):
                        for l, ux in zip(lfe, [r['flux'][k][0]['voltage_dpsi']
                                               for r in bch])]
                    for k in bch[0]['flux']}
-        emf = [integrate(radius, rotpos[0], np.array(voltage[k]))
+        emf = [_integrate(radius, rotpos[0], np.array(voltage[k]))
                for k in voltage]
     else:
         r = radius[0]
@@ -290,10 +285,10 @@ def process(lfe, pole_width, machine, bch):
     rotor = {}
     for k in ('hyst', 'eddy'):
         if len(pole_width) > 1:
-            styoke[k] = integrate1d(radius, scale_factor*np.array(
+            styoke[k] = _integrate1d(radius, scale_factor*np.array(
                 [sum(b['losses'][0]['stator']['stfe'][k])/l
                  for l, b in zip(lfe, bch)]))
-            rotor[k] = integrate1d(radius, scale_factor*np.array(
+            rotor[k] = _integrate1d(radius, scale_factor*np.array(
                 [sum(b['losses'][0]['rotor']['----'][k])/l
                  for l, b in zip(lfe, bch)]))
         else:
@@ -307,7 +302,7 @@ def process(lfe, pole_width, machine, bch):
     else:
         k = 'magnetJ'
     if len(pole_width) > 1:
-        maglosses = integrate1d(radius, scale_factor*np.array(
+        maglosses = _integrate1d(radius, scale_factor*np.array(
             [b['losses'][0][k]/l for l, b in zip(lfe, bch)]))
     else:
         maglosses = scale_factor*bch[0]['losses'][0][k]
@@ -347,7 +342,7 @@ def process(lfe, pole_width, machine, bch):
         'plcu': plcu}
 
 
-def psidq_ldq(results, nlresults):
+def _psidq_ldq(results, nlresults):
     """ calculate currents, winding fluxes psi and inductances L
     Arguments:
     results: (dict) emf, currents, freq of load simulation
@@ -382,18 +377,14 @@ def psidq_ldq(results, nlresults):
         'Ld': Ld,
         'Lq': Lq}
 
-def get_scale_factor(model_type, num_slots, slots_gen):
+def _get_scale_factor(model_type, num_slots, slots_gen):
     """Determines the scale factor
-    Parameters
-    ----------
+    Arguments:
     model_type : (str) type of model
     num_slots: (int) total number of stator slots
     slots_gen: (int) number of slots in model
 
-    Return
-    ------
-    scale_factor : int
-        Scale factor based on number of poles, number of poles simulated
+    Returns scale factor based on number of poles, number of poles simulated
         and the model type
     """
     segments = num_slots / slots_gen
@@ -436,7 +427,7 @@ def wdg_resistance(wdg, n, g, aw, outer_diam, inner_diam,
     return wdg.turns_per_phase(n, g)*lt/sigma/aw/g
 
 
-def get_copper_losses(scale_factor, bch):
+def _get_copper_losses(scale_factor, bch):
     """return copper losses from bch files"""
     try:
         cu_losses = sum([b['losses'][0][wdgk] for b in bch])
@@ -446,6 +437,13 @@ def get_copper_losses(scale_factor, bch):
 
 
 class AFPM:
+    """Axial Flux PM
+    Arguments:
+    workdir: (str) working directory
+    magnetizingCurves: (str) or (object)
+    magnetMat: magnet material
+    condMat: conductor material
+    """
     def __init__(self, workdir, magnetizingCurves='.', magnetMat='',
                  condMat=''):
         self.parstudy = parstudy.List(
@@ -533,5 +531,5 @@ class AFPM:
             simulation, engine)  # Note: imcomplete machine prevents rebuild
 
         results = process(lfe, pole_width, machine, lresults['f'])
-        results.update(psidq_ldq(results, nlresults))
+        results.update(_psidq_ldq(results, nlresults))
         return results

@@ -69,6 +69,7 @@ User Guide
    dakota
    engine
    amela
+   tspost
 
 References
 ==========

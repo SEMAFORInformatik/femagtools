@@ -1,10 +1,7 @@
-"""
-  femagtools.pm
-  ~~~~~~~~~~~~~
+""":mod:`femagtools.pm` -- PM/Rel synchronous machine (SPM, IPM, RM) electrical circuit models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  PM/Rel synchronous machine (SPM, IPM, RM) electrical circuit model
 
-  Copyright 2022: Semafor Informatik & Energie AG, Switzerland
 """
 import logging
 import warnings
@@ -21,6 +18,26 @@ logger = logging.getLogger(__name__)
 def parident(workdir, engine, temp, machine,
              magnetizingCurves, magnetMat, condMat,
              **kwargs):
+    """return list of parameters of equivalent circuit for PM machines
+
+    arguments:
+    workdir -- directory for intermediate files
+    engine -- calculation driver (multiproc, docker, condor)
+
+    temp -- list of magnet temperatures in degree Celsius
+    machine -- dict() with machine parameters
+    magnetizingCurves -- list of dict() with BH curves
+    magnetMat -- list of dict() with magnet material properties
+    condMat -- list of dict() with conductor material properties
+
+    optional arguments:
+    num_cur_steps: number of current steps (default 5)
+    num_beta_steps: number of current steps (default 7 per quadrant)
+    speed: rotor speed in 1/s (default 160/p)
+    i1_max: maximum current in A rms (default approx 3*i1nom)
+    period_frac: fraction of rotating angle (default 6)
+    cmd: femag executable
+    """
     return dqparident(workdir, engine, temp, machine,
                       magnetizingCurves, magnetMat, condMat,
                       **kwargs)

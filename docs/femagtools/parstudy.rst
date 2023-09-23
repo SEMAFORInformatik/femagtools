@@ -1,0 +1,2 @@
+.. automodule:: femagtools.parstudy
+   :members:

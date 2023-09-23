@@ -1,9 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-    femagtools.femag
-    ~~~~~~~~~~~~~~~~
-
-    Running FEMAG
+""":mod:`femagtools.femag` -- running FEMAG
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 """

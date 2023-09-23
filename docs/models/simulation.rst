@@ -1,5 +1,5 @@
-**FE-Simulation**
-=================
+FE-Simulation
+=============
 
 Cogging (cogg_calc)
 ~~~~~~~~~~~~~~~~~~~

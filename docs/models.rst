@@ -1,5 +1,5 @@
-**Models**
-**********
+Models
+******
 
 The models are dictionaries with the properties of a material, a machine or a simulation.
 

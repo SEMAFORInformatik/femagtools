@@ -1,5 +1,5 @@
-**Rotor**
----------
+Rotor
+-----
 Rotors have a excitation or short circuit cage winding
 and following basic parameters and slots:
 

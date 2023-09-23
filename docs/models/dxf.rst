@@ -1,8 +1,8 @@
 
 .. _model_creation_with_dxf:
 
-**Model Creation with DXF**
-===========================
+Model Creation with DXF
+=======================
 
 The goal of the dxfsl modules is to create a complete FE model for rotating PM and Reluctance Machines on the basis of a DXF file with
 as little restrictions as possible.

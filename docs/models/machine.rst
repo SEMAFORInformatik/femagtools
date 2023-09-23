@@ -1,7 +1,7 @@
 .. _machine-model:
 
-**Machine**
-===========
+Machine
+=======
 
 Three different types of machines are supported:
 

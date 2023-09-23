@@ -1,6 +1,6 @@
 
-**Material**
-============
+Material
+========
 
 .. _conductor:
 

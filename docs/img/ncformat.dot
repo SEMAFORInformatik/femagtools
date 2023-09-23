@@ -1,0 +1,47 @@
+digraph g {
+graph [
+rankdir = "LR"
+];
+node [
+fontsize = "16"
+shape = "record"
+];
+
+#general [
+#  label="FC_RADIUS | pole_pairs, poles_sim | delta_node_angle | num_slots | arm_length | pos_el_fe_induction"
+#];
+
+node0 [
+  label="Node | key | x, y, r, phi | bndcnd | pernod | vpot"
+];
+
+element [
+  label="Element | key | area | center | reluc | mag  | permeability() | flux_density() | demagnetization() | iron_loss_density() | mag_loss_density() | wdg_loss_density()"
+];
+
+superelement [
+  label = "SuperElement | key | length | mcvtype | condtype | curd"
+];
+
+nodechain [
+  label = "NodeChain | key | node1, nodmid, node2"
+];
+
+subregion [
+  label="Subregion | key | name | curdir | num_turns "
+];
+winding [
+  label="Winding | key | name | cur | flux | volt"
+];
+nodechain -> node0
+element -> node0
+element -> superelement
+superelement -> element
+superelement -> nodechain
+superelement -> subregion
+subregion -> superelement
+subregion -> nodechain
+winding -> subregion
+subregion -> winding
+
+}

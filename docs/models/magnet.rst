@@ -1,6 +1,6 @@
 
-**Magnet**
-----------
+Magnet
+------
 
 Magnets have basic parameters and slots:
 

@@ -1,0 +1,29 @@
+User Specified Magnet Geometries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Magnet geometries not coverd by the built in models can be specified by fsl code. Here is a example:
+
+-- figure:: img/spoke.fsl
+
+   example of a user specified geometry
+
+FSL Magnet::
+
+  ..
+  magnet=dict(
+      mcvkey_yoke="dummy",
+      spoke=dict(
+          magn_height=0.012,
+          shaft_diam=0.01,
+          slot_width=0.006,
+          magn_width=0.022
+      )
+   ..
+   
+The following values can be referenced:
+
+==============  ========================
+mcvkey_yoke
+mcvkey_shaft
+agndst          Node distance in airgap
+==============  ========================

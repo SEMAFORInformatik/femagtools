@@ -1,7 +1,7 @@
 .. _sizing:
 
-**Sizing**
-**********
+Sizing
+******
 
 The machine sizing module includes functions that
 creates a machine model dict (see :ref:`machine-model`) for following types of

@@ -1,5 +1,5 @@
-**User Specified Magnet Geometries**
-====================================
+User Specified Magnet Geometries
+================================
 
 Magnet geometries not covered by the built in models can be specified by fsl code. Here is a example:
 

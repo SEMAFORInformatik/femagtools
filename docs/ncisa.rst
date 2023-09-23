@@ -9,7 +9,7 @@ For both file formats corresponding modules nc and isa7 exist (filename extensio
 
   isa = femagtools.isa7.read('foo')
   nc = femagtools.nc.read('foo')
-  
+
 The file is structured as follows:
 
 .. figure:: img/ncformat.png
@@ -20,8 +20,8 @@ in addition following general data is provided:
 Parameter             Description                             Unit
 ====================  ======================================  ======
 FC_RADIUS             radius to center of airgap              m
-arm_length            Lenght of iron                          m
-poles                 Number of poles
+arm_length            Effective lenght of iron                m
+num_poles             Number of poles
 pole_pairs            Number of pole pairs
 poles_sim             Number of poles in model
 num_slots             Number of slots

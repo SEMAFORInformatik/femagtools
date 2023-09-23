@@ -1,5 +1,5 @@
-**Stator**
-----------
+Stator
+------
 
 Stators have basic parameters and slots:
 

@@ -14,26 +14,30 @@ Example of a symmetric 3-phase, 2-layer Winding with 54 slots and 6 pole pairs::
         [[1, -5, -6], [4, -8, -9], [-2, -3, 7]])
 
   femagtools.plot.zoneplan(w)
-  
+
 .. figure:: img/zoneplan.png
 
+Zone plan::
+
   femagtools.plot.winding(w)
-  
+
 .. figure:: img/winding.png
+
+MMF::
 
   mmf = w.mmf()
   femagtools.plot.mmf(mmf)
   femagtools.plot.mmf_fft(mmf)
 
 .. figure:: img/mmf.png
-            
+
 .. figure:: img/mmf_fft.png
 
 Custom Windings
 ===============
 
 Example of a custom defined winding::
-  
+
   w = femagtools.windings.Winding(dict(
     Q=12, p=5, m=3,
     1: {'N': [10, 10, 10, 10],

@@ -225,11 +225,14 @@ class Reader(object):
         self.M_POLES = self.next_block("i")[0]
         self.skip_block(5)
         self.MAGN_TEMPERATURE, self.BR_TEMP_COEF = self.next_block("f")[0:2]
-        FC_NUM_CUR_ID, FC_NUM_BETA_ID = self.next_block("i")[0:2]
+        FC_NUM_CUR_ID, FC_NUM_BETA_ID, FC_NUM_CUR_REG = self.next_block("i")[0:3]
         if FC_NUM_CUR_ID > 16:
             FC_NUM_CUR_ID = 16
 
-        self.skip_block(3)
+        self.CURRENT_ID = self.next_block("f")[0:FC_NUM_CUR_ID]
+        self.IDE_FLUX = self.next_block("f")[0:FC_NUM_CUR_ID]
+        self.IDE_BETA = self.next_block("f")[0:FC_NUM_BETA_ID]
+
         self.skip_block(FC_NUM_CUR_ID * 2)
         self.skip_block(1 + 10 * 5)
         self.HC_TEMP_COEF, self.NHARM_MAX_MULTI_FILE = self.next_block("f")[0:2]
@@ -320,7 +323,6 @@ class Reader(object):
         self.curr_loss = self.next_block(
             "h")[:FC_NUM_CUR_ID]  # CURR_LOSS_EVAL_STEP
         FC_NUM_MOVE_LOSSES = self.next_block("i")[0]
-
         if FC_NUM_MOVE_LOSSES > 1 and NUM_FE_EVAL_MOVE_STEP > 1:
             self.el_fe_induction_1.append([[]])
             self.el_fe_induction_2.append([[]])
@@ -773,8 +775,14 @@ class Isa7(object):
         try:
             self.beta_loss = np.asarray(reader.beta_loss)
             self.curr_loss = np.array([c/np.sqrt(2) for c in reader.curr_loss])
+            logger.debug("Beta loss %s curr loss %s",
+                         reader.beta_loss, reader.curr_loss)
         except AttributeError:
             pass
+
+        self.current_id = np.asarray(reader.CURRENT_ID)
+        self.ide_flux = np.asarray(reader.IDE_FLUX)
+        self.ide_beta = np.asarray(reader.IDE_BETA)
 
         try:
             el_fe_ind = [np.array(reader.el_fe_induction_1).T/1000,

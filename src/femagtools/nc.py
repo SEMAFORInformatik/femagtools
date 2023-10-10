@@ -214,6 +214,9 @@ class Reader(object):
         except Exception as e:
             #logger.warning("*** MAGNET %s", e)
             pass
+        self.CURRENT_ID = ds.variables['current'][:]
+        self.IDE_FLUX = ds.variables['ide_flux'][:]
+        self.IDE_BETA = ds.variables['ide_beta'][:]
         try:
             grp = ds.groups['el_induction']
             (self.curr_loss,

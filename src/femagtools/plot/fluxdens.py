@@ -1,6 +1,6 @@
 """
-    femagtools.plot.airgap
-    ~~~~~~~~~~~~~~~~~~~~~~
+    femagtools.plot.fluxdens
+    ~~~~~~~~~~~~~~~~~~~~~~~~
 
     Creating airgap flux density plots
 
@@ -34,8 +34,7 @@ def airgap_fft(airgap, bmin=1e-2, ax=0):
     order, fluxdens = np.array([(n, b) for n, b in zip(airgap['nue'],
                                                        airgap['B_nue']) if b > bmin]).T
     try:
-        markerline1, stemlines1, _ = ax.stem(order, fluxdens, '-.', basefmt=" ",
-                                             use_line_collection=True)
+        markerline1, stemlines1, _ = ax.stem(order, fluxdens, '-.', basefmt=" ")
         ax.set_xticks(order)
     except ValueError:  # empty sequence
         pass

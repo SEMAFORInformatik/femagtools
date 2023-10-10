@@ -1,10 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-    femagtools
-    ~~~~~~~~~~
-
-    Python bindings for FEMAG
-
+""":mod:`femagtools` -- Python API for FEMAG
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 """
@@ -37,12 +32,12 @@ def create_fsl(machine,
                magnetmat=[],
                condMat=[],
                templatedirs=[]):
-    """create FSL command list from model parameters
+    """create FSL command list from model and operating parameters
 
     Args:
-        machine: dict with parameters
-        operatuingConditions: dict with parameters
-        magnetmat: list fo dict with parameters
+        machine: dict with parameters (model)
+        operatingConditions: dict with parameters (simulation)
+        magnetmat: list fo dict with parameters (magnet material)
         templatedir: additional template directory
 """
     model = MachineModel(machine)

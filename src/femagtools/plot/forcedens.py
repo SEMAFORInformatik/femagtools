@@ -69,19 +69,20 @@ def forcedens_surface(fdens, ax=0):
     z = 1e-3*np.array([p['FN']
                        for p in fdens.positions])
     _plot_surface(ax, xpos, ypos, z,
-                  (u'Rotor pos/°', u'Pos/°', u'F N / kN/m²'))
+                  ('Rotor pos/°', 'Pos/°', 'F N / kN/m²'))
 
 
-def forcedens_fft(title, fdens, ax=0):
+def forcedens_fft(title, fdens, nharm=40, ax=0):
     """plot force densities FFT
     Args:
       title: plot title
       fdens: force density object
+      nharm: (int) num harmonics
     """
     if ax == 0:
         ax = plt.axes(projection="3d")
 
-    F = 1e-3*fdens.fft()
+    F = 1e-3*fdens.fft(nharm)['fn_harm']['amplitude']
     fmin = 0.2
     num_bars = F.shape[0] + 1
     _xx, _yy = np.meshgrid(np.arange(1, num_bars),
@@ -93,7 +94,7 @@ def forcedens_fft(title, fdens, ax=0):
     y_size = 2
 
     ax.bar3d(x_pos, y_pos, z_pos, x_size, y_size, z_size)
-    ax.view_init(azim=120)
+    #ax.view_init(azim=120)
     ax.set_xlim(0, num_bars+1)
     ax.set_ylim(0, num_bars+1)
     ax.set_title(title)

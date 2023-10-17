@@ -77,10 +77,15 @@ class Area(object):
         return self.area
 
     def list_of_nodes(self):
-        if len(self.area) < 2:
+        if len(self.area) < 1:
             return
 
         e0 = self.area[0]
+        if len(self.area) == 1:
+            yield e0.n1
+            yield e0.n2
+            return
+
         e1 = self.area[1]
         try:
             if e1.get_node_number(e0.n1, override=True) == 0:
@@ -356,9 +361,13 @@ class Area(object):
                 gap_list.append((d, (p1, p2), dist_id, a.get_id()))
 
         d, p1, p2 = a.get_nearest_point(center, radius, rightangle)
-        gap_list.append((d, (p1, p2), dist_id, a.get_id()))
+        if p1:
+            gap_list.append((d, (p1, p2), dist_id, a.get_id()))
         d, p1, p2 = a.get_nearest_point(center, radius, leftangle)
-        gap_list.append((d, (p1, p2), dist_id, a.get_id()))
+        if p1:
+            gap_list.append((d, (p1, p2), dist_id, a.get_id()))
+        if not gap_list:
+            return []
         gap_list.sort()
         return [gap_list[0]]
 
@@ -366,6 +375,7 @@ class Area(object):
         axis_p = point(center, radius, angle)
         axis_m = line_m(center, axis_p)
         axis_n = line_n(center, axis_m)
+        logger.debug("===== get_nearest_point in %s =====", self.identifier())
 
         the_area_p = None
         the_axis_p = None
@@ -373,10 +383,20 @@ class Area(object):
         for n in self.list_of_nodes():
             p = intersect_point(n, center, axis_m, axis_n)
             d = distance(n, p)
+            logger.debug("intersect point: %s", p)
+            logger.debug("dist...........: %s", d)
             if d < dist:
                 dist = d
                 the_area_p = n
                 the_axis_p = p
+
+        logger.debug("min dist..: %s", dist)
+        logger.debug("axis point: %s", the_axis_p)
+        logger.debug("area point: %s", the_area_p)
+        logger.debug("=============================")
+
+        if the_area_p is None:
+            return (None, None, None)
 
         return (dist,
                 (the_axis_p[0], the_axis_p[1]),

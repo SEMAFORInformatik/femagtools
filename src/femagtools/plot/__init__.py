@@ -1,5 +1,4 @@
-""":mod:`femagtools.plot` --- Creating plots
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""Creating plots
 
 """
 from .fluxdens import airgap, airgap_fft

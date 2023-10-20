@@ -27,36 +27,31 @@ logger = logging.getLogger(__name__)
 use_asyncio = True
 
 
-@asyncio.coroutine
-def read_stream_and_display(stream, display):
+async def read_stream_and_display(stream, display):
     """Read from stream line by line until EOF, display, and capture the lines.
 
     """
     output = []
-    while True:
-        line = yield from stream.readline()
-        if not line:
-            break
+    async for line in stream.readline():
         output.append(line)
         display(line)  # assume it doesn't block
     return b''.join(output)
 
 
-@asyncio.coroutine
-def read_and_display(*cmd, cwd):
+async def read_and_display(*cmd, cwd):
     """Capture cmd's stdout, stderr while displaying them as they arrive
     (line by line).
 
     """
     # start process
-    process = yield from asyncio.create_subprocess_exec(*cmd, cwd=cwd,
-                                                        stdout=PIPE, stderr=PIPE)
+    process = await asyncio.create_subprocess_exec(*cmd, cwd=cwd,
+                                                   stdout=PIPE, stderr=PIPE)
 
     def nodisplay(l):
         return
     # read child's stdout/stderr concurrently (capture and display)
     try:
-        stdout, stderr = yield from asyncio.gather(
+        stdout, stderr = asyncio.gather(
             read_stream_and_display(process.stdout, nodisplay),
             read_stream_and_display(process.stderr, sys.stderr.buffer.write))
     except Exception:
@@ -64,7 +59,7 @@ def read_and_display(*cmd, cwd):
         raise
     finally:
         # wait for the process to exit
-        rc = yield from process.wait()
+        rc = process.wait()
     return rc, stdout, stderr
 
 

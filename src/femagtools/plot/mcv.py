@@ -66,6 +66,7 @@ def mcv_muer(mcv, ax=0):
 
 def felosses(losses, coeffs, title='', log=True, ax=0):
     """plot iron losses with steinmetz or jordan approximation
+
     Args:
       losses: dict with f, B, pfe values
       coeffs: list with steinmetz (cw, alpha, beta) or

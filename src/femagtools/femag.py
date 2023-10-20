@@ -1,6 +1,4 @@
-""":mod:`femagtools.femag` -- running FEMAG
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+"""running FEMAG
 
 """
 import subprocess
@@ -695,7 +693,7 @@ class ZmqFemag(BaseFemag):
 
     def subscribe(self, notify):
         """attaches a notify function"""
-        logger.info("Subscribe on '%s'", self.femaghost)
+        logger.info("Subscribe on '%s' port %d", self.femaghost, self.port+1)
         if self.subscriber is None:
             self.subscriber = SubscriberTask(
                 self.port+1, self.femaghost, notify)

@@ -13,12 +13,14 @@ logger = logging.getLogger("femagtools.effloss")
 def iqd_tmech_umax(m, u1, with_mtpa, progress, speed_torque, iq, id, iex):
     """calculate iq, id for each load (n, T) from speed_torque at voltage u1
 
-        Arguments:
-        m: PmRelMachine or SynchronousMachine
-        u1: (float) phase voltage (V)
-        speed_torque: list of (n, T) pairs
-        with_mtpa: (bool) use mtpa in const flux range if True
-        progress: logging pipe """
+        Args:
+          m: PmRelMachine or SynchronousMachine
+          u1: (float) phase voltage (V)
+          speed_torque: list of (n, T) pairs
+          with_mtpa: (bool) use mtpa in const flux range if True
+          progress: logging pipe
+
+    """
     nsamples = len(speed_torque)
     num_iv = round(nsamples/7)
     try:
@@ -92,7 +94,7 @@ def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa):
                         np.array(id).flatten()])[:, :siz]
 
 
-def rectangular_grid(ntmesh): 
+def rectangular_grid(ntmesh):
     """return speed and torque with a rectangular grid
 
     arguments:
@@ -100,20 +102,20 @@ def rectangular_grid(ntmesh):
     """
     n = ntmesh[0, :]
     T = ntmesh[1, :]
-    nmesh = [] 
+    nmesh = []
     tmesh = []
     ngrid = np.unique(n)
 
     npoints = len(np.argwhere(n == ngrid[0]).squeeze())
-    if npoints%2: 
+    if npoints%2:
         npoints = npoints + 1
-    
+
     tp = []
     tn = []
 
-    for i in ngrid: 
+    for i in ngrid:
         idx = np.argwhere(n == i).squeeze()
-        if len(idx) > 0: 
+        if len(idx) > 0:
             tinp = T[idx]
             # search pos. and neg. torque
             idx_pos = np.argwhere(tinp > 0).squeeze()
@@ -124,15 +126,15 @@ def rectangular_grid(ntmesh):
             tp = np.linspace(tmin_pos, tmax_pos, int(npoints/2), endpoint=True)
 
             # neg. half; generator range
-            if len(idx_neg) > 0: 
+            if len(idx_neg) > 0:
                 tmax_neg, tmin_neg = np.amax(tinp[idx_neg]), np.amin(tinp[idx_neg])
                 tn = np.linspace(tmin_neg, tmax_neg, int(npoints/2), endpoint=True)
                 tmesh += tn.tolist() + tp.tolist()
-            else: 
+            else:
                 tmesh += tp.tolist()
 
             nmesh += npoints*[i]
-        else: 
+        else:
             pass
     return np.array([[i, j] for i, j in zip(nmesh, tmesh)]).T
 
@@ -179,24 +181,27 @@ def _generate_mesh(n, T, nb, Tb, npoints):
 def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                           with_mtpv=True, with_mtpa=True, with_pmconst=True,
                           with_tmech=True, driving_only=False,
-                          num_proc=0, progress=None, **kwargs):
+                          num_proc=0, progress=None, **kwargs) -> dict:
     """return speed, torque efficiency and losses
 
-    arguments:
-    eecpars: (dict) EEC Parameter with
-      dicts at different temperatures (or machine object)
-    u1: (float) phase voltage (V rms)
-    T: (float) starting torque (Nm)
-    temp: temperature (°C) (ignored if eecpars is machine objectb)
-    n: (float) maximum speed (1/s)
-    npoints: (list) number of values of speed and torque
-    driving_only: (bool) do not calculate braking speed/torque samples if True
-    with_mtpv -- (optional) use mtpv if True (default)
-    with_pmconst -- (optional) use pmax if True (default)
-    with_mtpa -- (optional) use mtpa if True (default), disables mtpv if False
-    with_tmech -- (optional) use friction and windage losses (default)
-    num_proc -- (optional) number of parallel processes (default 0)
-    progress  -- (optional) custom function for progress logging
+    Args:
+      eecpars: (dict) EEC Parameter with dicts at different temperatures (or machine object)
+      u1: (float) phase voltage (V rms)
+      T: (float) starting torque (Nm)
+      temp: temperature (°C) (ignored if eecpars is machine objectb)
+      n: (float) maximum speed (1/s)
+      npoints: (list) number of values of speed and torque
+      driving_only: (bool) do not calculate braking speed/torque samples if True
+      with_mtpv -- (optional) use mtpv if True (default)
+      with_pmconst -- (optional) use pmax if True (default)
+      with_mtpa -- (optional) use mtpa if True (default), disables mtpv if False
+      with_tmech -- (optional) use friction and windage losses (default)
+      num_proc -- (optional) number of parallel processes (default 0)
+      progress  -- (optional) custom function for progress logging
+
+    Returns:
+      list of speed, current, voltage, torque, eta and losses
+
     """
     if isinstance(eecpars, dict):
         if isinstance(temp, (list, tuple)):

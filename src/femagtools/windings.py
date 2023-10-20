@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.windings
-    ~~~~~~~~~~~~~~~~~~~
-
-    Handling windings
+"""analyze windings
 
  Conventions
 

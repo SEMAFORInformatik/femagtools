@@ -1,10 +1,7 @@
 #!/usr/bin/env python
-#
-# convert bch to xml
-#
-# Author: Ronald Tanner
-# 2016-10-20
-#
+"""convert bch to xml
+
+"""
 import sys
 import re
 import io
@@ -17,9 +14,15 @@ def usage():
     sys.exit(1)
 
 
-def list_to_xml(tag, l):
-    '''
-    Turn a list into XML
+def list_to_xml(tag: str, l: list) -> el.Element:
+    '''convert a list into XML
+
+    Args:
+      tag: name of element
+      l: list of values
+
+    Returns:
+      xml element with tag and values
     '''
 
     if not isinstance(tag, str):
@@ -43,9 +46,15 @@ def list_to_xml(tag, l):
     return elem
 
 
-def dict_to_xml(tag, d):
-    '''
-    Turn a simple dict of key/value pairs into XML
+def dict_to_xml(tag: str, d: dict) -> el.Element:
+    '''convert a simple dict of key/value pairs into XML
+
+    Args:
+       tag: name of element
+       d: dict of values
+
+    Returns:
+      xml element of d
     '''
 
     if not isinstance(tag, str):
@@ -70,7 +79,7 @@ def dict_to_xml(tag, d):
 
 
 def main():
-    import argparse 
+    import argparse
     from .__init__ import __version__
     from femagtools.bch import Reader
 
@@ -88,7 +97,7 @@ def main():
     args = argparser.parse_args()
     if not args.filename:
         sys.exit(0)
-    
+
     bchresults = Reader()
     with io.open(args.filename, encoding='latin1', errors='ignore') as f:
         bchresults.read(f.readlines())

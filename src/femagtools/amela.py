@@ -1,8 +1,5 @@
-'''
-    femagtools.amela
-    ~~~~~~~~~~~~~~~~
+'''Calculate Magnet Losses with AMELA
 
-    Calculate Magnet Losses with AMELA
 '''
 import sys
 import json
@@ -18,8 +15,8 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 def geometry_id(bndx, bndy):
-    '''identify the magnet geometry''' 
-    # caculate magnet area 
+    '''identify the magnet geometry'''
+    # caculate magnet area
     xy = 0
     yx = 0
     for i in range(len(bndy)):
@@ -32,21 +29,21 @@ def geometry_id(bndx, bndy):
     area = np.abs(yx-xy)*0.5
 
     x0, y0 = np.mean(bndx), np.mean(bndy)
-    distances = [] 
-    for i in range(len(bndx)): 
-        for j in range(len(bndy)): 
+    distances = []
+    for i in range(len(bndx)):
+        for j in range(len(bndy)):
             dist = np.sqrt((bndx[i] - bndx[j])**2 + (bndy[i] - bndy[j])**2)
             distances.append([dist, bndx[i], bndx[j], bndy[i], bndy[j]])
-    
+
     distances.sort(reverse=True)
     xe = [distances[0][2], distances[2][1], distances[0][1], distances[2][2]]
     ye = [distances[0][4], distances[2][3], distances[0][3], distances[2][4]]
 
-    # dimension 
+    # dimension
     dim = np.zeros((3, 5))
     x1, y1 = xe[0], ye[0]
 
-    for i in range(3): 
+    for i in range(3):
         x2, y2 = xe[i+1], ye[i+1]
         dim[i, 0] = np.sqrt((x2-x1)**2 + (y2-y1)**2)
         dim[i, 1:3] = [x1, x2]
@@ -55,79 +52,75 @@ def geometry_id(bndx, bndy):
     dim = dim[np.lexsort((dim[:, 2], dim[:, 1], dim[:, 0]))]
     dx12, dy12 = dim[1, 1] - dim[1, 2],  dim[1, 3] - dim[1, 4]
     dx14, dy14 = dim[0, 1] - dim[0, 2],  dim[0, 3] - dim[0, 4]
-    
+
     alp1 = np.arctan2(dy12, dx12)
     alp2 = np.arctan2(dy14, dx14)
 
     if alp1 < 0: alp1 += 2*np.pi
     if alp2 < 0: alp2 += 2*np.pi
-    if alp2 < alp1: 
+    if alp2 < alp1:
         alp2 += np.pi
         alpha = (alp1 + (alp2 - np.pi/2))/2
-    else: 
+    else:
         alpha = (alp1 + (alp2 - np.pi/2))/2 + np.pi
-    
-    wm = dim[1, 0]
-    hm = area/wm 
 
-    return dict(wm=wm, 
-                hm=hm, 
-                x0=x0, 
+    wm = dim[1, 0]
+    hm = area/wm
+
+    return dict(wm=wm,
+                hm=hm,
+                x0=x0,
                 y0=y0,
-                area=area, 
+                area=area,
                 alpha=alpha)
 
 def tf(b1, b2, alpha):
     '''Tranformation Matrix'''
-    T = np.array([[cos(alpha), sin(alpha)], 
-                [-sin(alpha), cos(alpha)]]) 
-    if b1.ndim > 1: 
+    T = np.array([[cos(alpha), sin(alpha)],
+                [-sin(alpha), cos(alpha)]])
+    if b1.ndim > 1:
         r = T.dot(((b1.ravel()), (b2.ravel())))
-        return [r[0, :].reshape(*b1.shape), 
+        return [r[0, :].reshape(*b1.shape),
                 r[1, :].reshape(*b1.shape)]
-    else: 
+    else:
         return T.dot(((b1), (b2)))
 
-def transform_coord(geometry, xcp, ycp): 
+def transform_coord(geometry, xcp, ycp):
     '''transform from global coord to local coord'''
-    # transformation 
-    elcp = tf(b1=np.array(xcp)-geometry['x0'], 
-              b2=np.array(ycp)-geometry['y0'], 
+    # transformation
+    elcp = tf(b1=np.array(xcp)-geometry['x0'],
+              b2=np.array(ycp)-geometry['y0'],
               alpha=geometry['alpha'])
-    return dict(excpl=elcp[0, :]+geometry['wm']/2, 
-                eycpl=elcp[1, :]+geometry['hm']/2, 
-                excp=np.array(xcp), 
+    return dict(excpl=elcp[0, :]+geometry['wm']/2,
+                eycpl=elcp[1, :]+geometry['hm']/2,
+                excp=np.array(xcp),
                 eycp=np.array(ycp))
 
-def transform_flux_denstiy(geometry, bx, by): 
+def transform_flux_denstiy(geometry, bx, by):
     '''transform the magnet flux density to local coordinate system'''
-    # transformation 
-    bxy = tf(b1=bx, 
-             b2=by, 
+    # transformation
+    bxy = tf(b1=bx,
+             b2=by,
              alpha=geometry['alpha'])
 
     # remove DC component
     bxf = np.mean(bxy[0].T - np.mean(bxy[0],axis=1).T,axis=1)
-    byf = np.mean(bxy[1].T - np.mean(bxy[1],axis=1).T,axis=1)               
-     
+    byf = np.mean(bxy[1].T - np.mean(bxy[1],axis=1).T,axis=1)
+
     return dict(bxl=bxy[0],
                 byl=bxy[1],
-                bxf=bxf, 
-                byf=byf 
+                bxf=bxf,
+                byf=byf
                 )
 
 class Amela():
     '''Run Amela Calculation
-    Parameters
-    ----------
-    workdir : str
-        working directory of femag calculation
-        (The directory that the nc file)
-    amela_dir: str (optional)
-        amela directory 
-    magnet_data : dict
-        calculation control
-        -- name must be provided
+
+    Args:
+      workdir : working directory of femag calculation
+        (The directory that includes the nc file)
+      amela_dir: str (optional) amela directory
+      magnet_data : calculation control name must be provided
         dict(name='test',
         -- the following parameters are optional
              mur=1.05,
@@ -135,18 +128,18 @@ class Amela():
              hm=3,
              wm=20,
              lm=30,
-             speed=1000, 
-             nsegwid=0, 
+             speed=1000,
+             nsegwid=0,
              nseglen=0)
     '''
 
-    def __init__(self, workdir, magnet_data, amela_dir=None):
+    def __init__(self, workdir: str, magnet_data: dict, amela_dir=None):
 
         self.magn = magnet_data
         self.workdir = pathlib.Path(workdir)
-        if amela_dir is not None: 
+        if amela_dir is not None:
             self.amela_dir = pathlib.Path(amela_dir)
-        else: 
+        else:
             self.amela_dir = self.workdir
 
         self.jsonfile = []
@@ -154,7 +147,7 @@ class Amela():
             self.cmd = [str(self.amela_dir / 'AMELA.BAT')]
         else:
             self.cmd = [str(self.amela_dir / 'AMELA')]
-        # default batch 
+        # default batch
         self.cmd.append('--b')
         # append calc options
         if 'speed' in self.magn:
@@ -164,14 +157,15 @@ class Amela():
         if 'nseglen' in self.magn:
             self.cmd.append(f"--nseglen {self.magn['nseglen']}")
 
-    def get_magnet_data(self, ibeta=None):
+    def get_magnet_data(self, ibeta=None) -> list:
         '''Extract magnet data from nc file
-        Parameters
-        ----------
-            None
-        Returns
-        ----------
-        pm_data: list of magnet data
+
+        Args:
+            ibeta: load case
+
+        Returns:
+          pm_data: list of magnet data
+
         '''
         nc_name = self.workdir / self.magn['name']
         r = femagtools.nc.read(nc_name)
@@ -194,7 +188,7 @@ class Amela():
         wm = []
         hm = []
         alpha = []
-        x0 = [] 
+        x0 = []
         y0 = []
         geometry = []
         elcp = []
@@ -255,7 +249,7 @@ class Amela():
         poles = 0
         try:
             poles = r.num_poles
-        except:
+        except AttributeError:
             pass
 
         # read mesh and flux density
@@ -278,7 +272,6 @@ class Amela():
 
             elcp.append(transform_coord(geometry[i], xcp[i], ycp[i]))
             bl.append(transform_flux_denstiy(geometry[i], bx[i][0], by[i][0]))
-
 
         if poles == 0:
             freq = self.magn.get('f', r.speed)
@@ -314,7 +307,7 @@ class Amela():
                                 bndy=[float(c) for c in bndy[i]],
                                 bl=bl[i],
                                 elcp=elcp[i],
-                                area=spel_area[i], 
+                                area=spel_area[i],
                                 spel_key=spel_key[i]))
             pm_data[i].update(pos)
 
@@ -340,7 +333,7 @@ class Amela():
         else:
             return [pm_data[0]]
 
-    def get_magnet_data_all(self, num_op): 
+    def get_magnet_data_all(self, num_op):
         '''get all magnet data for all loadcases'''
         pm_data = []
         for i in num_op:
@@ -348,15 +341,12 @@ class Amela():
             pm_data.append(pmd)
         return pm_data
 
-    def export_json(self, pm_data):
+    def export_json(self, pm_data: list):
         '''Export magnet data to json files
-        Parameters
-        ----------
-        pm_data: list of magnet data
-        Returns
-        ----------
-        None
-        ----------
+
+        Args:
+          pm_data: list of magnet data
+
         '''
         pm_dir = self.amela_dir / self.magn['name']
         pm_dir.mkdir(exist_ok=True)
@@ -370,15 +360,14 @@ class Amela():
                 json.dump(i, f)
             logger.info('Exporting %s ...', i['name'])
 
-    def read_loss(self, pm_data):
+    def read_loss(self, pm_data: dict) -> dict:
         '''Read magnet losses
-        Parameters
-        ----------
-            pm_data : dict
-        Returns
-        ----------
-            losses : dict
-        ----------
+
+        Args:
+          pm_data : dict
+
+        Returns:
+          losses
         '''
         losses = {}
         for i in range(len(pm_data)):
@@ -387,27 +376,26 @@ class Amela():
             result_name = self.amela_dir / dirname
             with result_name.open() as f:
                 data = np.loadtxt(f)
-                total_loss = np.mean(data[0:-1, -1]) 
+                total_loss = np.mean(data[0:-1, -1])
                 losses[pm_data[i]['name']] = {"loss_data":data, "total_loss": total_loss}
                 logger.info("Magnet losses in superelement %s is %.3f W",
                             pm_data[i]['name'].split('se')[-1], total_loss)
         return losses
 
-    def __call__(self, ialh=False):
+    def __call__(self, ialh=False) -> dict:
         '''Run amela calculation
-        Parameters
-        ----------
-            None
-        Returns
-        ----------
-            losses : dict
-        ----------
+
+        Args:
+          ialh: use method IALH if True else 3DI
+
+        Returns:
+            losses
         '''
         # get magnet data
         r = self.get_magnet_data()
         # export to json
         self.export_json(r)
-        # run amela 
+        # run amela
         calc_method = 'IALH' if ialh else '3DI'
         cmd = self.cmd + ['--calc', calc_method, self.magn['name'] + '/']
         log_file = self.amela_dir / 'amela.out'

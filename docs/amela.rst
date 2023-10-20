@@ -4,6 +4,7 @@ Amela
 AMELA can be executed as a batch process in femagtools. Amela object will search the
 AMELA batch file and the FEMAG model file in the given directories. The magnet data
 for the loss calculation will be extracted from the FEMAG model file.
+
   * If the FEMAG model file (nc file) is located in the same directory as AMELA.
     Only the workdir is needed.
 

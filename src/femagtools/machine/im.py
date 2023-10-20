@@ -1,6 +1,4 @@
-""":mod:`femagtools.im` -- induction machine (electrical circuit model)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+"""induction machine (electrical circuit model)
 
 """
 import numpy as np
@@ -25,9 +23,10 @@ def log_interp1d(x, y, kind='cubic'):
     due to the nature of logarithmic functions, it is not possible to have
     a supporting point at 0!
 
-    arguments:
-    x, y (arraylike): supporting points
-    kind (str): kind of underlying interpolation, default = 'cubic'
+    Arg:
+      x, y (arraylike): supporting points
+      kind (str): kind of underlying interpolation, default = 'cubic'
+
     """
     xx = np.asarray(x)
     yy = np.asarray(y)
@@ -412,9 +411,7 @@ class InductionMachine(Component):
             T -- (float) the output torque at the shaft in Nm
             n -- (float) the speed of the machine in 1/s
             u1max -- (float) the maximum phase voltage in V rms
-            Tfric -- (float, optional) the friction torque to consider in Nm.
-                     If Tfric is None, the friction torque is calculated according to the rotor-mass and the
-                     frition factor of the machine (kfric_b). Friction is written to the result dict!
+            Tfric -- (float, optional) the friction torque to consider in Nm. If Tfric is None, the friction torque is calculated according to the rotor-mass and the friction factor of the machine (kfric_b). Friction is written to the result dict!
             with_tmech -- (optional) use friction and windage losses
         """
 

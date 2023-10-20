@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.asm
-    ~~~~~~~~~~~~~~
-
-    Reading ASM files
+""" Read ASM files
 
 Slots Qr:
 

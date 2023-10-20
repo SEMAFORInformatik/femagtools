@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.bch
-    ~~~~~~~~~~~~~~
-
-    Reading BCH/BATCH files
-
-
+"""read BCH/BATCH files
 
 """
 import sys
@@ -442,7 +436,7 @@ class Reader:
 
     def __read_current_angles(self, content):
         self.current_angles = []
-        r = [] 
+        r = []
         extracting = False
         for l in content:
             rec = self.__findNums(l)
@@ -450,10 +444,10 @@ class Reader:
                 self.current_angles.append(floatnan(rec[-1]))
             if l.strip().startswith('Optimization of angle'):
                 extracting = True
-            elif l.strip().startswith('Optimimal angle I'): 
+            elif l.strip().startswith('Optimimal angle I'):
                 break
-            else: 
-                if extracting: 
+            else:
+                if extracting:
                     if l.strip() == '' or \
                         l.strip().startswith('Angle [Degr'):
                         pass
@@ -461,7 +455,7 @@ class Reader:
                         tmp = l.split('\t')
                         r.append([floatnan(k) for k in tmp])
         if len(r) > 1:
-            self.torque_opt.append({'beta': [i[0] for i in r], 
+            self.torque_opt.append({'beta': [i[0] for i in r],
                                     'torque': [i[1] for i in r]})
         return
 
@@ -1630,7 +1624,7 @@ class Reader:
 
                 except:
                     pass
-    
+
     def get(self, name, r=None):
         """return value of key name
         name can be a list such as ['torque[1]', 'ripple']

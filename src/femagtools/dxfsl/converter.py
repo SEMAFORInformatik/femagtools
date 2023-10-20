@@ -1,10 +1,5 @@
-"""
-  femagtools.dxfsl.converter
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""read a dxf file and create a plot or fsl file
 
-  read a dxf file and create a plot or fsl file
-
- Authors: Ronald Tanner, Beat Holm
 """
 import os
 from femagtools.dxfsl.geom import Geometry, dxfshapes, femshapes

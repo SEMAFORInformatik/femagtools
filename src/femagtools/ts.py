@@ -1,5 +1,4 @@
-"""
-Classes for post processing based on vtu-files of created by FEMAG-TS
+"""post processing based on vtu-files created by FEMAG-TS
 """
 __author__ = 'werner b. vetter, ronald tanner'
 
@@ -1226,24 +1225,17 @@ class Losses(object):
 
     def export_lossdensity(self,  filename, methode="fft", start=0.0, end=0.0):
         '''Export the loss density of elements in a vtu -file
-        Parameters
-        ----------
-        filename: string
-            Filename of created vtu-file (with extension)
-        nethode: string
-            Calculation methode (optional, default="fft")
+
+        Args:
+          filename: string Filename of created vtu-file (with extension)
+        methode: string Calculation methode (optional, default="fft")
             methode="fft": use fft to calculate the losses
             methode="time": calculate the losses in time domain
-        start: float
-            Start of the time window (optional)
-        end : float
-            End of the time window (optional)
+        start: float  Start of the time window (optional)
+        end : float  End of the time window (optional)
 
-        Returns
-        -------
-
-        The losses density in each element is calculated und
-        stored in a vtu-file.
+        Returns:
+          The losses density in each element is calculated and stored in a vtu-file.
         '''
 
         import vtk

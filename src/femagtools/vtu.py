@@ -1,8 +1,5 @@
-"""
-    femagtools.vtu
-    ~~~~~~~~~~~~~~
+"""Read FEMAG vtu files
 
-    Read FEMAG vtu files
 """
 import vtk
 import pathlib
@@ -10,16 +7,14 @@ import numpy as np
 
 
 class Reader(object):
-    '''Class to read vtu-files'''
+    '''read vtu-files
+
+        Args:
+          pathname : str Directory of result files (vtu-files) or a single vtu file
+
+    '''
 
     def __init__(self, pathname):
-        '''Read the vtu-files
-        Parameters
-        ----------
-        pathname : str
-            Directory of result files (vtu-files) or a single vtu file
-        '''
-
         self.data = {}
 
         self.reader = vtk.vtkXMLUnstructuredGridReader()
@@ -49,12 +44,10 @@ class Reader(object):
 
     def get_data_names(self):
         '''Read the list of values stored in the vtu files
-        Parameters
-        ----------
-            None
-        Returns
-        -------
+
+        Returns:
             List of values stored in the vtu files
+
         '''
         return (self.field_data_names +
                 self.point_data_names +
@@ -62,10 +55,10 @@ class Reader(object):
 
     def read_data(self, data_list):
         '''Extracts data from the vtu files
-        Parameters
-        ----------
-        data_list : fist of str
-            List of values to extract from vtu_files
+
+        Args:
+          data_list : fist of str List of values to extract from vtu_files
+
         '''
         for data_name in data_list:
             if data_name in self.field_data_names:
@@ -96,12 +89,10 @@ class Reader(object):
 
     def set_time_window(self, start, end):
         '''Set time window
-        Parameters
-        ----------
-        start: float
-            Start of the time window
-        end: float
-            End of the time window
+
+        Args
+          start: float Start of the time window
+        end: float End of the time window
 
         Only values within the time window are output by the functions
             get_field_vector
@@ -110,6 +101,7 @@ class Reader(object):
             get_data_vector
         At start = 0.0 the values are read out starting from the first value
         At end = 0.0 the values are read out up to the last value
+
         '''
         try:
             if "time [s]" not in self.data:
@@ -133,15 +125,13 @@ class Reader(object):
             self.istart = None
             self.iend = None
 
-    def get_field_vector(self, field_data):
+    def get_field_vector(self, field_data) -> list:
         '''Read field data
-        Parameters
-        ----------
-        field_data : str
-            Name of field to read
-        Returns
-        -------
-        field_vec : list of float   
+
+        Args:
+          field_data : str Name of field to read
+
+        Returns:
             List of field values within the time window
         '''
         if field_data not in self.data:
@@ -163,18 +153,16 @@ class Reader(object):
         return field_vec
 
     # pnt = node-key, >0
-    def get_point_vector(self, pnt_data, pnt):
+    def get_point_vector(self, pnt_data, pnt) -> list:
         '''Read point data
-        Parameters
-        ----------
-        point_data : str
-            Name of field to read
-        pnt : int
-            Key of point
-        Returns
-        -------
-        point_vec : list of float   
-            List of point values within the time window
+
+        Args:
+          point_data : str Name of field to read
+          pnt : int Key of point
+
+        Returns:
+          List of point values within the time window
+
         '''
         if pnt_data not in self.data:
             self.read_data([pnt_data])
@@ -193,18 +181,16 @@ class Reader(object):
             point_vec.append(self.data[pnt_data][i].GetValue(pnt-1))
         return point_vec
 
-    def get_cell_vector(self, cell_data, cell):
+    def get_cell_vector(self, cell_data, cell) -> list:
         '''Read cell data
-        Parameters
-        ----------
-        cell_data : str
-            Name of field to read
-        cell : int
-            Key of cell
-        Returns
-        -------
-        cell_vec : list of float   
+
+        Args:
+          cell_data : str  Name of field to read
+          cell : int Key of cell
+
+        Returns:
             List of cell values within the time window
+
         '''
         if cell_data not in self.data:
             self.read_data([cell_data])
@@ -242,17 +228,14 @@ class Reader(object):
         else:
             return [cell_vec_x, cell_vec_y, cell_vec_z]
 
-    def get_data_vector(self, data_name, key=0):
+    def get_data_vector(self, data_name, key=0) -> list:
         '''Read data of fiels, point or cell
-        Parameters
-        ----------
-        data_name : str
-            Name of data to read
-        hey : int (optional)
-            Key of point or cell
-        Returns
-        -------
-        data_vec : list of float   
+
+        Args:
+          data_name : str Name of data to read
+        hey : int (optional) Key of point or cell
+
+        Returns:
             List of values within the time window
         '''
         if data_name in self.field_data_names:
@@ -264,11 +247,11 @@ class Reader(object):
         return []
 
 
-def read(filename):
+def read(filename) -> Reader:
     """
     Read vtu file and return Reader object.
 
-    Arguments:
+    Args:
         filename: name of vtu file to be read
     """
     return Reader(filename)

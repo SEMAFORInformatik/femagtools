@@ -1,3 +1,7 @@
+"""plot nc model
+
+"""
+# https://stackoverflow.com/questions/42386372/increase-the-speed-of-redrawing-contour-plot-in-matplotlib/42398244#42398244
 import numpy as np
 import matplotlib.pyplot as plt
 import logging

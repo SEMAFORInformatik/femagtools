@@ -1,5 +1,5 @@
-"""
-Author: Nicolas Mauchle <mauchle@semafor.ch>
+"""running FEMAG on Google gcloud
+
 To use this class you have to install:
 
 - gcloud
@@ -144,7 +144,7 @@ class Engine():
         bucket = gcs.get_bucket(task.id)
         # Close the tar file
         task.tar_file.close()
-        
+
         blob = storage.Blob(os.path.basename(task.file), bucket)
         with open(task.file, 'rb') as file:
                 blob.upload_from_file(file)

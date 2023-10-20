@@ -1,6 +1,4 @@
-""" 
-   Multiobjective Optimize Algorithm
-   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""Multiobjective Optimize Algorithm
 
 Nondominated Sorting genetic algorithm II (NSGA-II)
 
@@ -10,8 +8,8 @@ Nondominated Sorting genetic algorithm II (NSGA-II)
  *
  * The algorithm can be applied to continuous box-bounded optimization. The version for mixed integer
  * and constrained optimization is also planned.
- * 
- * @see Deb, K. and Pratap, A. and Agarwal, S. and Meyarivan, T., 
+ *
+ * @see Deb, K. and Pratap, A. and Agarwal, S. and Meyarivan, T.,
        "A fast and elitist multiobjective genetic algorithm: NSGA-II"
  """
 import random
@@ -128,7 +126,7 @@ class Nsga2:
             if y>yu: y = yu
             mutant.append(y)
         return mutant
-    
+
     def evolve(self, pop):
         shuffles = (random.sample(range(pop.size()), pop.size()),
                     random.sample(range(pop.size()), pop.size()))

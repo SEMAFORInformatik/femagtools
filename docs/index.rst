@@ -42,7 +42,7 @@ If a proxy is needed::
 For further information: <https://conda.io/docs/user-guide/configuration>_.
 
 Console Scripts
-===============
+---------------
 
 The following scripts can be executed from console:
 
@@ -53,7 +53,7 @@ The following scripts can be executed from console:
 
 
 User Guide
-==========
+----------
 
 .. toctree::
    :maxdepth: 2
@@ -70,26 +70,21 @@ User Guide
    engine
    amela
    tspost
-
-References
-==========
-
-.. toctree::
-   :maxdepth: 2
-
-   apidocs
-
+   API reference <_autosummary/femagtools>
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 
 Copyright
-=========
+---------
 
-Copyright: 2017-2023 Semafor Informatik & Energie AG, Basel
+Copyright:
+
+* 2017-2023 Semafor Informatik & Energie AG, Basel
+* 2024 Gamma Technology LLC, Westmont, Illinois
 
 License: BSD, see LICENSE for more details.

@@ -1,10 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-    femagtools.airgap
-    ~~~~~~~~~~~~~~~~~
-
-    Read airgap dat file
-
+"""Read and analyze airgap dat file
 
 """
 import numpy as np
@@ -14,7 +8,7 @@ from . import utils
 logger = logging.getLogger(__name__)
 
 
-def fft(pos, b, pmod=0):
+def fft(pos: list, b: list, pmod=0) -> dict:
     """calculate fft spectrum of flux density and return samples,
     values, amplitude and phase of base harmonic
 
@@ -22,6 +16,9 @@ def fft(pos, b, pmod=0):
       pos: (list of floats) sample positions
       b: (list of floats) flux density values
       pmod: number of poles in model (ignored if 0)
+
+    Returns:
+       A dict containing the FFT values Bamp, phi0, nue, B_nue
     """
     r = utils.fft(pos, b, pmod)
     Bamp = r['a']

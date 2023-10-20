@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.mcv
-    ~~~~~~~~~~~~~~
-
-    Reading, Creating and managing MCV/MC files
-
-
+"""Reading, Creating and managing MCV/MC files
 
 """
 import json

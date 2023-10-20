@@ -1,11 +1,4 @@
-"""
-    femagtools.amazon
-    ~~~~~~~~~~~~~~~~~
-
-    Running FEMAG on Amazon Cloud EC2
-
-
-
+"""running FEMAG on Amazon cloud EC2
 
     .. note: To use this engine you have to install the boto3 module from amazon
 """

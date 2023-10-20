@@ -6,7 +6,6 @@ import sys
 import pathlib
 import logging
 import femagtools.grid
-import model
 import importlib
 import os
 
@@ -73,6 +72,7 @@ def read_paramsin(p):
 
 
 if __name__ == '__main__':
+    import model
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
 

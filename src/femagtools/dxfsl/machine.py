@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.dxfsl.machine
-    ~~~~~~~~~~~~~~~~~~~~~~~~
+"""a machine consists of 2 parts and has a geometry
 
-    a machine consists of 2 parts and has a geometry 
-
-  Authors: Ronald Tanner, Beat Holm
 """
 from __future__ import print_function
 import numpy as np

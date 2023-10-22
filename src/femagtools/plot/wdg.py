@@ -42,8 +42,7 @@ def mmf_fft(f, title='', mmfmin=1e-2, ax=0):
     order, mmf = np.array([(n, m) for n, m in zip(f['nue'],
                                                   f['mmf_nue']) if m > mmfmin]).T
     try:
-        markerline1, stemlines1, _ = ax.stem(order, mmf, '-.', basefmt=" ",
-                                             use_line_collection=True)
+        markerline1, stemlines1, _ = ax.stem(order, mmf, '-.', basefmt=" ")
         ax.set_xticks(order)
     except ValueError:  # empty sequence
         pass
@@ -112,17 +111,14 @@ def winding_factors(wdg, n=8, ax=0):
         markerline1, stemlines1, _ = ax.stem(order-1, kwp,
                                              'C1:', basefmt=" ",
                                              markerfmt='C1.',
-                                             use_line_collection=True,
                                              label='Pitch')
         markerline2, stemlines2, _ = ax.stem(order+1, kwd,
                                              'C2:', basefmt=" ",
                                              markerfmt='C2.',
-                                             use_line_collection=True,
                                              label='Distribution')
         markerline3, stemlines3, _ = ax.stem(order, kw,
                                              'C0-', basefmt=" ",
                                              markerfmt='C0o',
-                                             use_line_collection=True,
                                              label='Total')
         ax.set_xticks(order)
         ax.legend()
@@ -152,7 +148,7 @@ def winding(wdg, ax=0):
     mh = 2*coil_height/yd
     slots = sorted([abs(n) for m in z[0] for n in m])
     smax = slots[-1]*dslot
-    for n in slots:
+    for n in slots:  # draw slots and lamination
         x = n*dslot
         ax.add_patch(Rectangle((x + dslot/4, 1), dslot /
                      2, coil_len - 2, fc="lightblue"))
@@ -162,6 +158,8 @@ def winding(wdg, ax=0):
                 verticalalignment="center",
                 backgroundcolor="white",
                 bbox=dict(boxstyle='circle,pad=0', fc="white", lw=0))
+
+    nl = 2 if z[1] else 1
     line_thickness = [0.6, 1.2]
     for i, layer in enumerate(z):
         b = -xoff if i else xoff
@@ -171,17 +169,17 @@ def winding(wdg, ax=0):
         for m, mslots in enumerate(layer):
             for k in mslots:
                 x = abs(k) * dslot + b
+                kcoil = (abs(k)-1)//wdg.yd
                 xpoints = []
                 ypoints = []
-                if wdg.q >= 1 or wdg.l > 1:
-                    if (i == 0 and (k > 0 or (k < 0 and wdg.l > 1))):
-                        d = 0  # right
+                if nl == 2:
+                    if k > 0:
+                        d = 0 if i == 0 else 1
                     else:
-                        d = 1  # left
-                elif d == 0:
-                    d = 1
+                        d = 1 if i == 1 else 0
                 else:
-                    d = 0
+                    d = 0 if k > 0 else 1
+
                 if direction[d] == 'right':
                     # first layer, positive dir or neg. dir and 2-layers:
                     #   from right bottom

@@ -1,0 +1,15 @@
+sphinx
+sphinx-autodoc-typehints
+nbsphinx
+ipython
+jupytext
+jupyter
+matplotlib
+numpy
+lmfit
+mako
+netCDF4
+networkx
+meshio
+dxfgrabber
+vtk

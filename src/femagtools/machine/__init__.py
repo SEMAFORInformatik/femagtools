@@ -163,7 +163,7 @@ def create(bch, r1, ls, lfe=1, wdg=1):
                                         id, iq, ls*rwdg**2, losses=losses)
             try:
                 machine.rotor_mass = rlfe*np.sum(bch.weights[1])
-            except IndexError:
+            except (IndexError, AttributeError):
                 pass
             return machine
 
@@ -188,7 +188,7 @@ def create(bch, r1, ls, lfe=1, wdg=1):
                                       losses=losses)
             try:
                 machine.rotor_mass = rlfe*np.sum(bch.weights[1])
-            except IndexError:
+            except (IndexError, AttributeError):
                 pass
             return machine
 
@@ -204,6 +204,6 @@ def create(bch, r1, ls, lfe=1, wdg=1):
                               ls=ls*rwdg**2)
     try:
         machine.rotor_mass = rlfe*np.sum(bch.weights[1])
-    except IndexError:
+    except (IndexError, AttributeError):
         pass
     return machine

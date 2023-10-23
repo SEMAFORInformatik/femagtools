@@ -163,7 +163,8 @@ def parident(workdir, engine, temp, machine,
                 angl_i_up=0.0,
                 magnet_loss=True,
                 magn_height=machine['magnet']['afm_rotor']['magn_height'],
-                yoke_height=machine['magnet']['afm_rotor']['yoke_height'],
+                yoke_height=machine['magnet']['afm_rotor'].get(
+                    'yoke_height', 0),
                 current=1,
                 poc=poc.Poc(999,
                             parameters={
@@ -173,7 +174,8 @@ def parident(workdir, engine, temp, machine,
                 num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1))
 
             lresults = gpstudy(parvardef, mpart, simulation, engine)
-            f = [{k: bch[k] for k in ('linearForce', 'flux', 'losses', 'lossPar')}
+            f = [{k: bch[k]
+                  for k in ('linearForce', 'flux', 'losses', 'lossPar')}
                  for bch in lresults['f']]
             lresults['f'] = f
             results.append(lresults)

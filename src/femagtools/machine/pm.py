@@ -1,6 +1,4 @@
-""":mod:`femagtools.pm` -- PM/Rel synchronous machine (SPM, IPM, RM) electrical circuit models
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+"""PM/Rel synchronous machine (SPM, IPM, RM) electrical circuit models
 
 """
 import logging
@@ -18,17 +16,17 @@ logger = logging.getLogger(__name__)
 def parident(workdir, engine, temp, machine,
              magnetizingCurves, magnetMat, condMat,
              **kwargs):
-    """return list of parameters of equivalent circuit for PM machines
+    """return dict of parameters of equivalent circuit for PM machines
 
-    arguments:
-    workdir -- directory for intermediate files
-    engine -- calculation driver (multiproc, docker, condor)
+    Args:
+    workdir: directory for intermediate files
+    engine: calculation driver (multiproc, docker, condor)
 
-    temp -- list of magnet temperatures in degree Celsius
-    machine -- dict() with machine parameters
-    magnetizingCurves -- list of dict() with BH curves
-    magnetMat -- list of dict() with magnet material properties
-    condMat -- list of dict() with conductor material properties
+    temp: list of magnet temperatures in degree Celsius
+    machine: dict() with machine parameters
+    magnetizingCurves: list of dict() with BH curves (or directory)
+    magnetMat: list of dict() with magnet material properties
+    condMat: list of dict() with conductor material properties
 
     optional arguments:
     num_cur_steps: number of current steps (default 5)

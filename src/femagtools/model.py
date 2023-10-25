@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.model
-    ~~~~~~~~~~~~~~~~
-
-    Managing model parameters
-
-
+"""Managing machine and simulation model parameters
 
 """
 import logging
@@ -217,7 +211,7 @@ class MachineModel(Model):
                 slotgen.append(int(self.rotor['num_slots']))
             except (AttributeError, KeyError):
                 pass
-            logging.info(slotgen)
+            logging.debug(slotgen)
             g = np.gcd.reduce(slotgen)
             if hasattr(self, 'magnet') and g > 1:
                 g /= m
@@ -421,6 +415,7 @@ class MachineModel(Model):
 
 
 class FeaModel(Model):
+    """represents a simulation model for a FE analysis"""
     def __init__(self, parameters):
         self.recsin = ''  # recalc mcv for dynamic simulation
         self.cufilfact = 0.45

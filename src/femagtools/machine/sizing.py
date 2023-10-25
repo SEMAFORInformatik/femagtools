@@ -1,8 +1,6 @@
-"""
-  femagtools.machine.sizing
-  ~~~~~~~~~~~~~~~~~~~~~~~~~
+"""general design of an AC electrical machine
 
-  general design of an AC electrical machine
+   Types: spm, ipm, eesm, im
 
 """
 import numpy as np
@@ -32,6 +30,7 @@ PM_DEFAULTS = dict(
     coil_span=0,
     hfe=1e-3  # iron height between magnet and airgap (IPM)
 )
+"""default sizing parameters for PM"""
 
 SM_DEFAULTS = dict(
     airgap=1.5e-3,  # airgap width m
@@ -52,6 +51,7 @@ SM_DEFAULTS = dict(
     external_rotor=False,
     coil_span=0
 )
+"""default sizing parameters for SM"""
 
 IM_DEFAULTS = dict(
     airgap=0.75e-3,  # airgap width m
@@ -70,6 +70,7 @@ IM_DEFAULTS = dict(
     external_rotor=False,
     coil_span=0
 )
+"""default sizing parameters for IM"""
 
 
 class ValidationError(Exception):
@@ -643,8 +644,19 @@ def _set_genpars(r, poles):
         r[k] = r['stator'].pop(k)
 
 
-def spm(pnom, speed, p, **kwargs):
-    """returns dimension of a SPM machine"""
+def spm(pnom: float, speed: float, p: int, **kwargs) -> dict:
+    """returns dimension of a SPM machine
+
+    Args:
+    pnom: power at rated speed (W)
+    speed: rotation speed (1/s)
+    p: number of pole pairs
+
+    udc: (optional) DC link voltage (V)
+    u1: (optional) phase voltage (Vrms)
+    Q1: (optional) total number of stator slots
+    brem: (optional) remanence of magnet (T)
+    """
     par = dict(
         pnom=pnom, speed=speed, p=p)
     par.update(kwargs)
@@ -665,8 +677,20 @@ def spm(pnom, speed, p, **kwargs):
     return r
 
 
-def ipm(pnom, speed, p, **kwargs):
-    """returns dimension of a IPM machine"""
+def ipm(pnom: float, speed: float, p: int, **kwargs) -> dict:
+    """returns dimension of a IPM machine
+
+    Args:
+    pnom: power at rated speed (W)
+    speed: rotation speed (1/s)
+    p: number of pole pairs
+
+    udc: (optional) DC link voltage (V)
+    u1: (optional)  phase voltage (Vrms)
+    Q1: (optional) total number of stator slots
+    brem: (optional) remanence of magnet (T)
+
+    """
     par = dict(
         pnom=pnom, speed=speed, p=p)
     par.update(kwargs)
@@ -687,8 +711,19 @@ def ipm(pnom, speed, p, **kwargs):
     return r
 
 
-def im(pnom, speed, p, **kwargs):
-    """returns dimension of a IM machine"""
+def im(pnom: float, speed: float, p: int, **kwargs) -> dict:
+    """returns dimension of a IM machine
+
+    Args:
+    pnom: power at rated speed (W)
+    speed: rotation speed (1/s)
+    p: number of pole pairs
+
+    udc: (optional) DC link voltage (V)
+    u1: (optional) phase voltage (Vrms)
+    Q1: (optional) total number of stator slots
+    Q2: (optional) total number of rotor slots
+    """
     par = dict(
         pnom=pnom, speed=speed, p=p)
     par.update(kwargs)
@@ -708,8 +743,19 @@ def im(pnom, speed, p, **kwargs):
     return r
 
 
-def eesm(pnom, speed, p, **kwargs):
-    """returns dimension of a EESM machine"""
+def eesm(pnom: float, speed: float, p: int, **kwargs) -> dict:
+    """returns dimension of a EESM machine
+
+    Args:
+    pnom: power at rated speed (W)
+    speed: rotation speed (1/s)
+    p: number of pole pairs
+
+    udc: (optional) DC link voltage (V)
+    u1: (optional) phase voltage (Vrms)
+    Q1: (optional) total number of stator slots
+
+    """
     par = dict(
         pnom=pnom, speed=speed, p=p)
     par.update(kwargs)

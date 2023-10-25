@@ -355,15 +355,16 @@ class Femag(BaseFemag):
 
     Args:
         workdir: name of working directory
-        cmd: name of femag program (default wfemag64 on windows, xfemag64 on linux)
-        magnetizingCurves: collection of lamination material curves
+        cmd: name of femag program (default is config.executable)
+        magnetizingCurves: collection of lamination material curves or name of directory
         magnets: collection of magnet material
         condMat: collection of conductor material
         templatedirs: (list) names of directories that include mako files as fsl templates
+
     """
 
     def __init__(self, workdir, cmd=None, templatedirs=[],
-                 magnetizingCurves=None, magnets=None, condMat=[]):
+                 magnetizingCurves='.', magnets=None, condMat=[]):
         super(self.__class__, self).__init__(workdir, cmd,
                                              magnetizingCurves, magnets, condMat,
                                              templatedirs=templatedirs)
@@ -373,10 +374,10 @@ class Femag(BaseFemag):
         """invoke FEMAG in current workdir
 
         Args:
-            filename: name of file to execute
+            filename: name of FSL file to execute
             options: list of FEMAG options
             fsl_args: list of FSL argument options
-            stateofproblem: (str) one of config.executable
+            stateofproblem: (str) one of config.state_of_problem_set
         Raises:
             FemagError
         """
@@ -390,11 +391,11 @@ class Femag(BaseFemag):
             options.insert(0, '-m')
         args = [cmd] + options + [filename] + fsl_args
 
-        basename, ext = os.path.splitext(os.path.basename(filename))
+        basename = pathlib.Path(filename).name
         outname = os.path.join(self.workdir, basename+'.out')
         errname = os.path.join(self.workdir, basename+'.err')
         with open(outname, 'w') as out, open(errname, 'w') as err:
-            logger.info('invoking %s', ' '.join(args))
+            logger.info('invoking %s', ' '.join([str(a) for a in args]))
             proc = subprocess.Popen(
                 args,
                 stdout=subprocess.PIPE, stderr=err, cwd=self.workdir)

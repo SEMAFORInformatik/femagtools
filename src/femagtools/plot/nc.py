@@ -223,7 +223,7 @@ def airgap_flux_density_pos(isa, ipos, icur=-1, ibeta=-1, ax=0):
         fd = isa.flux_density(e, icur, ibeta)
         bx.append(fd['bx'][ipos])
         by.append(fd['by'][ipos])
-        pos.append(np.arttan2(e.center[1], e.center[0])/np.pi*100)
+        pos.append(np.arctan2(e.center[1], e.center[0])/np.pi*100)
     if ax == 0:
         ax = plt.gca()
     ax.plot(pos, bx)

@@ -70,6 +70,7 @@ User Guide
    engine
    amela
    tspost
+..
    API reference <_autosummary/femagtools>
 
 Indices and tables

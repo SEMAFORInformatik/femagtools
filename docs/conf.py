@@ -32,12 +32,12 @@ sys.path.insert(0, os.path.abspath('../src'))
 extensions = [
     'matplotlib.sphinxext.plot_directive',
     'sphinx.ext.autodoc',  # Core Sphinx library for auto html doc generation from docstrings
-    'sphinx.ext.autosummary',  # Create neat summary tables for modules/classes/methods etc
+#    'sphinx.ext.autosummary',  # Create neat summary tables for modules/classes/methods etc
     'sphinx.ext.intersphinx',  # Link to other project's documentation (see mapping below)
     'sphinx.ext.viewcode',  # Add a link to the Python source code for classes, functions etc.
     'sphinx_autodoc_typehints', # Automatically document param types (less noise in class signature)
-    'nbsphinx',  # Integrate Jupyter Notebooks and Sphinx
-    'IPython.sphinxext.ipython_console_highlighting',
+#    'nbsphinx',  # Integrate Jupyter Notebooks and Sphinx
+#    'IPython.sphinxext.ipython_console_highlighting',
     'sphinx.ext.todo',
     'sphinx.ext.napoleon', # enable google, numpy docstrings
     'sphinx.ext.autosectionlabel'
@@ -47,14 +47,14 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
 }
 
-autosummary_generate = True  # Turn on sphinx.ext.autosummary
-autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
-html_show_sourcelink = False  # Remove 'view source code' from top of page (for html, not python)
-autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
-set_type_checking_flag = True  # Enable 'expensive' imports for sphinx_autodoc_typehints
-nbsphinx_allow_errors = True  # Continue through Jupyter errors
-#autodoc_typehints = "description" # Sphinx-native method. Not as good as sphinx_autodoc_typehints
-add_module_names = False # Remove namespaces from class/method signatures
+###autosummary_generate = True  # Turn on sphinx.ext.autosummary
+##autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
+##html_show_sourcelink = False  # Remove 'view source code' from top of page (for html, not python)
+##autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
+##set_type_checking_flag = True  # Enable 'expensive' imports for sphinx_autodoc_typehints
+##nbsphinx_allow_errors = True  # Continue through Jupyter errors
+##autodoc_typehints = "description" # Sphinx-native method. Not as good as sphinx_autodoc_typehints
+##add_module_names = False # Remove namespaces from class/method signatures
 
 # https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
 napoleon_google_docstring = True

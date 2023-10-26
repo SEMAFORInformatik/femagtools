@@ -22,7 +22,12 @@ classifiers = [
     "Topic :: Scientific/Engineering"
 ]
 dependencies = [
-    'numpy', 'scipy', 'mako', 'six', 'lmfit', 'netCDF4'
+    'numpy',
+    'scipy',
+    'mako',
+    'six',
+    'lmfit',
+    'netCDF4>=1.6.5',     # >=1.6.5 to mitigate CVE-2023-38545
 ]
 dynamic = ["version"]
 

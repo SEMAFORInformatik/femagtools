@@ -1,14 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.config
-    ~~~~~~~~~~~~~~~~~
-
-    Config FEMAG
-
-
+""" Configuration of FEMAG interface
 
 """
-import sys
 import platform
 import os
 try:
@@ -32,6 +25,8 @@ executable = {
         'therm_static': 'wthfemagw64.exe'}
 }
 
+state_of_problem_set = set(executable['Linux'].keys())
+"""set of state of problem keys"""
 
 def is_exe(fpath):
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -57,7 +52,7 @@ def get_executable(stateofproblem='mag_static'):
     progname = executable[platform.system()][stateofproblem]
     femag = which(progname)
     if not femag:
-        raise Exception(f"{progname} not found in {os.environ['PATH']}")
+        raise ValueError(f"{progname} not found in {os.environ['PATH']}")
         # TODO: for l in ['libstdc++-6.dll', 'libgcc_s_dw2-1.dll']:
         #    lib = which(l)
         #    if not lib:

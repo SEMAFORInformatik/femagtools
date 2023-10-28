@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.isa7
-    ~~~~~~~~~~~~~~~
+""" Read FEMAG I7/ISA7 model files
 
-    Read FEMAG I7/ISA7 model files
 """
 import re
 import sys
 import struct
+from enum import Enum
 import logging
 from collections import Counter, defaultdict
 import numpy as np
@@ -65,6 +63,12 @@ def bertotti_pfe(Bxnu, Bynu, fnu, losscoeffs):
 
     return ph, pw, pe
 
+class ElType(Enum):
+    LinearTriangle = 1
+    LinearRectangle = 2
+    SquareTriangle = 3
+    SquareRectangle = 4
+"""Types of elements"""
 
 class Reader(object):
     """
@@ -593,7 +597,7 @@ class Isa7(object):
                 temperature = 20
             self.elements.append(
                 Element(e + 1,
-                        reader.ELEM_ISA_ELEM_REC_EL_TYP[e],
+                        ElType(reader.ELEM_ISA_ELEM_REC_EL_TYP[e]),
                         reader.ELEM_ISA_ELEM_REC_EL_SE_KEY[e] - 1,
                         vertices,
                         (reader.ELEM_ISA_ELEM_REC_EL_RELUC[e],
@@ -745,32 +749,84 @@ class Isa7(object):
             self.num_slots = reader.slots
         try:
             self.arm_length = reader.arm_length*1e-3  # in m
-        except:
+        except AttributeError:
+            # missing arm_length
             pass
 
-        airgap_center_elements = []
-        self.airgap_inner_elements = []
+        self.airgap_inner_elements = [] # used for rotate
         self.airgap_outer_elements = []
         if hasattr(self, 'FC_RADIUS'):  # Note: cosys r/phi only
+            # TODO: handle multiple airgaps
+            airgap_center_elements = []
             for n in self.nodes:
-                n.outside = np.sqrt(n.x**2 + n.y**2) > self.FC_RADIUS
-        airgap_center_elements = []
-        for e in self.elements:
-            outside = [v.outside
-                       for v in e.vertices]
-            if all(outside):
-                self.airgap_outer_elements.append(e)
-            elif any(outside):
-                airgap_center_elements.append(e)
-            else:
-                self.airgap_inner_elements.append(e)
+                n.outside = np.linalg.norm(n.xy) > self.FC_RADIUS
 
-        for sr in self.subregions:
-            sr.outside = sr.nodechains[0].node1.outside
+            for e in self.elements:
+                outside = [v.outside
+                           for v in e.vertices]
+                if all(outside):
+                    self.airgap_outer_elements.append(e)
+                elif any(outside):
+                    airgap_center_elements.append(e)
+                else:
+                    self.airgap_inner_elements.append(e)
 
-        self.airgap_center_elements = sorted(airgap_center_elements,
-                                             key=lambda e: np.arctan2(
-                                                 e.center[1], e.center[0]))
+            self.airgap_center_elements = sorted(airgap_center_elements,
+                                                 key=lambda e: np.arctan2(
+                                                     e.center[1], e.center[0]))
+        else:  # assume a linear machine
+            # TODO read and check pole_width
+            airgap_positions = []
+            self.airgap_center_elements = []
+            nxy = np.array([n.xy for n in self.nodes])
+            # width and height of model:
+            w, h = np.max(nxy[:, 0])-np.min(nxy[:, 0]), np.max(nxy[:, 1])-np.min(nxy[:, 1])
+            for se in self.superelements:
+                if (se.subregion is None and se.elements and not (
+                        se.elements[0].is_magnet() or
+                        se.elements[0].is_lamination()) and
+                    se.elements[0].el_type == ElType.LinearRectangle):
+                    axy = np.array([n.xy for e in se.elements
+                                    for n in e.vertices])
+                    # width and height of superelement
+                    sew = np.max(axy[:, 0])-np.min(axy[:, 0])
+                    seh = np.max(axy[:, 1])-np.min(axy[:, 1])
+                    if np.isclose(sew, w) or np.isclose(seh, h):
+                        horiz = sew > seh
+                        if horiz:
+                            airgap_positions.append(axy[0][1])
+                        else:
+                            airgap_positions.append(axy[0][0])
+                        self.airgap_center_elements.append(se.elements)
+
+            if len(self.airgap_center_elements) == 1:
+                self.airgap_center_elements = self.airgap_center_elements[0]
+                if horiz:
+                    airgap_positions.append(np.min(nxy[:, 1]))
+                else:
+                    airgap_positions.append(np.max(nxy[:, 0]))
+            if airgap_positions:
+                amin, amax = min(airgap_positions), max(airgap_positions)
+
+                def is_outside(n):
+                    if horiz:
+                        return (n.y > amax or n.y < amin)
+                    return (n.x > amax or n.x < amin)
+
+                for n in self.nodes:
+                    n.outside = is_outside(n)
+
+                for e in self.elements:
+                    outside = [v.outside
+                               for v in e.vertices]
+                    if all(outside):
+                        self.airgap_outer_elements.append(e)
+                    elif not all(outside):
+                        self.airgap_inner_elements.append(e)
+
+        for se in self.superelements:
+            se.outside = se.nodechains[0].node1.outside
+
         self.pos_el_fe_induction = np.asarray(reader.pos_el_fe_induction)
         try:
             self.beta_loss = np.asarray(reader.beta_loss)
@@ -778,7 +834,13 @@ class Isa7(object):
             logger.debug("Beta loss %s curr loss %s",
                          reader.beta_loss, reader.curr_loss)
         except AttributeError:
-            pass
+            try:
+                self.iq = np.asarray(reader.iq)
+                self.id = np.array(reader.id)
+                logger.debug("Id loss %s iq %s",
+                             reader.id, reader.iq)
+            except AttributeError:
+                pass
 
         self.current_id = np.asarray(reader.CURRENT_ID)
         self.ide_flux = np.asarray(reader.IDE_FLUX)
@@ -872,17 +934,18 @@ class Isa7(object):
             self.areas = [{'iron': 0, 'slots': 0, 'magnets': 0},
                           {'iron': 0, 'slots': 0, 'magnets': 0}]
         scf = self.scale_factor()
-        for sr in self.subregions:
-            r = 0 if sr.outside else 1
-            if sr.winding:
-                self.areas[r]['slots'] += scf*sr.area()
+        for se in self.superelements:
+            r = 0 if se.outside else 1
+            if se.subregion:
+                if se.subregion.winding:
+                    self.areas[r]['slots'] += scf*se.area()
+                    continue
+
+            if se.mcvtype or se.elements[0].is_lamination():
+                self.areas[r]['iron'] += se.area()*scf
             else:
-                for se in sr.superelements:
-                    if se.mcvtype or se.elements[0].is_lamination():
-                        self.areas[r]['iron'] += se.area()*scf
-                    else:
-                        a = [e.area for e in se.elements if e.is_magnet()]
-                        self.areas[r]['magnets'] += sum(a)*scf
+                a = [e.area for e in se.elements if e.is_magnet()]
+                self.areas[r]['magnets'] += sum(a)*scf
         return self.areas
 
     def get_mass(self):
@@ -894,34 +957,37 @@ class Isa7(object):
             self.mass = [{'iron': 0, 'conductors': 0, 'magnets': 0},
                          {'iron': 0, 'conductors': 0, 'magnets': 0}]
         scf = self.scale_factor()
-        for sr in self.subregions:
-            r = 0 if sr.outside else 1
-            if sr.winding:
-                spw = self.CU_SPEZ_WEIGHT*1e3
-                self.mass[r]['conductors'] += scf*sr.area()*self.arm_length*spw
+        for se in self.superelements:
+            r = 0 if se.outside else 1
+            if se.subregion:
+                if se.subregion.winding:
+                    spw = self.CU_SPEZ_WEIGHT*1e3
+                    self.mass[r]['conductors'] += scf*se.area()*self.arm_length*spw
+                    continue
+
+            if se.mcvtype or se.elements[0].is_lamination():
+                spw = self.iron_loss_coefficients[se.mcvtype-1][
+                    'spec_weight']*1e3  # kg/m³
+                fillfact = self.iron_loss_coefficients[se.mcvtype-1][
+                    'fillfactor']
+                m = scf*self.arm_length*se.area()*spw*fillfact
+                self.mass[r]['iron'] += m
             else:
-                for se in sr.superelements:
-                    if se.mcvtype or se.elements[0].is_lamination():
-                        spw = self.iron_loss_coefficients[se.mcvtype-1][
-                            'spec_weight']*1e3  # kg/m³
-                        fillfact = self.iron_loss_coefficients[se.mcvtype-1][
-                            'fillfactor']
-                        m = scf*self.arm_length*se.area()*spw*fillfact
-                        self.mass[r]['iron'] += m
-                    else:
-                        try:
-                            spw = self.MA_SPEZ_WEIGHT*1e3
-                            a = [e.area for e in se.elements if e.is_magnet()]
-                            self.mass[r]['magnets'] += sum(a)*scf*self.arm_length*spw
-                        except AttributeError:
-                            pass
+                try:
+                    spw = self.MA_SPEZ_WEIGHT*1e3
+                    a = [e.area for e in se.elements if e.is_magnet()]
+                    self.mass[r]['magnets'] += sum(a)*scf*self.arm_length*spw
+                except AttributeError:
+                    pass
         return self.mass
 
-    def get_iron_subregions(self):
+    def get_iron_subregions(self) -> tuple:
         """return names and coordinates of subregions with lamination
-        returns
+
+        Returns:
           subregs: list of str
           coordinates: list of float arrays (x, y)
+
         """
         subregs = []
         coordinates = []
@@ -933,21 +999,22 @@ class Isa7(object):
                      for c in sr.superelements[0].elements[0].center])
         return subregs, coordinates
 
-    def calc_iron_loss(self, icur, ibeta, pfefun, bmin=0.1):
+    def calc_iron_loss(self, icur: int, ibeta: int, pfefun, bmin=0.1) -> dict:
         """ calculate iron loss using last simulation results
-        Parameters:
-          icur (int): current index
-          ibeta (int): beta index
-          pfefun (function): custom function with parameters:
+
+        Args:
+          icur: current index
+          ibeta: beta index
+          pfefun: custom function with parameters:
             Bxnu, Bynu (1d array): flux density values in T
             fnu (1d array): frequency values in Hz
             losscoeffs (dict): material properties
           bmin (float): lower limit of flux density amplitudes
 
-        returns:
-          sreg (dict):
-            name of subregion (string)
+        Returns:
+          loss values name of subregion (string),
             eddy current loss, hysteresis loss, exc loss
+
         """
         from .utils import fft
         pos = self.pos_el_fe_induction
@@ -1063,6 +1130,7 @@ class Isa7(object):
         try:
             poles_sim = self.poles_sim
         except:
+
             poles_sim = poles
 
         scale_factor = poles/poles_sim
@@ -1134,12 +1202,12 @@ class Element(BaseEntity):
         self.br_temp_coef = br_temp_coef
         self.loss_density = loss_density
         self.temperature = temperature
-        if el_type == 1:    # Linear triangle
+        if el_type == ElType.LinearTriangle:
             self.area = ((vertices[2].x - vertices[1].x) *
                          (vertices[0].y - vertices[1].y) -
                          (vertices[2].y - vertices[1].y) *
                          (vertices[0].x - vertices[1].x))/2
-        elif el_type == 2:  # Linear rectangle
+        elif el_type == ElType.LinearRectangle:
             self.area = ((vertices[2].x - vertices[1].x) *
                          (vertices[0].y - vertices[1].y) -
                          (vertices[2].y - vertices[1].y) *
@@ -1148,12 +1216,12 @@ class Element(BaseEntity):
                          (vertices[0].y - vertices[2].y) -
                          (vertices[3].y - vertices[2].y) *
                          (vertices[0].x - vertices[2].x))/2
-        elif el_type == 3:  # Square triangle
+        elif el_type == ElType.SquareTriangle:
             self.area = ((vertices[4].x - vertices[2].x) *
                          (vertices[0].y - vertices[2].y) -
                          (vertices[4].y - vertices[1].y) *
                          (vertices[0].x - vertices[2].x))/2
-        elif el_type == 4:   # Square rectangle
+        elif el_type == ElType.SquareRectangle:
             self.area = ((vertices[4].x - vertices[2].x) *
                          (vertices[0].y - vertices[2].y) -
                          (vertices[4].y - vertices[2].y) *
@@ -1169,7 +1237,7 @@ class Element(BaseEntity):
         """return flux density components of this element converted to cosys: cartes, cylind, polar"""
         ev = self.vertices
         b1, b2 = 0, 0
-        if self.el_type == 1:
+        if self.el_type == ElType.LinearTriangle:
             y31 = ev[2].y - ev[0].y
             y21 = ev[1].y - ev[0].y
             x13 = ev[0].x - ev[2].x
@@ -1181,7 +1249,7 @@ class Element(BaseEntity):
             b1, b2 = ((x13 * a21 + x21 * a31) / delta,
                       (-y31 * a21 + y21 * a31) / delta)
 
-        elif self.el_type == 2:
+        elif self.el_type == ElType.LinearRectangle:
             y31 = ev[2].y - ev[0].y
             y21 = ev[1].y - ev[0].y
             x13 = ev[0].x - ev[2].x
@@ -1279,6 +1347,9 @@ class Element(BaseEntity):
                 return self.loss_density
         return 0
 
+    def temp(self):
+        """return temperature of this element"""
+        return sum([v.vpot[1] for v in self.vertices])/len(self.vertices)
 
 class SuperElement(BaseEntity):
     def __init__(self, key, sr_key, elements, nodechains, color,
@@ -1304,6 +1375,7 @@ class SuperElement(BaseEntity):
         self.fillfactor = fillfactor
         self.temp_coef = temp_coef
         self.temperature = temperature
+        self.outside = True
 
     def area(self):
         """return area of this superelement"""
@@ -1324,11 +1396,13 @@ class SubRegion(BaseEntity):
         for se in superelements:
             se.subregion = self
         self.nodechains = nodechains
-        self.outside = True
 
     def elements(self):
         """return elements of this subregion"""
         return [e for s in self.superelements for e in s.elements]
+
+    def outside(self):
+        return np.all([se.outside for se in self.superelements])
 
     def area(self):
         """return area of this subregion"""

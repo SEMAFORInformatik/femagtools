@@ -86,11 +86,11 @@ def test_airgap_center_elements(pm):
 def test_areas(pm):
     a = pm.get_areas()
     assert a[0]['iron'] == pytest.approx(0.003550, abs=1e-5)
-    assert a[0]['slots'] ==  pytest.approx(0.00184, abs=1e-5)
+    assert a[0]['slots'] == pytest.approx(0.00184, abs=1e-5)
     assert a[0]['magnets'] == 0.0
     assert a[1]['iron'] == pytest.approx(0.0007222, abs=1e-5)
     assert a[1]['slots'] == 0
-    assert a[1]['magnets'] == 0
+    assert a[1]['magnets'] == pytest.approx(0.000345, abs=1e-5)
 
 def test_calc_iron_loss(pm):
     import numpy as np

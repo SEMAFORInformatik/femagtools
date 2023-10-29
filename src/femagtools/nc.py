@@ -214,18 +214,20 @@ class Reader(object):
         except Exception as e:
             #logger.warning("*** MAGNET %s", e)
             pass
-        self.CURRENT_ID = ds.variables['current'][:]
-        self.IDE_FLUX = ds.variables['ide_flux'][:]
-        self.IDE_BETA = ds.variables['ide_beta'][:]
+        try:
+            self.CURRENT_ID = ds.variables['current'][:]
+            self.IDE_FLUX = ds.variables['ide_flux'][:]
+            self.IDE_BETA = ds.variables['ide_beta'][:]
+        except KeyError:
+            pass
+
         try:
             grp = ds.groups['el_induction']
-            (self.curr_loss,
-             self.beta_loss,
-             self.pos_el_fe_induction,
+            (self.pos_el_fe_induction,
              self.el_fe_induction_1,
              self.el_fe_induction_2,
              self.eddy_cu_vpot) = [grp.variables[k][:]
-                                   for k in ('cur', 'beta', 'position',
+                                   for k in ('position',
                                              'fe_induction_1',
                                              'fe_induction_2',
                                              'eddy_cu_vpot')]
@@ -235,6 +237,15 @@ class Reader(object):
             self.el_fe_induction_1 = []
             self.el_fe_induction_2 = []
             self.eddy_cu_vpot = []
+        try:
+            self.curr_loss = grp.variables['cur'][:]
+            self.beta_loss = grp.variables['beta'][:]
+        except KeyError:
+            try:
+                self.iq = grp.variables['iq'][:]
+                self.id = grp.variables['id'][:]
+            except KeyError:
+                pass
 
         self.iron_loss_coefficients = []
         try:

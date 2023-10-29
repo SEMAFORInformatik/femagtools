@@ -316,7 +316,7 @@ class Reader(object):
          HI, num_move_ar, self.ANGL_I_UP,
          num_par_wdgs, cur_control) = self.next_block("f")[:8]
         self.NUM_PAR_WDGS = int(num_par_wdgs)
-        self.arm_length = arm_length*1e-3  # unit is m
+        self.arm_length = arm_length  # unit is m
         self.skip_block(2)
         self.skip_block(30 * 30)
         self.skip_block(30 * 30)
@@ -825,7 +825,8 @@ class Isa7(object):
                         self.airgap_inner_elements.append(e)
 
         for se in self.superelements:
-            se.outside = se.nodechains[0].node1.outside
+            if se.nodechains:
+                se.outside = se.nodechains[0].node1.outside
 
         self.pos_el_fe_induction = np.asarray(reader.pos_el_fe_induction)
         try:
@@ -842,9 +843,12 @@ class Isa7(object):
             except AttributeError:
                 pass
 
-        self.current_id = np.asarray(reader.CURRENT_ID)
-        self.ide_flux = np.asarray(reader.IDE_FLUX)
-        self.ide_beta = np.asarray(reader.IDE_BETA)
+        try:
+            self.current_id = np.asarray(reader.CURRENT_ID)
+            self.ide_flux = np.asarray(reader.IDE_FLUX)
+            self.ide_beta = np.asarray(reader.IDE_BETA)
+        except AttributeError:
+            pass
 
         try:
             el_fe_ind = [np.array(reader.el_fe_induction_1).T/1000,
@@ -966,10 +970,15 @@ class Isa7(object):
                     continue
 
             if se.mcvtype or se.elements[0].is_lamination():
-                spw = self.iron_loss_coefficients[se.mcvtype-1][
-                    'spec_weight']*1e3  # kg/m³
-                fillfact = self.iron_loss_coefficients[se.mcvtype-1][
-                    'fillfactor']
+                try:
+                    spw = self.iron_loss_coefficients[se.mcvtype-1][
+                        'spec_weight']*1e3  # kg/m³
+                    fillfact = self.iron_loss_coefficients[se.mcvtype-1][
+                        'fillfactor']
+                except IndexError:
+                    spw = 7.8e3
+                    fillfact = 1
+                    #logger.warning('missing iron losscoeffs using defaults')
                 m = scf*self.arm_length*se.area()*spw*fillfact
                 self.mass[r]['iron'] += m
             else:

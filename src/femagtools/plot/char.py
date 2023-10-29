@@ -138,7 +138,7 @@ def characteristics(char, title=''):
     ax1.legend(loc='lower center')
 
     axs[0, 1].plot(n[1:], np.array(char['u1'][1:]), 'C0-', label='Voltage')
-    axs[0, 1].set_ylabel("Voltage / V",)
+    axs[0, 1].set_ylabel("Phase Voltage / V",)
     axs[0, 1].grid()
     axs[0, 1].legend(loc='center left')
     ax2 = axs[0, 1].twinx()

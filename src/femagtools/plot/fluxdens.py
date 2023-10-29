@@ -1,9 +1,4 @@
-"""
-    femagtools.plot.fluxdens
-    ~~~~~~~~~~~~~~~~~~~~~~~~
-
-    Creating airgap flux density plots
-
+""" Create airgap flux density plots
 
 """
 import numpy as np
@@ -14,7 +9,7 @@ def airgap(airgap, ax=0):
     """creates plot of flux density in airgap"""
     if ax == 0:
         ax = plt.gca()
-    ax.set_title('Airgap Flux Density [T]')
+    ax.set_title('Airgap Flux Density / T')
     ax.plot(airgap['pos'], airgap['B'],
             label='Max {:4.2f} T'.format(max(np.abs(airgap['B']))))
     ax.plot(airgap['pos'], airgap['B_fft'],

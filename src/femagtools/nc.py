@@ -214,6 +214,7 @@ class Reader(object):
         except Exception as e:
             #logger.warning("*** MAGNET %s", e)
             pass
+
         try:
             self.CURRENT_ID = ds.variables['current'][:]
             self.IDE_FLUX = ds.variables['ide_flux'][:]
@@ -300,9 +301,18 @@ class Reader(object):
                 fillfactor = float(lcgrp.variables['fill_factor_fe'][j].data)
                 shapefactor = float(lcgrp.variables['shape_factor'][j].data)
 
-                self.CU_SPEZ_WEIGHT = float(lcgrp.variables['spec_mass_cu'][j].data)
-
             kh = ch/(base_induction**ch_ind_exp*base_frequency**ch_freq_exp)
+
+            self.CU_SPEZ_WEIGHT = float(lcgrp.variables['spec_mass_cu'].getValue().data)
+            self.PS_SIGMA_CU = [float(s.data)
+                                for s in [lcgrp.variables['sigma_cu'][0],
+                                          lcgrp.variables['sigma_cu'][1]]]
+            self.PS_FILFACTOR_CU = [float(s.data)
+                                    for s in [lcgrp.variables['fill_factor_cu'][0],
+                                              lcgrp.variables['fill_factor_cu'][1]]]
+            self.PS_LENGTH_CU = [float(s.data)
+                                    for s in [lcgrp.variables['len_cu'][0],
+                                              lcgrp.variables['len_cu'][1]]]
 
             coeffdict = {
                 "Name": name,

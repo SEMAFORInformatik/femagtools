@@ -227,7 +227,12 @@ class Reader(object):
         self.FC_RADIUS = self.next_block("f")[0]
         self.skip_block(2)
         self.M_POLES = self.next_block("i")[0]
-        self.skip_block(5)
+        self.skip_block(1)
+        length_cu = [0,0]
+        fillfactor_cu = [0,0]
+        sigma_cu = [0,0]
+        length_cu[0], fillfactor_cu[0], sigma_cu[0] = self.next_block("f")[0:3]
+        self.skip_block(3)
         self.MAGN_TEMPERATURE, self.BR_TEMP_COEF = self.next_block("f")[0:2]
         FC_NUM_CUR_ID, FC_NUM_BETA_ID, FC_NUM_CUR_REG = self.next_block("i")[0:3]
         if FC_NUM_CUR_ID > 16:
@@ -282,8 +287,13 @@ class Reader(object):
                 self.eddy_cu_vpot[0][0].append(self.next_block("h"))
 
         self.skip_block(2)  # start_winkel, end_winkel
-        self.skip_block(2 * 5)
-        self.skip_block(15)
+        self.skip_block(2 * 5 + 2)
+        length_cu[1], fillfactor_cu[1], sigma_cu[1] = self.next_block("f")[0:3]
+        self.PS_LENGTH_CU = length_cu
+        self.PS_FILFACTOR_CU = fillfactor_cu
+        self.PS_SIGMA_CU = sigma_cu
+
+        self.skip_block(12)
         self.skip_block(3 * 30 * 30)
         self.skip_block(3)
         self.skip_block(30 * 30)
@@ -875,6 +885,10 @@ class Isa7(object):
         self.el_fe_induction_2 = el_fe_ind[1]
         self.eddy_cu_vpot = eddy_cu_vpot
 
+        self.PS_FILFACTOR_CU = reader.PS_FILFACTOR_CU
+        self.PS_LENGTH_CU = reader.PS_LENGTH_CU
+        self.PS_SIGMA_CU = reader.PS_SIGMA_CU
+
         self.iron_loss_coefficients = getattr(
             reader, 'iron_loss_coefficients', [])
 
@@ -966,7 +980,9 @@ class Isa7(object):
             if se.subregion:
                 if se.subregion.winding:
                     spw = self.CU_SPEZ_WEIGHT*1e3
-                    self.mass[r]['conductors'] += scf*se.area()*self.arm_length*spw
+                    l = self.PS_LENGTH_CU[r]*1e-2
+                    slf = self.PS_FILFACTOR_CU[r]
+                    self.mass[r]['conductors'] += scf*se.area()*self.arm_length*spw*l*slf
                     continue
 
             if se.mcvtype or se.elements[0].is_lamination():

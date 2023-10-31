@@ -60,29 +60,6 @@ if not airgap_created then
   nc_line(x2, -ag/3, x2, -2*ag/3, 1)
   create_mesh_se((x1+x2)/2, -ag/2)
 
-  --  set boundary conditions
-  del_bcond()
-  if m.st_yoke_height > 0 then
-    sh = m.slot_height
-  else
-    sh = m.slot_height/2
-  end
-  x1,y1 = 0, sh+m.st_yoke_height
-  x2,y2 = x1, -ag - m.magn_height -m.yoke_height
-  x3,y3 = m.npols_gen*m.pole_width, y2
-  x4,y4 = x3, y1
-  if m.npols_gen%2 == 1 then
-    def_bcond_only(x1,y1, x2,y2, x3,y3, x4,y4, 3)
-  else
-    def_bcond_only(x1,y1, x2,y2, x3,y3, x4,y4, 4)
-  end
-  if (m.model_type ~= "S1R2") then
-   def_bcond_vpo(x4,y4, x1,y1)
-  end
-  if (m.model_type ~= "S2R1") then
-   def_bcond_vpo(x2,y2, x3,y3)
-  end
-
   if m.model_type == 'S2R1_all' then
     x1,y1 = 0, -ag -m.magn_height/2
     x2,y2 = m.npols_gen*m.pole_width, y1
@@ -111,6 +88,33 @@ if not airgap_created then
       end
       x = x + m.pole_width
     end
+  end
+
+  --  set boundary conditions
+  del_bcond()
+  if m.st_yoke_height > 0 then
+    sh = m.slot_height
+  else
+    sh = m.slot_height/2
+  end
+  x1,y1 = 0, sh+m.st_yoke_height
+  if m.model_type == 'S2R1_all' or m.model_type == 'S1R2_all' then
+    x2,y2 = x1, -ag - m.magn_height -m.yoke_height - y1
+  else
+    x2,y2 = x1, -ag - m.magn_height -m.yoke_height
+  end
+  x3,y3 = m.npols_gen*m.pole_width, y2
+  x4,y4 = x3, y1
+  if m.npols_gen%2 == 1 then
+    def_bcond_only(x1,y1, x2,y2, x3,y3, x4,y4, 3)
+  else
+    def_bcond_only(x1,y1, x2,y2, x3,y3, x4,y4, 4)
+  end
+  if (m.model_type ~= "S1R2") then
+   def_bcond_vpo(x4,y4, x1,y1)
+  end
+  if (m.model_type ~= "S2R1") then
+   def_bcond_vpo(x2,y2, x3,y3)
   end
 % endif
 end

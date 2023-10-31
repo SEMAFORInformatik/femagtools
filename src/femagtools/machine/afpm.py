@@ -1,6 +1,4 @@
-""":mod:`femagtools.machine.afpm` -- Axial Flux PM Machine
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+""" Axial Flux PM Machine
 
 """
 import logging
@@ -137,9 +135,12 @@ def parident(workdir, engine, temp, machine,
             calculationMode="cogg_calc",
             num_move_steps=60,
             magn_temp=magtemp,
+            poc=poc.Poc(999),
             speed=0)
         logging.info("Noload simulation")
         nlresults = pstudy(nlparvardef, machine, nlcalc, engine)
+        if nlresults['status'].count('C') != len(nlresults['status']):
+            raise ValueError('Noload simulation failed %s', nlresults['status'])
         nlresults.update(process(lfe, pole_width, machine, nlresults['f']))
         current_angles = nlresults['f'][0]['current_angles']
 
@@ -514,10 +515,13 @@ class AFPM:
                 calculationMode="cogg_calc",
                 magn_temp=simulation.get('magn_temp', 20),
                 num_move_steps=60,
+                poc=poc.Poc(machine['pole_width']),
                 speed=0)
             logging.info("Noload simulation")
             nlresults = self.parstudy(parvardef,
                                       machine, nlcalc, engine)
+            if nlresults['status'].count('C') != len(nlresults['status']):
+                raise ValueError('Noload simulation failed %s', nlresults['status'])
             nlresults.update(process(lfe, pole_width, machine, nlresults['f']))
 
             current_angles = nlresults['f'][0]['current_angles']

@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.parstudy
-    ~~~~~~~~~~~~~~~~~~~
-
-    Parameter study simulation
-
-
+"""manage parameter study simulations
 
 """
 import scipy as sc
@@ -347,10 +341,10 @@ class ParameterStudy(object):
                 self._write_report(decision_vars, objective_vars,
                                    objectives, par_range)
             return dict(f=objectives,
-                        x=domain)
+                        x=domain, status=status)
         except ValueError as v:
             logger.error(v)
-            return dict(f=f, x=domain)
+            return dict(f=f, x=domain, status=status)
 
     def addBchMapperData(self, bchData):
         self.bchmapper_data.append(bchData)

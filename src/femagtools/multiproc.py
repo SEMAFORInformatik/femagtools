@@ -1,12 +1,5 @@
-"""
-    femagtools.engine.multiproc
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""manage multicore/multiprocessing jobs
 
-    Creating and managing multicore/multiprocessing jobs
-
-
-
-    :authors: R. Tanner, N. Mauchle
 """
 import platform
 import multiprocessing
@@ -248,7 +241,8 @@ class Engine:
                 errmsg = pathlib.Path(t.directory) / 'femag.err'
                 if errmsg.exists():
                     t.errmsg = errmsg.read_text()
-                    logger.error(t.errmsg)
+                    if t.errmsg:
+                        logger.error(t.errmsg)
             status.append(t.status)
         if self.progressLogger:
             self.progressLogger.stop()

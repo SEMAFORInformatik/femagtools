@@ -349,6 +349,94 @@ class BaseFemag(object):
                     break
         return model
 
+    def readResult(self, simulation, bch=None):
+        if simulation:
+            if simulation['calculationMode'] == "pm_sym_loss":
+                return self.read_los(self.modelname)
+
+            if simulation['calculationMode'] == 'asyn_motor':
+                return self.read_asm(self.modelname)
+
+            if simulation['calculationMode'] == 'calc_field_ts':
+                return self.read_ts(self.modelname)
+
+            if simulation['calculationMode'] == 'modal_analysis':
+                return self.read_modal(self.modelname)
+
+            if simulation['calculationMode'] == 'therm-dynamic':
+                temp = [[float(n) for n in l.split()]
+                        for l in (pathlib.Path(self.workdir) / 'temperature.dat').read_text().split('\n') if l]
+                ttemp = list(zip(*temp))
+                return {'t': ttemp[0], 'temperature': ttemp[1]}
+
+            if not bch:
+                bch = self.read_bch(self.modelname)
+            if simulation['calculationMode'] == 'pm_sym_fast' or \
+                simulation['calculationMode'] == 'torq_calc':
+                if simulation.get('shortCircuit', False):
+                    logger.info("short circuit simulation")
+                    simulation.update(
+                        get_shortCircuit_parameters(bch,
+                                                    simulation.get('initial', 2)))
+
+                    builder = femagtools.fsl.Builder(self.templatedirs)
+                    set_magnet_properties(self.model, simulation, self.magnets)
+                    fslcmds = (builder.open_model(self.model) +
+                               builder.create_shortcircuit(simulation))
+                    with open(os.path.join(self.workdir, fslfile), 'w') as f:
+                        f.write('\n'.join(fslcmds))
+                    self.run(fslfile, options)
+                    bchfile = self.get_bch_file(self.modelname)
+                    if bchfile:
+                        bchsc = femagtools.bch.Reader()
+                        logger.info("Read BCH {}".format(bchfile))
+                        with io.open(bchfile, encoding='latin1',
+                                     errors='ignore') as f:
+                            bchsc.read(f)
+                    bch.scData = bchsc.scData
+                    for w in bch.flux:
+                        try:
+                            bch.flux[w] += bchsc.flux[w]
+                            bch.flux_fft[w] += bchsc.flux_fft[w]
+                        except (KeyError, IndexError):
+                            logging.debug(
+                                "No additional flux data in sc simulation")
+                            break
+
+                    bch.torque += bchsc.torque
+                    bch.demag += bchsc.demag
+
+            if 'airgap_induc' in simulation:
+                try:
+                    pmod = bch.machine['p_sim']
+                except KeyError:
+                    pmod = 0
+                bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'),
+                                     pmod=pmod)
+
+            if simulation.get('magnet_loss', False):
+                logger.info('Evaluating magnet losses...')
+                ops = [k for k in range(len(bch.torque))]
+                m = femagtools.ecloss.MagnLoss(self.workdir, self.modelname, ibeta=ops)
+                try:
+                    magn_losses = m.calc_losses()
+                except:
+                    magn_losses = [0 for i in range(len(ops))]
+
+                if len(ops) != len(bch.losses):
+                    magn_losses.insert(0, magn_losses[0])
+                try:
+                    for i in range(len(bch.losses)):
+                        bch.losses[i].update({"magnetH": magn_losses[i]})
+                except:
+                    pass
+                # pass losses to bch object for th usage
+                try:
+                    bch.magnet_loss_th = m.th_loss
+                except:
+                    pass
+            return bch
+
 
 class Femag(BaseFemag):
     """Invoke and control execution of FEMAG
@@ -466,90 +554,7 @@ class Femag(BaseFemag):
 
         self.run(fslfile, options, fsl_args, stateofproblem=stateofproblem)
         if simulation:
-            if simulation['calculationMode'] == "pm_sym_loss":
-                return self.read_los(self.modelname)
-
-            if simulation['calculationMode'] == 'asyn_motor':
-                return self.read_asm(self.modelname)
-
-            if simulation['calculationMode'] == 'calc_field_ts':
-                return self.read_ts(self.modelname)
-
-            if simulation['calculationMode'] == 'modal_analysis':
-                return self.read_modal(self.modelname)
-
-            if simulation['calculationMode'] == 'therm-dynamic':
-                temp = [[float(n) for n in l.split()]
-                        for l in (pathlib.Path(self.workdir) / 'temperature.dat').read_text().split('\n') if l]
-                ttemp = list(zip(*temp))
-                return {'t': ttemp[0], 'temperature': ttemp[1]}
-
-            bch = self.read_bch(self.modelname)
-            if simulation['calculationMode'] == 'pm_sym_fast' or \
-                simulation['calculationMode'] == 'torq_calc':
-                if simulation.get('shortCircuit', False):
-                    logger.info("short circuit simulation")
-                    simulation.update(
-                        get_shortCircuit_parameters(bch,
-                                                    simulation.get('initial', 2)))
-
-                    builder = femagtools.fsl.Builder(self.templatedirs)
-                    set_magnet_properties(self.model, simulation, self.magnets)
-                    fslcmds = (builder.open_model(self.model) +
-                               builder.create_shortcircuit(simulation))
-                    with open(os.path.join(self.workdir, fslfile), 'w') as f:
-                        f.write('\n'.join(fslcmds))
-                    self.run(fslfile, options)
-                    bchfile = self.get_bch_file(self.modelname)
-                    if bchfile:
-                        bchsc = femagtools.bch.Reader()
-                        logger.info("Read BCH {}".format(bchfile))
-                        with io.open(bchfile, encoding='latin1',
-                                     errors='ignore') as f:
-                            bchsc.read(f)
-                    bch.scData = bchsc.scData
-                    for w in bch.flux:
-                        try:
-                            bch.flux[w] += bchsc.flux[w]
-                            bch.flux_fft[w] += bchsc.flux_fft[w]
-                        except (KeyError, IndexError):
-                            logging.debug(
-                                "No additional flux data in sc simulation")
-                            break
-
-                    bch.torque += bchsc.torque
-                    bch.demag += bchsc.demag
-
-            if 'airgap_induc' in simulation:
-                try:
-                    pmod = bch.machine['p_sim']
-                except KeyError:
-                    pmod = 0
-                bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'),
-                                     pmod=pmod)
-
-            if simulation.get('magnet_loss', False):
-                logger.info('Evaluating magnet losses...')
-                ops = [k for k in range(len(bch.torque))]
-                m = femagtools.ecloss.MagnLoss(self.workdir, self.modelname, ibeta=ops)
-                try:
-                    magn_losses = m.calc_losses()
-                except:
-                    magn_losses = [0 for i in range(len(ops))]
-
-                if len(ops) != len(bch.losses):
-                    magn_losses.insert(0, magn_losses[0])
-                try:
-                    for i in range(len(bch.losses)):
-                        bch.losses[i].update({"magnetH": magn_losses[i]})
-                except:
-                    pass
-                # pass losses to bch object for th usage
-                try:
-                    bch.magnet_loss_th = m.th_loss
-                except:
-                    pass
-            return bch
+            return self.readResult(simulation)
         return dict(status='ok', message=self.modelname)
 
 
@@ -1077,30 +1082,6 @@ class ZmqFemag(BaseFemag):
         if r['status'] == 'ok':
             bch = femagtools.bch.Reader()
             bch.read(content.decode('latin1'))
-            if simulation['calculationMode'] == 'pm_sym_fast':
-                if simulation.get('shortCircuit', False):
-                    logger.info("Short Circuit")
-                    simulation.update(
-                        get_shortCircuit_parameters(bch,
-                                                    simulation.get('initial', 2)))
-                    builder = femagtools.fsl.Builder(self.templatedirs)
-                    response = self.send_fsl(
-                        builder.create_shortcircuit(simulation))
-                    r = json.loads(response[0])
-                    if r['status'] != 'ok':
-                        raise FemagError(r['message'])
-                    result_file = r['result_file'][0]
-                    status, content = self.getfile(result_file)
-                    r = json.loads(status)
-                    if r['status'] == 'ok':
-                        bch.read(content.decode('latin1'))
-
-            if 'airgap_induc' in simulation:
-                try:
-                    pmod = bch.machine['p_sim']
-                except KeyError:
-                    pmod = 0
-                bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'),
-                                     pmod=pmod)
+            bch = self.readResult(simulation, bch)
             return bch
         raise FemagError(r['message'])

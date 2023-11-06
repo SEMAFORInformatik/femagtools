@@ -1,9 +1,4 @@
-"""
-    femagtools.plot.char
-    ~~~~~~~~~~~~~~~~~~~~
-
-    Creating characteristics plots
-
+"""Create characteristics plots
 
 """
 import numpy as np
@@ -12,7 +7,15 @@ import logging
 
 
 def mtpa(pmrel, i1max, title='', projection='', ax=0):
-    """create a line or surface plot with torque and mtpa curve"""
+    """create a line or surface plot with torque and mtpa curve
+
+    Args:
+        pmrel: pm machine object
+        i1max: maximum phase current / A
+        title: plot title
+        projection: projection to be used (surface if '3d')
+        ax: axis to be used
+    """
     nsamples = 10
     i1 = np.linspace(0, i1max, nsamples)
     iopt = np.array([pmrel.mtpa(x) for x in i1]).T
@@ -59,7 +62,16 @@ def mtpa(pmrel, i1max, title='', projection='', ax=0):
 
 
 def mtpv(pmrel, u1max, i1max, title='', projection='', ax=0):
-    """create a line or surface plot with voltage and mtpv curve"""
+    """create a line or surface plot with voltage and mtpv curve
+
+    Args:
+        pmrel: pm machine object
+        u1max: maximum phase voltage / V
+        i1max: maximum phase current / A
+        title: plot title
+        projection: projection to be used (surface if '3d')
+        ax: axis to be used
+    """
     w1 = pmrel.w2_imax_umax(i1max, u1max)
     nsamples = 20
     if projection == '3d':
@@ -108,6 +120,16 @@ def mtpv(pmrel, u1max, i1max, title='', projection='', ax=0):
 
 
 def characteristics(char, title=''):
+    """show 2x2 line plot as speed characteristics: (torque, pmech), (u1, cosphi)
+    (i1, id, iq, beta), (fe, cu, fric loss, eta)
+
+    Args:
+        char: result from characteristics calculation (im, sm, pm)
+        title: figure title
+
+    Returns:
+        fig object
+    """
     fig, axs = plt.subplots(2, 2, figsize=(10, 8),
                             layout='tight',
                             sharex=True)
@@ -189,8 +211,8 @@ def characteristics(char, title=''):
     return fig
 
 
-def get_nT_boundary(n, T):
-    """extract boundary from n,T lists"""
+def _get_nT_boundary(n, T):
+    """utility function to extract boundary from n,T lists"""
     n0 = n[0]
     t0 = T[0]
     #      braking, driving
@@ -204,11 +226,10 @@ def get_nT_boundary(n, T):
     bnd[1].append((nx, tx))
     return np.array(bnd[0] + bnd[1][::-1])
 
-def normalize10(v, **kwargs):
-    """
-    Normalizes the input-array using the nearest (ceiling) power of 10.
+def _normalize10(v, **kwargs):
+    """utility function to normalize the input-array using the nearest (ceiling) power of 10.
 
-    Arguments:
+    Args:
         v: array to normalize
 
     Returns:
@@ -239,26 +260,28 @@ def normalize10(v, **kwargs):
     return v / norm, norm
 
 
-def plot_contour(speed, torque, z, ax, title='', levels=[],
-                 clabel=True, cmap='YlOrRd', cbar=False, **kwargs):
-    """ contour plot of speed, torque, z values
-    Arguments:
-    levels: (list of floats)
-    clabel: contour labels if True
-    cmap: colour map
-    cbar: (bool) create color bar if True (default False)
+def _plot_contour(speed, torque, z, ax, title='', levels=[],
+                  clabel=True, cmap='YlOrRd', cbar=False, **kwargs):
+    """utility function for contour plot of speed, torque, z values
+
+    Args:
+        levels: (list of floats)
+        clabel: contour labels if True
+        cmap: colour map
+        cbar: (bool) create color bar if True (default False)
 
     Note: the x and y axes are scaled
 
-    returns tricontourf, xscale, yscale
+    Returns:
+        tricontourf, xscale, yscale
     """
     from matplotlib.path import Path
     from matplotlib.patches import PathPatch
     x = 60*np.asarray(speed)
     y = np.asarray(torque)
 
-    x, xscale = normalize10(x, **kwargs)
-    y, yscale = normalize10(y, **kwargs)
+    x, xscale = _normalize10(x, **kwargs)
+    y, yscale = _normalize10(y, **kwargs)
 
     if not levels:
         if max(z) <= 1:
@@ -283,7 +306,7 @@ def plot_contour(speed, torque, z, ax, title='', levels=[],
     contf = ax.tricontourf(x, y, z,
                            levels=levels, cmap=cmap)
 
-    clippath = Path(get_nT_boundary(x, y))
+    clippath = Path(_get_nT_boundary(x, y))
     patch = PathPatch(clippath, facecolor='none')
     ax.add_patch(patch)
     for c in cont.collections:
@@ -318,7 +341,7 @@ def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True,
                    cmap='YlOrRd', levels=None, cbar=False):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
-    return plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
+    return _plot_contour(rmap['n'], rmap['T'], rmap['eta'], ax,
                         title=title, clabel=clabel, cmap=cmap,
                         levels=levels, cbar=cbar)
 
@@ -327,6 +350,6 @@ def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True,
                cmap='YlOrRd', cbar=False):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
-    return plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3, ax,
+    return _plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3, ax,
                         title=title, levels=14, clabel=clabel,
                         cmap=cmap, cbar=cbar)

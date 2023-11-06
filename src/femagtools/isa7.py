@@ -1040,8 +1040,8 @@ class Isa7(object):
         sreg = {}
         n = self.speed/60
         scf = self.scale_factor()
-        for sr in [self.get_subregion(n)
-                   for n in self.get_iron_subregions()[0]]:
+        for sr in [self.get_subregion(sname)
+                   for sname in self.get_iron_subregions()]:
             losses = []
             for se in sr.superelements:
                 spw = self.iron_loss_coefficients[se.mcvtype-1]['spec_weight']

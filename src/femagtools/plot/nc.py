@@ -156,6 +156,49 @@ def flux_density(isa, subreg=[], ax=0):
     logger.info("Max flux dens %f", np.max(fluxd))
 
 
+def flux_density_eccentricity(isa, subreg=[], icur=-1, ibeta=-1, ax=0):
+    """plot eccentricity for flux density in lamination"""
+    from ..utils import fft
+    elements = [e for e in __elements_of_subreg(isa, subreg)
+                if e.is_lamination()]
+    elements = []
+    ecc = []
+    pos = isa.pos_el_fe_induction
+    apos = np.array(pos)/np.pi*180
+    for e in [e for e in isa.elements if e.is_lamination()]:
+        br = isa.el_fe_induction_1[e.key-1, :, -1, -1][:-1]
+        bt = isa.el_fe_induction_2[e.key-1, :, -1, -1][:-1]
+        brtmax = np.max(br-np.mean(br)), np.max(bt-np.mean(bt))
+        if np.all(np.isclose(brtmax, 0)):
+            continue
+        elements.append(e)
+        if np.any(np.isclose(brtmax, 0)):
+            ecc.append(1)
+        else:
+            br0 = fft(apos[:-1], br-np.mean(br))
+            br = br0['a']*np.cos(2*np.pi*apos[:-1]/br0['T0']+br0['alfa0'])
+            bt0 = fft(apos[:-1], bt-np.mean(bt))
+            bt = bt0['a']*np.cos(2*np.pi*apos[:-1]/bt0['T0']+bt0['alfa0'])
+            if (br0['a'] > br0['nue'][isa.pole_pairs]
+                or bt0['a'] > bt0['nue'][isa.pole_pairs]):
+                ecc.append(1)
+            else:
+                ibrmax = np.argmax(br)
+                ibtmax = np.argmax(bt)
+                bmax = (br[ibrmax], bt[ibrmax]), (br[ibtmax], bt[ibtmax])
+                alpha = -np.arctan2(bmax[0][1], bmax[0][0])
+                T = np.array(((np.cos(alpha), -np.sin(alpha)),
+                      (np.sin(alpha), np.cos(alpha))))
+                br, bt = T.dot(np.array((br, bt)))
+                bmax = np.max(br), np.max(bt)
+                a = np.max(bmax)
+                b = np.min(bmax)
+                ecc.append(np.sqrt(1-b**2/a**2))
+
+    _contour(ax, 'Eccentricity of Flux Density',
+                 elements, ecc)
+
+
 def max_flux_density(isa, subreg=[], icur=-1, ibeta=-1, ax=0):
     """plot max flux density of each element of NC/I7/ISA7 model
     Args:
@@ -201,7 +244,8 @@ def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, ax=0):
     b = []
     for e in elements:
         fd = isa.flux_density(e, icur, ibeta)
-        b.append(fd['bx'][ipos])
+        b.append(np.linalg.norm(
+            (fd['bx'][ipos], fd['bx'][ipos])))
     fluxd = np.array(b)
     pos = isa.pos_el_fe_induction[ipos]*180/np.pi
     isa.rotate(isa.pos_el_fe_induction[ipos])

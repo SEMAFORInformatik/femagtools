@@ -1006,23 +1006,15 @@ class Isa7(object):
                     pass
         return self.mass
 
-    def get_iron_subregions(self) -> tuple:
-        """return names and coordinates of subregions with lamination
+    def get_iron_subregions(self) -> list:
+        """return names of subregions with lamination
 
         Returns:
           subregs: list of str
-          coordinates: list of float arrays (x, y)
 
         """
-        subregs = []
-        coordinates = []
-        for sr in self.subregions:
-            if sr.superelements[0].mcvtype or sr.superelements[0].elements[0].is_lamination():
-                subregs.append(sr.name)
-                coordinates.append(
-                    [round(1e3*c, 3)
-                     for c in sr.superelements[0].elements[0].center])
-        return subregs, coordinates
+        return [sr.name for sr in self.subregions
+                if sr.superelements[0].mcvtype or sr.superelements[0].elements[0].is_lamination()]
 
     def calc_iron_loss(self, icur: int, ibeta: int, pfefun, bmin=0.1) -> dict:
         """ calculate iron loss using last simulation results

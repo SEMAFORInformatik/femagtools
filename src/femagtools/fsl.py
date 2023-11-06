@@ -1,10 +1,4 @@
-"""
-    femagtools.fsl
-    ~~~~~~~~~~~~~~
-
-    Creating FSL Scripts
-
-
+"""Create FSL Scripts from Templates or DXF
 
 """
 import logging

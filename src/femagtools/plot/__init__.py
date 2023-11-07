@@ -12,7 +12,7 @@ from .bch import torque, torque_fft, force, force_fft, \
 from .char import mtpa, mtpv, characteristics, efficiency_map, losses_map
 from .forcedens import forcedens, forcedens_surface, forcedens_fft
 from .nc import spel, mesh, demag, demag_pos, \
-    flux_density, max_flux_density, min_flux_density, \
+    flux_density, flux_density_eccentricity, \
     airgap_flux_density_pos, loss_density
 from .mcv import mcv_hbj, mcv_muer, felosses
 from .phasor import i1beta_phasor, iqd_phasor, phasor

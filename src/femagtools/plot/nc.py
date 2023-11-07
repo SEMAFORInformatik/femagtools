@@ -10,6 +10,10 @@ import logging
 logger = logging.getLogger("femagtools.plot.nc")
 
 
+DEFAULT_CMAP='viridis'
+"""default colormap (see https://matplotlib.org/stable/users/explain/colors/colormaps.html)"""
+
+
 def spel(isa, with_axis=False, ax=0):
     """plot super elements of I7/ISA7 model
     Args:
@@ -59,7 +63,8 @@ def mesh(isa, with_axis=False, ax=0):
         ax.axis('off')
 
 
-def _contour(ax, title, elements, values, label='', isa=None):
+def _contour(ax, title, elements, values, label='',
+             cmap=DEFAULT_CMAP, isa=None):
     from matplotlib.patches import Polygon
     from matplotlib.collections import PatchCollection
     if ax == 0:
@@ -75,8 +80,8 @@ def _contour(ax, title, elements, values, label='', isa=None):
     valid_values = np.logical_not(np.isnan(values))
     patches = np.array([Polygon([v.xy for v in e.vertices])
                        for e in elements])[valid_values]
-    # , cmap=matplotlib.cm.jet, alpha=0.4)
-    p = PatchCollection(patches, alpha=1.0, match_original=False)
+    p = PatchCollection(patches, alpha=1.0, match_original=False,
+                        cmap=cmap)
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
     cb = plt.colorbar(p, shrink=0.9)
@@ -90,7 +95,7 @@ def _contour(ax, title, elements, values, label='', isa=None):
     ax.axis('off')
 
 
-def demag(isa, ax=0):
+def demag(isa, cmap=DEFAULT_CMAP, ax=0):
     """plot demag of NC/I7/ISA7 model
     Args:
       isa: Isa7/NC object
@@ -98,17 +103,17 @@ def demag(isa, ax=0):
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
     _contour(ax, f'Demagnetization at {isa.MAGN_TEMPERATURE} °C (max -{np.max(demag):.1f} kA/m)',
-             emag, demag, '-H / kA/m', isa)
+             emag, demag, '-H / kA/m', cmap, isa)
     logger.info("Max demagnetization %f", np.max(demag))
 
 
-def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, ax=0):
+def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, cmap=DEFAULT_CMAP, ax=0):
     """plot demag of NC/I7/ISA7 model at rotor position
     Args:
-      isa: Isa7/NC object
-      pos: rotor position in degree (maximum h if -1)
-      icur: cur amplitude index or last index if -1
-      ibeta: beta angle index or last index if -1
+        isa: Isa7/NC object
+        pos: rotor position in degree (maximum h if -1)
+        icur: cur amplitude index or last index if -1
+        ibeta: beta angle index or last index if -1
     """
     emag = [e for e in isa.elements if e.is_magnet()]
     demag = np.array([isa.demagnetization(e, icur, ibeta)[1]
@@ -126,7 +131,7 @@ def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, ax=0):
     hpol[hpol == 0] = np.nan
     _contour(ax, f'Demagnetization at pos. {round(x/np.pi*180):.1f}°,'
     f'{isa.MAGN_TEMPERATURE} °C (max -{np.max(hpol):.1f} kA/m)',
-             emag, hpol, '-H / kA/m', isa)
+             emag, hpol, '-H / kA/m', cmap, isa)
     logger.info("Max demagnetization %f kA/m", np.nanmax(hpol))
 
 
@@ -144,101 +149,79 @@ def __elements_of_subreg(isa, subreg):
             yield e
 
 
-def flux_density(isa, subreg=[], ax=0):
+def flux_density(isa, subreg=[], cmap=DEFAULT_CMAP, ax=0):
     """plot flux density of NC/I7/ISA7 model
+
     Args:
-      isa: Isa7/NC object
+        isa: Isa7/NC object
+        subreg: list of subregion names (all if empty)
+        icur: cur index or last index if -1
+        ibeta: beta angle index or last index if -1
     """
     elements = [e for e in __elements_of_subreg(isa, subreg)]
     fluxd = np.array([np.linalg.norm(e.flux_density()) for e in elements])
     _contour(ax, f'Flux Density T (max {np.max(fluxd):.1f} T)',
-             elements, fluxd)
+             elements, fluxd, '', cmap)
     logger.info("Max flux dens %f", np.max(fluxd))
 
 
-def flux_density_eccentricity(isa, subreg=[], icur=-1, ibeta=-1, ax=0):
-    """plot eccentricity for flux density in lamination"""
+def flux_density_eccentricity(isa, subreg=[], icur=-1, ibeta=-1,
+                              cmap='YlOrRd', ax=0):
+    """plot eccentricity for flux density in lamination
+
+    Args:
+        isa: Isa7/NC object
+        subreg: list of subregion names (all if empty)
+        icur: cur amplitude index or last index if -1
+        ibeta: beta angle index or last index if -1
+    """
     from ..utils import fft
-    elements = [e for e in __elements_of_subreg(isa, subreg)
-                if e.is_lamination()]
     elements = []
     ecc = []
     pos = isa.pos_el_fe_induction
     apos = np.array(pos)/np.pi*180
-    for e in [e for e in isa.elements if e.is_lamination()]:
-        br = isa.el_fe_induction_1[e.key-1, :, -1, -1][:-1]
-        bt = isa.el_fe_induction_2[e.key-1, :, -1, -1][:-1]
-        brtmax = np.max(br-np.mean(br)), np.max(bt-np.mean(bt))
-        if np.all(np.isclose(brtmax, 0)):
-            continue
-        elements.append(e)
-        if np.any(np.isclose(brtmax, 0)):
-            ecc.append(1)
-        else:
-            br0 = fft(apos[:-1], br-np.mean(br))
-            br = br0['a']*np.cos(2*np.pi*apos[:-1]/br0['T0']+br0['alfa0'])
-            bt0 = fft(apos[:-1], bt-np.mean(bt))
-            bt = bt0['a']*np.cos(2*np.pi*apos[:-1]/bt0['T0']+bt0['alfa0'])
-            if (br0['a'] > br0['nue'][isa.pole_pairs]
-                or bt0['a'] > bt0['nue'][isa.pole_pairs]):
+    for e in __elements_of_subreg(isa, subreg):
+        if e.is_lamination():
+            br = isa.el_fe_induction_1[e.key-1, :, icur, ibeta][:-1]
+            bt = isa.el_fe_induction_2[e.key-1, :, icur, ibeta][:-1]
+            brtmax = np.max(br-np.mean(br)), np.max(bt-np.mean(bt))
+            if np.all(np.isclose(brtmax, 0)):
+                continue
+            elements.append(e)
+            if np.any(np.isclose(brtmax, 0)):
                 ecc.append(1)
             else:
-                ibrmax = np.argmax(br)
-                ibtmax = np.argmax(bt)
-                bmax = (br[ibrmax], bt[ibrmax]), (br[ibtmax], bt[ibtmax])
-                alpha = -np.arctan2(bmax[0][1], bmax[0][0])
-                T = np.array(((np.cos(alpha), -np.sin(alpha)),
-                      (np.sin(alpha), np.cos(alpha))))
-                br, bt = T.dot(np.array((br, bt)))
-                bmax = np.max(br), np.max(bt)
-                a = np.max(bmax)
-                b = np.min(bmax)
-                ecc.append(np.sqrt(1-b**2/a**2))
+                br0 = fft(apos[:-1], br-np.mean(br))
+                x = br0['a']*np.cos(2*np.pi*apos[:-1]/br0['T0']+br0['alfa0'])
+                bt0 = fft(apos[:-1], bt-np.mean(bt))
+                y = bt0['a']*np.cos(2*np.pi*apos[:-1]/bt0['T0']+bt0['alfa0'])
+                if (br0['a'] > br0['nue'][isa.pole_pairs]
+                    or bt0['a'] > bt0['nue'][isa.pole_pairs]):
+                    ecc.append(1)
+                else:
+                    kmax = np.argmax(np.linalg.norm((x, y), axis=0))
+                    alpha = -np.arctan2(y[kmax], x[kmax])
+                    T = np.array(((np.cos(alpha), -np.sin(alpha)),
+                                  (np.sin(alpha), np.cos(alpha))))
+                    br, bt = T.dot((x, y))
+                    bmax = np.max(br), np.max(bt)
+                    a = np.max(bmax)
+                    b = np.min(bmax)
+                    ecc.append(np.sqrt(1-b**2/a**2))
 
     _contour(ax, 'Eccentricity of Flux Density',
-                 elements, ecc)
+                 elements, ecc, '', cmap)
 
 
-def max_flux_density(isa, subreg=[], icur=-1, ibeta=-1, ax=0):
-    """plot max flux density of each element of NC/I7/ISA7 model
-    Args:
-      isa: Isa7/NC object
-    """
-    elements = [e for e in __elements_of_subreg(isa, subreg)]
-    bmax = []
-    for e in elements:
-        fd = isa.flux_density(e, icur, ibeta)
-        bmax.append(np.max(
-            np.linalg.norm((fd['bx'], fd['by']), axis=0)))
-    fluxd = np.array(bmax)
-    _contour(ax, f'Max Flux Density T (max {np.max(fluxd):.1f} T)',
-             elements, fluxd)
-    logger.info("Max flux dens %f", np.max(fluxd))
-
-
-def min_flux_density(isa, subreg=[], icur=-1, ibeta=-1, ax=0):
-    """plot min flux density of each element of NC/I7/ISA7 model
-    Args:
-      isa: Isa7/NC object
-    """
-    elements = [e for e in __elements_of_subreg(isa, subreg)]
-    bmin = []
-    for e in elements:
-        fd = isa.flux_density(e, icur, ibeta)
-        bmin.append(np.min(
-            np.linalg.norm((fd['bx'], fd['by']), axis=0)))
-
-    fluxd = np.array(bmin)
-    _contour(ax, f'Min Flux Density T (max {np.max(fluxd):.1f} T)',
-             elements, fluxd)
-    logger.info("Max flux dens %f (element %d)",
-                np.max(fluxd), elements[np.argmax(fluxd)].key)
-
-
-def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, ax=0):
+def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, cmap=DEFAULT_CMAP, ax=0):
     """plot flux density at rotor pos for each element of NC/I7/ISA7 model
+
     Args:
-      isa: Isa7/NC object
+        isa: Isa7/NC object
+        ipos: position index
+        icur: cur index or last index if -1
+        ibeta: beta angle index or last index if -1
+
     """
     elements = [e for e in __elements_of_subreg(isa, subreg)]
     b = []
@@ -250,15 +233,16 @@ def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, ax=0):
     pos = isa.pos_el_fe_induction[ipos]*180/np.pi
     isa.rotate(isa.pos_el_fe_induction[ipos])
     _contour(ax, f'Flux Density T at {pos:.1f}° (max {np.max(fluxd):.1f} T)',
-             elements, fluxd)
+             elements, fluxd, '', cmap)
     logger.info("Max flux dens %f", np.max(fluxd))
     isa.rotate(0)
 
 
 def airgap_flux_density_pos(isa, ipos, icur=-1, ibeta=-1, ax=0):
     """plot flux density at rotor pos for each element of NC/I7/ISA7 model
+
     Args:
-      isa: Isa7/NC object
+        isa: Isa7/NC object
     """
     bx = []
     by = []
@@ -277,11 +261,12 @@ def airgap_flux_density_pos(isa, ipos, icur=-1, ibeta=-1, ax=0):
     logger.info("Max flux dens %f", np.max(np.abs(bx)))
 
 
-def loss_density(isa, subreg=[], ax=0):
+def loss_density(isa, subreg=[], cmap=DEFAULT_CMAP, ax=0):
     """plot loss density of NC/I7/ISA7 model
+
     Args:
-      isa: Isa7/NC object
+        isa: Isa7/NC object
     """
     elements = [e for e in __elements_of_subreg(isa, subreg)]
     lossd = np.array([e.loss_density*1e-3 for e in elements])
-    _contour(ax, 'Loss Density kW/m³', elements, lossd)
+    _contour(ax, 'Loss Density kW/m³', elements, lossd, '', cmap)

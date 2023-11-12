@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
-"""
-    femagtools.losscoeffs
-    ~~~~~~~~~~~~~~~~~~~~~
-
-    Fitting methods for loss coeffs
-
+"""Fitting methods for loss coeffs
 
 
 """
 import numpy as np
 import scipy.optimize as so
+import scipy.interpolate as ip
 
 
-def pfe_bertotti(f, B, ch, cw, ce, fo, Bo):
-    return (ch*(f/fo) + cw*(f/fo)**2)*(B/Bo)**2 + ce*(f/fo)**1.5*(B/Bo)**1.5
+def pfe_bertotti0(f, B, ch, cw, ce):
+    return (ch*f + cw*f**2)*B**2 + ce*f**1.5*B**1.5
+
+
+def pfe_bertotti1(f, B, ch, alpha, cw, ce):
+    return ch*f*B**alpha + cw*f**2*B**2 + ce*f**1.5*B**1.5
 
 
 def pfe_jordan(f, B, ch, fh, cw, fw, fb, fo, Bo):
@@ -85,27 +85,71 @@ def fitjordan(f, B, losses, Bo, fo):
         fbx, y, (1.0, 1.0, 1.0, 2.0, 1.0))
     return fitp
 
-def fitbertotti(f, B, losses, Bo, fo):
+
+def fit_bertotti0(f, B, losses):
     """fit coeffs of
-    losses(f,B)=(ch*(f/fo) + ch*(f/fo)**2)*(B/Bo)**2 + ce*(f/fo)**1.5)*(B/Bo)**1.5
+    losses(f,B)=(ch*f + ch*f**2)*B**2 + ce*f**1.5*B**1.5
     returns (ch, cw, ce)
     """
-    pfe = losses
-    z = []
-    for i, fx in enumerate(f):
-        if fx:
-            if isinstance(B[0], float):
-                z += [(fx, bx, y)
-                      for bx, y in zip(B, pfe[i])
-                      if y]
-            else:
-                z += [(fx, bx, y)
-                      for bx, y in zip(B[i], pfe[i])
-                      if y]
+    pb = [ip.CubicSpline(bi, pi)
+          for bi, pi in zip(B, losses)]
+    i0 = 0
+    if np.isclose(f[i0], 0):
+        i0 = 1
+    wy = [pb[i+i0](1.0)/f[i+i0]
+          for i in range(len(f[i0:]))]
+    csf = ip.CubicSpline(np.sqrt(f[i0:]), wy)
+    xx = np.linspace(0, np.sqrt(f[-1]), 10)
+    z = np.polyfit(xx, csf(xx), 2)
+    ch0 = z[2]
+    cw0 = z[0]
+    ce0 = z[1]
 
-    fbx = np.array(z).T[0:2]
-    y = np.array(z).T[2]
-    fitp, cov = so.curve_fit(lambda x, ch, cw, ce: pfe_bertotti(
-        x[0], x[1], ch, cw, ce, fo, Bo),
-        fbx, y, (1.0, 1.0, 1.0))
+    v = []
+    for k in range(len(losses[i0])):
+        for fx, bx, p in zip(f[i0:], B[i0:], losses[i0:]):
+            if k < len(p):
+                v.append((fx, bx[k], p[k]/fx))
+            else:
+                break
+
+    def wbert(f, b, ch, cw, cx):
+        return (ch + cw*f)*b**2 + cx*f**0.5*b**1.5
+
+    z = np.array(v).T
+    fbx = z[0:2]
+    y = z[2]
+    fitp, cov = so.curve_fit(
+        lambda x, ch, cw, ce: wbert(
+            x[0], x[1], ch, cw, ce),
+        fbx, y, (ch0, cw0, ce0))
+    return fitp
+
+def fit_bertotti1(f, B, losses):
+    """fit coeffs of
+    losses(f,B)=ch*f*B**alpha + ch*f**2*B**2 + ce*f**1.5*B**1.5
+    returns (ch, alpha, cw, ce)
+    """
+    v = []
+    i0 = 0
+    if np.isclose(f[0], 0):
+        i0 = 1
+    for k in range(len(losses[i0])):
+        for fx, bx, p in zip(f[i0:], B[i0:], losses[i0:]):
+            if k < len(p):
+                v.append((fx, bx[k], p[k]/fx))
+            else:
+                break
+
+    def wbert(f, b, ch, alpha, cw, cx):
+        return ch*b**alpha + cw*f*b**2 + cx*f**0.5*b**1.5
+
+    z = np.array(v).T
+    fbx = z[0:2]
+    y = z[2]
+
+    fitp, cov = so.curve_fit(
+            lambda x, ch, alpha, cw, cx: wbert(
+                x[0], x[1], ch, alpha, cw, cx),
+            fbx, y, (1e-3, 2, 1e-3, 1e-3))
     return fitp

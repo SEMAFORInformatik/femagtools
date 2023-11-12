@@ -2,6 +2,9 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.4.8
+	- Core loss calc method Bertotti added
+
 ## Release 1.4.5
         - TH properties in templates statorRotor3, magnetSector, magnetIron, magnetIronV
 	- netCDF version update for CVE-2023-38545

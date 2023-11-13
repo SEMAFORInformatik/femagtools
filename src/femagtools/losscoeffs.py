@@ -9,11 +9,7 @@ import scipy.interpolate as ip
 import logging
 
 
-def pfe_bertotti0(f, B, ch, cw, ce):
-    return (ch*f + cw*f**2)*B**2 + ce*f**1.5*B**1.5
-
-
-def pfe_bertotti1(f, B, ch, alpha, cw, ce):
+def pfe_bertotti(f, B, ch, alpha, cw, ce):
     return ch*f*B**alpha + cw*f**2*B**2 + ce*f**1.5*B**1.5
 
 
@@ -121,10 +117,10 @@ def fit_bertotti0(f, B, losses):
         j = len(y)
         if j > 2:
             # generate additional samples to improve LM fit
-            nsteps = int(np.ceil((f[j] - f[i0])/df))
+            nsteps = int(np.ceil((f[i0:][j-1] - f[i0])/df))
             fw = ip.CubicSpline(f[i0:j+1], y)
             bw = ip.CubicSpline(f[i0:j+1], bb)
-            fx = np.linspace(f[i0], f[j], nsteps)
+            fx = np.linspace(f[i0], f[i0:][j-1], nsteps)
             v.append(np.array((fx, bw(fx), fw(fx))).T)
 
     def wbert(f, b, ch, cw, cx):

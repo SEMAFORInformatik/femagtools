@@ -6,6 +6,7 @@
 import numpy as np
 import scipy.optimize as so
 import scipy.interpolate as ip
+import logging
 
 
 def pfe_bertotti0(f, B, ch, cw, ce):
@@ -106,17 +107,31 @@ def fit_bertotti0(f, B, losses):
     ce0 = z[1]
 
     v = []
+    df = 70
+    # collect losses and flux density along the frequency
     for k in range(len(losses[i0])):
+        y = []
+        bb = []
         for fx, bx, p in zip(f[i0:], B[i0:], losses[i0:]):
             if k < len(p):
-                v.append((fx, bx[k], p[k]/fx))
+                y.append(p[k]/fx)
+                bb.append(bx[k])
             else:
                 break
+        j = len(y)
+        if j > 2:
+            # generate additional samples to improve LM fit
+            nsteps = int(np.ceil((f[j] - f[i0])/df))
+            fw = ip.CubicSpline(f[i0:j+1], y)
+            bw = ip.CubicSpline(f[i0:j+1], bb)
+            fx = np.linspace(f[i0], f[j], nsteps)
+            v.append(np.array((fx, bw(fx), fw(fx))).T)
 
     def wbert(f, b, ch, cw, cx):
         return (ch + cw*f)*b**2 + cx*f**0.5*b**1.5
 
-    z = np.array(v).T
+
+    z = np.array([b for a in v for b in a]).T
     fbx = z[0:2]
     y = z[2]
     fitp, cov = so.curve_fit(
@@ -125,6 +140,7 @@ def fit_bertotti0(f, B, losses):
         fbx, y, (ch0, cw0, ce0))
     return fitp
 
+
 def fit_bertotti1(f, B, losses):
     """fit coeffs of
     losses(f,B)=ch*f*B**alpha + ch*f**2*B**2 + ce*f**1.5*B**1.5
@@ -132,19 +148,32 @@ def fit_bertotti1(f, B, losses):
     """
     v = []
     i0 = 0
-    if np.isclose(f[0], 0):
+    if np.isclose(f[i0], 0):
         i0 = 1
+    df = 70  # delta frequency
+    # collect losses and flux density along the frequency
     for k in range(len(losses[i0])):
+        y = []
+        bb = []
         for fx, bx, p in zip(f[i0:], B[i0:], losses[i0:]):
             if k < len(p):
-                v.append((fx, bx[k], p[k]/fx))
+                y.append(p[k]/fx)
+                bb.append(bx[k])
             else:
                 break
+        j = len(y)
+        if j > 2:
+            # generate additional samples to improve LM fit
+            nsteps = int(np.ceil((f[j] - f[i0])/df))
+            fw = ip.CubicSpline(f[i0:j+1], y)
+            bw = ip.CubicSpline(f[i0:j+1], bb)
+            fx = np.linspace(f[i0], f[j], nsteps)
+            v.append(np.array((fx, bw(fx), fw(fx))).T)
 
     def wbert(f, b, ch, alpha, cw, cx):
         return ch*b**alpha + cw*f*b**2 + cx*f**0.5*b**1.5
 
-    z = np.array(v).T
+    z = np.array([b for a in v for b in a]).T
     fbx = z[0:2]
     y = z[2]
 

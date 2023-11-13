@@ -128,7 +128,10 @@ class Reader(object):
             self.losses['fo'] = self.fo
 
             z = lc.fit_bertotti0(self.losses['f'], b_pfe, pfe)
-            self.bertotti = {'ch': z[0], 'cw': z[1], 'ce': z[2]}
+            if z.shape[0] == 4:
+                self.bertotti = {'ch': z[0], 'alpha': z[1], 'cw': z[2], 'ce': z[3]}
+            else:
+                self.bertotti = {'ch': z[0], 'alpha': 2.0, 'cw': z[1], 'ce': z[2]}
             logger.info("Bertotti loss coeffs %s", z)
 
             # must normalize pfe matrix:

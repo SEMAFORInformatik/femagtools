@@ -116,12 +116,16 @@ def fit_bertotti0(f, B, losses):
                 break
         j = len(y)
         if j > 2:
-            # generate additional samples to improve LM fit
-            nsteps = int(np.ceil((f[i0:][j-1] - f[i0])/df))
-            fw = ip.CubicSpline(f[i0:j+1], y)
-            bw = ip.CubicSpline(f[i0:j+1], bb)
-            fx = np.linspace(f[i0], f[i0:][j-1], nsteps)
-            v.append(np.array((fx, bw(fx), fw(fx))).T)
+            generate=False
+            if generate:
+                # generate additional samples to improve LM fit (experimental)
+                nsteps = int(np.ceil((f[i0:][j-1] - f[i0])/df))
+                fw = ip.CubicSpline(f[i0:j+1], y)
+                bw = ip.CubicSpline(f[i0:j+1], bb)
+                fx = np.linspace(f[i0], f[i0:][j-1], nsteps)
+                v.append(np.array((fx, bw(fx), fw(fx))).T)
+            else:
+                v.append(np.array((f[i0:j+1], bb, y)).T)
 
     def wbert(f, b, ch, cw, cx):
         return (ch + cw*f)*b**2 + cx*f**0.5*b**1.5
@@ -159,12 +163,7 @@ def fit_bertotti1(f, B, losses):
                 break
         j = len(y)
         if j > 2:
-            # generate additional samples to improve LM fit
-            nsteps = int(np.ceil((f[j] - f[i0])/df))
-            fw = ip.CubicSpline(f[i0:j+1], y)
-            bw = ip.CubicSpline(f[i0:j+1], bb)
-            fx = np.linspace(f[i0], f[j], nsteps)
-            v.append(np.array((fx, bw(fx), fw(fx))).T)
+            v.append(np.array((f[i0:j+1], bb, y)).T)
 
     def wbert(f, b, ch, alpha, cw, cx):
         return ch*b**alpha + cw*f*b**2 + cx*f**0.5*b**1.5

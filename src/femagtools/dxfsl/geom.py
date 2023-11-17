@@ -671,6 +671,8 @@ class Geometry(object):
         self.end_corners = []
         self.sym_part = 0
         self.sym_counterpart = 0
+        self.sym_slices = 0
+        self.sym_slice_angle = 0.0
         self.alfa = 0.0
         self.center = []
         self.min_radius = 0.0
@@ -795,6 +797,9 @@ class Geometry(object):
         logger.info("Start Corners...: %s", self.start_corners)
         logger.info("End Corners.....: %s", self.end_corners)
         logger.info("Edges...........: %s", self.num_edges)
+        if self.sym_slices > 0:
+            logger.info("Symmetry Slices.: %s", self.sym_slices)
+            logger.info("Slice Angle.....: %s", self.sym_slice_angle)
 
     def scale(self, factor):
         """scales all objects"""
@@ -1596,6 +1601,7 @@ class Geometry(object):
         """ return list of areas for each node and their neighbors
         """
         if len(self.area_list) > 0:
+            logger.debug("area list already available")
             # list already available
             return
 
@@ -2020,6 +2026,46 @@ class Geometry(object):
         else:
             return Geometry(new_elements, self.rtol, self.atol)
 
+    def copy_all_elements(self, alpha):
+        T = np.array(((np.cos(alpha), -np.sin(alpha)),
+                      (np.sin(alpha), np.cos(alpha))))
+
+        all_el = []
+        lines = 0
+        arcs = 0
+        circles = 0
+        el = None
+        for e in self.elements(Shape):
+            if isinstance(e, Line):
+                lines += 1
+                el = Line(Element(start=e.p1,
+                                  end=e.p2))
+            elif isinstance(e, Arc):
+                arcs += 1
+                alpha_start = alpha_line(e.center, e.p1)
+                alpha_end = alpha_line(e.center, e.p2)
+                el = Arc(Element(center=e.center,
+                                 radius=e.radius,
+                                 start_angle=alpha_start*180/np.pi,
+                                 end_angle=alpha_end*180/np.pi))
+            elif isinstance(e, Circle):
+                circles += 1
+                el = Circle(Element(center=e.center,
+                                    radius=e.radius))
+            else:
+                el = None
+            if el is not None:
+                el.transform(T, alpha, ndec)
+                all_el.append(el)
+
+        logger.debug("copy_all_elements: %s lines, %s arcs, %s circles",
+                     lines, arcs, circles)
+
+        return all_el
+
+    def new_clone(self, new_elements):
+        return Geometry(new_elements, self.rtol, self.atol)
+
     def is_new_angle(self, alpha_list, alpha):
         for a in alpha_list:
             if np.isclose(a, alpha):
@@ -2029,7 +2075,7 @@ class Geometry(object):
     def find_symmetry(self, center, radius,
                       startangle, endangle, sym_tolerance):
         arealist = self.list_of_areas()
-        logger.info(" - %s areas available", len(arealist))
+        logger.debug("begin of find_symmetry: - %s areas available", len(arealist))
         if len(arealist) == 0:
             return False
 
@@ -2054,7 +2100,7 @@ class Geometry(object):
 
         arealist_sym = [a for a in arealist_match if a.symmetry > 0]
         if not arealist_sym:
-            logger.info("No symmetry-axis found (delta == 0.0)")
+            logger.debug("end of find_symmetry: No symmetry-axis found (delta == 0.0)")
             return False
 
         ggt = arealist_sym[0].symmetry
@@ -2082,11 +2128,14 @@ class Geometry(object):
         arealist_srt.sort(reverse=True)
 
         if not arealist_srt:
+            logger.debug("end of find_symmetry: no sorted arealist")
             return False
 
         area = arealist_srt[0][2]
         sym = area.symmetry
         area.delta = 2*np.pi/sym
+        self.sym_slices = sym
+        self.sym_slice_angle = area.delta
 
         for alpha in area.symmetry_lines(startangle, endangle):
             p = point(center, radius+5, alpha)
@@ -3173,7 +3222,7 @@ class Geometry(object):
         windings = self.collect_windings()
         [a.set_type(0) for a in self.list_of_areas() if a.type == 12]
         windings_found = len(windings)
-        logger.info("%d windings found", windings_found)
+        logger.debug("%d windings found", windings_found)
 
         if windings_found > 1:
             windings_surface = [[w.surface, w] for w in windings]

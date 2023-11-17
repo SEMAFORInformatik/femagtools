@@ -144,6 +144,8 @@ class Shape(object):
         self.p1 = (n[0], n[1])
         n = T.dot(np.array((self.p2[0], self.p2[1])))
         self.p2 = (n[0], n[1])
+        if not self.n1:
+            return self
         n = T.dot(np.array((self.n1[0], self.n1[1])))
         self.n1 = (round(n[0], ndec),
                    round(n[1], ndec))

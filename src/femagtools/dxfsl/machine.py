@@ -14,7 +14,6 @@ from .functions import within_interval, part_of_circle
 from .functions import less, less_equal, greater, greater_equal
 logger = logging.getLogger('femagtools.geom')
 
-
 #############################
 #          Machine          #
 #############################
@@ -565,12 +564,77 @@ class Machine(object):
         return w
 
     def find_symmetry(self, sym_tolerance):
+        logger.debug("begin of find_symmetry")
         if self.radius <= 0.0:
             return False
 
-        return self.geom.find_symmetry(self.center, self.radius,
-                                       self.startangle, self.endangle,
-                                       sym_tolerance)
+        found = self.geom.find_symmetry(self.center, self.radius,
+                                        self.startangle, self.endangle,
+                                        sym_tolerance)
+        if self.part != 1:  # not full
+            logger.debug("end of find_symmetry: not full")
+            return found
+
+        if found:
+            angle = self.geom.sym_slice_angle
+            logger.debug(" - #1:  %s slices with angle %s",
+                         self.geom.sym_slices,
+                         angle)
+        else:
+            logger.debug(" - #1:  no symmetry found")
+            angle = np.pi/2
+
+        elist = self.geom.copy_all_elements(-angle)
+        logger.debug(" - %s elements copied", len(elist))
+        clone = self.geom.new_clone(elist)
+        clone.center = self.geom.center
+
+        f = clone.find_symmetry(self.center, self.radius,
+                                self.startangle, self.endangle,
+                                sym_tolerance)
+        if f:
+            logger.debug(" - #2:  %s slices with angle %s",
+                         clone.sym_slices,
+                         clone.sym_slice_angle)
+        else:
+            logger.debug(" - #2:  no symmetry found")
+
+        if not found:
+            if f:
+                self.geom = clone
+            logger.debug("end of find_symmetry: %s slices",
+                         self.geom.sym_slices)
+            return f
+
+        if f and clone.sym_slices > self.geom.sym_slices:
+            self.geom = clone
+            logger.debug("end of find_symmetry: %s slices",
+                         self.geom.sym_slices)
+            return True
+
+        elist = clone.copy_all_elements(-angle)
+        logger.debug(" - %s elements copied", len(elist))
+        clone = clone.new_clone(elist)
+        clone.center = self.geom.center
+
+        f = clone.find_symmetry(self.center, self.radius,
+                                self.startangle, self.endangle,
+                                sym_tolerance)
+        if f:
+            logger.debug(" - #3:  %s slices with angle %s",
+                         clone.sym_slices,
+                         clone.sym_slice_angle)
+        else:
+            logger.debug(" - #3:  no symmetry found")
+
+        if f and clone.sym_slices > self.geom.sym_slices:
+            self.geom = clone
+            logger.debug("end of find_symmetry: %s slices",
+                         self.geom.sym_slices)
+            return True
+
+        logger.debug("end of find_symmetry: full")
+        return found
 
     def get_symmetry_slice(self):
         logger.debug("begin get_symmetry_slice")

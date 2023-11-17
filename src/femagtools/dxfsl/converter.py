@@ -26,7 +26,7 @@ def symmetry_search(machine,
                     rows=1,
                     cols=1,
                     num=1):
-    logger.info("symmetry search for %s", kind)
+    logger.info("*** Begin symmetry search for %s ***", kind)
 
     machine.clear_cut_lines()
     if show_plots and debug_mode:

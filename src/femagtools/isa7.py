@@ -1047,9 +1047,9 @@ class Isa7(object):
                 spw = self.iron_loss_coefficients[se.mcvtype-1]['spec_weight']
                 fillfact = self.iron_loss_coefficients[se.mcvtype-1]['fillfactor']
                 for e in se.elements:
-                    b1 = fft(apos, self.el_fe_induction_1[e.key-1, :, icur, ibeta],
+                    b1 = fft(apos, self.el_fe_induction_1[e.key-1, 0:-1, icur, ibeta],
                              pmod=2)
-                    b2 = fft(apos, self.el_fe_induction_2[e.key-1, :, icur, ibeta],
+                    b2 = fft(apos, self.el_fe_induction_2[e.key-1, 0:-1, icur, ibeta],
                              pmod=2)
                     blen = max(len(b1['nue']), len(b2['nue']))
                     if len(b1['nue']) < blen:

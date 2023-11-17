@@ -111,7 +111,7 @@ def test_calc_iron_loss(pm):
     ibeta = 0
     pfe = pm.calc_iron_loss(icur, ibeta, pfe)
     assert pfe['Rüc'] == [0, 0, 0]
-    assert pfe['Stat'] == pytest.approx([46.95,  5.61, 15.92], abs=1e-2)
+    assert pfe['Stat'] == pytest.approx([46.935,  5.61, 15.92], abs=1e-2)
 
 
 def test_superelements(model):

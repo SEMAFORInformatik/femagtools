@@ -236,11 +236,13 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             rb = m.characteristics(-T, max(r['n']), u1, nsamples=nsamples,
                                    with_mtpv=with_mtpv, with_mtpa=with_mtpa,
                                    with_pmconst=with_pmconst, with_tmech=with_tmech)  # braking mode
-    ntmesh = _generate_mesh(r['n'], r['T'],
-                            rb['n'], rb['T'], npoints)
-
-    if kwargs.get('rect_grid', 0):
-        ntmesh = rectangular_grid(ntmesh)
+    
+    if kwargs.get('mesh_func', 0):
+        ntmesh = kwargs['mesh_func'](r['n'], r['T'],
+                                    rb['n'], rb['T'], npoints)
+    else: 
+        ntmesh = _generate_mesh(r['n'], r['T'],
+                                rb['n'], rb['T'], npoints)
 
     logger.info("total speed,torque samples %d", ntmesh.shape[1])
     if isinstance(m, (PmRelMachine, SynchronousMachine)):

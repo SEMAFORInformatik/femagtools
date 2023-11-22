@@ -9,6 +9,7 @@
 """
 from __future__ import print_function
 import numpy as np
+import sys
 import logging
 from .functions import less_equal, greater_equal
 from .functions import distance, line_m, line_n
@@ -383,47 +384,26 @@ class Circle(Shape):
         return (self.center[0] + self.radius, self.center[1])
 
     def overlapping_shape(self, e, rtol=1e-03, atol=1e-03):
-        if not isinstance(e, Arc):  # Arc is always a Circle
+        if not (isinstance(e, Arc) or isinstance(e, Circle)):
+            # end overlapping_shape: Circle (not Arc or Circle)
             return None
+
         if not (points_are_close(self.center, e.center) and
                 np.isclose(self.radius, e.radius)):
+            # end overlapping_shape: Circle (radius/center are not equal)
             return None
 
-        if isinstance(e, Circle):
-            logger.debug("OVERLAPPING CIRCLES #1")
+        # overlapping candidates
+        if not isinstance(e, Arc):  # it's a circle
+            # end overlapping_shape: Circle (OVERLAPPING CIRCLES)
             return [e]  # The same circle twice
 
-        logger.debug("OVERLAPPING CIRCLE AND ARC2")
-        half_up = Arc(Element(center=self.center, radius=self.radius,
-                              start_angle=0, end_angle=180))
-        half_left = Arc(Element(center=self.center, radius=self.radius,
-                                start_angle=90, end_angle=270))
-
+        # Replace CIRCLE by two Arcs
         points = []
         points.append(e.p1)
         points.append(e.p2)
-        p1_is_up = half_up.is_point_inside(e.p1, rtol, atol)
-        p2_is_up = half_up.is_point_inside(e.p2, rtol, atol)
-        p1_is_left = half_left.is_point_inside(e.p1, rtol, atol)
-        p2_is_left = half_left.is_point_inside(e.p2, rtol, atol)
-
-        if p1_is_up:
-            if p2_is_up:
-                # down
-                points.append((self.center[0], self.center[1] - 10.0))
-            else:
-                pass
-        else:
-            if not p2_is_up:
-                # up
-                points.append((self.center[0], self.center[1] + 10.0))
-            else:
-                pass
-
-            points.append(e.p1)
-            return self.create_arcs(points)
-
-        return None
+        points.append(e.p1)
+        return self.create_arcs(points)
 
     def create_arcs(self, points):
         if not points:
@@ -434,7 +414,8 @@ class Circle(Shape):
         for p2 in points[1:]:
             alpha1 = alpha_line(self.center, p1)
             alpha2 = alpha_line(self.center, p2)
-            arc = Arc(Element(center=self.center, radius=self.radius,
+            arc = Arc(Element(center=self.center,
+                              radius=self.radius,
                               start_angle=alpha1*180/np.pi,
                               end_angle=alpha2*180/np.pi))
             pieces.append(arc)
@@ -695,49 +676,59 @@ class Arc(Circle):
 
         if not (points_are_close(self.center, e.center) and
                 np.isclose(self.radius, e.radius)):
-            return None
-        if points_are_close(self.p2, e.p1):
-            return None
-        if points_are_close(self.p1, e.p2):
+            # Arc (radius/center are not equal)
             return None
 
         points = []
         if self.is_point_inside(e.p1, rtol, atol):
-            points.append(self.p1)
             if self.is_point_inside(e.p2, rtol, atol):
-                points.append(e.p2)
-                points.append(self.p2)
-            else:
-                points.append(self.p2)
-                if not points_are_close(self.p2, e.p2):
+                if e.is_point_inside(self.p2, rtol, atol):
+                    # a Circle
+                    points.append(e.p1)
+                    points.append(self.p2)
+                    points.append(self.p1)
                     points.append(e.p2)
-            logger.debug("OVERLAP ARC #1")
+                    points.append(e.p1)
+                else:
+                    points.append(self.p1)
+                    points.append(e.p1)
+                    points.append(e.p2)
+                    points.append(self.p2)
+            else:
+                points.append(self.p1)
+                points.append(e.p1)
+                points.append(self.p2)
+                if e.is_point_inside(self.p2, rtol, atol):
+                    points.append(e.p2)
 
         elif self.is_point_inside(e.p2, rtol, atol):
             points.append(e.p1)
             points.append(self.p1)
             points.append(e.p2)
             points.append(self.p2)
-            logger.debug("OVERLAP ARC #2")
 
         elif e.is_point_inside(self.p1, rtol, atol):
             points.append(e.p1)
             points.append(self.p1)
+            points.append(self.p2)
             if e.is_point_inside(self.p2, rtol, atol):
-                points.append(self.p2)
                 points.append(e.p2)
-            else:
-                if not points_are_close(self.p2, e.p2):
-                    points.append(e.p2)
-                points.append(self.p2)
-            logger.debug("OVERLAP ARC #3")
 
         elif e.is_point_inside(self.p2, rtol, atol):
-            points.append(self.p1)
+            if not points_are_close(self.p1, e.p1):
+                logger.error("FATAL ERROR in overlapping_shape() of Arc")
+                raise ValueError('FATAL ERROR in overlapping_shape() of Arc')
             points.append(e.p1)
             points.append(self.p2)
             points.append(e.p2)
-            logger.debug("OVERLAP ARC #4")
+
+        elif points_are_close(self.p1, e.p1) and points_are_close(self.p2, e.p2):
+            # self and e are identical
+            return [e]
+
+        else:
+            # no overlapping elements
+            return None
 
         return self.create_arcs(points)
 

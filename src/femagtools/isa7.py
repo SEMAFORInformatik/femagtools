@@ -29,9 +29,9 @@ def jordanpfe(Bxnu, Bynu, fnu, losscoeffs):
     hi = fnu/basfrq
     hch = hi**hyscoef
     hcw = hi**edycoef
-    ph = kh*ch*hch*b2
-    pw = cw*hcw*b2
-    return ph, pw, (0,)
+    phy = kh*ch*hch*b2
+    pec = cw*hcw*b2
+    return phy, pec, (0,)
 
 def bertotti_pfe(Bxnu, Bynu, fnu, losscoeffs):
     """bertotti core loss formula
@@ -57,11 +57,11 @@ def bertotti_pfe(Bxnu, Bynu, fnu, losscoeffs):
     hi = fnu/basfrq
 
     # classic bertotti formula
-    ph = ch*hi*b
-    pw = cw*(hi**2)*(b**2)
-    pe = ce*(hi**1.5)*(b**1.5)
+    phy = ch*hi*b
+    pec = cw*(hi**2)*(b**2)
+    pex = ce*(hi**1.5)*(b**1.5)
 
-    return ph, pw, pe
+    return phy, pec, pex
 
 class ElType(Enum):
     LinearTriangle = 1
@@ -1061,12 +1061,12 @@ class Isa7(object):
                             zip(b1['nue'], b2['nue']))
                          if b[0] > bmin or b[1] > bmin]).T
                     if bnxy.size > 0:
-                        ph, pw, pe = pfefun(
+                        phy, pec, pex = pfefun(
                             bnxy[1]/fillfact, bnxy[2]/fillfact,
                             np.array([n*nue for nue in bnxy[0]]),
                             self.iron_loss_coefficients[se.mcvtype-1])
                         pl = [1e3*spw*e.area*l
-                              for l in (sum(pw), sum(ph), sum(pe))]
+                              for l in (sum(phy), sum(pec), sum(pex))]
                         losses.append(pl)
                     else:
                         logger.debug("Empty %s, %s", b1, b2)

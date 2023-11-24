@@ -102,16 +102,16 @@ def test_calc_iron_loss(pm):
         f = fnu/basfrq
         hch = f
         hcw = f**2
-        ph = f*b2
-        pw = f**2*b2**2
-        pexc = f**1.5*b2**1.5
-        return ph, pw, pexc
+        phy = f*b2
+        pec = f**2*b2**2
+        pex = f**1.5*b2**1.5
+        return phy, pec, pex
 
     icur = 0
     ibeta = 0
     pfe = pm.calc_iron_loss(icur, ibeta, pfe)
     assert pfe['Rüc'] == [0, 0, 0]
-    assert pfe['Stat'] == pytest.approx([46.935,  5.61, 15.92], abs=1e-2)
+    assert pfe['Stat'] == pytest.approx([5.61, 46.935, 15.92], abs=1e-2)
 
 
 def test_superelements(model):

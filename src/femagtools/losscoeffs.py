@@ -83,10 +83,16 @@ def fitjordan(f, B, losses, Bo, fo):
     return fitp
 
 
-def fit_bertotti0(f, B, losses):
+def fit_bertotti0(f, B, losses, generate=False):
     """fit coeffs of
     losses(f,B)=(ch*f + ch*f**2)*B**2 + ce*f**1.5*B**1.5
     returns (ch, cw, ce)
+
+    Args:
+        f: list of n strictly increasing frequency values
+        B: list of list of induction values (nxm)
+        losses: list of list of fe loss values (nxm)
+        generate: generates additional frequency samples if True
     """
     pb = [ip.CubicSpline(bi, pi)
           for bi, pi in zip(B, losses)]
@@ -116,7 +122,6 @@ def fit_bertotti0(f, B, losses):
                 break
         j = len(y)
         if j > 2:
-            generate=False
             if generate:
                 # generate additional samples to improve LM fit (experimental)
                 nsteps = int(np.ceil((f[i0:][j-1] - f[i0])/df))
@@ -125,7 +130,8 @@ def fit_bertotti0(f, B, losses):
                 fx = np.linspace(f[i0], f[i0:][j-1], nsteps)
                 v.append(np.array((fx, bw(fx), fw(fx))).T)
             else:
-                v.append(np.array((f[i0:j+1], bb, y)).T)
+                v.append(np.array((f[i0:j+i0], bb, y)).T.tolist())
+
 
     def wbert(f, b, ch, cw, cx):
         return (ch + cw*f)*b**2 + cx*f**0.5*b**1.5

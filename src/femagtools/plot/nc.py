@@ -64,7 +64,7 @@ def mesh(isa, with_axis=False, ax=0):
 
 
 def _contour(ax, title, elements, values, label='',
-             cmap=DEFAULT_CMAP, isa=None):
+             cmap=DEFAULT_CMAP, isa=None, alpha=1):
     from matplotlib.patches import Polygon
     from matplotlib.collections import PatchCollection
     if ax == 0:
@@ -80,8 +80,8 @@ def _contour(ax, title, elements, values, label='',
     valid_values = np.logical_not(np.isnan(values))
     patches = np.array([Polygon([v.xy for v in e.vertices])
                        for e in elements])[valid_values]
-    p = PatchCollection(patches, alpha=1.0, match_original=False,
-                        cmap=cmap)
+    p = PatchCollection(patches, match_original=False,
+                        cmap=cmap, alpha=alpha)
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
     cb = plt.colorbar(p, shrink=0.9)
@@ -166,8 +166,8 @@ def flux_density(isa, subreg=[], cmap=DEFAULT_CMAP, ax=0):
 
 
 def flux_density_eccentricity(isa, subreg=[], icur=-1, ibeta=-1,
-                              cmap='YlOrRd', ax=0):
-    """plot eccentricity for flux density in lamination
+                              cmap='plasma_r', ax=0, alpha=0.75):
+    """plot eccentricity of flux density in lamination
 
     Args:
         isa: Isa7/NC object
@@ -200,17 +200,13 @@ def flux_density_eccentricity(isa, subreg=[], icur=-1, ibeta=-1,
                     ecc.append(1)
                 else:
                     kmax = np.argmax(np.linalg.norm((x, y), axis=0))
-                    alpha = -np.arctan2(y[kmax], x[kmax])
-                    T = np.array(((np.cos(alpha), -np.sin(alpha)),
-                                  (np.sin(alpha), np.cos(alpha))))
-                    br, bt = T.dot((x, y))
-                    bmax = np.max(br), np.max(bt)
-                    a = np.max(bmax)
-                    b = np.min(bmax)
+                    kmin = np.argmin(np.linalg.norm((x, y), axis=0))
+                    a = np.linalg.norm((x[kmax], y[kmax]))
+                    b = np.linalg.norm((x[kmin], y[kmin]))
                     ecc.append(np.sqrt(1-b**2/a**2))
 
     _contour(ax, 'Eccentricity of Flux Density',
-                 elements, ecc, '', cmap)
+                 elements, ecc, '', cmap, alpha=alpha)
 
 
 def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, cmap=DEFAULT_CMAP, ax=0):

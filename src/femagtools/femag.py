@@ -671,7 +671,10 @@ class ZmqFemag(BaseFemag):
         logger.debug("done")
 
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except AttributeError:
+            pass
         logger.debug("Destructor ZmqFemag")
 
     def stopFemag(self):
@@ -749,7 +752,7 @@ class ZmqFemag(BaseFemag):
                 if again >= max_num_again:
                     break
                 continue
-        logger.info("oops")
+        logger.info("send_request failed %s", errmsg.encode())
         return [b'{"status":"error", "message":"' + errmsg.encode() + b'"}']
 
     def send_fsl(self, fsl, timeout=None):

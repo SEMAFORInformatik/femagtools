@@ -67,7 +67,11 @@ class PmRelMachine(object):
         self.kfric_b = 1
         self.rotor_mass = 0
         self.kth1 = KTH
-
+        self.bertotti = False
+        self.losskeys = ['styoke_hyst', 'stteeth_hyst',
+                        'styoke_eddy', 'stteeth_eddy',
+                        'rotor_hyst', 'rotor_eddy',
+                        'magnet']
         # overwritable function: skin_resistance(r0, w, tcu, kth)
         # Arguments:
         # r0: (float) dc resistance in Ohm at 20°C
@@ -93,11 +97,7 @@ class PmRelMachine(object):
                       'rotor_eddy': 2.0}
         def nolosses(x, y):
             return 0
-        self._losses = {k: nolosses for k in (
-            'styoke_hyst', 'stteeth_hyst',
-            'styoke_eddy', 'stteeth_eddy',
-            'rotor_hyst', 'rotor_eddy',
-            'magnet')}
+        self._losses = {k: nolosses for k in tuple(self.losskeys)}
 
     def pfric(self, n):
         """friction and windage losses"""
@@ -613,6 +613,7 @@ class PmRelMachine(object):
         self.fo = pfe['speed']*self.p
         ef = pfe.get('ef', [2.0, 2.0])
         hf = pfe.get('hf', [1.0, 1.0])
+        cf = pfe.get('cf', [1.5, 1.5]) # excess losses
         self.plexp = {'styoke_hyst': hf[0],
                       'stteeth_hyst': hf[0],
                       'styoke_eddy': ef[0],
@@ -620,6 +621,10 @@ class PmRelMachine(object):
                       'rotor_hyst': hf[1],
                       'rotor_eddy': ef[1]}
         #                          'magnet'):
+        if 'styoke_exc' in pfe:
+            self.plexp.update({'styoke_exc': cf[0], 
+                               'stteeth_exc':cf[0],
+                               'rotor_exc': cf[1]}) 
 
     def betai1_plcu(self, i1, w1=0):
         return self.m*self.rstat(w1)*i1**2
@@ -1084,14 +1089,15 @@ class PmRelMachineLdq(PmRelMachine):
             kx = len(beta)-1
         try:
             pfe = kwargs['losses']
+            if 'styoke_exc' in pfe: 
+                self.bertotti = True
+                self.losskeys += ['styoke_exc', 
+                                  'stteeth_exc', 
+                                  'rotor_exc']
             self._set_losspar(pfe)
             self._losses = {k: ip.RectBivariateSpline(
                 beta, i1, np.array(pfe[k]),
-                kx=kx, ky=ky).ev for k in (
-                    'styoke_hyst', 'stteeth_hyst',
-                    'styoke_eddy', 'stteeth_eddy',
-                    'rotor_hyst', 'rotor_eddy',
-                    'magnet')}
+                kx=kx, ky=ky).ev for k in tuple(self.losskeys)}
         except KeyError as e:
             logger.warning("loss map missing: %s", e)
             pass
@@ -1177,18 +1183,24 @@ class PmRelMachineLdq(PmRelMachine):
         return iqd(self.betarange[0], i1)
 
     def betai1_plfe1(self, beta, i1, f1):
+        stator_losskeys = ['styoke_eddy', 'styoke_hyst',
+                            'stteeth_eddy', 'stteeth_hyst']
+        if self.bertotti: 
+            stator_losskeys += ['styoke_exc', 'stteeth_exc']
         return np.sum([
             self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k] for
-            k in ('styoke_eddy', 'styoke_hyst',
-                  'stteeth_eddy', 'stteeth_hyst')], axis=0)
+            k in tuple(stator_losskeys)], axis=0)
 
     def iqd_plfe1(self, iq, id, f1):
         return self.betai1_plfe1(*betai1(iq, id), f1)
 
     def betai1_plfe2(self, beta, i1, f1):
+        rotor_losskeys = ['rotor_eddy', 'rotor_hyst']
+        if self.bertotti: 
+            rotor_losskeys += ['rotor_exc']
         return np.sum([
             self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k] for
-            k in ('rotor_eddy', 'rotor_hyst',)], axis=0)
+            k in tuple(rotor_losskeys)], axis=0)
 
     def iqd_plfe2(self, iq, id, f1):
         return self.betai1_plfe2(*betai1(iq, id), f1)

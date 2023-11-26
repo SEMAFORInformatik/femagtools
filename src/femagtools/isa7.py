@@ -13,8 +13,14 @@ import numpy as np
 logger = logging.getLogger('femagtools.isa7')
 
 
-def jordanpfe(Bxnu, Bynu, fnu, losscoeffs):
+def jordanpfe(Bxnu, Bynu, fnu, losscoeffs, axr):
     """example of custom core loss calculation
+    Args:
+        Bxnu, Bynu: float arrays of flux density
+        fnu: float arrays of frequency
+        losscoeffs: dict with keys
+              base_frequency, base_induction,
+              ch, cw, ch_freq_exp, cw_freq_exp, cw_ind_exp
     """
     basfrq = losscoeffs['base_frequency']
     basind = losscoeffs['base_induction']
@@ -23,17 +29,13 @@ def jordanpfe(Bxnu, Bynu, fnu, losscoeffs):
     hyscoef = losscoeffs['ch_freq_exp']
     edycoef = losscoeffs['cw_freq_exp']
     indcoef = losscoeffs['cw_ind_exp']
-    kh = 1
-    b21 = np.linalg.norm((Bxnu, Bynu), axis=0)
-    b2 = (b21/basind)**indcoef
-    hi = fnu/basfrq
-    hch = hi**hyscoef
-    hcw = hi**edycoef
-    phy = kh*ch*hch*b2
-    pec = cw*hcw*b2
+    br = (np.sqrt(Bxnu**2+Bynu**2)/basind)**indcoef
+    fr = fnu/basfrq
+    hch, hcw = fr**hyscoef, fr**edycoef
+    phy, pec = ch*hch*br, cw*hcw*br
     return phy, pec, (0,)
 
-def bertotti_pfe(Bxnu, Bynu, fnu, losscoeffs):
+def bertotti_pfe(Bxnu, Bynu, fnu, losscoeffs, axr):
     """bertotti core loss formula
     """
     basfrq = losscoeffs['base_frequency']
@@ -1016,6 +1018,28 @@ class Isa7(object):
         return [sr.name for sr in self.subregions
                 if sr.superelements[0].mcvtype or sr.superelements[0].elements[0].is_lamination()]
 
+    def _axis_ratio(self, apos, br, bt):
+        from .utils import fft
+        pulsating = 0
+        brtmax = np.max(br-np.mean(br)), np.max(bt-np.mean(bt))
+        if np.all(np.isclose(brtmax, 0)) or np.any(np.isclose(brtmax, 0)):
+            return pulsating
+
+        br0 = fft(apos, br-np.mean(br))
+        x = br0['a']*np.cos(2*np.pi*apos/br0['T0']+br0['alfa0'])
+        bt0 = fft(apos, bt-np.mean(br))
+        y = bt0['a']*np.cos(2*np.pi*apos/bt0['T0']+bt0['alfa0'])
+        if (br0['a'] > br0['nue'][self.pole_pairs]
+            or bt0['a'] > bt0['nue'][self.pole_pairs]):
+            return pulsating
+
+        kmax = np.argmax(np.linalg.norm((x, y), axis=0))
+        kmin = np.argmin(np.linalg.norm((x, y), axis=0))
+        a = np.linalg.norm((x[kmax], y[kmax]))
+        b = np.linalg.norm((x[kmin], y[kmin]))
+        return b/a  # ecc: np.sqrt(1-b**2/a**2))
+
+
     def calc_iron_loss(self, icur: int, ibeta: int, pfefun, bmin=0.1) -> dict:
         """ calculate iron loss using last simulation results
 
@@ -1026,19 +1050,28 @@ class Isa7(object):
             Bxnu, Bynu (1d array): flux density values in T
             fnu (1d array): frequency values in Hz
             losscoeffs (dict): material properties
+            axr: float (optional)
           bmin (float): lower limit of flux density amplitudes
 
         Returns:
           loss values name of subregion (string),
-            eddy current loss, hysteresis loss, exc loss
+            hysteresis loss, eddy current loss, exc loss
 
         """
         from .utils import fft
-        pos = self.pos_el_fe_induction
-        apos = np.array(pos)/np.pi*180
+        from inspect import signature
+        # check if axis ratio is needed
+        need_axratio = len(signature(pfefun).parameters) > 4
+        # eliminate double values at end
+        # TODO: adapt to linear machines
 
+        pos = [p
+               for p in self.pos_el_fe_induction
+               if p < 2*np.pi/self.pole_pairs] + [2*np.pi/self.pole_pairs]
+        apos = np.array(pos)/np.pi*180
+        i = len(pos)
         sreg = {}
-        n = self.speed/60
+        f1 = self.speed/60
         scf = self.scale_factor()
         for sr in [self.get_subregion(sname)
                    for sname in self.get_iron_subregions()]:
@@ -1047,10 +1080,12 @@ class Isa7(object):
                 spw = self.iron_loss_coefficients[se.mcvtype-1]['spec_weight']
                 fillfact = self.iron_loss_coefficients[se.mcvtype-1]['fillfactor']
                 for e in se.elements:
-                    b1 = fft(apos, self.el_fe_induction_1[e.key-1, 0:-1, icur, ibeta],
-                             pmod=2)
-                    b2 = fft(apos, self.el_fe_induction_2[e.key-1, 0:-1, icur, ibeta],
-                             pmod=2)
+                    br = self.el_fe_induction_1[e.key-1, 0:i+1, icur, ibeta]
+                    bt = self.el_fe_induction_2[e.key-1, 0:i+1, icur, ibeta]
+                    b1 = fft(apos, br, pmod=2)
+                    b2 = fft(apos, bt, pmod=2)
+                    if need_axratio:
+                        axr = self._axis_ratio(apos, br, bt)
                     blen = max(len(b1['nue']), len(b2['nue']))
                     if len(b1['nue']) < blen:
                         b1['nue'] = b1['nue'] + [0]*(blen-len(b1['nue']))
@@ -1061,10 +1096,16 @@ class Isa7(object):
                             zip(b1['nue'], b2['nue']))
                          if b[0] > bmin or b[1] > bmin]).T
                     if bnxy.size > 0:
-                        phy, pec, pex = pfefun(
-                            bnxy[1]/fillfact, bnxy[2]/fillfact,
-                            np.array([n*nue for nue in bnxy[0]]),
-                            self.iron_loss_coefficients[se.mcvtype-1])
+                        fnu = np.array([f1*nue for nue in bnxy[0]])
+                        if need_axratio:
+                            phy, pec, pex = pfefun(
+                                bnxy[1]/fillfact, bnxy[2]/fillfact, fnu,
+                            self.iron_loss_coefficients[se.mcvtype-1], axr)
+                        else:
+                            phy, pec, pex = pfefun(
+                                bnxy[1]/fillfact, bnxy[2]/fillfact, fnu,
+                                self.iron_loss_coefficients[se.mcvtype-1])
+
                         pl = [1e3*spw*e.area*l
                               for l in (sum(phy), sum(pec), sum(pex))]
                         losses.append(pl)

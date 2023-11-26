@@ -70,7 +70,8 @@ def _contour(ax, title, elements, values, label='',
     if ax == 0:
         ax = plt.gca()
     ax.set_aspect('equal')
-    ax.set_title(title)
+    if title:
+        ax.set_title(title)
     if isa:
         for se in isa.superelements:
             ax.add_patch(Polygon([n.xy
@@ -85,6 +86,7 @@ def _contour(ax, title, elements, values, label='',
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
     cb = plt.colorbar(p, shrink=0.9)
+
     for patch in np.array([Polygon([v.xy for v in e.vertices],
                                    fc='white', alpha=1.0)
                            for e in elements])[np.isnan(values)]:
@@ -167,7 +169,7 @@ def flux_density(isa, subreg=[], cmap=DEFAULT_CMAP, ax=0):
 
 def flux_density_eccentricity(isa, subreg=[], icur=-1, ibeta=-1,
                               cmap='plasma_r', ax=0, alpha=0.75):
-    """plot eccentricity of flux density in lamination
+    """plot eccentricity (axis ratio) of flux density in lamination
 
     Args:
         isa: Isa7/NC object
@@ -178,35 +180,41 @@ def flux_density_eccentricity(isa, subreg=[], icur=-1, ibeta=-1,
     from ..utils import fft
     elements = []
     ecc = []
-    pos = isa.pos_el_fe_induction
+    pulsating = 0
+    # eliminate double values at end
+    # TODO: adapt to linear machines
+    pos = [p
+           for p in isa.pos_el_fe_induction
+           if p < 2*np.pi/isa.pole_pairs] + [2*np.pi/isa.pole_pairs]
+    i = len(pos)
     apos = np.array(pos)/np.pi*180
     for e in __elements_of_subreg(isa, subreg):
         if e.is_lamination():
-            br = isa.el_fe_induction_1[e.key-1, :, icur, ibeta][:-1]
-            bt = isa.el_fe_induction_2[e.key-1, :, icur, ibeta][:-1]
+            br = isa.el_fe_induction_1[e.key-1, :i+1, icur, ibeta]
+            bt = isa.el_fe_induction_2[e.key-1, :i+1, icur, ibeta]
             brtmax = np.max(br-np.mean(br)), np.max(bt-np.mean(bt))
             if np.all(np.isclose(brtmax, 0)):
                 continue
             elements.append(e)
             if np.any(np.isclose(brtmax, 0)):
-                ecc.append(1)
+                ecc.append(pulsating)
             else:
-                br0 = fft(apos[:-1], br-np.mean(br))
-                x = br0['a']*np.cos(2*np.pi*apos[:-1]/br0['T0']+br0['alfa0'])
-                bt0 = fft(apos[:-1], bt-np.mean(bt))
-                y = bt0['a']*np.cos(2*np.pi*apos[:-1]/bt0['T0']+bt0['alfa0'])
+                br0 = fft(apos, br-np.mean(br))
+                x = br0['a']*np.cos(2*np.pi*apos/br0['T0']+br0['alfa0'])
+                bt0 = fft(apos, bt-np.mean(bt))
+                y = bt0['a']*np.cos(2*np.pi*apos/bt0['T0']+bt0['alfa0'])
                 if (br0['a'] > br0['nue'][isa.pole_pairs]
                     or bt0['a'] > bt0['nue'][isa.pole_pairs]):
-                    ecc.append(1)
+                    ecc.append(pulsating)
                 else:
                     kmax = np.argmax(np.linalg.norm((x, y), axis=0))
                     kmin = np.argmin(np.linalg.norm((x, y), axis=0))
                     a = np.linalg.norm((x[kmax], y[kmax]))
                     b = np.linalg.norm((x[kmin], y[kmin]))
-                    ecc.append(np.sqrt(1-b**2/a**2))
+                    ecc.append(b/a) #np.sqrt(1-b**2/a**2))
 
-    _contour(ax, 'Eccentricity of Flux Density',
-                 elements, ecc, '', cmap, alpha=alpha)
+    _contour(ax, '', #'Eccentricity of Flux Density',
+                 elements, ecc, 'axis ratio', cmap, alpha=alpha)
 
 
 def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, cmap=DEFAULT_CMAP, ax=0):

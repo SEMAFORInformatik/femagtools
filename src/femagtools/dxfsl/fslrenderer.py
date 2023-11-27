@@ -331,11 +331,7 @@ class FslRenderer(object):
                 geom.mirror_corners[0][0],   # min x2
                 geom.mirror_corners[0][1]))  # min y2
 
-        num_parts = machine.get_num_parts()
-        if num_parts == parts:
-            self.content.append(u'parts_gen = {}'.format(geom.num_variable()))
-        else:
-            self.content.append(u'parts_gen = {}/2'.format(geom.num_variable()))
+        self.content.append(u'parts_gen = {}'.format(geom.num_variable()))
 
         # angle after mirroring
         self.content.append(u'alfa = {}\n'.format(geom.get_alfa()))

@@ -19,9 +19,9 @@ logger = logging.getLogger('femagtools.geom')
 #############################
 
 class Machine(object):
-    def __init__(self, geom, center, radius, startangle=0, endangle=0):
+    def __init__(self, geom, radius=0.0, startangle=0.0, endangle=0.0):
         self.geom = geom
-        self.center = center
+        self.center = self.geom.center
         self.radius = radius
         self.startangle = startangle
         self.endangle = endangle
@@ -33,8 +33,9 @@ class Machine(object):
         self.airgaps = []
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
-        self.geom.center = center
         self.previous_machine = None
+        if not self.center:
+            raise ValueError("FATAL ERROR: no center in Geometry")
 
     def __str__(self):
         return "Machine\n" + \
@@ -105,7 +106,7 @@ class Machine(object):
     def set_center(self, x, y):
         self.center[0] = x
         self.center[1] = y
-        self.geom.center = [x, y]
+        self.geom.set_center(self.center)
 
     def set_radius(self, radius):
         self.radius = radius
@@ -143,8 +144,7 @@ class Machine(object):
         if r_out == 0.0:
             radius_out = self.radius + 10
 
-        clone = self.geom.copy_shape(self.center,
-                                     self.radius,
+        clone = self.geom.copy_shape(self.radius,
                                      0.0,
                                      2*np.pi,
                                      radius_in,
@@ -156,46 +156,51 @@ class Machine(object):
         if r_out == 0.0:
             r_out = self.radius
 
-        m = Machine(clone, self.center, r_out,
-                    self.startangle, self.endangle)
+        m = Machine(clone,
+                    radius=r_out,
+                    startangle=self.startangle,
+                    endangle=self.endangle)
 
         m.mirror_geom = self.mirror_geom
         m.part = self.part
 
-        m.set_minmax_radius()
         m.set_alfa_and_corners()
         m.set_kind(self.geom.kind)
         return m
 
     def copy(self, startangle, endangle,
-             airgap=False, inside=True, split=False):
+             airgap=False, inside=True, split=False,
+             delete_appendices=False):
         if airgap and self.airgap_radius > 0.0:
             if inside:
                 if self.airgap2_radius > 0.0:
                     new_radius = min(self.airgap_radius, self.airgap2_radius)
                 else:
                     new_radius = self.airgap_radius
-                clone = self.geom.copy_shape(self.center,
-                                             self.radius,
+                clone = self.geom.copy_shape(self.radius,
                                              startangle, endangle,
-                                             0.0, new_radius, split)
+                                             0.0, new_radius,
+                                             split=split,
+                                             delete_appendices=delete_appendices)
             else:
                 new_radius = self.radius
                 gap_radius = max(self.airgap_radius, self.airgap2_radius)
-                clone = self.geom.copy_shape(self.center,
-                                             self.radius,
+                clone = self.geom.copy_shape(self.radius,
                                              startangle, endangle,
                                              gap_radius, self.radius+9999,
-                                             split)
+                                             split=split,
+                                             delete_appendices=delete_appendices)
 
             circ = Circle(Element(center=self.center,
                                   radius=self.airgap_radius))
             clone.add_cut_line(circ)
         else:
             new_radius = self.radius
-            clone = self.geom.copy_shape(self.center, self.radius,
+            clone = self.geom.copy_shape(self.radius,
                                          startangle, endangle, 0.0,
-                                         self.radius+9999, split)
+                                         self.radius+9999,
+                                         split=split,
+                                         delete_appendices=delete_appendices)
 
         if not np.isclose(normalise_angle(startangle),
                           normalise_angle(endangle), 0.0):
@@ -208,30 +213,32 @@ class Machine(object):
             clone.add_cut_line(end_line)
 
         if not np.isclose(alpha_angle(startangle, endangle), 2*np.pi):
-            return Machine(clone, self.center, new_radius,
-                           startangle, endangle)
+            return Machine(clone,
+                           radius=new_radius,
+                           startangle=startangle,
+                           endangle=endangle)
         else:
             # Der Originalwinkel bleibt bestehen
-            return Machine(clone, self.center, new_radius,
-                           self.startangle, self.endangle)
+            return Machine(clone,
+                           radius=new_radius,
+                           startangle=self.startangle,
+                           endangle=self.endangle)
 
     def full_copy(self):
-        clone = self.geom.copy_shape(self.center, self.radius,
+        clone = self.geom.copy_shape(self.radius,
                                      0.0, 2*np.pi,
                                      0.0, self.radius+9999)
         return clone.get_machine()
 
     def copy_mirror(self, startangle, midangle, endangle):
-        geom1 = self.geom.copy_shape(self.center,
-                                     self.radius,
+        geom1 = self.geom.copy_shape(self.radius,
                                      startangle,
                                      midangle,
                                      0.0,
                                      self.radius+9999,
                                      rtol=1e-08,
                                      atol=1e-08)
-        geom2 = self.geom.copy_shape(self.center,
-                                     self.radius,
+        geom2 = self.geom.copy_shape(self.radius,
                                      midangle,
                                      endangle,
                                      0.0,
@@ -239,11 +246,12 @@ class Machine(object):
                                      rtol=1e-08,
                                      atol=1e-08)
 
-        machine = Machine(geom1, self.center, self.radius,
-                          startangle, midangle)
+        machine = Machine(geom1,
+                          radius=self.radius,
+                          startangle=startangle,
+                          endangle=midangle)
         machine.mirror_orig_geom = self.geom
         machine.mirror_geom = geom2
-        machine.mirror_geom.center = self.center
         machine.mirror_startangle = midangle
         machine.mirror_endangle = endangle
         return machine
@@ -256,8 +264,6 @@ class Machine(object):
     def undo_mirror(self):
         assert(self.is_mirrored())
         assert(self.previous_machine)
-        self.previous_machine.set_minmax_radius()
-        # self.previous_machine.complete_hull()
         self.set_alfa_and_corners()
         self.previous_machine.set_kind(self.geom.kind)
         return self.previous_machine
@@ -385,9 +391,6 @@ class Machine(object):
             print("{} airgap candidate(s) found:"
                   .format(len(airgap_candidates)))
 
-        if self.geom.max_radius == 0.0:
-            self.geom.set_minmax_radius(self.center)
-
         dist = 999
         circle = None
         pos_list = []
@@ -453,7 +456,7 @@ class Machine(object):
             self.delete_center_circle()
 
         if self.startangle == self.endangle:
-            logger.info('end of repair_hull: circle')
+            logger.debug('end of repair_hull: circle')
             return
 
         self.repair_hull_geom(self.geom, self.startangle, self.endangle)
@@ -478,30 +481,6 @@ class Machine(object):
                               endangle, end_corners,
                               c_corner in start_corners)
         logger.debug('end of repair_hull_geom')
-
-    def set_minmax_radius(self):
-        self.geom.set_minmax_radius(self.center)
-
-    def complete_hull(self, is_inner, is_outer):
-        logger.info('complete_hull')
-        start_corners = self.geom.complete_hull_line(self.center,
-                                                     self.startangle)
-        end_corners = self.geom.complete_hull_line(self.center,
-                                                   self.endangle)
-
-        if start_corners[0].is_new_point or end_corners[0].is_new_point:
-            self.geom.complete_hull_arc(self.center,
-                                        self.startangle, start_corners[0],
-                                        self.endangle, end_corners[0],
-                                        self.geom.min_radius)
-
-        if start_corners[1].is_new_point or end_corners[1].is_new_point:
-            self.geom.complete_hull_arc(self.center,
-                                        self.startangle, start_corners[1],
-                                        self.endangle, end_corners[1],
-                                        self.geom.max_radius)
-
-        self.set_alfa_and_corners()
 
     def create_stator_auxiliary_lines(self):
         logger.debug("create_stator_auxiliary_lines")
@@ -563,14 +542,20 @@ class Machine(object):
             return w*2
         return w
 
-    def find_symmetry(self, sym_tolerance):
+    def find_symmetry(self, sym_tolerance, is_inner, is_outer):
         logger.debug("begin of find_symmetry")
         if self.radius <= 0.0:
             return False
 
-        found = self.geom.find_symmetry(self.center, self.radius,
+        found = self.geom.find_symmetry(self.radius,
                                         self.startangle, self.endangle,
                                         sym_tolerance)
+        if not found and len(self.geom.area_list) < 5:
+            if is_inner:
+                found = self.find_stator_symmetry(sym_tolerance, True)
+            elif is_outer:
+                found = self.find_stator_symmetry(sym_tolerance, False)
+
         if self.part != 1:  # not full
             logger.debug("end of find_symmetry: not full")
             return found
@@ -587,10 +572,10 @@ class Machine(object):
         elist = self.geom.copy_all_elements(-angle)
         logger.debug(" - %s elements copied", len(elist))
         clone = self.geom.new_clone(elist)
-        clone.center = self.geom.center
 
-        f = clone.find_symmetry(self.center, self.radius,
-                                self.startangle, self.endangle,
+        f = clone.find_symmetry(self.radius,
+                                self.startangle,
+                                self.endangle,
                                 sym_tolerance)
         if f:
             logger.debug(" - #2:  %s slices with angle %s",
@@ -615,10 +600,10 @@ class Machine(object):
         elist = clone.copy_all_elements(-angle)
         logger.debug(" - %s elements copied", len(elist))
         clone = clone.new_clone(elist)
-        clone.center = self.geom.center
 
-        f = clone.find_symmetry(self.center, self.radius,
-                                self.startangle, self.endangle,
+        f = clone.find_symmetry(self.radius,
+                                self.startangle,
+                                self.endangle,
                                 sym_tolerance)
         if f:
             logger.debug(" - #3:  %s slices with angle %s",
@@ -634,6 +619,30 @@ class Machine(object):
             return True
 
         logger.debug("end of find_symmetry: full")
+        return found
+
+    def find_stator_symmetry(self, sym_tolerance, is_inner):
+        logger.debug("*** Begin of find_stator_symmetry ***")
+        if is_inner:
+            radius = self.geom.max_radius - 1
+        else:
+            radius = self.geom.min_radius + 1
+
+        elist = [Circle(Element(center=self.center,
+                                radius=radius))]
+        elist += self.geom.copy_all_elements(0.0)
+        clone = self.geom.new_clone(elist, split=True)
+        found = clone.find_symmetry(self.radius,
+                                    self.startangle,
+                                    self.endangle,
+                                    sym_tolerance)
+        if found:
+            logger.debug(" --> symmetry found <--")
+            self.geom.sym_slices = clone.sym_slices
+            self.geom.sym_slice_angle = clone.sym_slice_angle
+            self.geom.sym_area = clone.sym_area
+            self.geom.cut_lines = clone.cut_lines
+        logger.debug("*** End of find_stator_symmetry ***")
         return found
 
     def get_symmetry_slice(self):
@@ -737,6 +746,8 @@ class Machine(object):
 
     def get_num_slots(self):
         if self.geom.winding_is_mirrored():
+            return self.part/2
+        elif self.is_mirrored():
             return self.part/2
         else:
             return self.part

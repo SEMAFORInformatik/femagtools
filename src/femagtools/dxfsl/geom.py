@@ -659,7 +659,9 @@ nodes_filecount = 0
 class Geometry(object):
     """collection of connected shapes"""
 
-    def __init__(self, elements=[],
+    def __init__(self,
+                 elements=[],
+                 center=[],
                  rtol=1e-03,
                  atol=1e-03,
                  split=False,
@@ -710,6 +712,9 @@ class Geometry(object):
             i += 1
 
         self.num_edges = self.number_of_edges()
+
+        if center:
+            self.set_center(center)
 
     def shaft(self):
         """returns shaft diameter if any"""
@@ -775,11 +780,11 @@ class Geometry(object):
         for e in self.g.edges(data=True):
             o = e[2]['object'].correct(self.alfa, correct_alpha, ndec)
             elements.append(o)
-        geom = Geometry(elements, self.rtol, self.atol)
-        geom.center = self.center
+        geom = Geometry(elements,
+                        center=self.center,
+                        rtol=self.rtol,
+                        atol=self.atol)
         geom.alfa = correct_alpha
-        geom.min_radius = self.min_radius
-        geom.max_radius = self.max_radius
         geom.is_inner = self.is_inner
         geom.kind = self.kind
         geom.sym_part = self.sym_part
@@ -1208,24 +1213,33 @@ class Geometry(object):
                 p2 = c.point()
                 self.add_edge(p1, p2, Line(Element(start=p1, end=p2)))
                 p1 = p2
+
+        self.set_minmax_radius()
         logger.debug('end of repair_hull_line')
 
-    def set_minmax_radius(self, center):
+    def set_center(self, center):
+        self.center = center
+        self.set_minmax_radius()
+
+    def set_minmax_radius(self):
+        if not self.center:
+            raise ValueError("FATAL ERROR: no center in Geometry")
         self.min_radius = 99999.0
         self.max_radius = 0.0
         for e in self.elements(Shape):
-            min_dist, max_dist = e.minmax_from_center(center)
+            min_dist, max_dist = e.minmax_from_center(self.center)
             self.min_radius = min(self.min_radius, min_dist)
             self.max_radius = max(self.max_radius, max_dist)
 
-    def complete_hull_line(self, center, angle):
-        if self.max_radius == 0.0:
-            self.set_minmax_radius(center)
+    def complete_hull_line(self, angle):
+        logger.debug("begin complete_hull_line")
+        if not self.center:
+            raise ValueError("FATAL ERROR: no center in Geometry")
 
-        corners = self.get_corner_list(center, angle)
+        corners = self.get_corner_list(self.center, angle)
         assert(corners)
-        c_min = Corner(center, point(center, self.min_radius, angle, ndec))
-        c_max = Corner(center, point(center, self.max_radius, angle, ndec))
+        c_min = Corner(center, point(self.center, self.min_radius, angle, ndec))
+        c_max = Corner(center, point(self.center, self.max_radius, angle, ndec))
 
         c_first = corners[0]
         if not c_min.is_same_corner(c_first):
@@ -1240,10 +1254,10 @@ class Geometry(object):
             p2 = c_max.point()
             p1 = c_last.point()
             self.add_edge(p1, p2, Line(Element(start=p1, end=p2)))
-
+        logger.debug("end complete_hull_line")
         return (c_min, c_max)
 
-    def complete_hull_arc(self, center, startangle, startcorner,
+    def complete_hull_arc(self, startangle, startcorner,
                           endangle, endcorner, radius):
         nodes = self.radius_nodes(center, radius, 1e-04, 1e-04)
 
@@ -1911,7 +1925,6 @@ class Geometry(object):
         return new_elements
 
     def copy_shape(self,
-                   center,
                    radius,
                    startangle,
                    endangle,
@@ -1921,7 +1934,8 @@ class Geometry(object):
                    rtol=0.0,
                    atol=0.0,
                    append_inner=False,
-                   append_outer=False):
+                   append_outer=False,
+                   delete_appendices=False):
         """ Die Funktion kopiert die Teile von Shape-Objekten, welche sich in
             der durch die Parameter definierten Teilkreisfläche befinden.
         """
@@ -1934,28 +1948,28 @@ class Geometry(object):
 
         if is_same_angle(startangle, endangle):
             start_line = Line(
-                Element(start=center,
-                        end=point(center, radius+1, startangle)))
+                Element(start=self.center,
+                        end=point(self.center, radius+1, startangle)))
             end_line = Line(
-                Element(start=center,
-                        end=point(center, radius+1, startangle)))
+                Element(start=self.center,
+                        end=point(self.center, radius+1, startangle)))
         else:
             start_line = Line(
-                Element(start=center,
-                        end=point(center, radius+1, startangle)))
+                Element(start=self.center,
+                        end=point(self.center, radius+1, startangle)))
             end_line = Line(
-                Element(start=center,
-                        end=point(center, radius+1, endangle)))
+                Element(start=self.center,
+                        end=point(self.center, radius+1, endangle)))
 
         if np.isclose(normalise_angle(startangle),
                       normalise_angle(endangle), 0.0):
-            inner_circle = Circle(Element(center=center, radius=inner_radius))
-            outer_circle = Circle(Element(center=center, radius=outer_radius))
+            inner_circle = Circle(Element(center=self.center, radius=inner_radius))
+            outer_circle = Circle(Element(center=self.center, radius=outer_radius))
         else:
-            inner_circle = Arc(Element(center=center, radius=inner_radius,
+            inner_circle = Arc(Element(center=self.center, radius=inner_radius,
                                        start_angle=startangle*180/np.pi,
                                        end_angle=endangle*180/np.pi))
-            outer_circle = Arc(Element(center=center, radius=outer_radius,
+            outer_circle = Arc(Element(center=self.center, radius=outer_radius,
                                        start_angle=startangle*180/np.pi,
                                        end_angle=endangle*180/np.pi))
 
@@ -1966,7 +1980,7 @@ class Geometry(object):
         for e in self.elements(Shape):
             if isinstance(e, Line):
                 new_elements += self.copy_line(
-                    center, radius, startangle, endangle,
+                    self.center, radius, startangle, endangle,
                     start_line, end_line,
                     inner_circle, outer_circle, e,
                     rtol=rtol,
@@ -1976,7 +1990,7 @@ class Geometry(object):
 
             elif isinstance(e, Arc):
                 new_elements += self.copy_arc(
-                    center, radius, startangle, endangle,
+                    self.center, radius, startangle, endangle,
                     start_line, end_line,
                     inner_circle, outer_circle, e,
                     rtol=rtol,
@@ -1986,7 +2000,7 @@ class Geometry(object):
 
             elif isinstance(e, Circle):
                 new_elements += self.copy_circle(
-                    center, radius, startangle, endangle,
+                    self.center, radius, startangle, endangle,
                     start_line, end_line,
                     inner_circle, outer_circle, e,
                     rtol=rtol,
@@ -1998,9 +2012,9 @@ class Geometry(object):
             pts_inner.sort(reverse=True)
             p1 = pts_inner[0]
             for p2 in pts_inner[1:]:
-                start_angle = alpha_line(center, p1)
-                end_angle = alpha_line(center, p2)
-                arc = Arc(Element(center=center,
+                start_angle = alpha_line(self.center, p1)
+                end_angle = alpha_line(self.center, p2)
+                arc = Arc(Element(center=self.center,
                                   radius=inner_radius,
                                   start_angle=start_angle*180/np.pi,
                                   end_angle=end_angle*180/np.pi))
@@ -2011,24 +2025,45 @@ class Geometry(object):
             pts_outer.sort(reverse=True)
             p1 = pts_outer[0]
             for p2 in pts_outer[1:]:
-                start_angle = alpha_line(center, p1)
-                end_angle = alpha_line(center, p2)
-                arc = Arc(Element(center=center,
+                start_angle = alpha_line(self.center, p1)
+                end_angle = alpha_line(self.center, p2)
+                arc = Arc(Element(center=self.center,
                                   radius=outer_radius,
                                   start_angle=start_angle*180/np.pi,
                                   end_angle=end_angle*180/np.pi))
                 new_elements.append(arc)
                 p1 = p2
 
+        if delete_appendices:
+            center = []
+        else:
+            center = self.center
+
         if split:
             logger.debug('new Geometry with split')
-            return Geometry(new_elements, 0.05, 0.1, split=split)
+            geom = Geometry(new_elements,
+                            center=center,
+                            rtol=0.05,
+                            atol=0.1,
+                            split=split)
         else:
-            return Geometry(new_elements, self.rtol, self.atol)
+            geom = Geometry(new_elements,
+                            center=center,
+                            rtol=self.rtol,
+                            atol=self.atol)
+
+        if delete_appendices:
+            geom.delete_all_appendices()
+            geom.set_center(self.center)
+
+        return geom
 
     def copy_all_elements(self, alpha):
-        T = np.array(((np.cos(alpha), -np.sin(alpha)),
-                      (np.sin(alpha), np.cos(alpha))))
+        if alpha == 0.0:
+            T = None
+        else:
+            T = np.array(((np.cos(alpha), -np.sin(alpha)),
+                          (np.sin(alpha), np.cos(alpha))))
 
         all_el = []
         lines = 0
@@ -2055,7 +2090,8 @@ class Geometry(object):
             else:
                 el = None
             if el is not None:
-                el.transform(T, alpha, ndec)
+                if T is not None:
+                    el.transform(T, alpha, ndec)
                 all_el.append(el)
 
         logger.debug("copy_all_elements: %s lines, %s arcs, %s circles",
@@ -2063,8 +2099,12 @@ class Geometry(object):
 
         return all_el
 
-    def new_clone(self, new_elements):
-        return Geometry(new_elements, self.rtol, self.atol)
+    def new_clone(self, new_elements, split=False):
+        return Geometry(new_elements,
+                        center=self.center,
+                        rtol=self.rtol,
+                        atol=self.atol,
+                        split=split)
 
     def is_new_angle(self, alpha_list, alpha):
         for a in alpha_list:
@@ -2072,7 +2112,7 @@ class Geometry(object):
                 return False
         return True
 
-    def find_symmetry(self, center, radius,
+    def find_symmetry(self, radius,
                       startangle, endangle, sym_tolerance):
         arealist = self.list_of_areas()
         logger.debug("begin of find_symmetry: - %s areas available", len(arealist))
@@ -2138,8 +2178,8 @@ class Geometry(object):
         self.sym_slice_angle = area.delta
 
         for alpha in area.symmetry_lines(startangle, endangle):
-            p = point(center, radius+5, alpha)
-            line = Line(Element(start=center, end=p))
+            p = point(self.center, radius+5, alpha)
+            line = Line(Element(start=self.center, end=p))
             self.add_cut_line(line)
 
         self.sym_area = area
@@ -2306,11 +2346,11 @@ class Geometry(object):
                 points.append(p)
         return points
 
-    def check_hull(self, center, radius, x, y, rtol, atol):
+    def check_hull(self, radius, x, y, rtol, atol):
         node_count = 0
         miss_count = 0
         for h in convex_hull(self.virtual_nodes()):
-            dist = distance(center, h)
+            dist = distance(self.center, h)
             node_count += 1
 
             if not np.isclose(dist, radius, rtol, atol):
@@ -2327,54 +2367,65 @@ class Geometry(object):
         mm = self.minmax()
         height = mm[3]-mm[2]
         width = mm[1]-mm[0]
-
-        c = []
-        r = 0.0
         atol = 3.0
 
         logger.debug("*** Begin of get_machine() ***")
 
         if np.isclose(height, width, self.rtol, self.atol):
-            r = width/2
-            c = [mm[1]-r, mm[3]-r]
+            radius = width/2
+            self.set_center([mm[1]-radius, mm[3]-radius])
             logger.info("check for full machine")
-            if self.check_hull(c, r, None, None, self.rtol, atol):
+            if self.check_hull(radius, None, None, self.rtol, atol):
                 logger.info(" - it is full")
-                return Machine(self, c, r, 0.0, 0.0)
+                return Machine(self,
+                               radius=radius,
+                               startangle=0.0,
+                               endangle=0.0)
 
             logger.info("check for quarter machine")
-            r = width
-            c = [mm[0], mm[2]]
-            if self.check_hull(c, r, mm[0], mm[2], self.rtol, atol):
+            radius = width
+            self.set_center([mm[0], mm[2]])
+            if self.check_hull(radius, mm[0], mm[2], self.rtol, atol):
                 logger.info(" - it is a quarter")
-                return Machine(self, c, r, 0.0, np.pi/2)
+                return Machine(self,
+                               radius=radius,
+                               startangle=0.0,
+                               endangle=np.pi/2)
 
         elif np.isclose(width, height*2, self.rtol, self.atol):
-            r = width/2
-            c = [mm[1]-height, mm[2]]
+            radius = width/2
+            self.set_center([mm[1]-height, mm[2]])
             logger.info("check for half machine")
-            if self.check_hull(c, r, None, mm[2], self.rtol, atol):
+            if self.check_hull(radius, None, mm[2], self.rtol, atol):
                 logger.info(" - it is a half")
-                return Machine(self, c, r, 0.0, np.pi)
+                return Machine(self,
+                               radius=radius,
+                               startangle=0.0,
+                               endangle=np.pi)
 
-            c = [mm[1]-height, mm[3]]
-            if self.check_hull(c, r, None, mm[3], self.rtol, atol):
+            self.set_center([mm[1]-height, mm[3]])
+            if self.check_hull(radius, None, mm[3], self.rtol, atol):
                 logger.info(" - it is a half")
-                return Machine(self, c, r, np.pi, 0.0)
+                return Machine(self,
+                               radius=radius,
+                               startangle=np.pi,
+                               endangle=0.0)
 
         elif np.isclose(width*2, height, self.rtol, self.atol):
-            r = width
-            c = [mm[0], mm[1]-width]
+            radius = width
             logger.info("check for half machine")
-            c = [mm[1], mm[3]-width]
-            if self.check_hull(c, r, mm[1], None, self.rtol, atol):
+            set_center([mm[1], mm[3]-width])
+            if self.check_hull(radius, mm[1], None, self.rtol, atol):
                 logger.info(" - it is a half")
-                return Machine(self, c, r, np.pi/2.0, -np.pi/2.0)
+                return Machine(self, radius, np.pi/2.0, -np.pi/2.0)
 
-            c = [mm[0], mm[3]-width]
-            if self.check_hull(c, r, mm[0], None, self.rtol, atol):
+            self.set_center([mm[0], mm[3]-width])
+            if self.check_hull(radius, mm[0], None, self.rtol, atol):
                 logger.info(" - it is a half")
-                return Machine(self, c, r, -np.pi/2.0, np.pi/2.0)
+                return Machine(self,
+                               radius=radius,
+                               startangle=-np.pi/2.0,
+                               endangle=np.pi/2.0)
 
         machine = self.get_machine_part(mm)
         if machine:
@@ -2382,7 +2433,8 @@ class Geometry(object):
             return machine
 
         logger.info("The shape of the Machine is unexpected")
-        return Machine(self, [0.0, 0.0], 0.0, 0.0, 0.0)
+        self.center = [0.0, 0.0]
+        return Machine(self)
 
     def get_same_center(self, center_lst, center, rtol, atol):
         for c in center_lst:
@@ -2473,9 +2525,11 @@ class Geometry(object):
         if x > 0:
             # it looks pretty good
             logger.debug(" - slice is 1/%d: EXIT", x)
+            self.set_center([round(center[0], 8), round(center[1], 8)])
             M = Machine(self,
-                        [round(center[0], 8), round(center[1], 8)],
-                        max_radius, startangle, endangle)
+                        radius=max_radius,
+                        startangle=startangle,
+                        endangle=endangle)
             logger.debug("*** End of get_machine_part(): ok ***")
             return M
 
@@ -2486,31 +2540,39 @@ class Geometry(object):
 
                 if x > 2:
                     logger.debug(" - slice is 1/%d: EXIT", x)
+                    self.set_center([round(center[0], 8), round(center[1], 8)])
                     return Machine(self,
-                                   [round(center[0], 8), round(center[1], 8)],
-                                   max_radius, startangle, endangle)
+                                   radius=max_radius,
+                                   startangle=startangle,
+                                   endangle=endangle)
 
         if min_radius >= max_radius*0.9 and min_r >= max_r*0.9:
             # Mit 10 % Abweichungen gehen wir noch von einem ganzen Motor aus.
+            self.set_center([round(center[0], 8), round(center[1], 8)])
             return Machine(self,
-                           [round(center[0], 8), round(center[1], 8)],
-                           max(max_radius, max_r), 0.0, 0.0)
+                           radius=max(max_radius, max_r),
+                           startangle=0.0,
+                           endangle=0.0)
 
         if np.isclose(center_down, 0.0):
             min_r = min(center_left, center_right, center_up)
             if min_r >= max_r*0.9:
                 # Vermutlich ein halber Motor
+                self.set_center([round(center[0], 8), round(center[1], 8)])
                 return Machine(self,
-                               [round(center[0], 8), round(center[1], 8)],
-                               max(max_radius, max_r), 0.0, np.pi)
+                               radius=max(max_radius, max_r),
+                               startangle=0.0,
+                               endangle=np.pi)
 
             if np.isclose(center_left, 0.0):
                 min_r = min(center_right, center_up)
                 if min_r >= max_r*0.9:
                     # Vermutlich ein viertel Motor
+                    self.set_center([round(center[0], 8), round(center[1], 8)])
                     return Machine(self,
-                                   [round(center[0], 8), round(center[1], 8)],
-                                   max(max_radius, max_r), 0.0, np.pi/2)
+                                   radius=max(max_radius, max_r),
+                                   startangle=0.0,
+                                   endangle=np.pi/2)
 
         # TODO: handle half and quarter machines
 
@@ -2538,8 +2600,11 @@ class Geometry(object):
                 center[1] = y
                 angle = alpha_line(center, p)
 
-        return Machine(self, [round(center[0], 8), round(center[1], 8)],
-                       max_radius, angle, np.pi - angle)
+        self.set_center([round(center[0], 8), round(center[1], 8)])
+        return Machine(self,
+                       radius=max_radius,
+                       startangle=angle,
+                       endangle=np.pi-angle)
 
     def get_center(self, points):
         logger.debug("Begin of get_center(%s points)", len(points))
@@ -3352,7 +3417,7 @@ class Geometry(object):
             self.check_shaft_area(shaft_areas[0])
 
     def search_rotor_subregions(self, place=''):
-        logger.debug("Begin of search_rotor_subregions")
+        logger.info("Begin of search_rotor_subregions")
 
         if place == 'in':
             self.is_inner = True
@@ -3464,7 +3529,7 @@ class Geometry(object):
                 return
             self.check_shaft_area(shaft_areas[0])
 
-        logger.debug("end of search_rotor_subregions")
+        logger.info("end of search_rotor_subregions")
 
     def search_unknown_subregions(self):
         logger.debug("begin of search_unknown_subregions")

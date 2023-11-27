@@ -38,12 +38,11 @@ def symmetry_search(machine,
             logger.error("force symmetry failed")
             sys.exit(1)
         machine_ok = machine.get_forced_symmetry(sympart)
-        machine_ok.set_minmax_radius()
         machine_ok.set_kind(kind)
         logger.info("*** End of symmetry search for %s ***", kind)
         return machine_ok
 
-    if not machine.find_symmetry(symtol):
+    if not machine.find_symmetry(symtol, is_inner, is_outer):
         logger.info(" - {}: no symmetry axis found".format(kind))
         if show_plots:
             plt.add_emptyplot(rows, cols, num, 'no symmetry axis')
@@ -87,8 +86,6 @@ def symmetry_search(machine,
 
         machine_ok = machine_mirror
 
-    machine_ok.set_minmax_radius()
-    # machine_ok.complete_hull(is_inner, is_outer)
     machine_ok.set_kind(kind)
 
     logger.info("*** End of symmetry search for %s ***", kind)
@@ -222,7 +219,13 @@ def convert(dxfile,
     machine.geom.delete_all_appendices()
 
     if machine.has_airgap():
-        machine_inner = machine.copy(0.0, 2*np.pi, True, True)
+        logger.info("=== airgap is %s ===", machine.airgap_radius)
+        machine_inner = machine.copy(startangle=0.0,
+                                     endangle=2*np.pi,
+                                     airgap=True,
+                                     inside=True,
+                                     delete_appendices=True)
+
         machine_inner = symmetry_search(machine_inner,
                                         p,  # plot
                                         inner_name,
@@ -235,7 +238,12 @@ def convert(dxfile,
         machine_inner.set_inner()
         machine_inner.check_and_correct_geom("Inner")
 
-        machine_outer = machine.copy(0.0, 2*np.pi, True, False)
+        machine_outer = machine.copy(startangle=0.0,
+                                     endangle=2*np.pi,
+                                     airgap=True,
+                                     inside=False,
+                                     delete_appendices=True)
+
         machine_outer = symmetry_search(machine_outer,
                                         p,  # plot
                                         outer_name,
@@ -375,6 +383,8 @@ def convert(dxfile,
         machine = symmetry_search(machine,
                                   p,  # plot
                                   name,
+                                  is_inner=inner,
+                                  is_outer=outer,
                                   symtol=symtol,
                                   sympart=sympart,
                                   show_plots=show_plots,

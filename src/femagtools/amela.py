@@ -200,7 +200,11 @@ class Amela():
         for k, i in enumerate(mag_spels):
 
             cond = i.conduc
-            mur = 1/i.elements[0].reluc[0]
+            if cond == 0: 
+                cond = 625000
+                logger.info('Magnet conductivity equals 0, using 625000 S/m')
+                
+            mur = np.abs(1/i.elements[0].reluc[0])
             logger.debug('Magnet: mur=%s, conductivity=%s', mur, cond)
 
             pm_elem_key.append([j.key for j in i.elements])

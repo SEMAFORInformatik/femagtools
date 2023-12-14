@@ -1003,6 +1003,18 @@ class ZmqFemag(BaseFemag):
             logger.warning(response[0])
         return [s.decode('latin1') for s in response]
 
+    def exportmesh(self, fslcmds, timeout=120000):
+        """get svg format (with mesh) from fsl commands (if any graphic created)
+        (since FEMAG v2024.1-17) """
+        response = self.send_request(['SVG+Mesh', fslcmds], timeout=timeout)
+        try:
+            rc = json.loads(response[0].decode('latin1'))
+            if rc['status'] == 'ok':
+                return self.getfile(rc['result_file'][0])
+        except json.decoder.JSONDecodeError:
+            logger.warning(response[0])
+        return [s.decode('latin1') for s in response]
+
     def interrupt(self):
         """send push message to control port to stop current calculation"""
         context = zmq.Context.instance()

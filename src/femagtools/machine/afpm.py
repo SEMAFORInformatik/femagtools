@@ -4,11 +4,13 @@
 import logging
 import numpy as np
 from pathlib import Path
+import shutil
 from .. import poc
 from .. import parstudy
 from .. import model
 from .. import utils
 from .. import windings
+from .. import femag
 from scipy.interpolate import RegularGridInterpolator, interp1d
 from scipy.integrate import quad
 
@@ -124,10 +126,6 @@ def parident(workdir, engine, temp, machine,
         ]
     }
 
-    pstudy = parstudy.List(
-        workdir, condMat=condMat, magnets=magnetMat,
-        magnetizingCurves=magnetizingCurves,
-        cmd=kwargs.get('cmd', None))
 
     ldq = []
     for magtemp in temp:
@@ -138,12 +136,37 @@ def parident(workdir, engine, temp, machine,
             poc=poc.Poc(999),
             speed=0)
         logging.info("Noload simulation")
-        nlresults = pstudy(nlparvardef, machine, nlcalc, engine)
-        if nlresults['status'].count('C') != len(nlresults['status']):
-            raise ValueError('Noload simulation failed %s', nlresults['status'])
-        nlresults.update(process(lfe, pole_width, machine, nlresults['f']))
-        current_angles = nlresults['f'][0]['current_angles']
+        if kwargs.get('use_multiprocessing', True): 
+            pstudy = parstudy.List(
+                    workdir, condMat=condMat, magnets=magnetMat,
+                    magnetizingCurves=magnetizingCurves,
+                    cmd=kwargs.get('cmd', None))
 
+            nlresults = pstudy(nlparvardef, machine, nlcalc, engine)
+            if nlresults['status'].count('C') != len(nlresults['status']):
+                raise ValueError('Noload simulation failed %s', nlresults['status'])
+        else: 
+            nlresults = {"x": [], "f": []}
+            i = 0
+            for pw, le, sp in zip(pole_width, lfe, linspeed): 
+                nlmachine = {k: machine[k] for k in machine}
+                nlmachine['pole_width'] = pw
+                nlmachine['lfe'] = le
+                nlcalc.update({"speed": sp})
+                nlsubdir = f'{workdir}/{i}'
+                nlworkdir = Path(nlsubdir)
+                if nlworkdir.exists(): 
+                    shutil.rmtree(nlworkdir)
+                nlworkdir.mkdir(exist_ok=True)
+                noloadsim = femag.Femag(nlworkdir, condMat=condMat, magnets=magnetMat,
+                                        magnetizingCurves=magnetizingCurves,
+                                        cmd=kwargs.get('cmd', None))
+                r = noloadsim(nlmachine, nlcalc)
+                nlresults['f'].append({k: v for k, v in r.items()})
+                i = i + 1
+        nlresults.update(process(lfe, pole_width, machine, nlresults['f']))
+
+        current_angles = nlresults['f'][0]['current_angles']
         results = []
         i = 0
         for l, pw in zip(lfe, pole_width):
@@ -152,17 +175,11 @@ def parident(workdir, engine, temp, machine,
             mpart['lfe'] = l
             subdir = f"{workdir}/{i}"
 
-            gpstudy = parstudy.Grid(
-                subdir, condMat=condMat, magnets=magnetMat,
-                magnetizingCurves=magnetizingCurves,
-                cmd=kwargs.get('cmd', None))
-
             simulation = dict(
                 calculationMode="torq_calc",
                 wind_temp=20.0,
                 magn_temp=magtemp,
                 angl_i_up=0.0,
-                magnet_loss=True,
                 magn_height=machine['magnet']['afm_rotor']['magn_height'],
                 yoke_height=machine['magnet']['afm_rotor'].get(
                     'yoke_height', 0),
@@ -173,8 +190,36 @@ def parident(workdir, engine, temp, machine,
                 num_move_steps=60,
                 speed=linspeed[i],
                 num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1))
+            
+            if kwargs.get('use_multiprocessing', True): 
+                gpstudy = parstudy.Grid(
+                                    subdir, condMat=condMat, magnets=magnetMat,
+                                    magnetizingCurves=magnetizingCurves,
+                                    cmd=kwargs.get('cmd', None))
+                lresults = gpstudy(parvardef, mpart, simulation, engine)
 
-            lresults = gpstudy(parvardef, mpart, simulation, engine)
+            else:
+                lresults = {"x": [], "f": []}
+                domain_beta = np.linspace(beta_min, 0, num_beta_steps).tolist()
+                domain_cur = np.linspace(i1_max/num_cur_steps, i1_max, num_cur_steps).tolist()
+                dir_index = 0
+                for cur in domain_cur: 
+                    for be in domain_beta:
+                        simulation['angl_i_up'] = be
+                        simulation['current'] = cur
+                        lresults['x'].append([be, cur])
+                        subsubdir = subdir + f'/{dir_index}'
+                        dir_index = dir_index + 1
+                        lworkdir = Path(subsubdir)
+                        if lworkdir.exists(): 
+                            shutil.rmtree(lworkdir)
+                        lworkdir.mkdir(exist_ok=True)
+                        loadsim = femag.Femag(lworkdir, condMat=condMat, magnets=magnetMat,
+                                            magnetizingCurves=magnetizingCurves,
+                                            cmd=kwargs.get('cmd', None))
+                        r = loadsim(mpart, simulation)
+                        lresults['f'].append({k: v for k, v in r.items()})
+                        
             f = [{k: bch[k]
                   for k in ('linearForce', 'flux', 'losses', 'lossPar')}
                  for bch in lresults['f']]

@@ -1357,13 +1357,15 @@ class Element(BaseEntity):
 
     def demagnetization(self, temperature=20):
         """return demagnetization Hx, Hy of this element"""
-        return self.demag_b(self.flux_density(cosys='cartes'), temperature)
+        return self.demag_b(self.flux_density(cosys='polar'), temperature)
 
     def demag_b(self, b, temperature):
         """return demagnetization Hx, Hy of this element at flux density b
           and temperature"""
         if self.is_magnet():
+            # assume polar coordinates of b
             pos = np.arctan2(self.center[1], self.center[0])
+            #pos = 0  # cartesian
             br_temp_corr = 1. + self.br_temp_coef*(temperature - 20.)
             magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)*br_temp_corr
             alfa = np.arctan2(self.mag[1], self.mag[0]) - pos

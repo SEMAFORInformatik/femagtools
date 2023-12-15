@@ -16,6 +16,15 @@ m.slot_r2         =  ${model['slot_r2']*1e3}         -- Slot radius [mm]
 m.mcvkey_yoke     =  mcvkey_yoke
 m.nodedist        =  ${model.get('m.nodedist', 1)}  -- Node distance
 
+  -- overdeterminate slot_h2
+  if (math.abs(m.slot_h2 - m.slot_r1 - m.slot_h1) > 0) then
+     m.slot_h2 = m.slot_h1 + m.slot_r1
+  end
+  -- overdeterminate slot_open_width
+  if (m.slot_r1 > 0 and math.abs(m.slot_width - 2*m.slot_r1 - m.slot_open_width) > 0) then
+     m.slot_open_width = m.slot_width - 2*m.slot_r1
+  end
+
   if (m.model_type == "S1R2") or  (m.model_type == "S1R2_all") then
     if (m.st_yoke_height > 0) then
       m.st_yoke_height = 0
@@ -68,7 +77,7 @@ m.nodedist        =  ${model.get('m.nodedist', 1)}  -- Node distance
 
   if (m.slot_r1 > 0) then
     C1 = fml.Circle:Create(P33,m.slot_r1)
-    P32 = fml.Point:Tangent(P52,C1,2)
+    P32 = fml.Point:Tangent(P52,C1,1)
   end
 
   model_size = m.pole_width*m.num_poles*m.num_slots/m.tot_num_slot
@@ -77,7 +86,7 @@ m.nodedist        =  ${model.get('m.nodedist', 1)}  -- Node distance
 
   nc_line(P11.x,P11.y, P51.x,P51.y, 0)
   nc_line_cont(P52.x, P52.y, 0)
-  if P32 ~= nil then
+  if P32 ~= nil and m.slot_r1 > 0 then
     nc_line_cont(P32.x, P32.y, 0)
     nc_circle_m(P23.x,P23.y, P32.x,P32.y, P33.x,P33.y, m.slot_r1, 0)
   else

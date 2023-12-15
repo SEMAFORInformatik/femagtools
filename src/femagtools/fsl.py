@@ -634,7 +634,7 @@ class Builder:
     def create_analysis(self, sim):
         pfefunc = sim.get('loss_funct', '')
         if pfefunc:
-            sim['loss_funct'] = 2 # 3?
+            sim['loss_funct'] = 1 # 3?
         airgap_induc = (self.create_airgap_induc()
                         if sim.get('airgap_induc', 0) else [])
         felosses = pfefunc.split('\n') + self.create_fe_losses(sim)

@@ -33,7 +33,5 @@ post_models("induct(x)","b")    -- Calculate field distribution
   until i>=N
   io.close(data)
 
-color_gradation(0,0,"tot","Babs",0,0,"")
 -- experimental (new femag-classic needed)
--- without grf_clear, overlay fieldlines with color gradation
-add_field_lines("field.svg", 25)
+export_calc_results('fieldcalc.vtu')

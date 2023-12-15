@@ -11,8 +11,9 @@ from .. import model
 from .. import utils
 from .. import windings
 from .. import femag
-from scipy.interpolate import RegularGridInterpolator, interp1d
+from scipy.interpolate import RegularGridInterpolator, interp1d, RectBivariateSpline
 from scipy.integrate import quad
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,50 @@ def _integrate1d(radius, val):
         return interp((x))
     return quad(func, radius[0], radius[-1])[0]
 
+def ld_interpol(i1, beta, v):
+    '''interpolate Ld at beta angle 0°, -180°'''
+    # ld
+    cur = copy.deepcopy(i1)
+    betad = copy.deepcopy(beta)
+    if np.amin(beta) < -90 and \
+        np.amax(beta) > -90: 
+        # motor and generator
+        v[0] = v[1]
+        v[-1] = v[-2]
+
+        dbeta = np.abs(beta[0][0] - beta[1][0])
+        bp = [[beta[0][0]-dbeta for i in range(len(np.unique(i1)))]] + beta[1:-1] + \
+            [[dbeta for i in range(len(np.unique(i1)))]]
+    else: 
+        v[-1] = v[-2]
+        dbeta = np.abs(beta[0][0] - beta[1][0])
+        bp = beta[0:-1] + \
+            [[dbeta for i in range(len(np.unique(i1)))]]
+    
+    return RectBivariateSpline(np.unique(bp), np.unique(cur), \
+         np.array(v)).ev(*[betad, i1]).tolist()
+
+def lq_interpol(i1, beta, v):
+    '''interpolate Lq at beta -90°'''
+    if -90 not in np.unique(beta): 
+        return v
+    # lq
+    betad = copy.deepcopy(beta)
+    if np.amin(beta) < -90 and \
+        np.amax(beta) > -90:
+        # motor and generator
+        inx = np.argwhere(np.array(beta) == -90).squeeze()
+        v.pop(inx[0, 0])
+        bp = beta[0:inx[0, 0]] + beta[inx[0, 0]+1:]
+        cp = i1[0:inx[0, 0]] + i1[inx[0, 0]+1:]
+    else: 
+        v[0] = v[1]
+        dbeta = np.abs(beta[0][0] - beta[1][0])
+        bp = [[-90-dbeta for i in i1[0]]] + beta[1::]
+        cp = i1
+    cur = copy.deepcopy(cp)
+    return RectBivariateSpline(np.unique(bp), np.unique(cur), \
+         np.array(v)).ev(*[betad, i1]).tolist()
 
 def parident(workdir, engine, temp, machine,
              magnetizingCurves, magnetMat=[], condMat=[],
@@ -243,6 +288,29 @@ def parident(workdir, engine, temp, machine,
                           (-1, num_beta_steps)).T/np.sqrt(2)
         psiq = np.reshape([r['psiq'] for r in postp],
                           (-1, num_beta_steps)).T/np.sqrt(2)
+        
+        ld = np.reshape([r['Ld'] for r in postp],
+                          (-1, num_beta_steps)).T.tolist()
+        lq = np.reshape([r['Lq'] for r in postp],
+                          (-1, num_beta_steps)).T.tolist()
+        # interpolation ld, lq
+        curr, angl = [], [] 
+        for cr in range(len(beta)): 
+            curr.append(i1)
+        for al in beta: 
+            tmp = []
+            for cr in range(len(i1)): 
+                tmp.append(al)
+            angl.append(tmp)
+        try:
+            xx, yy = copy.deepcopy(curr), copy.deepcopy(angl)
+            ld = ld_interpol(xx, yy, ld)
+            xx, yy = copy.deepcopy(curr), copy.deepcopy(angl)
+            lq = lq_interpol(xx, yy, lq)
+        except: 
+            ld = np.zeros_like(psid).tolist()
+            lq = np.zeros_like(psid).tolist()
+        
         torque = np.reshape([r['torque'] for r in postp],
                             (-1, num_beta_steps)).T
         losses = {k: np.flip(np.reshape([r['plfe'][k] for r in postp],
@@ -259,6 +327,7 @@ def parident(workdir, engine, temp, machine,
         ldq.append({'temperature': magtemp,
                     'i1':i1, 'beta':beta,
                     'psid': psid.tolist(), 'psiq': psiq.tolist(),
+                    'ld': ld, 'lq': lq,
                     'torque': torque.tolist(),
                     'losses': losses})
         # T = 3/2 p (Psid iq - Psiq id)

@@ -41,7 +41,7 @@ def handle_process_output(filedes, outfile, log):
     """read from file descriptor and direct lines to logger and outfile"""
     with open(outfile, 'w') as fp:
         for line in filedes:
-            fp.write(str(line))
+            fp.write(line.decode())
             if log:
                 if (b'' == line or
                     b'\x1b' in line or  # ignore terminal escape seq
@@ -482,7 +482,7 @@ class Femag(BaseFemag):
         basename = pathlib.Path(filename).name
         outname = os.path.join(self.workdir, basename+'.out')
         errname = os.path.join(self.workdir, basename+'.err')
-        with open(outname, 'w') as out, open(errname, 'w') as err:
+        with open(errname, 'w') as err:
             logger.info('invoking %s', ' '.join([str(a) for a in args]))
             proc = subprocess.Popen(
                 args,
@@ -495,9 +495,15 @@ class Femag(BaseFemag):
         errs = []
         # print femag output
         with io.open(outname, encoding='latin1', errors='ignore') as outfile:
+            errLine = False
             for l in outfile:
                 if l.find('ERROR') > -1:
                     errs.append(l.strip())
+                    errLine = True
+                elif errLine and l.startswith(' '):  # additional error line
+                    errs.append(l)
+                else:
+                    errLine = False
 
         rc = proc.returncode
         logger.info("%s exited with returncode %d (num errs=%d)",
@@ -508,7 +514,7 @@ class Femag(BaseFemag):
                 for l in errfile:
                     errs.append(l.strip())
             errs.insert(0, 'Exit code {}'.format(rc))
-            raise FemagError(errs)
+            raise FemagError("\n".join(errs))
 
     def cleanup(self):
         "removes all created files in workdir"
@@ -805,8 +811,8 @@ class ZmqFemag(BaseFemag):
                 logger.error("send_fsl: %s", str(e))
                 if timeout:  # only first call raises zmq.error.Again
                     return ['{"status":"error", "message":"Femag is not running"}', '{}']
-                msg = str(e)
-                return ['{"status":"error", "message":"'+msg+'"}', '{}']
+                msg = json.dumps(str(e))
+                return ['{"status":"error", "message":'+msg+'}', '{}']
 
     def run(self, options=['-b'], restart=False, procId=None,
             stateofproblem='mag_static'):  # noqa: C901
@@ -995,6 +1001,18 @@ class ZmqFemag(BaseFemag):
         """get svg format from fsl commands (if any graphic created)
         (since FEMAG 8.5 Rev 3343) """
         response = self.send_request(['SVG', fslcmds], timeout=timeout)
+        try:
+            rc = json.loads(response[0].decode('latin1'))
+            if rc['status'] == 'ok':
+                return self.getfile(rc['result_file'][0])
+        except json.decoder.JSONDecodeError:
+            logger.warning(response[0])
+        return [s.decode('latin1') for s in response]
+
+    def exportmesh(self, fslcmds, timeout=120000):
+        """get svg format (with mesh) from fsl commands (if any graphic created)
+        (since FEMAG v2024.1-17) """
+        response = self.send_request(['SVG+Mesh', fslcmds], timeout=timeout)
         try:
             rc = json.loads(response[0].decode('latin1'))
             if rc['status'] == 'ok':

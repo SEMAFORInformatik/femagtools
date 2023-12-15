@@ -14,16 +14,21 @@ DEFAULT_CMAP='viridis'
 """default colormap (see https://matplotlib.org/stable/users/explain/colors/colormaps.html)"""
 
 
-def spel(isa, with_axis=False, ax=0):
+def spel(isa, superelements=[], with_axis=False, ax=0):
     """plot super elements of I7/ISA7 model
     Args:
       isa: Isa7 object
+      superelements: list of super elements (all if empty)
     """
     from matplotlib.patches import Polygon
     if ax == 0:
         ax = plt.gca()
     ax.set_aspect('equal')
-    for se in isa.superelements:
+    if superelements:
+        spels = superelements
+    else:
+        spels = isa.superelements
+    for se in spels:
         ax.add_patch(Polygon([n.xy
                               for nc in se.nodechains
                               for n in nc.nodes],
@@ -232,7 +237,7 @@ def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, cmap=DEFAULT_CMAP,
     for e in elements:
         fd = isa.flux_density(e, icur, ibeta)
         b.append(np.linalg.norm(
-            (fd['bx'][ipos], fd['bx'][ipos])))
+            (fd['bx'][ipos], fd['by'][ipos])))
     fluxd = np.array(b)
     pos = isa.pos_el_fe_induction[ipos]*180/np.pi
     isa.rotate(isa.pos_el_fe_induction[ipos])

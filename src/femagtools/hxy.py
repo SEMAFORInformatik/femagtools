@@ -138,4 +138,4 @@ if __name__ == '__main__':
                         format='%(asctime)s %(message)s')
     magnets = read(sys.argv[1], int(sys.argv[2]))
     for m in magnets:
-        print(f"{len(m['e'])}: Havg {m['havg']} Hmax {m['hmax']}")
+        print(f"{len(m['e'][0])}: Havg {m['havg']} Hmax {m['hmax']}")

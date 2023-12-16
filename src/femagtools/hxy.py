@@ -35,7 +35,7 @@ def closest_centroid(x, centroids, K):
 def create_clusters(centroids, K, X):
     """Returns an array of cluster indices for all the data samples"""
     m, _ = np.shape(X)
-    cluster_idx = np.empty(m)
+    cluster_idx = np.empty(m, dtype=int)
     for i in range(m):
         cluster_idx[i] = closest_centroid(X[i], centroids, K)
     return cluster_idx
@@ -46,7 +46,7 @@ def compute_means(cluster_idx, K, X):
     _, n = np.shape(X)
     centroids = np.empty((K, n))
     for i in range(K):
-        points = X[cluster_idx == i] # gather points for the cluster i
+        points = X[cluster_idx == i]  # gather points for the cluster i
         centroids[i] = np.mean(points, axis=0) # use axis=0 to compute means across points
     return centroids
 
@@ -114,34 +114,21 @@ def read(filename, num_magnets):
                 k = num.shape[1]
         K = num_magnets
         y_preds = run_Kmeans(num_magnets, np.array(hxy[0]['e']))
-        points = [point(i, int(k), hxy[0]['e']) for i, k in enumerate(y_preds)]
+        points = [point(i, k, hxy[0]['e'][i]) for i, k in enumerate(y_preds)]
         # move values to magnets:
-        magnets = [{'e': [p.coord for p in points if p.k == k],
-                    'pos': [], 'hxy': [], 'bxy': [], 'mxy': []}
+        magnets = [{'e': [[h['e'][p.index] for p in points if p.k == k]
+                    for h in hxy]}
                    for k in range(K)]
-        hkeys = ['hxy', 'bxy', 'mxy']
-        for i, h in enumerate(hxy):  # all positions
-            for mag in magnets:
-                mag['pos'].append(h['pos'])
-                m = [{k: [] for k in hkeys}
-                     for kk in range(K)]
-            for p in points:  # all elements
-                for k in hkeys:
-                    m[p.k][k].append(h[k][p.k])
-            for mk, magk in zip(m, magnets):
-                for k in hkeys:
-                    magk[k].append(mk[k])
-        for mag in magnets:
-            for k in ['e'] + hkeys:
-                mag[k] = np.array(mag[k])
-            mag['havg'] = []
-            mag['hmax'] = []
-            for hpos in mag['hxy']:
-                h = np.abs(np.linalg.norm(hpos, axis=1))
-                mag['havg'].append(np.mean(h))
-                mag['hmax'].append(np.max(h))
 
-        # Note dimension of hkeys is (positions x elements x 2)
+        for k, mag in enumerate(magnets):
+            mag['pos'] = [h['pos'] for h in hxy]
+            for mk in ['hxy', 'bxy', 'mxy']:
+                mag[mk] = [[h[mk][p.index] for p in points if p.k == k]
+                           for h in hxy]
+            hxyabs = [np.linalg.norm(hxy, axis=1)
+                      for hxy in mag['hxy']]
+            mag['havg'] = [np.mean(a) for a in hxyabs]
+            mag['hmax'] = [np.max(a) for a in hxyabs]
 
     return magnets
 

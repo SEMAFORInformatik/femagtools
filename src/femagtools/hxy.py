@@ -13,6 +13,7 @@ import logging
 # K-means clustering
 # https://dev.to/sajal2692/coding-k-means-clustering-using-python-and-numpy-fg1
 # Sajal Sharma
+# with adaptions by Ronald Tanner
 def initialize_random_centroids(K, X):
     """Initializes and returns k random centroids"""
     m, n = np.shape(X)
@@ -20,8 +21,24 @@ def initialize_random_centroids(K, X):
     centroids = np.empty((K, n))
     for i in range(K):
         # pick a random data point from X as the centroid
-        centroids[i] =  X[np.random.choice(range(m))]
+        centroids[i] = X[np.random.choice(range(m))]
     return centroids
+
+
+def initialize_centroids(K, X):
+    """Initializes and returns k centroids"""
+    c = np.mean(X, axis=0)
+    if K < 2:
+        return [c]
+    alfa = np.arctan2(c[1], c[0])  # angle of center axis
+    T = np.array([[np.cos(alfa), -np.sin(alfa)],
+                  [np.sin(alfa), np.cos(alfa)]])
+    p = (np.asarray(X)-c).dot(T) # rotate X
+    d = np.linalg.norm(p, axis=1) # distance to center
+    a = np.arctan2(p[:, 1], p[:, 0]) # angle to center
+    h, b = np.histogram(a, bins=K)
+    return [np.mean(X[(a>r[0]) & (a<r[1])], axis=0)
+            for r in np.array((b[:-1], b[1:])).T]
 
 
 def closest_centroid(x, centroids, K):
@@ -53,8 +70,8 @@ def compute_means(cluster_idx, K, X):
 
 def run_Kmeans(K, X, max_iterations=500):
     """Runs the K-means algorithm and computes the final clusters"""
-    # initialize random centroids
-    centroids = initialize_random_centroids(K, X)
+    # initialize centroids
+    centroids = initialize_centroids(K, X)
     # loop till max_iterations or convergance
     logging.debug(f"initial centroids: {centroids}")
     for _ in range(max_iterations):
@@ -98,7 +115,17 @@ def readSections(f):
 
 
 def read(filename, num_magnets):
-    """read hxy file and return values grouped to magnets"""
+    """read hxy file and return values grouped to magnets
+    returns:
+      list of m=num_magnets dicts
+        pos: list of n positions in degree
+        e: n lists of center coordinates of elements in m
+        hxy: n lists of field strengths in kA/m
+        bxy: n lists of flux densities in T
+        mxy: n lists of magnetization in T
+        havg: average of field strengths kA/m
+        hmax: maximum of field strengths kA/m
+    """
     hxy = []
     with open(filename, encoding='latin1', errors='ignore') as f:
         n = 0
@@ -114,9 +141,12 @@ def read(filename, num_magnets):
                 k = num.shape[1]
         K = num_magnets
         y_preds = run_Kmeans(num_magnets, np.array(hxy[0]['e']))
+        logging.info("Kmeans: %s",
+                     [y_preds[y_preds==k].shape[0] for k in range(K)])
         points = [point(i, k, hxy[0]['e'][i]) for i, k in enumerate(y_preds)]
         # move values to magnets:
-        magnets = [{'e': [[h['e'][p.index] for p in points if p.k == k]
+        magnets = [{'e': [[h['e'][p.index]*1e-3
+                           for p in points if p.k == k]
                     for h in hxy]}
                    for k in range(K)]
 
@@ -134,8 +164,18 @@ def read(filename, num_magnets):
 
 if __name__ == '__main__':
     import sys
+    import matplotlib.pyplot as plt
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s')
     magnets = read(sys.argv[1], int(sys.argv[2]))
     for m in magnets:
         print(f"{len(m['e'][0])}: Havg {m['havg']} Hmax {m['hmax']}")
+
+    fig, ax = plt.subplots()
+    for m in magnets:
+        b = np.array(m['e'][0])
+        ax.scatter(*b.T)
+    ax.set_aspect('equal')
+    ax.autoscale(enable=True)
+    ax.axis('off')
+    plt.show()

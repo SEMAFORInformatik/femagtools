@@ -84,17 +84,16 @@ def _contour(ax, title, elements, values, label='',
                                   for n in nc.nodes],
                                  color='gray', alpha=0.1, lw=0))
     valid_values = np.logical_not(np.isnan(values))
-    patches = np.array([Polygon([v.xy for v in e.vertices])
-                       for e in elements])[valid_values]
+    vertices = [[v.xy for v in e.vertices] for e in elements]
+    patches = np.array([Polygon(xy) for xy in vertices])[valid_values]
     p = PatchCollection(patches, match_original=False,
                         cmap=cmap, alpha=alpha)
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
     cb = plt.colorbar(p, shrink=0.9)
 
-    for patch in np.array([Polygon([v.xy for v in e.vertices],
-                                   fc='white', alpha=1.0)
-                           for e in elements])[np.isnan(values)]:
+    for patch in np.array([Polygon(xy, fc='white', alpha=1.0)
+                           for xy in vertices])[np.isnan(values)]:
         ax.add_patch(patch)
     if label:
         cb.set_label(label=label)
@@ -135,9 +134,10 @@ def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, cmap=DEFAULT_CMAP, ax=0):
         x = isa.pos_el_fe_induction[i]
 
     hpol = demag[:, i]
+    hmax = np.max(hpol)
     hpol[hpol == 0] = np.nan
-    _contour(ax, f'Demagnetization at pos. {round(x/np.pi*180):.1f}°,'
-    f'{isa.MAGN_TEMPERATURE} °C (max -{np.max(hpol):.1f} kA/m)',
+    _contour(ax, f'Demagnetization at pos. {round(x/np.pi*180):.1f}°, '
+    f'{isa.MAGN_TEMPERATURE} °C (max -{hmax:.1f} kA/m)',
              emag, hpol, '-H / kA/m', cmap, isa)
     logger.info("Max demagnetization %f kA/m", np.nanmax(hpol))
 

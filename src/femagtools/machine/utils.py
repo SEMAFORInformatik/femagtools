@@ -350,21 +350,27 @@ def dqparident(workdir, engine, temp, machine,
     """
     import pathlib
 
-    da1 = machine['outer_diam']
+    wdgk = 'windings' if 'windings' in machine else 'winding'
+    da1 = machine['bore_diam']
     Q1 = machine['stator']['num_slots']
+    lfe = machine['lfe']
+    g = machine[wdgk].get('num_par_wdgs', 1)
     slotmodel = [k for k in machine['stator'] if isinstance(
         machine['stator'][k], dict)][-1]
     if slotmodel == 'stator1':
         hs = machine['stator']['stator1']['slot_rf1'] - \
             machine['stator']['stator1']['tip_rh1']
     else:
-        hs = machine['stator'][slotmodel].get('slot_height', 0)
-    wdgk = 'windings' if 'windings' in machine else 'winding'
-    N = machine[wdgk]['num_wires']
-    Jmax = 15  # max current density in A/mm2
+        dy1 = machine['outer_diam']
+        hs = machine['stator'][slotmodel].get(
+            'slot_height', 0.6*(dy1-da1)/2)
 
-    i1_max = round(0.28*np.pi*hs*(da1+hs)/Q1/N*Jmax*1e5)*10 * \
-        machine[wdgk].get('num_par_wdgs', 1)
+    N = machine[wdgk]['num_wires']
+    Jmax = 20e6  # max current density in A/m2
+    f = machine[wdgk].get('fillfac', 0.42)
+    Acu = f*0.5*np.pi*(da1+hs)*hs
+    i1_max = round(Acu/Q1/N*Jmax/10)*10
+
     period_frac = kwargs.get('period_frac', 6)
     if machine.get('external_rotor', False):
         period_frac = 1  # TODO: missing femag support
@@ -381,8 +387,6 @@ def dqparident(workdir, engine, temp, machine,
 
     wdg = windings.Winding(wpar)
 
-    lfe = machine['lfe']
-    g = machine[wdgk].get('num_par_wdgs', 1)
     if 'wire_gauge' in machine[wdgk]:
         aw = machine[wdgk]['wire_gauge']
     elif 'dia_wire' in machine[wdgk]:

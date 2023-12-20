@@ -736,8 +736,10 @@ def im(pnom: float, speed: float, p: int, **kwargs) -> dict:
         slots = []
     r = get_stator_dimensions(par, slots=slots)
     # rotor parameters
+    rtype = kwargs.get('rtype', 'rotorKs2')
     r['rotor'] = get_im_rotor_dimensions(
-        par['cos_phi']*r['A'], r['Da2'], r['psi1'], r['lfe'], par)
+        par['cos_phi']*r['A'], r['Da2'], r['psi1'], r['lfe'],
+        par, rtype=rtype)
     _set_genpars(r, 2*par['p'])
     r['name'] = f"IM-{r['poles']}"
     return r

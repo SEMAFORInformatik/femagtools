@@ -48,7 +48,48 @@ Example::
 
 .. figure:: img/fluxdens.png
 
-The plot module provides functions for plotting the subregions and mesh::
+General Functions
+-----------------
+
+=====================================  ==============================================
+Function                               Description
+=====================================  ==============================================
+get_areas                              return areas of (in m²) of inner and outer
+                                       regions slots, iron, magnets
+get_mass                               return mass (in kg) of material conductors,
+                                        iron, magnets
+calc_iron_loss(icur, ibeta,            calculate iron (core) loss
+        pfefun, bmin=0.1)
+demag_situation(icur, ibeta, hlim)     demagnetization of each magnet
+rotate(angle)                          rotate inner part by angle (rad)
+scale_factor                           scale factor of model
+=====================================  ==============================================
+
+Plotting
+--------
+
+The plot module provides functions for creating contour plotts nc and isa model files.
+
+=====================================  ======================================
+Function                               Description
+=====================================  ======================================
+spel(nc, subregions=[],
+    with_axis=False, ax=0)             super elements (of subregions)
+mesh(nc, with_axis=False, ax=0)        mesh
+demag(nc, cmap=DEFAULT_CMAP, ax=0)     Demagnetization of last simulation
+demag_pos(nc, pos=-1, icur=-1,
+  ibeta=-1, cmap=DEFAULT_CMAP, ax=0)   Demagnetization of pos, cur, beta
+flux_density(nc, subreg=[],
+    cmap=DEFAULT_CMAP, ax=0)           Flux density of last simulation
+flux_density_pos(nc, ipos, subreg=[],
+  icur=-1, ibeta=-1,
+  cmap=DEFAULT_CMAP, ax=0)             Flux density at pos with cur, beta
+loss_density(isa, subreg=[],
+  cmap=DEFAULT_CMAP, ax=0)             Loss density of last simulation
+=====================================  ======================================
+
+
+Examples::
 
   femagtools.plot.mesh(nc)
   femagtools.plot.spel(nc)

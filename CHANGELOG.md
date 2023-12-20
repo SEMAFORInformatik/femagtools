@@ -2,6 +2,9 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.5.2
+	- VTU demag access by elements added
+
 ## Release 1.4.8
 	- Core loss calc method Bertotti added
 

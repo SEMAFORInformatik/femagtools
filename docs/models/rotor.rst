@@ -59,11 +59,28 @@ slot_h62        H62     m
 slot_h72        H72     m
 ==============  ======  ====== =============================================
 
+
+rotorKs2
+~~~~~~~~~
+
+  .. image:: ../slot-parameters/rotorKS2.svg
+
+==============  ======  ====== =======================
+Name                    Unit   Comment
+==============  ======  ====== =======================
+slot_angle      ALPHA   deg
+slot_height     H       m
+slot_topwidth   B       m
+slot_width      SW      m
+slot_h1         H1      m
+slot_h2         H2      m
+slot_r1         R1      m
+slot_r2         R2      m
+==============  ======  ====== =======================
+
+
 ============  ===========================================
 Name             Parameter
 ============  ===========================================
 statorRotor3  (same as in :ref:`statorRotor3`)
-rotorKs2      slot_angle, slot_height, slot_topwidth.
-              slot_width, slot_h1,
-              slot_h2, slot_r1, slot_r2, middle_line
 ============  ===========================================

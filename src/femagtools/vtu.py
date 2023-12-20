@@ -262,7 +262,7 @@ class Reader(object):
             m2 = -e.mag[0]*np.sin(alfa) + e.mag[1]*np.cos(alfa)
             h[i] = abs(e.reluc[0])/MUE0*np.array((
                 (b1 - psign*btempc*m1), (b2 - psign*btempc*m2)))
-        logging.info("H shape %s", h.shape)
+        logging.debug("H shape %s", h.shape)
         return h
 
 
@@ -283,7 +283,7 @@ class Reader(object):
             for i, e in enumerate(elements):
                 dm[i] = d[e.key-1]
             dlist.append(dm)
-        logging.info("Demag shape %s", np.array(dlist).shape)
+        logging.debug("Demag shape %s", np.array(dlist).shape)
         return dlist
 
 

@@ -872,6 +872,12 @@ class Isa7(object):
             el_fe_ind = [np.array(reader.el_fe_induction_1).T/1000,
                          np.array(reader.el_fe_induction_2).T/1000]
             eddy_cu_vpot = np.array(reader.eddy_cu_vpot).T/1000
+            if len(el_fe_ind[0].shape) == 4:
+                pdim = self.pos_el_fe_induction.shape[0]
+                if pdim < el_fe_ind[0].shape[1]:
+                    el_fe_ind = [el_fe_ind[0][:,:pdim, :, :],
+                                 el_fe_ind[1][:,:pdim, :, :]]
+                    eddy_cu_vpot = eddy_cu_vpot[:,:pdim, :, :]
         except (ValueError, TypeError) as e:
             # inhomogenous array
             l = len(reader.el_fe_induction_1[0][0])
@@ -889,10 +895,9 @@ class Isa7(object):
                          np.array([[reader.el_fe_induction_2[0][0][:shape[0]]]]).T/1000]
             eddy_cu_vpot = np.array([[reader.eddy_cu_vpot[0][0][:shape[0]]]]).T/1000
 
-        pdim = self.pos_el_fe_induction.shape[0]
-        self.el_fe_induction_1 = el_fe_ind[0][:,:pdim, :, :]
-        self.el_fe_induction_2 = el_fe_ind[1][:,:pdim, :, :]
-        self.eddy_cu_vpot = eddy_cu_vpot[:,:pdim, :, :]
+        self.el_fe_induction_1 = el_fe_ind[0]
+        self.el_fe_induction_2 = el_fe_ind[1]
+        self.eddy_cu_vpot = eddy_cu_vpot
 
         self.PS_FILFACTOR_CU = reader.PS_FILFACTOR_CU
         self.PS_LENGTH_CU = reader.PS_LENGTH_CU

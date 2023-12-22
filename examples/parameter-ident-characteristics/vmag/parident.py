@@ -20,6 +20,7 @@ if __name__ == '__main__':
     engine = Engine()
     dqpars = femagtools.machine.pm.parident(
         workdir, engine, temp=[60, 90],
+        i1_max=300,
         machine=machine,
         magnetizingCurves=laminations,
         magnetMat=magnetMat, condMat=condMat)

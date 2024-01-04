@@ -93,7 +93,7 @@ def binterp(x, y, xq, yq, b):
     '''interpolate flux density with Rbf interpolator'''
     f = RBFInterpolator(np.array([[i, j] for i, j in zip(x, y)]), b)
     inp = f(np.array([[i, j] for i, j in zip(xq, yq)]))
-    return inp.reshape(len(np.unique(yq)), len(np.unique(xq)))
+    return inp.reshape(len(np.unique(yq)), len(np.unique(xq)), -1)
 
 
 class MagnLoss(Amela):
@@ -260,15 +260,13 @@ class MagnLoss(Amela):
 
         # regular grid
         if self.is_x:
-            for t in range(nt):
-                bx_3d[:, :, t] = binterp(elxy['excpl'], elxy['eycpl'],
-                                         xx_, yy_, bxy['bxl'][:, t])
-                by_3d[:, :, t] = binterp(elxy['excpl'], elxy['eycpl'],
-                                         xx_, yy_, bxy['byl'][:, t])
+            bx_3d = binterp(elxy['excpl'], elxy['eycpl'],
+                                        xx_, yy_, bxy['bxl'][:, 0:nt])
+            by_3d = binterp(elxy['excpl'], elxy['eycpl'],
+                                        xx_, yy_, bxy['byl'][:, 0:nt])
         else:
-            for t in range(nt):
-                by_3d[:, :, t] = binterp(elxy['excpl'], elxy['eycpl'],
-                                         xx_, yy_, bxy['byl'][:, t])
+            by_3d = binterp(elxy['excpl'], elxy['eycpl'],
+                                        xx_, yy_, bxy['byl'][:, 0:nt])
 
         lfft = (nt-1)//2+1
         by_fft = 2*np.abs(np.fft.rfftn(by_3d[:,:,0:-1]))/(nx*ny*(nt-1))

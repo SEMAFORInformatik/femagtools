@@ -119,10 +119,17 @@ class PmRelMachine(object):
         return tq
 
     def torquemax(self, i1):
-        "returns maximum torque of i1"
+        "returns maximum torque of i1 (nan if i1 out of range)"
         def torquei1b(b):
             return -self.torque_iqd(*iqd(b[0], i1))
         res = so.minimize(torquei1b, (0,))
+        return -res.fun
+
+    def torquemin(self, i1):
+        "returns minimum torque of i1 (nan if i1 out of range)"
+        def torquei1b(b):
+            return self.torque_iqd(*iqd(b[0], i1))
+        res = so.minimize(torquei1b, (-np.pi/2,))
         return -res.fun
 
     def iqd_torque(self, torque, iqd0=0, with_mtpa=True):
@@ -521,8 +528,7 @@ class PmRelMachine(object):
                     iq, id = self.iqd_tmech(torque, w1/2/np.pi/self.p,
                                             iq, id)[:2]
                 else:
-                    iq, id = self.iqd_torque(torque, w1/2/np.pi/self.p,
-                                             iq, id)[:2]
+                    iq, id = self.iqd_torque(torque)[:2]
         if with_mtpv:
             try:
                 if with_tmech:
@@ -820,7 +826,8 @@ class PmRelMachine(object):
 
     def characteristics(self, T, n, u1max, nsamples=60,
                         with_mtpv=True, with_mtpa=True,
-                        with_pmconst=True, with_tmech=True):
+                        with_pmconst=True, with_tmech=True,
+                        with_torque_corr=False):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -835,24 +842,49 @@ class PmRelMachine(object):
         with_pmconst -- (optional) keep pmech const if True (default)
         with_mtpa -- (optional) use mtpa if True (default) in const speed range, set id=0 if false
         with_tmech -- (optional) use friction and windage losses if True (default)
+        with_torque_corr -- (optional) T is corrected if out of range
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
+        retry = True
         if np.isscalar(T):
-            if with_mtpa:
-                iq, id = self.iqd_torque(T)
-                i1max = betai1(iq, id)[1]
-                if T < 0:
-                    i1max = -i1max
-            else:
-                i1max = self.i1_torque(T, 0)
-                iq, id = iqd(0, i1max)
+            while retry:
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    if with_mtpa:
+                        iq, id = self.iqd_torque(T)
+                        i1max = betai1(iq, id)[1]
+                        if T < 0:
+                            i1max = -i1max
+                    else:
+                        i1max = self.i1_torque(T, 0)
+                        iq, id = iqd(0, i1max)
+                if np.isnan((id, iq)).any():
+                    tmax = self.torquemax(self.i1range[1])
+                    tmin = 0
+                    if self.betarange[0] < -np.pi/2:
+                        tmin = self.torquemin(self.i1range[1])
+                    if with_torque_corr:
+                        Torig = T
+                        if T > 0:
+                            T = np.floor(tmax)
+                        else:
+                            T = np.ceil(tmin)
+                        logger.warning(f"corrected torque: {Torig} -> {T} Nm")
+                        continue
+                    else:
+                        raise ValueError(
+                            f"torque {T} Nm out of range ({tmin:.1f}, {tmax:.1f} Nm)")
+                retry = False
+
             if with_tmech:
                 w1, Tf = self.w1_imax_umax(i1max, u1max)
             else:
                 iq, id = self.iqd_torque(T)
                 Tf = T
                 w1 = self.w1_umax(u1max, iq, id)
+            assert w1>0, f"Invalid values u1 {u1max}, T {T}, iq: {iq} id: {id}"
             n1 = w1/2/np.pi/self.p
             r['n_type'] = n1
             nmax = n
@@ -878,7 +910,7 @@ class PmRelMachine(object):
 
             if speedrange[-1] < speedrange[-2]:
                 speedrange = speedrange[:-1]
-            logger.info("Speedrange T=%g %s", Tf, speedrange)
+            logger.info("Speedrange T=%g Nm %s", Tf, speedrange)
             n3 = speedrange[-1]
             nstab = [int(nsamples*(x1-x2)/n3)
                      for x1, x2 in zip(speedrange[1:],

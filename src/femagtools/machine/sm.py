@@ -1,6 +1,4 @@
-""":mod:`femagtools.sm` -- wound-rotor synchronous machine (EESM) electrical circuit model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+"""Wound-rotor synchronous machine (EESM) electrical circuit model
 
 """
 import logging
@@ -314,13 +312,28 @@ class SynchronousMachine(object):
         and friction windage losses"""
         if n > 1e-3:
             f1 = self.p*n
-            plfe = self.kpfe * (self.iqd_plfe1(iq, id, iex, f1) + self.iqd_plfe2(iq, id, f1))
+            plfe = self.kpfe * (self.iqd_plfe1(iq, id, iex, f1)
+                                + self.iqd_plfe2(iq, id, f1))
             return (plfe + self.pfric(n))/(2*np.pi*n)
         return 0
 
     def tmech_iqd(self, iq, id, iex, n):
         """return shaft torque of d-q current and speed"""
         return self.torque_iqd(iq, id, iex) - self.tloss_iqd(iq, id, iex, n)
+
+    def torquemax(self, i1, iex):
+        "returns maximum torque of i1, iex (nan if i1 out of range)"
+        def torquei1b(b):
+            return -self.torque_iqd(*iqd(b[0], i1), iex)
+        res = so.minimize(torquei1b, (0,))
+        return -res.fun
+
+    def torquemin(self, i1, iex):
+        "returns minimum torque of i1, iex (nan if i1 out of range)"
+        def torquei1b(b):
+            return self.torque_iqd(*iqd(b[0], i1), iex)
+        res = so.minimize(torquei1b, (-np.pi/2,))
+        return -res.fun
 
     def uqd(self, w1, iq, id, iex):
         """return uq, ud of frequency w1 and d-q current"""
@@ -533,7 +546,7 @@ class SynchronousMachine(object):
             w10)[0]
 
     def characteristics(self, T, n, u1max, nsamples=50,
-                        with_tmech=True, **kwargs):
+                        with_tmech=True, with_torque_corr=False):
         """calculate torque speed characteristics.
         return dict with list values of
         n, T, u1, i1, beta, cosphi, pmech, n_type
@@ -544,8 +557,30 @@ class SynchronousMachine(object):
         u1max -- (float) the maximum voltage in V rms
         nsamples -- (optional) number of speed samples
         with_tmech -- (optional) use friction and windage losses
+        with_torque_corr -- (optional) T is corrected if out of range
         """
-        iq, id, iex = self.iqd_torque(T)
+        try:
+            iq, id, iex = self.iqd_torque(T)
+        except ValueError:
+            tmax = self.torquemax(
+                    self.i1range[1], self.exc_max)
+            tmin = 0
+            if self.betarange[0] < -np.pi/2:
+                tmin = -self.torquemin(
+                        self.i1range[1], self.exc_max)
+            if with_torque_corr:
+                Torig = T
+                if T > 0:
+                    T = np.floor(0.94*tmax)
+                else:
+                    T = np.ceil(0.94*tmin)
+                logger.warning("corrected torque %f -> %f Nm",
+                               Torig, T)
+                iq, id, iex = self.iqd_torque(T)
+            else:
+                raise ValueError(
+                        f"torque {T} Nm out of range ({tmin:.1f}, {tmax:.1f} Nm)")
+
         if with_tmech:
             i1max = betai1(iq, id)[1]
             if T < 0:
@@ -650,6 +685,7 @@ class SynchronousMachinePsidq(SynchronousMachine):
                         eecpars['psidq'][0]['id'][-1])
         islinear = True
         iexc = [l['ex_current'] for l in eecpars['psidq']]
+        self.exc_max = iexc[-1]
         id = [i/wdg for i in eecpars['psidq'][-1]['id']]
         idx = np.linspace(id[0], id[-1], 12)
         iq = [i/wdg for i in eecpars['psidq'][-1]['iq']]
@@ -737,6 +773,7 @@ class SynchronousMachineLdq(SynchronousMachine):
         self.i1range = (0, eecpars['ldq'][0]['i1'][-1])
         islinear = True
         iexc = [l['ex_current'] for l in eecpars['ldq']]
+        self.exc_max = iexc[-1]
         i1 = [i/wdg for i in eecpars['ldq'][-1]['i1']]
         i1x = np.linspace(i1[0], i1[-1], 12)
         beta = [b*np.pi/180 for b in eecpars['ldq'][-1]['beta']]

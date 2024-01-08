@@ -846,9 +846,10 @@ class PmRelMachine(object):
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
-        retry = True
+        retries = 0
         if np.isscalar(T):
-            while retry:
+            while retries < 2:
+                retries += 1
                 import warnings
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
@@ -864,19 +865,19 @@ class PmRelMachine(object):
                     tmax = self.torquemax(self.i1range[1])
                     tmin = 0
                     if self.betarange[0] < -np.pi/2:
-                        tmin = self.torquemin(self.i1range[1])
+                        tmin = -self.torquemin(self.i1range[1])
                     if with_torque_corr:
                         Torig = T
                         if T > 0:
                             T = np.floor(tmax)
                         else:
                             T = np.ceil(tmin)
-                        logger.warning(f"corrected torque: {Torig} -> {T} Nm")
+                        logger.warning("corrected torque: %f -> %f Nm",
+                                       Torig, T)
                         continue
                     else:
                         raise ValueError(
                             f"torque {T} Nm out of range ({tmin:.1f}, {tmax:.1f} Nm)")
-                retry = False
 
             if with_tmech:
                 w1, Tf = self.w1_imax_umax(i1max, u1max)

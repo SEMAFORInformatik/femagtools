@@ -597,7 +597,7 @@ class PmRelMachine(object):
         #logger.info("mtpv %s", res)
         if res['success']:
             return res.x[0], res.x[1], sign*res.fun
-        raise ValueError(f"mtpv w1={w1} u1={u1} maxtorque={maxtorque} res: {res['message']}")
+        raise ValueError(f"mtpv w1={w1} u1={u1} i0 {i0} iqd0 {iqd0} maxtorque={maxtorque} res: {res['message']}")
 
     def mtpv_tmech(self, w1, u1, iqd0=0, maxtorque=True, i1max=0):
         """return d-q-current, shaft torque for voltage and frequency
@@ -681,6 +681,21 @@ class PmRelMachine(object):
             w1type = self.w1_umax(u1max, iq, id)
         Pmax = w1type/self.p*T
         w1max = 2*np.pi*speedmax*self.p
+        # check max speed:
+        if with_pmconst:
+            iq, id, tq = self.iqd_pmech_imax_umax(
+                speedmax, Pmax, i1max, u1max,
+                with_mtpa, with_tmech)
+        else:
+            iq, id, tq = self.iqd_imax_umax(
+                i1max, w1max, u1max,
+                T, with_mtpv=False,
+                with_tmech=with_tmech)
+        i1 = betai1(iq, id)[1]
+        if (abs(i1max) >= i1
+            and round(u1max, 1) >= round(np.linalg.norm(
+                self.uqd(w1max, iq, id)/np.sqrt(2)), 1)):
+            return [w1type/2/np.pi/self.p, speedmax]
         wl, wu = [w1type, min(4*w1type, w1max)]
         if with_mtpv:
             kmax = 6
@@ -846,38 +861,33 @@ class PmRelMachine(object):
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
-        retries = 0
+
         if np.isscalar(T):
-            while retries < 2:
-                retries += 1
-                import warnings
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    if with_mtpa:
-                        iq, id = self.iqd_torque(T)
-                        i1max = betai1(iq, id)[1]
-                        if T < 0:
-                            i1max = -i1max
+            tmax = self.torquemax(self.i1range[1])
+            tmin = 0
+            if self.betarange[0] < -np.pi/2:
+                tmin = -self.torquemin(self.i1range[1])
+            if tmin > T or T > tmax:
+                if with_torque_corr:
+                    Torig = T
+                    if T > 0:
+                        T = np.floor(tmax)
                     else:
-                        i1max = self.i1_torque(T, 0)
-                        iq, id = iqd(0, i1max)
-                if np.isnan((id, iq)).any():
-                    tmax = self.torquemax(self.i1range[1])
-                    tmin = 0
-                    if self.betarange[0] < -np.pi/2:
-                        tmin = -self.torquemin(self.i1range[1])
-                    if with_torque_corr:
-                        Torig = T
-                        if T > 0:
-                            T = np.floor(tmax)
-                        else:
-                            T = np.ceil(tmin)
-                        logger.warning("corrected torque: %f -> %f Nm",
-                                       Torig, T)
-                        continue
-                    else:
-                        raise ValueError(
-                            f"torque {T} Nm out of range ({tmin:.1f}, {tmax:.1f} Nm)")
+                        T = np.ceil(tmin)
+                    logger.warning("corrected torque: %f -> %f Nm",
+                                   Torig, T)
+                else:
+                    raise ValueError(
+                        f"torque {T} Nm out of range ({tmin:.1f}, {tmax:.1f} Nm)")
+
+            if with_mtpa:
+                iq, id = self.iqd_torque(T)
+                i1max = betai1(iq, id)[1]
+                if T < 0:
+                    i1max = -i1max
+            else:
+                i1max = self.i1_torque(T, 0)
+                iq, id = iqd(0, i1max)
 
             if with_tmech:
                 w1, Tf = self.w1_imax_umax(i1max, u1max)
@@ -951,7 +961,7 @@ class PmRelMachine(object):
                                     iq, id, tq = self.iqd_imax_umax(
                                         i1max, w1, u1max,
                                         Tf, with_tmech=with_tmech,
-                                        with_mtpv=(ns == 1))
+                                        with_mtpv=with_mtpv)
                             else:
                                 if with_tmech:
                                     iq, id, tq = self.mtpv_tmech(w1, u1max,

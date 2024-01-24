@@ -31,15 +31,33 @@ Femagtools can be installed on any 3.x Python distribution with Numpy, Scipy and
 
   $ pip install femagtools
 
+Note::
+
+  The package has a couple of optional dependencies:
+
+  * dxfsl = ['dxfgrabber', 'networkx']
+  * mplot =  ['matplotlib']
+  * meshio = ['meshio']
+  * vtk = ['vtk']
+  * zmq = ['pyzmq']
+
+  If you want them all:
+
+    $ pip install femagtools[all]
+
+  or individually by appending the name of the dependency in brackets. Example:
+
+    $ pip install femagtools[dxfsl]
+
 Prerequisite: a fairly recent FEMAG version
-(see http://www.profemag.ch) must be found in one of the
+(see <https://www.gtisoft.com/download/femag-download>) must be found in one of the
 directories listed in your PATH variable.
 
 If a proxy is needed::
 
   $ pip --proxy http://proxy.hell:3128 install femagtools
 
-For further information: <https://conda.io/docs/user-guide/configuration>_.
+For further information: <https://pip.pypa.io>.
 
 Console Scripts
 ---------------

@@ -841,6 +841,12 @@ class Isa7(object):
                 se.outside = se.nodechains[0].node1.outside
 
         self.pos_el_fe_induction = np.asarray(reader.pos_el_fe_induction)
+        if self.pos_el_fe_induction.shape[0]:
+            # pos_el_fe_induction: strictly monotone increasing sequence
+            a = self.pos_el_fe_induction
+            a = np.concatenate(([a[0]], a[1:][a[1:] > a[:-1]]))
+            if a.shape[0] < self.pos_el_fe_induction.shape[0]:
+                self.pos_el_fe_induction = a
         try:
             self.beta_loss = np.asarray(reader.beta_loss)
             self.curr_loss = np.array([c/np.sqrt(2) for c in reader.curr_loss])
@@ -866,6 +872,12 @@ class Isa7(object):
             el_fe_ind = [np.array(reader.el_fe_induction_1).T/1000,
                          np.array(reader.el_fe_induction_2).T/1000]
             eddy_cu_vpot = np.array(reader.eddy_cu_vpot).T/1000
+            if len(el_fe_ind[0].shape) == 4:
+                pdim = self.pos_el_fe_induction.shape[0]
+                if pdim < el_fe_ind[0].shape[1]:
+                    el_fe_ind = [el_fe_ind[0][:,:pdim, :, :],
+                                 el_fe_ind[1][:,:pdim, :, :]]
+                    eddy_cu_vpot = eddy_cu_vpot[:,:pdim, :, :]
         except (ValueError, TypeError) as e:
             # inhomogenous array
             l = len(reader.el_fe_induction_1[0][0])
@@ -1357,13 +1369,15 @@ class Element(BaseEntity):
 
     def demagnetization(self, temperature=20):
         """return demagnetization Hx, Hy of this element"""
-        return self.demag_b(self.flux_density(cosys='cartes'), temperature)
+        return self.demag_b(self.flux_density(cosys='polar'), temperature)
 
     def demag_b(self, b, temperature):
         """return demagnetization Hx, Hy of this element at flux density b
           and temperature"""
         if self.is_magnet():
+            # assume polar coordinates of b
             pos = np.arctan2(self.center[1], self.center[0])
+            #pos = 0  # cartesian
             br_temp_corr = 1. + self.br_temp_coef*(temperature - 20.)
             magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)*br_temp_corr
             alfa = np.arctan2(self.mag[1], self.mag[0]) - pos

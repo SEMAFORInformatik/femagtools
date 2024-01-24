@@ -15,7 +15,7 @@ def test_im():
     r = femagtools.machine.sizing.im(P, n, p, udc=udc,
                                      sigmas=fs, Ba=0.77,
                                      cos_phi=0.8, eta=0.8,
-                                     lda=0.9)
+                                     lda=0.9, rtype='statorRotor3')
     assert round(r['outer_diam'], 3) == 0.19
     assert r['stator']['num_slots'] == 36
 

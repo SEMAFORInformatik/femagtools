@@ -118,6 +118,20 @@ class PmRelMachine(object):
         tq = self.m*self.p/2*(psid*iq - psiq*id)
         return tq
 
+    def torquemax(self, i1):
+        "returns maximum torque of i1 (nan if i1 out of range)"
+        def torquei1b(b):
+            return -self.torque_iqd(*iqd(b[0], i1))
+        res = so.minimize(torquei1b, (0,))
+        return -res.fun
+
+    def torquemin(self, i1):
+        "returns minimum torque of i1 (nan if i1 out of range)"
+        def torquei1b(b):
+            return self.torque_iqd(*iqd(b[0], i1))
+        res = so.minimize(torquei1b, (-np.pi/2,))
+        return -res.fun
+
     def iqd_torque(self, torque, iqd0=0, with_mtpa=True):
         """return minimum d-q-current for torque"""
         if np.abs(torque) < 1e-2:
@@ -139,6 +153,9 @@ class PmRelMachine(object):
                 return torque - self.mtpa(i1)[2]
             i1 = so.fsolve(func, res.x[0])[0]
             return self.mtpa(i1)[:2]
+        def func(iq):
+            return torque - self.torque_iqd(iq, 0)
+        return so.fsolve(func, 0)[0]
 
 
         def tqiq(iq):
@@ -511,8 +528,7 @@ class PmRelMachine(object):
                     iq, id = self.iqd_tmech(torque, w1/2/np.pi/self.p,
                                             iq, id)[:2]
                 else:
-                    iq, id = self.iqd_torque(torque, w1/2/np.pi/self.p,
-                                             iq, id)[:2]
+                    iq, id = self.iqd_torque(torque)[:2]
         if with_mtpv:
             try:
                 if with_tmech:
@@ -581,7 +597,7 @@ class PmRelMachine(object):
         #logger.info("mtpv %s", res)
         if res['success']:
             return res.x[0], res.x[1], sign*res.fun
-        raise ValueError(f"mtpv w1={w1} u1={u1} maxtorque={maxtorque} res: {res['message']}")
+        raise ValueError(f"mtpv w1={w1} u1={u1} i0 {i0} iqd0 {iqd0} maxtorque={maxtorque} res: {res['message']}")
 
     def mtpv_tmech(self, w1, u1, iqd0=0, maxtorque=True, i1max=0):
         """return d-q-current, shaft torque for voltage and frequency
@@ -622,9 +638,9 @@ class PmRelMachine(object):
                       'rotor_eddy': ef[1]}
         #                          'magnet'):
         if 'styoke_exc' in pfe:
-            self.plexp.update({'styoke_exc': cf[0], 
+            self.plexp.update({'styoke_exc': cf[0],
                                'stteeth_exc':cf[0],
-                               'rotor_exc': cf[1]}) 
+                               'rotor_exc': cf[1]})
 
     def betai1_plcu(self, i1, w1=0):
         return self.m*self.rstat(w1)*i1**2
@@ -665,6 +681,21 @@ class PmRelMachine(object):
             w1type = self.w1_umax(u1max, iq, id)
         Pmax = w1type/self.p*T
         w1max = 2*np.pi*speedmax*self.p
+        # check max speed:
+        if with_pmconst:
+            iq, id, tq = self.iqd_pmech_imax_umax(
+                speedmax, Pmax, i1max, u1max,
+                with_mtpa, with_tmech)
+        else:
+            iq, id, tq = self.iqd_imax_umax(
+                i1max, w1max, u1max,
+                T, with_mtpv=False,
+                with_tmech=with_tmech)
+        i1 = betai1(iq, id)[1]
+        if (abs(i1max) >= i1
+            and round(u1max, 1) >= round(np.linalg.norm(
+                self.uqd(w1max, iq, id)/np.sqrt(2)), 1)):
+            return [w1type/2/np.pi/self.p, speedmax]
         wl, wu = [w1type, min(4*w1type, w1max)]
         if with_mtpv:
             kmax = 6
@@ -810,7 +841,8 @@ class PmRelMachine(object):
 
     def characteristics(self, T, n, u1max, nsamples=60,
                         with_mtpv=True, with_mtpa=True,
-                        with_pmconst=True, with_tmech=True):
+                        with_pmconst=True, with_tmech=True,
+                        with_torque_corr=False):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -825,10 +857,29 @@ class PmRelMachine(object):
         with_pmconst -- (optional) keep pmech const if True (default)
         with_mtpa -- (optional) use mtpa if True (default) in const speed range, set id=0 if false
         with_tmech -- (optional) use friction and windage losses if True (default)
+        with_torque_corr -- (optional) T is corrected if out of range
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
+
         if np.isscalar(T):
+            tmax = self.torquemax(self.i1range[1])
+            tmin = 0
+            if self.betarange[0] < -np.pi/2:
+                tmin = -self.torquemin(self.i1range[1])
+            if tmin > T or T > tmax:
+                if with_torque_corr:
+                    Torig = T
+                    if T > 0:
+                        T = np.floor(tmax)
+                    else:
+                        T = np.ceil(tmin)
+                    logger.warning("corrected torque: %f -> %f Nm",
+                                   Torig, T)
+                else:
+                    raise ValueError(
+                        f"torque {T} Nm out of range ({tmin:.1f}, {tmax:.1f} Nm)")
+
             if with_mtpa:
                 iq, id = self.iqd_torque(T)
                 i1max = betai1(iq, id)[1]
@@ -837,12 +888,14 @@ class PmRelMachine(object):
             else:
                 i1max = self.i1_torque(T, 0)
                 iq, id = iqd(0, i1max)
+
             if with_tmech:
                 w1, Tf = self.w1_imax_umax(i1max, u1max)
             else:
                 iq, id = self.iqd_torque(T)
                 Tf = T
                 w1 = self.w1_umax(u1max, iq, id)
+            assert w1>0, f"Invalid values u1 {u1max}, T {T}, iq: {iq} id: {id}"
             n1 = w1/2/np.pi/self.p
             r['n_type'] = n1
             nmax = n
@@ -868,7 +921,7 @@ class PmRelMachine(object):
 
             if speedrange[-1] < speedrange[-2]:
                 speedrange = speedrange[:-1]
-            logger.info("Speedrange T=%g %s", Tf, speedrange)
+            logger.info("Speedrange T=%g Nm %s", Tf, speedrange)
             n3 = speedrange[-1]
             nstab = [int(nsamples*(x1-x2)/n3)
                      for x1, x2 in zip(speedrange[1:],
@@ -908,7 +961,7 @@ class PmRelMachine(object):
                                     iq, id, tq = self.iqd_imax_umax(
                                         i1max, w1, u1max,
                                         Tf, with_tmech=with_tmech,
-                                        with_mtpv=(ns == 1))
+                                        with_mtpv=with_mtpv)
                             else:
                                 if with_tmech:
                                     iq, id, tq = self.mtpv_tmech(w1, u1max,
@@ -1089,10 +1142,10 @@ class PmRelMachineLdq(PmRelMachine):
             kx = len(beta)-1
         try:
             pfe = kwargs['losses']
-            if 'styoke_exc' in pfe: 
+            if 'styoke_exc' in pfe:
                 self.bertotti = True
-                self.losskeys += ['styoke_exc', 
-                                  'stteeth_exc', 
+                self.losskeys += ['styoke_exc',
+                                  'stteeth_exc',
                                   'rotor_exc']
             self._set_losspar(pfe)
             self._losses = {k: ip.RectBivariateSpline(
@@ -1185,7 +1238,7 @@ class PmRelMachineLdq(PmRelMachine):
     def betai1_plfe1(self, beta, i1, f1):
         stator_losskeys = ['styoke_eddy', 'styoke_hyst',
                             'stteeth_eddy', 'stteeth_hyst']
-        if self.bertotti: 
+        if self.bertotti:
             stator_losskeys += ['styoke_exc', 'stteeth_exc']
         return np.sum([
             self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k] for
@@ -1196,7 +1249,7 @@ class PmRelMachineLdq(PmRelMachine):
 
     def betai1_plfe2(self, beta, i1, f1):
         rotor_losskeys = ['rotor_eddy', 'rotor_hyst']
-        if self.bertotti: 
+        if self.bertotti:
             rotor_losskeys += ['rotor_exc']
         return np.sum([
             self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k] for

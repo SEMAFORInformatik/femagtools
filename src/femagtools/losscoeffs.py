@@ -140,10 +140,13 @@ def fit_bertotti0(f, B, losses, generate=False):
     z = np.array([b for a in v for b in a]).T
     fbx = z[0:2]
     y = z[2]
-    fitp, cov = so.curve_fit(
+    guess = (ch0, cw0, ce0)
+    fitp, _ = so.curve_fit(
         lambda x, ch, cw, ce: wbert(
             x[0], x[1], ch, cw, ce),
-        fbx, y, (ch0, cw0, ce0))
+        fbx, y,
+        bounds=[(0, 0, 0),
+                (np.inf, np.inf, np.inf)])
     return fitp
 
 

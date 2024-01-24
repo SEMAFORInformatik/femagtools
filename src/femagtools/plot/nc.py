@@ -14,16 +14,21 @@ DEFAULT_CMAP='viridis'
 """default colormap (see https://matplotlib.org/stable/users/explain/colors/colormaps.html)"""
 
 
-def spel(isa, with_axis=False, ax=0):
+def spel(isa, superelements=[], with_axis=False, ax=0):
     """plot super elements of I7/ISA7 model
     Args:
       isa: Isa7 object
+      superelements: list of super elements (all if empty)
     """
     from matplotlib.patches import Polygon
     if ax == 0:
         ax = plt.gca()
     ax.set_aspect('equal')
-    for se in isa.superelements:
+    if superelements:
+        spels = superelements
+    else:
+        spels = isa.superelements
+    for se in spels:
         ax.add_patch(Polygon([n.xy
                               for nc in se.nodechains
                               for n in nc.nodes],
@@ -79,17 +84,16 @@ def _contour(ax, title, elements, values, label='',
                                   for n in nc.nodes],
                                  color='gray', alpha=0.1, lw=0))
     valid_values = np.logical_not(np.isnan(values))
-    patches = np.array([Polygon([v.xy for v in e.vertices])
-                       for e in elements])[valid_values]
+    vertices = [[v.xy for v in e.vertices] for e in elements]
+    patches = np.array([Polygon(xy) for xy in vertices])[valid_values]
     p = PatchCollection(patches, match_original=False,
                         cmap=cmap, alpha=alpha)
     p.set_array(np.asarray(values)[valid_values])
     ax.add_collection(p)
     cb = plt.colorbar(p, shrink=0.9)
 
-    for patch in np.array([Polygon([v.xy for v in e.vertices],
-                                   fc='white', alpha=1.0)
-                           for e in elements])[np.isnan(values)]:
+    for patch in np.array([Polygon(xy, fc='white', alpha=1.0)
+                           for xy in vertices])[np.isnan(values)]:
         ax.add_patch(patch)
     if label:
         cb.set_label(label=label)
@@ -130,9 +134,10 @@ def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, cmap=DEFAULT_CMAP, ax=0):
         x = isa.pos_el_fe_induction[i]
 
     hpol = demag[:, i]
+    hmax = np.max(hpol)
     hpol[hpol == 0] = np.nan
-    _contour(ax, f'Demagnetization at pos. {round(x/np.pi*180):.1f}°,'
-    f'{isa.MAGN_TEMPERATURE} °C (max -{np.max(hpol):.1f} kA/m)',
+    _contour(ax, f'Demagnetization at pos. {round(x/np.pi*180):.1f}°, '
+    f'{isa.MAGN_TEMPERATURE} °C (max -{hmax:.1f} kA/m)',
              emag, hpol, '-H / kA/m', cmap, isa)
     logger.info("Max demagnetization %f kA/m", np.nanmax(hpol))
 
@@ -232,7 +237,7 @@ def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, cmap=DEFAULT_CMAP,
     for e in elements:
         fd = isa.flux_density(e, icur, ibeta)
         b.append(np.linalg.norm(
-            (fd['bx'][ipos], fd['bx'][ipos])))
+            (fd['bx'][ipos], fd['by'][ipos])))
     fluxd = np.array(b)
     pos = isa.pos_el_fe_induction[ipos]*180/np.pi
     isa.rotate(isa.pos_el_fe_induction[ipos])

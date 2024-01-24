@@ -18,16 +18,12 @@ def fft(pos, y, pmod=0):
         negative_periodic = np.abs(y[0] - y[-1])/np.max(y) > 1
 
     if negative_periodic:
-        yx = np.append(
-            np.concatenate(
+        yx = np.concatenate(
                 [n*y[:-1]
                  for n in [m % 2 or -1
-                           for m in range(1, ntiles+1)]]),
-            y[0])
+                           for m in range(1, ntiles+1)]])
     else:
-        yx = np.append(
-            np.tile(y[:-1], ntiles),
-            y[0])
+        yx = np.tile(y[:-1], ntiles)
 
     N = len(yx)
     # compute DFT from induction (eliminate DC offset)

@@ -256,5 +256,5 @@ class Engine:
         try:
             self.pool.terminate()
             self.pool.close()
-        except AttributeError:
+        except AttributeError as e:
             logger.warn("%s", e)

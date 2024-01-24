@@ -303,15 +303,22 @@ class Area(object):
         return (my_min_angle, my_max_angle)
 
     def is_inside(self, area):
-        if less_equal(area.min_dist, self.min_dist):
+        if less_equal(area.min_dist, self.min_dist, rtol=1e-8):
             return False
-        if greater_equal(area.max_dist, self.max_dist):
+        if greater_equal(area.max_dist, self.max_dist, rtol=1e-8):
             return False
-        if less_equal(area.min_angle, self.min_angle):
+        if less_equal(area.min_angle, self.min_angle, rtol=1e-8):
             return False
-        if greater_equal(area.max_angle, self.max_angle):
+        if greater_equal(area.max_angle, self.max_angle, rtol=1e-8):
             return False
-        return True
+
+        ref_n = self.area[0].n1
+        for n in self.list_of_nodes():
+            if not points_are_close(ref_n, n):
+                line = Line(Element(start=ref_n, end=n))
+                if area.intersect_line(line):
+                    return True  # it's realy inside
+        return False
 
     def is_touching(self, area):
         for n in self.list_of_nodes():

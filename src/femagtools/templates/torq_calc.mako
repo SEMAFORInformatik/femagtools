@@ -67,5 +67,6 @@ m.current         =    ${model.get('current')}*math.sqrt(2.0)/m.num_par_wdgs
 m.angl_i_up       =    ${model.get('angl_i_up', 0)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
+m.period_frac    = ${model.get('period_frac', 1)}
 
 run_models("torq_calc")

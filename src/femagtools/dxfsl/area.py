@@ -1191,6 +1191,11 @@ class Area(object):
         logger.debug(" - max_dist           : %3.12f", self.max_dist)
         logger.debug(" - surface size       : %3.12f", self.surface)
 
+        if self.has_iron_separator():
+            logger.debug("***** iron (has iron separator)\n")
+            self.type = 1  # iron
+            return self.type
+
         if is_inner:
             # looking for shaft
             if close_to_opposition and not self.close_to_ag:

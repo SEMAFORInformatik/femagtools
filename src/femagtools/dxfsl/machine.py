@@ -9,7 +9,7 @@ from .shape import Element, Circle, Arc, Line, Shape
 from .corner import Corner
 from .functions import point, points_are_close, distance
 from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
-from .functions import line_m, line_n, mirror_point
+from .functions import alpha_line, line_m, line_n, mirror_point
 from .functions import within_interval, part_of_circle
 from .functions import less, less_equal, greater, greater_equal
 logger = logging.getLogger('femagtools.geom')
@@ -532,6 +532,12 @@ class Machine(object):
 
         if self.mirror_geom is not None:
             self.geom.mirror_corners = self.geom.end_corners
+            self.mirror_geom.start_corners = \
+                self.mirror_geom.get_corner_nodes(self.center,
+                                                  self.mirror_startangle)
+            self.mirror_geom.end_corners = \
+                self.mirror_geom.get_corner_nodes(self.center,
+                                                  self.mirror_endangle)
 
     def is_mirrored(self):
         return self.mirror_geom is not None
@@ -768,44 +774,86 @@ class Machine(object):
         axis_m = line_m(self.center, axis_p)
         axis_n = line_n(self.center, axis_m)
 
-        def is_node_available(n, nodes):
-            mirror_p = mirror_point(n, self.center, axis_m, axis_n)
-            for p in nodes:
-                if points_are_close(p, mirror_p, rtol, atol):
-                    return True
-            return False
+        def is_node_available(mirror_n, nodes, rtol, atol):
+            hits = 0
+            for n in nodes:
+                if points_are_close(n, mirror_n, rtol, atol):
+                    hits += 1
+            return hits
 
-        def get_hit_factor(nodes1, nodes2):
-            hit = 0
-            if not nodes1:
+        def get_hit_factor(geom1, geom2):
+            hit_nodes = 0
+            hit_inside = 0
+            hit_ag = 0
+            hit_no = 0
+            if not geom1.g.nodes():
                 return 0.0
 
-            for n in nodes1:
-                if is_node_available(n, nodes2):
-                    hit += 1
+            logger.debug("begin get_hit_factor")
+
+            nodes_near_ag = []
+            logger.debug(" -- nodes1: %s,  nodes2: %s",
+                         len(geom1.g.nodes()), len(geom2.g.nodes()))
+            for n in geom1.g.nodes():
+                mirror_n = mirror_point(n, self.center, axis_m, axis_n)
+                logger.debug("  Node %s <==> %s", n, mirror_n)
+                hits = is_node_available(mirror_n, geom2.g.nodes(), rtol=rtol*2, atol=atol*2)
+                if hits:
+                    logger.debug(" ==> MATCH %s NODE", hits)
+                    hit_nodes += 1
                 else:
                     d = distance(self.center, n)
                     logger.debug(" -- r={}, d={}".format(self.radius, d))
-                    if np.isclose(d, self.radius, rtol=0.075, atol=atol):
+                    if np.isclose(d, self.radius, rtol=rtol, atol=atol):
+                        hit_ag += 1
+                    elif np.isclose(d, self.radius, rtol=0.075, atol=atol):
                         # very tolerant
-                        logger.debug("NO HIT FOR {} ON OUTER HULL".format(n))
-                        hit += 1
+                        nodes_near_ag.append(n)
+                    elif geom2.the_point_is_inside(mirror_n, rtol=rtol*10, atol=atol):
+                        hit_inside += 1
+                    else:
+                        hit_no += 1
 
-            return float(hit) / len(nodes1)
+            if nodes_near_ag:
+                logger.debug(" -- %s candidates near airgap --", len(nodes_near_ag))
+                for n in nodes_near_ag:
+                    alfa = alpha_line(self.center, n)
+                    p = point(self.center, self.radius + 10.0, alfa)
+                    line = Line(Element(start=n, end=p))
+                    pts = geom1.intersect_the_line(line)
+                    if pts:
+                        hit_no += 1
+                    else:
+                        logger.debug(" -- Node %s is in touch with airgap", n)
+                        hit_ag += 1
 
-        hit_factor1 = get_hit_factor(self.geom.g.nodes(),
-                                     self.mirror_geom.g.nodes())
+            logger.debug(" -- temporary nodes hits: %s: factor is %s",
+                         hit_nodes, float(hit_nodes) / len(geom1.g.nodes()))
+            logger.debug(" -- temporary inside hits: %s: factor is %s",
+                         hit_inside, float(hit_inside) / len(geom1.g.nodes()))
+            logger.debug(" -- temporary airgap hits: %s: factor is %s",
+                         hit_ag, float(hit_ag) / len(geom1.g.nodes()))
+            logger.debug(" -- temporary no hits: %s: factor is %s",
+                         hit_no, float(hit_no) / len(geom1.g.nodes()))
+            # hit_inside and hit_no are unused
+            return float(hit_nodes + hit_ag) / len(geom1.g.nodes())
+
+        hit_factor1 = get_hit_factor(self.geom,
+                                     self.mirror_geom)
         logger.debug("=> hit_factor1 = {}".format(hit_factor1))
         if hit_factor1 < 0.9:
+            logger.debug("end get_hit_factor: hit_factor1 < 0.9")
             return False  # not ok
 
-        hit_factor2 = get_hit_factor(self.mirror_geom.g.nodes(),
-                                     self.geom.g.nodes())
+        hit_factor2 = get_hit_factor(self.mirror_geom,
+                                     self.geom)
         logger.debug("=> hit_factor2 = {}".format(hit_factor2))
         if hit_factor2 < 0.9:
+            logger.debug("end get_hit_factor: hit_factor2 < 0.9")
             return False  # not ok
 
         if hit_factor1 < 0.93 and hit_factor2 < 0.93:
+            logger.debug("end get_hit_factor: hit_factors < 0.93")
             return False  # not ok
 
         logger.debug("end check_symmetry_graph: ok")

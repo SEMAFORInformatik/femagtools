@@ -147,13 +147,13 @@ class Area(object):
                 if e1.n1 == e2.n1 and e1.n2 == e2.n2:
                     yield e1
 
-    def virtual_nodes(self, render=False):
+    def virtual_nodes(self, render=False, parts=64):
         if len(self.area) < 2:
             return
 
-        prev_nodes = [n for n in self.area[0].get_nodes(parts=64,
+        prev_nodes = [n for n in self.area[0].get_nodes(parts=parts,
                                                         render=render)]
-        next_nodes = [n for n in self.area[1].get_nodes(parts=64,
+        next_nodes = [n for n in self.area[1].get_nodes(parts=parts,
                                                         render=render)]
         if points_are_close(prev_nodes[0], next_nodes[0], 1e-03, 1e-01):
             prev_nodes = prev_nodes[::-1]
@@ -171,7 +171,7 @@ class Area(object):
             yield n
 
         for e in self.area[2::]:
-            next_nodes = [n for n in e.get_nodes(parts=64, render=render)]
+            next_nodes = [n for n in e.get_nodes(parts=parts, render=render)]
 
             if points_are_close(next_nodes[-1], last_point, 1e-03, 1e-01):
                 next_nodes = next_nodes[::-1]
@@ -302,7 +302,7 @@ class Area(object):
                 my_max_angle = max_angle(my_max_angle, mm_angle[1])
         return (my_min_angle, my_max_angle)
 
-    def is_inside(self, area):
+    def is_inside(self, area, geom):
         if less_equal(area.min_dist, self.min_dist, rtol=1e-8):
             return False
         if greater_equal(area.max_dist, self.max_dist, rtol=1e-8):
@@ -312,12 +312,27 @@ class Area(object):
         if greater_equal(area.max_angle, self.max_angle, rtol=1e-8):
             return False
 
-        ref_n = self.area[0].n1
-        for n in self.list_of_nodes():
-            if not points_are_close(ref_n, n):
-                line = Line(Element(start=ref_n, end=n))
-                if area.intersect_line(line):
-                    return True  # it's realy inside
+        p1 = self.get_point_inside(geom)
+        p2 = area.get_simple_point_inside(geom)
+
+        if p1 is None or p2 is None:
+            logger.debug(" -- Line from %s to %s", p1, p2)
+            logger.debug(" self has %s elements", len(self.area))
+            logger.debug(" area has %s elements", len(area.area))
+            return False
+
+        line = Line(Element(start=p1, end=p2))
+        plist = self.intersect_points(line)
+        points = len(plist)
+        plist.sort()
+        if plist:
+            if points_are_close(p1, plist[0]):
+                points -= 1
+            elif points_are_close(p1, plist[-1]):
+                points -= 1
+
+        if points % 2 == 0:
+            return True  # p2 is inside
         return False
 
     def is_touching(self, area):
@@ -597,6 +612,12 @@ class Area(object):
                 return True
         return False
 
+    def intersect_points(self, line):
+        points = []
+        for e in self.area:
+            points += e.intersect_line(line, include_end=True)
+        return points
+
     def is_point_inside(self, pt):
         for e in self.area:
             if e.is_point_inside(pt, include_end=True):
@@ -675,6 +696,29 @@ class Area(object):
 
         points.sort()
         return (points[-1][1], points[-1][2])
+
+    def get_simple_point_inside(self, geom):
+        mid_angle = middle_angle(self.min_angle, self.max_angle)
+        c = (0.0, 0.0)
+        p = point(c, self.max_dist + 5.0, mid_angle)
+        line = Line(Element(start=c, end=p))
+        points = []
+        for e in self.area:
+            points += e.intersect_line(line, rtol=geom.rtol, atol=geom.atol, include_end=True)
+
+        if len(points) < 2:
+            logger.warning("WARNING: get_simple_point_inside() failed (%s in %s)",
+                           len(points), self.identifier())
+            p = point(c, self.min_dist + (self.max_dist - self.min_dist) / 2, mid_angle)
+            logger.warning("WARNING: try simple point %s", p)
+            return p
+
+        assert(len(points) > 1)
+        points.sort()
+        d1 = distance(c, points[0])
+        d2 = distance(c, points[1])
+        p = point(c, (d1 + d2) / 2, mid_angle)
+        return p
 
     def get_point_inside(self, geom):
         """return point inside area"""
@@ -1075,11 +1119,11 @@ class Area(object):
         else:
             return middle_angle(self.min_angle, self.max_angle)
 
-    def around_windings(self, areas):
+    def around_windings(self, areas, geom):
         for a in areas:
             if a.is_winding():
                 if not self.is_identical(a):
-                    if self.is_inside(a):
+                    if self.is_inside(a, geom):
                         return True
                     elif self.is_touching(a):
                         return True

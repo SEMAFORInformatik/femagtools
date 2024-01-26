@@ -1666,6 +1666,20 @@ class Geometry(object):
         for area in self.area_list:
             area.remove_edges(self.g, ndec)
 
+    def intersect_the_line(self, line, rtol=1e-04, atol=1e-04):
+        for e in self.elements(Shape):
+            pts = e.intersect_line(line, rtol, atol, False)
+            if pts:
+                return pts
+        return []
+
+    def the_point_is_inside(self, p, rtol=1e-04, atol=1e-04):
+        for e in self.elements(Shape):
+            if e.is_point_inside(p, rtol=rtol, atol=atol, include_end=True):
+                #logger.info("point %s is inside %s", p, e)
+                return True
+        return False
+
     def copy_line(self, center, radius, start_angle, end_angle,
                   start_line, end_line, inner_circle, outer_circle, e,
                   rtol=1e-04,
@@ -2370,7 +2384,6 @@ class Geometry(object):
         atol = 3.0
 
         logger.debug("*** Begin of get_machine() ***")
-
         if np.isclose(height, width, self.rtol, self.atol):
             radius = width/2
             self.set_center([mm[1]-radius, mm[3]-radius])
@@ -2797,20 +2810,32 @@ class Geometry(object):
         return True
 
     def set_areas_inside_for_all_areas(self):
+        logger.debug("begin set_areas_inside_for_all_areas")
         for area in self.list_of_areas():
             areas_inside = [a for a in self.area_list
-                            if area.is_inside(a)]
+                            if area.is_inside(a, self)]
             if not areas_inside:
                 continue
+
             areas_notouch = {a.identifier(): a for a in areas_inside
                              if not area.has_connection(self, a, ndec)}
             area.areas_inside = areas_notouch
 
         for area in self.list_of_areas():
+            logger.debug(" Inside %s is:", area.identifier())
             nested = [id for id in area.list_of_nested_areas_inside()]
             for id in nested:
                 logger.debug(" -- remove %s inside %s", id, area.identifier())
-                del area.areas_inside[id]
+                if area.areas_inside.get(id, None):
+                    del area.areas_inside[id]
+                else:
+                    logger.warning("   %s already removed ?!", id)
+
+        #for area in self.list_of_areas():
+        #    logger.info("Inside %s is:", area.identifier())
+        #    for id in area.areas_inside:
+        #        logger.info(" ++ %s", id)
+        logger.debug("end set_areas_inside_for_all_areas")
 
     def get_minmax_magnet(self):
         logger.debug("get_minmax_magnet")
@@ -3216,7 +3241,7 @@ class Geometry(object):
     def check_shaft_area(self, shaft):
         for a in self.list_of_areas():
             if not shaft.is_identical(a):
-                if shaft.is_inside(a):
+                if shaft.is_inside(a, self):
                     shaft.type = 6  # iron shaft (Zahn)
                     return
                 if shaft.is_touching(a):
@@ -3343,7 +3368,7 @@ class Geometry(object):
         # air or iron near windings and near airgap ?
         air_areas = [a for a in self.list_of_areas() if a.type == 9]
         for a in air_areas:
-            if a.around_windings(windings):
+            if a.around_windings(windings, self):
                 logger.debug("Area %s", a.identifier())
                 logger.debug(" - air-angle min/max = %s/%s",
                              a.min_air_angle,
@@ -3399,7 +3424,7 @@ class Geometry(object):
         # yoke or shaft ?
         iron_areas = [a for a in self.list_of_areas() if a.type == 5]
         for a in iron_areas:
-            if a.around_windings(windings):
+            if a.around_windings(windings, self):
                 if less(a.min_dist, wdg_max_dist):
                     if less_equal(a.max_dist, wdg_max_dist):
                         a.type = 6  # iron shaft (Zahn)

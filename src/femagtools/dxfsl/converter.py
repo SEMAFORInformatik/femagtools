@@ -49,6 +49,7 @@ def symmetry_search(machine,
 
         machine_mirror = machine.get_symmetry_mirror()
         machine_slice = machine
+        machine_slice.set_alfa_and_corners()
     else:
         logger.info(" - {}: symmetry axis found !!".format(kind))
         if show_plots:

@@ -1204,7 +1204,12 @@ class Line(Shape):
 
         m1 = line_m(self.p1, point)
         m2 = line_m(point, self.p2)
+
         if m1 is None or m2 is None:
+            # check x-Values
+            if np.isclose(self.p1[0], point[0]) and np.isclose(self.p2[0], point[0]):
+                m1 = None
+                m2 = None
             if m1 is not None or m2 is not None:
                 return False
         elif not np.isclose(m1, m2, rtol, atol):

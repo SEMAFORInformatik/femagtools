@@ -64,6 +64,7 @@ class PmRelMachine(object):
         self.gam = 0.7
         self.kh = 2
         self.kpfe = 1 # iron loss factor
+        self.kpmag = 1 # magnet loss factor
         self.kfric_b = 1
         self.rotor_mass = 0
         self.kth1 = KTH
@@ -1007,9 +1008,9 @@ class PmRelMachine(object):
         else:
             pmech = np.array([2*np.pi*nx*(tq-self.tfric) for nx, tq in zip(r['n'], r['T'])])
         f1 = np.array(r['n'])*self.p
-        plfe1 = self.iqd_plfe1(np.array(r['iq']), np.array(r['id']), f1)
-        plfe2 = self.iqd_plfe2(np.array(r['iq']), np.array(r['id']), f1)
-        plmag = self.iqd_plmag(np.array(r['iq']), np.array(r['id']), f1)
+        plfe1 = self.kpfe*self.iqd_plfe1(np.array(r['iq']), np.array(r['id']), f1)
+        plfe2 = self.kpfe*self.iqd_plfe2(np.array(r['iq']), np.array(r['id']), f1)
+        plmag = self.kpmag*self.iqd_plmag(np.array(r['iq']), np.array(r['id']), f1)
         plfe = plfe1 + plfe2 + plmag
         plcu = self.betai1_plcu(np.array(r['i1']), 2*np.pi*f1)
         plfw = self.pfric(2*np.pi*f1)
@@ -1321,6 +1322,11 @@ class PmRelMachinePsidq(PmRelMachine):
         self._psiq = ip.RectBivariateSpline(iq, id, psiq).ev
         try:
             pfe = kwargs['losses']
+            if 'styoke_exc' in pfe:
+                self.bertotti = True
+                self.losskeys += ['styoke_exc',
+                                  'stteeth_exc',
+                                  'rotor_exc']
             self._set_losspar(pfe)
             self._losses = {k: ip.RectBivariateSpline(
                 iq, id, np.array(pfe[k])).ev for k in (
@@ -1376,18 +1382,24 @@ class PmRelMachinePsidq(PmRelMachine):
         return iqmax, np.max(self.idrange)
 
     def iqd_plfe1(self, iq, id, f1):
+        stator_losskeys = ['styoke_eddy', 'styoke_hyst',
+                            'stteeth_eddy', 'stteeth_hyst']
+        if self.bertotti:
+            stator_losskeys += ['styoke_exc', 'stteeth_exc']
         return np.sum([
             self._losses[k](iq, id)*(f1/self.fo)**self.plexp[k] for
-            k in ('styoke_eddy', 'styoke_hyst',
-                  'stteeth_eddy', 'stteeth_hyst')], axis=0)
+            k in tuple(stator_losskeys)], axis=0)
 
     def betai1_plfe1(self, beta, i1, f1):
         return self.iqd_plfe1(*iqd(beta, i1), f1)
 
     def iqd_plfe2(self, iq, id, f1):
+        rotor_losskeys = ['rotor_eddy', 'rotor_hyst']
+        if self.bertotti:
+            rotor_losskeys += ['rotor_exc']
         return np.sum([
             self._losses[k](iq, id)*(f1/self.fo)**self.plexp[k] for
-            k in ('rotor_eddy', 'rotor_hyst',)], axis=0)
+            k in tuple(rotor_losskeys)], axis=0)
 
     def betai1_plfe2(self, beta, i1, f1):
         return self.iqd_plfe2(*iqd(beta, i1), f1)

@@ -327,7 +327,7 @@ class FslBuilderTest(unittest.TestCase):
 
         feapars['calculationMode'] = "torq_calc"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 25)
+        self.assertEqual(len(fsl), 26)
 
     def test_run_existing_model(self):
         model = femagtools.MachineModel('data/magnsec')

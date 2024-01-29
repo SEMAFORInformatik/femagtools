@@ -463,7 +463,7 @@ class Builder:
             dxfname += '.dxf'
         if not os.path.isfile(dxfname):
             logger.error('File {} not found'.format(dxfname))
-            return []
+            raise ValueError(f'File {dxfname} not found')
 
         params = {}
         params['split'] = model.dxffile.get('split', False)

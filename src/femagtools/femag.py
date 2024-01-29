@@ -39,9 +39,9 @@ class FemagError(Exception):
 
 def handle_process_output(filedes, outfile, log):
     """read from file descriptor and direct lines to logger and outfile"""
-    with open(outfile, 'w') as fp:
+    with open(outfile, 'wb') as fp:
         for line in filedes:
-            fp.write(line.decode())
+            fp.write(line)
             if log:
                 if (b'' == line or
                     b'\x1b' in line or  # ignore terminal escape seq

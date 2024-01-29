@@ -541,8 +541,8 @@ class FslRenderer(object):
                     u'  m.num_layers      = {}'.format(num_layers),
                     u'  m.num_wires       = 1',
                     u'  m.coil_span       = {}'.format(
-                        2*num_layers*params.get(
-                            'tot_num_slot', 1)//params.get('num_poles', 1)//3),
+                        params.get(
+                            'tot_num_slot', 1)//params.get('num_poles', 1)),
                     u'  m.current         = 0.0',
                     u'  m.mat_type        = 1.0 -- rotating',
                     u'  m.wind_type       = 1.0 -- winding & current',

@@ -1139,6 +1139,13 @@ class Geometry(object):
             return self.min_radius
         return None
 
+    def get_opposite_radius(self):
+        if self.is_inner:
+            return self.min_radius
+        if self.is_outer:
+            return self.max_radius
+        return None
+
     def area_size(self):
         pts = [p for p in self.start_corners]
         end_pts = [p for p in reversed(self.end_corners)]
@@ -4050,20 +4057,20 @@ class Geometry(object):
 
         if not self.is_inner:
             logger.debug("end of get_inner_airgap_line: not inner")
-            return []
+            return [], []
         for a in self.area_list:
             logger.debug("%s", a)
         area = [a for a in self.area_list if a.close_to_ag_endcorner]
         if len(area) != 1:
             logger.debug("end of get_inner_airgap_line: %s areas found", len(area))
-            return []
+            return [], []
 
         end_corner = self.end_corners[-1]
         logger.debug("END CORNER %s", end_corner)
         nodes = [n for n in area[0].list_of_nodes()]
         if not nodes:
             logger.debug("end of get_inner_airgap_line: no nodes found")
-            return []
+            return [], []
         n1 = nodes[0]
         if points_are_close(end_corner, n1):
             n2 = nodes[-1]
@@ -4076,26 +4083,28 @@ class Geometry(object):
 
         if not points_are_close(end_corner, n1):
             logger.debug("end of get_inner_airgap_line: not close to endcorner")
-            return []
+            return [], []
 
         start_corner = self.start_corners[-1]
 
         logger.debug("EDGE FOUND: %s - %s", n1, n2)
         nodes = [n1, n2]
         info = self.get_edge_info(n1, n2)
+        elements = [info.get('element', None)]
         while not points_are_close(start_corner, n2):
             info = self.next_edge_lefthand_side(info)
             if not info:
                 return []
             n2 = info['n2']
             nodes.append(n2)
+            elements.append(info.get('element', None))
 
         logger.debug("end of get_inner_airgap_line #%s", len(nodes))
-        return nodes
+        return nodes, elements
 
     def create_corner_areas(self):
         self.set_edge_attributes()
-        self.create_inner_corner_areas()
+        self.create_inner_corner_auxiliary_areas()
 
     def create_and_append_area(self, n1, n2):
         rslt = self.get_new_area(n1, n2, False)
@@ -4109,22 +4118,30 @@ class Geometry(object):
         logger.error("No area for air near airgap!!")
         return False
 
-    def create_inner_corner_areas(self):
+    def get_intersection_points(self, elements, line, n):
+        points = []
+        for e in elements:
+            pts = e.intersect_line(line, include_end=True)
+            if len(pts) == 1:
+                if points_are_close(pts[0], n):
+                    continue
+            points += pts
+        return points
+
+    def create_inner_corner_auxiliary_areas(self):
         start_cp, start_exists = self.get_start_airgap_corner()
         end_cp, end_exists = self.get_end_airgap_corner()
         if start_exists and end_exists:
             return
-        logger.info("*** Corner correction ***")
-        airgap_line = self.get_inner_airgap_line()
-        if not airgap_line:
+        logger.debug("*** Corner Auxiliary Areas ***")
+        airgap_line, airgap_el = self.get_inner_airgap_line()
+        if not airgap_el:
             logger.debug("no airgapline found")
             return
 
         logger.debug("airgapline found !!")
         airgap_nodes = [n for n in airgap_line[1:]]
         del airgap_nodes[-1]
-        if not airgap_nodes:
-            return  # strange
 
         if not start_exists:
             cp = self.start_corners[-1]
@@ -4132,13 +4149,12 @@ class Geometry(object):
             start_line = Line(Element(start=cp, end=start_cp),
                               color='red',
                               linestyle='dotted')
+
             start_cp = start_line.node2(ndec)
-            i = 0
             for n in airgap_nodes:
-                i += 1
-                if not self.search_intersection(i, self.max_radius,
-                                                n, start_cp,
-                                                airgap_nodes):
+                ag_line = Line(Element(start=start_cp, end=n))
+                points = self.get_intersection_points(airgap_el, ag_line, n)
+                if not points:  # no intersection
                     d = distance(self.center, n)
                     if np.isclose(d, self.max_radius):
                         self.add_arc(start_cp, n, self.center, self.max_radius,
@@ -4162,12 +4178,10 @@ class Geometry(object):
                             linestyle='dotted')
             end_cp = end_line.node2(ndec)
             airgap_nodes.reverse()
-            i = 0
             for n in airgap_nodes:
-                i += 1
-                if not self.search_intersection(i, self.max_radius,
-                                                n, end_cp,
-                                                airgap_nodes):
+                ag_line = Line(Element(start=end_cp, end=n))
+                points = self.get_intersection_points(airgap_el, ag_line, n)
+                if not points:  # no intersection
                     d = distance(self.center, n)
                     if np.isclose(d, self.max_radius):
                         self.add_arc(n, end_cp, self.center, self.max_radius,
@@ -4182,33 +4196,6 @@ class Geometry(object):
                     self.end_corners = self.get_corner_nodes(self.center,
                                                              self.alfa)
                     break
-
-    def search_intersection(self, start_i, r, n1, n2, airgap_nodes):
-        logger.debug("begin of search_intersection")
-
-        ag_line = Line(Element(start=n1, end=n2))
-        for i in range(start_i, len(airgap_nodes)):
-            n = airgap_nodes[i]
-            alfa = alpha_line(self.center, n)
-            dist_n = distance(self.center, n)
-            p = point(self.center, r, alfa)
-            line = Line(Element(start=self.center, end=p))
-            pts = line.intersect_line(ag_line, include_end=True)
-            if not pts:
-                # no intersection
-                return  # ok
-            if len(pts) != 1:
-                logger.error("-- no intersection found ?!? %s", pts)
-                logger.debug("end of search_intersection: bad")
-                return True  # fatal
-            dist_p = distance(self.center, pts[0])
-            logger.debug("-- check point %s[%s] -- %s[%s]", n, dist_n, pts[0], dist_p)
-            if not less(dist_n, dist_p):
-                logger.debug("end of search_intersection: found")
-                return True  # intersection
-            logger.debug("-- dist %s <= %s", dist_n, dist_p)
-        logger.debug("end of search_intersection: ok")
-        return False  # ok
 
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))

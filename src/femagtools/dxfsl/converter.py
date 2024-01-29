@@ -28,6 +28,11 @@ def symmetry_search(machine,
                     num=1):
     logger.info("*** Begin symmetry search for %s ***", kind)
 
+    if is_inner:
+        machine.set_inner()
+    elif is_outer:
+        machine.set_outer()
+
     machine.clear_cut_lines()
     if show_plots and debug_mode:
         plt.render_elements(machine.geom, Shape,

@@ -574,7 +574,6 @@ class Machine(object):
         else:
             logger.debug(" - #1:  no symmetry found")
             angle = np.pi/2
-
         elist = self.geom.copy_all_elements(-angle)
         logger.debug(" - %s elements copied", len(elist))
         clone = self.geom.new_clone(elist)
@@ -794,6 +793,8 @@ class Machine(object):
             nodes_near_ag = []
             logger.debug(" -- nodes1: %s,  nodes2: %s",
                          len(geom1.g.nodes()), len(geom2.g.nodes()))
+            airgap_radius = geom1.get_airgap_radius()
+
             for n in geom1.g.nodes():
                 mirror_n = mirror_point(n, self.center, axis_m, axis_n)
                 logger.debug("  Node %s <==> %s", n, mirror_n)
@@ -804,9 +805,9 @@ class Machine(object):
                 else:
                     d = distance(self.center, n)
                     logger.debug(" -- r={}, d={}".format(self.radius, d))
-                    if np.isclose(d, self.radius, rtol=rtol, atol=atol):
+                    if np.isclose(d, airgap_radius, rtol=rtol, atol=atol):
                         hit_ag += 1
-                    elif np.isclose(d, self.radius, rtol=0.075, atol=atol):
+                    elif np.isclose(d, airgap_radius, rtol=0.075, atol=atol):
                         # very tolerant
                         nodes_near_ag.append(n)
                     elif geom2.the_point_is_inside(mirror_n, rtol=rtol*10, atol=atol):
@@ -818,7 +819,10 @@ class Machine(object):
                 logger.debug(" -- %s candidates near airgap --", len(nodes_near_ag))
                 for n in nodes_near_ag:
                     alfa = alpha_line(self.center, n)
-                    p = point(self.center, self.radius + 10.0, alfa)
+                    if geom1.is_inner:
+                        p = point(self.center, airgap_radius + 10.0, alfa)
+                    else:
+                        p = point(self.center, airgap_radius - 10.0, alfa)
                     line = Line(Element(start=n, end=p))
                     pts = geom1.intersect_the_line(line)
                     if pts:

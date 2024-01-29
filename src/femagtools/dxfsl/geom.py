@@ -21,7 +21,7 @@ from .machine import Machine
 from .functions import less_equal, less, greater, greater_equal
 from .functions import distance, alpha_line, alpha_points, alpha_angle
 from .functions import point, points_are_close, is_point_inside_region
-from .functions import line_m, line_n
+from .functions import line_m, line_n, lines_intersect_point
 from .functions import middle_point_of_line, middle_point_of_arc
 from .functions import middle_angle
 from .functions import normalise_angle, is_same_angle
@@ -664,6 +664,8 @@ class Geometry(object):
                  center=[],
                  rtol=1e-03,
                  atol=1e-03,
+                 is_inner=False,
+                 is_outer=False,
                  split=False,
                  debug=False):
         self._name = ''
@@ -679,8 +681,8 @@ class Geometry(object):
         self.center = []
         self.min_radius = 0.0
         self.max_radius = 0.0
-        self.is_inner = False
-        self.is_outer = False
+        self.is_inner = is_inner
+        self.is_outer = is_outer
         self.cut_lines = []
         self.sym_area = None
         self.airgaps = []
@@ -782,10 +784,11 @@ class Geometry(object):
             elements.append(o)
         geom = Geometry(elements,
                         center=self.center,
+                        is_inner=self.is_inner,
+                        is_outer=self.is_outer,
                         rtol=self.rtol,
                         atol=self.atol)
         geom.alfa = correct_alpha
-        geom.is_inner = self.is_inner
         geom.kind = self.kind
         geom.sym_part = self.sym_part
         return geom
@@ -1128,6 +1131,13 @@ class Geometry(object):
     def get_end_airgap_corner_point(self):
         p, b = self.get_end_airgap_corner()
         return Point(p)
+
+    def get_airgap_radius(self):
+        if self.is_inner:
+            return self.max_radius
+        if self.is_outer:
+            return self.min_radius
+        return None
 
     def area_size(self):
         pts = [p for p in self.start_corners]
@@ -2059,12 +2069,16 @@ class Geometry(object):
                             center=center,
                             rtol=0.05,
                             atol=0.1,
+                            is_inner=self.is_inner,
+                            is_outer=self.is_outer,
                             split=split)
         else:
             geom = Geometry(new_elements,
                             center=center,
                             rtol=self.rtol,
-                            atol=self.atol)
+                            atol=self.atol,
+                            is_inner=self.is_inner,
+                            is_outer=self.is_outer)
 
         if delete_appendices:
             geom.delete_all_appendices()
@@ -2118,6 +2132,8 @@ class Geometry(object):
                         center=self.center,
                         rtol=self.rtol,
                         atol=self.atol,
+                        is_inner=self.is_inner,
+                        is_outer=self.is_outer,
                         split=split)
 
     def is_new_angle(self, alpha_list, alpha):
@@ -2459,44 +2475,7 @@ class Geometry(object):
         logger.debug("*** Begin of get_machine_part() ***")
 
         h_points = [h for h in convex_hull(self.virtual_nodes())]
-        h_center = self.get_center(h_points)
-
-        center_list = []
-        for e in self.elements(Arc):
-            center = [round(e.center[0], 3), round(e.center[1], 3)]
-            radius = round(e.radius, 1)
-            c = self.get_same_center(center_list, center, self.rtol, self.atol)
-            if c is None:
-                center_list.append(([1], center, [radius]))
-            else:
-                c[0][0] += 1
-                if radius not in c[2]:
-                    c[2].append(radius)
-
-        center = None
-        arc_list = [[len(c[2]), c[0][0], c[1]] for c in center_list]
-        arc_list.sort(reverse=True)
-
-        if arc_list:
-            c1 = arc_list[0]
-            center = c1[2]
-            if len(arc_list) > 1:
-                c2 = arc_list[1]
-                if not c1[0] > c2[0]:
-                    center = None
-
-        logger.debug("hull center: %s", h_center)
-        logger.debug("arc center : %s", center)
-
-        if not center:
-            # Wir finden keine Arc-Objekte, welche uns einen Hinweis auf den
-            # Center geben können. Wir versuchen in der Verzweiflung mit
-            # h_center oder x(min) und y(min)
-            if h_center:
-                center = h_center
-            else:
-                center = [round(mm[0], 4), round(mm[2], 4)]
-
+        center = self.get_center(h_points, mm)
         logger.debug(" - Center is %s", center)
 
         min_radius = 99999
@@ -2619,10 +2598,58 @@ class Geometry(object):
                        startangle=angle,
                        endangle=np.pi-angle)
 
-    def get_center(self, points):
-        logger.debug("Begin of get_center(%s points)", len(points))
-        if len(points) < 3:
-            return None
+    def get_center_xaxis(self, points):
+        y_list = [(round(p[1], 3), p) for p in points]
+        y_list.sort()
+        center_y = y_list[0][0]
+        eq_list = [y for y, p in y_list[1:] if np.isclose(center_y, y)]
+        if len(eq_list) < 2:  # min 3 Points
+            return (None, None)
+        start_line = Line(Element(start=(-1e+8, center_y), end=(1e+8, center_y)))
+        start_m = start_line.m()
+        logger.debug("Startline(%s, %s)", start_line.p1, start_line.p2)
+        neq_list = [(y, p) for y, p in y_list if not np.isclose(center_y, y)]
+        if len(neq_list) < 2:
+            return (None, center_y)
+        center_x_list = []
+        for inx in range(len(neq_list)-1):
+            y0, p0 = neq_list[inx]
+            for y, p in neq_list[inx+1:]:
+                end_line = Line(Element(start=p0, end=p))
+                end_m = end_line.m()
+                logger.debug("Endline(%s, %s)", end_line.p1, end_line.p2)
+                if end_m is None:
+                    continue
+                if np.isclose(start_m, end_m):
+                    continue
+                p = lines_intersect_point(start_line.p1, start_m, start_line.n(start_m),
+                                          end_line.p1, end_m, end_line.n(end_m))
+                if p:
+                    center_x_list.append(round(p[0], 2))
+        center_x_list.sort()
+        logger.debug("Possible center x: %s", center_x_list)
+        x0 = center_x_list[0]
+        c = 0
+        x_list = []
+        for x in center_x_list[1:]:
+            if np.isclose(x0, x):
+                c += 1
+            else:
+                x_list.append((c, x0))
+                x0 = x
+                c = 0
+        x_list.append((c, x0))
+        x_list.sort(reverse=True)
+        c, center_x = x_list[0]
+        if c < 3:
+            center_x = None
+        else:
+            if (c*100 / len(neq_list)) < 10:
+                center_x = None
+        logger.debug("Best Center(%s, %s)", center_x, center_y)
+        return (center_x, center_y)
+
+    def get_center_hull(self, points):
         p1 = points[0]
         points.append(p1)
         p2 = points[1]
@@ -2663,6 +2690,63 @@ class Geometry(object):
         if center:
             return center[0]
         return None
+
+    def get_center_arcs(self):
+        center_list = []
+        for e in self.elements(Arc):
+            center = (round(e.center[0], 3), round(e.center[1], 3))
+            radius = round(e.radius, 1)
+            c = self.get_same_center(center_list, center, self.rtol, self.atol)
+            if c is None:
+                center_list.append(([1], center, [radius]))
+            else:
+                c[0][0] += 1
+                if radius not in c[2]:
+                    c[2].append(radius)
+
+        center = None
+        arc_list = [[len(c[2]), c[0][0], c[1]] for c in center_list]
+        arc_list.sort(reverse=True)
+
+        if arc_list:
+            c1 = arc_list[0]
+            center = c1[2]
+            if len(arc_list) > 1:
+                c2 = arc_list[1]
+                if not c1[0] > c2[0]:
+                    center = None
+        return center
+
+    def get_center_dim(self, mm):
+        return (round(mm[0], 4), round(mm[2], 4))
+
+    def get_center(self, points, mm):
+        logger.debug("Begin of get_center(%s points)", len(points))
+        if len(points) < 3:
+            return None
+
+        center = None
+        center_arcs = self.get_center_arcs()
+
+        if center_arcs:
+            center = center_arcs
+        else:
+            # Wir finden keine Arc-Objekte, welche uns einen Hinweis auf den
+            # Center geben können. Wir versuchen in der Verzweiflung mit
+            # center_hull oder x(min) und y(min)
+            center_hull = self.get_center_hull(points)
+            if center_hull:
+                center = center_hull
+            else:
+                center = self.get_center_dim(mm)
+
+        center_xaxis = self.get_center_xaxis(points)
+        y = center_xaxis[1]
+        if y is not None:
+            if np.isclose(y, center[1], atol=0.3):
+                center = (center[0], y)
+        logger.debug("End of get_center ==> %s", center)
+        return center
 
     def is_new_radius(self, radius_list, radius):
         for r, d in radius_list:

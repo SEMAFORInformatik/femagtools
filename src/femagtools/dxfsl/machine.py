@@ -788,12 +788,32 @@ class Machine(object):
             if not geom1.g.nodes():
                 return 0.0
 
+            def near_opposite_airgap(n, third_radius):
+                if not third_radius:
+                    return False
+                d = distance(self.center, n)
+                if geom1.is_inner:
+                    return d < third_radius
+                else:
+                    return d > third_radius
+
             logger.debug("begin get_hit_factor")
 
             nodes_near_ag = []
             logger.debug(" -- nodes1: %s,  nodes2: %s",
                          len(geom1.g.nodes()), len(geom2.g.nodes()))
             airgap_radius = geom1.get_airgap_radius()
+            opposite_radius = geom1.get_opposite_radius()
+            if not (airgap_radius and opposite_radius):
+                airgap_radius = self.radius
+                opposite_radius = self.radius
+                third_radius = None
+            else:
+                if opposite_radius > airgap_radius:
+                    third_radius = airgap_radius + (opposite_radius - airgap_radius) * 0.90
+                else:
+                    third_radius = airgap_radius - (airgap_radius - opposite_radius) * 0.90
+            logger.debug(" -- radius ag: %s,  opposite: %s", airgap_radius, opposite_radius)
 
             for n in geom1.g.nodes():
                 mirror_n = mirror_point(n, self.center, axis_m, axis_n)
@@ -802,7 +822,15 @@ class Machine(object):
                 if hits:
                     logger.debug(" ==> MATCH %s NODE", hits)
                     hit_nodes += 1
-                else:
+                elif near_opposite_airgap(n, third_radius):
+                    hits = is_node_available(mirror_n, geom2.g.nodes(), rtol=rtol*10, atol=atol*5)
+                    if hits:
+                        logger.debug(" ==> MATCH %s NODE (more tolerant)", hits)
+                        hit_nodes += 1
+                    elif geom2.the_point_is_inside(mirror_n, rtol=rtol*5, atol=atol*2):
+                        hit_nodes += 1
+                        hits = 1
+                if not hits:
                     d = distance(self.center, n)
                     logger.debug(" -- r={}, d={}".format(self.radius, d))
                     if np.isclose(d, airgap_radius, rtol=rtol, atol=atol):
@@ -840,7 +868,9 @@ class Machine(object):
             logger.debug(" -- temporary no hits: %s: factor is %s",
                          hit_no, float(hit_no) / len(geom1.g.nodes()))
             # hit_inside and hit_no are unused
-            return float(hit_nodes + hit_ag) / len(geom1.g.nodes())
+            factor = float(hit_nodes + hit_ag) / len(geom1.g.nodes())
+            logger.debug("end get_hit_factor => %s", factor)
+            return factor
 
         hit_factor1 = get_hit_factor(self.geom,
                                      self.mirror_geom)

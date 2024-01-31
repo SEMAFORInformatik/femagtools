@@ -5,7 +5,7 @@
 from __future__ import print_function
 import numpy as np
 import logging
-from .shape import Element, Circle, Arc, Line, Shape
+from .shape import Element, Circle, Arc, Line
 from .corner import Corner
 from .functions import point, points_are_close, distance
 from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
@@ -13,6 +13,7 @@ from .functions import alpha_line, line_m, line_n, mirror_point
 from .functions import within_interval, part_of_circle
 from .functions import less, less_equal, greater, greater_equal
 logger = logging.getLogger('femagtools.geom')
+
 
 #############################
 #          Machine          #

@@ -151,7 +151,7 @@ class FslRenderer(object):
 
         n = 0
         for d, e in el_sorted:
-            d_percent = min( 1.0, d / dist)
+            d_percent = min(1.0, d / dist)
             if ndt_list[n][0] < d_percent:
                 self.agndst = ndt_list[n][1] * self.agndst
                 self.content.append(u'\nndt({}*agndst)\n'.
@@ -355,7 +355,6 @@ class FslRenderer(object):
                              u'x4, y4 = {}, {}'.format(
                                  geom.end_corners[0][0],
                                  geom.end_corners[0][1])]  # min xy4
-
 
         self.content.append(u'if parts_gen > 1 then')
         if geom.corners_dont_match():

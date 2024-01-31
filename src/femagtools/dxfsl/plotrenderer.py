@@ -287,7 +287,7 @@ class PlotRenderer(object):
 
         self.ax.axis('scaled')
         self.ax.set_aspect('equal')
-        
+
         self.ax.set_xlim(x_min, x_max)
         self.ax.set_ylim(y_min, y_max)
 
@@ -360,7 +360,7 @@ class PlotRenderer(object):
         area.render(self, 'red', with_nodes=True)
 
         self.ax.axis('scaled')
-        self.ax.set_aspect('equal')       
+        self.ax.set_aspect('equal')
         pl.show()
 
     def draw_slot(self, id, slot, ax):

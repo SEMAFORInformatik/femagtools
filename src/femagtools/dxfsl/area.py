@@ -8,7 +8,6 @@
   Authors: Ronald Tanner, beat Holm
 """
 from __future__ import print_function
-import sys
 import numpy as np
 import networkx as nx
 import logging
@@ -103,7 +102,7 @@ class Area(object):
         except ValueError as e:
             logger.error("list_of_nodes(): FATAL ERROR: %s", e)
             return
-        except Exception as e:
+        except Exception:
             return
 
     def list_of_elements(self):
@@ -132,7 +131,7 @@ class Area(object):
         except ValueError as e:
             logger.error("list_of_elements(): FATAL ERROR: %s", e)
             return
-        except Exception as e:
+        except Exception:
             return
 
     def has_fsl(self):

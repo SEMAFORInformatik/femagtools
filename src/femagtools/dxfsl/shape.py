@@ -9,7 +9,6 @@
 """
 from __future__ import print_function
 import numpy as np
-import sys
 import logging
 from .functions import less_equal, greater_equal
 from .functions import distance, line_m, line_n
@@ -50,7 +49,7 @@ class Shape(object):
         if hasattr(s, 'my_attrs'):
             self.my_attrs = []
             for a in s.my_attrs:
-               self.my_attrs.append(a)
+                self.my_attrs.append(a)
 
     def get_my_color(self):
         if hasattr(self, 'my_color'):
@@ -890,7 +889,7 @@ class Arc(Circle):
         self.startangle = np.arctan2(p1[1], p1[0])
         self.endangle = np.arctan2(p2[1], p2[0])
         if self.rtheta is not None:
-            self.rtheta = self.rtheta + alpha
+            self.rtheta = self.rtheta + dest_alpha
         return self
 
     def minmax(self):
@@ -1301,6 +1300,7 @@ class Point(Shape):
         n = T.dot(np.array((self.p1[0], self.p1[1])))
         self.p1 = (n[0], n[1])
         return self
+
 
 def is_Circle(e):
     return isinstance(e, Circle) and not isinstance(e, Arc)

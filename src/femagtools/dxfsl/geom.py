@@ -221,7 +221,7 @@ def polylines(entity, lf, rf, xoff=0.0, yoff=0.0, rotation=0.0):
         p1 = points[i]
         try:
             p2 = points[i+1]
-        except Exception as e:
+        except Exception:
             if not entity.is_closed:
                 break
             p2 = points[0]
@@ -276,6 +276,7 @@ def lw_polyline(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
                    xoff=xoff, yoff=yoff,
                    rotation=rotation)
 
+
 def ellipse(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
     w = np.linalg.norm(entity.major_axis) * 2
     h = entity.ratio * w
@@ -294,7 +295,7 @@ def ellipse(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
     x, y = np.dot(R, [x, y])
     x += entity.center[0]
     y += entity.center[1]
-    points = np.array((x,y)).T
+    points = np.array((x, y)).T
     p1 = points[0]
     for p2 in points[1:]:
         yield Line(Element(start=p1, end=p2), lf,
@@ -488,7 +489,7 @@ def dxfshapes(dxffile, mindist=0.01, layers=[]):
     # dwg.header['$LUNITS']
     lf = 1
     if dwg.header.get('$LUNITS', 0) == 1:
-        #conv = [1, 2.54e-2, 10.12, 633.0, 1e-3, 1e-2, 1]
+        # conv = [1, 2.54e-2, 10.12, 633.0, 1e-3, 1e-2, 1]
         lf = 2.54e3
 
     rf = np.pi/180
@@ -984,7 +985,6 @@ class Geometry(object):
                     self.rtol,
                     self.atol)
 
-
     def elements(self, type):
         """return lists of objects"""
         return [e[2]['object'] for e in self.g.edges(data=True)
@@ -1004,19 +1004,19 @@ class Geometry(object):
         rem_lines = []
         for p1, p2, data in [e for e in self.g.edges(data=True)
                              if isinstance(e[2]['object'], Line)]:
-            l = data['object']
-            if l.length() > length:
-                p = l.center_of_connection()
-                new_lines += l.split([p])
+            ln = data['object']
+            if ln.length() > length:
+                p = ln.center_of_connection()
+                new_lines += ln.split([p])
                 rem_lines.append((p1, p2))
 
         for p1, p2 in rem_lines:
             self._remove_edge(p1, p2)
-        for l in new_lines:
+        for new_ln in new_lines:
             add_or_join(self,
-                        l.node1(ndec),
-                        l.node2(ndec),
-                        l,
+                        new_ln.node1(ndec),
+                        new_ln.node2(ndec),
+                        new_ln,
                         self.rtol,
                         self.atol)
 
@@ -1255,8 +1255,8 @@ class Geometry(object):
 
         corners = self.get_corner_list(self.center, angle)
         assert(corners)
-        c_min = Corner(center, point(self.center, self.min_radius, angle, ndec))
-        c_max = Corner(center, point(self.center, self.max_radius, angle, ndec))
+        c_min = Corner(self.center, point(self.center, self.min_radius, angle, ndec))
+        c_max = Corner(self.center, point(self.center, self.max_radius, angle, ndec))
 
         c_first = corners[0]
         if not c_min.is_same_corner(c_first):
@@ -1276,7 +1276,7 @@ class Geometry(object):
 
     def complete_hull_arc(self, startangle, startcorner,
                           endangle, endcorner, radius):
-        nodes = self.radius_nodes(center, radius, 1e-04, 1e-04)
+        nodes = self.radius_nodes(self.center, radius, 1e-04, 1e-04)
 
         if startcorner.is_new_point:
             start_p = startcorner.point()
@@ -1284,9 +1284,9 @@ class Geometry(object):
                             if not points_are_close(start_p, n)]
             nodes_sorted.sort()
             p = nodes_sorted[0][1]
-            angle_p = alpha_line(center, p)
+            angle_p = alpha_line(self.center, p)
             self.add_edge(start_p, p, Arc(
-                Element(center=center, radius=radius,
+                Element(center=self.center, radius=radius,
                         start_angle=startangle*180/np.pi,
                         end_angle=angle_p*180/np.pi)))
 
@@ -1296,9 +1296,9 @@ class Geometry(object):
                             if not points_are_close(end_p, n)]
             inx = len(nodes_sorted)-1
             p = nodes_sorted[inx][1]
-            angle_p = alpha_line(center, p)
+            angle_p = alpha_line(self.center, p)
             self.add_edge(p, end_p, Arc(
-                Element(center=center, radius=radius,
+                Element(center=self.center, radius=radius,
                         start_angle=angle_p*180/np.pi,
                         end_angle=endangle*180/np.pi)))
 
@@ -1693,7 +1693,7 @@ class Geometry(object):
     def the_point_is_inside(self, p, rtol=1e-04, atol=1e-04):
         for e in self.elements(Shape):
             if e.is_point_inside(p, rtol=rtol, atol=atol, include_end=True):
-                #logger.info("point %s is inside %s", p, e)
+                # logger.info("point %s is inside %s", p, e)
                 return True
         return False
 
@@ -2922,7 +2922,7 @@ class Geometry(object):
                 else:
                     logger.warning("   %s already removed ?!", id)
 
-        #for area in self.list_of_areas():
+        # for area in self.list_of_areas():
         #    logger.info("Inside %s is:", area.identifier())
         #    for id in area.areas_inside:
         #        logger.info(" ++ %s", id)
@@ -3189,27 +3189,29 @@ class Geometry(object):
                 if a.is_point_inside(p):
                     return a.id
             return 0
+
         #   -------------------------
         def connection_thru_main_area(pts):
             if len(pts) < 3:
-                return True  #ok
+                return True  # ok
             if len(areas_inside) < 2:
-                return True  #ok
+                return True  # ok
 
             id = id_of_inside_area(pts[0])
             if id == 0:  # strange
-                return False  #bad
+                return False  # bad
 
             next_id = id_of_inside_area(pts[1])
             if next_id == 0:
-                return True  #ok
+                return True  # ok
 
             id = next_id
             next_id = id_of_inside_area(pts[2])
             if id == next_id:  # thru inside-area
-                return True  #ok
+                return True  # ok
 
             return False
+
         #   ----------
         def takeSecond(elem):
             return elem[1]
@@ -3243,7 +3245,7 @@ class Geometry(object):
                           color=aux_color,
                           linestyle=aux_linestyle)
                 arc.set_attribute('iron_sep')
-                p = self.split_and_get_intersect_points(arc)
+                self.split_and_get_intersect_points(arc)
                 n = self.find_nodes(pts[0], pts[1])
                 self.add_edge(n[0], n[1], arc)
 
@@ -3745,7 +3747,7 @@ class Geometry(object):
                     try:
                         self._remove_edge(n0, n1)
                         self.add_edge(nn, n1, el)
-                    except Exception as e:
+                    except Exception:
                         logger.debug("delete of %s - %s failed", n0, n)
                         logger.debug("Element %s", el)
         return c

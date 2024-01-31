@@ -82,7 +82,7 @@ class Optimizer(object):
                 task.add_file(self.fea['pocfilename'],
                               self.fea['poc'].content())
             if 'stateofproblem' in self.fea:
-                task.set_stateofproblem(fea['stateofproblem'])
+                task.set_stateofproblem(self.fea['stateofproblem'])
         tstart = time.time()
         ntasks = engine.submit()
         status = engine.join()

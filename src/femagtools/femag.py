@@ -383,9 +383,10 @@ class BaseFemag(object):
                     set_magnet_properties(self.model, simulation, self.magnets)
                     fslcmds = (builder.open_model(self.model) +
                                builder.create_shortcircuit(simulation))
+                    fslfile = 'shortcicuit.fsl'
                     with open(os.path.join(self.workdir, fslfile), 'w') as f:
                         f.write('\n'.join(fslcmds))
-                    self.run(fslfile, options)
+                    self.run(fslfile) #, options?
                     bchfile = self.get_bch_file(self.modelname)
                     if bchfile:
                         bchsc = femagtools.bch.Reader()

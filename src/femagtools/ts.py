@@ -292,7 +292,7 @@ class Losses(object):
             srname = srname+' '
 
         time = self.times.vector[-1]-self.times.vector[0]
-        return srlossenergy / time
+        return self.ohm_lossenergy_sr(self.nc.get_subregion(srname)) / time
 
     def ohm_lossenergy(self, start=0.0, end=0.0):
         '''Ohmic loss energy of all subregions

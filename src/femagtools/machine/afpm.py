@@ -45,7 +45,7 @@ def ld_interpol(i1, beta, v):
     cur = copy.deepcopy(i1)
     betad = copy.deepcopy(beta)
     if np.amin(beta) < -90 and \
-        np.amax(beta) > -90: 
+        np.amax(beta) > -90:
         # motor and generator
         v[0] = v[1]
         v[-1] = v[-2]
@@ -53,18 +53,18 @@ def ld_interpol(i1, beta, v):
         dbeta = np.abs(beta[0][0] - beta[1][0])
         bp = [[beta[0][0]-dbeta for i in range(len(np.unique(i1)))]] + beta[1:-1] + \
             [[dbeta for i in range(len(np.unique(i1)))]]
-    else: 
+    else:
         v[-1] = v[-2]
         dbeta = np.abs(beta[0][0] - beta[1][0])
         bp = beta[0:-1] + \
             [[dbeta for i in range(len(np.unique(i1)))]]
-    
+
     return RectBivariateSpline(np.unique(bp), np.unique(cur), \
          np.array(v)).ev(*[betad, i1]).tolist()
 
 def lq_interpol(i1, beta, v):
     '''interpolate Lq at beta -90°'''
-    if -90 not in np.unique(beta): 
+    if -90 not in np.unique(beta):
         return v
     # lq
     betad = copy.deepcopy(beta)
@@ -75,7 +75,7 @@ def lq_interpol(i1, beta, v):
         v.pop(inx[0, 0])
         bp = beta[0:inx[0, 0]] + beta[inx[0, 0]+1:]
         cp = i1[0:inx[0, 0]] + i1[inx[0, 0]+1:]
-    else: 
+    else:
         v[0] = v[1]
         dbeta = np.abs(beta[0][0] - beta[1][0])
         bp = [[-90-dbeta for i in i1[0]]] + beta[1::]
@@ -181,7 +181,7 @@ def parident(workdir, engine, temp, machine,
             poc=poc.Poc(999),
             speed=0)
         logging.info("Noload simulation")
-        if kwargs.get('use_multiprocessing', True): 
+        if kwargs.get('use_multiprocessing', True):
             pstudy = parstudy.List(
                     workdir, condMat=condMat, magnets=magnetMat,
                     magnetizingCurves=magnetizingCurves,
@@ -190,17 +190,17 @@ def parident(workdir, engine, temp, machine,
             nlresults = pstudy(nlparvardef, machine, nlcalc, engine)
             if nlresults['status'].count('C') != len(nlresults['status']):
                 raise ValueError('Noload simulation failed %s', nlresults['status'])
-        else: 
+        else:
             nlresults = {"x": [], "f": []}
             i = 0
-            for pw, le, sp in zip(pole_width, lfe, linspeed): 
+            for pw, le, sp in zip(pole_width, lfe, linspeed):
                 nlmachine = {k: machine[k] for k in machine}
                 nlmachine['pole_width'] = pw
                 nlmachine['lfe'] = le
                 nlcalc.update({"speed": sp})
                 nlsubdir = f'{workdir}/{i}'
                 nlworkdir = Path(nlsubdir)
-                if nlworkdir.exists(): 
+                if nlworkdir.exists():
                     shutil.rmtree(nlworkdir)
                 nlworkdir.mkdir(exist_ok=True)
                 noloadsim = femag.Femag(nlworkdir, condMat=condMat, magnets=magnetMat,
@@ -235,8 +235,8 @@ def parident(workdir, engine, temp, machine,
                 num_move_steps=60,
                 speed=linspeed[i],
                 num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1))
-            
-            if kwargs.get('use_multiprocessing', True): 
+
+            if kwargs.get('use_multiprocessing', True):
                 gpstudy = parstudy.Grid(
                                     subdir, condMat=condMat, magnets=magnetMat,
                                     magnetizingCurves=magnetizingCurves,
@@ -248,7 +248,7 @@ def parident(workdir, engine, temp, machine,
                 domain_beta = np.linspace(beta_min, 0, num_beta_steps).tolist()
                 domain_cur = np.linspace(i1_max/num_cur_steps, i1_max, num_cur_steps).tolist()
                 dir_index = 0
-                for cur in domain_cur: 
+                for cur in domain_cur:
                     for be in domain_beta:
                         simulation['angl_i_up'] = be
                         simulation['current'] = cur
@@ -256,7 +256,7 @@ def parident(workdir, engine, temp, machine,
                         subsubdir = subdir + f'/{dir_index}'
                         dir_index = dir_index + 1
                         lworkdir = Path(subsubdir)
-                        if lworkdir.exists(): 
+                        if lworkdir.exists():
                             shutil.rmtree(lworkdir)
                         lworkdir.mkdir(exist_ok=True)
                         loadsim = femag.Femag(lworkdir, condMat=condMat, magnets=magnetMat,
@@ -264,7 +264,7 @@ def parident(workdir, engine, temp, machine,
                                             cmd=kwargs.get('cmd', None))
                         r = loadsim(mpart, simulation)
                         lresults['f'].append({k: v for k, v in r.items()})
-                        
+
             f = [{k: bch[k]
                   for k in ('linearForce', 'flux', 'losses', 'lossPar')}
                  for bch in lresults['f']]
@@ -288,18 +288,18 @@ def parident(workdir, engine, temp, machine,
                           (-1, num_beta_steps)).T/np.sqrt(2)
         psiq = np.reshape([r['psiq'] for r in postp],
                           (-1, num_beta_steps)).T/np.sqrt(2)
-        
+
         ld = np.reshape([r['Ld'] for r in postp],
                           (-1, num_beta_steps)).T.tolist()
         lq = np.reshape([r['Lq'] for r in postp],
                           (-1, num_beta_steps)).T.tolist()
         # interpolation ld, lq
-        curr, angl = [], [] 
-        for cr in range(len(beta)): 
+        curr, angl = [], []
+        for cr in range(len(beta)):
             curr.append(i1)
-        for al in beta: 
+        for al in beta:
             tmp = []
-            for cr in range(len(i1)): 
+            for cr in range(len(i1)):
                 tmp.append(al)
             angl.append(tmp)
         try:
@@ -307,10 +307,10 @@ def parident(workdir, engine, temp, machine,
             ld = ld_interpol(xx, yy, ld)
             xx, yy = copy.deepcopy(curr), copy.deepcopy(angl)
             lq = lq_interpol(xx, yy, lq)
-        except: 
+        except:
             ld = np.zeros_like(psid).tolist()
             lq = np.zeros_like(psid).tolist()
-        
+
         torque = np.reshape([r['torque'] for r in postp],
                             (-1, num_beta_steps)).T
         losses = {k: np.flip(np.reshape([r['plfe'][k] for r in postp],
@@ -547,6 +547,7 @@ def wdg_resistance(wdg, n, g, aw, outer_diam, inner_diam,
 def _get_copper_losses(scale_factor, bch):
     """return copper losses from bch files"""
     try:
+        wdgk = 'winding'
         cu_losses = sum([b['losses'][0][wdgk] for b in bch])
         return scale_factor*cu_losses
     except KeyError:

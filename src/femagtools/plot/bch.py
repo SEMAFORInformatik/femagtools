@@ -813,6 +813,7 @@ def main():
     ext = args.filename.split('.')[-1].upper()
     if ext.startswith('MC'):
         import femagtools.mcv
+        from femagtools.plot.mcv import mcv_hbj, mcv_muer
         mcv = femagtools.mcv.read(sys.argv[1])
 
         if mcv['mc1_type'] in (femagtools.mcv.MAGCRV, femagtools.mcv.ORIENT_CRV):
@@ -836,6 +837,7 @@ def main():
 
     if ext.startswith('PLT'):
         import femagtools.forcedens
+        from femagtools.plot.forcedens import forcedens, forcedens_fft
         fdens = femagtools.forcedens.read(args.filename)
         cols = 1
         rows = 2

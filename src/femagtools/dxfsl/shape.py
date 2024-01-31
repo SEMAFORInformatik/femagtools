@@ -715,8 +715,9 @@ class Arc(Circle):
                 points.append(e.p2)
 
         elif e.is_point_inside(self.p2, rtol, atol):
-            if not points_are_close(self.p1, e.p1):
+            if not points_are_close(self.p1, e.p1, rtol=rtol, atol=atol):
                 logger.error("FATAL ERROR in overlapping_shape() of Arc")
+
                 raise ValueError('FATAL ERROR in overlapping_shape() of Arc')
             points.append(e.p1)
             points.append(self.p2)

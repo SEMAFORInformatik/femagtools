@@ -2074,8 +2074,8 @@ class Geometry(object):
             logger.debug('new Geometry with split')
             geom = Geometry(new_elements,
                             center=center,
-                            rtol=0.05,
-                            atol=0.1,
+                            rtol=self.rtol,
+                            atol=self.atol,
                             is_inner=self.is_inner,
                             is_outer=self.is_outer,
                             split=split)
@@ -2450,7 +2450,7 @@ class Geometry(object):
         elif np.isclose(width*2, height, self.rtol, self.atol):
             radius = width
             logger.info("check for half machine")
-            set_center([mm[1], mm[3]-width])
+            self.set_center([mm[1], mm[3]-width])
             if self.check_hull(radius, mm[1], None, self.rtol, atol):
                 logger.info(" - it is a half")
                 return Machine(self, radius, np.pi/2.0, -np.pi/2.0)

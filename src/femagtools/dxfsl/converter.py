@@ -142,19 +142,25 @@ def convert(dxfile,
             logger.warn("distance yoke (dy) ignored")
             dy = 0.0
 
+    split_ini = split
+    split_cpy = False
+    if not part:
+        split_ini = False
+        split_cpy = split
+
     try:
         if dxfile.split('.')[-1] == 'fem':
             basegeom = Geometry(femshapes(dxfile),
                                 rtol=rtol,
                                 atol=atol,
-                                split=split)
+                                split=split_ini)
         else:
             basegeom = Geometry(dxfshapes(dxfile,
                                           mindist=mindist,
                                           layers=layers),
                                 rtol=rtol,
                                 atol=atol,
-                                split=split)
+                                split=split_ini)
     except FileNotFoundError as ex:
         logger.error(ex)
         return dict()
@@ -230,6 +236,7 @@ def convert(dxfile,
                                      endangle=2*np.pi,
                                      airgap=True,
                                      inside=True,
+                                     split=split_cpy,
                                      delete_appendices=True)
 
         machine_inner = symmetry_search(machine_inner,
@@ -248,6 +255,7 @@ def convert(dxfile,
                                      endangle=2*np.pi,
                                      airgap=True,
                                      inside=False,
+                                     split=split_cpy,
                                      delete_appendices=True)
 
         machine_outer = symmetry_search(machine_outer,

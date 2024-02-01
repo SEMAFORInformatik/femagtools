@@ -53,7 +53,7 @@ def sttylosses(losses):
     """map losses of stator subregions to stteeth and styoke"""
     # extract stator subregion names
     sregs = set([k for k in losses.keys()
-                 if k.split('_')[-1] not in {'hyst', 'eddy'} and
+                 if k.split('_')[-1] not in {'hyst', 'eddy', 'excess'} and
                  k not in {'rotor', 'magnet', 'speed'}])
 
     def hysteddy(yoke, teeth, losses):
@@ -65,6 +65,8 @@ def sttylosses(losses):
             d['stteeth_hyst'] = losses[teeth+'_hyst']
             d['styoke_eddy'] = losses[yoke+'_eddy']
             d['stteeth_eddy'] = losses[teeth+'_eddy']
+            d['styoke_excess'] = losses[yoke+'_excess']
+            d['stteeth_excess'] = losses[teeth+'_excess']
         except KeyError:
             pass
         return d
@@ -87,6 +89,7 @@ def sttylosses(losses):
         try:
             l['stteeth_eddy'] += losses['STTP_eddy']
             l['stteeth_hyst'] += losses['STTP_hyst']
+            l['stteeth_excess'] += losses['STTP_excess']
         except KeyError:
             pass
         return l
@@ -1168,6 +1171,12 @@ class Reader:
         for s in subregs[:-2] + ['rotor', 'magnet']:
             cols += [s+'_hyst', s+'_eddy']
         if m:
+            # FEMAG-2024.2
+            if len(m[0]) > len(subregs[:-1])*2+2: 
+                cols = []
+                for s in subregs[:-2] + ['rotor', 'magnet']:
+                    cols += [s+'_hyst', s+'_eddy', s+'_excess']
+
             m = np.array(m).T
             if self.ldq:
                 ls.update({k: np.reshape(v[:mlen],
@@ -1570,6 +1579,8 @@ class Reader:
                             x[0] = int(x[0])
                             if len(losses[part][k][0]) == 4:
                                 cols = ('order_el', 'freq', 'hyst', 'eddy')
+                            if len(losses[part][k][0]) == 6:
+                                cols = ('order_mech', 'order_el', 'freq', 'hyst', 'eddy', 'excess')
                             if losses[part][k]:
                                 self.losses[-1][part][k] = {
                                     k1: l
@@ -1619,6 +1630,8 @@ class Reader:
                     elif len(rec) == 5:  # FEMAG Rel 8.3 with el/mech order
                         losses[part][k].append([floatnan(x)
                                                 for i, x in enumerate(rec)])
+                    elif len(rec) == 6:
+                        losses[part][k].append([floatnan(x) for x in rec])
                     else:
                         part = 'fft'
 

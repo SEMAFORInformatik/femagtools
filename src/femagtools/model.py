@@ -379,6 +379,7 @@ class MachineModel(Model):
     def rotortype(self):
         """return type of rotor slot"""
         for k in self.rotor:
+            # anything that is a dict must represent the type
             if isinstance(self.rotor[k], dict):
                 return k
         raise AttributeError("Missing rotor model in {}".format(self.magnet))
@@ -386,8 +387,9 @@ class MachineModel(Model):
     def magnettype(self):
         """return type of magnet slot"""
         for k in self.magnet:
-            if k != 'material' and isinstance(self.magnet[k], dict):
-                return k
+            if k not in {'material', 'temp_prop'}:
+                if isinstance(self.magnet[k], dict):
+                    return k
         raise AttributeError("Missing magnet model in {}".format(self.magnet))
 
     def is_complete(self):

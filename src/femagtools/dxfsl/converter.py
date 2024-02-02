@@ -144,7 +144,7 @@ def convert(dxfile,
 
     split_ini = split
     split_cpy = False
-    if not part:
+    if not (part or view_only):
         split_ini = False
         split_cpy = split
 

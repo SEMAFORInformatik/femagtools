@@ -17,7 +17,7 @@ from .functions import alpha_line, alpha_angle, alpha_triangle
 from .functions import normalise_angle, min_angle, max_angle, get_angle_of_arc
 from .functions import lines_intersect_point, nodes_are_equal
 from .functions import is_angle_inside, intersect_point
-from .functions import middle_angle
+from .functions import middle_angle, middle_point_of_line
 
 logger = logging.getLogger('femagtools.geom')
 
@@ -543,6 +543,19 @@ class Circle(Shape):
         assert(len(points) == 0)
         return []
 
+    def cut_into_halves(self):
+        """ return two arcs
+        """
+        a1 = Arc(Element(center=self.center,
+                         radius=self.radius,
+                         start_angle=0.0,
+                         end_angle=180.0))
+        a2 = Arc(Element(center=self.center,
+                         radius=self.radius,
+                         start_angle=180.0,
+                         end_angle=0.0))
+        return a1, a2
+
     def get_angle_of_arc(self):
         return np.pi*2.0
 
@@ -807,6 +820,20 @@ class Arc(Circle):
 
         assert(len(points_inside) == 0)
         return []
+
+    def cut_into_halves(self):
+        """ return two arcs
+        """
+        midangle = middle_angle(self.startangle, self.endangle)
+        a1 = Arc(Element(center=self.center,
+                         radius=self.radius,
+                         start_angle=self.startangle*180/np.pi,
+                         end_angle=midangle*180/np.pi))
+        a2 = Arc(Element(center=self.center,
+                         radius=self.radius,
+                         start_angle=midangle*180/np.pi,
+                         end_angle=self.endangle*180/np.pi))
+        return a1, a2
 
     def concatenate_arc(self, n1, n2, el):
         if not points_are_close(self.center, el.center):
@@ -1185,6 +1212,14 @@ class Line(Shape):
                 p_start = p
             return split_lines
         return []
+
+    def cut_into_halves(self):
+        """ return two lines
+        """
+        pm = middle_point_of_line(self.p1, self.p2)
+        l1 = Line(Element(start=self.p1, end=pm))
+        l2 = Line(Element(start=pm, end=self.p2))
+        return l1, l2
 
     def concatenate_line(self, n1, n2, el):
         if np.isclose(self.m(999999.0), el.m(999999.0)):

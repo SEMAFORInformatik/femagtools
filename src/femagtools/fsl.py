@@ -633,15 +633,23 @@ class Builder:
 
     def create_analysis(self, sim):
         pfefunc = sim.get('loss_funct', '')
+        custom_fefunc = ['']
         if pfefunc:
             sim['loss_funct'] = 1 # 3?
+            if pfefunc == 'bertotti' or 'modified_steinmetz': 
+                custom_fefunc = self.__render(sim['PVFE_FSL'], pfefunc)
+            else: 
+                custom_fefunc = pfefunc.split('\n')
+
         airgap_induc = (self.create_airgap_induc()
                         if sim.get('airgap_induc', 0) else [])
-        felosses = pfefunc.split('\n') + self.create_fe_losses(sim)
+        felosses = custom_fefunc + self.create_fe_losses(sim)
         fslcalc = (self.__render(sim, sim.get('calculationMode')) +
                    airgap_induc)
+        '''
         if pfefunc:
             sim['loss_funct'] = pfefunc
+        '''
 
         if sim.get('calculationMode') in ('cogg_calc',
                                           'ld_lq_fast',

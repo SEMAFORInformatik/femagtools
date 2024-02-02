@@ -306,6 +306,17 @@ class BchReaderTest(unittest.TestCase):
         self.assertTrue(bch.leak_dist_wind)
         self.assertEqual(bch.leak_dist_wind['nseg'], 4)
 
+    def test_read_felosses_ldq_b2(self):
+        bch = self.read_bch('ldqlosses-2024b2.BATCH')
+        self.assertEqual(bch.ldq['losses']['styoke_excess'][0],  [1.45, 2.114, 2.175, 2.175])
+        self.assertEqual(bch.ldq['losses']['stteeth_excess'][0],  [4.309, 4.973, 5.034, 5.034])
+        self.assertEqual(bch.ldq['losses']['rotor_excess'][0],  [0.0, 0.0, 0.0, 0.7933])
 
+    def test_read_felosses_ldq_b2(self):
+        bch = self.read_bch('psdqlosses-2024b2.BATCH')
+        self.assertEqual(bch.psidq['losses']['styoke_excess'][0],  [2.235, 2.235, 2.839])
+        self.assertEqual(bch.psidq['losses']['stteeth_excess'][0],  [6.58, 6.576, 7.176])
+        self.assertEqual(bch.psidq['losses']['rotor_excess'][0],  [0.0, 0.0, 0.0])
+        
 if __name__ == '__main__':
     unittest.main()

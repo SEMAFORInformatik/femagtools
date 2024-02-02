@@ -16,7 +16,8 @@ import logging
 import sys
 from .corner import Corner
 from .area import Area
-from .shape import Element, Shape, Circle, Arc, Line, Point, is_Circle
+from .shape import Element, Shape, Circle, Arc, Line, Point
+from .shape import is_Circle, is_Arc, is_Line
 from .machine import Machine
 from .functions import less_equal, less, greater, greater_equal
 from .functions import distance, alpha_line, alpha_points, alpha_angle
@@ -116,6 +117,14 @@ def add_or_split(el, x, out_elements, rtol, atol):
     return []
 
 
+def add_element(geom, e, rtol, atol):
+    n = geom.find_nodes(e.start(), e.end())
+    try:
+        add_or_join(geom, n[0], n[1], e, rtol, atol)
+    except Exception as ex:
+        logger.warn("EXCEPTION in add_element: %s", ex)
+
+
 def add_or_join(geom, n1, n2, entity, rtol, atol):
     """ adds a new entity to graph or joins entity with existing
     geom: Geometry
@@ -126,6 +135,46 @@ def add_or_join(geom, n1, n2, entity, rtol, atol):
         logger.debug(
             "Tiny element with same node on both sides ignored: %s", n1)
     else:
+        e = geom.get_edge_element(n1, n2)
+        if e:
+            logger.debug("Duplicate connection: %s <--> %s", n1, n2)
+            if is_Line(e):
+                if is_Line(entity):
+                    logger.debug("add_or_join(): Duplicate Lines ignored")
+                    return  # its ok
+
+            if is_Arc(e):
+                if is_Arc(entity):
+                    if points_are_close(e.center, entity.center, rtol=rtol, atol=atol):
+                        if points_are_close(e.p1, entity.p1):
+                            logger.debug("add_or_join(): Duplicate Arcs ignored")
+                            return  # its ok
+
+            if is_Circle(entity):
+                if is_Circle(e):
+                    logger.debug("add_or_join(): Duplicate Circle ignored")
+                    return  # its ok
+
+            if is_Circle(entity) or is_Circle(e):
+                e1, e2 = entity.cut_into_halves()
+                logger.debug("===== add_or_join(): Element near circle is cut into halves =====")
+                add_element(geom, e1, rtol, atol)
+                add_element(geom, e2, rtol, atol)
+                return  # halves installed
+
+            m1 = e.center_of_connection()
+            m2 = entity.center_of_connection()
+            logger.debug("midpoints: %s -- %s", m1, m2)
+            if points_are_close(m1, m2, rtol, 1e-2):
+                logger.debug("Elements are close together")
+                return  # ok
+
+            e1, e2 = entity.cut_into_halves()
+            logger.debug("===== add_or_join(): cut into halves =====")
+            add_element(geom, e1, rtol, atol)
+            add_element(geom, e2, rtol, atol)
+            return  # halves installed
+
         geom.add_edge(n1, n2, entity)
 
 

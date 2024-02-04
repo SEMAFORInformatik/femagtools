@@ -90,7 +90,7 @@ def get_shortCircuit_parameters(bch, nload):
             fc_radius=bch.machine['fc_radius'],
             lfe=bch.armatureLength/1e3,
             pocfilename=bch.machine['pocfile'],
-            num_par_wdgs=bch.machine['num_par_wdgs'],
+            num_par_wdgs=bch.machine.get('num_par_wdgs', 0),
             calculationMode='shortcircuit')
     except (KeyError, AttributeError, IndexError):
         raise FemagError("missing pm/Rel-Sim results")
@@ -222,6 +222,12 @@ class BaseFemag(object):
             pass
         builder = femagtools.fsl.Builder(self.templatedirs)
         if simulation:
+            if 'num_par_wdgs' not in simulation:
+                try:
+                    num_par_wdgs = self.model.winding['num_par_wdgs']
+                    simulation['num_par_wdgs'] = num_par_wdgs
+                except:
+                    pass
             set_magnet_properties(self.model, simulation, self.magnets)
             return builder.create(self.model, simulation,
                                   self.magnets, self.condMat)
@@ -351,6 +357,16 @@ class BaseFemag(object):
 
     def readResult(self, simulation, bch=None):
         if simulation:
+            if simulation['calculationMode'] == "fieldcalc":
+                nc = self.read_nc()
+                pmod = nc.poles_sim
+                r = {'airgap': ag.read(
+                    os.path.join(self.workdir, 'bag.dat'), pmod=pmod)}
+                if 'plots' in simulation:
+                    if 'field_lines' in simulation['plots']:
+                        r['field_lines'] = os.path.join(
+                            self.workdir, 'field.svg')
+                return r
             if simulation['calculationMode'] == "pm_sym_loss":
                 return self.read_los(self.modelname)
 
@@ -365,7 +381,8 @@ class BaseFemag(object):
 
             if simulation['calculationMode'] == 'therm-dynamic':
                 temp = [[float(n) for n in l.split()]
-                        for l in (pathlib.Path(self.workdir) / 'temperature.dat').read_text().split('\n') if l]
+                        for l in (pathlib.Path(self.workdir) /
+                                  'temperature.dat').read_text().split('\n') if l]
                 ttemp = list(zip(*temp))
                 return {'t': ttemp[0], 'temperature': ttemp[1]}
 

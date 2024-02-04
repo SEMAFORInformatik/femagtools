@@ -1295,7 +1295,7 @@ class PmRelMachinePsidq(PmRelMachine):
         self.iqrange = (min(iq), max(iq))
         self.betarange = (-np.pi if min(iq) < 0 else -np.pi/2,
                           0 if max(iq) > 0 else -np.pi/2)
-        self.i1range = (0, np.sqrt(2)*np.min(id))
+        self.i1range = (0, betai1(np.max(iq), 0)[1])
         self.io = np.max(iq)/2, np.min(id)/2
 
         if np.any(psid.shape < (4, 4)):

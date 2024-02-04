@@ -498,7 +498,7 @@ class FslBuilderTest(unittest.TestCase):
         magnets = femagtools.magnet.Magnet(magnetmat)
         condMat = femagtools.magnet.Magnet([dict(name='Cu', elconduct=56e6)])
         fsl = self.builder.create_model(model, magnets, condMat)
-        self.assertEqual(len(fsl), 186)
+        self.assertEqual(len(fsl), 187)
         brem = [l.strip() for l in fsl
                 if l.split('=')[0].strip() == 'm.remanenc']
         self.assertEqual(brem[-1].split('=')[-1].strip(),

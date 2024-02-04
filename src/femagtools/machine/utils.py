@@ -351,52 +351,66 @@ def dqparident(workdir, engine, temp, machine,
     import pathlib
 
     wdgk = 'windings' if 'windings' in machine else 'winding'
-    da1 = machine['bore_diam']
+    try:
+        defspeed = 160/machine['poles']
+    except KeyError:
+        if kwargs.get('speed', 0) == 0:
+            raise ValueError('rated speed missing')
+        defspeed = kwargs['speed']
     Q1 = machine['stator']['num_slots']
     lfe = machine['lfe']
     g = machine[wdgk].get('num_par_wdgs', 1)
-    slotmodel = [k for k in machine['stator'] if isinstance(
-        machine['stator'][k], dict)][-1]
-    if slotmodel == 'stator1':
-        hs = machine['stator']['stator1']['slot_rf1'] - \
-            machine['stator']['stator1']['tip_rh1']
-    else:
-        dy1 = machine['outer_diam']
-        hs = machine['stator'][slotmodel].get(
-            'slot_height', 0.6*(dy1-da1)/2)
-
     N = machine[wdgk]['num_wires']
-    Jmax = 20e6  # max current density in A/m2
     f = machine[wdgk].get('fillfac', 0.42)
-    Acu = f*0.5*np.pi*(da1+hs)*hs
-    i1_max = round(Acu/Q1/N*Jmax/10)*10
+    try: # calc basic dimensions if not fsl or dxf model
+        da1 = machine['bore_diam']
+        slotmodel = [k for k in machine['stator'] if isinstance(
+            machine['stator'][k], dict)][-1]
+        if slotmodel == 'stator1':
+            hs = machine['stator']['stator1']['slot_rf1'] - \
+                machine['stator']['stator1']['tip_rh1']
+        else:
+            dy1 = machine['outer_diam']
+            hs = machine['stator'][slotmodel].get(
+                'slot_height', 0.6*(dy1-da1)/2)
+
+        Jmax = 20e6  # max current density in A/m2
+        Acu = f*0.5*np.pi*(da1+hs)*hs
+        i1_max = round(Acu/Q1/N*Jmax/10)*10
+    except KeyError:
+        if kwargs.get('i1_max', 0) == 0:
+            raise ValueError('i1_max missing')
+        i1_max = kwargs['i1_max']
 
     period_frac = kwargs.get('period_frac', 6)
     if machine.get('external_rotor', False):
         period_frac = 1  # TODO: missing femag support
 
     # winding resistance
-    wpar = {'Q': machine['stator']['num_slots'],
-            'm': machine[wdgk]['num_phases'],
-            'p': machine['poles']//2}
+    try:
+        wpar = {'Q': machine['stator']['num_slots'],
+                'm': machine[wdgk]['num_phases'],
+                'p': machine['poles']//2}
 
-    if 'coil_span' in machine[wdgk]:
-        wpar['yd'] = machine[wdgk]['coil_span']
-    if 'num_layers' in machine[wdgk]:
-        wpar['l'] = machine[wdgk]['num_layers']
+        if 'coil_span' in machine[wdgk]:
+            wpar['yd'] = machine[wdgk]['coil_span']
+        if 'num_layers' in machine[wdgk]:
+            wpar['l'] = machine[wdgk]['num_layers']
 
-    wdg = windings.Winding(wpar)
+        wdg = windings.Winding(wpar)
 
-    if 'wire_gauge' in machine[wdgk]:
-        aw = machine[wdgk]['wire_gauge']
-    elif 'dia_wire' in machine[wdgk]:
-        aw = np.pi*machine[wdgk].get('dia_wire', 1e-3)**2/4
-    elif ('wire_width' in machine[wdgk]) and ('wire_height' in machine[wdgk]):
-        aw = machine['windings']['wire_width']*machine[wdgk]['wire_height']
-    else:  # wire diameter from slot area
-        aw = 0.75 * machine[wdgk].get('cufilfact', 0.45)*\
-            np.pi*da1*hs/Q1/wpar['l']/N
-    r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
+        if 'wire_gauge' in machine[wdgk]:
+            aw = machine[wdgk]['wire_gauge']
+        elif 'dia_wire' in machine[wdgk]:
+            aw = np.pi*machine[wdgk].get('dia_wire', 1e-3)**2/4
+        elif ('wire_width' in machine[wdgk]) and ('wire_height' in machine[wdgk]):
+            aw = machine['windings']['wire_width']*machine[wdgk]['wire_height']
+        else:  # wire diameter from slot area
+            aw = 0.75 * machine[wdgk].get('cufilfact', 0.45)*\
+                np.pi*da1*hs/Q1/wpar['l']/N
+        r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
+    except (NameError, KeyError):
+        r1 = 0  # cannot calc winding resistance
 
     n = len(temp)
     parvardef = {
@@ -426,12 +440,14 @@ def dqparident(workdir, engine, temp, machine,
         num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
         num_cur_steps=kwargs.get('num_cur_steps', 5),
         num_beta_steps=kwargs.get('num_beta_steps', 7),
-        speed=kwargs.get('speed', 160/machine['poles']),
+        speed=kwargs.get('speed', defspeed),
         period_frac=period_frac)
 
     # TODO: cleanup()  # remove previously created files in workdir
     # start calculation
     results = parvar(parvardef, machine, simulation, engine)
+    if 'poles' not in machine:
+        machine['poles'] = 2*results['f'][0]['machine']['p']
     #import json
     #with open('results.json', 'w') as fp:
     #    json.dump(results, fp)
@@ -457,9 +473,11 @@ def dqparident(workdir, engine, temp, machine,
                            np.array(results['f'][i]['ldq'][k]))).tolist()
              for k in ('psid', 'psiq', 'torque', 'ld', 'lq', 'psim')})
         ldq.append(d)
-    losskeys = ('styoke_hyst', 'stteeth_hyst', 'styoke_eddy',
-                'stteeth_eddy', 'rotor_hyst', 'rotor_eddy',
-                'magnet')
+    # collect existing losses only
+    losskeys = [k for k in [
+        'styoke_hyst', 'stteeth_hyst', 'styoke_eddy',
+        'stteeth_eddy', 'rotor_hyst', 'rotor_eddy',
+        'magnet'] if k in results['f'][0]['ldq']['losses']]
     for i in range(0, len(results['f']), 2):
         j = i//2
         ldq[j]['temperature'] = results['x'][0][i]
@@ -473,11 +491,11 @@ def dqparident(workdir, engine, temp, machine,
     dqpars = {
         'm': machine[wdgk]['num_phases'],
         'p': machine['poles']//2,
-        'r1': machine[wdgk].get('resistance', r1),
         'ls1': ls1,
         "rotor_mass": rotor_mass, "kfric_b": 1,
         'ldq': ldq}
-
+    if r1 or 'resistance' in machine[wdgk]:
+        dqpars['r1'] = machine[wdgk].get('resistance', r1),
     if 'current_angles' in results['f'][0]:
         dqpars['current_angles'] = results['f'][0]['current_angles']
     return dqpars

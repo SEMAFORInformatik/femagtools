@@ -181,10 +181,13 @@ class ParameterStudy(object):
         simulation['lfe'] = model.lfe
         simulation['move_action'] = model.move_action
         simulation['phi_start'] = 0.0
-        simulation['range_phi'] = 720/model.get('poles')
+        try:
+            simulation['range_phi'] = 720/model.get('poles')
+        except AttributeError: #  if dxf or pure fsl model
+            simulation['range_phi'] = 0.0
         simulation.update(model.winding)
         if 'pocfilename' not in simulation:
-            simulation['pocfilename'] = f"{model.name}_{model.poles}p.poc"
+            simulation['pocfilename'] = f"{model.name}.poc"
         fea = femagtools.model.FeaModel(simulation)
 
         prob = femagtools.moproblem.FemagMoProblem(decision_vars,

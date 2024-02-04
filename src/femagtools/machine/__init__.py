@@ -76,8 +76,8 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
         if 'psidq' in eecpars:
             machine = PmRelMachinePsidq(
                 eecpars['m'], eecpars['p'],
-                r1=eecpars['r1']*rlfe*rwdg**2,
-                ls=eecpars['ls1']*rwdg**2,
+                r1=eecpars.get('r1', 0)*rlfe*rwdg**2,
+                ls=eecpars.get('ls1', 0)*rwdg**2,
                 psid=psid,
                 psiq=psiq,
                 losses=losses,
@@ -90,8 +90,8 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
             i1 = np.array(dqp['i1'])/rwdg
             machine = PmRelMachineLdq(
                 eecpars['m'], eecpars['p'],
-                r1=eecpars['r1']*rlfe*rwdg**2,
-                ls=eecpars['ls1']*rwdg**2,
+                r1=eecpars.get('r1', 0)*rlfe*rwdg**2,
+                ls=eecpars.get('ls1', 0)*rwdg**2,
                 psid=psid,
                 psiq=psiq,
                 losses=losses,
@@ -103,7 +103,7 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
 
     # must be an induction machine (TODO: check scaling)
     pars = copy.deepcopy(eecpars)
-    pars['r1'] = rlfe*rwdg**2*pars['r1']
+    pars['r1'] = rlfe*rwdg**2*pars.get('r1', 0)
     pars['lsigma1'] = rlfe*pars['lsigma1']
     pars['lsigma2'] = rlfe*pars['lsigma2']
     pars['psiref'] = rwdg*rlfe*pars['psiref']
@@ -127,10 +127,10 @@ def __scale_losses(losses, rlfe):
             'rotor_hyst', 'rotor_eddy',
             'magnet')}
         if 'styoke_exc' in losses:
-            l.update({k: rlfe*np.array(losses[k]) 
+            l.update({k: rlfe*np.array(losses[k])
                         for k in (
                             'styoke_exc',
-                            'stteeth_exc', 
+                            'stteeth_exc',
                             'rotor_exc')})
         l['speed'] = losses['speed']
         return l

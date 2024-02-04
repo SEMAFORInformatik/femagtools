@@ -17,7 +17,7 @@ def fft(pos, y, pmod=0):
     else:
         #negative_periodic = np.abs(y[0] - y[-1])/np.max(y) > 1
         # count zero crossings
-        ypos = y > 0
+        ypos = np.asarray(y) > 0
         nypos = ~ypos
         nzc = len(((ypos[:-1] & nypos[1:])
                    | (nypos[:-1] & ypos[1:])).nonzero()[0])

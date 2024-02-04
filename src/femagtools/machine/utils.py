@@ -495,7 +495,7 @@ def dqparident(workdir, engine, temp, machine,
         "rotor_mass": rotor_mass, "kfric_b": 1,
         'ldq': ldq}
     if r1 or 'resistance' in machine[wdgk]:
-        dqpars['r1'] = machine[wdgk].get('resistance', r1),
+        dqpars['r1'] = machine[wdgk].get('resistance', r1)
     if 'current_angles' in results['f'][0]:
         dqpars['current_angles'] = results['f'][0]['current_angles']
     return dqpars

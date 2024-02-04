@@ -484,7 +484,11 @@ class Builder:
         if not hasattr(model, 'stator'):
             setattr(model, 'stator', {})
         model.stator['num_slots'] = conv.get('tot_num_slot')
-        model.stator['num_slots_gen'] = conv.get('num_sl_gen')
+        if model.stator.get('num_slots_gen', 0):
+            if model.stator['num_slots'] % model.stator['num_slots_gen'] > 0:
+                model.stator['num_slots_gen'] = conv.get('num_sl_gen')
+        else:
+            model.stator['num_slots_gen'] = conv.get('num_sl_gen')
         if 'fsl_stator' in conv:
             self.fsl_stator = True
             model.stator['dxf'] = dict(fsl=conv['fsl_stator'])
@@ -636,9 +640,9 @@ class Builder:
         custom_fefunc = ['']
         if pfefunc:
             sim['loss_funct'] = 1 # 3?
-            if pfefunc == 'bertotti' or 'modified_steinmetz': 
+            if pfefunc == 'bertotti' or 'modified_steinmetz':
                 custom_fefunc = self.__render(sim['PVFE_FSL'], pfefunc)
-            else: 
+            else:
                 custom_fefunc = pfefunc.split('\n')
 
         airgap_induc = (self.create_airgap_induc()

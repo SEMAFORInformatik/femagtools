@@ -15,7 +15,13 @@ def fft(pos, y, pmod=0):
     if pmod:
         negative_periodic = pmod % 2
     else:
-        negative_periodic = np.abs(y[0] - y[-1])/np.max(y) > 1
+        #negative_periodic = np.abs(y[0] - y[-1])/np.max(y) > 1
+        # count zero crossings
+        ypos = y > 0
+        nypos = ~ypos
+        nzc = len(((ypos[:-1] & nypos[1:])
+                   | (nypos[:-1] & ypos[1:])).nonzero()[0])
+        negative_periodic = nzc == 0 or nzc % 2 == 1
 
     if negative_periodic:
         yx = np.concatenate(

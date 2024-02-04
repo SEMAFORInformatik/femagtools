@@ -17,3 +17,4 @@ from .nc import spel, mesh, demag, demag_pos, \
 from .mcv import mcv_hbj, mcv_muer, felosses
 from .phasor import i1beta_phasor, iqd_phasor, phasor
 from .wdg import mmf, mmf_fft, zoneplan, winding_factors, winding
+from .fieldlines import fieldlines

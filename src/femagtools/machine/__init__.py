@@ -126,12 +126,12 @@ def __scale_losses(losses, rlfe):
             'stteeth_hyst', 'stteeth_eddy',
             'rotor_hyst', 'rotor_eddy',
             'magnet')}
-        if 'styoke_exc' in losses:
+        if 'styoke_excess' in losses:
             l.update({k: rlfe*np.array(losses[k]) 
                         for k in (
-                            'styoke_exc',
-                            'stteeth_exc', 
-                            'rotor_exc')})
+                            'styoke_excess',
+                            'stteeth_excess', 
+                            'rotor_excess')})
         l['speed'] = losses['speed']
         return l
     return {}

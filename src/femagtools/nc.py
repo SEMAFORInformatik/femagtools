@@ -262,6 +262,7 @@ class Reader(object):
         ce_ind_exp = 1.5
         ke = 0.0
         khml = 0.65
+        cw_ind_beta_exp = 0
 
         lctype = ['magn_curve']*lmc + ['Outside', 'Inside']
         for i in range(lmc+2):
@@ -280,6 +281,11 @@ class Reader(object):
                 cw = float(mcgrp.variables['cw'][i].data)
                 cw_freq_exp = float(mcgrp.variables['cw_exp'][i].data)
                 cw_ind_exp = float(mcgrp.variables['ind_exp'][i].data)
+                try: 
+                    ce = float(mcgrp.variables['ce'][i].data)
+                    cw_ind_beta_exp = float(mcgrp.variables['ind_beta_exp'][i].data)
+                except: 
+                    pass
                 spec_weight = float(mcgrp.variables['spec_weight'][i].data)
                 fillfactor = float(mcgrp.variables['fillfac'][i].data)
                 shapefactor = 1.0
@@ -327,6 +333,7 @@ class Reader(object):
                 "cw_freq_exp": cw_freq_exp,
                 "cw_ind_exp": cw_ind_exp,
                 "ce": ce,
+                "cw_ind_beta_exp": cw_ind_beta_exp,
                 "ce_freq_exp": ce_freq_exp,
                 "ce_ind_exp": ce_ind_exp,
                 "ke": ke,

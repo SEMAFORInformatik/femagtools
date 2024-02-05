@@ -50,6 +50,7 @@ transl = dict(
     rho='mc1_fe_spez_weigth',
     ch='mc1_ch_factor',
     cw='mc1_cw_factor',
+    ce='mc1_ce_factor',
     ch_freq='mc1_ch_freq_factor',
     cw_freq='mc1_cw_freq_factor',
     fillfac='mc1_fillfac',
@@ -58,6 +59,7 @@ transl = dict(
     bsat='mc1_bsat',
     Bo='mc1_base_induction',
     b_coeff='mc1_induction_factor',
+    b_beta_coeff='mc1_induction_beta_factor',
     fo='mc1_base_frequency',
     curve=[dict(
         hi='mc1_hi',
@@ -227,9 +229,12 @@ class Mcv(object):
         self.MC1_BASE_INDUCTION = 1.5
         self.MC1_CH_FACTOR = 0.0
         self.MC1_CW_FACTOR = 0.0
+        self.MC1_CE_FACTOR = 0.0
         self.MC1_CH_FREQ_FACTOR = 0.0
         self.MC1_CW_FREQ_FACTOR = 0.0
         self.MC1_INDUCTION_FACTOR = 0.0
+        self.MC1_INDUCTION_BETA_FACTOR = 0.0
+
         self.MC1_FE_SPEZ_WEIGTH = 7.65
         self.MC1_FE_SAT_MAGNETIZATION = 2.15
 
@@ -237,9 +242,11 @@ class Mcv(object):
         self.mc1_base_induction = self.MC1_BASE_INDUCTION
         self.mc1_ch_factor = self.MC1_CH_FACTOR
         self.mc1_cw_factor = self.MC1_CW_FACTOR
+        self.mc1_ce_factor = self.MC1_CE_FACTOR
         self.mc1_ch_freq_factor = self.MC1_CH_FREQ_FACTOR
         self.mc1_cw_freq_factor = self.MC1_CW_FREQ_FACTOR
         self.mc1_induction_factor = self.MC1_INDUCTION_FACTOR
+        self.mc1_induction_beta_factor = self.MC1_INDUCTION_BETA_FACTOR
         self.mc1_fe_spez_weigth = self.MC1_FE_SPEZ_WEIGTH
         self.mc1_fe_sat_magnetization = self.MC1_FE_SAT_MAGNETIZATION
 
@@ -519,6 +526,12 @@ class Writer(Mcv):
                          float(self.mc1_fe_sat_magnetization)])
 
         if not hasattr(self, 'losses') or not self.losses:
+            # new variables 
+            try: 
+                self.writeBlock([float(self.mc1_ce_factor), 
+                                 float(self.mc1_induction_beta_factor)])
+            except: 
+                pass
             return
 
         try:
@@ -585,7 +598,7 @@ class Writer(Mcv):
             logger.info('Losses n freq %d n ind %d', nfreq, nind)
         except Exception as e:
             logger.error("Exception %s", e, exc_info=True)
-
+        
     def writeMcv(self, filename, fillfac=None, recsin=''):
         # windows needs this strip to remove '\r'
         filename = filename.strip()
@@ -857,6 +870,16 @@ class Reader(Mcv):
                 if not self.losses['f'] or not self.losses['pfe']:
                     self.losses = {}
 
+        self.ce = 0
+        self.b_beta_coeff = 0
+        try: 
+            if not self.losses['f'][0]:
+                self.fp.seek(-16, 1)
+            res = self.readBlock([float]*2)
+            self.ce, self.b_beta_coeff = res[0], res[1]
+        except:
+            pass
+
     def get_results(self):
         result = {
             'name': self.name,
@@ -873,6 +896,8 @@ class Reader(Mcv):
             'ch': self.ch,
             'ch_freq': self.ch_freq,
             'cw': self.cw,
+            'ce': self.ce,
+            'b_beta_coeff': self.b_beta_coeff,
             'cw_freq': self.cw_freq,
             'b_coeff': self.b_coeff,
             'rho': self.rho,

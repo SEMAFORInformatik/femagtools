@@ -14,13 +14,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def __scale_losses(losses, lfe):
+def __scale_losses(losses, rlfe):
     if losses:
-        l = {k: lfe*np.array(losses[k]) for k in (
+        l = {k: rlfe*np.array(losses[k]) for k in (
             'styoke_hyst', 'styoke_eddy',
             'stteeth_hyst', 'stteeth_eddy',
+            'styoke_exc', 'stteeth_exc', 'rotor_exc',
             'rotor_hyst', 'rotor_eddy',
-            'magnet')}
+            'magnet') if k in losses}
         l['speed'] = losses['speed']
         return l
     return {}
@@ -66,13 +67,10 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
 
         psid = rwdg*rlfe*dqp['psid']
         psiq = rwdg*rlfe*dqp['psiq']
-        try:
-            losses = __scale_losses(dqp['losses'], rlfe)
-            losses['ef'] = dqpars[-1]['losses']['ef']
-            losses['eh'] = dqpars[-1]['losses']['ef']
-        except KeyError as e:
-            logger.warning(e)
-            losses = {}
+        losses = __scale_losses(dqp['losses'], rlfe)
+        losses['ef'] = dqpars[-1]['losses']['ef']
+        losses['eh'] = dqpars[-1]['losses']['ef']
+
         if 'psidq' in eecpars:
             machine = PmRelMachinePsidq(
                 eecpars['m'], eecpars['p'],
@@ -117,24 +115,6 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     pars['tcu2'] = temp[1]
     pars.update(opts)
     return InductionMachine(pars)
-
-
-def __scale_losses(losses, rlfe):
-    if losses:
-        l = {k: rlfe*np.array(losses[k]) for k in (
-            'styoke_hyst', 'styoke_eddy',
-            'stteeth_hyst', 'stteeth_eddy',
-            'rotor_hyst', 'rotor_eddy',
-            'magnet')}
-        if 'styoke_exc' in losses:
-            l.update({k: rlfe*np.array(losses[k])
-                        for k in (
-                            'styoke_exc',
-                            'stteeth_exc',
-                            'rotor_exc')})
-        l['speed'] = losses['speed']
-        return l
-    return {}
 
 
 def create(bch, r1, ls, lfe=1, wdg=1):

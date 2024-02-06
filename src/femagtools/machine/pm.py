@@ -1151,7 +1151,8 @@ class PmRelMachineLdq(PmRelMachine):
             self._set_losspar(pfe)
             self._losses = {k: ip.RectBivariateSpline(
                 beta, i1, np.array(pfe[k]),
-                kx=kx, ky=ky).ev for k in tuple(self.losskeys)}
+                kx=kx, ky=ky).ev for k in self.losskeys
+                            if k in pfe}
         except KeyError as e:
             logger.warning("loss map missing: %s", e)
             pass
@@ -1238,12 +1239,12 @@ class PmRelMachineLdq(PmRelMachine):
 
     def betai1_plfe1(self, beta, i1, f1):
         stator_losskeys = ['styoke_eddy', 'styoke_hyst',
-                            'stteeth_eddy', 'stteeth_hyst']
+                           'stteeth_eddy', 'stteeth_hyst']
         if self.bertotti:
             stator_losskeys += ['styoke_exc', 'stteeth_exc']
         return np.sum([
-            self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k] for
-            k in tuple(stator_losskeys)], axis=0)
+            self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k]
+            for k in stator_losskeys if k in self._losses], axis=0)
 
     def iqd_plfe1(self, iq, id, f1):
         return self.betai1_plfe1(*betai1(iq, id), f1)

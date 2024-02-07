@@ -1323,7 +1323,7 @@ class PmRelMachinePsidq(PmRelMachine):
         self._psiq = ip.RectBivariateSpline(iq, id, psiq).ev
         try:
             pfe = kwargs['losses']
-            if 'styoke_excess' in pfe and np.any(pfe['styoke_excess'])::
+            if 'styoke_excess' in pfe and np.any(pfe['styoke_excess']):
                 self.bertotti = True
                 self.losskeys += ['styoke_excess',
                                   'stteeth_excess',

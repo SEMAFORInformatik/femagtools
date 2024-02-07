@@ -112,8 +112,7 @@ def add_or_split(el, x, out_elements, rtol, atol):
             out_elements += split_elements
             out_elements[x] = None
         split_el = el.split(points, rtol, atol)
-        return split_e
-l
+        return split_el
     return []
 
 

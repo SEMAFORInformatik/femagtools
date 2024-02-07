@@ -113,7 +113,6 @@ def add_or_split(el, x, out_elements, rtol, atol):
             out_elements[x] = None
         split_el = el.split(points, rtol, atol)
         return split_el
-
     return []
 
 
@@ -134,6 +133,9 @@ def add_or_join(geom, n1, n2, entity, rtol, atol):
     if n1 == n2:
         logger.debug(
             "Tiny element with same node on both sides ignored: %s", n1)
+        logger.debug(
+            " -- element: %s", entity)
+
     else:
         e = geom.get_edge_element(n1, n2)
         if e:
@@ -969,11 +971,13 @@ class Geometry(object):
 
     def add_edge(self, n1, n2, entity):
         if points_are_close(n1, n2):
-            logger.debug("WARNING in add_edge(): Points ar close together")
-            logger.debug("        p1 = %s, p2 = %s", n1, n2)
+            logger.debug("WARNING in add_edge(): Points of %s are close together",
+                         entity.classname())
+            logger.debug("        n1 = %s, n2 = %s", n1, n2)
+            logger.debug("        p1 = %s, p2 = %s", entity.p1, entity.p2)
 
         entity.set_nodes(n1, n2)
-        logger.debug("add_edge %s - %s", n1, n2)
+        logger.debug("add_edge %s - %s  (%s)", n1, n2, entity.classname())
         self.g.add_edge(n1, n2, object=entity)
 
     def get_edge(self, eg):
@@ -1206,7 +1210,7 @@ class Geometry(object):
         rtol = 1e-4
         atol = 1e-4
 
-        logger.debug("repair_hull_line(center=%s, angle=%s)", center, angle)
+        logger.debug("begin repair_hull_line(center=%s, angle=%s)", center, angle)
 
         if len(corners) < 2:
             # no hull without more than 1 corners
@@ -1231,6 +1235,7 @@ class Geometry(object):
                 # Both points are in the hull
                 el = data['object']
                 if isinstance(el, Line):
+                    logger.debug("remove Line: %s <> %s", p1, p2)
                     self._remove_edge(p1, p2)
                 else:
                     [corner.set_keep_node() for corner in clist_p1]
@@ -1266,6 +1271,8 @@ class Geometry(object):
 
         # Rebuild Corner-list after correction
         corners = self.get_corner_list(center, angle, rtol, atol)
+        for c in corners:
+            logger.debug("Correct Corner: %s", c)
 
         if with_center:
             c_corner = Corner(center, tuple(center))
@@ -1873,13 +1880,14 @@ class Geometry(object):
         alpha_start = alpha_line(e.center, e.p1)
         for x, p2 in sorted_points:
             alpha_end = alpha_line(e.center, p2)
-            pm = middle_point_of_arc(e.center, e.radius, p1, p2, rtol=rtol)
+            pm = middle_point_of_arc(e.center, e.radius, p1, p2, rtol=rtol, atol=atol)
             if is_point_inside_region(pm, center,
-                                      inner_circle.radius, outer_circle.radius,
-                                      start_angle, end_angle):
-
+                                      inner_circle.radius,
+                                      outer_circle.radius,
+                                      start_angle, end_angle,
+                                      rtol=rtol, atol=atol):
                 if not (len(points) > 1 and
-                        points_are_close(p1, p2, 1e-3, 1e-3)):
+                        points_are_close(p1, p2, rtol=rtol, atol=atol)):
                     if len(points) == 1 and e.rtheta is not None:
                         a = Arc(Element(center=e.center,
                                         radius=e.radius,
@@ -1895,7 +1903,6 @@ class Geometry(object):
                                         radius=e.radius,
                                         start_angle=alpha_start*180/np.pi,
                                         end_angle=alpha_end*180/np.pi))
-
                     new_elements.append(a)
             alpha_start = alpha_end
             p1 = p2
@@ -1911,7 +1918,6 @@ class Geometry(object):
             durch die Parameter definierten Teilkreisfläche befinden.
         """
         assert(isinstance(e, Circle))
-
         if is_same_angle(start_angle, end_angle):
             pts_inner = inner_circle.intersect_circle(e,
                                                       rtol,
@@ -1961,47 +1967,24 @@ class Geometry(object):
         sorted_points.sort()
 
         x, px = sorted_points[0]
-        del sorted_points[0]
+        sorted_points.append((x, px))
         p1 = px
         alpha_start = alpha_line(e.center, p1)
-        for x, p2 in sorted_points:
+        for x, p2 in sorted_points[1:]:
             alpha_end = alpha_line(e.center, p2)
-            pm = middle_point_of_arc(e.center, e.radius, p1, p2, rtol=rtol)
+            pm = middle_point_of_arc(e.center, e.radius, p1, p2, rtol=rtol, atol=atol)
             if is_point_inside_region(pm, center,
                                       inner_circle.radius,
                                       outer_circle.radius,
-                                      start_angle, end_angle):
-                alpha_middle = middle_angle(alpha_start, alpha_end)
-                arc1 = Arc(Element(center=e.center,
-                                   radius=e.radius,
-                                   start_angle=alpha_start*180/np.pi,
-                                   end_angle=alpha_middle*180/np.pi))
-                arc2 = Arc(Element(center=e.center,
-                                   radius=e.radius,
-                                   start_angle=alpha_middle*180/np.pi,
-                                   end_angle=alpha_end*180/np.pi))
-                new_elements.append(arc1)
-                new_elements.append(arc2)
-
+                                      start_angle, end_angle,
+                                      rtol=rtol, atol=atol):
+                a = Arc(Element(center=e.center,
+                                radius=e.radius,
+                                start_angle=alpha_start*180/np.pi,
+                                end_angle=alpha_end*180/np.pi))
+                new_elements.append(a)
             alpha_start = alpha_end
             p1 = p2
-
-        alpha_end = alpha_line(e.center, px)
-        pm = middle_point_of_arc(e.center, e.radius, p1, px, rtol=rtol)
-        if is_point_inside_region(pm, center,
-                                  inner_circle.radius, outer_circle.radius,
-                                  start_angle, end_angle):
-            alpha_middle = middle_angle(alpha_start, alpha_end)
-            arc1 = Arc(Element(center=e.center,
-                               radius=e.radius,
-                               start_angle=alpha_start*180/np.pi,
-                               end_angle=alpha_middle*180/np.pi))
-            arc2 = Arc(Element(center=e.center,
-                               radius=e.radius,
-                               start_angle=alpha_middle*180/np.pi,
-                               end_angle=alpha_end*180/np.pi))
-            new_elements.append(arc1)
-            new_elements.append(arc2)
         return new_elements
 
     def copy_shape(self,
@@ -2019,12 +2002,15 @@ class Geometry(object):
         """ Die Funktion kopiert die Teile von Shape-Objekten, welche sich in
             der durch die Parameter definierten Teilkreisfläche befinden.
         """
-        logger.debug('copy_shape(%s, %s)', startangle, endangle)
+        logger.debug('begin copy_shape(%s, %s)', startangle, endangle)
 
         if not rtol:
             rtol = self.rtol
         if not atol:
             atol = self.atol
+        rtol = 1e-5
+        atol = 1e-4
+        logger.debug(' -> rtol=%s,  atol=%s', rtol, atol)
 
         if is_same_angle(startangle, endangle):
             start_line = Line(
@@ -2077,7 +2063,6 @@ class Geometry(object):
                     atol=atol,
                     points_inner=pts_inner,
                     points_outer=pts_outer)
-
             elif isinstance(e, Circle):
                 new_elements += self.copy_circle(
                     self.center, radius, startangle, endangle,
@@ -2139,7 +2124,7 @@ class Geometry(object):
         if delete_appendices:
             geom.delete_all_appendices()
             geom.set_center(self.center)
-
+        logger.debug('end copy_shape')
         return geom
 
     def copy_all_elements(self, alpha):

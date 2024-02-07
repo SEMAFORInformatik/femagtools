@@ -51,6 +51,9 @@ class Shape(object):
             for a in s.my_attrs:
                 self.my_attrs.append(a)
 
+    def classname(self):
+        return "Shape"
+
     def get_my_color(self):
         if hasattr(self, 'my_color'):
             return self.my_color
@@ -208,8 +211,8 @@ class Shape(object):
         d1 = distance(n, self.n1)
         d2 = distance(n, self.n2)
         if d1 == d2:
-            logger.info("distances of %s and %s are equal (%s / %s)",
-                        self.n1, self.n2, d1, d2)
+            logger.warning("distances of %s and %s are equal (%s / %s)",
+                           self.n1, self.n2, d1, d2)
             raise ValueError('both nodes are equal in element')
 
         if d1 < d2:
@@ -305,6 +308,9 @@ class Circle(Shape):
         self.p2 = self.center[0]+self.radius, self.center[1]
         self.n1 = None
         self.n2 = None
+
+    def classname(self):
+        return "Circle"
 
     def render(self, renderer, color='blue', with_nodes=False):
         tmp_color = self.get_my_color()
@@ -620,6 +626,9 @@ class Arc(Circle):
         else:
             self.rtheta = None
 
+    def classname(self):
+        return "Arc"
+
     def render(self, renderer, color='blue', with_nodes=False):
         tmp_color = self.get_my_color()
         if not tmp_color:
@@ -860,30 +869,30 @@ class Arc(Circle):
     def is_point_inside(self, p, rtol=1e-03, atol=1e-03, include_end=False):
         """ returns true if p is on arc
         """
-        logger.debug("is_point_inside: p=%s", p)
+        # logger.debug("is_point_inside: p=%s", p)
         d = distance(p, self.center)
         if not np.isclose(d, self.radius, rtol=rtol, atol=atol):
-            logger.debug(" <== RADIUS %s, DISTANCE %s",
-                         self.radius, d)
+            # logger.debug(" <== RADIUS %s, DISTANCE %s",
+            #              self.radius, d)
             return False
         if points_are_close(p, self.p1, rtol=rtol, atol=atol):
-            logger.debug(" <== CLOSE TO P1 %s: rtol=%s, atol=%s",
-                         self.p1, rtol, atol)
+            # logger.debug(" <== CLOSE TO P1 %s: rtol=%s, atol=%s",
+            #              self.p1, rtol, atol)
             return include_end
         elif points_are_close(p, self.p2, rtol=rtol, atol=atol):
-            logger.debug(" <== CLOSE TO P2 %s: rtol=%s, atol=%s",
-                         self.p2, rtol, atol)
+            # logger.debug(" <== CLOSE TO P2 %s: rtol=%s, atol=%s",
+            #              self.p2, rtol, atol)
             return include_end
         elif points_are_close(self.p1, self.p2, rtol=rtol, atol=atol):
-            logger.debug(" <== P1 AND P2 CLOSE TOGETHER")
+            # logger.debug(" <== P1 AND P2 CLOSE TOGETHER")
             return False
 
         alpha_p1 = alpha_line(self.center, self.p1)
         alpha_p2 = alpha_line(self.center, self.p2)
         alpha_p = alpha_line(self.center, p)
         alpha_inside = is_angle_inside(alpha_p1, alpha_p2, alpha_p)
-        logger.debug("is_point_inside: %s (%s, %s ,%s)",
-                     alpha_inside, alpha_p1, alpha_p2, alpha_p)
+        # logger.debug("is_point_inside: %s (%s, %s ,%s)",
+        #              alpha_inside, alpha_p1, alpha_p2, alpha_p)
         return alpha_inside
 
     def is_angle_inside(self, alpha, rtol=1e-03, atol=1e-03,
@@ -1080,6 +1089,9 @@ class Line(Shape):
         self.p2 = lf*end[0] + xoff, lf*end[1] + yoff
         self.n1 = None
         self.n2 = None
+
+    def classname(self):
+        return "Line"
 
     def render(self, renderer, color='blue', with_nodes=False):
         tmp_color = self.get_my_color()
@@ -1327,6 +1339,9 @@ class Point(Shape):
 
     def __init__(self, p):
         self.p1 = p
+
+    def classname(self):
+        return "Point"
 
     def render(self, renderer):
         renderer.point(self.p1)

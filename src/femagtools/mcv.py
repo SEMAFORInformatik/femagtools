@@ -525,8 +525,9 @@ class Writer(Mcv):
                          float(self.mc1_fe_spez_weigth),
                          float(self.mc1_fe_sat_magnetization)])
 
-        if self.mc1_ce_factor > 0 or self.mc1_induction_beta_factor > 0: 
-            # new variables: ce factor for bertotti and beta coeff for modified steinmetz
+        if not hasattr(self, 'losses') or not self.losses:
+            # new variables: ce factor for bertotti losses
+            # b_beta_coeff for modified steinmetz
             try: 
                 self.writeBlock([float(self.mc1_ce_factor), 
                                  float(self.mc1_induction_beta_factor)])

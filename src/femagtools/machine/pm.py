@@ -1143,7 +1143,7 @@ class PmRelMachineLdq(PmRelMachine):
             kx = len(beta)-1
         try:
             pfe = kwargs['losses']
-            if 'styoke_excess' in pfe:
+            if 'styoke_excess' in pfe and np.any(pfe['styoke_excess']):
                 self.bertotti = True
                 self.losskeys += ['styoke_excess',
                                   'stteeth_excess',
@@ -1323,7 +1323,7 @@ class PmRelMachinePsidq(PmRelMachine):
         self._psiq = ip.RectBivariateSpline(iq, id, psiq).ev
         try:
             pfe = kwargs['losses']
-            if 'styoke_excess' in pfe:
+            if 'styoke_excess' in pfe and np.any(pfe['styoke_excess'])::
                 self.bertotti = True
                 self.losskeys += ['styoke_excess',
                                   'stteeth_excess',

@@ -232,6 +232,7 @@ class Machine(object):
         return clone.get_machine()
 
     def copy_mirror(self, startangle, midangle, endangle):
+        logger.debug("begin of copy_mirror")
         geom1 = self.geom.copy_shape(self.radius,
                                      startangle,
                                      midangle,
@@ -255,6 +256,7 @@ class Machine(object):
         machine.mirror_geom = geom2
         machine.mirror_startangle = midangle
         machine.mirror_endangle = endangle
+        logger.debug("end of copy_mirror")
         return machine
 
     def has_mirrored_windings(self):
@@ -280,16 +282,16 @@ class Machine(object):
             self.endangle += angle
 
     def airgap(self, correct_airgap=0.0, correct_airgap2=0.0, atol=0.1):
-        logger.debug('locking for airgap')
+        logger.debug('begin airgap (locking for airgap)')
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
 
         if np.isclose(self.radius, 0.0):
-            logger.debug('no radius')
+            logger.debug('end airgap: no radius')
             return False
 
         if correct_airgap < 0:
-            logger.debug('no airgap')
+            logger.debug('end airgap: no airgap (%s)', correct_airgap)
             return False  # no airgap
 
         self.airgaps = []
@@ -355,33 +357,39 @@ class Machine(object):
             logger.error("No airgap with radius {} found"
                          .format(correct_airgap))
             self.show_airgap_candidates(airgap_candidates, False)
+            logger.debug("end airgap: bad")
             return True  # bad exit
 
         if correct_airgap2 > 0.0 and self.airgap2_radius == 0.0:
             logger.error("No airgap2 with radius {} found"
                          .format(correct_airgap2))
             self.show_airgap_candidates(airgap_candidates, False)
+            logger.debug("end airgap: bad")
             return True  # bad exit
 
         if len(self.airgaps) == 0:
-            logger.debug('No airgap found')
+            logger.debug('end airgap: No airgap found')
             return False  # no airgaps found
 
         if self.airgap_radius > 0.0:
+            logger.debug("end airgap: radius=%s", self.airgap_radius)
             return False  # correct airgap set
 
         gaps = [c for b, c, d in airgap_candidates if b == 0]
 
         if len(gaps) == 1:  # one candidate without border intersection
             self.airgap_radius = gaps[0].radius
+            logger.debug("end airgap: radius=%s", self.airgap_radius)
             return False  # ok
 
         if len(airgap_candidates) == 1:  # one candidate found
             self.airgap_radius = airgap_candidates[0][1].radius
+            logger.debug("end airgap: radius=%s", self.airgap_radius)
             return False  # ok
 
         self.airgap_radius = self.show_airgap_candidates(airgap_candidates,
                                                          True)
+        logger.debug("end airgap: radius=%s", self.airgap_radius)
         return False  # ok
 
     def show_airgap_candidates(self, airgap_candidates, get_one):
@@ -452,7 +460,7 @@ class Machine(object):
                 self.geom.delete_circle((0.0, 0.0), first_dist)
 
     def repair_hull(self):
-        logger.debug('repair_hull')
+        logger.debug('begin repair_hull(%s, %s)', self.startangle, self.endangle)
         if self.is_full() and not self.has_airgap():
             self.delete_center_circle()
 
@@ -469,7 +477,7 @@ class Machine(object):
         logger.debug('end of repair_hull')
 
     def repair_hull_geom(self, geom, startangle, endangle):
-        logger.debug('repair_hull_geom')
+        logger.debug('begin repair_hull_geom (%s, %s)', startangle, endangle)
 
         c_corner = Corner(self.center, self.center)
         start_corners = geom.get_corner_list(self.center, startangle)

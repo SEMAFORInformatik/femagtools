@@ -148,6 +148,10 @@ def area_size(points):
 def middle_point_of_arc(center, radius, p1, p2, rtol=1e-3, atol=1e-8):
     alpha_p1 = alpha_line(center, p1)
     alpha_p2 = alpha_line(center, p2)
+    if alpha_p1 < 0.0:
+        alpha_p1 += np.pi * 2.0
+    if alpha_p2 < 0.0:
+        alpha_p2 += np.pi * 2.0
 
     if np.isclose(alpha_p1, alpha_p2, rtol, atol):
         return p1
@@ -167,23 +171,13 @@ def middle_point_of_arc(center, radius, p1, p2, rtol=1e-3, atol=1e-8):
 
 
 def middle_angle(alpha1, alpha2):
-    a1 = normalise_angle(alpha1)
-    a2 = normalise_angle(alpha2)
-
-    if np.isclose(a1, a2):
-        return a1
-
-    if greater_equal(a1, 0.0):
-        if a2 < a1:
-            a2 += 2.0*np.pi
-    else:
-        if less_equal(a2, a1):
-            a1 += 2.0*np.pi
-
-    if np.isclose(a1, a2):
-        return copy.copy(a1)
-
-    return (a1+a2)/2.0
+    if alpha1 < 0.0:
+        alpha1 += np.pi * 2.0
+    if alpha2 < 0.0:
+        alpha2 += np.pi * 2.0
+    if alpha2 < alpha1:
+        alpha2 += np.pi * 2.0
+    return normalise_angle((alpha1 + alpha2) / 2.0)
 
 
 def third_angle(alpha1, alpha2):
@@ -203,7 +197,7 @@ def third_angle(alpha1, alpha2):
     if np.isclose(a1, a2):
         return copy.copy(a1)
 
-    return (a1+a2)/3.0
+    return normalise_angle((a1+a2)/3.0)
 
 
 def middle_point_of_line(p1, p2):
@@ -324,21 +318,21 @@ def gcd(x, y):
     return x+y
 
 
-def is_angle_outside(startangle, endangle, alpha):
-    return not is_angle_inside(startangle, endangle, alpha)
+def is_angle_outside(startangle, endangle, alpha, rtol=1e-08, atol=1e-08):
+    return not is_angle_inside(startangle, endangle, alpha, rtol=rtol, atol=atol)
 
 
-def is_angle_inside(startangle, endangle, alpha):
+def is_angle_inside(startangle, endangle, alpha, rtol=1e-08, atol=1e-08):
     start = normalise_angle(startangle)
     end = normalise_angle(endangle)
     mid = normalise_angle(alpha)
 
-    if np.isclose(start, end, 1e-08):
+    if np.isclose(start, end, rtol=rtol, atol=atol):
         # In diesem Fall ist alles 'inside'
         return True
-    if np.isclose(mid, start, 1e-08):
+    if np.isclose(mid, start, rtol=rtol, atol=atol):
         return True
-    if np.isclose(mid, end, 1e-08):
+    if np.isclose(mid, end, rtol=rtol, atol=atol):
         return True
 
     if end < start:
@@ -352,7 +346,8 @@ def is_angle_inside(startangle, endangle, alpha):
 
 
 def is_point_outside_region(p, center, inner_radius, outer_radius,
-                            startangle, endangle):
+                            startangle, endangle,
+                            rtol=1e-08, atol=1e-08):
     alpha = alpha_line(center, p)
     if is_angle_outside(startangle, endangle, alpha):
         return True
@@ -362,10 +357,12 @@ def is_point_outside_region(p, center, inner_radius, outer_radius,
 
 def is_point_inside_region(p, center,
                            inner_radius, outer_radius,
-                           startangle, endangle):
+                           startangle, endangle,
+                           rtol=1e-08, atol=1e-08):
     return not is_point_outside_region(p, center,
                                        inner_radius, outer_radius,
-                                       startangle, endangle)
+                                       startangle, endangle,
+                                       rtol=rtol, atol=atol)
 
 
 def get_angle_of_arc(startangle, endangle):

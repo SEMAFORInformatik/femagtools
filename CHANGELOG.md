@@ -2,6 +2,16 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.6.0
+        - iron loss calculation: support for Bertotti- and Modified-Steinmetz Loss-Models added.
+        - New FSL templates for custom calculation via PVFE_FSL
+        - new loss parameter (ce, b_beta_coeff) in MC/MCV file
+        - bch: new loss section (excess losses) in the BCH file (FEMAG version >= R2024 B2).
+	- parameter identification from dxf (requires i1_max, speed)
+	- added fieldlines plot (from svg)
+	- added fieldcalc with result airgap and field_lines
+	- dxf fsl improvements
+
 ## Release 1.5.5
 	- PM, SM characteristics: auto correction of max torque
 

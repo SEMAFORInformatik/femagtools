@@ -119,8 +119,12 @@ def main():
                            dest='debug',
                            action="store_true")
     argparser.add_argument('-l', '--log',
-                           help='print information in logfile',
+                           help='print information in logfile and set --debug',
                            dest='debug',
+                           action="store_true")
+    argparser.add_argument('--logfile',
+                           help='print information in logfile',
+                           dest='logfile',
                            action="store_true")
     argparser.add_argument('--version',
                            help='show version of some packages',
@@ -137,6 +141,7 @@ def main():
     loglevel = logging.INFO
     if args.debug:
         loglevel = logging.DEBUG
+    if args.debug or args.logfile:
         logfilename = 'debugger.log'
         print("see log-messages in {}".format(logfilename))
 

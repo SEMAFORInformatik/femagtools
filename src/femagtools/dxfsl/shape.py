@@ -853,9 +853,11 @@ class Arc(Circle):
         if np.isclose(self.startangle, el.endangle):
             start_angle = el.startangle
             end_angle = self.endangle
-        else:
+        elif np.isclose(el.startangle, self.endangle):
             start_angle = self.startangle
             end_angle = el.endangle
+        else:
+            return None
 
         logger.debug("concatenate_arc: start=%s, end=%s",
                      start_angle,
@@ -1234,8 +1236,20 @@ class Line(Shape):
         return l1, l2
 
     def concatenate_line(self, n1, n2, el):
-        if np.isclose(self.m(999999.0), el.m(999999.0)):
+        if not np.isclose(self.m(999999.0), el.m(999999.0)):
+            return None
+
+        if n1 and n2:
             return Line(Element(start=n1, end=n2))
+
+        if points_are_close(self.p1, el.p1):
+            return Line(Element(start=self.p2, end=el.p2))
+        if points_are_close(self.p1, el.p2):
+            return Line(Element(start=self.p2, end=el.p1))
+        if points_are_close(self.p2, el.p1):
+            return Line(Element(start=self.p1, end=el.p2))
+        if points_are_close(self.p2, el.p2):
+            return Line(Element(start=self.p1, end=el.p1))
         return None
 
     def is_point_inside(self, point,

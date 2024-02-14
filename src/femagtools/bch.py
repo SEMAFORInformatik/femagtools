@@ -1006,9 +1006,9 @@ class Reader:
         e.g. : idList[-450, -350, -250, -150, -50, 0]
                idList[-500, -400, -300, -200, -100, 0, 0]
         '''
+        diff = np.around(np.abs(np.diff(idList[1:]) - np.diff(idList)[:-1]), 1)
         if idList[-1] == 0 and len(idList) > 2 and \
-           int(idList[-1] - idList[0]) / (len(idList)-1) != \
-           int(idList[-2] - idList[0]) / (len(idList)-2):
+           not np.all(diff == diff[0]):
             idList = idList[:-1]
         return idList
 

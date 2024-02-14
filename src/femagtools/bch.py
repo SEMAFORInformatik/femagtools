@@ -269,6 +269,27 @@ class Reader:
             self.weight['conductor'] = sum(w[1])
             self.weight['magnet'] = sum(w[2])
             self.weight['total'] = sum([sum(l) for l in w])
+
+        # check if cogging and fft
+        try:
+            if (self.type.startswith('Fast cogging')
+                and not self.torque_fft):
+                from .utils import fft
+                f = fft(self.torque[0]['angle'],
+                        self.torque[0]['torque'])
+                slots = self.machine['Q']
+                poles = 2*self.machine['p']
+                n = np.lcm(slots, poles)
+                nue = np.arange(0, 5*n).tolist()
+                order, tq = np.array(
+                    [(n, b)
+                     for n, b in zip(nue, f['nue'])]).T
+                self.torque_fft = [
+                    {'order': order.tolist(),
+                     'torque': tq.tolist()}]
+        except (KeyError, IndexError):
+            pass
+
         return self
 
     def __findNums(self, l):
@@ -1172,7 +1193,7 @@ class Reader:
             cols += [s+'_hyst', s+'_eddy']
         if m:
             # FEMAG-2024.2
-            if len(m[0]) > len(subregs[:-1])*2+2: 
+            if len(m[0]) > len(subregs[:-1])*2+2:
                 cols = []
                 for s in subregs[:-2] + ['rotor', 'magnet']:
                     cols += [s+'_hyst', s+'_eddy', s+'_excess']

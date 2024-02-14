@@ -40,12 +40,12 @@ def fft(pos, y, pmod=0):
     i = np.argmax(np.abs(Y[:N//2]))
 
     a = 2*np.abs(Y[i])/N
-    freq = np.fft.fftfreq(N, d=pos[1]-pos[0])
+    freq = np.fft.fftfreq(N, d=360/N)
     nmax = min(18*ntiles, N//2)
     T0 = 0
     if abs(freq[i]) > 0:
         T0 = np.abs(1/freq[i])
-        npoles = 2*int(np.ceil(360/T0))
+        npoles = 2*int(360/T0)
         nmax = min(9*npoles, N//2)
 
     alfa0 = np.angle(Y[i])

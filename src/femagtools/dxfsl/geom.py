@@ -135,49 +135,50 @@ def add_or_join(geom, n1, n2, entity, rtol, atol):
             "Tiny element with same node on both sides ignored: %s", n1)
         logger.debug(
             " -- element: %s", entity)
+        return
 
-    else:
-        e = geom.get_edge_element(n1, n2)
-        if e:
-            logger.debug("Duplicate connection: %s <--> %s", n1, n2)
-            if is_Line(e):
-                if is_Line(entity):
-                    logger.debug("add_or_join(): Duplicate Lines ignored")
-                    return  # its ok
-
-            if is_Arc(e):
-                if is_Arc(entity):
-                    if points_are_close(e.center, entity.center, rtol=rtol, atol=atol):
-                        if points_are_close(e.p1, entity.p1):
-                            logger.debug("add_or_join(): Duplicate Arcs ignored")
-                            return  # its ok
-
-            if is_Circle(entity):
-                if is_Circle(e):
-                    logger.debug("add_or_join(): Duplicate Circle ignored")
-                    return  # its ok
-
-            if is_Circle(entity) or is_Circle(e):
-                e1, e2 = entity.cut_into_halves()
-                logger.debug("===== add_or_join(): Element near circle is cut into halves =====")
-                add_element(geom, e1, rtol, atol)
-                add_element(geom, e2, rtol, atol)
-                return  # halves installed
-
-            m1 = e.center_of_connection()
-            m2 = entity.center_of_connection()
-            logger.debug("midpoints: %s -- %s", m1, m2)
-            if points_are_close(m1, m2, rtol, 1e-2):
-                logger.debug("Elements are close together")
-                return  # ok
-
-            e1, e2 = entity.cut_into_halves()
-            logger.debug("===== add_or_join(): cut into halves =====")
-            add_element(geom, e1, rtol, atol)
-            add_element(geom, e2, rtol, atol)
-            return  # halves installed
-
+    e = geom.get_edge_element(n1, n2)
+    if not e:  # no duplicates
         geom.add_edge(n1, n2, entity)
+        return
+
+    logger.debug("Duplicate connection: %s <--> %s", n1, n2)
+    if is_Line(e):
+        if is_Line(entity):
+            logger.debug("add_or_join(): Duplicate Lines ignored")
+            return  # its ok
+
+    if is_Arc(e):
+        if is_Arc(entity):
+            if points_are_close(e.center, entity.center, rtol=rtol, atol=atol):
+                if points_are_close(e.p1, entity.p1):
+                    logger.debug("add_or_join(): Duplicate Arcs ignored")
+                    return  # its ok
+
+    if is_Circle(entity):
+        if is_Circle(e):
+            logger.debug("add_or_join(): Duplicate Circle ignored")
+            return  # its ok
+
+    if is_Circle(entity) or is_Circle(e):
+        e1, e2 = entity.cut_into_halves()
+        logger.debug("===== add_or_join(): Element near circle is cut into halves =====")
+        add_element(geom, e1, rtol, atol)
+        add_element(geom, e2, rtol, atol)
+        return  # halves installed
+
+    m1 = e.center_of_connection()
+    m2 = entity.center_of_connection()
+    logger.debug("midpoints: %s -- %s", m1, m2)
+    if points_are_close(m1, m2, rtol, 1e-2):
+        logger.debug("Elements are close together")
+        return  # ok
+
+    e1, e2 = entity.cut_into_halves()
+    logger.debug("===== add_or_join(): cut into halves =====")
+    add_element(geom, e1, rtol, atol)
+    add_element(geom, e2, rtol, atol)
+    return  # halves installed
 
 
 def get_nodes_of_paths(g, c):
@@ -1108,12 +1109,13 @@ class Geometry(object):
         # Linie als Corner-Objekte.
         corners = [Corner(center, c)
                    for c in self.angle_nodes(center, angle, rtol, atol)]
+        center_added = len(corners) == 1
         if len(corners) == 1:
             logger.debug('get_corner_list: the center is a corner')
             corners.append(Corner(center, tuple(center)))
         if len(corners) > 1:
             corners.sort()
-        return corners
+        return center_added, corners
 
     def start_min_corner(self, i):
         return self.start_corners[0][i]
@@ -1204,11 +1206,13 @@ class Geometry(object):
         end_pts = [p for p in reversed(self.end_corners)]
         return area_size(pts + end_pts)
 
-    def repair_hull_line(self, center, angle, corners, with_center):
+    def repair_hull_line(self, center, angle, corners, with_center, rtol=None, atol=None):
         # We need to set our own tolerance range
         # to find the right points
-        rtol = 1e-4
-        atol = 1e-4
+        if not rtol:
+            rtol = 1e-3
+        if not atol:
+            atol = 1e-3
 
         logger.debug("begin repair_hull_line(center=%s, angle=%s)", center, angle)
 
@@ -1270,7 +1274,7 @@ class Geometry(object):
             logger.warn("Warning: %s", e)
 
         # Rebuild Corner-list after correction
-        corners = self.get_corner_list(center, angle, rtol, atol)
+        center_added, corners = self.get_corner_list(center, angle, rtol, atol)
         for c in corners:
             logger.debug("Correct Corner: %s", c)
 
@@ -1309,7 +1313,7 @@ class Geometry(object):
         if not self.center:
             raise ValueError("FATAL ERROR: no center in Geometry")
 
-        corners = self.get_corner_list(self.center, angle)
+        center_added, corners = self.get_corner_list(self.center, angle)
         assert(corners)
         c_min = Corner(self.center, point(self.center, self.min_radius, angle, ndec))
         c_max = Corner(self.center, point(self.center, self.max_radius, angle, ndec))
@@ -1362,7 +1366,7 @@ class Geometry(object):
         rtol = 1e-4
         atol = 1e-4
 
-        corners = self.get_corner_list(center, angle, rtol, atol)
+        center_added, corners = self.get_corner_list(center, angle, rtol, atol)
         if len(corners) < 2:
             return ()  # not enough corners
         return (corners[0].point(), corners[len(corners)-1].point())
@@ -1903,6 +1907,9 @@ class Geometry(object):
                                         radius=e.radius,
                                         start_angle=alpha_start*180/np.pi,
                                         end_angle=alpha_end*180/np.pi))
+                    if points_are_close(a.p1, a.p2, rtol=1e-02, atol=1e-02):
+                        logger.debug("ATTENTION: creation of a tiny arc")
+                        a.set_attribute("tiny")
                     new_elements.append(a)
             alpha_start = alpha_end
             p1 = p2
@@ -1998,7 +2005,8 @@ class Geometry(object):
                    atol=0.0,
                    append_inner=False,
                    append_outer=False,
-                   delete_appendices=False):
+                   delete_appendices=False,
+                   concatenate_tiny_el=False):
         """ Die Funktion kopiert die Teile von Shape-Objekten, welche sich in
             der durch die Parameter definierten Teilkreisfläche befinden.
         """
@@ -2099,6 +2107,11 @@ class Geometry(object):
                 new_elements.append(arc)
                 p1 = p2
 
+        if concatenate_tiny_el:
+            ok, new_elements = self.concatenate_tiny_elements(new_elements)
+            if ok:
+                split = True
+
         if delete_appendices:
             center = []
         else:
@@ -2182,6 +2195,78 @@ class Geometry(object):
             if np.isclose(a, alpha):
                 return False
         return True
+
+    def concatenate_arc_elements(self, el, elements):
+        if not is_Arc(el):
+            return False
+
+        def match(e1, e2):
+            if e2.has_attribute("del"):
+                return False
+            if e2.has_attribute("tiny"):
+                return False
+            if not points_are_close(e1.center, e2.center):
+                return False
+            return np.isclose(e1.radius, e2.radius)
+
+        elmts = [(e.p1, e) for e in elements if is_Arc(e) and match(el, e)]
+        elmts.sort()
+
+        ok = False
+        for p, e in elmts:
+            el_new = el.concatenate(None, None, e)
+            if el_new:
+                el.set_attribute("del")
+                e.set_attribute("del")
+                elements.append(el_new)
+                el = el_new
+                ok = True
+        return ok
+
+    def concatenate_line_elements(self, el, elements):
+        if not is_Line(el):
+            return False
+
+        def match(e1, e2):
+            if e2.has_attribute("del"):
+                return False
+            if e2.has_attribute("tiny"):
+                return False
+            return np.isclose(e1.m(999999.0), e2.m(999999.0))
+
+        elmts = [(e.p1, e) for e in elements if is_Line(e) and match(el, e)]
+        elmts.sort()
+
+        ok = False
+        for p, e in elmts:
+            el_new = el.concatenate(None, None, e)
+            if el_new:
+                el.set_attribute("del")
+                e.set_attribute("del")
+                elements.append(el_new)
+                el = el_new
+                ok = True
+        return ok
+
+    def concatenate_tiny_elements(self, new_elements):
+        logger.debug("begin concatenate_tiny_elements")
+        tiny_elements = [e for e in new_elements if e.has_attribute("tiny")]
+        if not tiny_elements:
+            logger.debug("end concatenate_tiny_elements: (%s elements)", 0)
+            return False, new_elements
+
+        count = 0
+        for e_tiny in tiny_elements:
+            if is_Line(e_tiny):
+                if self.concatenate_line_elements(e_tiny, new_elements):
+                    count += 1
+            elif is_Arc(e_tiny):
+                if self.concatenate_arc_elements(e_tiny, new_elements):
+                    count += 1
+
+        new_list = [e for e in new_elements if not e.has_attribute("del")]
+        logger.debug("end concatenate_tiny_elements: (%s elements)", count)
+        return count>0, new_list
 
     def find_symmetry(self, radius,
                       startangle, endangle, sym_tolerance):

@@ -171,7 +171,8 @@ class Machine(object):
 
     def copy(self, startangle, endangle,
              airgap=False, inside=True, split=False,
-             delete_appendices=False):
+             delete_appendices=False,
+             concatenate_tiny_el=False):
         if airgap and self.airgap_radius > 0.0:
             if inside:
                 if self.airgap2_radius > 0.0:
@@ -182,7 +183,8 @@ class Machine(object):
                                              startangle, endangle,
                                              0.0, new_radius,
                                              split=split,
-                                             delete_appendices=delete_appendices)
+                                             delete_appendices=delete_appendices,
+                                             concatenate_tiny_el=concatenate_tiny_el)
             else:
                 new_radius = self.radius
                 gap_radius = max(self.airgap_radius, self.airgap2_radius)
@@ -190,7 +192,8 @@ class Machine(object):
                                              startangle, endangle,
                                              gap_radius, self.radius+9999,
                                              split=split,
-                                             delete_appendices=delete_appendices)
+                                             delete_appendices=delete_appendices,
+                                            concatenate_tiny_el=concatenate_tiny_el)
 
             circ = Circle(Element(center=self.center,
                                   radius=self.airgap_radius))
@@ -201,7 +204,8 @@ class Machine(object):
                                          startangle, endangle, 0.0,
                                          self.radius+9999,
                                          split=split,
-                                         delete_appendices=delete_appendices)
+                                         delete_appendices=delete_appendices,
+                                         concatenate_tiny_el=concatenate_tiny_el)
 
         if not np.isclose(normalise_angle(startangle),
                           normalise_angle(endangle), 0.0):
@@ -479,16 +483,29 @@ class Machine(object):
     def repair_hull_geom(self, geom, startangle, endangle):
         logger.debug('begin repair_hull_geom (%s, %s)', startangle, endangle)
 
+        rtol = 1e-4
+        atol = 1e-4
         c_corner = Corner(self.center, self.center)
-        start_corners = geom.get_corner_list(self.center, startangle)
-        end_corners = geom.get_corner_list(self.center, endangle)
+        start_c_added, start_corners = geom.get_corner_list(self.center, startangle,
+                                                            rtol=rtol, atol=atol)
+        end_c_added, end_corners = geom.get_corner_list(self.center, endangle,
+                                                        rtol=rtol, atol=atol)
+        if start_c_added or end_c_added:
+            rtol = 1e-3
+            atol = 1e-3
+            start_c_added, start_corners = geom.get_corner_list(self.center, startangle,
+                                                                rtol=rtol, atol=atol)
+            end_c_added, end_corners = geom.get_corner_list(self.center, endangle,
+                                                            rtol=rtol, atol=atol)
 
         geom.repair_hull_line(self.center,
                               startangle, start_corners,
-                              c_corner in end_corners)
+                              c_corner in end_corners,
+                              rtol=rtol, atol=atol)
         geom.repair_hull_line(self.center,
                               endangle, end_corners,
-                              c_corner in start_corners)
+                              c_corner in start_corners,
+                              rtol=rtol, atol=atol)
         logger.debug('end of repair_hull_geom')
 
     def create_stator_auxiliary_lines(self):
@@ -666,7 +683,8 @@ class Machine(object):
             return None
 
         machine_slice = self.copy(self.geom.symmetry_startangle(),
-                                  self.geom.symmetry_endangle())
+                                  self.geom.symmetry_endangle(),
+                                  concatenate_tiny_el=True)
         machine_slice.clear_cut_lines()
         machine_slice.repair_hull()
         machine_slice.rotate_to(0.0)

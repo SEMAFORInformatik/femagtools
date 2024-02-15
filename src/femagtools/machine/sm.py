@@ -546,7 +546,7 @@ class SynchronousMachine(object):
             w10)[0]
 
     def characteristics(self, T, n, u1max, nsamples=50,
-                        with_tmech=True, with_torque_corr=False):
+                        with_tmech=True, with_torque_corr=False, **kwargs):
         """calculate torque speed characteristics.
         return dict with list values of
         n, T, u1, i1, beta, cosphi, pmech, n_type

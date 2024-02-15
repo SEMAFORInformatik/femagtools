@@ -275,8 +275,9 @@ class Reader:
             if (self.type.startswith('Fast cogging')
                 and not self.torque_fft):
                 from .utils import fft
+                # calc frequency sepctrum (assume a full period)
                 f = fft(self.torque[0]['angle'],
-                        self.torque[0]['torque'])
+                        self.torque[0]['torque'], pmod=2)
                 slots = self.machine['Q']
                 poles = 2*self.machine['p']
                 n = np.lcm(slots, poles)

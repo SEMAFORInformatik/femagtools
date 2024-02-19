@@ -1028,7 +1028,7 @@ class Reader:
         e.g. : idList[-450, -350, -250, -150, -50, 0]
                idList[-500, -400, -300, -200, -100, 0, 0]
         '''
-        diff = np.around(np.abs(np.diff(idList[1:]) - np.diff(idList)[:-1]), 1)
+        diff = np.floor(np.abs(np.diff(idList)))
         if idList[-1] == 0 and len(idList) > 2 and \
            not np.all(diff == diff[0]):
             idList = idList[:-1]

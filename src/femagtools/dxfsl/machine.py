@@ -271,9 +271,17 @@ class Machine(object):
     def undo_mirror(self):
         assert(self.is_mirrored())
         assert(self.previous_machine)
-        self.set_alfa_and_corners()
+        self.previous_machine.clear_mirror()
+        self.previous_machine.set_alfa_and_corners()
         self.previous_machine.set_kind(self.geom.kind)
         return self.previous_machine
+
+    def clear_mirror(self):
+        self.mirror_orig_geom = None
+        self.mirror_geom = None
+        self.mirror_startangle = 0.0
+        self.mirror_endangle = 0.0
+        self.geom.mirror_corners = []
 
     def rotate_to(self, new_startangle):
         if np.isclose(new_startangle, self.startangle):

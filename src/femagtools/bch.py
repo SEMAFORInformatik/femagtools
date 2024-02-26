@@ -284,7 +284,7 @@ class Reader:
                 nue = np.arange(0, 5*n).tolist()
                 order, tq = np.array(
                     [(n, b)
-                     for n, b in zip(nue, f['nue']) if b > 1e-15]).T
+                     for n, b in zip(nue, f['nue']) if b > 1e-15 and 2*n % poles == 0]).T
                 self.torque_fft = [
                     {'order': order.tolist(),
                      'torque': tq.tolist()}]

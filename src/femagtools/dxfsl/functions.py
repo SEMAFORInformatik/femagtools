@@ -11,6 +11,7 @@ from __future__ import print_function
 import logging
 import numpy as np
 import copy
+import time
 
 logger = logging.getLogger('femagtools.functions')
 
@@ -112,9 +113,11 @@ def round_point(p, n):
     return (round(p[0], n), round(p[1], n))
 
 
-def line_m(p1, p2):
+def line_m(p1, p2, none_val=None, dec=0):
     if np.isclose(p2[0]-p1[0], 0.0):
-        return None
+        return none_val
+    if dec > 0:
+        return round((p2[1]-p1[1]) / (p2[0]-p1[0]), dec)
     return (p2[1]-p1[1]) / (p2[0]-p1[0])
 
 
@@ -241,6 +244,14 @@ def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
             np.isclose(p1[1], p2[1], rtol, atol))
 
 
+def point_greater_equal(p1, p2, rtol=1e-05, atol=1e-08):
+    if not (p1 and p2):
+        return False
+    if np.isclose(p1[0], p2[0], rtol, atol):  # x equal
+        return greater_equal(p1[1], p2[1], rtol, atol)  # y >= equal
+    return greater_equal(p1[0], p2[0], rtol, atol)  # x >= equal
+
+
 def nodes_are_equal(n1, n2):
     if not (n1 and n2):
         return False
@@ -272,6 +283,14 @@ def normalise_angle(alpha):
     while alpha > np.pi:
         alpha -= 2*np.pi
 
+    return alpha
+
+
+def positive_angle(alpha):
+    """ returns a positive value for angle alpha
+    """
+    while alpha < 0.0:
+        alpha += 2*np.pi
     return alpha
 
 
@@ -404,3 +423,31 @@ def points_on_arc(center, radius, startangle, endangle, parts=8):
     for alpha in angles_on_arc(start, end, parts=parts):
         yield (center[0] + radius * np.cos(alpha),
                center[1] + radius * np.sin(alpha))
+
+
+class Timer(object):
+    def __init__(self, start_it=False):
+        self.starttime = None
+        if start_it:
+            self.start()
+
+    def __str__(self):
+        if self.starttime is None:
+            return "Timer is not running"
+        stop = time.perf_counter()
+        return "Timer is already running for %0.4f seconds" % (stop - self.starttime)
+
+    def start(self):
+        if self.starttime is not None:
+            logger.error("Timer is already on")
+        self.starttime = time.perf_counter()
+
+    def stop(self, fmt=None):
+        if self.starttime is None:
+            logger.error("Timer is not running")
+        stop = time.perf_counter()
+        sec = stop - self.starttime
+        self.starttime = None
+        if fmt:
+            logger.info(fmt, sec)
+        return sec

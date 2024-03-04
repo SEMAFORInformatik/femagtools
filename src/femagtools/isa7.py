@@ -869,8 +869,15 @@ class Isa7(object):
             pass
 
         try:
-            el_fe_ind = [np.array(reader.el_fe_induction_1).T/1000,
-                         np.array(reader.el_fe_induction_2).T/1000]
+            if reader.el_fe_induction_1.dtype == 'int16':
+                # older FEMAG version (less than 2024-b1)
+                el_fe_ind = [np.array(reader.el_fe_induction_1).T/1000,
+                            np.array(reader.el_fe_induction_2).T/1000]
+            else: 
+                # the dtype for newer FEMAG version is float
+                el_fe_ind = [np.array(reader.el_fe_induction_1).T,
+                            np.array(reader.el_fe_induction_2).T]
+                
             eddy_cu_vpot = np.array(reader.eddy_cu_vpot).T/1000
             if len(el_fe_ind[0].shape) == 4:
                 pdim = self.pos_el_fe_induction.shape[0]
@@ -891,8 +898,13 @@ class Isa7(object):
                         n += 1
                     if n > 0:
                         shape.append(n)
-            el_fe_ind = [np.array([[reader.el_fe_induction_1[0][0][:shape[0]]]]).T/1000,
-                         np.array([[reader.el_fe_induction_2[0][0][:shape[0]]]]).T/1000]
+            if reader.el_fe_induction_1.dtype == 'int16':
+                el_fe_ind = [np.array([[reader.el_fe_induction_1[0][0][:shape[0]]]]).T/1000,
+                            np.array([[reader.el_fe_induction_2[0][0][:shape[0]]]]).T/1000]
+            else: 
+                el_fe_ind = [np.array([[reader.el_fe_induction_1[0][0][:shape[0]]]]).T,
+                            np.array([[reader.el_fe_induction_2[0][0][:shape[0]]]]).T]
+                
             eddy_cu_vpot = np.array([[reader.eddy_cu_vpot[0][0][:shape[0]]]]).T/1000
 
         self.el_fe_induction_1 = el_fe_ind[0]

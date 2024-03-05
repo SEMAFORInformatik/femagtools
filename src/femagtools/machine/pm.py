@@ -203,7 +203,7 @@ class PmRelMachine(object):
         if n > 1e-3:
             f1 = self.p*n
             plfe = self.kpfe * (self.iqd_plfe1(iq, id, f1) + self.iqd_plfe2(iq, id, f1))
-            pmag = self.iqd_plmag(iq, id, f1)
+            pmag = self.kpmag * self.iqd_plmag(iq, id, f1)
             return (plfe + pmag + self.pfric(n))/(2*np.pi*n)
         return 0
 

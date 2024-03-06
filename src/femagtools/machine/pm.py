@@ -1261,7 +1261,14 @@ class PmRelMachineLdq(PmRelMachine):
         return self.betai1_plfe2(*betai1(iq, id), f1)
 
     def betai1_plmag(self, beta, i1, f1):
-        return self._losses['magnet'](beta, i1)*(f1/self.fo)**2
+        r = self._losses['magnet'](beta, i1)*(f1/self.fo)**2
+        try:
+            idx = np.argwhere(r < 0)
+            if len(idx.squeeze()): 
+                r[idx.squeeze()] = 0.0
+        except: 
+            pass 
+        return r
 
     def iqd_plmag(self, iq, id, f1):
         return self.betai1_plmag(*betai1(iq, id), f1)

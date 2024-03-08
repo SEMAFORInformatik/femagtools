@@ -16,6 +16,7 @@ from femagtools.dxfsl.area import Area
 from femagtools.dxfsl.functions import points_are_close, nodes_are_equal, distance
 from femagtools.dxfsl.functions import normalise_angle, positive_angle, point
 from femagtools.dxfsl.functions import alpha_line, alpha_points, alpha_angle
+from femagtools.dxfsl.functions import less
 from femagtools.dxfsl.functions import Timer
 from femagtools.dxfsl.journal import getJournal
 import io
@@ -191,18 +192,39 @@ class EdgeInfo(object):
                     myself_angle = 0.0
                 else:
                     myself_angle = np.pi * 2.0
-                            
+
         diff = abs((np.pi * 2.0) - other_angle)
         if diff < angle_tolerance or other_angle < angle_tolerance:
             # 360 or 0 degrees => turn 180 degrees
             logger.debug("-- ATTENTION: other %s turns nearly 180 degrees", nbr_edge.classname())
             logger.debug("   the angle is %s", other_angle)
             if start_edge.is_arc():
+                if nbr_edge.is_line() and not ignore_start:
+                    if start_edge.line_arc_close_together(nbr_edge):
+                        logger.debug("START ARC and SELF LINE close")
+                        arc_edge = start_edge.get_reverse_edge()  # reverse start edge
+                        arc_edge.set_direction_angle(start_edge.startangle)
+                        left = arc_edge.arc_line_direction_lefthand(start_edge, nbr_edge, builder)
+                        logger.debug("end of myself_direction_lefthand: ==> %s", not left)
+                        logger.debug("ARC_LINE #5")
+                        return not left
+
                 if start_edge.n1_direction_lefthand():
                     other_angle = 0.0
                 else:
                     other_angle = np.pi * 2.0
+
             elif nbr_edge.is_arc():
+                if not ignore_start:
+                    if nbr_edge.line_arc_close_together(start_edge):
+                        logger.debug("START LINE and NEIGHBOR ARC close")
+                        line_edge = start_edge.get_reverse_edge()  # reverse start edge
+                        line_edge.set_direction_angle(start_edge.startangle)
+                        left = nbr_edge.arc_line_direction_lefthand(start_edge, line_edge, builder)
+                        logger.debug("end of myself_direction_lefthand: ==> %s", left)
+                        logger.debug("ARC_LINE #6")
+                        return left
+
                 if nbr_edge.n1_direction_lefthand():
                     other_angle = 0.0
                 else:
@@ -461,7 +483,7 @@ class AreaBuilder(object):
 
         logger.debug("  END OF get_new_area")
 
-        if alpha < 0.0:
+        if less(alpha, 0.0):
             result['msg'] = ("turn left expected, but it turned right ({})"
                              .format(alpha))
             logger.debug("<== %s", result['msg'])

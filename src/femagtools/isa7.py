@@ -868,9 +868,17 @@ class Isa7(object):
         except AttributeError:
             pass
 
-        try:
-            el_fe_ind = [np.array(reader.el_fe_induction_1).T/1000,
-                         np.array(reader.el_fe_induction_2).T/1000]
+        try: 
+            flx_fac = 1000
+            if isinstance(reader.el_fe_induction_1, list): 
+                pass
+            else: 
+                if reader.el_fe_induction_1.dtype == 'int16': 
+                    flx_fac = 1000
+                else: 
+                    flx_fac = 1
+            el_fe_ind = [np.array(reader.el_fe_induction_1).T/flx_fac,
+                        np.array(reader.el_fe_induction_2).T/flx_fac]
             eddy_cu_vpot = np.array(reader.eddy_cu_vpot).T/1000
             if len(el_fe_ind[0].shape) == 4:
                 pdim = self.pos_el_fe_induction.shape[0]
@@ -891,8 +899,9 @@ class Isa7(object):
                         n += 1
                     if n > 0:
                         shape.append(n)
-            el_fe_ind = [np.array([[reader.el_fe_induction_1[0][0][:shape[0]]]]).T/1000,
-                         np.array([[reader.el_fe_induction_2[0][0][:shape[0]]]]).T/1000]
+
+            el_fe_ind = [np.array([[reader.el_fe_induction_1[0][0][:shape[0]]]]).T/flx_fac,
+                        np.array([[reader.el_fe_induction_2[0][0][:shape[0]]]]).T/flx_fac]
             eddy_cu_vpot = np.array([[reader.eddy_cu_vpot[0][0][:shape[0]]]]).T/1000
 
         self.el_fe_induction_1 = el_fe_ind[0]

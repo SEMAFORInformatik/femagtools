@@ -336,9 +336,12 @@ class Machine(object):
 
         if len(self.airgaps) > 0:
             airgap_candidates = []
+            prv_radius = 0
             for g in self.airgaps:
                 gap_radius = round((g[0]+g[1])/2.0, 6)
                 gap_dist = g[1] - g[0]
+                prv_dist = g[0] - prv_radius
+                prv_radius = g[1]
                 circle = Circle(Element(center=self.center,
                                         radius=gap_radius))
                 ok, borders = self.geom.is_airgap(self.center,
@@ -349,12 +352,10 @@ class Machine(object):
                 if not ok:
                     logger.error("FATAL: No Airgap with radius {}".
                                  format(gap_radius))
-                    print("FATAL: No Airgap with radius {}".
-                          format(gap_radius))
                     self.geom.airgaps.append(circle)
                     return True  # bad exit
 
-                airgap_candidates.append((borders, circle, gap_dist))
+                airgap_candidates.append((borders, circle, gap_dist, prv_dist))
                 self.geom.airgaps.append(circle)
 
                 if correct_airgap > 0.0:
@@ -387,7 +388,7 @@ class Machine(object):
             logger.debug("end airgap: radius=%s", self.airgap_radius)
             return False  # correct airgap set
 
-        gaps = [c for b, c, d in airgap_candidates if b == 0]
+        gaps = [c for b, c, d, prv_d in airgap_candidates if b == 0]
 
         if len(gaps) == 1:  # one candidate without border intersection
             self.airgap_radius = gaps[0].radius
@@ -415,7 +416,7 @@ class Machine(object):
         dist = 999
         circle = None
         pos_list = []
-        for b, c, d in airgap_candidates:
+        for b, c, d, prv_d in airgap_candidates:
             if get_one:
                 logger.info(" --- {}   (width={})".format(c.radius, d))
             else:
@@ -427,10 +428,14 @@ class Machine(object):
             inner_pc = (c.radius - self.geom.min_radius) / \
                        (self.geom.max_radius - self.geom.min_radius)
             pos = np.abs(inner_pc * 100 - 50)
-            logger.debug("Abstand Mitte = {} %".format(pos))
+            logger.debug("Abstand Mitte in % = {}".format(pos))
+            prv_dist_percent = int(round(prv_d / self.geom.max_radius, 2) * 100)
+            logger.debug("Abstand Vorheriger abs=%s in prz=%s (%s)",
+                         prv_d, prv_dist_percent, self.geom.max_radius)
             if pos < 20:
                 pos_list.append([pos, d, c])
-
+            elif prv_dist_percent <= 1:
+                pos_list.append([prv_dist_percent, d, c])
         if get_one:
             if pos_list:
                 dist_list = [[d, c] for pos, d, c in pos_list]

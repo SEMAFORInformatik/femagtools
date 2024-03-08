@@ -33,7 +33,7 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     rlfe = lfe
     rwdg = wdg
     opts = {k: eecpars[k] for k in ('zeta1', 'gam', 'kh', 'kpfe',
-                                    'kfric_b') if k in eecpars}
+                                    'kfric_b', 'kpmag') if k in eecpars}
     try:
         opts['rotor_mass'] = rlfe*eecpars['rotor_mass']
     except KeyError:

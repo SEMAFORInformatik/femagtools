@@ -12,8 +12,8 @@ import logging
 import sys
 from femagtools.dxfsl.shape import Element, Shape, Circle, Arc, Line
 from femagtools.dxfsl.shape import is_Circle, is_Arc, is_Line
-from femagtools.dxfsl.functions import points_are_close, positive_angle
-from femagtools.dxfsl.functions import Timer
+from femagtools.dxfsl.functions import points_are_close, positive_angle, elevation_angle
+from femagtools.dxfsl.functions import Timer, alpha_line
 from femagtools.dxfsl.journal import getJournal
 import io
 import time
@@ -47,9 +47,63 @@ class Concatenation(object):
                "atol: {}\n".format(self.atol) + \
                "ndec: {}\n".format(self.ndec)
 
-    def concatenate_elements(self,
-                             src_elements,
-                             dest_elements):
+    def concatenate_line_elements(self,
+                                  src_elements,
+                                  dest_elements):
+        if len(src_elements) < 2:
+            return 0
+
+        src_list = []
+        for e in src_elements:
+            if not e.has_attribute("del"):
+                e_p1, ep_2 = e.points_sorted()
+                src_list.append((e_p1, e))
+        if len(src_list) < 2:
+            return 0
+
+        logger.debug("begin of concatenate_line_elements (%s elements)",
+                     len(src_list))
+
+        src_list.sort()
+        e1_p1, e1 = src_list[0]
+        new_elements = []
+        count = 0
+        for e2_p1, e2 in src_list[1:]:
+            el_new = e1.concatenate(None, None, e2,
+                                    rtol=1e-06,
+                                    atol=1e-06,
+                                    mdec=self.mdec,
+                                    overlapping=True)
+            if el_new:
+                logger.debug("NEW %s from %s to %s",
+                             el_new.classname(),
+                             el_new.p1,
+                             el_new.p2)
+                el_new.set_attribute("new")
+                e1.set_attribute("del")
+                e2.set_attribute("del")
+                logger.debug("OLD %s from %s to %s",
+                             e1.classname(),
+                             e1.p1,
+                             e1.p2)
+                logger.debug("OLD %s from %s to %s",
+                             e2.classname(),
+                             e2.p1,
+                             e2.p2)
+                el_p1, el_p2 = el_new.points_sorted()
+                dest_elements.append(el_new)
+                src_elements.append(el_new)
+                e1 = el_new
+                count += 1
+            else:
+                e1 = e2
+
+        logger.debug("end of concatenate_line_elements: %s concatenations", count)
+        return count
+
+    def concatenate_arc_elements(self,
+                                 src_elements,
+                                 dest_elements):
         if len(src_elements) < 2:
             return 0
         
@@ -102,11 +156,11 @@ class Concatenation(object):
                 timer.stop("-- no tiny lines found in %0.4f seconds --")
                 return 0  # no tiny line exists
         
-        def axis_point(e):
+        def axis_point(e, dec=1):
             if np.isclose(e.p1[0], e.p2[0]):
-                return (round(e.p1[0], 1), 0.0)
+                return (round(e.p1[0], dec), 0.0)
             if np.isclose(e.p1[1], e.p2[1]):
-                return (0.0, round(e.p1[1], 1))
+                return (0.0, round(e.p1[1], dec))
             px = e.intersect_line(self.line_y0, all=True)
             py = e.intersect_line(self.line_x0, all=True)
             if not (px or py):
@@ -114,21 +168,34 @@ class Concatenation(object):
                 return (0.0, 0.0)
 
             if not px:
-                py = round(py[0][1], 1)
+                py = round(py[0][1], dec)
                 return (0.0, py)
             if not py:
-                px = round(px[0][0], 1)
+                px = round(px[0][0], dec)
                 return (px, 0.0)
             
-            px = round(px[0][0], 1)
-            py = round(py[0][1], 1)
+            px = round(px[0][0], dec)
+            py = round(py[0][1], dec)
             
             if abs(px) > abs(py):
                 return (0.0, py)
             return (px, 0.0)
 
+        def elevation(e):
+            return round(elevation_angle(alpha_line(e.p1, e.p2)), 2)
+
+        def axis_points_are_close(a1, a2):
+            #return a1 == a2
+            if a1[0]:
+                d = abs(a1[0] - a2[0])  # x
+            else:
+                d = abs(a1[1] - a2[1])  # y
+            if d < 0.2:
+                logger.debug("axis_points_are_close: %s - %s = %s", a1, a2, d)
+            return d < 0.2
+
         elmts = [(round(e.m(999999.0), self.mdec),
-                  axis_point(e),
+                  axis_point(e, dec=4),
                   e.p1,
                   e) for e in elements if is_Line(e)]
         if not elmts:
@@ -152,30 +219,30 @@ class Concatenation(object):
         m1, a1, p1, e1 = elmts[0]
         line_elements = [e1]
         for m2, a2, p2, e2 in elmts[1:]:
-            if m1 == m2 and a1 == a2:
+            if m1 == m2 and axis_points_are_close(a1, a2):
                 line_elements.append(e2)
             else:
                 if len(line_elements) > 1:
-                    logger.debug("Begin Concatinate %s Lines: m=%s, a=%s",
+                    logger.debug("Begin Concatenate %s Lines: m=%s, a=%s",
                                  len(line_elements), m1, a1)
                     for l in line_elements:
                         logger.debug("-- %s", l)
-                    line_count = self.concatenate_elements(line_elements, elements)
+                    line_count = self.concatenate_line_elements(line_elements, elements)
                     while line_count > 0:
                         count += line_count
-                        line_count = self.concatenate_elements(line_elements, elements)
-                    logger.debug("End Concatinate Lines: m=%s, a=%s", m1, a1)
+                        line_count = self.concatenate_line_elements(line_elements, elements)
+                    logger.debug("End Concatenate Lines: m=%s, a=%s", m1, a1)
 
                 m1 = m2
                 a1 = a2
                 line_elements = [e2]
 
-        logger.debug("Begin Concatinate Lines: m=%s, a=%s", m1, a1)
-        line_count = self.concatenate_elements(line_elements, elements)
+        logger.debug("Begin Concatenate Lines: m=%s, a=%s", m1, a1)
+        line_count = self.concatenate_line_elements(line_elements, elements)
         while line_count > 0:
             count += line_count
-            line_count = self.concatenate_elements(line_elements, elements)
-        logger.debug("End Concatinate Lines: m=%s, a=%s", m1, a1)
+            line_count = self.concatenate_line_elements(line_elements, elements)
+        logger.debug("End Concatenate Lines: m=%s, a=%s", m1, a1)
 
         timer.stop("-- {} lines concatenated in %0.4f seconds --".format(count))
         line_list = [e for e in elements
@@ -215,8 +282,8 @@ class Concatenation(object):
 
         logger.debug("Concatenate Arc Elements")
         for c, r, a, e in elmts:
-            logger.debug("Arc from %s to %s [c=%s, r=%s, a=%s]",
-                         e.p1, e.p2, c, r, a)
+            logger.debug("%s from %s to %s [c=%s, r=%s, a=%s]",
+                         e.classname(), e.p1, e.p2, c, r, a)
         logger.debug("*************************")
  
         arcs_available = len(elmts)
@@ -228,24 +295,24 @@ class Concatenation(object):
             if points_are_close(c1, c2) and np.isclose(r1, r2):
                 arc_elements.append(e2)
             else:
-                logger.debug("Begin Concatinate %s Arcs: c=%s, r=%s",
+                logger.debug("Begin Concatenate %s Arcs: c=%s, r=%s",
                              len(arc_elements), c1, r1)
-                arc_count = self.concatenate_elements(arc_elements, elements)
+                arc_count = self.concatenate_arc_elements(arc_elements, elements)
                 while arc_count > 0:
                     count += arc_count
-                    arc_count = self.concatenate_elements(arc_elements, elements)
-                logger.debug("End Concatinate Arcs: c=%s, r=%s", c1, r1)
+                    arc_count = self.concatenate_arc_elements(arc_elements, elements)
+                logger.debug("End Concatenate Arcs: c=%s, r=%s", c1, r1)
 
                 c1 = c2
                 r1 = r2
                 arc_elements = [e2]
 
-        logger.debug("Begin Concatinate Arcs: c=%s, r=%s", c1, r1)
-        arc_count = self.concatenate_elements(arc_elements, elements)
+        logger.debug("Begin Concatenate Arcs: c=%s, r=%s", c1, r1)
+        arc_count = self.concatenate_arc_elements(arc_elements, elements)
         while arc_count > 0:
             count += arc_count
-            arc_count = self.concatenate_elements(arc_elements, elements)
-        logger.debug("End Concatinate Arcs: c=%s, r=%s", c1, r1)
+            arc_count = self.concatenate_arc_elements(arc_elements, elements)
+        logger.debug("End Concatenate Arcs: c=%s, r=%s", c1, r1)
 
         timer.stop("-- {} arcs concatenated in %0.4f seconds --".format(count))
 

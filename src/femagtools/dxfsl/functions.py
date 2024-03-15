@@ -457,5 +457,5 @@ class Timer(object):
         sec = stop - self.starttime
         self.starttime = None
         if fmt:
-            logger.info(fmt, sec)
+            logger.debug(fmt, sec)
         return sec

@@ -1054,7 +1054,7 @@ class PmRelMachine(object):
                 u1 = la.norm((ud, uq))/np.sqrt(2)
                 logger.debug("ud %s uq %s --> u1 %s", ud, uq, u1)
 
-            tq = self.tmech_iqd(iq, id)
+            tq = self.tmech_iqd(iq, id, n)
 
             r['id'].append(id)
             r['iq'].append(iq)
@@ -1264,10 +1264,10 @@ class PmRelMachineLdq(PmRelMachine):
         r = self._losses['magnet'](beta, i1)*(f1/self.fo)**2
         try:
             idx = np.argwhere(r < 0)
-            if len(idx.squeeze()): 
+            if len(idx.squeeze()):
                 r[idx.squeeze()] = 0.0
-        except: 
-            pass 
+        except:
+            pass
         return r
 
     def iqd_plmag(self, iq, id, f1):

@@ -294,6 +294,14 @@ def positive_angle(alpha):
     return alpha
 
 
+def elevation_angle(alpha):
+    """ returns a positive angle for elevation
+    """
+    while alpha < 0.0:
+        alpha += np.pi
+    return alpha
+
+
 def is_same_angle(angle1, angle2, atol=0.001):
     """ returns true if angles are equal
     """
@@ -449,5 +457,5 @@ class Timer(object):
         sec = stop - self.starttime
         self.starttime = None
         if fmt:
-            logger.info(fmt, sec)
+            logger.debug(fmt, sec)
         return sec

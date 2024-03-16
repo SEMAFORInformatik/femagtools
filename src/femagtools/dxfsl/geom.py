@@ -746,6 +746,7 @@ class Geometry(object):
         self.debug = debug
         self.num_edges = 0
         self.wdg_is_mirrored = False
+        self.has_windings = False
         i = 0
 
         def get_elements(elements, split):
@@ -3483,22 +3484,68 @@ class Geometry(object):
         self.looking_for_corners()
 
     def collect_windings(self):
+        logger.debug("begin of collect_windings")
         found = True
         while found:
             windings = [a for a in self.list_of_areas()
                         if a.type == 2]
             bad_windings = [a for a in self.list_of_areas()
                             if a.type == 12]
+            logger.debug("%s windings and %s bad windings",
+                         len(windings),
+                         len(bad_windings))
             if not bad_windings:
                 return windings
 
             found = False
             for a in bad_windings:
                 if a.is_touching_areas(windings):
-                    a.type = 2
+                    a.set_type(2)
                     found = True
 
-        return [a for a in self.list_of_areas() if a.type == 2]
+        windings = [a for a in self.list_of_areas() if a.type == 2]
+        if windings:
+            logger.debug("end of collect_windings: %s windings", len(windings))
+            return windings
+
+        bad_windings = [a for a in self.list_of_areas()
+                        if a.type == 12]
+        if not bad_windings:
+            logger.debug("end of collect_windings: no bad")
+            return []
+
+        for w in bad_windings:
+            inside = []
+            logger.debug("winding: %s", w.identifier())
+            for a in self.list_of_areas():
+                if not w.is_identical(a):
+                    logger.debug("area: %s", a.identifier())
+                    if w.is_inside(a, self):
+                        logger.debug(">> %s is inside %s",
+                                     a.identifier(),
+                                     w.identifier())
+                        inside.append(a)
+            if inside:
+                w.set_type(0)  # air
+
+        bad_windings = [a for a in self.list_of_areas()
+                        if a.type == 12]
+        logger.debug("remaining bads: %s", len(bad_windings))
+
+        if self.has_windings:
+            logger.debug("HAS WINDINGS is set")
+            if len(bad_windings) > 4:
+                return []
+        else:
+            if len(bad_windings) > 1:
+                return []
+
+        [w.set_type(2) for w in bad_windings]
+        windings = [a for a in self.list_of_areas() if a.type == 2]
+        self.has_windings = True
+        logger.debug("return %s bad windings as good windings", len(windings))
+        logger.debug("end of collect_windings")
+        return windings
 
     def search_stator_subregions(self, place=''):
         logger.debug("Begin of search_stator_subregions")

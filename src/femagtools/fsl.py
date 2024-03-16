@@ -92,7 +92,7 @@ class Builder:
             self.fsl_stator = True
             return
 
-        if templ == 'statorFsl':
+        if templ == 'statorFsl' or templ == 'dxf':
             self.fsl_stator = True
 
         if templ != 'dxffile':
@@ -297,6 +297,9 @@ class Builder:
             del model.magnet['mshfile']
             return
 
+        if templ == 'dxf':
+            # reuse dxfsl model 
+            self.fsl_magnet = True
         if templ != 'dxffile':
             return
 

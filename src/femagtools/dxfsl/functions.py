@@ -450,12 +450,15 @@ class Timer(object):
             logger.error("Timer is already on")
         self.starttime = time.perf_counter()
 
-    def stop(self, fmt=None):
+    def stop(self, fmt=None, info=False):
         if self.starttime is None:
             logger.error("Timer is not running")
         stop = time.perf_counter()
         sec = stop - self.starttime
         self.starttime = None
         if fmt:
-            logger.debug(fmt, sec)
+            if info:
+                logger.info(fmt, sec)
+            else:
+                logger.debug(fmt, sec)
         return sec

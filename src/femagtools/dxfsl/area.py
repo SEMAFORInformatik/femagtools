@@ -324,6 +324,12 @@ class Area(object):
         plist = self.intersect_points(line)
         points = len(plist)
         plist.sort()
+
+        aux_lines = [e for e in self.area if e.has_attribute('auxline')]
+        if aux_lines:
+            logger.debug("=> is inside = True (auxlines)")
+            return True
+
         if plist:
             if points_are_close(p1, plist[0]):
                 points -= 1

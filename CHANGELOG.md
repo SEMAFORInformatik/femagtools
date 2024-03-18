@@ -2,6 +2,9 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.6.4
+	- dxfsl: split option is deprecated
+
 ## Release 1.6.1
         - calc torque frequency spectrum in bch cogging if missing
 

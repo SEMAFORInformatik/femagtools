@@ -50,8 +50,7 @@ Example with two separate dxf files for stator and rotor::
           mcvkey_yoke='dummy',
   	  dxffile=dict(
 	      name='mystator.dxf',
-	      position='out',
-              split=True
+	      position='out'
 	 )
       ),
       magnet=dict(
@@ -59,8 +58,7 @@ Example with two separate dxf files for stator and rotor::
 	  mcvkey_shaft="dummy",
 	  dxffile=dict(
 	      name='myrotor.dxf',
-              position='in',
-              split=True
+              position='in'
 	  )
       ),
       ...

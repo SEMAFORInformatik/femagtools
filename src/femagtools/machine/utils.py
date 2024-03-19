@@ -169,12 +169,12 @@ def wdg_leakage_inductances(machine):
     from ..windings import Winding
     wdg = Winding(
         {'Q': machine['stator']['num_slots'],
-         'm': machine['winding']['num_phases'],
+         'm': machine['windings']['num_phases'],
          'p': machine['poles']//2,
-         'l': machine['winding']['num_layers'],
-         'yd': machine['winding']['coil_span']})
-    n1 = wdg.turns_per_phase(machine['winding']['num_wires'],
-                             machine['winding']['num_par_wdgs'])
+         'l': machine['windings']['num_layers'],
+         'yd': machine['windings']['coil_span']})
+    n1 = wdg.turns_per_phase(machine['windings']['num_wires'],
+                             machine['windings']['num_par_wdgs'])
     m = wdg.m
     p = wdg.p
     Q = wdg.Q

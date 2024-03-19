@@ -63,7 +63,7 @@ def ring_leakage_inductance(machine):
     mue0 = 4*np.pi*1e-7
 
     Qr = machine['rotor']['num_slots']
-    m = machine['winding']['num_phases']
+    m = machine['windings']['num_phases']
     p = machine['poles']//2
     lbar = machine['lfe']
     ls = lbar

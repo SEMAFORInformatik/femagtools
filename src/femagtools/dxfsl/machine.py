@@ -7,6 +7,7 @@ import numpy as np
 import logging
 from .shape import Element, Circle, Arc, Line
 from .corner import Corner
+from femagtools.dxfsl.symmetry import Symmetry
 from .functions import point, points_are_close, distance
 from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
 from .functions import alpha_line, line_m, line_n, mirror_point
@@ -592,9 +593,18 @@ class Machine(object):
         if self.radius <= 0.0:
             return False
 
-        found = self.geom.find_symmetry(self.radius,
-                                        self.startangle, self.endangle,
-                                        sym_tolerance)
+        symmetry = Symmetry(geom=self.geom,
+                            startangle=self.startangle,
+                            endangle=self.endangle)
+        parts = symmetry.find_symmetry()  # temp solution
+        logger.debug(">>> Symmetry parts = %s <<<", parts)
+
+        if parts > 1:
+            found = True
+        else:
+            found = self.geom.find_symmetry(self.radius,
+                                            self.startangle, self.endangle,
+                                            sym_tolerance)
         if not found and len(self.geom.area_list) < 5:
             if is_inner:
                 found = self.find_stator_symmetry(sym_tolerance, True)

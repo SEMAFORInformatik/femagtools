@@ -429,6 +429,12 @@ class Area(object):
                 (the_axis_p[0], the_axis_p[1]),
                 (the_area_p[0], the_area_p[1]))
 
+    def get_alpha(self):
+        return alpha_angle(self.min_angle, self.max_angle)
+
+    def get_mid_angle(self):
+        return middle_angle(self.min_angle, self.max_angle)
+
     def is_equal(self, a, sym_tolerance):
         if sym_tolerance > 0.0:
             if np.isclose(round(self.min_dist, 4),

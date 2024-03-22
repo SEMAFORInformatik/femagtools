@@ -1305,8 +1305,18 @@ class Line(Shape):
         return (dist_min, dist_max)
 
     def minmax_angle_from_center(self, center):
-        alpha_p1 = alpha_line(center, self.p1)
-        alpha_p2 = alpha_line(center, self.p2)
+        if points_are_close(center, self.p1):
+            alpha_p1 = None
+        else:
+            alpha_p1 = alpha_line(center, self.p1)
+        if points_are_close(center, self.p2):
+            alpha_p2 = None
+        else:
+            alpha_p2 = alpha_line(center, self.p2)
+        if alpha_p1 is None:
+            alpha_p1 = alpha_p2
+        if alpha_p2 is None:
+            alpha_p2 = alpha_p1
         if alpha_angle(alpha_p1, alpha_p2) < np.pi:
             return (alpha_p1, alpha_p2)
         else:

@@ -89,7 +89,7 @@ class Symmetry(object):
                           a.min_dist,
                           a.height,
                           a))
-        areas.sort()
+        areas.sort(reverse=True)
 
         a0_alpha, a0_mid_angle, a0_min_dist, a0_height, a0 = areas[0]
         equal_areas = [(a0_mid_angle, a0)]
@@ -302,10 +302,17 @@ class Symmetry(object):
     def calc_parts(self, parts1, parts2):
         logger.debug("Calc symmetry Parts (%s, %s)", parts1, parts2)
         if parts2 is None:
+            logger.debug("return %s parts", parts1)
             return parts1
         if parts1 is None:
+            logger.debug("return %s parts", parts2)
             return parts2
-        return gcd(parts1, parts2)
+        if parts1 == 0 or parts2 == 0:
+            logger.debug("return %s parts", 0)
+            return 0
+        parts = gcd(parts1, parts2)
+        logger.debug("return %s parts", parts)
+        return parts
 
     def symmetry_lines(self, parts, startangle, endangle):
         logger.debug("begin symmetry_lines from %s to %s",

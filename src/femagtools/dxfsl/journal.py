@@ -55,7 +55,6 @@ class Journal(object):
         if not self.journal:
             return
         self.set_benchmark()
-
         with open(self.filename, 'w') as f:
             f.write(json.dumps(self.journal, indent=4))
             f.close()
@@ -69,18 +68,8 @@ class Journal(object):
 
         self.open_journal()
         self.data = self.journal.get(name, None)
-        if not self.data:
-            self.data = {'filename': "",
-                         'elements': 0,
-                         'nodes': 0,
-                         'concat_lines': 0,
-                         'concat_arcs': 0,
-                         'appendices': 0,
-                         'appendices_connected': 0,
-                         'appendices_remaining': 0,
-                         'areas': 0,
-                         'area_errors': 0}
-            self.journal[name] = self.data
+        self.data = {'filename': ""}  # initialise
+        self.journal[name] = self.data
         return self.data
 
     def set_benchmark(self):
@@ -88,19 +77,23 @@ class Journal(object):
             self.put_warning("Problem with areas")
         if self.data.get('appendices_deleted', 0) > 0:
             self.put_warning("Problem with appendices")
-          
+
     def put(self, name, val):
         if self.data:
             self.data[name] = val
+
+    def add(self, name, val):
+        if self.data:
+            self.data[name] = val + self.data.get(name, 0)
 
     def put_filename(self, val):
         self.put('filename', val)
 
     def put_areas(self, val):
-        self.put('areas', val)
+        self.add('areas', val)
 
     def put_area_errors(self, val):
-        self.put('area_errors', val)
+        self.add('area_errors', val)
 
     def put_elements(self, val):
         self.put('elements', val)
@@ -109,28 +102,27 @@ class Journal(object):
         self.put('nodes', val)
 
     def put_concat_lines(self, val):
-        self.put('concat_lines', val)
+        self.add('concat_lines', val)
 
     def put_concat_arcs(self, val):
-        self.put('concat_arcs', val)
+        self.add('concat_arcs', val)
 
     def put_appendices(self, val):
-        self.put('appendices', val)
+        self.add('appendices', val)
 
     def put_appendices_connected(self, val):
-        self.put('appendices_connected', val)
+        self.add('appendices_connected', val)
 
     def put_appendices_remaining(self, val):
-        self.put('appendices_remaining', val)
+        self.add('appendices_remaining', val)
 
     def put_appendices_deleted(self, val):
-        self.put('appendices_deleted', val)
+        self.add('appendices_deleted', val)
        
     def put_exception(self, msg):
         self.put('exception', msg)
 
     def put_warning(self, msg):
-        print(msg)
         lst = self.data.get('warning', [])
         lst.append(msg)
         self.put('warning', lst)

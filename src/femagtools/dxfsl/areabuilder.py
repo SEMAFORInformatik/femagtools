@@ -341,9 +341,11 @@ class AreaBuilder(object):
     def __init__(self,
                  geom=None,
                  rtol=1e-04,
-                 atol=1e-04):
+                 atol=1e-04,
+                 ndec=6):
         self.rtol = rtol
         self.atol = atol
+        self.ndec = ndec
         self.geom = geom
         self.area_list = []
         self.journal = getJournal()
@@ -358,7 +360,13 @@ class AreaBuilder(object):
 
     def set_edge_attributes(self):
         self.geom.set_edge_attributes()
-    
+
+    def append_new_area(self, area_list, elements):
+        a = Area(elements, self.geom.center, 0.0)
+        a.type = 0  # air
+        area_list.append(a)
+        return a
+
     def create_list_of_areas(self, main=False):
         logger.debug("Begin of create_list_of_areas")
         assert(len(self.area_list) == 0)
@@ -382,10 +390,8 @@ class AreaBuilder(object):
                 for next_n in nbrs:
                     result = self.get_new_area(n, next_n)
                     if result['ok']:
-                        area = result['area']
-                        a = Area(area, self.geom.center, 0.0)
+                        a = self.append_new_area(self.area_list, result['area'])
                         logger.debug("Area %s found", a.identifier())
-                        append(self.area_list, a)
 
         t = timer.stop("{} areas created in %0.4f seconds".format(len(self.area_list)))
         if main:
@@ -564,3 +570,144 @@ class AreaBuilder(object):
         nbr1.log_edge(">>>> LEFT")
         logger.debug("end of next_edge_lefthand_side")
         return nbr1
+
+    def create_inner_corner_auxiliary_areas(self):
+        logger.debug("begin of create_inner_corner_auxiliary_areas")
+        if not self.geom.is_inner:
+            logger.debug("end of create_inner_corner_auxiliary_areas: not inner")
+            return
+
+        self.set_edge_attributes()
+
+        start_cp, start_exists = self.geom.get_start_airgap_corner()
+        end_cp, end_exists = self.geom.get_end_airgap_corner()
+        if start_exists and end_exists:
+            logger.debug("end of create_inner_corner_auxiliary_areas: no aktion")
+            return
+
+        airgap_line, airgap_el = self.get_inner_airgap_line()
+        if not airgap_el:
+            logger.debug("end of create_inner_corner_auxiliary_areas: no airgapline found")
+            return
+
+        logger.debug("airgapline found !!")
+        airgap_nodes = [n for n in airgap_line[1:]]
+        del airgap_nodes[-1]
+
+        if not start_exists:
+            cp = self.geom.start_corners[-1]
+            logger.debug("Start Corner: %s -- %s", cp, start_cp)
+            start_line = Line(Element(start=cp, end=start_cp),
+                              color='red',
+                              linestyle='dotted')
+
+            start_cp = start_line.node2(self.ndec)
+            for n in airgap_nodes:
+                ag_line = Line(Element(start=start_cp, end=n))
+                points = self.geom.get_intersection_points(airgap_el, ag_line, n)
+                if not points:  # no intersection
+                    d = distance(self.geom.center, n)
+                    if np.isclose(d, self.geom.max_radius):
+                        self.geom.add_arc(start_cp,
+                                          n,
+                                          self.geom.center,
+                                          self.geom.max_radius,
+                                          color='red',
+                                          linestyle='dotted')
+                    else:
+                        self.geom.add_line(start_cp,
+                                           n,
+                                           color='red',
+                                           linestyle='dotted')
+                    self.geom.add_edge(cp, start_cp, start_line)
+                    result = self.get_new_area(start_cp, n)
+                    if result['ok']:
+                        self.append_new_area(self.geom.area_list,
+                                             result['area'])
+                    self.geom.set_start_corners(self.geom.center, 0.0)
+                    break
+
+        if not end_exists:
+            cp = self.geom.end_corners[-1]
+            logger.debug("End Corner: %s -- %s", cp, end_cp)
+            end_line = Line(Element(start=cp, end=end_cp),
+                            color='red',
+                            linestyle='dotted')
+            end_cp = end_line.node2(self.ndec)
+            airgap_nodes.reverse()
+            for n in airgap_nodes:
+                ag_line = Line(Element(start=end_cp, end=n))
+                points = self.geom.get_intersection_points(airgap_el, ag_line, n)
+                if not points:  # no intersection
+                    d = distance(self.geom.center, n)
+                    if np.isclose(d, self.geom.max_radius):
+                        self.geom.add_arc(n, end_cp,
+                                          self.geom.center,
+                                          self.geom.max_radius,
+                                          color='red',
+                                          linestyle='dotted')
+                    else:
+                        self.geom.add_line(end_cp, n,
+                                           color='red',
+                                           linestyle='dotted')
+                    self.geom.add_edge(cp, end_cp, end_line)
+                    result = self.get_new_area(n, end_cp)
+                    if result['ok']:
+                        self.append_new_area(self.geom.area_list,
+                                             result['area'])
+                    self.geom.set_end_corners(self.geom.center, self.geom.alfa)
+                    break
+
+        logger.debug("end of create_inner_corner_auxiliary_areas")
+
+    def get_inner_airgap_line(self):
+        logger.debug("begin of get_inner_airgap_line")
+        assert(self.geom.is_inner)
+        assert(self.geom.area_list)
+
+        area = [a for a in self.geom.area_list if a.close_to_ag_endcorner]
+        if len(area) != 1:
+            logger.debug("end of get_inner_airgap_line: %s areas found", len(area))
+            return [], []
+
+        end_corner = self.geom.end_corners[-1]
+        logger.debug("END CORNER %s", end_corner)
+
+        nodes = [n for n in area[0].list_of_nodes()]
+        if not nodes:
+            logger.debug("end of get_inner_airgap_line: no nodes found")
+            return [], []
+
+        n1 = nodes[0]
+        if points_are_close(end_corner, n1):
+            n2 = nodes[-1]
+        else:
+            n2 = n1
+            for n1 in nodes[1:]:
+                if points_are_close(end_corner, n1):
+                    break
+                n2 = n1
+
+        if not points_are_close(end_corner, n1):
+            logger.debug("end of get_inner_airgap_line: not close to endcorner")
+            return [], []
+
+        start_corner = self.geom.start_corners[-1]
+        logger.debug("START CORNER %s", end_corner)
+
+        logger.debug("EDGE FOUND: %s - %s", n1, n2)
+        nodes = [n1, n2]
+        info = self.get_edge_info(n1, n2)
+        elements = [info.element]
+
+        while not points_are_close(start_corner, n2):
+            info.set_start_angle()
+            info = self.next_edge_lefthand_side(info)
+            if not info:  # bad
+                return []
+            n2 = info.n2
+            nodes.append(n2)
+            elements.append(info.element)
+
+        logger.debug("end of get_inner_airgap_line #%s", len(nodes))
+        return nodes, elements

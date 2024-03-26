@@ -204,9 +204,9 @@ class Concatenation(object):
         elmts.sort()
 
         logger.debug("Concatenate Line Elements")
-        for m, a, p, e in elmts:
-            logger.debug("Line from %s to %s [m=%s, a=%s]",
-                         e.p1, e.p2, m, a)
+        #for m, a, p, e in elmts:
+        #    logger.debug("Line from %s to %s [m=%s, a=%s]",
+        #                 e.p1, e.p2, m, a)
         logger.debug("*************************")
 
         lines_available = len(elmts)
@@ -281,9 +281,9 @@ class Concatenation(object):
         elmts.sort()
 
         logger.debug("Concatenate Arc Elements")
-        for c, r, a, e in elmts:
-            logger.debug("%s from %s to %s [c=%s, r=%s, a=%s]",
-                         e.classname(), e.p1, e.p2, c, r, a)
+        #for c, r, a, e in elmts:
+        #    logger.debug("%s from %s to %s [c=%s, r=%s, a=%s]",
+        #                 e.classname(), e.p1, e.p2, c, r, a)
         logger.debug("*************************")
  
         arcs_available = len(elmts)
@@ -354,4 +354,4 @@ class Concatenation(object):
             self.journal.put('time_concatenation', t)
 
         logger.debug("End of concatenate_matching_elements")
-        return count>0, new_list
+        return count, new_list

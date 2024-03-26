@@ -240,6 +240,7 @@ class SynchronousMachine(object):
         self.kth1 = KTH
         self.kth2 = KTH
         self.skin_resistance = [None, None]
+        self.kpmag = 1
         # here you can set user defined functions for calculating the skin-resistance,
         # according to the current frequency w. First function in list is for stator, second for rotor.
         # If None, the femagtools intern default implementation is used.

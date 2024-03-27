@@ -69,6 +69,7 @@ class PmRelMachine(object):
         self.rotor_mass = 0
         self.kth1 = KTH
         self.bertotti = False
+        self.max_torque = 0.0
         self.losskeys = ['styoke_hyst', 'stteeth_hyst',
                         'styoke_eddy', 'stteeth_eddy',
                         'rotor_hyst', 'rotor_eddy',
@@ -843,7 +844,7 @@ class PmRelMachine(object):
     def characteristics(self, T, n, u1max, nsamples=60,
                         with_mtpv=True, with_mtpa=True,
                         with_pmconst=True, with_tmech=True,
-                        with_torque_corr=False):
+                        with_torque_corr=False, **kwargs):
         """calculate torque speed characteristics.
         return dict with list values of
         id, iq, n, T, ud, uq, u1, i1,
@@ -862,7 +863,10 @@ class PmRelMachine(object):
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
-
+        
+        if kwargs.get('i1max', 0):
+            w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
+            
         if np.isscalar(T):
             tmax = self.torquemax(self.i1range[1])
             tmin = 0

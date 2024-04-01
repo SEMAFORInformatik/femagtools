@@ -1,7 +1,7 @@
 """read a dxf file and create a plot or fsl file
 
 """
-import pathlib
+from pathlib import Path
 from femagtools.dxfsl.geom import Geometry
 from femagtools.dxfsl.shape import Shape
 from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
@@ -124,7 +124,7 @@ def convert(dxfile,
     layers = ()
     conv = {}
 
-    basename = pathlib.Path(dxfile).stem
+    basename = Path(dxfile).stem
     logger.info("start processing %s", basename)
 
     if part:
@@ -149,27 +149,26 @@ def convert(dxfile,
         split_cpy = split
 
     try:
-        match pathlib.Path(dxfile).suffix:
-            case '.fem':
-                from .femparser import femshapes
-                basegeom = Geometry(femshapes(dxfile),
-                                    rtol=rtol,
-                                    atol=atol,
-                                    split=split_ini)
-            case '.dxf':
-                from .dxfparser import dxfshapes
-                basegeom = Geometry(dxfshapes(dxfile,
-                                              mindist=mindist,
-                                              layers=layers),
-                                    rtol=rtol,
-                                    atol=atol,
-                                    split=split_ini)
-            case '.svg':
-                from .svgparser import svgshapes
-                basegeom = Geometry(svgshapes(dxfile),
-                                    rtol=rtol,
-                                    atol=atol,
-                                    split=split_ini)
+        if Path(dxfile).suffix == '.fem':
+            from .femparser import femshapes
+            basegeom = Geometry(femshapes(dxfile),
+                                rtol=rtol,
+                                atol=atol,
+                                split=split_ini)
+        elif Path(dxfile).suffix == '.dxf':
+            from .dxfparser import dxfshapes
+            basegeom = Geometry(dxfshapes(dxfile,
+                                          mindist=mindist,
+                                          layers=layers),
+                                rtol=rtol,
+                                atol=atol,
+                                split=split_ini)
+        elif Path(dxfile).suffix == '.svg':
+            from .svgparser import svgshapes
+            basegeom = Geometry(svgshapes(dxfile),
+                                rtol=rtol,
+                                atol=atol,
+                                split=split_ini)
 
 
     except FileNotFoundError as ex:
@@ -198,7 +197,7 @@ def convert(dxfile,
     machine_base = basegeom.get_machine()
     if show_plots:
         p.render_elements(basegeom, Shape,
-                          title=pathlib.Path(dxfile).name,
+                          title=Path(dxfile).name,
                           with_hull=False,
                           rows=3, cols=2, num=1, show=debug_mode)
 

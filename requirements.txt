@@ -8,3 +8,4 @@ matplotlib
 lxml
 netCDF4
 lmfit
+dxfgrabber

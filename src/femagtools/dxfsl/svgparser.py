@@ -38,34 +38,34 @@ def get_shapes(path):
         if state == '':
             state = s[0]
         elif state == 'M':
-                p.append(float(s))
-                if len(p) == 2:
-                    p1 = np.array(p)
-                    p = []
-                    state = ''
+            p.append(float(s))
+            if len(p) == 2:
+                p1 = np.array(p)
+                p = []
+                state = ''
         elif state == 'L':
-                p.append(float(s))
-                if len(p) == 2:
-                    p2 = np.array(p)
-                    yield Line(Element(start=p1, end=p2))
-                    p1 = p2.copy()
-                    p = []
-                    state = ''
+            p.append(float(s))
+            if len(p) == 2:
+                p2 = np.array(p)
+                yield Line(Element(start=p1, end=p2))
+                p1 = p2.copy()
+                p = []
+                state = ''
         elif state == 'A':
-                p.append(float(s))
-                if len(p) == 7:
-                    sweep = int(p[-3])
-                    p2 = np.array(p[-2:])
-                    r = p[0]
-                    center = get_center(r, p1, p2, sweep)
-                    start, end = get_angles(sweep, center, p1, p2)
-                    yield Arc(Element(center=center,
-                                      radius=r,
-                                      start_angle=start*180/np.pi,
-                                      end_angle=end*180/np.pi))
-                    p1 = p2.copy()
-                    p = []
-                    state = ''
+            p.append(float(s))
+            if len(p) == 7:
+                sweep = int(p[-3])
+                p2 = np.array(p[-2:])
+                r = p[0]
+                center = get_center(r, p1, p2, sweep)
+                start, end = get_angles(sweep, center, p1, p2)
+                yield Arc(Element(center=center,
+                                  radius=r,
+                                  start_angle=start*180/np.pi,
+                                  end_angle=end*180/np.pi))
+                p1 = p2.copy()
+                p = []
+                state = ''
         else:
             raise ValueError(f"unsupported path {state}")
 

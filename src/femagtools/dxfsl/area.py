@@ -45,6 +45,7 @@ class Area(object):
         self.mag_rectangle = False
         self.min_dist = 99999.0
         self.max_dist = 0.0
+        self.minmax_xy = [0,0,0,0]
         self.height = 0.0
         self.alpha = 0.0
         self.count = 1
@@ -269,6 +270,7 @@ class Area(object):
         if not self.area:
             return
 
+        self.minmax_xy = self.minmax()
         s = self.area[0]
         mm_angle = s.minmax_angle_from_center(center)
         self.min_angle = mm_angle[0]
@@ -285,6 +287,12 @@ class Area(object):
             self.max_angle = max_angle(self.max_angle, mm_angle[1])
 
         self.alpha = round(alpha_angle(self.min_angle, self.max_angle), 3)
+
+    def center_is_inside(self, center):
+        if self.minmax_xy[0] < center[0] and self.minmax_xy[1] > center[0] and \
+           self.minmax_xy[2] < center[1] and self.minmax_xy[3] > center[1]:
+            return True
+        return False
 
     def minmax_angle_dist_from_center(self, center, dist):
         circ = Circle(Element(center=center, radius=dist))
@@ -429,10 +437,14 @@ class Area(object):
                 (the_axis_p[0], the_axis_p[1]),
                 (the_area_p[0], the_area_p[1]))
 
-    def get_alpha(self):
+    def get_alpha(self, center):
+        if self.center_is_inside(center):
+            return np.pi*2.0
         return alpha_angle(self.min_angle, self.max_angle)
 
-    def get_mid_angle(self):
+    def get_mid_angle(self, center):
+        if self.center_is_inside(center):
+            return np.pi
         return middle_angle(self.min_angle, self.max_angle)
 
     def is_equal(self, a, sym_tolerance):
@@ -636,7 +648,7 @@ class Area(object):
         return False
 
     def get_best_point_inside(self, geom):
-        mm = self.minmax()
+        mm = self.minmax_xy
         px1 = mm[0]-5
         px2 = mm[1]+5
 
@@ -733,7 +745,7 @@ class Area(object):
 
     def get_point_inside(self, geom):
         """return point inside area"""
-        mm = self.minmax()
+        mm = self.minmax_xy
         y = (mm[2]+mm[3])/2
         p1 = (mm[0]-5, y)
         p2 = (mm[1]+5, y)
@@ -1466,6 +1478,14 @@ class Area(object):
                     self.close_to_ag_endcorner = True
 
     def area_size(self):
+        if len(self.area) == 0:
+            return 0.0
+        if self.number_of_elements() < 2:
+            e = self.area[0]
+            if not is_Circle(e):
+                return 0.0
+            return np.pi * e.radius**2
+
         nodes = [n for n in self.list_of_nodes()]
         return area_size(nodes)
 

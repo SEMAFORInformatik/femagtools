@@ -1,5 +1,5 @@
-import numpy as np
 import logging
+import numpy as np
 from .shape import Circle, Arc, Line, Element
 from .functions import distance
 

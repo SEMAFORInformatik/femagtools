@@ -1,10 +1,10 @@
 """
  Geom Parser for femm files
 """
-import logging
+
 import numpy as np
-from .shape import Circle, Arc, Line, Element
-from .functions import distance, alpha_line, alpha_points, alpha_angle
+from .shape import Arc, Line, Element
+from .functions import distance, alpha_line, points_are_close
 
 fem_points = []
 

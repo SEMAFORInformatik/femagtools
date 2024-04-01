@@ -67,7 +67,7 @@ def get_shapes(path):
                     p = []
                     state = ''
         else:
-            thrown ValueError("unsupported path %s", state);
+            raise ValueError("unsupported path %s", state);
 
 def svgshapes(svgfile):
     svg = ET.parse(svgfile)

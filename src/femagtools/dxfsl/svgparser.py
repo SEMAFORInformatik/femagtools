@@ -6,7 +6,7 @@ Geometry Parser for SVG files
 
 import re
 import lxml.etree as ET
-from .geom import Circle, Arc, Line, Element
+from .shape import Circle, Arc, Line, Element
 import numpy as np
 
 
@@ -34,7 +34,7 @@ def get_shapes(path):
     """return list of node elements (A, L)"""
     state = ''
     p = []
-    for s in [s for s in re.split('([AML])|,|\s+',path) if s]:
+    for s in [s for s in re.split('([AML])|,|\\s+',path) if s]:
         match state:
             case '':
                 state = s[0]
@@ -71,12 +71,12 @@ def get_shapes(path):
 
 def svgshapes(svgfile):
     svg = ET.parse(svgfile)
-    for p in svg.findall("//{http://www.w3.org/2000/svg}path"):
+    for p in svg.findall(".//{http://www.w3.org/2000/svg}path"):
         for n in get_shapes(p.get('d')):
             yield n
-    for p in svg.findall("//{http://www.w3.org/2000/svg}line"):
+    for p in svg.findall(".//{http://www.w3.org/2000/svg}line"):
         yield Line(Element(start=[float(p.get('x1')), float(p.get('y1'))],
                            end=[float(p.get('x2')), float(p.get('y2'))]))
-    for p in svg.findall("//{http://www.w3.org/2000/svg}circle"):
+    for p in svg.findall(".//{http://www.w3.org/2000/svg}circle"):
         center = float(p.get('cx')), float(p.get('cy'))
         yield Circle(Element(center=center, radius=float(p.get('r'))))

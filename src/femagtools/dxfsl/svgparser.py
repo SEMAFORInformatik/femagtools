@@ -35,16 +35,15 @@ def get_shapes(path):
     state = ''
     p = []
     for s in [s for s in re.split('([AML])|,|\\s+',path) if s]:
-        match state:
-            case '':
-                state = s[0]
-            case 'M':
+        if state == '':
+            state = s[0]
+        elif state == 'M':
                 p.append(float(s))
                 if len(p) == 2:
                     p1 = np.array(p)
                     p = []
                     state = ''
-            case 'L':
+        elif state == 'L':
                 p.append(float(s))
                 if len(p) == 2:
                     p2 = np.array(p)
@@ -52,7 +51,7 @@ def get_shapes(path):
                     p1 = p2.copy()
                     p = []
                     state = ''
-            case 'A':
+        elif state == 'A':
                 p.append(float(s))
                 if len(p) == 7:
                     sweep = int(p[-3])
@@ -67,7 +66,8 @@ def get_shapes(path):
                     p1 = p2.copy()
                     p = []
                     state = ''
-
+        else:
+            thrown ValueError("unsupported path %s", state);
 
 def svgshapes(svgfile):
     svg = ET.parse(svgfile)

@@ -69,11 +69,11 @@ def get_shapes(path):
         else:
             raise ValueError(f"unsupported path {state}")
 
+
 def svgshapes(svgfile):
     svg = ET.parse(svgfile)
     for p in svg.findall(".//{http://www.w3.org/2000/svg}path"):
-        for n in get_shapes(p.get('d')):
-            yield n
+        yield from get_shapes(p.get('d'))
     for p in svg.findall(".//{http://www.w3.org/2000/svg}line"):
         yield Line(Element(start=[float(p.get('x1')), float(p.get('y1'))],
                            end=[float(p.get('x2')), float(p.get('y2'))]))

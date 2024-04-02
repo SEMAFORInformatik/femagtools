@@ -33,6 +33,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dxfsl = ['dxfgrabber', 'networkx']
+svgfsl = ['dxfgrabber', 'networkx','lxml']
 mplot =  ['matplotlib']
 meshio = ['meshio']
 vtk = ['vtk']

@@ -682,17 +682,24 @@ class PmRelMachine(object):
             iq, id, T = self.mtpa(i1max)
             w1type = self.w1_umax(u1max, iq, id)
         Pmax = w1type/self.p*T
-        w1max = 2*np.pi*speedmax*self.p
         # check max speed:
-        if with_pmconst:
-            iq, id, tq = self.iqd_pmech_imax_umax(
-                speedmax, Pmax, i1max, u1max,
-                with_mtpa, with_tmech)
-        else:
-            iq, id, tq = self.iqd_imax_umax(
-                i1max, w1max, u1max,
-                T, with_mtpv=False,
-                with_tmech=with_tmech)
+        sp = speedmax
+        while sp > w1type/2/np.pi/self.p:
+            w1max = 2*np.pi*sp*self.p
+            try:
+                if with_pmconst:
+                    iq, id, tq = self.iqd_pmech_imax_umax(
+                        sp, Pmax, i1max, u1max,
+                        with_mtpa, with_tmech)
+                else:
+                    iq, id, tq = self.iqd_imax_umax(
+                        i1max, w1max, u1max,
+                        T, with_mtpv=False,
+                        with_tmech=with_tmech)
+                break
+            except ValueError:
+                sp -= 5e-2*speedmax
+        speedmax = sp
         i1 = betai1(iq, id)[1]
         if (abs(i1max) >= i1
             and round(u1max, 1) >= round(np.linalg.norm(
@@ -863,10 +870,10 @@ class PmRelMachine(object):
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
-        
+
         if kwargs.get('i1max', 0):
             w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
-            
+
         if np.isscalar(T):
             tmax = self.torquemax(self.i1range[1])
             tmin = 0
@@ -927,6 +934,9 @@ class PmRelMachine(object):
             if speedrange[-1] < speedrange[-2]:
                 speedrange = speedrange[:-1]
             logger.info("Speedrange T=%g Nm %s", Tf, speedrange)
+            if speedrange[-1] < nmax:
+                logger.warning("adjusted nmax %f -> %f", nmax, speedrange[-1])
+
             n3 = speedrange[-1]
             nstab = [int(nsamples*(x1-x2)/n3)
                      for x1, x2 in zip(speedrange[1:],

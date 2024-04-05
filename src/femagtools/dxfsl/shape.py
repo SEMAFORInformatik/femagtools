@@ -1008,7 +1008,7 @@ class Arc(Circle):
         for p in points:
             alpha_p = alpha_line(center, p)
             alpha_min = min_angle(alpha_min, alpha_p)
-            alpha_max = min_angle(alpha_max, alpha_p)
+            alpha_max = max_angle(alpha_max, alpha_p)
 
         return (alpha_min, alpha_max)
 

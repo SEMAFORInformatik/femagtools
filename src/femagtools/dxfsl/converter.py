@@ -6,6 +6,7 @@ from femagtools.dxfsl.geom import Geometry
 from femagtools.dxfsl.shape import Shape
 from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
 from femagtools.dxfsl.plotrenderer import PlotRenderer
+from femagtools.dxfsl.functions import Timer
 import logging
 import logging.config
 import numpy as np
@@ -125,7 +126,8 @@ def convert(dxfile,
     conv = {}
 
     basename = Path(dxfile).stem
-    logger.info("start processing %s", basename)
+    logger.info("***** start processing %s *****", basename)
+    timer = Timer(start_it=True)
 
     if part:
         if part[0] not in ('rotor', 'stator'):
@@ -500,6 +502,7 @@ def convert(dxfile,
                 conv.update(params)
 
     conv['name'] = basename
+    timer.stop("-- all done in %0.4f seconds --")
     return conv
 
 

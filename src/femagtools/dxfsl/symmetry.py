@@ -84,17 +84,17 @@ class Symmetry(object):
 
         areas = []
         for a in arealist:
-            areas.append((a.get_alpha(self.geom.center),
+            areas.append((round(a.get_alpha(self.geom.center), 3),
+                          round(a.min_dist, 1),
+                          round(a.height, 1),
                           self.calc_mid_angle(a),
-                          a.min_dist,
-                          a.height,
                           a))
         areas.sort(reverse=True)
 
-        a0_alpha, a0_mid_angle, a0_min_dist, a0_height, a0 = areas[0]
+        a0_alpha, a0_min_dist, a0_height, a0_mid_angle, a0 = areas[0]
         equal_areas = [(a0_mid_angle, a0)]
         check_rslt = []
-        for a1_alpha, a1_mid_angle, a1_min_dist, a1_height, a1 in areas[1:]:
+        for a1_alpha, a1_min_dist, a1_height, a1_mid_angle, a1 in areas[1:]:
             if self.equal_area(a0_min_dist, a0_height, a0_alpha,
                                a1_min_dist, a1_height, a1_alpha,
                                rtol=0.01, atol=0.05):
@@ -151,21 +151,12 @@ class Symmetry(object):
         self.delta_check_count += 1
         area_list.sort()
 
-        start = self.startangle
         mid_angle, a = area_list[0]
-        if less_equal(mid_angle, start):
-            logger.debug("KORR: mid(%s) less equal start(%s)", mid_angle, start)
-            area_list = [(self.calc_mid_angle(a), a) for mid, a in area_list]
-            area_list.sort()
-            mid_angle, a = area_list[0]
-
-        delta_angle = alpha_angle(start, mid_angle)
-        delta = positive_angle(delta_angle * 2)
-        delta_total = delta_angle
-        logger.debug("First start = %s, mid = %s, delta = %s",
-                     start, mid_angle, delta)
+        delta = positive_angle(mid_angle * 2)
+        delta_total = mid_angle
         delta_list = [delta]
-        logger.debug("geom: start=%s,  end=%s", self.startangle, self.endangle)
+
+        logger.debug("First mid = %s, delta = %s", mid_angle, delta)
         logger.debug("%s:  d=%s,  h=%s,  a=%s, mid=%s, delta=%s",
                      a.identifier(),
                      a.min_dist,
@@ -173,16 +164,13 @@ class Symmetry(object):
                      a.get_alpha(self.geom.center),
                      mid_angle,
                      delta)
-        logger.debug("  min=%s,  max%s",
-                     a.min_angle,
-                     a.max_angle)
 
         geom_alpha = alpha_angle(self.startangle, self.endangle)
         geom_alpha = positive_angle(geom_alpha)
 
-        start = mid_angle
+        start_angle = mid_angle
         for mid_angle, a in area_list[1:]:
-            delta_angle = alpha_angle(start, mid_angle)
+            delta_angle = alpha_angle(start_angle, mid_angle)
             delta = positive_angle(delta_angle)
             delta_total += delta_angle
             delta_list.append(delta)
@@ -194,13 +182,9 @@ class Symmetry(object):
                          a.get_alpha(self.geom.center),
                          mid_angle,
                          delta)
-            logger.debug("  min=%s,  max%s",
-                         a.min_angle,
-                         a.max_angle)
-
-            start = mid_angle
+            start_angle = mid_angle
             
-        delta_angle = alpha_angle(start, self.endangle)
+        delta_angle = alpha_angle(start_angle, geom_alpha)
         delta = positive_angle(delta_angle * 2)
         delta_total += delta_angle
         delta_list.append(delta)

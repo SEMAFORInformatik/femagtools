@@ -19,6 +19,7 @@ from .area import Area
 from .shape import Element, Shape, Circle, Arc, Line, Point
 from .shape import is_Circle, is_Arc, is_Line
 from .machine import Machine
+from femagtools.dxfsl.areabuilder import AreaBuilder
 from .functions import less_equal, less, greater, greater_equal
 from .functions import distance, alpha_line, alpha_points, alpha_angle
 from .functions import point, points_are_close, is_point_inside_region
@@ -653,6 +654,14 @@ class Geometry(object):
         return [n[1]['object'] for n in self.g.nodes(data=True)
                 if n[1] and isinstance(n[1]['object'], Circle)]
 
+    def nodes(self):
+        for n in self.g.nodes():
+            yield n
+
+    def get_nodes(self):
+        nodes = [n for n in self.g.nodes()]
+        return nodes
+
     def virtual_nodes(self):
         nodes = []
         for e in self.elements(Shape):
@@ -1269,6 +1278,11 @@ class Geometry(object):
             logger.debug("area list already available")
             # list already available
             return
+
+        areabuilder = AreaBuilder(geom=self)
+        areabuilder.create_list_of_areas(main=False)
+        self.area_list = areabuilder.area_list
+        return
 
         def append(area_list, a):
             for area in area_list:

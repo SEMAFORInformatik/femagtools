@@ -170,6 +170,46 @@ class PmRelMachine(object):
         if np.abs(torque) < 1e-2:
             return (0, 0)
         if np.isscalar(iqd0):
+            tx = self.tmech_iqd(self.io[0], 0, n)
+            iq0 = min(0.9*self.i1range[1]/np.sqrt(2),
+                      np.abs(torque)/tx*self.io[0])
+            if torque < 0:
+                i0 = (-iq0, 0)
+            else:
+                i0 = (iq0, 0)
+            logger.debug("initial guess i0 %f -> %s tx %f torque %f",
+                        self.io[0], i0, tx, torque)
+        else:
+            i0 = iqd0
+
+        if with_mtpa:
+            k=0
+            while k < 3:
+                res = so.minimize(
+                    lambda iqd: la.norm(iqd), i0, method='SLSQP',
+                    constraints=({'type': 'eq',
+                                  'fun': lambda iqd:
+                                  self.tmech_iqd(*iqd, n) - torque}))
+                if res.success:
+                    return res.x
+                # make new initial guess:
+                tx = self.tmech_iqd(*i0, n)
+                logger.debug("k %d new guess i0 %s tx %f torque %f",
+                            k, i0, tx, torque)
+                i0=(min(0.9*self.i1range[1]/np.sqrt(2), torque/tx*i0[0]), 0)
+                k += 1
+            raise ValueError(
+                f'Torque {torque} speed {n} {i0} {res.message}')
+        def tqiq(iq):
+            return torque - self.tmech_iqd(float(iq), 0, n)
+        iq = so.fsolve(tqiq, (i0[0],))[0]
+        return iq, 0, self.tmech_iqd(iq, 0, n)
+
+    def iqd_tmech0(self, torque, n, iqd0=0, with_mtpa=True):
+        """return minimum d-q-current for shaft torque"""
+        if np.abs(torque) < 1e-2:
+            return (0, 0)
+        if np.isscalar(iqd0):
             i0 = self.io
         else:
             i0 = iqd0
@@ -1149,7 +1189,12 @@ class PmRelMachineLdq(PmRelMachine):
         if np.any(beta[beta > np.pi]):
             beta[beta > np.pi] = beta - 2*np.pi
 
-        self.io = iqd((np.min(beta)+max(beta))/2, np.max(i1)/2)
+        self.betarange = min(beta), max(beta)
+        if min(beta) < -np.pi/2 and max(beta) > -np.pi/2:
+            self.io = iqd(-np.pi/4, np.max(i1)/2)
+        else:
+            self.io = iqd((np.min(beta)+max(beta))/2, np.max(i1)/2)
+
         kx = ky = 3
         if len(i1) < 4:
             ky = len(i1)-1

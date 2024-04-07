@@ -45,7 +45,7 @@ femagtools-plot = "femagtools.plot.bch:main"
 femagtools-convert = "femagtools.convert:main"
 femagtools-bchxml = "femagtools.bchxml:main"
 femagtools-dxfsl = "femagtools.dxfsl.conv:main"
-femagtools-svgfsl = "femagtools.dxfsl.converter:main"
+femagtools-svgfsl = "femagtools.svgfsl.converter:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "femagtools.__version__"}

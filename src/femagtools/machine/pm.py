@@ -184,7 +184,7 @@ class PmRelMachine(object):
 
         if with_mtpa:
             k=0
-            while k < 3:
+            while k < 6:
                 res = so.minimize(
                     lambda iqd: la.norm(iqd), i0, method='SLSQP',
                     constraints=({'type': 'eq',

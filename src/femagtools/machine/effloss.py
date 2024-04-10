@@ -238,7 +238,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                                    with_pmconst=with_pmconst, with_tmech=with_tmech)  # braking mode
     
     if kwargs.get('mesh_func', 0):
-        ntmesh = kwargs['mesh_func'](r['n'], r['T'],
+        ntmesh = kwargs['mesh_func'](r['n_type'], r['n'], r['T'],
                                     rb['n'], rb['T'], npoints)
     else: 
         ntmesh = _generate_mesh(r['n'], r['T'],

@@ -3,22 +3,26 @@
 Geometry Parser for SVG files
 
 """
-
+import logging
 import re
 import lxml.etree as ET
 from .shape import Circle, Arc, Line, Element
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 def get_center(r, p1, p2, sweep):
     """return center point coordinates of arc"""
     dp = p2-p1
     s = np.linalg.norm(dp)
     delta = np.arctan2(dp[1], dp[0])
-    if sweep == 0:
-        alfa = delta - np.arctan2(np.sqrt(r**2-s**2/4), s/2)
+    if s < 2*r:
+        if sweep == 0:
+            alfa = delta - np.arctan2(np.sqrt(r**2-s**2/4), s/2)
+        else:
+            alfa = delta + np.arctan2(np.sqrt(r**2-s**2/4), s/2)
     else:
-        alfa = delta + np.arctan2(np.sqrt(r**2-s**2/4), s/2)
+        alfa = delta
     return p1[0] + r*np.cos(alfa), p1[1] + r*np.sin(alfa)
 
 
@@ -47,6 +51,8 @@ def get_shapes(path):
             p.append(float(s))
             if len(p) == 2:
                 p2 = np.array(p)
+                logger.debug("Line %s -> %s",
+                            p1, p2)
                 yield Line(Element(start=p1, end=p2))
                 p1 = p2.copy()
                 p = []
@@ -59,6 +65,8 @@ def get_shapes(path):
                 r = p[0]
                 center = get_center(r, p1, p2, sweep)
                 start, end = get_angles(sweep, center, p1, p2)
+                logger.debug("Arc center %s r %f %f -> %f",
+                            center, r, start, end)
                 yield Arc(Element(center=center,
                                   radius=r,
                                   start_angle=start*180/np.pi,

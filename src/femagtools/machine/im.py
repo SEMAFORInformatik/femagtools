@@ -622,6 +622,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     i_max_fact: (float) factor for maximum current to calculate no_load flux (default=2.5)
     templatedirs: (list of str) names of directories to search for templates
     """
+    cmd = kwargs.get("cmd", None)
     CON = {'open': 0, 'wye': 1, 'star': 1, 'delta': 2}
     p = machine['poles']//2
     slip = 1e-2
@@ -676,7 +677,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     parstudy = femagtools.parstudy.ParameterStudy(
         workdir, condMat=condMat,
-        magnetizingCurves=magnetizingCurves)
+        magnetizingCurves=magnetizingCurves, cmd=cmd)
 
     builder = femagtools.fsl.Builder(kwargs.get('templatedirs', []))
     model = femagtools.model.MachineModel(m)

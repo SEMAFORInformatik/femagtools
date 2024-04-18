@@ -46,6 +46,7 @@ def parident(workdir, engine, machine,
         speed: rotor speed in 1/s (default 160/p)
         i1_max: maximum current in A rms (default approx 3*i1nom)
         """
+        cmd = kwargs.get('cmd', None)
         da1 = machine['outer_diam']
         Q1 = machine['stator']['num_slots']
         if 'statorRotor3' in machine['stator']:
@@ -59,7 +60,7 @@ def parident(workdir, engine, machine,
         N = machine[wdgk]['num_wires']
         i1_max = round(0.28*np.pi*hs*(da1+hs)/Q1/N*Jmax*1e5)*10 * \
             machine[wdgk].get('num_par_wdgs', 1)
-
+        
         ifnom = machine['rotor']['ifnom']
         exc_logspace = True
         if exc_logspace:
@@ -78,7 +79,7 @@ def parident(workdir, engine, machine,
 
         parvar = parstudy.List(
             workdir,  condMat=condMat,
-            magnetizingCurves=magnetizingCurves)
+            magnetizingCurves=magnetizingCurves, cmd=cmd)
 
         simulation = dict(
                 calculationMode=kwargs.get('calculationMode',

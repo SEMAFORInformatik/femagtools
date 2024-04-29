@@ -868,14 +868,14 @@ class Isa7(object):
         except AttributeError:
             pass
 
-        try: 
+        try:
             flx_fac = 1000
-            if isinstance(reader.el_fe_induction_1, list): 
+            if isinstance(reader.el_fe_induction_1, list):
                 pass
-            else: 
-                if reader.el_fe_induction_1.dtype == 'int16': 
+            else:
+                if reader.el_fe_induction_1.dtype == 'int16':
                     flx_fac = 1000
-                else: 
+                else:
                     flx_fac = 1
             el_fe_ind = [np.array(reader.el_fe_induction_1).T/flx_fac,
                         np.array(reader.el_fe_induction_2).T/flx_fac]
@@ -1234,6 +1234,11 @@ class BaseEntity(object):
     def __init__(self, key):
         self.key = key
 
+    def __eq__(self, other):
+        if isinstance(other, BaseEntity):
+            return self.key == other.key
+        return False
+
 
 class Node(BaseEntity):
     def __init__(self, key, bndcnd, pernod, r, phi, x, y, vpot_re, vpot_im):
@@ -1431,6 +1436,7 @@ class Element(BaseEntity):
     def temp(self):
         """return temperature of this element"""
         return sum([v.vpot[1] for v in self.vertices])/len(self.vertices)
+
 
 class SuperElement(BaseEntity):
     def __init__(self, key, sr_key, elements, nodechains, color,

@@ -149,8 +149,7 @@ def __elements_of_subreg(isa, subreg):
         else:
             sr = [subreg]
         for s in sr:
-            for e in isa.get_subregion(s).elements():
-                yield e
+            yield from isa.get_subregion(s).elements()
     else:
         for e in isa.elements:
             yield e
@@ -232,7 +231,8 @@ def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, cmap=DEFAULT_CMAP,
         ibeta: beta angle index or last index if -1
 
     """
-    elements = [e for e in __elements_of_subreg(isa, subreg)]
+    elements = [e for e in __elements_of_subreg(isa, subreg)
+                if e not in isa.airgap_center_elements]
     b = []
     for e in elements:
         fd = isa.flux_density(e, icur, ibeta)

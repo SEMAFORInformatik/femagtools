@@ -1234,11 +1234,6 @@ class BaseEntity(object):
     def __init__(self, key):
         self.key = key
 
-    def __eq__(self, other):
-        if isinstance(other, BaseEntity):
-            return self.key == other.key
-        return False
-
 
 class Node(BaseEntity):
     def __init__(self, key, bndcnd, pernod, r, phi, x, y, vpot_re, vpot_im):

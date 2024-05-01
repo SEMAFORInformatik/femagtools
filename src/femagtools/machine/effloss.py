@@ -198,6 +198,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
       with_tmech -- (optional) use friction and windage losses (default)
       num_proc -- (optional) number of parallel processes (default 0)
       progress  -- (optional) custom function for progress logging
+      with_torque_corr -- (optional) T is corrected if out of range (default False)
 
     Returns:
       list of speed, current, voltage, torque, eta and losses
@@ -220,7 +221,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         rb = {}
         r = m.characteristics(T, nmax, u1, nsamples=nsamples,
                               with_mtpv=with_mtpv, with_mtpa=with_mtpa,
-                              with_pmconst=with_pmconst, with_tmech=with_tmech)  # driving mode
+                              with_pmconst=with_pmconst, with_tmech=with_tmech,
+                              **kwargs)  # driving mode
         if driving_only:
             rb['n'] = None
             rb['T'] = None
@@ -235,12 +237,13 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         if 'n' not in rb:
             rb = m.characteristics(-T, max(r['n']), u1, nsamples=nsamples,
                                    with_mtpv=with_mtpv, with_mtpa=with_mtpa,
-                                   with_pmconst=with_pmconst, with_tmech=with_tmech)  # braking mode
-    
+                                   with_pmconst=with_pmconst, with_tmech=with_tmech,
+                                   **kwargs)  # braking mode
+
     if kwargs.get('mesh_func', 0):
         ntmesh = kwargs['mesh_func'](r['n_type'], r['n'], r['T'],
                                     rb['n'], rb['T'], npoints)
-    else: 
+    else:
         ntmesh = _generate_mesh(r['n'], r['T'],
                                 rb['n'], rb['T'], npoints)
 

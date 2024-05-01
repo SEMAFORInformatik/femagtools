@@ -1,13 +1,13 @@
+import sys
+import pathlib
+import argparse
+import logging
+import logging.config
+from femagtools.dxfsl.converter import convert
 
+logger = logging.getLogger(__name__)
 
-if __name__ == '__main__':
-    import pathlib
-    import argparse
-    import logging
-    import logging.config
-    from femagtools.dxfsl.converter import convert
-
-    logger = logging.getLogger(__name__)
+def main():
     argparser = argparse.ArgumentParser(
         description='Process SVG file and create a plot or FSL file.')
     argparser.add_argument('svgfile',
@@ -72,3 +72,6 @@ if __name__ == '__main__':
             p = pathlib.Path(args.svgfile)
             basename = p.stem
             pathlib.Path(basename + '.fsl').write_text('\n'.join(res['fsl']))
+
+if __name__ == '__main__':
+    main()

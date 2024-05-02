@@ -22,9 +22,27 @@ from femagtools.dxfsl.journal import getJournal
 import io
 import time
 
-logger = logging.getLogger('femagtools.concat')
+logger = logging.getLogger('femagtools.areabuilder')
+original_log_level = None
+
+def disable_logging():
+    logger
+    global original_log_level
+    # Store the current log level to restore it later
+    original_log_level = logger.getEffectiveLevel()
+    logger.debug("Logging level %s disabled", original_log_level)
+
+    # Set the log level to a higher level, e.g., WARNING or CRITICAL
+    logging.disable(logging.CRITICAL)
 
 
+def enable_logging():
+    #if original_log_level is not None:
+    # Restore the original log level after the tests
+    logging.disable(logging.NOTSET)
+    logger.debug("Logging level %s enabled", original_log_level)
+
+    
 def log_lefthand(left, edge1, edge2):
     if left:
         edge1.log_edge("**** left")
@@ -35,7 +53,6 @@ def log_lefthand(left, edge1, edge2):
 #############################
 #        areabuilder        #
 #############################
-
 
 class EdgeInfo(object):
     def __init__(self,
@@ -113,18 +130,47 @@ class EdgeInfo(object):
         start_angle = positive_angle(self.n2_angle_ingoing())
         self.startangle = start_angle
 
-    def set_direction_angle(self, start_angle):
-        angle = positive_angle(alpha_angle(start_angle, self.n1_angle_ingoing()))
-        if is_same_angle(0.0, angle, atol=0.008):  # 1/2 degree
+    def set_direction_angle(self, start_edge):
+        start_angle = start_edge.startangle
+        logger.debug("begin set_direction_angle: of %s", self.name)
+        self.angle = positive_angle(alpha_angle(start_angle, self.n1_angle_ingoing()))
+        logger.debug("set_direction_angle: angle is %s", self.angle)
+
+        if is_same_angle(0.0, self.angle, atol=0.008):  # 1/2 degree
             # reverse direction
-            if self.n1_direction_righthand():
-                self.angle = 2.0 * np.pi
-            elif self.n1_direction_lefthand():
-                self.angle = 0.0
-            else:
-                self.angle = angle
-        else:
-            self.angle = angle
+            logger.debug("set_direction_angle: reverse direction( nearly 180 degrees)")
+
+            if start_edge.is_arc():
+                start_lefthand = start_edge.n1_direction_lefthand()
+                if self.is_arc():
+                    myself_lefthand = self.n1_direction_lefthand()
+                    if start_lefthand:
+                        if not myself_lefthand:  # righthand => same side
+                            left = self.radius() < start_edge.radius()
+                        else:
+                            left = False
+                    else:
+                        if myself_lefthand:  # lefthand => same side
+                            left = self.radius() > start_edge.radius()
+                        else:
+                            left = True
+                    if left:  # self is left
+                        self.angle = np.pi * 2.0
+                    else:
+                        self.angle = 0.0
+                elif self.is_line():
+                    if start_lefthand:
+                        self.angle = 0.0
+                    else:
+                        self.angle = np.pi * 2.0
+            else:  # start is a line
+                if self.is_arc():
+                    if self.n1_direction_righthand():
+                        self.angle = np.pi * 2.0
+                    else:
+                        self.angle = 0.0
+
+        logger.debug("end set_direction_angle: angle is %s", self.angle)
 
     def n1_angle_outgoing(self):
         return self.element.get_alpha(self.n1)
@@ -166,6 +212,7 @@ class EdgeInfo(object):
 
     def myself_direction_lefthand(self, start_edge, nbr_edge, builder, ignore_start=False):
         logger.debug("start of myself_direction_lefthand")
+        start_edge.log_edge("===> start")
         self.log_edge("---> self")
         nbr_edge.log_edge("---> nbr")
 
@@ -176,13 +223,14 @@ class EdgeInfo(object):
             # 360 or 0 degrees => turn 180 degrees
             logger.debug("-- ATTENTION: myself %s turns nearly 180 degrees", self.classname())
             logger.debug("   the angle is %s", myself_angle)
+
             if start_edge.is_arc():
                 if self.is_line() and not ignore_start:
                     if start_edge.line_arc_close_together(self):
                         logger.debug("START ARC and SELF LINE close")
                         arc_edge = start_edge.get_reverse_edge()  # reverse start edge
                         arc_edge.log_name("REVERSE")
-                        arc_edge.set_direction_angle(start_edge.startangle)
+                        arc_edge.set_direction_angle(start_edge)
                         left = not arc_edge.arc_line_direction_lefthand(start_edge, self, builder)
                         log_lefthand(left, self, arc_edge)
                         if left:  # self is left
@@ -192,13 +240,8 @@ class EdgeInfo(object):
                         left = myself_angle > other_angle
 
                         log_lefthand(left, self, nbr_edge)
-                        logger.debug("#3: end of myself_direction_lefthand: ==> %s", left)
+                        logger.debug("#1a: end of myself_direction_lefthand: ==> %s", left)
                         return left
-                    
-                if start_edge.n1_direction_lefthand():
-                    myself_angle = 0.0
-                else:
-                    myself_angle = np.pi * 2.0
     
             elif self.is_arc():
                 if not ignore_start:
@@ -206,7 +249,7 @@ class EdgeInfo(object):
                         logger.debug("START LINE and SELF ARC close")
                         line_edge = start_edge.get_reverse_edge()  # reverse start edge
                         line_edge.log_name("REVERSE")
-                        line_edge.set_direction_angle(start_edge.startangle)
+                        line_edge.set_direction_angle(start_edge)
                         left = self.arc_line_direction_lefthand(start_edge, line_edge, builder)
                         log_lefthand(left, self, line_edge)
                         if left:  # self is left
@@ -219,11 +262,6 @@ class EdgeInfo(object):
                         logger.debug("#4: end of myself_direction_lefthand: ==> %s", left)
                         return left
 
-                if self.n1_direction_lefthand():
-                    myself_angle = 0.0
-                else:
-                    myself_angle = np.pi * 2.0
-
         if is_same_angle(0.0, other_angle, atol=0.008):  # 1/2 degree
             # 360 or 0 degrees => turn 180 degrees
             logger.debug("-- ATTENTION: other %s turns nearly 180 degrees", nbr_edge.classname())
@@ -233,31 +271,21 @@ class EdgeInfo(object):
                     if start_edge.line_arc_close_together(nbr_edge):
                         logger.debug("START ARC and SELF LINE close")
                         arc_edge = start_edge.get_reverse_edge()  # reverse start edge
-                        arc_edge.set_direction_angle(start_edge.startangle)
+                        arc_edge.set_direction_angle(start_edge)
                         left = arc_edge.arc_line_direction_lefthand(start_edge, nbr_edge, builder)
-                        log_lefthand(left, self, line_edge)
+                        log_lefthand(left, self, nbr_edge)
                         logger.debug("#5: end of myself_direction_lefthand: ==> %s", not left)
                         return not left
-
-                if start_edge.n1_direction_lefthand():
-                    other_angle = 0.0
-                else:
-                    other_angle = np.pi * 2.0
 
             elif nbr_edge.is_arc():
                 if not ignore_start:
                     if nbr_edge.line_arc_close_together(start_edge):
                         logger.debug("START LINE and NEIGHBOR ARC close")
                         line_edge = start_edge.get_reverse_edge()  # reverse start edge
-                        line_edge.set_direction_angle(start_edge.startangle)
+                        line_edge.set_direction_angle(start_edge)
                         left = nbr_edge.arc_line_direction_lefthand(start_edge, line_edge, builder)
                         logger.debug("#6: end of myself_direction_lefthand: ==> %s", left)
                         return left
-
-                if nbr_edge.n1_direction_lefthand():
-                    other_angle = 0.0
-                else:
-                    other_angle = np.pi * 2.0
 
         logger.debug("-- angles: myself = %s,  other = %s",
                      myself_angle, other_angle)
@@ -328,7 +356,7 @@ class EdgeInfo(object):
         line_edge.startangle = start_edge.startangle
         # Line is start-edge now
         next_edge = builder.next_edge_lefthand_side(line_edge)  # next of line
-        next_edge.set_direction_angle(start_edge.startangle)
+        next_edge.set_direction_angle(start_edge)
         left = self.myself_direction_lefthand(start_edge,
                                               next_edge,
                                               builder,
@@ -336,10 +364,28 @@ class EdgeInfo(object):
         logger.debug("end of arc_line_direction_lefthand: arc lefthand = %s", left)
         return left
 
+    def get_alpha_points(self, prev_n):
+        n1 = self.n1
+        n2 = self.n2
+        a = 0.0
+        if self.is_arc():
+            angle = self.element.get_angle_of_arc()
+            if angle > np.pi * 0.75:
+                n = self.element.center_of_connection()
+                a = normalise_angle(alpha_points(prev_n,
+                                                 n1,
+                                                 n))
+                n1 = n
+
+        a += normalise_angle(alpha_points(prev_n,
+                                          n1,
+                                          n2))
+        return a, n1
 
 class AreaBuilder(object):
     def __init__(self,
                  geom=None,
+                 nolog=True,
                  rtol=1e-04,
                  atol=1e-04,
                  ndec=6):
@@ -349,6 +395,7 @@ class AreaBuilder(object):
         self.geom = geom
         self.area_list = []
         self.journal = getJournal()
+        self.nolog = nolog
 
     def __str__(self):
         return "rtol: {}\n".format(self.rtol) + \
@@ -379,7 +426,8 @@ class AreaBuilder(object):
             area_list.append(a)
 
         timer = Timer(start_it=True)
-
+        if self.nolog:
+            disable_logging()
         self.set_edge_attributes()
         
         for n in self.geom.nodes():
@@ -392,7 +440,8 @@ class AreaBuilder(object):
                     if result['ok']:
                         a = self.append_new_area(self.area_list, result['area'])
                         logger.debug("Area %s found", a.identifier())
-
+        if self.nolog:
+            enable_logging()
         t = timer.stop("{} areas created in %0.4f seconds".format(len(self.area_list)))
         if main:
             self.journal.put('time_build_areas', t)
@@ -461,14 +510,13 @@ class AreaBuilder(object):
             self.errors += 1
             return result
 
-        prev_n1 = info_curr.n1
+        prev_node = info_curr.n1
         next_n1 = info_next.n1
         next_n2 = info_next.n2
 
-        alpha = normalise_angle(alpha_points(prev_n1,
-                                             next_n1,
-                                             next_n2))
+        alpha, prev_node = info_next.get_alpha_points(prev_node)
 
+        logger.debug("--> alpha %s <--", alpha)
         c = 1
         while not (nodes_are_equal(next_n1, start_n1) and
                    nodes_are_equal(next_n2, start_n2)):
@@ -505,14 +553,12 @@ class AreaBuilder(object):
                 self.errors += 1
                 return result
 
-            prev_n1 = info_curr.n1
             next_n1 = info_next.n1
             next_n2 = info_next.n2
 
-            a = normalise_angle(alpha_points(prev_n1,
-                                             next_n1,
-                                             next_n2))
+            a, prev_node = info_next.get_alpha_points(prev_node)
             alpha += a
+            logger.debug("--> alpha %s (+ %s) <--", alpha, a)
 
         logger.debug("  END OF get_new_area")
 
@@ -543,20 +589,21 @@ class AreaBuilder(object):
             logger.debug("WARNING: no neighbors available ???")
             return None  # unexpected end => appendix
 
-        logger.debug("-- NODE %s has %s neighbors", start_edge.n2, len(nbrs))
-        logger.debug("-- startangle is %s", start_edge.startangle)
-
         if len(nbrs) == 1:
             logger.debug("end of next_edge_lefthand_side: one neighbor")
             return nbrs[0]
 
+        logger.debug("-- NODE %s has %s neighbors", start_edge.n2, len(nbrs))
+        logger.debug("-- startangle is %s", start_edge.startangle)
+
         all_nbrs = []
         logger.debug("candidates are:") 
         for i, nbr in enumerate(nbrs):
-            nbr.set_direction_angle(start_edge.startangle)
+            nbr.set_direction_angle(start_edge)
             nbr.log_name("EDG-{}".format(i))
             nbr.log_edge("++++ candidate")
             all_nbrs.append((nbr.angle, i, nbr))
+        logger.debug("--")
         all_nbrs.sort()
 
         a1, i1, nbr1 = all_nbrs[0]  # lefthandside
@@ -565,8 +612,9 @@ class AreaBuilder(object):
             nbr2.log_edge("==== next")
             if nbr2.myself_direction_lefthand(start_edge, nbr1, self):
                 nbr1 = nbr2
-                logger.debug("-- is new lefthand neighbor")
-
+                logger.debug("-- %s ist neuer lefthand neighbor", nbr1.name)
+            else:
+                logger.debug("-- %s bleibt lefthand neighbor", nbr1.name)
         nbr1.log_edge(">>>> LEFT")
         logger.debug("end of next_edge_lefthand_side")
         return nbr1
@@ -711,3 +759,27 @@ class AreaBuilder(object):
 
         logger.debug("end of get_inner_airgap_line #%s", len(nodes))
         return nodes, elements
+
+    def get_element_line(self, start_node, end_node):
+        logger.debug("begin of get_element_line")
+        assert(self.geom.area_list)
+
+        logger.debug("-- get line from %s to %s", start_node, end_node)
+
+        logger.debug("EDGE FOUND: %s - %s", n1, n2)
+        nodes = [n1, n2]
+        info = self.get_edge_info(n1, n2)
+        elements = [info.element]
+
+        while not points_are_close(start_corner, n2):
+            info.set_start_angle()
+            info = self.next_edge_lefthand_side(info)
+            if not info:  # bad
+                return []
+            n2 = info.n2
+            nodes.append(n2)
+            elements.append(info.element)
+
+        logger.debug("end of get_inner_airgap_line #%s", len(nodes))
+        return nodes, elements
+

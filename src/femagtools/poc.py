@@ -40,8 +40,11 @@ class Poc:
     def __setattr__(self, name, val):
         self.__dict__[name] = val  # this will create the attribute name
 
-    def filename(self):
-        prefix = self.pocType
+    def filename(self, modelName=''):
+        if modelName:
+            prefix = modelName
+        else:
+            prefix = self.pocType
         if prefix == 'Function':
             prefix = self.shape_current
         return '{}_{}p.poc'.format(
@@ -125,7 +128,7 @@ class Poc:
         else:
             self.shape_current=self.pocType
             self.pocType='Function'
-        
+
         try:
             self.skew_angle=float(pocfile.readline())
             self.num_skew_steps=int(pocfile.readline())
@@ -155,7 +158,7 @@ class HspPoc(Poc):
             pocType='hsp', harmonic_id=harm,
             func_current=amp, func_phi=phi))
 
-        
+
 def curr_har(x, n, A, phi ):
     "return fourier sum"
     import numpy as np
@@ -169,7 +172,7 @@ def curr_fun(phi, A, phi_wdg ):
     "return curr"
     import numpy as np
     if np.asarray(A).shape == 1:
-        return [[np.asarray(phi)+x, A] for x in phi_wdg] 
+        return [[np.asarray(phi)+x, A] for x in phi_wdg]
     return [phi, A]
 
 

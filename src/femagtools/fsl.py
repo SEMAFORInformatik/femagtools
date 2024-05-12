@@ -298,7 +298,7 @@ class Builder:
             return
 
         if templ == 'dxf':
-            # reuse dxfsl model 
+            # reuse dxfsl model
             self.fsl_magnet = True
         if templ != 'dxffile':
             return
@@ -713,7 +713,7 @@ class Builder:
             try:
                 poc = Poc(2*360/num_poles)
                 sim['poc'] = poc
-                sim['pocfilename'] = poc.filename()
+                sim['pocfilename'] = poc.filename(model.get('name'))
             except UnboundLocalError:
                 logger.warning("unknown number of poles")
                 pass

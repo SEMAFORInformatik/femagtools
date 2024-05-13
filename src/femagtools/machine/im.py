@@ -577,6 +577,8 @@ class InductionMachine(Component):
                 r['n'].append(wm/2/np.pi)
                 r['s'].append(float((w1 - self.p * wm) / w1))
                 r['sk'].append(self.sk(w1, np.abs(u1)/w1))
+                # add n_type to result dict
+                r['n_type'] = wmType/2/np.pi
                 #            except ValueError as ex:
                 #                break
         r['plfw'] = [self.pfric(n) for n in r['n']]

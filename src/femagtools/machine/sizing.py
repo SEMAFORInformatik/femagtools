@@ -94,13 +94,6 @@ def wdg_resistance(w1, l, d):
     return 2*w1*l/S/a
 
 
-def current_losses(w1, l, d, i1):
-    # w1: num turns/phase
-    # l: wire length/slot
-    # d: wire diameter
-    return wdg_resistance(w1, l, d) * i1**2
-
-
 def check_symmetry_conditions(Q1, p, layers, m):
     # if Q1 % 2*p == 0:
     #    raise ValidationError("Number of slots Q and poles 2*p are not prime to each other")
@@ -227,6 +220,10 @@ def _stator_slots(par, slots):
 
 
 def get_stator_dimensions(par, slots=[]):
+    # Check symmetry
+    if 'Q1' in par:
+        from ..windings import Winding
+        wdg = Winding({'Q': par['Q1'], 'p': par['p'], 'm': 3})
     # nominal (rated) operating parameters
     pnom = par['pnom']
     speednom = par['speed']
@@ -380,12 +377,16 @@ def get_stator_dimensions(par, slots=[]):
             middle_line=0 if layers < 2 else middle_line))
     # coils per phase and pole
     # q = Q/2/p/m
-    # num wires per coil side
+    # num wires per coil side (number of coil groups a)
     # n = a*N / 2 / p / q
-    num_wires = round(2*m*N/layers/Q1)
+    ncoils = Q1//2//m*layers
+    ngroups = [1] + [g for g in range(2, p+1) if p%g == 0]
+    a = ngroups[np.argmin([abs(N-ncoils//a*round(a*N/ncoils))
+                           for a in ngroups])]
+    num_wires = round(a*N/ncoils)
     dwire = 2*np.sqrt(ans*kq/layers/np.pi/num_wires)
     relculen = 1.4
-    r1 = wdg_resistance(N, relculen*lfe, dwire)
+    r1 = wdg_resistance(N, relculen*lfe, dwire)/a
     r['pcu'] = round(m*r1*I1**2, 1)
 
     r['winding'] = dict(
@@ -393,6 +394,7 @@ def get_stator_dimensions(par, slots=[]):
         num_phases=m,
         cufilfact=kq,
         culength=1.4,
+        num_par_wdgs=a,
         num_layers=layers,
         resistance=round(r1, 4),
         coil_span=int(coil_span),
@@ -662,6 +664,7 @@ def spm(pnom: float, speed: float, p: int, **kwargs) -> dict:
     par.update(kwargs)
 
     _set_pm_defaults(par)
+
     # stator and magnet parameters of surface mounted magnet machine
     r = get_stator_dimensions(par)
 

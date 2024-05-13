@@ -353,17 +353,17 @@ def dqparident(workdir, engine, temp, machine,
     import pathlib
 
     wdgk = 'windings' if 'windings' in machine else 'winding'
-    def create_wdg(machine):
-        wpar = {'Q': machine['stator']['num_slots'],
-                'm': machine[wdgk]['num_phases'],
-                'p': machine['poles']//2}
+    wpar = {'Q': machine['stator']['num_slots'],
+            'm': machine[wdgk]['num_phases'],
+            'p': machine['poles']//2}
 
-        if 'coil_span' in machine[wdgk]:
-            wpar['yd'] = machine[wdgk]['coil_span']
-        if 'num_layers' in machine[wdgk]:
-            wpar['l'] = machine[wdgk]['num_layers']
+    if 'coil_span' in machine[wdgk]:
+        wpar['yd'] = machine[wdgk]['coil_span']
+    if 'num_layers' in machine[wdgk]:
+        wpar['l'] = machine[wdgk]['num_layers']
 
-        return windings.Winding(wpar)
+    wdg = windings.Winding(wpar)
+
     try:
         defspeed = 160/machine['poles']
     except KeyError:
@@ -382,7 +382,7 @@ def dqparident(workdir, engine, temp, machine,
         fcu = 0.42
 
     try: # calc basic dimensions if not fsl or dxf model
-        Q1 = machine['stator']['num_slots']
+        Q1 = wdg.Q
         da1 = machine['bore_diam']
         slotmodel = [k for k in machine['stator'] if isinstance(
             machine['stator'][k], dict)][-1]
@@ -395,8 +395,8 @@ def dqparident(workdir, engine, temp, machine,
                 'slot_height', 0.6*(dy1-da1)/2)
 
         Jmax = 30e6  # max current density in A/m2
-        Acu = fcu*0.5*np.pi*(da1+hs)*hs
-        i1_max = round(Acu/Q1/N*Jmax/10)*10
+        Acu = fcu*np.pi*(da1+hs)*hs/Q1/2  # approx. copper area of one slot
+        i1_max = round(g*Acu/wdg.l/N*Jmax/10)*10
     except KeyError:
         if kwargs.get('i1_max', 0) == 0:
             raise ValueError('i1_max missing')

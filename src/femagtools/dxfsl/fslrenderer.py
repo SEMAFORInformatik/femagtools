@@ -350,8 +350,15 @@ class FslRenderer(object):
         if geom.is_mirrored():
             self.content.append(u'x3, y3 = pr2c(x2, alfa)')
             self.content.append(u'x4, y4 = pr2c(x1, alfa)')
-        else:
+        elif outer:
             self.content += [u'x3, y3 = pr2c(r1, 2*math.pi/m.tot_num_slot+phi)',
+                             u'x4, y4 = {}, {}'.format(
+                                 geom.end_corners[0][0],
+                                 geom.end_corners[0][1])]  # min xy4
+        else:
+            self.content += [u'x3, y3 = {}, {}'.format(
+                                 geom.end_corners[-1][0],
+                                 geom.end_corners[-1][1]), # min xy3
                              u'x4, y4 = {}, {}'.format(
                                  geom.end_corners[0][0],
                                  geom.end_corners[0][1])]  # min xy4

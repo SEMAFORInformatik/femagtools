@@ -1396,11 +1396,8 @@ class PmRelMachinePsidq(PmRelMachine):
                                   'rotor_excess']
             self._set_losspar(pfe)
             self._losses = {k: ip.RectBivariateSpline(
-                iq, id, np.array(pfe[k])).ev for k in (
-                'styoke_hyst', 'stteeth_hyst',
-                'styoke_eddy', 'stteeth_eddy',
-                'rotor_hyst', 'rotor_eddy',
-                'magnet')}
+                iq, id, np.array(pfe[k])).ev for k in self.losskeys 
+                if k in pfe}
         except KeyError as e:
             logger.warning("loss map missing: %s", e)
             pass

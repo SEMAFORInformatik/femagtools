@@ -620,6 +620,8 @@ class SynchronousMachine(object):
 
         r = dict(u1=[], i1=[], id=[], iq=[], iex=[], T=[], cosphi=[], n=[],
                  beta=[], plfe1=[], plcu1=[], plcu2=[])
+        # add type speed to result dict
+        r['n_type'] = wmType/2/np.pi
         for wm, tq in zip(wmtab, [tload(wx) for wx in wmtab]):
             w1 = wm*self.p
             if with_tmech:

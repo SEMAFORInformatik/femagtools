@@ -56,7 +56,6 @@ class Reader(object):
         self.rho = 7.6
         self.losses = dict(f=[], B=[])
         pfe = []
-        b_pfe = []
 
         # filecontent is used
         if filecontent:
@@ -92,7 +91,6 @@ class Reader(object):
                     b, p = readlist(content[i+1:])
                     self.losses['f'].append(fxref)
                     self.losses['B'].append(b)
-                    b_pfe.append(b)
                     pfe.append(p)
         logger.info("%s Bmax %3.2f", filename, max(self.curve[0]['bi']))
 
@@ -126,19 +124,15 @@ class Reader(object):
 
             self.losses['Bo'] = self.Bo
             self.losses['fo'] = self.fo
-
-            z = lc.fit_bertotti0(self.losses['f'], b_pfe, pfe)
-            if z.shape[0] == 4:
-                self.bertotti = {'ch': z[0], 'alpha': z[1], 'cw': z[2], 'ce': z[3]}
-            else:
-                self.bertotti = {'ch': z[0], 'alpha': 2.0, 'cw': z[1], 'ce': z[2]}
+            z = lc.fit_bertotti(self.losses['f'],
+                                self.losses['B'], pfe)
+            self.bertotti = {'ch': z[0], 'alpha': 2.0, 'cw': z[1], 'ce': z[2]}
             logger.info("Bertotti loss coeffs %s", z)
 
             # must normalize pfe matrix:
             (self.losses['B'],
              self.losses['pfe']) = femagtools.mcv.norm_pfe(
                  self.losses['B'], pfe)
-        self.b_pfe = b_pfe
         self.pfe = pfe
 
 

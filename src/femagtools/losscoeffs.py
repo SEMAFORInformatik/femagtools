@@ -83,6 +83,52 @@ def fitjordan(f, B, losses, Bo, fo):
     return fitp
 
 
+def fit_bertotti(f, B, losses):
+    """fit coeffs of
+    losses(f,B)=(ch*f + ch*f**2)*B**2 + ce*f**1.5*B**1.5
+    returns (ch, cw, ce)
+
+    Args:
+        f: list of n strictly increasing frequency values
+        B: list of n or list of list of induction values (nxm)
+        losses: list of list of fe loss values (nxm)
+    """
+    i0 = 0
+    if np.isclose(f[i0], 0):
+        i0 = 1
+    v = []
+    # collect losses and flux density along the frequency
+    for k in range(len(losses[i0])):
+        y = []
+        bb = []
+        if isinstance(B[0], tuple) or isinstance(B[0], list):
+            for fx, bx, p in zip(f[i0:], B[i0:], losses[i0:]):
+                if k < len(p):
+                    y.append(p[k]/fx)
+                    bb.append(bx[k])
+        else:
+            for fx, p in zip(f[i0:], losses[i0:]):
+                if k < len(p):
+                    y.append(p[k]/fx)
+                    bb.append(B[k])
+        j = len(y)
+        if j > 2:
+            v.append(np.array((f[i0:j+i0], bb, y)).T.tolist())
+
+    def wbert(f, b, ch, cw, cx):
+        return (ch + cw*f)*b**2 + cx*f**0.5*b**1.5
+
+    z = np.array([b for a in v for b in a]).T
+    fbx = z[0:2]
+    y = z[2]
+    fitp, _ = so.curve_fit(
+        lambda x, ch, cw, ce: wbert(
+            x[0], x[1], ch, cw, ce),
+        fbx, y,
+        bounds=[(0, 0, 0),
+                (np.inf, np.inf, np.inf)])
+    return fitp
+
 def fit_bertotti0(f, B, losses, generate=False):
     """fit coeffs of
     losses(f,B)=(ch*f + ch*f**2)*B**2 + ce*f**1.5*B**1.5

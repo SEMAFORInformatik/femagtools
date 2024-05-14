@@ -70,7 +70,8 @@ def felosses(losses, coeffs, title='', log=True, ax=0):
     Args:
       losses: dict with f, B, pfe values
       coeffs: list with steinmetz (cw, alpha, beta) or
-              jordan (cw, alpha, ch, beta, gamma) coeffs
+              jordan (cw, alpha, ch, beta, gamma)  or
+              bertotti (cw, alpha, cw, ce) coeffs
       title: title string
       log: log scale for x and y axes if True
 
@@ -89,6 +90,8 @@ def felosses(losses, coeffs, title='', log=True, ax=0):
         if f > 0:
             if len(coeffs) == 5:
                 ax.plot(B, lc.pfe_jordan(f, B, *coeffs, fo=fo, Bo=Bo))
+            if len(coeffs) == 4:
+                ax.plot(B, lc.pfe_bertotti(f, B, *coeffs))
             elif len(coeffs) == 3:
                 ax.plot(B, lc.pfe_steinmetz(f, B, *coeffs, fo=fo, Bo=Bo))
             ax.plot(losses['B'][:len(pfe)], pfe,

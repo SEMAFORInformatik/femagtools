@@ -19,14 +19,14 @@ Femagtools is an Open-Source Python-API for FEMAG offering following features:
 * calculate machine characteristics by using analytic machine models
 * execute parameter studies and multi-objective optimization
 
-The package can be used with Python 3.x on Linux, MacOS or Windows and is hosted on github: <https://github.com/SEMAFORInformatik/femagtools/>` where also many examples can be found in the examples directory. Contributions and feedback to this project are highly welcome.
+The package can be used with Python 3.x on Linux, MacOS or Windows and is hosted on github: <https://github.com/SEMAFORInformatik/femagtools/> where also many examples can be found in the examples directory. Contributions and feedback to this project are highly welcome.
 
 The installation can be done in the usual ways with pip:
 
 ```
-pip install femagtools[all]
+pip install 'femagtools[all]'
 ```
-([all] pulls in all optional dependencies.
+`[all]` pulls in all optional dependencies. Up-to-date information about optional dependencies can be found in the [pyproject.toml](pyproject.toml) file under `[project.optional-dependencies]`.
 
 For details see the documentation <http://docs.semafor.ch/femagtools>
 

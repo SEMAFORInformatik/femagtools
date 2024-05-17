@@ -42,7 +42,7 @@ m.nu_skew_steps   =    ${model.get('num_skew_steps', 0)}
 m.nloa_ex_cur = ${model.get('noload_ex_cur',0)}
 % endif 
 % if model.get("noload_ex_cur", 0): 
-m.magn_temp = nil   -- dummy parameter
+m.magn_temp = 20   -- dummy parameter
 % else: 
 m.magn_temp       =    ${model.get('magn_temp')}
 % endif

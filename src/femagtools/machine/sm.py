@@ -429,7 +429,7 @@ class SynchronousMachine(object):
         def i1tq(tq):
             return abs(i1max) - np.linalg.norm(self.iqd_torque(tq)[:2])/np.sqrt(2)
         with warnings.catch_warnings():
-            warnings.simplefilter("error")
+            warnings.simplefilter("ignore")
             tq = so.fsolve(i1tq, T0)[0]
         iq, id, iex = self.iqd_torque(tq)
         return iq, id, iex, tq

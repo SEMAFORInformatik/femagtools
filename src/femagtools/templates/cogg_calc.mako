@@ -18,7 +18,6 @@ m.line            =    0
 m.two_pole_wi     =    2*m.pole_width
 m.range_x         =    m.two_pole_wi
 m.range_y         =    0.0
-
 m.fc_force_points =  5
 m.fcpx_mm1        =   m.npols_gen*m.pole_width +1.0
 m.fcpy_mm1        =   -ag/2
@@ -39,7 +38,14 @@ m.fcpy_mm5        =   m.fcpy_mm1
 % endif
 
 m.nu_skew_steps   =    ${model.get('num_skew_steps', 0)}
+% if model.get('noload_ex_cur', 0): 
+m.nloa_ex_cur = ${model.get('noload_ex_cur',0)}
+% endif 
+% if model.get("noload_ex_cur", 0): 
+m.magn_temp = 20   -- dummy parameter
+% else: 
 m.magn_temp       =    ${model.get('magn_temp')}
+% endif
 m.fc_mult_move_type =  1.0 --  Type of move path in air gap
 m.nu_move_steps   =    ${model.get('num_move_steps', 49)}
 

@@ -45,6 +45,9 @@ def parident(workdir, engine, machine,
         num_exc_steps: number of excitation current (default 7)
         speed: rotor speed in 1/s (default 160/p)
         i1_max: maximum current in A rms (default approx 3*i1nom)
+        beta_min: minimal current angle (default -180°)
+        beta_max: maximal current angle (default 0°)
+        num_move_steps: number of move steps 
         """
         cmd = kwargs.get('cmd', None)
         da1 = machine['outer_diam']
@@ -92,16 +95,15 @@ def parident(workdir, engine, machine,
                 miniq=-i1_max,
                 delta_id=i1_max/kwargs.get('num_cur_steps', 5),
                 delta_iq=i1_max/kwargs.get('num_cur_steps', 5),
-                beta_min=-180.0,
-                beta_max=0.0,
-                calc_noload=0,
+                beta_min=kwargs.get('beta_min', -180),
+                beta_max=kwargs.get('beta_max', 0),
                 num_move_steps=kwargs.get('num_move_steps', 31),
                 load_ex_cur=0.5,
                 num_cur_steps=kwargs.get('num_cur_steps', 5),
                 num_beta_steps=kwargs.get('num_beta_steps', 13),
                 num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
-                period_frac=6,
-                speed=50.0)
+                period_frac=kwargs.get('period_frac', 6),
+                speed=kwargs.get('speed', 50))
 
         ###self.cleanup()  # remove previously created files in workdir
         results = parvar(parvardef, machine, simulation, engine)

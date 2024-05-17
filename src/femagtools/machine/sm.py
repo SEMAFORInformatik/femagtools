@@ -60,7 +60,7 @@ def parident(workdir, engine, machine,
         N = machine[wdgk]['num_wires']
         i1_max = round(0.28*np.pi*hs*(da1+hs)/Q1/N*Jmax*1e5)*10 * \
             machine[wdgk].get('num_par_wdgs', 1)
-        
+
         ifnom = machine['rotor']['ifnom']
         exc_logspace = True
         if exc_logspace:
@@ -369,9 +369,9 @@ class SynchronousMachine(object):
     def iqd_tmech(self, torque, n, disp=False, maxiter=500):
         """return currents for shaft torque with minimal losses"""
         if torque > 0:
-            startvals = self.bounds[0][1], 0, sum(self.bounds[-1])
+            startvals = self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
         else:
-            startvals = -self.bounds[0][1], 0, sum(self.bounds[-1])
+            startvals = -self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -398,9 +398,9 @@ class SynchronousMachine(object):
     def iqd_torque(self, torque, disp=False, maxiter=500):
         """return currents for torque with minimal losses"""
         if torque > 0:
-            startvals = self.bounds[0][1], 0, sum(self.bounds[-1])
+            startvals = self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
         else:
-            startvals = -self.bounds[0][1], 0, sum(self.bounds[-1])
+            startvals = -self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -425,18 +425,18 @@ class SynchronousMachine(object):
 
     def mtpa(self, i1max):
         """return iq, id, iex currents and maximum torque per current """
-        T0 = self.torque_iqd(np.sqrt(2)*i1max, 0, self.bounds[-1][1])
+        T0 = self.torque_iqd(np.sqrt(2)*i1max/2, 0, self.bounds[-1][1])/2
         def i1tq(tq):
             return abs(i1max) - np.linalg.norm(self.iqd_torque(tq)[:2])/np.sqrt(2)
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            warnings.simplefilter("error")
             tq = so.fsolve(i1tq, T0)[0]
         iq, id, iex = self.iqd_torque(tq)
         return iq, id, iex, tq
 
     def mtpa_tmech(self, i1max, n):
         """return iq, id, iex currents and maximum torque per current """
-        T0 = self.torque_iqd(np.sqrt(2)*i1max, 0, self.bounds[-1][0])
+        T0 = self.torque_iqd(np.sqrt(2)*i1max/2, 0, self.bounds[-1][0])/2
         def i1tq(tq):
             return i1max - np.linalg.norm(self.iqd_tmech(tq, n)[:2])/np.sqrt(2)
         tq = so.fsolve(i1tq, T0)[0]

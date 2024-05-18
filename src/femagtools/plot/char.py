@@ -3,15 +3,17 @@
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from ..machine.utils import iqd
 import logging
 
 
-def mtpa(pmrel, i1max, title='', projection='', ax=0):
+def mtpa(pmrel, i1max, u1max=0, title='', projection='', ax=0):
     """create a line or surface plot with torque and mtpa curve
 
     Args:
         pmrel: pm machine object
         i1max: maximum phase current / A
+        u1max: maximum phase voltage / V (optional)
         title: plot title
         projection: projection to be used (surface if '3d')
         ax: axis to be used
@@ -46,19 +48,29 @@ def mtpa(pmrel, i1max, title='', projection='', ax=0):
 
         ax.set_aspect('equal')
         x, y = np.meshgrid(id, iq)
-        CS = ax.contour(x, y, torque_iqd, 6, colors='k')
-        ax.clabel(CS, fmt='%d', inline=1)
+        nlevels = 6
+        CST = ax.contour(x, y, torque_iqd, nlevels, colors='k')
+        ax.clabel(CST, fmt='%d Nm', inline=1)
+        if u1max > 0:
+            n_iqd = np.array([
+                [pmrel.w1_umax(u1max, iqx, idx)/np.pi/2/pmrel.p*60
+                 for idx in id] for iqx in iq])
+            CSN = ax.contour(x, y, n_iqd, nlevels, colors='k',
+                             linestyles='dotted')  # linestyles='dashed')
+            ax.clabel(CSN, fmt='%d rpm', inline=1)
 
         ax.set_xlabel('Id/A')
         ax.set_ylabel('Iq/A')
         ax.plot(iopt[1], iopt[0],
-                color='red', linewidth=2, label='MTPA: {0:5.0f} Nm'.format(
+                color='red', linewidth=2, label='MTPA: {0:.0f} Nm'.format(
                     np.max(iopt[2][-1])))
+        iqx, idx = np.array([iqd(b, i1max) for b in np.linspace(-np.pi/2, 0)]).T
+        ax.plot(idx, iqx, color='blue', label='I1max: {0:.0f} A'.format(i1max))
         ax.grid()
 
     if title:
         ax.set_title(title)
-    ax.legend()
+    ax.legend(loc='upper left')
 
 
 def mtpv(pmrel, u1max, i1max, title='', projection='', ax=0):

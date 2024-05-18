@@ -33,12 +33,13 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dxfsl = ['dxfgrabber', 'networkx']
-svgfsl = ['dxfgrabber', 'networkx','lxml']
+svgfsl = ['dxfgrabber', 'networkx', 'lxml']
 mplot =  ['matplotlib']
 meshio = ['meshio']
 vtk = ['vtk']
 zmq = ['pyzmq']
 test = ['pytest']
+all = ['femagtools[dxfsl,svgfsl,mplot,meshio,vtk,zmq,test]']    # add new dependency groups here as well
 
 [project.scripts]
 femagtools-plot = "femagtools.plot.bch:main"

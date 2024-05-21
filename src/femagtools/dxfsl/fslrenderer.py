@@ -351,7 +351,7 @@ class FslRenderer(object):
             self.content.append(u'x3, y3 = pr2c(x2, alfa)')
             self.content.append(u'x4, y4 = pr2c(x1, alfa)')
         elif outer:
-            self.content += [u'x3, y3 = pr2c(r1, 2*math.pi/m.tot_num_slot+phi)',
+            self.content += [u'x3, y3 = pr2c(r1, 2*math.pi/parts+phi)',
                              u'x4, y4 = {}, {}'.format(
                                  geom.end_corners[0][0],
                                  geom.end_corners[0][1])]  # min xy4

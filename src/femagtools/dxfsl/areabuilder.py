@@ -80,7 +80,6 @@ class EdgeInfo(object):
         self.x = x
         self.tracked = edge_data.get(x, False)
         self.alpha = 0.0
-        self.errors = 0
         self.startangle = None
         self.angle = None
         self.name = None
@@ -389,13 +388,16 @@ class AreaBuilder(object):
                  rtol=1e-04,
                  atol=1e-04,
                  ndec=6):
+        assert(geom is not None)
         self.rtol = rtol
         self.atol = atol
         self.ndec = ndec
         self.geom = geom
         self.area_list = []
+        self.errors = 0
         self.journal = getJournal()
         self.nolog = nolog
+        self.num_edges = self.geom.number_of_edges()
 
     def __str__(self):
         return "rtol: {}\n".format(self.rtol) + \
@@ -521,9 +523,9 @@ class AreaBuilder(object):
         while not (nodes_are_equal(next_n1, start_n1) and
                    nodes_are_equal(next_n2, start_n2)):
             c += 1
-            if c > self.geom.num_edges * 2:
+            if c > self.num_edges * 2:
                 logger.error("FATAL: *** over %s elements in area ? ***",
-                             self.geom.num_edges)
+                             self.num_edges)
                 sys.exit(1)
 
             area.append(info_next.element)
@@ -619,7 +621,7 @@ class AreaBuilder(object):
         logger.debug("end of next_edge_lefthand_side")
         return nbr1
 
-    def create_inner_corner_auxiliary_areas(self):
+    def create_inner_corner_auxiliary_areas(self, startangle, endangle):
         logger.debug("begin of create_inner_corner_auxiliary_areas")
         if not self.geom.is_inner:
             logger.debug("end of create_inner_corner_auxiliary_areas: not inner")
@@ -627,8 +629,17 @@ class AreaBuilder(object):
 
         self.set_edge_attributes()
 
+        start_nodes = [n for n in self.geom.angle_nodes(
+            self.geom.center,
+            startangle, 1e-3, 1e-3)]
+        for n in start_nodes:
+            nbrs = self.geom.get_neighbors(n)
+            logger.debug("start node %s has %s neighbors", n, len(nbrs))
+        logger.debug("corner nodes: %s", self.geom.start_corners)
+        logger.debug("end nodes: %s", self.geom.end_corners)
         start_cp, start_exists = self.geom.get_start_airgap_corner()
         end_cp, end_exists = self.geom.get_end_airgap_corner()
+
         if start_exists and end_exists:
             logger.debug("end of create_inner_corner_auxiliary_areas: no aktion")
             return
@@ -667,8 +678,9 @@ class AreaBuilder(object):
                                            n,
                                            color='red',
                                            linestyle='dotted')
-                    self.geom.add_edge(cp, start_cp, start_line)
-                    result = self.get_new_area(start_cp, n)
+                    start_node = self.geom.get_node(start_cp)
+                    self.geom.add_edge(cp, start_node, start_line)
+                    result = self.get_new_area(start_node, n)
                     if result['ok']:
                         self.append_new_area(self.geom.area_list,
                                              result['area'])
@@ -698,8 +710,9 @@ class AreaBuilder(object):
                         self.geom.add_line(end_cp, n,
                                            color='red',
                                            linestyle='dotted')
-                    self.geom.add_edge(cp, end_cp, end_line)
-                    result = self.get_new_area(n, end_cp)
+                    end_node = self.geom.get_node(end_cp)
+                    self.geom.add_edge(cp, end_node, end_line)
+                    result = self.get_new_area(n, end_node)
                     if result['ok']:
                         self.append_new_area(self.geom.area_list,
                                              result['area'])

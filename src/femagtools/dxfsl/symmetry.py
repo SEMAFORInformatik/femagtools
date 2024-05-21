@@ -16,6 +16,7 @@ from femagtools.dxfsl.functions import alpha_angle, positive_angle, is_same_angl
 from femagtools.dxfsl.functions import min_angle, max_angle, gcd, point
 from femagtools.dxfsl.functions import less_equal, less, points_are_close
 from femagtools.dxfsl.functions import line_m, line_n, mirror_point
+from femagtools.dxfsl.functions import part_of_circle, round_point
 
 logger = logging.getLogger('femagtools.symmetry')
 
@@ -30,8 +31,8 @@ class Symmetry(object):
                  geom=None,
                  startangle=None,
                  endangle=None,
-                 rtol=1e-04,
-                 atol=1e-03):
+                 rtol=1e-03,
+                 atol=1e-02):
         assert(geom is not None)
         assert(startangle is not None)
         assert(endangle is not None)
@@ -39,17 +40,23 @@ class Symmetry(object):
         self.geom = geom
         self.startangle = startangle
         self.endangle = endangle
+        self.geom_part = part_of_circle(self.startangle, self.endangle, 1)
         self.delta_check_count = 0
-        self.delta_angle_korr = 0.0
+        self.delta_angle_corr = None
         self.rtol = rtol
         self.atol = atol
         self.full = False
+        self.ag_radius = 0.0
         if np.isclose(self.startangle, self.endangle):
             self.alpha = 2.0*np.pi
             self.full = True
         else:
             self.alpha = alpha_angle(self.startangle, self.endangle)
             self.full = False
+        if geom.is_inner:
+            self.ag_radius = geom.max_radius
+        else:
+            self.ag_radius = geom.min_radius
         logger.debug("Symmetry(alpha=%s, rtol=%s, atol=%s)", self.alpha, rtol, atol)
 
     def __str__(self):
@@ -60,15 +67,33 @@ class Symmetry(object):
                    d1, h1, a1,
                    d2, h2, a2,
                    rtol=1e-03, atol=1e-03):
-        if not np.isclose(d1, d2, rtol=rtol, atol=atol):
-            logger.debug("dist NOT close (%s/%s)", d1, d2)
+        equal_d = np.isclose(d1, d2, rtol=rtol, atol=atol)  # distance form c
+        equal_h = np.isclose(h1, h2, rtol=rtol, atol=atol)  # height
+        equal_a = np.isclose(a1, a2, rtol=1e-4, atol=1e-2)  # angle from c
+        if not equal_d:
+            logger.debug("equal_area: dist NOT close (%s/%s)", d1, d2)
+            if equal_h and equal_a:  # but height and angle
+                if np.isclose(d1, d2, rtol=1e-2, atol=1.e-1):
+                    logger.debug(" -- but with more tolerance")
+                    return True
             return False
-        if not np.isclose(h1, h2, rtol=rtol, atol=atol):
-            logger.debug("height NOT close (%s/%s)", h1, h2)
+        if not equal_h:
+            logger.debug("equal_area: height NOT close (%s/%s)", h1, h2)
+            if equal_d and equal_a:  # but distance and angle
+                if np.isclose(h1, h2, rtol=1e-2, atol=1e-1) :
+                    logger.debug(" -- but with more tolerance")
+                    return True
             return False
-        if not np.isclose(a1, a2, rtol=rtol, atol=atol):
-            logger.debug("alpha NOT close (%s/%s)", a1, a2)
+        if not np.isclose(a1, a2, rtol=1e-4, atol=1e-2):
+            logger.debug("equal_area: alpha NOT close (%s/%s)", a1, a2)
             return False
+        else:
+            if a1 > a2:
+                f = a2 / a1
+            else:
+                f = a1 / a2
+            if f < 0.9:
+                return False
         return True
 
     def calc_mid_angle(self, a):
@@ -81,6 +106,8 @@ class Symmetry(object):
         if len(arealist) == 0:
             logger.debug("end of find_symmetry: no areas")
             return 0
+
+        logger.debug("startangle=%s, endangle=%s", self.startangle, self.endangle)
 
         areas = []
         for a in arealist:
@@ -97,32 +124,42 @@ class Symmetry(object):
         for a1_alpha, a1_min_dist, a1_height, a1_mid_angle, a1 in areas[1:]:
             if self.equal_area(a0_min_dist, a0_height, a0_alpha,
                                a1_min_dist, a1_height, a1_alpha,
-                               rtol=0.01, atol=0.05):
+                               rtol=0.001, atol=0.05):
                 a0_min_dist = (a0_min_dist + a1_min_dist) / 2
                 a0_height = (a0_height + a1_height) / 2
                 a0_alpha = (a0_alpha + a1_alpha) / 2
                 equal_areas.append((a1_mid_angle, a1))
             else:
-                parts = self.check_delta(equal_areas)
-                check_rslt.append((a0.area_size(), parts, len(equal_areas), a0))
-
+                rslt = self.check_delta(equal_areas)
+                areasize = a0.area_size()
+                rslt['area'] = a0
+                rslt['areasize'] = areasize
+                check_rslt.append((areasize, rslt))
                 equal_areas = [(a1_mid_angle, a1)]
                 a0_min_dist = a1_min_dist
                 a0_height = a1_height
                 a0_alpha = a1_alpha
                 a0 = a1
 
-        parts = self.check_delta(equal_areas)
-        check_rslt.append((a0.area_size(), parts, len(equal_areas), a0))
+        rslt = self.check_delta(equal_areas)
+        areasize = a0.area_size()
+        rslt['area'] = a0
+        rslt['areasize'] = areasize
+        check_rslt.append((areasize, rslt))
 
-        parts = self.get_symmetry_parts(check_rslt)
+        parts, start_delta = self.get_symmetry_parts(check_rslt)
         if parts < 2:
             logger.debug("end of Symmetry::find_symmetry: no symmetry")
             return parts
 
+        if self.delta_angle_corr is not None and self.delta_angle_corr != 0.0:
+            self.startangle = self.startangle - self.delta_angle_corr
+            self.endangle = self.endangle - self.delta_angle_corr
+
         self.geom.clear_cut_lines()
         for alpha in self.symmetry_lines(parts,
                                          self.startangle,
+                                         start_delta,
                                          self.endangle):
             plus = self.geom.max_radius / 10
             min_radius = max(10, self.geom.min_radius - plus)
@@ -134,19 +171,29 @@ class Symmetry(object):
 
         logger.debug("end of Symmetry::find_symmetry: -> %s", parts)
         return parts
-    
+
     def check_delta(self, area_list):
         logger.debug("begin of check_delta: %s equal areas", len(area_list))
+        result = {'areas': len(area_list),
+                  'startdelta': 0.0,
+                  'slices': None}
         if not area_list:
             logger.debug("end of check_delta: no areas")
-            return None
+            return result
 
-        if len(area_list) == 1:
-            mid_angle, a = area_list[0]
-            alpha = a.get_alpha(self.geom.center)
-            if np.isclose(alpha, self.alpha):
-                logger.debug("end of check_delta: one area from start to end")
-                return None  # ok
+        rtol = 1e-3
+        atol = 1e-2
+
+        logger.debug("Geometry: Alpha=%s,  Center=%s", self.alpha, self.geom.center)
+        mid_angle, a = area_list[0]
+        result['height'] = a.height
+        result['alpha'] = a.get_alpha(self.geom.center)
+        if self.geom.is_inner:
+            result['airgap'] = np.isclose(a.max_dist, self.ag_radius)
+        else:
+            result['airgap'] = np.isclose(a.min_dist, self.ag_radius)
+        if len(area_list) == 1:  # one area
+            return self.check_one_area(mid_angle, a, result, rtol=rtol, atol=atol)
 
         self.delta_check_count += 1
         area_list.sort()
@@ -154,8 +201,9 @@ class Symmetry(object):
         mid_angle, a = area_list[0]
         delta = positive_angle(mid_angle * 2)
         delta_total = mid_angle
+        logger.debug("first delta=%s,  total=%s", delta, delta_total)
         delta_list = [delta]
-
+        mid_delta_list = [(mid_angle, delta)]
         logger.debug("First mid = %s, delta = %s", mid_angle, delta)
         logger.debug("%s:  d=%s,  h=%s,  a=%s, mid=%s, delta=%s",
                      a.identifier(),
@@ -173,7 +221,10 @@ class Symmetry(object):
             delta_angle = alpha_angle(start_angle, mid_angle)
             delta = positive_angle(delta_angle)
             delta_total += delta_angle
+            logger.debug("next delta=%s,  total=%s", delta, delta_total)
+
             delta_list.append(delta)
+            mid_delta_list.append((mid_angle, delta))
 
             logger.debug("%s:  d=%s,  h=%s,  a=%s, mid=%s, delta=%s",
                          a.identifier(),
@@ -185,103 +236,580 @@ class Symmetry(object):
             start_angle = mid_angle
             
         delta_angle = alpha_angle(start_angle, geom_alpha)
+        if np.isclose(delta_angle, np.pi*2, rtol=1e-4, atol=1e-4):
+            logger.debug("Last Area is in the middle of endangle")
+            delta_angle = 0.0
         delta = positive_angle(delta_angle * 2)
         delta_total += delta_angle
         delta_list.append(delta)
-        logger.debug("final delta=%s", delta)
+        mid_delta_list.append((0.0, delta))
 
-        if not np.isclose(geom_alpha, delta_total):
+        logger.debug("final delta=%s,  total=%s", delta, delta_total)
+        logger.debug("Delta List: %s", delta_list)
+        logger.debug("Mid Delta List")
+        [logger.debug("-- Mid angle: %s,   Delta: %s", a, d) for a, d in mid_delta_list]
+
+        if not np.isclose(geom_alpha, delta_total, rtol=rtol, atol=atol):
             logger.debug("-- deltas: %s", delta_list)
             logger.debug("end of check_delta: BAD DELTA %s, (expected %s)",
                          delta_angle, geom_alpha)
-            return 0  # very bad
+            result['slices'] = 0
+            return result  # very bad
 
-        sz = len(delta_list)
-        mid = int(sz / 2)
-        ix1 = 0
-        ix2 = sz - 1
-        first_last_bad = False
-        for ix1 in range(0, mid):
-            if not np.isclose(delta_list[ix1], delta_list[ix2], rtol=1e-3, atol=1e-3):
-                if self.full and \
-                   self.delta_check_count == 1 and \
-                   ix1 == 0 and \
-                   self.delta_angle_korr == 0.0:
-                    first_last_bad = True
-                else:
-                    logger.debug("end of check_delta: NO SYM")
-                    return 0
-            ix2 -= 1
+        deltas = self.create_deltas(delta_list, rtol=rtol, atol=atol)
 
-        if first_last_bad:
-            delta_korr = (delta_list[0] + delta_list[-1]) / 2.0
-            logger.debug("STARTANGLE CORRECTION")
-            self.delta_angle_korr = (delta_korr - delta_list[0]) / 2
-            logger.debug("-- delta[0] from %s to %s", delta_list[0], delta_korr)
-            logger.debug("Delta Angle Korr = %s", self.delta_angle_korr)
-            delta_list[0] = delta_korr
-            delta_list[-1] = delta_korr
-            assert(self.full)
-            self.startangle = self.startangle - self.delta_angle_korr
-            self.endangle = self.endangle - self.delta_angle_korr
-            logger.debug("New startangle = %s", self.startangle)
-            logger.debug("Delta List: %s", delta_list)
+        logger.debug("Start with looking for symmetry")
 
+        logger.debug(">> %s Deltas <<", len(deltas))
+        [logger.debug(" -- n=%s,  delta=%s", n, d) for n, d in deltas]
+
+        if len(deltas) == 2:
+            n1, d1 = deltas[0]
+            n2, d2 = deltas[1]
+            logger.debug("delta 1: n=%s,  delta=%s", n1, d1)
+            logger.debug("delta 2: n=%s,  delta=%s", n2, d2)
+
+            if n2 == 2 and n1 > 2 and \
+               np.isclose(d1, d2 / 2.0, rtol=rtol, atol=atol):
+                if np.isclose(d2, delta_list[0], rtol=rtol, atol=atol) and \
+                   np.isclose(d2, delta_list[-1], rtol=rtol, atol=atol):
+                    slices = n1 + n2
+                    if slices > 4:
+                        result['slices'] = slices
+                    else:
+                        result['slices'] = 1
+                    result['slices_half'] = slices
+                    result['halfslice'] = 1
+                    result['startdelta'] = d1 / 2
+                    logger.debug("#3: end of check_delta: SYMMETRY FOUND [%s] halfslice",
+                                 result['slices'])
+                    return result
+
+            elif n1 == 2 and n2 == 1:
+                assert(len(area_list) == 2)
+                semi_alpha = result['alpha'] / 2
+                a0_mid_angle, a0 = area_list[0]
+                a1_mid_angle, a1 = area_list[1]
+                a0_start = np.isclose(a0_mid_angle - semi_alpha,
+                                      0.0,
+                                      rtol=rtol, atol=atol)
+                a1_end = np.isclose(a1_mid_angle + semi_alpha,
+                                    self.alpha,
+                                    rtol=rtol, atol=atol)
+                if a0_start and a1_end and d1 < d2:
+                    result['slices'] = 0
+                    result['halfslice'] = 2
+                    logger.debug("#4: end of check_delta: half slices")
+                    return result
+
+                if not a0_start and not a1_end and d1 > d2:
+                    parts_in_circ = part_of_circle(0.0, d2, 1)
+                    parts_in_geom = float(round(parts_in_circ / self.geom_part, 2))
+                    if parts_in_geom.is_integer():
+                        parts_in_geom = int(parts_in_geom)
+                    else:
+                        parts_in_geom = 0
+                    result['slices'] = parts_in_geom
+                    result['slices_half'] = parts_in_geom
+                    result['halfslice'] = 1
+                    logger.debug("#5: end of check_delta: SYMMETRY FOUND [%s] halfslice",
+                                 result['slices'])
+                    return result
+
+            elif abs(n1 - n2) == 1:
+                if d1 < d2:
+                    if self.check_pairs_in_delta_list(delta_list,
+                                                      deltas,
+                                                      rtol=rtol, atol=atol):
+                        result['slices'] = int(len(area_list) / 2)
+                        delta_angle_corr = (d1 + d2) / 2
+                        result['delta_corr'] = delta_angle_corr
+                        logger.debug("Startangle correction by %s", delta_angle_corr)
+                        logger.debug("#6: end of check_delta: SYMMETRY FOUND [%s]",
+                                     result['slices'])
+                        return result
+
+        if len(deltas) > 1:
+            n1, d1 = deltas[0]
+            n2, d2 = deltas[1]
+            if n1 + n2 + 1 == len(area_list) and abs(n1 - n2) == 1:
+                dlist = self.check_pairs_of_areas(mid_delta_list,
+                                                  min(d1, d2),
+                                                  geom_alpha,
+                                                  rtol=rtol, atol=atol)
+                if dlist:
+                    delta_list = dlist
+                    deltas = self.create_deltas(delta_list, rtol=rtol, atol=atol)
+
+        if False:
+            parts_in_circ = part_of_circle(0.0, d1, 1)
+            parts_in_geom = float(round(parts_in_circ / self.geom_part, 2))
+            if parts_in_geom.is_integer():
+                parts_in_geom = int(parts_in_geom)
+            else:
+                parts_in_geom = 0
+
+            if parts_in_geom / n1 > 0.75 and parts_in_circ > 15:
+                result['slices'] = parts_in_geom
+                logger.debug("#7: end of check_delta: SYMMETRY FOUND [%s]",
+                             result['slices'])
+                return result
+
+        missing_middle = []
+        if len(deltas) == 2:
+            logger.debug("looking for holes in delta list")
+
+            delta_n, delta_value = deltas[0]
+            logger.debug("First n,v == (%s, %s)", delta_n, delta_value)
+            for n, v in deltas[1:]:
+                logger.debug("Next n,v == (%s, %s)", n, v)
+                if np.isclose(delta_value, v / 2.0, rtol=rtol, atol=atol):
+                    logger.debug("Hole found")
+                    inx = [i for i, x in enumerate(delta_list)
+                           if np.isclose(x, v, rtol=rtol, atol=atol)]
+                    if len(inx) != n:
+                        logger.debug("Hole missmatch: %s <> %s", len(inx), n)
+                        result['slices'] = 0
+                        return result
+
+                    dlist = []
+                    x = 0
+                    # logger.info("inx: %s", inx)
+                    # [logger.info("%s deltas: %s", n, d) for n, d in deltas]
+                    # [logger.info("area: %s", m) for m, a in area_list]
+
+                    for i in inx:
+                        for n in range(x, i):
+                            logger.debug("set value of index %s", n)
+                            dlist.append(delta_list[n])
+                        m1, a = area_list[i-1]
+                        if i < len(area_list):
+                            m2, a = area_list[i]
+                        else:
+                            m2, a = area_list[0]
+                        mid = (m1 + m2) / 2
+                        logger.debug("Missing mid is %s", mid)
+                        missing_middle.append((mid, i))
+                        x = i+1
+                        logger.debug("set value in hole")
+                        dlist.append(delta_value)
+                        dlist.append(delta_value)
+                    for n in range(x, len(delta_list)):
+                        logger.debug("set value of index %s", n)
+                        dlist.append(delta_list[n])
+                    logger.debug("New List: %s", dlist)
+                    delta_list = dlist
+
+        result['middlelist'] = [m for m, a in area_list]
+        result['missing_middles'] = missing_middle
+
+        if not np.isclose(delta_list[0], delta_list[-1], rtol=rtol, atol=atol):
+            logger.debug("First and Last delta not equal")
+            if self.full:
+                d0 = (delta_list[0] + delta_list[-1]) / 2
+                n1, d1 = deltas[0]
+                if np.isclose(d0, d1, rtol=rtol, atol=atol):
+                    delta_angle_corr = (d0 - delta_list[0]) / 2
+                    result['delta_corr'] = delta_angle_corr
+                    logger.debug("Startangle correction by %s", delta_angle_corr)
+                    delta_list[0] = d0
+                    delta_list[-1] = d0
+            else:
+                parts = self.check_first_last_difference(delta_list, deltas)
+                if parts > 0:
+                    result['slices'] = parts
+                    logger.debug("#8: end of check_delta: SYMMETRY FOUND [%s]",
+                                 result['slices'])
+                    return result
+
+        logger.debug("Final Delta List: %s", delta_list)
         d1 = delta_list[0]
         d1_count = 1
         inx_list = [0]
         for x in range(1, len(delta_list)):
-            if np.isclose(d1, delta_list[x], rtol=1e-3, atol=1e-3):
+            if np.isclose(d1, delta_list[x], rtol=rtol, atol=atol):
                 inx_list.append(x)
                 d1_count += 1
 
         if d1_count == len(delta_list):
-            logger.debug("end of check_delta: SYMMETRY FOUND")
-            return d1_count -1  # very simple
-        if len(delta_list) < 2:
+            result['slices'] = d1_count -1
+            logger.debug("#9: end of check_delta: SYMMETRY FOUND [%s]",
+                         result['slices'])
+            return result  # very simple
+        if len(delta_list) < 3:
             logger.debug("end of check_delta: One delta only ?!")
-            return 0
+            result['slices'] = 0
+            return result
 
-        logger.debug("index of delta %s = %s", d1, inx_list)
+        logger.debug("index of delta %s: %s", d1, inx_list)
+        if len(inx_list) < 2:
+            logger.debug("end of check_delta: NO SYMMETRY")
+            result['slices'] = 0
+            return result
+
         x1 = inx_list[0]
         x2 = inx_list[1]
         step = x2 - x1
         x1 = x2
         for x2 in inx_list[2:]:
             if not (x2 - x1 == step):
-                return 0
+                logger.debug("end of check_delta: NO SYMMETRY")
+                result['slices'] = 0
+                return result
             x1 = x2
-        
-        logger.debug("end of check_delta: SYMMETRY FOUND")
-        return len(inx_list) -1
+
+        logger.debug("length of delta %s: %s",
+                     len(inx_list),
+                     inx_list)
+        result['slices'] = len(inx_list) -1
+        logger.debug("#10: end of check_delta: SYMMETRY FOUND [%s]", result['slices'])
+        return result
+
+    def create_deltas(self, delta_list, rtol=1e-3, atol=1e-2):
+        delta_list_sorted = [d for d in delta_list]
+        delta_list_sorted.sort()
+        delta = delta_list_sorted[0]
+        delta_n = 1
+        deltas = []
+        for i in range(1,len(delta_list_sorted)):
+            if np.isclose(delta_list_sorted[i], delta, rtol=rtol, atol=atol):
+                delta = (delta + delta_list_sorted[i]) / 2
+                delta_n += 1
+            else:
+                deltas.append((delta_n, delta))
+                delta = delta_list_sorted[i]
+                delta_n = 1
+        deltas.append((delta_n, delta))
+        deltas.sort(reverse=True)
+        return deltas
+
+    def check_one_area(self, mid_angle, a, result, rtol=1e-3, atol=1e-2):
+        logger.debug("begin of check_one_area")
+
+        alpha = a.get_alpha(self.geom.center)
+        logger.debug("Single %s:  d=%s,  h=%s,  a=%s, mid=%s",
+                     a.identifier(),
+                     a.min_dist,
+                     a.height,
+                     a.get_alpha(self.geom.center),
+                     mid_angle)
+        if np.isclose(alpha, self.alpha, rtol=rtol, atol=atol):
+            logger.debug("end of check_one_area: area %s from start to end",
+                         a.identifier())
+            result['slices'] = None
+            return result  # ok
+
+        if self.full:
+            result['slices'] = 1
+            logger.debug("end of check_one_area: full with 1 slice")
+            return result
+
+        delta_angle = alpha_angle(self.startangle, mid_angle)
+        delta1 = positive_angle(delta_angle)
+        delta_angle = alpha_angle(mid_angle, self.endangle)
+        delta2 = positive_angle(delta_angle)
+        if np.isclose(delta1, delta2, rtol=rtol, atol=atol):
+            result['slices'] = 1
+            result['slices_half'] = 2
+            result['halfslice'] = 1
+            logger.debug("end of check_delta: One Area in the middle")
+        else:
+            result['middlelist'] = [mid_angle]
+            result['slices'] = 0
+            logger.debug("end of check_one_area: Area somewhere")
+        return result
+
+    def check_pairs_in_delta_list(self,
+                                  delta_list,
+                                  deltas,
+                                  rtol=1e-3, atol=1e-2):
+        if len(deltas) < 2:
+            return False
+        if len(delta_list) < 5:
+            return False
+        n1, d1 = deltas[0]
+        n2, d2 = deltas[1]
+        if not abs(n1 - n2) == 1:
+            return False
+        # check without first/last
+        delta0 = delta_list[1]
+        delta1 = delta_list[2]
+        for delta2 in delta_list[3:-1]:
+            if not np.isclose(delta0, delta2, rtol=rtol, atol=atol):
+                return False
+            delta0 = delta1
+            delta1 = delta2
+        logger.debug("** Pairs available **")
+        return True
+
+    def check_pairs_of_areas(self,
+                             mid_delta_list,
+                             delta,
+                             geom_alpha,
+                             rtol=1e-3, atol=1e-2):
+        logger.debug("begin of check_pairs_of_areas")
+        if len(mid_delta_list) < 2:
+            return None
+
+        logger.debug("Mid-Delta-List")
+        [logger.debug(" -- mid=%s,  delta=%s",m, d) for m, d in mid_delta_list]
+
+        # check
+        mid_list = []
+        m0, d0 = mid_delta_list[0]
+        m1, d1 = mid_delta_list[1]
+        if np.isclose(delta, d1, rtol=rtol, atol=atol):
+            mx = (m0 + m1) / 2
+            mid_list.append(mx)
+
+        m0, d0 = mid_delta_list[2]
+        dx = d1
+        for m2, d2 in mid_delta_list[2:-1]:
+            #logger.debug("compare %s and %s", d0, d2)
+            if not np.isclose(d0, d2, rtol=rtol, atol=atol):
+                logger.debug("end of check_pairs_of_areas: bad pairs")
+                return None
+            if np.isclose(delta, d2, rtol=rtol, atol=atol):
+                mx = (m1 + m2) / 2
+                mid_list.append(mx)
+            d0 = d1
+            m1 = m2
+            d1 = d2
+
+        logger.debug("New Mids: %s", mid_list)
+        delta = positive_angle(mid_list[0] * 2)
+        delta_list = [delta]
+        m0 = mid_list[0]
+        for m1 in mid_list[1:]:
+            delta = positive_angle(alpha_angle(m0, m1))
+            delta_list.append(delta)
+            m0 = m1
+
+        delta_angle = alpha_angle(m1, geom_alpha)
+        if np.isclose(delta_angle, np.pi*2, rtol=1e-4, atol=1e-4):
+            logger.debug("Last Area is in the middle of endangle")
+            delta_angle = 0.0
+        delta = positive_angle(delta_angle * 2)
+        delta_list.append(delta)
+        logger.debug("New delta-list: %s", delta_list)
+        logger.debug("end of check_pairs_of_areas")
+        return delta_list
+
+    def check_first_last_difference(self, delta_list, deltas):
+        logger.debug("begin check_first_last_difference")
+        if np.isclose(delta_list[0], delta_list[-1],
+                      rtol=self.rtol, atol=self.atol):
+            logger.debug("end check_first_last_difference: first/last equal")
+            return 0
+        if len(deltas) != 3:
+            logger.debug("end check_first_last_difference: not 3 deltas")
+            return 0
+        logger.debug(">> 3 Deltas <<")
+        n1, d1 = deltas[0]
+        n2, d2 = deltas[1]
+        n3, d3 = deltas[2]
+        if not (n2 == 1 and n3 == 1):
+            logger.debug("end check_first_last_difference: first/last diff")
+            return 0
+        dx = (d2 + d3) / 2
+        if not np.isclose(dx, d1, rtol=self.rtol, atol=self.atol):
+            logger.debug("end check_first_last_difference: bad deltas")
+            return 0
+        dx = (delta_list[0] + delta_list[-1]) / 2
+        if not np.isclose(dx, d1, rtol=self.rtol, atol=self.atol):
+            logger.debug("end check_first_last_difference: bad deltas")
+            return 0
+
+        logger.debug("end check_first_last_difference => %s", n1 + 1)
+        return n1 + 1
 
     def get_symmetry_parts(self, check_rslt):
         max_size = 0
         max_areas = 0
+        max_slices = 0
         parts_possible = None
+        self.delta_angle_corr = None
+        unsure_sym = False
 
+        check_rslt = [(size, n, rslt) for n, (size, rslt) in enumerate(check_rslt)]
         check_rslt.sort(reverse=True)
-        for size, parts, count, area in check_rslt:
-            logger.debug("Result: %s, %s, %s", size, parts, count)
+        for size, n, rslt in check_rslt:
+            logger.debug("Result: %s, %s", size, rslt)
 
-        for size, parts, count, area in check_rslt:
-            if parts is not None and parts > 0:
-                max_size = max(max_size, size)
-                max_areas = max(max_areas, count)
+        rtol = 1e-3
+        atol = 1e-2
 
+        missing_middles = []
+        halfslice = []
+        start_delta = None
+        start_delta_corr = 0.0
+
+        with_angle_corr = 0
+        without_angle_corr = 0
+
+        for size, n, rslt in check_rslt:
+            areas = rslt['areas']
+            slices = rslt['slices']
+            size = rslt['areasize']
+            angle_corr = rslt.get('delta_corr', 0.0)
+
+            if rslt.get('halfslice', 0) == 1:
+                halfslice.append(rslt)
+
+            if slices is not None:
+                if slices > 0:
+                    max_size = max(max_size, size)
+                    max_areas = max(max_areas, areas)
+                    max_slices = max(max_slices, slices)
+                    missing_middles += rslt.get('missing_middles', [])
+                    area = rslt['area']
+                    if not (np.isclose(area.min_dist,
+                                       self.geom.min_radius,
+                                       rtol=1e-4, atol=1e-3) and \
+                            np.isclose(area.max_dist,
+                                       self.geom.max_radius,
+                                       rtol=1e-4, atol=1e-3)):
+                        if rslt.get('delta_corr', 0.0) == 0.0:
+                            without_angle_corr += areas * size
+                        else:
+                            with_angle_corr += areas * size
         logger.debug("max size: %s,  max areas: %s", max_size, max_areas)
 
-        for size, parts, count, area in check_rslt:
-            if parts is not None and parts <= 1:  # critical
-                if count <= max(1, max_areas / 5):
-                    if size < max_size / 25:
-                        parts = None
+        logger.debug("Angle-Corrections: %s Yes,  %s No",
+                     with_angle_corr, without_angle_corr)
+        with_angle_corr = (with_angle_corr > without_angle_corr)
 
-            parts_possible = self.calc_parts(parts_possible, parts)
+        def get_halfslice_counterpart(rslt):
+            if rslt.get('halfslice', 0) != 2:
+                return None
+            for half in halfslice:
+                alpha1 = half['alpha']
+                height1 = half['height']
+                alpha2 = rslt['alpha'] * 2.0
+                height2 = rslt['height']
+                logger.debug("-- height: %s / %s", height1, height2)
+                logger.debug("-- alpha: %s / %s", alpha1, alpha2)
+                if np.isclose(height1, height2, rtol=rtol, atol=atol) and \
+                   np.isclose(alpha1, alpha2, rtol=rtol, atol=atol):
+                    return half
+            return None
+
+        if halfslice:
+            logger.debug("%s halfslice [1] found", len(halfslice))
+
+            for size, n, rslt in check_rslt:
+                half = get_halfslice_counterpart(rslt)
+                if half:
+                    logger.debug("Halfslice counterpart found")
+                    alpha1 = half['alpha']
+                    height1 = half['height']
+                    alpha2 = rslt['alpha'] * 2.0
+                    height2 = rslt['height']
+                    logger.debug("-- height: %s / %s", height1, height2)
+                    logger.debug("-- alpha: %s / %s", alpha1, alpha2)
+                    if np.isclose(height1, height2, rtol=rtol, atol=atol) and \
+                       np.isclose(alpha1, alpha2, rtol=rtol, atol=atol):
+                        logger.debug("halfslice result: %s", half)
+                        slices = None
+                        rslt['slices'] = slices
+                        half['slices'] = half['slices_half']
+
+        angle_corr_slices = 0
+        angle_corr_size = 0
+        angle_corr_areas = 0
+        angle_corr_airgap = False
+
+        for size, n, rslt in check_rslt:
+            areas = rslt['areas']
+            slices = rslt['slices']
+            size = rslt['areasize']
+
+            if slices is None:  # ignore it
+                continue
+
+            delta_angle_corr = rslt.get('delta_corr', 0.0)
+            # Angle Correction
+            if with_angle_corr and self.delta_angle_corr is None:
+                self.delta_angle_corr = delta_angle_corr
+                angle_corr_slices = slices
+                angle_corr_size = size
+                angle_corr_areas = areas
+                angle_corr_airgap = rslt.get('airgap', False)
+            else:
+                if with_angle_corr and self.delta_angle_corr != delta_angle_corr:
+                    unsure_sym = True
+                    if slices > angle_corr_slices and \
+                       size > angle_corr_size * 0.5:
+                        logger.debug("Angle Correction")
+                        self.delta_angle_corr = delta_angle_corr
+                        angle_corr_slices = slices
+                        angle_corr_size = size
+                        angle_corr_areas = areas
+                        angle_corr_airgap = rslt.get('airgap', False)
+                    elif angle_corr_airgap and \
+                         slices >= angle_corr_slices and \
+                         areas > angle_corr_areas and \
+                         size > angle_corr_size * 0.2:
+                        logger.debug("Angle Correction")
+                        self.delta_angle_corr = delta_angle_corr
+                        angle_corr_slices = slices
+                        angle_corr_size = size
+                        angle_corr_areas = areas
+                        angle_corr_airgap = rslt.get('airgap', False)
+            if slices:
+                if start_delta is None:
+                    start_delta = rslt['startdelta']
+                    start_delta_corr = start_delta
+                elif not rslt['startdelta'] != 0.0:
+                    if start_delta_corr == 0.0:
+                        start_delta_corr = rslt['startdelta']
+                    elif not np.isclose(rslt['startdelta'], start_delta_corr,
+                                        rtol=rtol, atol=atol):
+                        slices = 0  # bad
+                        rslt['slices'] = slices
+
+            if slices is not None and slices <= 1:  # critical
+                if areas <= max(1, max_areas / 5):
+                    if size < max_size / 25:
+                        slices = None
+            if slices == 0:
+                middles = rslt.get("middlelist", [])
+                if self.check_missing_areas(middles,
+                                            missing_middles):
+                    logger.debug("Symmetry-Destroyer destroyed")
+                    slices = None
+
+            if slices == 1:
+                # symmetry killer
+                if areas < max(2, max_areas / 6):
+                    if size < max_size * 0.05:
+                        slices = None  # ignore tiny areas
+
+
+            parts_possible = self.calc_parts(parts_possible, slices)
+
+        if unsure_sym:
+            logger.warning("Warning: unsure symmetry")
 
         if parts_possible is None:
             parts_possible = 0
-        return parts_possible
+        return parts_possible, start_delta
+
+    def check_missing_areas(self, middles, missing_middles):
+        logger.debug("check_missing_areas")
+        logger.debug(" -- mids = %s", middles)
+        logger.debug(" -- missing mids = %s", missing_middles)
+        if not missing_middles:
+            return False
+        if len(middles) == 0 or len(middles) > 2:
+            return False
+
+        for m in middles:
+            mlist = [mm for mm, i in missing_middles
+                     if np.isclose(m, mm, rtol=1e-3, atol=1e-3)]
+            if not mlist:
+                return False
+        return True
 
     def calc_parts(self, parts1, parts2):
         logger.debug("Calc symmetry Parts (%s, %s)", parts1, parts2)
@@ -298,15 +826,23 @@ class Symmetry(object):
         logger.debug("return %s parts", parts)
         return parts
 
-    def symmetry_lines(self, parts, startangle, endangle):
-        logger.debug("begin symmetry_lines from %s to %s",
+    def symmetry_lines(self, parts, startangle, start_delta, endangle):
+        logger.debug("begin symmetry_lines from %s to %s with start %s",
                      startangle,
-                     endangle)
+                     endangle,
+                     start_delta)
+
         if less_equal(endangle, startangle):
             endangle += 2*np.pi
 
-        delta = alpha_angle(startangle, endangle) / parts
-        start = startangle + delta
+        sym = self.geom_part * parts
+        delta = 2*np.pi/sym
+        if start_delta == 0.0:
+            if not is_same_angle(startangle, endangle):
+                start_delta = delta
+
+        sym_startangle = startangle + start_delta
+        start = startangle + start_delta
         while less(start, endangle):
             yield start
             start += delta
@@ -315,8 +851,8 @@ class Symmetry(object):
             yield start
 
         # Damit man anschliessend ohne Umstände schneiden kann.
-        self.geom.sym_startangle = startangle
-        self.geom.sym_endangle = startangle + delta
+        self.geom.sym_startangle = sym_startangle
+        self.geom.sym_endangle = sym_startangle + delta
         self.geom.sym_slices = parts
         self.geom.sym_slice_angle = delta
         self.geom.sym_area = Area([], (0,0), 0.0)
@@ -332,39 +868,65 @@ class Symmetry(object):
         axis_m = line_m(self.geom.center, axis_p)
         axis_n = line_n(self.geom.center, axis_m)
 
-        def counterpart_found(node, nodes, rtol, atol):
-            hits = 0
+        def counterpart_found(node, mirror_node, nodes, rtol, atol):
+            hit_sloppy = 0
             for n in nodes:
-                if points_are_close(node, n, rtol, atol):
-                    logger.debug(" ---- %s is %s", node, n)
-                    return True
-            return False
+                if points_are_close(mirror_node, n, rtol, atol):
+                    logger.debug(" ---- %s is %s", node, mirror_node)
+                    return 1, 1
+                if points_are_close(round_point(mirror_node, 1),
+                                    round_point(n, 1),
+                                    rtol, atol):
+                    logger.debug(" ++++ %s is %s", node, mirror_node)
+                    hit_sloppy = 1
+
+            logger.debug(" >>>> %s is NOT %s  (%s)",
+                         node, mirror_node, hit_sloppy)
+            return 0, hit_sloppy
 
         def check_differences(geom, mirror_geom):
             geom_ag_nodes = []
             geom_nodes = [n for n in geom.g.nodes() if not (n in geom_ag_nodes)]
 
-            hit = 0
+            hits = 0
+            hits_sloppy = 0
             for n in geom_nodes:
                 mirror_n = mirror_point(n, geom.center, axis_m, axis_n)
-                if counterpart_found(mirror_n,
-                                     mirror_geom.g.nodes(),
-                                     self.rtol,
-                                     self.atol):
-                    hit += 1
+                hit, hit_sloppy = counterpart_found(n, mirror_n,
+                                                    mirror_geom.g.nodes(),
+                                                    # self.rtol,
+                                                    1e-3,
+                                                    # self.atol):
+                                                    1e-2)
+                hits += hit
+                hits_sloppy += hit_sloppy
+
             min_nodes = min(len(geom_nodes), int(len(geom_nodes) * 0.95) + 1)
-            logger.debug("Nodes=%s,  Counterparts=%s", len(geom_nodes), hit)
-            if hit < min_nodes:
-                return hit / len(geom_nodes)
+            logger.debug("Nodes=%s,  Counterparts=%s (sloppy=%s)",
+                         len(geom_nodes), hits, hits_sloppy)
+            if hits < min_nodes:
+                f = hits / len(geom_nodes)
             else:
-                return 1.0
+                f = 1.0
+            if hits_sloppy < min_nodes:
+                f_sloppy = hits_sloppy / len(geom_nodes)
+            else:
+                f_sloppy = 1.0
+            return f, f_sloppy
 
         # ----------------
         logger.debug("check geom - mirror")
-        f1 = check_differences(self.geom, mirror_geom)
+        f1, f1_sloppy = check_differences(self.geom, mirror_geom)
         logger.debug("check mirror - geom")
-        f2 = check_differences(mirror_geom, self.geom)
+        f2, f2_sloppy = check_differences(mirror_geom, self.geom)
         logger.debug("Factor 1: %s,  2: %s", f1, f2)
-        ok = f1 > 0.97 and f2 > 0.97
+        if f1 >= 0.99 or f2 >= 0.99:
+            ok = not (f1 < 0.9 or f2 < 0.9)
+        else:
+            ok = f1 > 0.97 and f2 > 0.97
+        if not ok:
+            if f1_sloppy > 0.97 and f2_sloppy > 0.97:
+                logger.debug("  (A sloppy mirror found, but ignored)")
+                ok = True
         logger.debug("end of Symmetry::check_symmetry_of_mirror => %s", ok)
         return ok

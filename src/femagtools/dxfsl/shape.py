@@ -16,8 +16,8 @@ from .functions import point, points_are_close, points_on_arc
 from .functions import alpha_line, alpha_angle, alpha_triangle
 from .functions import normalise_angle, min_angle, max_angle, get_angle_of_arc
 from .functions import lines_intersect_point, nodes_are_equal
-from .functions import is_angle_inside, intersect_point
-from .functions import middle_angle, middle_point_of_line
+from .functions import is_angle_inside, intersect_point, point_greater_equal
+from .functions import middle_angle, middle_point_of_line, elevation_angle
 
 logger = logging.getLogger('femagtools.geom')
 
@@ -116,12 +116,8 @@ class Shape(object):
     def dy(self):
         return (self.p2[1]-self.p1[1])
 
-    def m(self, none_val=None):
-        m = line_m(self.p1, self.p2)
-        if m is None:
-            return none_val
-        else:
-            return m
+    def m(self, none_val=None, dec=0):
+        return line_m(self.p1, self.p2, none_val=none_val, dec=dec)
 
     def n(self, m):
         return line_n(self.p1, m)
@@ -213,7 +209,10 @@ class Shape(object):
         if d1 == d2:
             logger.warning("distances of %s and %s are equal (%s / %s)",
                            self.n1, self.n2, d1, d2)
-            raise ValueError('both nodes are equal in element')
+            #raise ValueError('both nodes are equal in element')
+            logger.warning("Points of %s are %s and %s",
+                           self.classname(), self.p1, self.p2)
+            return 0
 
         if d1 < d2:
             return 1
@@ -232,47 +231,85 @@ class Shape(object):
         return 0.0
 
     def minmax_angle_dist_from_center(self,
-                                      min_alfa, max_alfa,
-                                      center, circ):
-        logger.debug("minmax_angle_dist_from_center(center={}, circle={}"
-                     .format(center, circ))
-
+                                      min_alfa,
+                                      max_alfa,
+                                      center,
+                                      circ):
         points = self.intersect_circle(circ, include_end=True)
-        logger.debug("self={}".format(self))
-        logger.debug("points={}".format(points))
         if not points:
-            logger.debug(" - no points")
             return None
         my_min_angle = min_alfa
         my_max_angle = max_alfa
-        logger.debug(" - min {}, max {}"
-                     .format(my_min_angle, my_max_angle))
         for p in points:
             alpha = alpha_line(center, p)
             my_min_angle = min_angle(my_min_angle, alpha)
             my_max_angle = max_angle(my_max_angle, alpha)
-            logger.debug(" - min {}, max {}, alpha {}"
-                         .format(my_min_angle, my_max_angle, alpha))
 
-        logger.debug("end of minmax_angle_dist_from_center")
         return (my_min_angle, my_max_angle)
 
-    def concatenate(self, n1, n2, el):
+    def concatenate(self, n1, n2, el,
+                    rtol=1e-05, atol=1e-05,
+                    mdec=0,
+                    overlapping=False):
         if isinstance(el, Line):
-            return self.concatenate_line(n1, n2, el)
+            return self.concatenate_line(n1, n2, el,
+                                         rtol=rtol, atol=atol,
+                                         mdec=mdec,
+                                         overlapping=overlapping)
         if isinstance(el, Arc):
-            return self.concatenate_arc(n1, n2, el)
+            return self.concatenate_arc(n1, n2, el,
+                                        rtol=rtol, atol=atol,
+                                        overlapping=overlapping)
+
+        if isinstance(el, Circle):
+            return self.concatenate_circle(n1, n2, el,
+                                           rtol=rtol, atol=atol,
+                                           overlapping=overlapping)
         return None
 
-    def concatenate_line(self, n1, n2, el):
+    def concatenate_line(self, n1, n2, el,
+                         rtol=1e-05, atol=1e-05,
+                         mdec=0,
+                         overlapping=False):
         return None
 
-    def concatenate_arc(self, n1, n2, el):
+    def concatenate_arc(self, n1, n2, el,
+                        rtol=1e-05, atol=1e-05,
+                        overlapping=False):
         return None
+
+    def concatenate_circle(self, n1, n2, el,
+                           rtol=1e-05, atol=1e-05,
+                           overlapping=False):
+        return None
+
+    def points_sorted(self, rtol=1e-05, atol=1e-05):
+        if point_greater_equal(self.p1, self.p2, rtol=rtol, atol=atol):
+            return self.p2, self.p1
+        else:
+            return self.p1, self.p2
 
     def rotate(self, T, p):
         n = T.dot(np.array((p[0], p[1])))
         return (n[0], n[1])
+
+    def is_tiny(self, mindist):
+        return distance(self.p1, self.p2) < mindist
+
+    def adjust_points(self):
+        self.p1 = self.n1
+        self.p2 = self.n2
+
+    def replace_point(self, node, point):
+        if nodes_are_equal(node, self.n1):
+            self.p1 = point
+        elif nodes_are_equal(node, self.n2):
+             self.p2 = point
+        else:
+            logger.warning("Node %s not in element", node)
+
+    def is_near(self, n):
+        return False
 
     def print_nodes(self):
         return " n1={}/n2={}".format(self.n1, self.n2)
@@ -304,6 +341,8 @@ class Circle(Shape):
             center = e.center
         self.center = lf*center[0] + xoff, lf*center[1] + yoff
         self.radius = lf*e.radius
+        self.startangle = 0.0
+        self.endangle = 0.0
         self.p1 = self.center[0]-self.radius, self.center[1]
         self.p2 = self.center[0]+self.radius, self.center[1]
         self.n1 = None
@@ -445,7 +484,10 @@ class Circle(Shape):
         d = distance(self.center, p)
 
         if np.isclose(d, self.radius, rtol, atol):
-            if line.is_point_inside(p, rtol, atol, include_end):
+            if line.is_point_inside(p,
+                                    rtol=rtol,
+                                    atol=atol,
+                                    include_end=include_end):
                 # Wenn der Abstand d dem Radius entspricht, handelt es sich um
                 # eine Tangente und es gibt genau einen Schnittpunkt
                 if include_end:
@@ -465,8 +507,14 @@ class Circle(Shape):
         # Die Schnittpunkte p1 und p2 sind bestimmt. Nun muss noch sicher
         # gestellt werden, dass sie innerhalb des Start- und Endpunkts der
         # Linie liegen
-        p1_inside = line.is_point_inside(p1, rtol, atol, include_end)
-        p2_inside = line.is_point_inside(p2, rtol, atol, include_end)
+        p1_inside = line.is_point_inside(p1,
+                                         rtol=rtol,
+                                         atol=atol,
+                                         include_end=include_end)
+        p2_inside = line.is_point_inside(p2,
+                                         rtol=rtol,
+                                         atol=atol,
+                                         include_end=include_end)
         if p1_inside:
             if p2_inside:
                 return [p1, p2]
@@ -510,22 +558,60 @@ class Circle(Shape):
         # let Arc do the work
         return arc.intersect_circle(self, rtol, atol, include_end)
 
-    def is_point_inside(self, p, rtol=1e-03, atol=1e-03, include_end=False):
+    def concatenate_arc(self, n1, n2, el,
+                        rtol=1e-03, atol=1e-03,
+                        overlapping=False):
+        if not points_are_close(self.center, el.center):
+            return None
+        if not np.isclose(self.radius, el.radius):
+            return None
+        # it's a circle
+        return Circle(Element(center=self.center, radius=self.radius))
+
+    def concatenate_circle(self, n1, n2, el,
+                           rtol=1e-03, atol=1e-03,
+                           overlapping=False):
+        if not points_are_close(self.center, el.center):
+            return None
+        if not np.isclose(self.radius, el.radius):
+            return None
+        # it's a circle
+        return Circle(Element(center=self.center, radius=self.radius))
+
+    def is_point_inside(self, p,
+                        rtol=1e-03,
+                        atol=1e-03,
+                        include_end=False,
+                        ignore_end=False,
+                        mdec=0):
         """ returns true if p is on circle
         """
         d = distance(p, self.center)
-        return np.isclose(d, self.radius)
+        if not np.isclose(d, self.radius, rtol=rtol, atol=atol):
+            return False
+        if points_are_close(p, self.p1, rtol=rtol, atol=atol):
+            return include_end
+        elif points_are_close(p, self.p2, rtol=rtol, atol=atol):
+            return include_end
+        return True
 
-    def split(self, points, rtol, atol):
+    def split(self, points, rtol=1e-03, atol=1e-03, mdec=0):
         """ Die Funktion splittet das Circle-Objekt an den vorgegebenen Punkten
             und gibt eine Liste der neu enstandenen Elemente aus.
         """
-        if len(points) == 1:
+        if len(points):
             p = points[0]
             split_arcs = []
             alpha1 = alpha_line(self.center, p)
-            alpha2 = normalise_angle(alpha1 + np.pi/2)
-            alpha3 = normalise_angle(alpha1 + np.pi)
+            if len(points) == 2:
+                p = points[1]
+                alpha3 = alpha_line(self.center, p)
+                alpha2 = middle_angle(alpha1, alpha3)
+                alpha4 = middle_angle(alpha3, alpha1)
+            else:
+                alpha2 = normalise_angle(alpha1 + np.pi/2)
+                alpha3 = normalise_angle(alpha1 - np.pi/2)
+                alpha4 = None
 
             arc = Arc(Element(center=self.center, radius=self.radius,
                               start_angle=alpha1*180/np.pi,
@@ -539,8 +625,17 @@ class Circle(Shape):
             arc.copy_attributes(self)
             split_arcs.append(arc)
 
+            if alpha4:
+                arc = Arc(Element(center=self.center, radius=self.radius,
+                                  start_angle=alpha3*180/np.pi,
+                                  end_angle=alpha4*180/np.pi))
+                arc.copy_attributes(self)
+                split_arcs.append(arc)
+            else:
+                alpha4 = alpha3
+
             arc = Arc(Element(center=self.center, radius=self.radius,
-                              start_angle=alpha3*180/np.pi,
+                              start_angle=alpha4*180/np.pi,
                               end_angle=alpha1*180/np.pi))
             arc.copy_attributes(self)
             split_arcs.append(arc)
@@ -564,6 +659,17 @@ class Circle(Shape):
 
     def get_angle_of_arc(self):
         return np.pi*2.0
+
+    def is_near(self, n):
+        if n[0] > self.center[0] + self.radius + 1e-02:
+            return False
+        if n[0] < self.center[0] - self.radius - 1e-02:
+            return False
+        if n[1] > self.center[1] + self.radius + 1e-02:
+            return False
+        if n[1] < self.center[1] - self.radius - 1e-02:
+            return False
+        return True
 
     def __str__(self):
         return "Circle c={}, r={}".format(self.center, self.radius)
@@ -666,9 +772,9 @@ class Arc(Circle):
     def get_alpha(self, n):
         a = alpha_line(n, self.center)
         if points_are_close(n, self.n1):
-            alpha1 = normalise_angle(a + np.pi / 2)
+            alpha1 = normalise_angle(a + np.pi * 0.5)
         elif points_are_close(n, self.n2):
-            alpha1 = normalise_angle(a - np.pi / 2)
+            alpha1 = normalise_angle(a - np.pi * 0.5)
         else:
             alpha1 = 0.0
         return alpha1
@@ -701,9 +807,9 @@ class Arc(Circle):
             return None
 
         points = []
-        if self.is_point_inside(e.p1, rtol, atol):
-            if self.is_point_inside(e.p2, rtol, atol):
-                if e.is_point_inside(self.p2, rtol, atol):
+        if self.is_point_inside(e.p1, rtol=rtol, atol=atol):
+            if self.is_point_inside(e.p2, rtol=rtol, atol=atol):
+                if e.is_point_inside(self.p2, rtol=rtol, atol=atol):
                     # a Circle
                     points.append(e.p1)
                     points.append(self.p2)
@@ -719,23 +825,23 @@ class Arc(Circle):
                 points.append(self.p1)
                 points.append(e.p1)
                 points.append(self.p2)
-                if e.is_point_inside(self.p2, rtol, atol):
+                if e.is_point_inside(self.p2, rtol=rtol, atol=atol):
                     points.append(e.p2)
 
-        elif self.is_point_inside(e.p2, rtol, atol):
+        elif self.is_point_inside(e.p2, rtol=rtol, atol=atol):
             points.append(e.p1)
             points.append(self.p1)
             points.append(e.p2)
             points.append(self.p2)
 
-        elif e.is_point_inside(self.p1, rtol, atol):
+        elif e.is_point_inside(self.p1, rtol=rtol, atol=atol):
             points.append(e.p1)
             points.append(self.p1)
             points.append(self.p2)
-            if e.is_point_inside(self.p2, rtol, atol):
+            if e.is_point_inside(self.p2, rtol=rtol, atol=atol):
                 points.append(e.p2)
 
-        elif e.is_point_inside(self.p2, rtol, atol):
+        elif e.is_point_inside(self.p2, rtol=rtol, atol=atol):
             if not points_are_close(self.p1, e.p1, rtol=rtol, atol=atol):
                 logger.error("FATAL ERROR in overlapping_shape() of Arc")
 
@@ -759,12 +865,17 @@ class Arc(Circle):
             Schnittpunkte bestimmt und in einer Liste ausgegeben
         """
         points = super(Arc, self).intersect_line(line, rtol, atol, include_end)
+        if not points:
+            return []
 
         # all possible points have been found
         # Lets see if they are on a arc
         remaining_points = []
         for p in points:
-            if self.is_point_inside(p, rtol, atol, include_end):
+            if self.is_point_inside(p,
+                                    rtol=rtol,
+                                    atol=atol,
+                                    include_end=include_end):
                 remaining_points.append(p)
         return remaining_points
 
@@ -779,7 +890,10 @@ class Arc(Circle):
         # (has been assumed as a circle)
         remaining_points = []
         for p in points:
-            if arc.is_point_inside(p, rtol, atol, include_end):
+            if arc.is_point_inside(p,
+                                   rtol=rtol,
+                                   atol=atol,
+                                   include_end=include_end):
                 remaining_points.append(p)
         return remaining_points
 
@@ -800,16 +914,21 @@ class Arc(Circle):
         # Intersection points exist. Take the ones on the arc
         remaining_points = []
         for p in points:
-            if self.is_point_inside(p, rtol, atol, include_end):
+            if self.is_point_inside(p,
+                                    rtol=rtol,
+                                    atol=atol,
+                                    include_end=include_end):
                 remaining_points.append(p)
         return remaining_points
 
-    def split(self, points, rtol=1e-03, atol=1e-03):
+    def split(self, points, rtol=1e-03, atol=1e-03, mdec=0):
         """ return a list of arcs by splitting
         """
         points_inside = [p
                          for p in points
-                         if self.is_point_inside(p, rtol, atol, False)]
+                         if self.is_point_inside(p,
+                                                 rtol=rtol,
+                                                 atol=atol)]
         if len(points_inside) == 1:
             p = points_inside[0]
             split_arcs = []
@@ -844,31 +963,89 @@ class Arc(Circle):
                          end_angle=self.endangle*180/np.pi))
         return a1, a2
 
-    def concatenate_arc(self, n1, n2, el):
+    def concatenate_arc(self, n1, n2, el,
+                        rtol=1e-03, atol=1e-03,
+                        overlapping=False):
         if not points_are_close(self.center, el.center):
             return None
         if not np.isclose(self.radius, el.radius):
             return None
 
-        if np.isclose(self.startangle, el.endangle):
-            start_angle = el.startangle
-            end_angle = self.endangle
-        elif np.isclose(el.startangle, self.endangle):
-            start_angle = self.startangle
-            end_angle = el.endangle
-        else:
-            return None
+        my_start = normalise_angle(self.startangle)
+        my_end = normalise_angle(self.endangle)
+        el_start = normalise_angle(el.startangle)
+        el_end = normalise_angle(el.endangle)
 
-        logger.debug("concatenate_arc: start=%s, end=%s",
-                     start_angle,
-                     end_angle)
+        logger.debug("begin of concatenate_arc")
+        logger.debug("my startangle: %s,  endangle: %s", my_start, my_end)
+        logger.debug("el startangle: %s,  endangle: %s", el_start, el_end)
+
+        start_angle = None
+        end_angle = None
+
+        if np.isclose(my_start, el_end, rtol=rtol, atol=atol):
+            if is_angle_inside(my_start, my_end, el_start):  # Circle
+                logger.debug("1: new startangle is 0 (Circle)")
+                start_angle = 0.0
+                end_angle = 0.0
+            else:
+                logger.debug("1: new startangle is el: %s", el_start)
+                start_angle = el_start
+                end_angle = my_end
+        elif np.isclose(el_start, my_end, rtol=rtol, atol=atol):
+            logger.debug("2: new startangle is my: %s", my_start)
+            start_angle = my_start
+            end_angle = el_end
+
+        if start_angle is None:
+            if overlapping:
+                if is_angle_inside(my_start, my_end, el_start):
+                    logger.debug("3: new startangle is my: %s", my_start)
+                    start_angle = my_start
+                elif is_angle_inside(el_start, el_end, my_start):
+                    logger.debug("4: new startangle is el: %s", el_start)
+                    start_angle = el_start
+                if start_angle is None:
+                    return None
+
+                if is_angle_inside(my_start, my_end, el_end):
+                    end_angle = my_end
+                elif is_angle_inside(el_start, el_end, my_end):
+                    end_angle = el_end
+                if end_angle is None:
+                    return None
+            else:
+                return None
+
+        logger.debug("new startangle: %s,  endangle: %s", start_angle, end_angle)
+
+        if np.isclose(start_angle, end_angle):
+            # it's a circle
+            return Circle(Element(center=self.center, radius=self.radius))
+
+        logger.debug("end of concatenate_arc")
         return Arc(Element(center=self.center,
                            radius=self.radius,
                            start_angle=start_angle,
                            end_angle=end_angle),
                    rf=1)
 
-    def is_point_inside(self, p, rtol=1e-03, atol=1e-03, include_end=False):
+    def concatenate_circle(self, n1, n2, el,
+                           rtol=1e-03, atol=1e-03,
+                           overlapping=False):
+        if not points_are_close(self.center, el.center):
+            return None
+        if not np.isclose(self.radius, el.radius):
+            return None
+        # it's a circle
+        return Circle(Element(center=self.center, radius=self.radius))
+
+    def is_point_inside(self, p,
+                        rtol=1e-03,
+                        atol=1e-03,
+                        include_end=False,
+                        ignore_end=False,
+                        mdec=0):
         """ returns true if p is on arc
         """
         # logger.debug("is_point_inside: p=%s", p)
@@ -1183,8 +1360,14 @@ class Line(Shape):
         if all:
             return[point]
 
-        if line.is_point_inside(point, rtol, atol, include_end):
-            if self.is_point_inside(point, rtol, atol, include_end):
+        if line.is_point_inside(point,
+                                rtol=rtol,
+                                atol=atol,
+                                include_end=include_end):
+            if self.is_point_inside(point,
+                                    rtol=rtol,
+                                    atol=atol,
+                                    include_end=include_end):
                 return [point]
         return []
 
@@ -1201,15 +1384,15 @@ class Line(Shape):
         """
         return circle.intersect_line(self, rtol, atol, include_end)
 
-    def split(self, points, rtol=1e-03, atol=1e-03):
+    def split(self, points, rtol=1e-03, atol=1e-03, mdec=0):
         """ Die Funktion splittet das Line-Objekt an den vorgegebenen Punkten
             und gibt eine Liste der neu enstandenen Elemente aus.
         """
         points_inside = [(distance(p, self.p1), p)
                          for p in points if self.is_point_inside(p,
-                                                                 rtol, atol,
-                                                                 False)]
-
+                                                                 rtol=rtol,
+                                                                 atol=atol,
+                                                                 mdec=mdec)]
         if len(points_inside) > 0:
             points_inside.append((0.0, self.p1))
             points_inside.append((distance(self.p1, self.p2), self.p2))
@@ -1235,45 +1418,107 @@ class Line(Shape):
         l2 = Line(Element(start=pm, end=self.p2))
         return l1, l2
 
-    def concatenate_line(self, n1, n2, el):
-        if not np.isclose(self.m(999999.0), el.m(999999.0)):
+    def concatenate_line(self, n1, n2, el,
+                         rtol=1e-05, atol=1e-05,
+                         mdec=0,
+                         overlapping=False):
+        none_val = 9999999.0
+        my_m = self.m(none_val, dec=mdec)
+        el_m = el.m(none_val, dec=mdec)
+        #logger.debug("concatenate_line: my m=%s, el m=%s", my_m, el_m)
+        if not np.isclose(my_m, el_m):
+            #logger.debug("concatenate_line #1: m %s and %s are not close", my_m, el_m)
             return None
-
         if n1 and n2:
+            #logger.debug("concatenate_line #2: Nodes %s and %s", n1, n2)
             return Line(Element(start=n1, end=n2))
 
-        if points_are_close(self.p1, el.p1):
-            return Line(Element(start=self.p2, end=el.p2))
-        if points_are_close(self.p1, el.p2):
-            return Line(Element(start=self.p2, end=el.p1))
-        if points_are_close(self.p2, el.p1):
-            return Line(Element(start=self.p1, end=el.p2))
-        if points_are_close(self.p2, el.p2):
-            return Line(Element(start=self.p1, end=el.p1))
+        my_p1, my_p2 = self.points_sorted(rtol=rtol, atol=atol)
+        el_p1, el_p2 = el.points_sorted(rtol=rtol, atol=atol)
+
+        logger.debug("my p1: %s,  p2: %s", my_p1,my_p2)
+        logger.debug("el p1: %s,  p2: %s", el_p1,el_p2)
+
+        if points_are_close(my_p2, el_p1, rtol=rtol, atol=atol):
+            return Line(Element(start=my_p1, end=el_p2))
+        if points_are_close(my_p1, el_p2, rtol=rtol, atol=atol):
+            return Line(Element(start=el_p1, end=my_p2))
+
+        if overlapping:
+            if points_are_close(my_p1, el_p1, rtol=rtol, atol=atol):
+                my_d = distance(my_p1, my_p2)
+                el_d = distance(el_p1, el_p2)
+                if el_d > my_d:
+                    return Line(Element(start=el_p1, end=el_p2))
+                else:
+                    return Line(Element(start=my_p1, end=my_p2))
+
+            if points_are_close(my_p2, el_p2, rtol=rtol, atol=atol):
+                my_d = distance(my_p1, my_p2)
+                el_d = distance(el_p1, el_p2)
+                if el_d > my_d:
+                    return Line(Element(start=el_p1, end=el_p2))
+                else:
+                    return Line(Element(start=my_p1, end=my_p2))
+
+            start = None
+            if self.is_point_inside(el_p1,
+                                    rtol=rtol,
+                                    atol=atol,
+                                    include_end=True,
+                                    mdec=mdec):
+                start = my_p1
+            elif el.is_point_inside(my_p1,
+                                    rtol=rtol,
+                                    atol=atol,
+                                    include_end=True,
+                                    mdec=mdec):
+                start = el_p1
+            if start is None:
+                logger.debug("concatenate_line #4: no start")
+                return None
+            end = None
+            if self.is_point_inside(el_p2,
+                                    rtol=rtol,
+                                    atol=atol,
+                                    include_end=True,
+                                    mdec=mdec):
+                end = my_p2
+            elif el.is_point_inside(my_p2,
+                                    rtol=rtol,
+                                    atol=atol,
+                                    include_end=True,
+                                    mdec=mdec):
+                end = el_p2
+            if end is None:
+                logger.debug("concatenate_line #4: no end")
+                return None
+
+            return Line(Element(start=start, end=end))
+
         return None
 
     def is_point_inside(self, point,
                         rtol=1e-03,
                         atol=1e-03,
-                        include_end=False):
-        """ returns True if point is between start and end point
+                        include_end=False,
+                        ignore_end=False,
+                        mdec=0):
+        """ returns True if point is between start and end point of the line
         """
-        if points_are_close(point, self.p1, rtol, atol):
-            return include_end
-        if points_are_close(point, self.p2, rtol, atol):
-            return include_end
+        if not ignore_end:
+            if points_are_close(point, self.p1, rtol, atol):
+                return include_end
+            if points_are_close(point, self.p2, rtol, atol):
+                return include_end
 
-        m1 = line_m(self.p1, point)
-        m2 = line_m(point, self.p2)
+        elevation_tol = np.pi / 360 / 8  # 1/8 degree
+        elevation_line = elevation_angle(alpha_line(self.p1, self.p2))
+        elevation_point1 = elevation_angle(alpha_line(self.p1, point))
+        elevation_point2 = elevation_angle(alpha_line(point, self.p2))
 
-        if m1 is None or m2 is None:
-            # check x-Values
-            if np.isclose(self.p1[0], point[0]) and np.isclose(self.p2[0], point[0]):
-                m1 = None
-                m2 = None
-            if m1 is not None or m2 is not None:
-                return False
-        elif not np.isclose(m1, m2, rtol, atol):
+        if not (np.isclose(elevation_line, elevation_point1, rtol=rtol, atol=atol) or \
+                np.isclose(elevation_line, elevation_point2, rtol=rtol, atol=atol)):
             return False
 
         length = distance(self.p1, self.p2)
@@ -1299,7 +1544,9 @@ class Line(Shape):
         n = line_n(self.p1, m)
         p = intersect_point(center, self.p1, m, n)
 
-        if self.is_point_inside(p, 1e-03, 1e-03):
+        if self.is_point_inside(p,
+                                rtol=1e-03,
+                                atol=1e-03):
             dist_min = min(distance(center, p), dist_min)
 
         return (dist_min, dist_max)
@@ -1314,9 +1561,10 @@ class Line(Shape):
         else:
             alpha_p2 = alpha_line(center, self.p2)
         if alpha_p1 is None:
-            alpha_p1 = alpha_p2
+            assert(alpha_p2 is not None)
+            return (alpha_p2, alpha_p2)
         if alpha_p2 is None:
-            alpha_p2 = alpha_p1
+            return (alpha_p1, alpha_p1)
         if alpha_angle(alpha_p1, alpha_p2) < np.pi:
             return (alpha_p1, alpha_p2)
         else:
@@ -1330,6 +1578,17 @@ class Line(Shape):
 
     def get_angle_of_arc(self):
         return 0.0
+
+    def is_near(self, n):
+        if n[0] > max(self.p1[0], self.p2[0]) + 1e-02:
+            return False
+        if n[0] < min(self.p1[0], self.p2[0]) - 1e-02:
+            return False
+        if n[1] > max(self.p1[1], self.p2[1]) + 1e-02:
+            return False
+        if n[1] < min(self.p1[1], self.p2[1]) - 1e-02:
+            return False
+        return True
 
     def __str__(self):
         return "Line p1={}, p2={}, n1={}, n2={}".format(self.p1,

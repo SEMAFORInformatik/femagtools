@@ -118,7 +118,10 @@ class Journal(object):
 
     def put_appendices_deleted(self, val):
         self.add('appendices_deleted', val)
-       
+
+    def put_nodes_connected(self, val):
+        self.add('nodes_connected', val)
+
     def put_exception(self, msg):
         self.put('exception', msg)
 

@@ -15,7 +15,7 @@ from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle, is_same_angle
-from .functions import area_size
+from .functions import area_size, normalise_angle
 from .shape import Element, Shape, Line, Arc, Circle, is_Circle
 
 logger = logging.getLogger('femagtools.area')
@@ -289,8 +289,10 @@ class Area(object):
         self.alpha = round(alpha_angle(self.min_angle, self.max_angle), 3)
 
     def center_is_inside(self, center):
-        if self.minmax_xy[0] < center[0] and self.minmax_xy[1] > center[0] and \
-           self.minmax_xy[2] < center[1] and self.minmax_xy[3] > center[1]:
+        if less(self.minmax_xy[0], center[0], rtol=1e-03, atol=1e-04) and \
+           greater(self.minmax_xy[1], center[0], rtol=1e-03, atol=1e-04) and \
+           less(self.minmax_xy[2], center[1], rtol=1e-03, atol=1e-04) and \
+           greater(self.minmax_xy[3], center[1], rtol=1e-03, atol=1e-04):
             return True
         return False
 
@@ -883,9 +885,13 @@ class Area(object):
     def is_shaft_area(self, center):
         logger.debug("Begin of check shaft")
 
-        if not self.is_touching_both_sides():
-            logger.debug("End of check shaft: don't touch both sides")
-            return False
+        #if not self.is_touching_both_sides():
+        #    logger.debug("End of check shaft: don't touch both sides")
+        #    return False
+
+        if np.isclose(0.0, self.min_dist, rtol=1e-6, atol=1e-4):
+            logger.debug("End of check shaft: ok (node in center)")
+            return True
 
         for n in self.list_of_nodes():
             a = alpha_line(center, n)
@@ -900,6 +906,7 @@ class Area(object):
                 continue
             logger.debug("End of check shaft: no")
             return False
+
         logger.debug("End of check shaft: ok")
         return True
 
@@ -959,16 +966,12 @@ class Area(object):
         logger.debug("=== BEGIN OF is_mag_rectangle() [{} lines]"
                      .format(len(lines_ceml)))
 
-        c_prev = lines_ceml[0][0]
+        c_prev, e0, m_prev, l_prev = lines_ceml[0]
         a_prev = 999
         p = None
-
-        e0 = lines_ceml[0][1]
         e0_p1 = e0.p1
         e0_p2 = e0.p2
         L_prev = isinstance(e0, Line)
-        l_prev = lines_ceml[0][3]
-        m_prev = lines_ceml[0][2]
 
         e1 = lines_ceml[1][1]
         e1_p1 = e1.p1
@@ -1076,8 +1079,10 @@ class Area(object):
 
         lines_cmL = [[c, m, L] for l, m, c, L in lines_lmcL[0:4]]
         lines_cmL.sort()
+        [logger.debug("Rectangle Lines: c=%s, m=%s, L=%s", c, m, L) \
+         for c, m, L in lines_cmL]
 
-        if np.isclose(lines_cmL[0][1], lines_cmL[2][1], atol=0.001):
+        if np.isclose(lines_cmL[0][1], lines_cmL[2][1], rtol=1e-3, atol=1e-2):
             if not (lines_cmL[0][2] and lines_cmL[2][2]):
                 logger.debug("=== END OF is_mag_rectangle(): not 2 lines #1")
                 return False
@@ -1085,7 +1090,8 @@ class Area(object):
             logger.debug("=== END OF is_mag_rectangle(): OK = {} #1"
                          .format(ok))
             return ok
-        if np.isclose(lines_cmL[1][1], lines_cmL[3][1], atol=0.001):
+
+        if np.isclose(lines_cmL[1][1], lines_cmL[3][1], rtol=1e-3, atol=1e-2):
             if not (lines_cmL[1][2] and lines_cmL[3][2]):
                 logger.debug("=== END OF is_mag_rectangle(): not 2 lines #2")
                 return False
@@ -1128,19 +1134,27 @@ class Area(object):
         alpha = alpha + np.pi/2
         if alpha > np.pi:
             alpha = alpha - np.pi
+
+        mid = middle_angle(self.min_angle, self.max_angle)
+        angle1 = alpha_angle(mid, alpha)
+        angle2 = alpha_angle(alpha, mid)
+        logger.debug("alpha=%s, mid=%s, angle1=%s, angle2=%s", alpha, mid, angle1, angle2)
+
+        if angle1 > np.pi / 2 and angle2 > np.pi / 2:
+            if not np.isclose(angle1, np.pi*2):
+                logger.debug("turn alpha")
+                alpha = normalise_angle(alpha + np.pi)
         return alpha
 
     def get_mag_orientation(self):
         if self.mag_rectangle:
             return self.get_mag_orient_rectangle()
-
         if self.close_to_endangle:
             if self.close_to_startangle:
                 return middle_angle(self.min_angle, self.max_angle)
             else:
                 return self.max_angle
-        else:
-            return middle_angle(self.min_angle, self.max_angle)
+        return middle_angle(self.min_angle, self.max_angle)
 
     def around_windings(self, areas, geom):
         for a in areas:
@@ -1315,7 +1329,9 @@ class Area(object):
         return 0
 
     def mark_rotor_subregions(self, is_inner, mirrored, alpha,
-                              center, r_in, r_out):
+                              center, r_in, r_out,
+                              startangle,
+                              endangle):
         logger.debug("mark_rotor_subregions")
 
         alpha = round(alpha, 6)
@@ -1338,9 +1354,9 @@ class Area(object):
             opposite_radius = r_out
             airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
 
-        self.close_to_startangle = np.isclose(self.min_angle, 0.0,
+        self.close_to_startangle = np.isclose(self.min_angle, startangle,
                                               1e-04, 1e-04)
-        self.close_to_endangle = np.isclose(self.max_angle, alpha,
+        self.close_to_endangle = np.isclose(self.max_angle, endangle,
                                             1e-04, 1e-04)
 
         logger.debug("\n***** mark_rotor_subregions [{}] *****"
@@ -1365,6 +1381,7 @@ class Area(object):
         if is_inner:
             # looking for shaft
             if close_to_opposition and not self.close_to_ag:
+                logger.debug("-- check for shaft")
                 if self.is_shaft_area(center):
                     self.type = 10  # shaft
                     logger.debug("***** shaft (close to opposition)\n")
@@ -1381,6 +1398,8 @@ class Area(object):
             return self.type
 
         self.mag_rectangle = self.is_mag_rectangle()
+        if self.mag_rectangle:
+            logger.debug("Area is a Rectangle")
 
         if self.close_to_ag:
             mm = self.minmax_angle_dist_from_center(center,

@@ -185,6 +185,7 @@ class PlotRenderer(object):
         draw_inside = kwargs.get('draw_inside', False)
         fill_areas = kwargs.get('fill_areas', False)
         write_id = kwargs.get('write_id', False)
+        with_legend = kwargs.get('with_legend', True)
         title = kwargs.get('title', "")
         show = kwargs.get('show', True)
         write_png = kwargs.get('png', False)
@@ -256,7 +257,7 @@ class PlotRenderer(object):
 
         if fill_areas:
             handles = geom.render_area_fill(self)
-            if handles:
+            if handles and with_legend:
                 legend = pl.legend(handles=handles, loc='best',
                                    fancybox=True,
                                    framealpha=1.0,

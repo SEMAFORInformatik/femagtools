@@ -9,14 +9,18 @@ import os
 import io
 import femagtools
 from femagtools.dxfsl.converter import convert
+from femagtools.dxfsl.journal import Journal, getJournal
 import argparse
 import logging
 import logging.config
 
 logger = logging.getLogger(__name__)
+journal = None
 
 
 def main():
+    global journal
+
     argparser = argparse.ArgumentParser(
         description='Process DXF file and create a plot or FSL file.')
     argparser.add_argument('dxfile',
@@ -66,12 +70,12 @@ def main():
                            help='relative tolerance (pickdist)',
                            dest='rtol',
                            type=float,
-                           default=1e-03)
+                           default=1e-04)
     argparser.add_argument('--atol',
                            help='absolut tolerance (pickdist)',
                            dest='atol',
                            type=float,
-                           default=0.005)
+                           default=1e-03)
     argparser.add_argument('--da',
                            help='distance airgap',
                            dest='da',
@@ -122,9 +126,9 @@ def main():
                            help='print information in logfile and set --debug',
                            dest='debug',
                            action="store_true")
-    argparser.add_argument('--logfile',
-                           help='print information in logfile',
-                           dest='logfile',
+    argparser.add_argument('-j',
+                           help='print information in journal file',
+                           dest='journal',
                            action="store_true")
     argparser.add_argument('--version',
                            help='show version of some packages',
@@ -141,7 +145,7 @@ def main():
     loglevel = logging.INFO
     if args.debug:
         loglevel = logging.DEBUG
-    if args.debug or args.logfile:
+    if args.debug:
         logfilename = 'debugger.log'
         print("see log-messages in {}".format(logfilename))
 
@@ -164,6 +168,8 @@ def main():
             logger.info("matplotlib version: <matplotlib not available>")
         logger.info("Python: %s", sys.version)
         sys.exit(0)
+
+    journal = getJournal(name='converter_journal', aktiv=args.journal)
 
     if args.airgap > 0.0:
         if args.airgap2 > 0.0:
@@ -228,7 +234,7 @@ def main():
             basename = os.path.basename(args.dxfile).split('.')[0]
             with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
                 f.write('\n'.join(res['fsl']))
-
+    journal.write_journal()
 
 if __name__ == "__main__":
     loglevel = logging.INFO

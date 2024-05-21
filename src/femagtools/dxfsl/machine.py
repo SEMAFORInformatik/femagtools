@@ -5,7 +5,7 @@
 from __future__ import print_function
 import numpy as np
 import logging
-from .shape import Element, Circle, Arc, Line
+from .shape import Element, Circle, Arc, Line, Shape
 from .corner import Corner
 from femagtools.dxfsl.symmetry import Symmetry
 from .functions import point, points_are_close, distance
@@ -36,6 +36,7 @@ class Machine(object):
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
         self.previous_machine = None
+
         if not self.center:
             raise ValueError("FATAL ERROR: no center in Geometry")
 
@@ -116,11 +117,19 @@ class Machine(object):
     def set_kind(self, kind):
         self.geom.kind = kind
 
+    def set_inner_or_outer(self, place=''):
+        if place == 'in':
+            self.set_inner()
+        elif place == 'out':
+            self.set_outer()
+
     def set_inner(self):
         self.geom.is_inner = True
+        self.geom.is_outer = False
 
     def set_outer(self):
         self.geom.is_outer = True
+        self.geom.is_inner = False
 
     def clear_cut_lines(self):
         self.geom.clear_cut_lines()
@@ -173,7 +182,8 @@ class Machine(object):
     def copy(self, startangle, endangle,
              airgap=False, inside=True, split=False,
              delete_appendices=False,
-             concatenate_tiny_el=False):
+             concatenate=False,
+             connect=False):
         if airgap and self.airgap_radius > 0.0:
             if inside:
                 if self.airgap2_radius > 0.0:
@@ -185,7 +195,8 @@ class Machine(object):
                                              0.0, new_radius,
                                              split=split,
                                              delete_appendices=delete_appendices,
-                                             concatenate_tiny_el=concatenate_tiny_el)
+                                             concatenate=concatenate,
+                                             connect=connect)
             else:
                 new_radius = self.radius
                 gap_radius = max(self.airgap_radius, self.airgap2_radius)
@@ -194,7 +205,8 @@ class Machine(object):
                                              gap_radius, self.radius+9999,
                                              split=split,
                                              delete_appendices=delete_appendices,
-                                            concatenate_tiny_el=concatenate_tiny_el)
+                                             concatenate=concatenate,
+                                             connect=connect)
 
             circ = Circle(Element(center=self.center,
                                   radius=self.airgap_radius))
@@ -206,7 +218,8 @@ class Machine(object):
                                          self.radius+9999,
                                          split=split,
                                          delete_appendices=delete_appendices,
-                                         concatenate_tiny_el=concatenate_tiny_el)
+                                         concatenate=concatenate,
+                                         connect=connect)
 
         if not np.isclose(normalise_angle(startangle),
                           normalise_angle(endangle), 0.0):
@@ -230,11 +243,16 @@ class Machine(object):
                            startangle=self.startangle,
                            endangle=self.endangle)
 
-    def full_copy(self):
+    def full_copy(self, concatenate_matching_el=False):
         clone = self.geom.copy_shape(self.radius,
                                      0.0, 2*np.pi,
-                                     0.0, self.radius+9999)
-        return clone.get_machine()
+                                     0.0, self.radius+9999,
+                                     concatenate_matching_el=concatenate_matching_el)
+        clone.kind = self.geom.kind
+        clone.sym_part = self.geom.sym_part
+        clone.sym_counterpart = self.geom.sym_counterpart
+        clone.alfa = self.geom.alfa
+        self.geom = clone
 
     def copy_mirror(self, startangle, midangle, endangle):
         logger.debug("begin of copy_mirror")
@@ -290,6 +308,7 @@ class Machine(object):
 
         if points_are_close(self.center, [0.0, 0.0]):
             angle = new_startangle - self.startangle
+            self.geom.area_list = []
             self.geom.rotate(angle)
             self.startangle = new_startangle
             self.endangle += angle
@@ -437,6 +456,7 @@ class Machine(object):
                 pos_list.append([pos, d, c])
             elif prv_dist_percent <= 1:
                 pos_list.append([prv_dist_percent, d, c])
+
         if get_one:
             if pos_list:
                 dist_list = [[d, c] for pos, d, c in pos_list]
@@ -522,46 +542,12 @@ class Machine(object):
                               rtol=rtol, atol=atol)
         logger.debug('end of repair_hull_geom')
 
-    def create_stator_auxiliary_lines(self):
-        logger.debug("create_stator_auxiliary_lines")
+    def create_boundery_nodes(self):
+        self.geom.create_boundery_nodes(self.center, self.startangle, self.endangle)
+
+    def create_auxiliary_lines(self):
+        logger.debug("create_auxiliary_lines")
         return self.geom.create_auxiliary_lines(self.startangle, self.endangle)
-
-    def create_rotor_auxiliary_lines(self):
-        logger.debug("create_rotor_auxiliary_lines")
-        done = False
-        ag_list = self.geom.detect_airgaps(self.center,
-                                           self.startangle, self.endangle,
-                                           atol=0.001,
-                                           with_end=True)
-        if ag_list:
-            radius_list = [(ag[0], (ag[0] + ag[1]) / 2, ag[1]) for ag in ag_list]
-
-            min_mag, max_mag = self.geom.get_minmax_magnet()
-            if self.geom.is_inner:
-                radius_list.sort()
-                rmin, rmid, rmax = radius_list[0]
-                start = 0
-                for r in radius_list[1:]:
-                    if np.isclose(rmax, r[0]):
-                        # SHAFT
-                        rmin, rmid, rmax = r
-                        start = 1
-                    break
-
-                for r in radius_list[start:]:
-                    if (r[2] - r[0]) > 4:
-                        radius = (r[1] + r[2]) / 2
-                    elif (r[2] - r[1]) > 1:
-                        radius = r[1]
-                    else:
-                        radius = min_mag + 1
-                    if radius < min_mag:
-                        if self.create_arc(radius, attr='iron_sep'):
-                            done = True
-
-        if self.geom.create_auxiliary_lines(self.startangle, self.endangle):
-            done = True
-        return done
 
     def set_alfa_and_corners(self):
         self.geom.start_corners = self.geom.get_corner_nodes(self.center,
@@ -588,7 +574,7 @@ class Machine(object):
             return w*2
         return w
 
-    def find_symmetry(self, sym_tolerance, is_inner, is_outer):
+    def find_symmetry(self, sym_tolerance, is_inner, is_outer, plt):
         logger.debug("begin of find_symmetry")
         if self.radius <= 0.0:
             return False
@@ -603,7 +589,8 @@ class Machine(object):
             found = True
         else:
             found = self.geom.find_symmetry(self.radius,
-                                            self.startangle, self.endangle,
+                                            self.startangle,
+                                            self.endangle,
                                             sym_tolerance)
         if not found and len(self.geom.area_list) < 5:
             if is_inner:
@@ -614,7 +601,8 @@ class Machine(object):
         if self.part != 1:  # not full
             logger.debug("end of find_symmetry: not full")
             return found
-
+        return found
+    # ENDE
         if found:
             angle = self.geom.sym_slice_angle
             logger.debug(" - #1:  %s slices with angle %s",
@@ -623,9 +611,33 @@ class Machine(object):
         else:
             logger.debug(" - #1:  no symmetry found")
             angle = np.pi/2
+
+        if plt:
+            plt.render_elements(self.geom, Shape,
+                                draw_inside=False,
+                                title="Before Copy",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True,
+                                write_id=True)
+
+        logger.debug("1: ### create a new clone to find symmetry ###")
         elist = self.geom.copy_all_elements(-angle)
         logger.debug(" - %s elements copied", len(elist))
-        clone = self.geom.new_clone(elist)
+        clone = self.geom.new_clone(elist,
+                                    concatenate=False,
+                                    connect=False)
+
+        if plt:
+            plt.render_elements(clone, Shape,
+                                draw_inside=False,
+                                title="After Copy",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True,
+                                write_id=True)
 
         f = clone.find_symmetry(self.radius,
                                 self.startangle,
@@ -651,9 +663,21 @@ class Machine(object):
                          self.geom.sym_slices)
             return True
 
+        logger.debug("2: ### create a new clone to find symmetry ###")
         elist = clone.copy_all_elements(-angle)
         logger.debug(" - %s elements copied", len(elist))
-        clone = clone.new_clone(elist)
+        clone = clone.new_clone(elist,
+                                concatenate=False,
+                                connect=False)
+        if plt:
+            plt.render_elements(clone, Shape,
+                                draw_inside=False,
+                                title="After Clone",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True,
+                                write_id=True)
 
         f = clone.find_symmetry(self.radius,
                                 self.startangle,
@@ -685,7 +709,7 @@ class Machine(object):
         elist = [Circle(Element(center=self.center,
                                 radius=radius))]
         elist += self.geom.copy_all_elements(0.0)
-        clone = self.geom.new_clone(elist, split=True)
+        clone = self.geom.new_clone(elist, split=False)
         found = clone.find_symmetry(self.radius,
                                     self.startangle,
                                     self.endangle,
@@ -707,7 +731,8 @@ class Machine(object):
 
         machine_slice = self.copy(self.geom.symmetry_startangle(),
                                   self.geom.symmetry_endangle(),
-                                  concatenate_tiny_el=True)
+                                  concatenate=True,
+                                  connect=True)
         machine_slice.clear_cut_lines()
         machine_slice.repair_hull()
         machine_slice.rotate_to(0.0)
@@ -732,7 +757,7 @@ class Machine(object):
         logger.debug("end get_forced_symmetry")
         return machine
 
-    def get_third_symmetry_mirror(self):
+    def get_third_symmetry_mirror(self, plt):
         logger.debug("begin get_third_symmetry_mirror")
         first_thirdangle = third_angle(self.startangle, self.endangle)
         second_thirdangle = middle_angle(first_thirdangle, self.endangle)
@@ -741,11 +766,27 @@ class Machine(object):
                                             first_thirdangle,
                                             second_thirdangle)
         machine_mirror_1.clear_cut_lines()
+
         machine_mirror_1.repair_hull()
         machine_mirror_1.set_alfa_and_corners()
         if not machine_mirror_1.check_symmetry_graph(0.001, 0.05):
             logger.debug("end get_third_symmetry_mirror: no mirror first third")
             return None
+
+        if plt:
+            plt.render_elements(machine_mirror_1.geom, Shape,
+                                title="Part",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True)
+
+            plt.render_elements(machine_mirror_1.mirror_geom, Shape,
+                                title="Counterpart",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True)
 
         machine_mirror_2 = self.copy_mirror(first_thirdangle,
                                             second_thirdangle,
@@ -761,7 +802,7 @@ class Machine(object):
         logger.debug("end get_third_symmetry_mirror: ok")
         return machine_mirror_1
 
-    def get_symmetry_mirror(self):
+    def get_symmetry_mirror(self, no_third=False, plt=None):
         logger.debug("begin get_symmetry_mirror")
         if self.part == 1:
             # a complete machine
@@ -772,7 +813,10 @@ class Machine(object):
             startangle = self.startangle
             endangle = self.endangle
             midangle = middle_angle(self.startangle, self.endangle)
-            machine_mirror = self.get_third_symmetry_mirror()
+            if no_third:
+                machine_mirror = None
+            else:
+                machine_mirror = self.get_third_symmetry_mirror(plt)
             if machine_mirror:
                 logger.debug("end get_symmetry_mirror: third found")
                 return machine_mirror
@@ -781,8 +825,32 @@ class Machine(object):
                      .format(startangle, midangle, endangle))
         machine_mirror = self.copy_mirror(startangle, midangle, endangle)
         machine_mirror.clear_cut_lines()
+
+        if plt:
+            plt.render_elements(machine_mirror.geom, Shape,
+                                title="Before Repair Hull",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True)
+
         machine_mirror.repair_hull()
         machine_mirror.set_alfa_and_corners()
+        if False:
+            plt.render_elements(machine_mirror.geom, Shape,
+                                title="Part",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True)
+
+            plt.render_elements(machine_mirror.mirror_geom, Shape,
+                                title="Counterpart",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True)
+
         if machine_mirror.check_symmetry_graph(0.001, 0.05):
             machine_mirror.previous_machine = self
             machine_mirror.rotate_to(0.0)
@@ -922,42 +990,67 @@ class Machine(object):
             logger.debug("end get_hit_factor => %s", factor)
             return factor
 
+        symmetry = Symmetry(geom=self.geom,
+                            startangle=self.startangle,
+                            endangle=self.endangle)
+        if symmetry.check_symmetry_of_mirror(self.mirror_geom,
+                                             self.mirror_startangle):
+            logger.debug("NEW SYMMETRY FOUND")
+            return True
+        return False
+
         hit_factor1 = get_hit_factor(self.geom,
                                      self.mirror_geom)
         logger.debug("=> hit_factor1 = {}".format(hit_factor1))
         if hit_factor1 < 0.9:
-            logger.debug("end get_hit_factor: hit_factor1 < 0.9")
+            logger.debug("end check_symmetry_graph: hit_factor1 < 0.9")
             return False  # not ok
 
         hit_factor2 = get_hit_factor(self.mirror_geom,
                                      self.geom)
         logger.debug("=> hit_factor2 = {}".format(hit_factor2))
         if hit_factor2 < 0.9:
-            logger.debug("end get_hit_factor: hit_factor2 < 0.9")
+            logger.debug("end check_symmetry_graph: hit_factor2 < 0.9")
             return False  # not ok
 
         if hit_factor1 < 0.93 and hit_factor2 < 0.93:
-            logger.debug("end get_hit_factor: hit_factors < 0.93")
+            logger.debug("end check_symmetry_graph: hit_factors < 0.93")
             return False  # not ok
 
         logger.debug("end check_symmetry_graph: ok")
         return True
 
     def sync_with_counterpart(self, cp_machine):
+        logger.debug("sync_with_counterpart")
         self.geom.sym_counterpart = cp_machine.get_symmetry_part()
         self.geom.sym_part = self.get_symmetry_part()
+        logger.debug("part/sym-part: self=%s/%s, cp=%s/%s",
+                     self.part, self.geom.sym_part,
+                     cp_machine.part, self.geom.sym_counterpart)
         cp_machine.geom.sym_counterpart = self.get_symmetry_part()
         cp_machine.geom.sym_part = cp_machine.get_symmetry_part()
 
-    def search_subregions(self):
+    def search_subregions(self, single=False):
         logger.debug("Search subregions")
-        self.geom.search_subregions()
+        self.geom.search_subregions(self.startangle, self.endangle, single=single)
 
-    def rebuild_subregions(self):
+    def search_rotor_subregions(self, single=False):
+        self.geom.search_rotor_subregions(self.startangle, self.endangle, single=single)
+
+    def search_stator_subregions(self, single=False):
+        self.geom.search_stator_subregions(self.startangle, self.endangle, single=single)
+
+    def rebuild_subregions(self, single=False):
         logger.debug("Rebuild subregions")
         self.geom.set_edge_attributes()
         self.geom.area_list = []
-        self.geom.search_subregions()
+        self.geom.search_subregions(self.startangle, self.endangle, single=single)
+
+    def has_windings(self):
+        return self.geom.has_windings
+
+    def has_magnets(self):
+        return self.geom.has_magnets
 
     def delete_tiny_elements(self, mindist):
         self.geom.delete_tiny_elements(mindist)
@@ -983,7 +1076,7 @@ class Machine(object):
                   linestyle=linestyle)
         arc.set_attribute(attr)
         n = self.geom.find_nodes(pts[0], pts[1])
-        self.geom.add_edge(n[0], n[1], arc)
+        self.geom.add_or_join_edge(n[0], n[1], arc)
         return True
 
     def get_iron_separator(self, radius_list):
@@ -1036,11 +1129,6 @@ class Machine(object):
                         if self.create_arc(r[1]):
                             radius = r[1]
                         break
-#        else:
-#            sep_radius = self.get_iron_separator(radius_list)
-#            if sep_radius > 0.0:
-#                logger.debug("Iron Separator found: %s", sep_radius)
-#                radius = sep_radius
 
         # install line
         line = Line(
@@ -1054,9 +1142,72 @@ class Machine(object):
             self.geom.area_list = []
             logger.debug("create subregions again")
             self.geom.create_list_of_areas()
-            self.geom.search_subregions()
+            self.geom.search_subregions(self.startangle, self.endangle)
 
         logger.debug("end create_mirror_lines_outside_windings")
+
+    def create_inner_auxiliary_arcs(self):
+        if not self.geom.is_inner:
+            return False
+
+        ag_list = self.geom.detect_airgaps(self.center,
+                                           self.startangle, self.endangle,
+                                           atol=0.001,
+                                           with_end=True)
+        if not ag_list:
+            return False
+
+        done = False
+        radius_list = [(ag[0], (ag[0] + ag[1]) / 2, ag[1]) for ag in ag_list]
+        min_mag, max_mag = self.geom.get_minmax_magnet()
+        radius_list.sort()
+        rmin, rmid, rmax = radius_list[0]
+        start = 0
+        for r in radius_list[1:]:
+            if np.isclose(rmax, r[0]):
+                # SHAFT
+                rmin, rmid, rmax = r
+                start = 1
+            break
+
+        for r in radius_list[start:]:
+            if (r[2] - r[0]) > 4:
+                radius = (r[1] + r[2]) / 2
+            elif (r[2] - r[1]) > 0.5:
+                radius = r[1]
+            else:
+                radius = min_mag + 1
+            if radius < min_mag:
+                self.create_arc(radius, attr='iron_sep', color='black')
+                done = True
+        return done
+
+    def create_mirror_lines_outside_magnets(self):
+        logger.debug("create_mirror_lines_outside_magnets")
+
+        rebuild = self.create_inner_auxiliary_arcs()
+
+        if not self.geom.has_areas_touching_both_sides():
+            logger.debug("end create_mirror_lines_outside_magnets: not done")
+            return rebuild
+
+        radius = self.radius+10
+        midangle = middle_angle(self.startangle, self.endangle)
+        line = Line(
+            Element(start=self.center,
+                    end=point(self.center, radius, midangle)))
+
+        pts = self.geom.split_and_get_intersect_points(line)
+        pts.sort()
+
+        if self.geom.create_lines_outside_magnets(pts):
+            rebuild = True
+
+        logger.debug("end create_mirror_lines_outside_magnets")
+        return rebuild
+
+    def create_inner_corner_areas(self):
+        self.geom.create_inner_corner_areas(self.startangle, self.endangle)
 
     def check_and_correct_geom(self, what):
         geom = self.geom.check_geom(what)

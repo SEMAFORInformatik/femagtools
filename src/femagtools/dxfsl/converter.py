@@ -1,18 +1,39 @@
 """read a dxf file and create a plot or fsl file
 
 """
+import os
 from pathlib import Path
 from femagtools.dxfsl.geom import Geometry
 from femagtools.dxfsl.shape import Shape
 from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
 from femagtools.dxfsl.plotrenderer import PlotRenderer
-from femagtools.dxfsl.functions import Timer
+from femagtools.dxfsl.concat import Concatenation
+from femagtools.dxfsl.functions import Timer, middle_angle
+from femagtools.dxfsl.journal import Journal, getJournal
 import logging
 import logging.config
 import numpy as np
 import sys
 
 logger = logging.getLogger(__name__)
+journal = None
+
+
+def plot_geom(doit, plt, geom, title="Plot", areas=True):
+    if not doit:
+        return
+
+    logger.info("Prepare Plot %s", title)
+    plt.render_elements(geom, Shape,
+                        draw_inside=areas,
+                        title=title,
+                        show=True,
+                        with_corners=True,
+                        with_nodes=False,
+                        neighbors=True,
+                        write_id=areas,
+                        with_legend=False,
+                        fill_areas=areas)
 
 
 def symmetry_search(machine,
@@ -48,16 +69,16 @@ def symmetry_search(machine,
         logger.info("*** End of symmetry search for %s ***", kind)
         return machine_ok
 
-    if not machine.find_symmetry(symtol, is_inner, is_outer):
-        logger.info(" - {}: no symmetry axis found".format(kind))
-        if show_plots:
-            plt.add_emptyplot(rows, cols, num, 'no symmetry axis')
+    plot_geom(False,  # for developer
+              plt, machine.geom,
+              title="Before Symmetry ({})".format(kind))
 
-        machine_mirror = machine.get_symmetry_mirror()
-        machine_slice = machine
-        machine_slice.set_alfa_and_corners()
-    else:
+    if machine.find_symmetry(symtol, is_inner, is_outer, None):
         logger.info(" - {}: symmetry axis found !!".format(kind))
+        plot_geom(False,  # for developer
+                  plt, machine.geom,
+                  title="Symmetry found")
+
         if show_plots:
             plt.render_elements(machine.geom, Shape,
                                 title=kind+' (symmetrylines)',
@@ -69,20 +90,50 @@ def symmetry_search(machine,
             logger.info(" - no slice extracted ?!?")
             return machine
 
-        machine_mirror = machine_slice.get_symmetry_mirror()
+        plot_geom(False,  # for developer
+                  plt, machine_slice.geom,
+                  title="Slice of {}".format(kind))
+
+        # no third after slice
+        machine_mirror = machine_slice.get_symmetry_mirror(no_third=True)
+
+        if machine_mirror is not None:
+            machine_mirror.set_kind(kind)
+            logger.info("*** End of symmetry search for %s (symmetry and mirror) ***", kind)
+            return machine_mirror
+
+        machine_slice.set_kind(kind)
+        logger.info("*** End of symmetry search for %s (symmetry) ***", kind)
+        return machine_slice
+
+    # --- no symmetry slice found ---
+    logger.info(" - {}: no symmetry axis found".format(kind))
+    if show_plots:
+        if debug_mode:
+            plt.render_elements(machine.geom, Shape,
+                                title=kind+' (no symmetry axis)',
+                                draw_inside=True,
+                                neighbors=True,
+                                rows=rows, cols=cols, num=num, show=False)
+        else:
+            plt.add_emptyplot(rows, cols, num, 'no symmetry axis')
+
+    if not machine.is_startangle_zero():
+        logger.debug("Rotate geometry to 0.0")
+        machine.rotate_to(0.0)
+        machine.set_alfa_and_corners()
+
+    machine_mirror = machine.get_symmetry_mirror()
+    machine_slice = machine
+    machine_slice.set_alfa_and_corners()
 
     if machine_mirror is None:
         logger.info(" - no mirror found")
-        if not machine_slice.is_startangle_zero():
-            machine_slice.rotate_to(0.0)
-            machine_slice.set_alfa_and_corners()
-
         machine_ok = machine_slice
     else:
-        if show_plots and debug_mode:
-            plt.render_elements(machine_mirror.mirror_geom, Shape,
-                                title='Mirror of '+kind,
-                                rows=rows, cols=cols, num=num, show=True)
+        plot_geom(False,  # for developer
+                  plt, machine_mirror.geom,
+                  title="After Mirror ({})".format(kind))
 
         logger.info(" - mirror found")
         machine_next_mirror = machine_mirror.get_symmetry_mirror()
@@ -93,15 +144,102 @@ def symmetry_search(machine,
 
         machine_ok = machine_mirror
 
+    if not machine_ok.is_startangle_zero():
+        logger.debug("Rotate geometry to 0.0")
+        machine_ok.rotate_to(0.0)
+        machine_ok.set_alfa_and_corners()
+
     machine_ok.set_kind(kind)
 
     logger.info("*** End of symmetry search for %s ***", kind)
     return machine_ok
 
 
+def build_machine_rotor(machine, inner, mindist, plt, single=False):
+    logger.debug("Begin of build_machine_rotor")
+    if machine.has_windings():
+        logger.debug("do nothing here with windings in rotor")
+        logger.debug("End of build_machine_rotor")
+        return machine
+
+    if machine.is_mirrored():
+        logger.debug("Rotor is mirrored")
+        machine_temp = machine.undo_mirror()
+        machine_temp.geom.set_rotor()
+        machine_temp.search_rotor_subregions(single=single)
+    else:
+        machine_temp = machine
+
+    midangle = middle_angle(machine_temp.startangle,
+                            machine_temp.endangle)
+
+    plot_geom(False,  # for developer
+              plt, machine_temp.geom,
+              title="Inner Rotor check magnets {}".format(midangle))
+
+    rebuild = False
+    if machine_temp.geom.magnets_in_the_middle(midangle):
+        logger.debug("Magnets cut")
+        rebuild = machine_temp.create_mirror_lines_outside_magnets()
+    else:
+        if machine.is_mirrored():
+            logger.debug("Back to the mirrored machine")
+            machine_temp = machine  # undo
+            rebuild = machine_temp.create_inner_auxiliary_arcs()
+        else:
+            rebuild = machine_temp.create_mirror_lines_outside_magnets()
+    if rebuild:
+        machine_temp.geom.area_list = []
+
+    if machine_temp.create_auxiliary_lines():
+        rebuild = True
+    if rebuild:
+        machine_temp.rebuild_subregions(single=single)
+
+    machine_temp.delete_tiny_elements(mindist)
+    if inner:
+        machine_temp.create_inner_corner_areas()
+
+    if not machine_temp.is_mirrored():
+        machine_temp.create_boundery_nodes()
+
+    plot_geom(False,  # for developer
+              plt, machine_temp.geom,
+              title="Final Rotor")
+    logger.debug("End of build_machine_rotor")
+    return machine_temp
+
+
+def build_machine_stator(machine, inner, mindist, plt, single=False):
+    logger.debug("Begin of build_machine_stator")
+    if not machine.geom.is_stator():
+        logger.debug("Rotor with windings")
+
+    if machine.has_mirrored_windings():
+        logger.debug("undo mirrored windings")
+        machine_temp = machine.undo_mirror()
+        machine_temp.geom.set_stator()
+        machine_temp.search_stator_subregions(single=single)
+        machine_temp.create_mirror_lines_outside_windings()
+    else:
+        machine_temp = machine
+    if machine_temp.create_auxiliary_lines():
+        machine_temp.rebuild_subregions(single=single)
+
+    machine_temp.delete_tiny_elements(mindist)
+    if inner:
+        machine_temp.create_inner_corner_areas()
+
+    if not machine_temp.is_mirrored():
+        machine_temp.create_boundery_nodes()
+
+    logger.debug("End of build_machine_stator")
+    return machine_temp
+
+
 def convert(dxfile,
-            rtol=1e-03,
-            atol=0.005,
+            rtol=1e-04,
+            atol=1e-03,
             mindist=0.0,
             symtol=0.001,
             sympart=0,
@@ -125,9 +263,14 @@ def convert(dxfile,
     layers = ()
     conv = {}
 
-    basename = Path(dxfile).stem
+    input_file = Path(dxfile)
+    basename = input_file.stem
     logger.info("***** start processing %s *****", basename)
     timer = Timer(start_it=True)
+
+    journal = getJournal(name='converter', aktiv=debug_mode)
+    journal.get_journal(input_file.name)
+    journal.put_filename(str(input_file.resolve()))
 
     if part:
         if part[0] not in ('rotor', 'stator'):
@@ -151,28 +294,44 @@ def convert(dxfile,
         split_cpy = split
 
     try:
-        if Path(dxfile).suffix == '.fem':
+        if input_file.suffix in ['.fem', '.FEM']:
             from .femparser import femshapes
             basegeom = Geometry(femshapes(dxfile),
                                 rtol=rtol,
                                 atol=atol,
-                                split=split_ini)
-        elif Path(dxfile).suffix == '.dxf':
+                                split=split_ini,
+                                concatenate=True,
+                                connect=True,
+                                delete=True,
+                                adjust=True,
+                                main=True)
+        elif input_file.suffix in ['.dxf', '.DXF']:
             from .dxfparser import dxfshapes
             basegeom = Geometry(dxfshapes(dxfile,
                                           mindist=mindist,
                                           layers=layers),
                                 rtol=rtol,
                                 atol=atol,
-                                split=split_ini)
-        elif Path(dxfile).suffix == '.svg':
+                                split=split_ini,
+                                concatenate=True,
+                                connect=True,
+                                delete=True,
+                                adjust=True,
+                                main=True)
+        elif input_file.suffix in ['.svg', '.SVG']:
             from .svgparser import svgshapes
             basegeom = Geometry(svgshapes(dxfile),
                                 rtol=rtol,
                                 atol=atol,
-                                split=split_ini)
-
-
+                                split=split_ini,
+                                concatenate=True,
+                                connect=True,
+                                delete=True,
+                                adjust=True,
+                                main=True)
+        else:
+            logger.error("Unexpected file %s", input_file)
+            sys.exit(1)
     except FileNotFoundError as ex:
         logger.error(ex)
         return dict()
@@ -183,27 +342,22 @@ def convert(dxfile,
 
     if view_only:
         logger.info("View only")
-        if view_korr:
-            logger.info("With Corrections")
-            basegeom.search_all_overlapping_elements()
-            basegeom.search_all_appendices()
-
         p.render_elements(basegeom, Shape,
                           neighbors=True,
                           png=write_png,
                           show=True)
         return dict()
 
-    basegeom.search_all_overlapping_elements()
+    plot_geom(False,  # for developer
+              p, basegeom,
+              title="Before finding Machine")
 
     machine_base = basegeom.get_machine()
     if show_plots:
         p.render_elements(basegeom, Shape,
-                          title=Path(dxfile).name,
+                          title=input_file.name,
                           with_hull=False,
                           rows=3, cols=2, num=1, show=debug_mode)
-
-    basegeom.search_all_appendices()
 
     if not machine_base.is_a_machine():
         logger.warn("it's Not a Machine!!")
@@ -240,7 +394,6 @@ def convert(dxfile,
                           rows=3, cols=2, num=2, show=False)
 
     machine.repair_hull()
-    machine.geom.delete_all_appendices()
 
     if machine.has_airgap():
         logger.info("=== airgap is %s ===", machine.airgap_radius)
@@ -249,7 +402,9 @@ def convert(dxfile,
                                      airgap=True,
                                      inside=True,
                                      split=split_cpy,
-                                     delete_appendices=True)
+                                     delete_appendices=True,
+                                     concatenate=True,
+                                     connect=True)
 
         machine_inner = symmetry_search(machine_inner,
                                         p,  # plot
@@ -262,13 +417,16 @@ def convert(dxfile,
                                         num=3)   # start num
         machine_inner.set_inner()
         machine_inner.check_and_correct_geom("Inner")
+        machine_inner.delete_tiny_elements(mindist)
 
         machine_outer = machine.copy(startangle=0.0,
                                      endangle=2*np.pi,
                                      airgap=True,
                                      inside=False,
                                      split=split_cpy,
-                                     delete_appendices=True)
+                                     delete_appendices=True,
+                                     concatenate=True,
+                                     connect=True)
 
         machine_outer = symmetry_search(machine_outer,
                                         p,  # plot
@@ -280,44 +438,48 @@ def convert(dxfile,
                                         cols=2,  # columns
                                         num=4)   # start num
         machine_outer.check_and_correct_geom("Outer")
+        machine_outer.delete_tiny_elements(mindist)
 
         machine_inner.sync_with_counterpart(machine_outer)
 
         machine_inner.search_subregions()
         machine_outer.search_subregions()
 
+        # Inner mirrored rotor
         if machine_inner.geom.is_rotor():
-            if machine_inner.create_rotor_auxiliary_lines():
-                machine_inner.rebuild_subregions()
+            machine_inner = build_machine_rotor(machine_inner,
+                                                True,  # is inner
+                                                mindist,
+                                                p)
 
-        elif machine_outer.geom.is_rotor():
-            if machine_outer.create_rotor_auxiliary_lines():
-                machine_outer.rebuild_subregions()
+        # Outer mirrored rotor
+        if machine_outer.geom.is_rotor():
+            machine_outer = build_machine_rotor(machine_outer,
+                                                False,  # is outer
+                                                mindist,
+                                                p)
 
-        if machine_inner.geom.is_stator():
-            if machine_inner.has_mirrored_windings():
-                logger.debug("undo mirrored windings of %s", inner_name)
-                machine_inner = machine_inner.undo_mirror()
-                machine_inner.sync_with_counterpart(machine_outer)
-                machine_inner.search_subregions()
-                machine_inner.create_mirror_lines_outside_windings()
-            if machine_inner.create_stator_auxiliary_lines():
-                machine_inner.rebuild_subregions()
+        if machine_inner.geom.is_stator() or machine_inner.has_windings():
+            machine_inner = build_machine_stator(machine_inner,
+                                                 True,
+                                                 mindist,
+                                                 p)
 
-        elif machine_outer.geom.is_stator():
-            if machine_outer.has_mirrored_windings():
-                logger.debug("undo mirrored windings of %s", outer_name)
-                machine_outer = machine_outer.undo_mirror()
-                machine_inner.sync_with_counterpart(machine_outer)
-                machine_outer.search_subregions()
-                machine_outer.create_mirror_lines_outside_windings()
-            if machine_outer.create_stator_auxiliary_lines():
-                machine_outer.rebuild_subregions()
+        if machine_outer.geom.is_stator() or machine_outer.has_windings():
+            machine_outer = build_machine_stator(machine_outer,
+                                                 False,
+                                                 mindist,
+                                                 p)
 
-        machine_inner.delete_tiny_elements(mindist)
-        machine_outer.delete_tiny_elements(mindist)
-        machine_inner.geom.create_corner_areas()
-        logger.info("END of work: %s", basename)
+        logger.info("***** END of work: %s *****", basename)
+
+        plot_geom(False,  # for developer
+                  p, machine_inner.geom,
+                  title="Final Inner Geometry")
+
+        plot_geom(False,  # for developer
+                  p, machine_outer.geom,
+                  title="Final Outer Geometry")
 
         if show_plots:
             p.render_elements(machine_inner.geom, Shape,
@@ -337,6 +499,7 @@ def convert(dxfile,
                               neighbors=False,
                               write_id=write_id,
                               fill_areas=True)
+
             if write_png:
                 p.write_plot(basename)
             else:
@@ -393,6 +556,8 @@ def convert(dxfile,
                 params)
     else:
         # No airgap found. This must be an inner or outer part
+        logger.info("=== no airgap found ===")
+
         name = "No_Airgap"
         inner = False
         outer = False
@@ -435,35 +600,27 @@ def convert(dxfile,
         if part:
             if part[0] == 'stator':
                 machine.geom.set_stator()
-                machine.geom.search_stator_subregions(part[1])
-
-                if machine.has_mirrored_windings():
-                    logger.info("undo mirror of stator")
-                    machine = machine.undo_mirror()
-                    machine.geom.set_stator()
-                    machine.geom.search_stator_subregions(part[1])
-                    machine.geom.looking_for_corners()
-                    machine.create_mirror_lines_outside_windings()
-                if machine.create_stator_auxiliary_lines():
-                    machine.rebuild_subregions()
+                machine.set_inner_or_outer(part[1])
+                machine.search_stator_subregions(single=True)
+                machine = build_machine_stator(machine, inner, mindist, p, single=True)
 
                 params = create_femag_parameters_stator(machine,
                                                         part[1])
             else:
                 machine.geom.set_rotor()
-                machine.geom.search_rotor_subregions(part[1])
-                machine.geom.looking_for_corners()
-                if machine.create_rotor_auxiliary_lines():
-                    machine.rebuild_subregions()
+                machine.set_inner_or_outer(part[1])
+                machine.search_rotor_subregions(single=True)
+                machine = build_machine_rotor(machine, inner, mindist, p, single=True)
 
                 params = create_femag_parameters_rotor(machine,
                                                        part[1])
         else:
-            machine.geom.search_subregions()
+            machine.search_subregions(single=True)
 
         machine.delete_tiny_elements(mindist)
-        machine.geom.create_corner_areas()
-        logger.info("END of work: %s", basename)
+        machine.create_inner_corner_areas()
+
+        logger.info("***** END of work: %s *****", basename)
 
         if show_plots:
             p.render_elements(machine.geom, Shape,
@@ -502,7 +659,7 @@ def convert(dxfile,
                 conv.update(params)
 
     conv['name'] = basename
-    timer.stop("-- all done in %0.4f seconds --")
+    timer.stop("-- all done in %0.4f seconds --", info=True)
     return conv
 
 

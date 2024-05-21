@@ -291,6 +291,8 @@ def positive_angle(alpha):
     """
     while alpha < 0.0:
         alpha += 2*np.pi
+    while alpha > 2*np.pi:
+        alpha -= 2*np.pi
     return alpha
 
 
@@ -393,7 +395,7 @@ def is_point_inside_region(p, center,
 
 
 def get_angle_of_arc(startangle, endangle):
-    if np.isclose(startangle, endangle):
+    if np.isclose(startangle, endangle, rtol=1e-06, atol=1e-09):
         return 2.0*np.pi  # is a circle
 
     start = normalise_angle(startangle)
@@ -404,7 +406,7 @@ def get_angle_of_arc(startangle, endangle):
     while less(end, start):
         end += 2.0*np.pi
 
-    if np.isclose(start, end):
+    if np.isclose(start, end, rtol=1e-06, atol=1e-09):
         return 2.0*np.pi  # is a circle
     return end - start
 

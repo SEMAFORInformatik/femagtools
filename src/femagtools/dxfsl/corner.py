@@ -36,6 +36,9 @@ class Corner(object):
     def keep_node(self):
         return self.__keep
 
+    def node(self):
+        return self.__p
+
     def __eq__(self, c):
         return (np.isclose(self.__p[0], c.__p[0], rtol=1e-04, atol=1e-04) and
                 np.isclose(self.__p[1], c.__p[1], rtol=1e-04, atol=1e-04))

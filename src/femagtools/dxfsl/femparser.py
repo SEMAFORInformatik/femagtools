@@ -4,7 +4,7 @@
 
 import numpy as np
 from .shape import Arc, Line, Element
-from .functions import distance, alpha_line, points_are_close
+from .functions import distance, alpha_line, points_are_close, point_on_arc
 
 fem_points = []
 

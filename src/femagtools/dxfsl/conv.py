@@ -94,6 +94,10 @@ def main():
                            help='show plots',
                            dest='show_plots',
                            action="store_true")
+    argparser.add_argument('--small',
+                           help='show rotor/stator plots only',
+                           dest='small_plots',
+                           action="store_true")
     argparser.add_argument('--areas',
                            help='show all areas',
                            dest='show_areas',
@@ -224,6 +228,7 @@ def main():
                   view_korr=args.view_korr,
                   show_plots=args.show_plots,
                   show_areas=args.show_areas,
+                  small_plots=args.small_plots,
                   write_fsl=args.write_fsl,
                   write_png=args.write_png,
                   write_id=args.write_id,

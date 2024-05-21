@@ -74,7 +74,7 @@ def symmetry_search(machine,
               title="Before Symmetry ({})".format(kind))
 
     if machine.find_symmetry(symtol, is_inner, is_outer, None):
-        logger.info(" - {}: symmetry axis found !!".format(kind))
+        logger.info(" - {}: symmetry axis found".format(kind))
         plot_geom(False,  # for developer
                   plt, machine.geom,
                   title="Symmetry found")
@@ -256,6 +256,7 @@ def convert(dxfile,
             view_korr=False,
             show_plots=False,
             show_areas=False,
+            small_plots=False,
             write_fsl=True,
             write_png=False,
             write_id=False,
@@ -339,6 +340,8 @@ def convert(dxfile,
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = PlotRenderer()
+    if small_plots:
+        show_plots = False
 
     if view_only:
         logger.info("View only")
@@ -360,7 +363,7 @@ def convert(dxfile,
                           rows=3, cols=2, num=1, show=debug_mode)
 
     if not machine_base.is_a_machine():
-        logger.warn("it's Not a Machine!!")
+        logger.warn("it's Not a Machine")
         return dict(error='machine not detected')
 
     if not (machine_base.part > 0):
@@ -473,6 +476,13 @@ def convert(dxfile,
 
         logger.info("***** END of work: %s *****", basename)
 
+        if machine_inner.geom.is_rotor():
+            inner_title = "Rotor"
+            outer_title = "Stator"
+        else:
+            inner_title = "Stator"
+            outer_title = "Rotor"
+
         plot_geom(False,  # for developer
                   p, machine_inner.geom,
                   title="Final Inner Geometry")
@@ -483,7 +493,7 @@ def convert(dxfile,
 
         if show_plots:
             p.render_elements(machine_inner.geom, Shape,
-                              draw_inside=True, title=inner_name,
+                              draw_inside=True, title=inner_title,
                               rows=3, cols=2, num=5, show=False,
                               with_corners=False,
                               with_nodes=False,
@@ -492,14 +502,34 @@ def convert(dxfile,
                               fill_areas=True)
 
             p.render_elements(machine_outer.geom, Shape,
-                              draw_inside=True, title=outer_name,
+                              draw_inside=True, title=outer_title,
                               rows=3, cols=2, num=6, show=False,
                               with_corners=False,
                               with_nodes=False,
                               neighbors=False,
                               write_id=write_id,
                               fill_areas=True)
+        elif small_plots:
+            p.figure().suptitle(input_file.name, fontsize=16)
+            p.render_elements(machine_inner.geom, Shape,
+                              draw_inside=True, title=inner_title,
+                              rows=1, cols=2, num=1, show=False,
+                              with_corners=False,
+                              with_nodes=False,
+                              neighbors=False,
+                              write_id=write_id,
+                              fill_areas=True)
 
+            p.render_elements(machine_outer.geom, Shape,
+                              draw_inside=True, title=outer_title,
+                              rows=1, cols=2, num=2, show=False,
+                              with_corners=False,
+                              with_nodes=False,
+                              neighbors=False,
+                              write_id=write_id,
+                              fill_areas=True)
+
+        if show_plots or small_plots:
             if write_png:
                 p.write_plot(basename)
             else:
@@ -622,15 +652,32 @@ def convert(dxfile,
 
         logger.info("***** END of work: %s *****", basename)
 
+        if machine.geom.is_rotor():
+            title = "Rotor"
+        else:
+            title = "Stator"
+
         if show_plots:
             p.render_elements(machine.geom, Shape,
-                              draw_inside=True, title=name,
+                              draw_inside=True, title=title,
                               rows=3, cols=2, num=5, show=False,
                               with_corners=False,
                               with_nodes=False,
                               neighbors=False,
                               write_id=write_id,
                               fill_areas=True)
+        elif small_plots:
+            p.figure().suptitle(input_file.name, fontsize=16)
+            p.render_elements(machine.geom, Shape,
+                              draw_inside=True, title=title,
+                              rows=1, cols=1, num=1, show=False,
+                              with_corners=False,
+                              with_nodes=False,
+                              neighbors=False,
+                              write_id=write_id,
+                              fill_areas=True)
+
+        if show_plots or small_plots:
             if write_png:
                 p.write_plot(basename)
             else:

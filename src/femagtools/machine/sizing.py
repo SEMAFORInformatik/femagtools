@@ -6,7 +6,7 @@
 import numpy as np
 import logging
 
-logger = logging.getLogger("femagools.machineo.sizing")
+logger = logging.getLogger("femagools.machine.sizing")
 
 
 PM_DEFAULTS = dict(

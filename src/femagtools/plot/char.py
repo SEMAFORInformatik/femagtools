@@ -70,7 +70,7 @@ def mtpa(pmrel, i1max, u1max=0, title='', projection='', ax=0):
 
     if title:
         ax.set_title(title)
-    ax.legend(loc='upper left')
+    ax.legend(loc='upper left', framealpha=1)
 
 
 def mtpv(pmrel, u1max, i1max, title='', projection='', ax=0):
@@ -188,7 +188,12 @@ def characteristics(char, title=''):
     axs[1, 0].set_xlabel("Speed / rpm")
     axs[1, 0].set_ylabel("Current / A")
     axs[1, 0].legend(loc='center left')
-    if 'beta' in char:
+    if 'iex' in char:
+        ax3 = axs[1, 0].twinx()
+        ax3.plot(n, char['iex'], 'C3-', label='Iexc')
+        ax3.set_ylabel("Iexc / A")
+        ax3.legend(loc='center right')
+    elif 'beta' in char:
         ax3 = axs[1, 0].twinx()
         ax3.plot(n, char['beta'], 'C3-', label='Beta')
         ax3.set_ylabel("Beta / °")
@@ -349,7 +354,7 @@ def _plot_contour(speed, torque, z, ax, title='', levels=[],
     return contf, xscale, yscale
 
 
-def efficiency_map(rmap, ax=0, title='Efficiency Map', clabel=True,
+def efficiency_map(rmap, ax=0, title='', clabel=True,
                    cmap='YlOrRd', levels=None, cbar=False):
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))

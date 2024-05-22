@@ -363,7 +363,8 @@ class Symmetry(object):
             logger.debug("First n,v == (%s, %s)", delta_n, delta_value)
             for n, v in deltas[1:]:
                 logger.debug("Next n,v == (%s, %s)", n, v)
-                if np.isclose(delta_value, v / 2.0, rtol=rtol, atol=atol):
+                if n < delta_n / 4 and \
+                   np.isclose(delta_value, v / 2.0, rtol=1e-04, atol=1e-03):
                     logger.debug("Hole found")
                     inx = [i for i, x in enumerate(delta_list)
                            if np.isclose(x, v, rtol=rtol, atol=atol)]

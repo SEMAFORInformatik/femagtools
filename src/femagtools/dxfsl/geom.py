@@ -262,6 +262,7 @@ class Geometry(object):
         self.sym_slice_angle = 0.0
         self.alfa = 0.0
         self.center = []
+        self.with_center_node = False
         self.min_radius = 0.0
         self.max_radius = 0.0
         self.is_inner = is_inner
@@ -466,12 +467,6 @@ class Geometry(object):
         nx.relabel_nodes(self.g, mapping, copy=False)
         self.diameters = tuple([factor*d for d in self.diameters])
 
-    def find_nodes0(self, *points):
-        """return closest nodes to points in arg within pickdist"""
-        return [tuple([round(int(x/self.atol+0.5)*self.atol, ndec)
-                       for x in p])
-                for p in points]
-
     def find_nodes(self, *points, **kwargs):
         """return closest nodes to points in arg within pickdist"""
         n = []
@@ -491,23 +486,6 @@ class Geometry(object):
         else:
             return [(round(p[0], ndec), round(p[1], ndec)) for p in points]
         return n
-
-    def find_node(self, p, **kwargs):
-        """return closest nodes to points in arg within pickdist"""
-        nodes = list(kwargs.get('g', self.g))
-        if nodes:
-            anodes = np.asarray(nodes)
-            # la.norm on numpy below 1.8 does not accept axis
-            c = anodes - p
-            dist = np.sqrt(np.einsum('ij, ij->i', c, c))
-            # dist = la.norm(np.asarray(nodes) - p, axis=1)
-            idx = dist.argmin()
-            if dist[idx] == 0.0:  # myself
-                dist[idx] = 999.0
-                idx = dist.argmin()
-                if dist[idx] < 0.05:
-                    return nodes[idx]
-        return None
 
     def find_the_node(self, p, **kwargs):
         """return closest nodes to points in arg within pickdist"""
@@ -979,7 +957,7 @@ class Geometry(object):
         for c in corners:
             logger.debug("Correct Corner: %s", c)
 
-        if with_center:
+        if with_center or self.with_center_node:
             c_corner = Corner(center, tuple(center))
             if c_corner not in corners:
                 corners.append(c_corner)
@@ -1407,6 +1385,8 @@ class Geometry(object):
         atol = 1e-4
         logger.debug(' -> rtol=%s,  atol=%s', rtol, atol)
 
+        self.with_center_node = self.find_the_node(self.center) is not None
+
         if is_same_angle(startangle, endangle):
             start_line = Line(
                 Element(start=self.center,
@@ -1509,6 +1489,7 @@ class Geometry(object):
                         connect=connect,
                         delete=delete_appendices,
                         split=split)
+        geom.with_center_node = self.with_center_node
 
         logger.debug('end copy_shape')
         return geom
@@ -3389,7 +3370,7 @@ class Geometry(object):
             # logger.debug(" >> appendix is %s", el)
             return 1
 
-        nn = self.find_node(n0)
+        nn = self.find_the_node(n0)
         if not nn:
             logger.debug("end of connect_appendix: => No node found nearby")
             return 0

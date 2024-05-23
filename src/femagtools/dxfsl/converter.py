@@ -233,6 +233,9 @@ def build_machine_stator(machine, inner, mindist, plt, single=False):
     if not machine_temp.is_mirrored():
         machine_temp.create_boundery_nodes()
 
+    plot_geom(False,  # for developer
+              plt, machine_temp.geom,
+              title="Final Stator")
     logger.debug("End of build_machine_stator")
     return machine_temp
 
@@ -473,6 +476,7 @@ def convert(dxfile,
                                                  False,
                                                  mindist,
                                                  p)
+        machine_inner.sync_with_counterpart(machine_outer)
 
         logger.info("***** END of work: %s *****", basename)
 

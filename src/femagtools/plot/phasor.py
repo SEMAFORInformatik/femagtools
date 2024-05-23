@@ -141,6 +141,11 @@ def phasor(bch, ax=0):
     xd = w1*bch.dqPar['ld'][-1]
     xq = w1*bch.dqPar['lq'][-1]
     r1 = bch.machine['r1']
-    i1beta_phasor(bch.dqPar['up'][-1],
+    if np.isscalar(bch.dqPar['up']):
+        up = bch.dqPar['up']
+    else:
+        up = bch.dqPar['up'][-1]
+
+    i1beta_phasor(up,
                   bch.dqPar['i1'][-1], bch.dqPar['beta'][-1],
                   r1, xd, xq, ax)

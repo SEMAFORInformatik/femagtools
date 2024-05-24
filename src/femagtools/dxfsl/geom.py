@@ -487,6 +487,28 @@ class Geometry(object):
             return [(round(p[0], ndec), round(p[1], ndec)) for p in points]
         return n
 
+    def find_other_node(self, node, **kwargs):
+        """return closest node to node in arg within pickdist"""
+        nodes = list(kwargs.get('g', self.g))
+        if nodes:
+            anodes = np.asarray(nodes)
+            # la.norm on numpy below 1.8 does not accept axis
+            c = anodes - node
+            dist = np.sqrt(np.einsum('ij, ij->i', c, c))
+            idx = dist.argmin()
+            candidates = [(dist[i], nodes[i]) for i in range(len(dist))
+                          if dist[i] < 0.01]
+            if not candidates:
+                return None
+            candidates.sort()
+            if len(candidates) > 1:
+                i = 0
+                d, n = candidates[0]
+                if d == 0.0:
+                    d, n = candidates[1]
+                return n
+        return None
+
     def find_the_node(self, p, **kwargs):
         """return closest nodes to points in arg within pickdist"""
         nodes = list(kwargs.get('g', self.g))
@@ -3053,6 +3075,42 @@ class Geometry(object):
         if 10 in types:
             logger.debug("Shaft is available")
 
+        if 11 in types: # magnet rectangle near ag
+            if 4 in types:  # magnet rectangle
+                mag_rectangles = [a for a in self.list_of_areas() if a.type == 4]
+                for a in mag_rectangles:
+                    if self.is_inner:
+                        dist_1 = a.max_dist + 0.5
+                        dist_2 = self.max_radius + 5
+                    else:
+                        dist_1 = a_min_dist - 0.5
+                        dist_2 = self.min_radius - 5
+
+                    mid_angle = a.get_mid_angle(self.center)
+                    p1 = point(self.center, dist_1, mid_angle)
+                    p2 = point(self.center, dist_2, mid_angle)
+                    line = Line(Element(start=p1, end=p2))
+                    logger.debug("magnet intersect line: %s to %s", p1, p2)
+                    pts = self.split_and_get_intersect_points(line,
+                                                              aktion=False,
+                                                              include_end=False)
+                    logger.debug("magnet intersect points: %s", pts)
+                    if not pts:
+                        a.set_type(99)
+                mag_rectangles = [a for a in self.list_of_areas() if a.type == 4]
+                if mag_rectangles:  # undo
+                    logger.debug("--- undo ---")
+                    [a.set_type(4) for a in self.list_of_areas() if a.type == 99]
+                else:
+                    logger.debug("--- set type 3 ---")
+                    [a.set_type(3) for a in self.list_of_areas() if a.type == 11]
+                    [a.set_type(3) for a in self.list_of_areas() if a.type == 99]
+                    types.pop(4)
+            else:
+                # set magnet
+                [a.set_type(3) for a in self.list_of_areas() if a.type == 11]
+                types[11] = 0
+
         if 4 in types:  # magnet rectangle
             if types[4] > 1:
                 logger.debug("%s embedded magnets in rotor", types[4])
@@ -3350,7 +3408,7 @@ class Geometry(object):
         logger.debug("begin of connect_appendix(%s, rtol=%s, atol=%s)", n0, rtol, atol)
 
         if points_are_close(n0, n1, rtol=1e-04, atol=1e-04):
-            # a very niny appendix
+            # a very tiny appendix
             d = distance(n0, n1)
             if less(d, 0.001):
                 logger.debug("-- WARNING: a very tiny appendix of length %s", d)
@@ -3367,10 +3425,9 @@ class Geometry(object):
 
         if self.node_connected(n0, rtol=rtol, atol=atol, ignore_end=ignore_end):
             logger.debug("end of connect_appendix: %s CONNECTED", n0)
-            # logger.debug(" >> appendix is %s", el)
             return 1
 
-        nn = self.find_the_node(n0)
+        nn = self.find_other_node(n0)
         if not nn:
             logger.debug("end of connect_appendix: => No node found nearby")
             return 0
@@ -3543,7 +3600,7 @@ class Geometry(object):
         for e in self.elements():
             e.adjust_points()
 
-    def split_and_get_intersect_points(self, el, aktion=True):
+    def split_and_get_intersect_points(self, el, aktion=True, include_end=True):
         logger.debug("begin of split_and_get_intersect_points")
         rtol = 1e-03
         atol = 1e-03
@@ -3552,7 +3609,7 @@ class Geometry(object):
             pts = e.intersect_shape(el,
                                     rtol=rtol,
                                     atol=atol,
-                                    include_end=True)
+                                    include_end=include_end)
             if pts:
                 logger.debug("Split %s", e)
                 [logger.debug("-- intersect point %s", p) for p in pts]

@@ -16,7 +16,7 @@ from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle, is_same_angle
 from .functions import area_size, normalise_angle
-from .shape import Element, Shape, Line, Arc, Circle, is_Circle
+from .shape import Element, Shape, Line, Arc, Circle, is_Circle, is_Line, is_Arc
 
 logger = logging.getLogger('femagtools.area')
 
@@ -910,199 +910,87 @@ class Area(object):
         logger.debug("End of check shaft: ok")
         return True
 
-    def is_rectangle(self):
-        lines = [[c, e.m(99999.0), e.length()]
-                 for c, e in enumerate(self.area)
-                 if isinstance(e, Line)]
-        lines.sort()
-
-        line_count = 1
-        m_first = 0.0
-        m_prev = 999.999999
-        c_prev = -99
-        m_all = []
-        for c, m, l in lines:
-            if c_prev >= 0:
-                if np.isclose(m_prev, m, atol=0.001):
-                    if c_prev+1 != c:
-                        # Gleiche Steigung, aber keine Verlängerung
-                        line_count += 1
-                        m_all.append(m_prev)
-                else:
-                    line_count += 1
-                    m_all.append(m_prev)
-            else:
-                m_first = m
-
-            m_prev = m
-            c_prev = c
-
-        m_all.append(m_prev)
-
-        if np.isclose(m_prev, m_first, atol=0.001):
-            line_count -= 1
-
-        if line_count == 4:
-            logger.debug("is_rectangle: m={}".format(m_all))
-            if not np.isclose(m_all[0], m_all[2], atol=0.001):
-                return False
-            if not np.isclose(m_all[1], m_all[3], atol=0.001):
-                return False
-            return True
-
-        return False
-
-    def is_mag_rectangle(self):
-        lines_ceml = [[c, e, e.m(99999.0), e.length()]
-                      for c, e in enumerate(self.area)]
-        # c = Count
-        # e = Element
-        # m = Steigung
-        # l = Länge
-        # L = class Line
-        if len(lines_ceml) < 4:
+    def is_magnet_rectangle(self):
+        lines = [e for e in self.area if is_Line(e)]
+        if len(lines) < 4:
+            logger.debug("is_magnet_rectangle: only %s lines", len(lines))
             return False
 
-        logger.debug("=== BEGIN OF is_mag_rectangle() [{} lines]"
-                     .format(len(lines_ceml)))
+        angles = []
+        prev_angle = lines[0].get_positive_angle()
+        logger.debug("first angle = %s", prev_angle)
+        prev_length = lines[0].length()
 
-        c_prev, e0, m_prev, l_prev = lines_ceml[0]
-        a_prev = 999
-        p = None
-        e0_p1 = e0.p1
-        e0_p2 = e0.p2
-        L_prev = isinstance(e0, Line)
+        for line in lines[1:]:
+            this_angle = line.get_positive_angle()
+            logger.debug("next angle = %s", this_angle)
+            this_length = line.length()
 
-        e1 = lines_ceml[1][1]
-        e1_p1 = e1.p1
-        e1_p2 = e1.p2
+            if np.isclose(prev_angle, this_angle, rtol=1e-04, atol=1e-02):
+                # same direction
+                #prev_angle = middle_angle(prev_angle, this_angle)
+                prev_length += this_length
+            else:
+                angles.append((prev_angle, prev_length))
+                prev_angle = this_angle
+                prev_length = this_length
 
-        if (points_are_close(e0_p2, e1_p1, atol=1e-02) or
-                points_are_close(e0_p2, e1_p2, atol=1e-02)):
-            a_prev = alpha_line(e0_p1, e0_p2)
-            p = e0_p2
-        elif (points_are_close(e0_p1, e1_p1, atol=1e-02) or
-              points_are_close(e0_p1, e1_p2, atol=1e-02)):
-            a_prev = alpha_line(e0_p2, e0_p1)
-            p = e0_p1
+        if len(angles) < 3:
+            logger.debug("is_magnet_rectangle: only %s angles", len(angles))
+            return False
+
+        this_angle, this_length = angles[0]
+        if not np.isclose(prev_angle, this_angle, rtol=1e-04, atol=1e-02):
+            angles.append((prev_angle, prev_length))
         else:
-            logger.error(
-                "ERROR: is_mag_rectangle(): points are not close together")
-            logger.error("       e0 p1={}, p2={}".format(e0_p1, e0_p2))
-            logger.error("       e1 p1={}, p2={}".format(e1_p1, e1_p2))
+            #prev_angle = middle_angle(prev_angle, this_angle)
+            prev_length += this_length
+            angles[0] = (prev_angle, prev_length)
+
+        first_angle, l = angles[0]
+        last_angle, l = angles[-1]
+        if np.isclose(first_angle, last_angle, rtol=1e-04, atol=1e-02):
+            del angles[-1]
+
+        if len(angles) != 4:
+            logger.debug("is_magnet_rectangle: %s angles, not 4", len(angles))
             return False
 
-        def alpha_current(p, e):
-            if points_are_close(p, e.p1, atol=1e-02):
-                return e.p2, alpha_line(e.p1, e.p2), isinstance(e, Line)
-            if points_are_close(p, e.p2, atol=1e-02):
-                return e.p1, alpha_line(e.p2, e.p1), isinstance(e, Line)
-            logger.error(
-                "ERROR: is_mag_rectangle(): points are not close together")
-            logger.error("       p={}, p1={}, p2={}".format(p, e.p1, e.p2))
-            return None, None, False
+        angle_0, length_0 = angles[0]
+        angle_1, length_1 = angles[1]
+        angle_2, length_2 = angles[2]
+        angle_3, length_3 = angles[3]
 
-        lines_clamL = []
-        for c, e, m, l in lines_ceml[1:]:
-            p, a_curr, L_curr = alpha_current(p, e)
-            if not p:
-                return False
-
-            if is_same_angle(a_prev, a_curr, atol=0.01):
-                # its the same angle and both are Lines
-                # assert(np.isclose(m_prev, m, atol=0.001))
-                if c_prev+1 != c:
-                    logger.debug(" - ok, but not an extension")
-                    # ..., but not an extension
-                    lines_clamL.append([c_prev, l_prev, a_prev, m])
-                    l_prev = e.length()
-                else:
-                    # ... and an extension
-                    l_prev += e.length()
-                    logger.debug(" - ok, it's an extension")
-            else:
-                # it's a different angle
-                logger.debug(" - diff, angle {} and {} not equal "
-                             .format(a_prev, a_curr))
-                lines_clamL.append([c_prev, l_prev, a_prev, m_prev, L_prev])
-                l_prev = e.length()
-
-            a_prev = a_curr
-            L_prev = L_curr
-            m_prev = m
-            c_prev = c
-
-        lines_clamL.append([c_prev, l_prev, a_prev, m_prev, L_prev])
-        if np.isclose(lines_clamL[0][2], lines_clamL[-1][2], atol=0.001):
-            # Gleicher Winkel am Anfang und am Ende
-            lines_clamL[0][1] += lines_clamL[-1][1]  # length
-            del lines_clamL[-1]
-            logger.debug(" > last entry deleted")
-
-        if len(lines_clamL) < 4:
-            logger.debug("=== END OF is_mag_rectangle(): NO RECTANGLE #1")
+        if not np.isclose(angle_0, angle_2, rtol=1e-03, atol=0.05):
+            logger.debug("is_magnet_rectangle: angles %s and %s not equal",
+                         angle_0, angle_2)
             return False
 
-        lines_lmcL = [[l, m, c, L] for c, l, a, m, L in lines_clamL]
-        lines_lmcL.sort(reverse=True)
-
-        if not np.isclose(lines_lmcL[0][1], lines_lmcL[1][1], atol=0.05):
-            # Die Steigungen der zwei längsten Linien müssen gleich sein
-            logger.debug("--- m %s <> %s ---",
-                         lines_lmcL[0][1],
-                         lines_lmcL[1][1])
-            logger.debug("--- l %s, %s, %s ---",
-                         lines_lmcL[0][0],
-                         lines_lmcL[1][0],
-                         lines_lmcL[2][0])
-            logger.debug("=== END OF is_mag_rectangle(): NO RECTANGLE #2")
+        if not np.isclose(angle_1, angle_3, rtol=1e-03, atol=0.05):
+            logger.debug("is_magnet_rectangle: angles %s and %s not equal",
+                         angle_1, angle_3)
             return False
 
-        def excursion_to_same_direction(clam):
-            if len(clam) < 4:
+        if angle_0 > angle_1:
+            a0 = angle_0
+            a1 = angle_1 + np.pi/2
+        else:
+            a0 = angle_1
+            a1 = angle_0 + np.pi/2
+        if not np.isclose(a0, a1, rtol=1e-03, atol=0.05):
+            logger.debug("is_magnet_rectangle: not a rectange (%s neq %s)", a0, a1)
+            return False
+
+        max_length = max(length_0, length_1)
+        max_radius = max_length / 10
+        arcs = [e for e in self.area if is_Arc(e)]
+        for a in arcs:
+            if a.radius > max_radius:
+                logger.debug("is_magnet_rectangle: arcs radius %s > %s",
+                             a.radius, max_radius)
                 return False
 
-            alpha = alpha_angle(clam[0][2], clam[1][2])
-            clockwise = not alpha < np.pi
-
-            angle_prev = clam[1][2]
-            for c, l, angle_curr, m, t in clam[2:]:
-                alpha = alpha_angle(angle_prev, angle_curr)
-                if clockwise:
-                    if alpha < np.pi:
-                        return False
-                else:
-                    if alpha > np.pi:
-                        return False
-                angle_prev = angle_curr
-            return True  # end of all_lines_with_same_direction()
-
-        lines_cmL = [[c, m, L] for l, m, c, L in lines_lmcL[0:4]]
-        lines_cmL.sort()
-        [logger.debug("Rectangle Lines: c=%s, m=%s, L=%s", c, m, L) \
-         for c, m, L in lines_cmL]
-
-        if np.isclose(lines_cmL[0][1], lines_cmL[2][1], rtol=1e-3, atol=1e-2):
-            if not (lines_cmL[0][2] and lines_cmL[2][2]):
-                logger.debug("=== END OF is_mag_rectangle(): not 2 lines #1")
-                return False
-            ok = excursion_to_same_direction(lines_clamL)
-            logger.debug("=== END OF is_mag_rectangle(): OK = {} #1"
-                         .format(ok))
-            return ok
-
-        if np.isclose(lines_cmL[1][1], lines_cmL[3][1], rtol=1e-3, atol=1e-2):
-            if not (lines_cmL[1][2] and lines_cmL[3][2]):
-                logger.debug("=== END OF is_mag_rectangle(): not 2 lines #2")
-                return False
-
-            ok = excursion_to_same_direction(lines_clamL)
-            logger.debug("=== END OF is_mag_rectangle(): OK = {} #2"
-                         .format(ok))
-            return ok
-
-        logger.debug("=== END OF is_mag_rectangle(): NO RECTANGLE #3")
-        return False
+        return True
 
     def get_mag_orient_rectangle(self):
         lines = [[e.m(99999.0), e.length(), alpha_line(e.p1, e.p2)]
@@ -1342,13 +1230,13 @@ class Area(object):
             return self.type
 
         if is_inner:
-            self.close_to_ag = np.isclose(r_out, self.max_dist, atol=0.005)
+            self.close_to_ag = np.isclose(r_out, self.max_dist, rtol=1e-9, atol=0.005)
             close_to_opposition = greater_equal(r_in * 1.05, self.min_dist)
             airgap_radius = r_out
             opposite_radius = r_in
             airgap_toleranz = -(self.max_dist - self.min_dist) / 50.0  # 2%
         else:
-            self.close_to_ag = np.isclose(r_in, self.min_dist, atol=0.005)
+            self.close_to_ag = np.isclose(r_in, self.min_dist, rtol=1e-9, atol=0.005)
             close_to_opposition = greater_equal(self.max_dist * 1.05, r_out)
             airgap_radius = r_in
             opposite_radius = r_out
@@ -1397,7 +1285,7 @@ class Area(object):
             logger.debug("***** iron (close to both sides)\n")
             return self.type
 
-        self.mag_rectangle = self.is_mag_rectangle()
+        self.mag_rectangle = self.is_magnet_rectangle()
         if self.mag_rectangle:
             logger.debug("Area is a Rectangle")
 
@@ -1408,6 +1296,13 @@ class Area(object):
             air_alpha = round(alpha_angle(mm[0], mm[1]), 3)
             logger.debug(" - air_alpha          : {}".format(air_alpha))
 
+            if self.mag_rectangle:
+                self.phi = self.get_mag_orientation()
+                self.type = 11  # magnet near airgap
+                logger.debug("***** magnet (airgap, embedded, phi={})\n".
+                             format(self.phi))
+                return self.type
+
             if air_alpha / alpha < 0.2:
                 self.phi = self.get_mag_orientation()
                 self.type = 8  # air or magnet ?
@@ -1416,7 +1311,7 @@ class Area(object):
 
             if air_alpha / alpha > 0.6:
                 self.phi = self.get_mag_orientation()
-                self.type = 3  # magnet
+                self.type = 3  # magnet (no rectangle)
                 logger.debug("***** magnet (close to airgap)\n")
             else:
                 self.phi = self.get_mag_orientation()
@@ -1464,7 +1359,7 @@ class Area(object):
         self.close_to_startangle = np.isclose(self.min_angle, 0.0)
         self.close_to_endangle = np.isclose(self.max_angle, alpha)
 
-        if self.is_mag_rectangle():
+        if self.is_magnet_rectangle():
             self.type = 4  # magnet embedded
             logger.debug(">>> magnet embedded")
             self.phi = self.get_mag_orient_rectangle()

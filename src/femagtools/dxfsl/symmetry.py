@@ -647,6 +647,7 @@ class Symmetry(object):
 
         with_angle_corr = 0
         without_angle_corr = 0
+        maybe_angle_korr = 0
 
         for size, n, rslt in check_rslt:
             areas = rslt['areas']
@@ -674,11 +675,16 @@ class Symmetry(object):
                             without_angle_corr += areas * size
                         else:
                             with_angle_corr += areas * size
+                    else:
+                        maybe_angle_korr += areas * size
         logger.debug("max size: %s,  max areas: %s", max_size, max_areas)
 
         logger.debug("Angle-Corrections: %s Yes,  %s No",
                      with_angle_corr, without_angle_corr)
-        with_angle_corr = (with_angle_corr > without_angle_corr)
+        if np.isclose(with_angle_corr, without_angle_corr):
+            with_angle_corr = (maybe_angle_korr > 0)
+        else:
+            with_angle_corr = (with_angle_corr > without_angle_corr)
 
         def get_halfslice_counterpart(rslt):
             if rslt.get('halfslice', 0) != 2:

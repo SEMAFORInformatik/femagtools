@@ -1298,6 +1298,9 @@ class Line(Shape):
         px = self.center_of_connection()
         return alpha_line(px, n)
 
+    def get_positive_angle(self):
+        return elevation_angle(alpha_line(self.p1, self.p2))
+
     def range(self, step=1.0):
         """returns evenly spaced values"""
         num = max(int(self.length()/step), 1)

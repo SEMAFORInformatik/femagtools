@@ -3844,8 +3844,13 @@ class Geometry(object):
             if ok1 and not ok2:
                 remove_n1 = n1
             if ok2 and remove_n1:
-                self._remove_edge(remove_n1, n2)
-                logger.debug("Remove Line %s -- %s", remove_n1, n2)
+                try:
+                    self._remove_edge(remove_n1, n2)
+                    logger.debug("Remove Line %s -- %s", remove_n1, n2)
+                except nx.NetworkXError:
+                    logger.debug("Warning: Remove Line %s -- %s failed", remove_n1, n2)
+                    logger.debug("end repair_border_line: failed")
+                    return False
                 remove_n1 = None
             n1 = n2
             ok1 = ok2

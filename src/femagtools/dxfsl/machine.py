@@ -1068,14 +1068,23 @@ class Machine(object):
             # self.geom.add_edge(arc.node1(4), arc.node2(4), arc)
             return False
 
+        n = self.geom.find_nodes(pts[0], pts[1])
+        angle1 = alpha_line(self.center, pts[0])
+        angle2 = alpha_line(self.center, pts[1])
+        if np.isclose(angle1, self.startangle, atol=1e-03):
+            startangle = angle1
+            endangle = angle2
+        else:
+            startangle = angle2
+            endangle = angle1
         arc = Arc(Element(center=self.center,
                           radius=radius,
-                          start_angle=self.startangle*180/np.pi,
-                          end_angle=self.endangle*180/np.pi),
+                          start_angle=startangle*180/np.pi,
+                          end_angle=endangle*180/np.pi),
                   color=color,
                   linestyle=linestyle)
         arc.set_attribute(attr)
-        n = self.geom.find_nodes(pts[0], pts[1])
+
         self.geom.add_or_join_edge(n[0], n[1], arc)
         return True
 

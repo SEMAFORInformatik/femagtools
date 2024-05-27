@@ -109,6 +109,8 @@ class ForceDensity(object):
             rec = l.split()[1:]
             if len(rec) == len(labels):
                 m.append([float(x) for x in rec])
+        logging.info("POSITION %s len %d: %s", d['position'],
+                     len(m), ','.join(labels))
         d.update({k: v for k, v in zip(labels, list(zip(*m)))})
 
         self.positions.append(d)
@@ -213,6 +215,10 @@ if __name__ == "__main__":
     import matplotlib.pyplot as pl
     import femagtools.plot
     import sys
+
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
+
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:
@@ -229,6 +235,9 @@ if __name__ == "__main__":
     FT_FN = (fdens.positions[0]['FT'],
              fdens.positions[0]['FN'])
     femagtools.plot.forcedens(title, pos, FT_FN)
+    pl.show()
+
+    femagtools.plot.forcedens_surface(fdens)
     pl.show()
 
     title = 'Force Density Harmonics'

@@ -7,6 +7,7 @@
 
 """
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
@@ -72,31 +73,36 @@ def forcedens_surface(fdens, ax=0):
                   ('Rotor pos/°', 'Pos/°', 'F N / kN/m²'))
 
 
-def forcedens_fft(title, fdens, nharm=40, ax=0):
+def forcedens_fft(title, fdens, harmmax=40,
+                  cmap=mpl.colormaps['YlOrBr'],
+                  ax=0):
     """plot force densities FFT
     Args:
       title: plot title
       fdens: force density object
-      nharm: (int) num harmonics
+      cmap: colormap
     """
     if ax == 0:
         ax = plt.axes(projection="3d")
 
-    F = 1e-3*fdens.fft(nharm)['fn_harm']['amplitude']
-    fmin = 0.2
-    num_bars = F.shape[0] + 1
-    _xx, _yy = np.meshgrid(np.arange(1, num_bars),
-                           np.arange(1, num_bars))
-    z_size = F[F > fmin]
-    x_pos, y_pos = _xx[F > fmin], _yy[F > fmin]
-    z_pos = np.zeros_like(z_size)
-    x_size = 2
-    y_size = 2
+    FN = 1e-3*fdens.fft()['fn_harm']['amplitude']
+    shape = [min(harmmax, s)
+             for s in np.shape(FN)]
 
-    ax.bar3d(x_pos, y_pos, z_pos, x_size, y_size, z_size)
-    #ax.view_init(azim=120)
-    ax.set_xlim(0, num_bars+1)
-    ax.set_ylim(0, num_bars+1)
+    _x = np.arange(shape[0])+1
+    _y = np.arange(shape[1])+1
+    _xx, _yy = np.meshgrid(_x, _y)
+    x, y = _xx.ravel(), _yy.ravel()
+    top = np.ravel(FN[:shape[0],:shape[1]])
+    bottom = np.zeros_like(top)
+    width = depth = 1
+    min_height = np.min(top)
+    max_height = np.max(top)
+    rgba = [cmap((k-min_height)/max_height) for k in top]
+    ax.bar3d(x, y, bottom, width, depth, top, color=rgba)
+
+    ax.set_xlim(0, shape[0]+1)
+    ax.set_ylim(0, shape[1]+1)
     ax.set_title(title)
     ax.set_xlabel('M')
     ax.set_ylabel('N')

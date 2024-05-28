@@ -343,7 +343,7 @@ class SynchronousMachine(object):
         """return uq, ud of frequency w1 and d-q current"""
         psid, psiq = self.psi(iq, id, iex)
         r1 = self.rstat(w1)
-        return r1*id + w1*psid, r1*iq - w1*psiq
+        return r1*iq + w1*psid, r1*id - w1*psiq
 
     def plcu1(self, iqde, w1):
         r1 = self.rstat(w1)

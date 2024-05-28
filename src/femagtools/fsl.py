@@ -462,7 +462,7 @@ class Builder:
             logger.error('Name of dxf-file expected')
             return []
 
-        if dxfname.split('.')[-1] not in ('dxf'):
+        if dxfname.split('.')[-1] not in ('dxf', 'svg'):  # add svg support
             dxfname += '.dxf'
         if not os.path.isfile(dxfname):
             logger.error('File {} not found'.format(dxfname))

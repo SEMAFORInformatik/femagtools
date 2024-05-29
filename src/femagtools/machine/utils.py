@@ -218,6 +218,20 @@ def wdg_leakage_inductances(machine):
     return Lu, Lew
 
 
+def create_wdg(machine):
+    """create winding from machine parameters"""
+    wdgk = 'windings' if 'windings' in machine else 'winding'
+    wpar = {'Q': machine['stator']['num_slots'],
+            'm': machine[wdgk]['num_phases'],
+            'p': machine['poles']//2}
+
+    if 'coil_span' in machine[wdgk]:
+        wpar['yd'] = machine[wdgk]['coil_span']
+    if 'num_layers' in machine[wdgk]:
+        wpar['l'] = machine[wdgk]['num_layers']
+    return windings.Winding(wpar)
+
+
 def betai1(iq, id):
     """return beta and amplitude of dq currents"""
     return (np.arctan2(id, iq),
@@ -352,18 +366,6 @@ def dqparident(workdir, engine, temp, machine,
     """
     import pathlib
 
-    wdgk = 'windings' if 'windings' in machine else 'winding'
-    wpar = {'Q': machine['stator']['num_slots'],
-            'm': machine[wdgk]['num_phases'],
-            'p': machine['poles']//2}
-
-    if 'coil_span' in machine[wdgk]:
-        wpar['yd'] = machine[wdgk]['coil_span']
-    if 'num_layers' in machine[wdgk]:
-        wpar['l'] = machine[wdgk]['num_layers']
-
-    wdg = windings.Winding(wpar)
-
     try:
         defspeed = 160/machine['poles']
     except KeyError:
@@ -372,6 +374,7 @@ def dqparident(workdir, engine, temp, machine,
         defspeed = kwargs['speed']
 
     lfe = machine['lfe']
+    wdgk = 'windings' if 'windings' in machine else 'winding'
     g = machine[wdgk].get('num_par_wdgs', 1)
     N = machine[wdgk]['num_wires']
     if 'cufilfact' in machine[wdgk]:
@@ -382,14 +385,15 @@ def dqparident(workdir, engine, temp, machine,
         fcu = 0.42
 
     try: # calc basic dimensions if not fsl or dxf model
+        wdg = create_wdg(machine)
         Q1 = wdg.Q
-        da1 = machine['bore_diam']
         slotmodel = [k for k in machine['stator'] if isinstance(
             machine['stator'][k], dict)][-1]
         if slotmodel == 'stator1':
             hs = machine['stator']['stator1']['slot_rf1'] - \
                 machine['stator']['stator1']['tip_rh1']
         else:
+            da1 = machine['bore_diam']
             dy1 = machine['outer_diam']
             hs = machine['stator'][slotmodel].get(
                 'slot_height', 0.6*(dy1-da1)/2)
@@ -404,8 +408,6 @@ def dqparident(workdir, engine, temp, machine,
 
     # winding resistance
     try:
-        wdg = create_wdg(machine)
-
         if 'wire_gauge' in machine[wdgk]:
             aw = machine[wdgk]['wire_gauge']
         elif 'dia_wire' in machine[wdgk]:
@@ -456,12 +458,10 @@ def dqparident(workdir, engine, temp, machine,
     # TODO: cleanup()  # remove previously created files in workdir
     # start calculation
     results = parvar(parvardef, machine, simulation, engine)
-    if 'poles' not in machine:
+    if 'poles' not in machine:  # dxf model?
         machine['poles'] = 2*results['f'][0]['machine']['p']
         da1 = 2*results['f'][0]['machine']['fc_radius']
-    #import json
-    #with open('results.json', 'w') as fp:
-    #    json.dump(results, fp)
+        wdg = create_wdg(machine)
     ls1 = 0
     try:
         leakages = [float(x)
@@ -524,7 +524,6 @@ def dqparident(workdir, engine, temp, machine,
             model = nc.read(str(pathlib.Path(workdir) / machine['name']))
             Q1 = model.num_slots
             #machine['stator']['num_slots'] = Q1
-            wdg = create_wdg(machine)
             istat = 0 if model.get_areas()[0]['slots'] else 1
             asl = model.get_areas()[istat]['slots']
             # diameter of wires

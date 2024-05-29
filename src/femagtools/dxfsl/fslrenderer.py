@@ -257,9 +257,12 @@ class FslRenderer(object):
                             format(area.name()))
                     else:
                         subregions[area.type] = 1
+                        color = area.color()
+                        if color == 'cyan':
+                            color = 'skyblue'
                         self.content.append(
                             u'def_new_subreg(x0, y0, "{}", "{}")'.
-                            format(area.name(), area.color()))
+                            format(area.name(), color))
                     if area.is_stator_iron_yoke():
                         self.content.append(
                             u'x0_iron_yoke, y0_iron_yoke = x0, y0')

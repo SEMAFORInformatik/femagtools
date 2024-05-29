@@ -514,7 +514,7 @@ def convert(dxfile,
                               write_id=write_id,
                               fill_areas=True)
         elif small_plots:
-            p.figure().suptitle(input_file.name, fontsize=16)
+            p.figure(figsize=(9, 5)).suptitle(input_file.name, fontsize=16)
             p.render_elements(machine_inner.geom, Shape,
                               draw_inside=True, title=inner_title,
                               rows=1, cols=2, num=1, show=False,

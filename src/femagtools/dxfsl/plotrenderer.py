@@ -32,9 +32,9 @@ class PlotRenderer(object):
             import matplotlib   # throws exception
         pass
 
-    def figure(self):
+    def figure(self, figsize=(9, 10)):
         if self.fig is None:
-            self.fig = pl.figure(figsize=(9, 10))
+            self.fig = pl.figure(figsize=figsize)
             #         facecolor='lightblue'
             if matplotlibversion > 2:
                 pl.tight_layout(h_pad=0.2, w_pad=0.2)

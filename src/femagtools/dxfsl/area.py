@@ -15,7 +15,7 @@ from .functions import less_equal, less, greater_equal, greater
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle, is_same_angle
-from .functions import area_size, normalise_angle
+from .functions import area_size, normalise_angle, positive_angle
 from .shape import Element, Shape, Line, Arc, Circle, is_Circle, is_Line, is_Arc
 
 logger = logging.getLogger('femagtools.area')
@@ -45,7 +45,10 @@ class Area(object):
         self.mag_rectangle = False
         self.min_dist = 99999.0
         self.max_dist = 0.0
-        self.minmax_xy = [0,0,0,0]
+        self.min_x = None
+        self.max_x = None
+        self.min_y = None
+        self.max_y = None
         self.height = 0.0
         self.alpha = 0.0
         self.count = 1
@@ -270,7 +273,7 @@ class Area(object):
         if not self.area:
             return
 
-        self.minmax_xy = self.minmax()
+        self.min_x, self.max_x, self.min_y, self.max_y = self.minmax()
         s = self.area[0]
         mm_angle = s.minmax_angle_from_center(center)
         self.min_angle = mm_angle[0]
@@ -289,10 +292,10 @@ class Area(object):
         self.alpha = round(alpha_angle(self.min_angle, self.max_angle), 3)
 
     def center_is_inside(self, center):
-        if less(self.minmax_xy[0], center[0], rtol=1e-03, atol=1e-04) and \
-           greater(self.minmax_xy[1], center[0], rtol=1e-03, atol=1e-04) and \
-           less(self.minmax_xy[2], center[1], rtol=1e-03, atol=1e-04) and \
-           greater(self.minmax_xy[3], center[1], rtol=1e-03, atol=1e-04):
+        if less(self.min_x, center[0], rtol=1e-03, atol=1e-04) and \
+           greater(self.max_x, center[0], rtol=1e-03, atol=1e-04) and \
+           less(self.min_y, center[1], rtol=1e-03, atol=1e-04) and \
+           greater(self.max_y, center[1], rtol=1e-03, atol=1e-04):
             return True
         return False
 
@@ -331,9 +334,8 @@ class Area(object):
             return False
 
         line = Line(Element(start=p1, end=p2))
-        plist = self.intersect_points(line)
+        plist = self.get_intersect_points(line)
         points = len(plist)
-        plist.sort()
 
         aux_lines = [e for e in self.area if e.has_attribute('auxline')]
         if aux_lines:
@@ -359,6 +361,15 @@ class Area(object):
 
     def is_touching_both_sides(self):
         return (self.close_to_startangle and self.close_to_endangle)
+
+    def is_in_touch_with_area(self, geom, a):
+        n1 = self.area[0].n1
+        n2 = a.area[0].n2
+        try:
+            return nx.has_path(geom.g, n1, n2)
+        except nx.NetworkXError:
+            logger.warning("has_path() failed")
+            return False
 
     def has_connection(self, geom, a, ndec):
         assert(self.area)
@@ -637,11 +648,21 @@ class Area(object):
                 return True
         return False
 
-    def intersect_points(self, line):
+    def get_intersect_points(self, line, rtol=1.e-4, atol=1e-3):
         points = []
         for e in self.area:
-            points += e.intersect_line(line, include_end=True)
-        return points
+            points += e.intersect_line(line, rtol=rtol, atol=atol, include_end=True)
+        if not points:
+            return []
+        points = [(x, y) for x, y in points]
+        points.sort()
+        p1 = points[0]
+        pts = [p1]
+        for p2 in points[1:]:
+            if not points_are_close(p1, p2, rtol=rtol, atol=atol):
+                pts.append(p2)
+            p1 = p2
+        return pts
 
     def is_point_inside(self, pt):
         for e in self.area:
@@ -649,14 +670,49 @@ class Area(object):
                 return True
         return False
 
-    def get_best_point_inside(self, geom):
-        mm = self.minmax_xy
-        px1 = mm[0]-5
-        px2 = mm[1]+5
+    def the_area_is_inside_area(self, a):
+        p = a.area[0].n1
+        return self.the_point_is_inside_area(p)
 
-        y_dist = mm[3] - mm[2]
+    def the_point_is_inside_area(self, p):
+        x, y = p
+        if less_equal(x, self.min_x) or greater_equal(x, self.max_x):
+            return False
+        if less_equal(y, self.min_y) or greater_equal(y, self.max_y):
+            return False
+
+        p1 = (self.min_x - 5, y)
+        p2 = (self.max_x + 5, y)
+        line = Line(Element(start=p1, end=p2))
+        pts = self.get_intersect_points(line)
+        if len(pts) % 2 != 0:
+            return False
+
+        c = 0
+        for ax, ay in pts:
+            if not less(ax, x):
+                if c % 2 != 1:
+                    return False
+                break
+            c += 1
+
+        if not c < len(pts):
+            return False
+
+        ax, ay = pts[c]
+        if not less(x, ax):
+            return False
+        return True
+
+    def get_best_point_inside(self, geom):
+        px1 = self.min_x - 5
+        px2 = self.max_x + 5
+
+        y_dist = self.max_y - self.min_y
         step = y_dist / 6
-        y_list = np.arange(mm[2] + step*0.3, mm[3] - step*0.3, step)
+        y_list = np.arange(self.min_y + step * 0.3,
+                           self.max_y - step * 0.3,
+                           step)
 
         lines = []
         for y in y_list:
@@ -747,10 +803,9 @@ class Area(object):
 
     def get_point_inside(self, geom):
         """return point inside area"""
-        mm = self.minmax_xy
-        y = (mm[2]+mm[3])/2
-        p1 = (mm[0]-5, y)
-        p2 = (mm[1]+5, y)
+        y = (self.min_y + self.max_y) / 2
+        p1 = (self.min_x - 5, y)
+        p2 = (self.max_x + 5, y)
         line = Line(Element(start=p1, end=p2))
 
         points = []
@@ -1065,6 +1120,10 @@ class Area(object):
             if e.has_attribute('iron_sep'):
                 return True
         return False
+
+    def is_close_to_border(self, angle, border_angle):
+        return np.isclose(angle, border_angle,
+                          rtol=1e-03, atol=1e-03)
 
     def mark_stator_subregions(self,
                                is_inner,

@@ -411,7 +411,57 @@ def convert(dxfile,
                                      delete_appendices=True,
                                      concatenate=True,
                                      connect=True)
+        machine_inner.set_inner()
+        machine_outer = machine.copy(startangle=0.0,
+                                     endangle=2*np.pi,
+                                     airgap=True,
+                                     inside=False,
+                                     split=split_cpy,
+                                     delete_appendices=True,
+                                     concatenate=True,
+                                     connect=True)
+        machine_outer.set_outer()
 
+        # check airgap
+        if machine.has_alternative_airgap():
+            bad_inner = machine_inner.check_airgap()
+            bad_outer = False
+            if not bad_inner:
+                bad_outer = machine_outer.check_airgap()
+            if bad_inner or bad_outer:
+                logger.warning("***** bad Airgap *****")
+                if bad_inner:
+                    plot_geom(True,  # for developer
+                              p, machine_inner.geom,
+                              title="Bad Inner Airgap Geometry")
+                if bad_outer:
+                    plot_geom(True,  # for developer
+                              p, machine_outer.geom,
+                              title="Bad Outer Airgap Geometry")
+
+                if machine.install_alternative_airgap():
+                    logger.info("=== alternative airgap is %s ===",
+                                machine.airgap_radius)
+                    machine_inner = machine.copy(startangle=0.0,
+                                                 endangle=2*np.pi,
+                                                 airgap=True,
+                                                 inside=True,
+                                                 split=split_cpy,
+                                                 delete_appendices=True,
+                                                 concatenate=True,
+                                                 connect=True)
+                    machine_inner.set_inner()
+                    machine_outer = machine.copy(startangle=0.0,
+                                                 endangle=2*np.pi,
+                                                 airgap=True,
+                                                 inside=False,
+                                                 split=split_cpy,
+                                                 delete_appendices=True,
+                                                 concatenate=True,
+                                                 connect=True)
+                    machine_outer.set_outer()
+
+        # inner part
         machine_inner = symmetry_search(machine_inner,
                                         p,  # plot
                                         inner_name,
@@ -425,15 +475,7 @@ def convert(dxfile,
         machine_inner.check_and_correct_geom("Inner")
         machine_inner.delete_tiny_elements(mindist)
 
-        machine_outer = machine.copy(startangle=0.0,
-                                     endangle=2*np.pi,
-                                     airgap=True,
-                                     inside=False,
-                                     split=split_cpy,
-                                     delete_appendices=True,
-                                     concatenate=True,
-                                     connect=True)
-
+        # outer part
         machine_outer = symmetry_search(machine_outer,
                                         p,  # plot
                                         outer_name,

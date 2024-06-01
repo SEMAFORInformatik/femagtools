@@ -92,7 +92,7 @@ class Builder:
             self.fsl_stator = True
             return
 
-        if templ == 'statorFsl' or templ == 'dxf':
+        if templ in ('statorFsl', 'dxf'):
             self.fsl_stator = True
 
         if templ != 'dxffile':
@@ -111,6 +111,7 @@ class Builder:
         conv = convert(model.stator['dxffile']['name'], **params)
 
         model.stator['num_slots'] = conv.get('tot_num_slot')
+        model.set_value('num_poles', conv.get('num_poles'))
         self.set_diameter_parameter(model, conv)
         if model.get('dy1'):
             model.set_value('outer_diam', model.get('dy1'))
@@ -532,7 +533,7 @@ class Builder:
                     from femagtools.dxfsl.fslrenderer import agndst
                     if model.get('agndst'):
                         pass
-                    else: 
+                    else:
                         ag = model.get('airgap')
                         model.set_value(
                             'agndst',

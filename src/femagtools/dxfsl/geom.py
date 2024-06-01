@@ -2230,6 +2230,63 @@ class Geometry(object):
                     borders += 1
         return (ok, borders)
 
+    def check_airgap(self, startangle, endangle):
+        logger.debug("begin check_airgap")
+        area_id_list = [a.id for a in self.list_of_areas()]
+
+        def delete_id(id):
+            try:
+                i = area_id_list.index(id)
+            except ValueError:
+                return
+            area_id_list[i] = 0
+        #   ---
+        def append_area(alist, a):
+            for my_a in alist:
+                if my_a.is_in_touch_with_area(self, a):
+                    alist.append(a)
+                    delete_id(a.id)
+                    return True
+            return False
+        #   ---
+        for area in self.area_list:
+            if not area.id in area_id_list:
+                continue
+
+            for a in self.area_list:
+                if area.id == a.id:
+                    continue
+                if not a.id in area_id_list:
+                    continue
+
+                if area.the_area_is_inside_area(a):
+                    delete_id(a.id)
+
+        # collect remaining areas
+        area_list = [a for a in self.area_list if a.id in area_id_list]
+        group_list = {}
+        for area in area_list:
+            if not area.id in area_id_list:
+                continue
+            group_list[area.id] = [area]
+            delete_id(area.id)
+            for a in self.area_list:
+                if area.id == a.id:
+                    continue
+                if not a.id in area_id_list:
+                    continue
+                if append_area(group_list[area.id], a):
+                    continue
+
+        area_list = [a for a in self.area_list if a.id in area_id_list]
+        for area in area_list:
+            group_list[area.id] = [area]
+
+        area_id_list = [int(x) for x in group_list.keys()]
+
+        logger.debug("end check_airgap: return %s", len(area_id_list) > 1)
+        return len(area_id_list) > 1  # bad
+
     def is_border_line(self, center, startangle, endangle, e, atol):
         if isinstance(e, Line):
             if np.isclose(startangle, endangle):

@@ -35,6 +35,7 @@ class Machine(object):
         self.airgaps = []
         self.airgap_radius = 0.0
         self.airgap2_radius = 0.0
+        self.airgap_second = None
         self.previous_machine = None
 
         if not self.center:
@@ -462,12 +463,27 @@ class Machine(object):
                 dist_list = [[d, c] for pos, d, c in pos_list]
                 dist_list.sort()
                 circle = dist_list[0][1]
+                if len(dist_list) > 1:
+                    self.airgap_second = dist_list[1][1]
 
             logger.info("airgap {} prefered".format(circle.radius))
             return circle.radius
 
         print("Use options --airgap/--airgap2 <float> to specify")
         return None
+
+    def check_airgap(self):
+        return self.geom.check_airgap(self.startangle, self.endangle)
+
+    def install_alternative_airgap(self):
+        if self.airgap_second is None:
+            return False
+        circle = self.airgap_second
+        self.airgap_radius = circle.radius
+        return True
+
+    def has_alternative_airgap(self):
+        return self.airgap_second is not None
 
     def has_airgap(self):
         return self.airgap_radius > 0.0

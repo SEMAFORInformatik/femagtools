@@ -230,7 +230,7 @@ class InductionMachine(Component):
 
     def i1(self, w1, psi, wm):
         """stator current"""
-        imag = complex(self.imag(psi))
+        imag = self.imag(psi)+0j
         if abs(w1) > 0:
             imag += w1*psi/self.rfe(w1, psi)*1j
         return self.i2(w1, psi, wm) + imag

@@ -89,12 +89,12 @@ def parident(workdir, engine, machine,
                                            'ld_lq_fast'),
                 wind_temp=20.0,
                 i1_max=kwargs.get('i1_max', i1_max),
-                maxid=0,
-                minid=-i1_max,
-                maxiq=i1_max,
-                miniq=-i1_max,
-                delta_id=i1_max/kwargs.get('num_cur_steps', 5),
-                delta_iq=i1_max/kwargs.get('num_cur_steps', 5),
+                maxid=kwargs.get('maxid', 0),
+                minid=kwargs.get('minid', -i1_max),
+                maxiq=kwargs.get('maxiq', i1_max),
+                miniq=kwargs.get('miniq', -i1_max),
+                delta_id=kwargs.get('delta_id', i1_max/5),
+                delta_iq=kwargs.get('delta_iq', i1_max/5),
                 beta_min=kwargs.get('beta_min', -180),
                 beta_max=kwargs.get('beta_max', 0),
                 num_move_steps=kwargs.get('num_move_steps', 31),
@@ -121,9 +121,10 @@ def parident(workdir, engine, machine,
             rotor_mass = 0  # need femag classic > rel-9.3.x-48-gca42bbd0
         b = results['f'][-1]
 
-        losskeys = ('speed', 'ef', 'hf',
+        losskeys = ('speed', 'ef', 'hf', 'cf', 
                     'styoke_hyst', 'stteeth_hyst', 'styoke_eddy',
-                    'stteeth_eddy', 'rotor_hyst', 'rotor_eddy')
+                    'stteeth_eddy', 'rotor_hyst', 'rotor_eddy',
+                    'styoke_excess', 'stteeth_excess', 'rotor_excess')
 
         # winding resistance
         try:
@@ -161,7 +162,7 @@ def parident(workdir, engine, machine,
                                 ld=b['ldq']['ld'],
                                 lq=b['ldq']['lq'],
                                 losses={k: b['ldq']['losses'][k]
-                                        for k in losskeys})
+                                        for k in losskeys if k in b['ldq']['losses']})
                              for b in results['f']])
         else:
                 dqpars = dict(m=3, p=b['machine']['p'],
@@ -176,7 +177,7 @@ def parident(workdir, engine, machine,
                             psiq=b['psidq']['psiq'],
                             torque=b['psidq']['torque'],
                             losses={k: b['psidq']['losses'][k]
-                                    for k in losskeys})
+                                    for k in losskeys if k in b['psidq']['losses']})
                            for b in results['f']])
         if 'current_angles' in results['f'][0]:
                 dqpars['current_angles'] = results['f'][0]['current_angles']
@@ -244,6 +245,7 @@ class SynchronousMachine(object):
         self.kth2 = KTH
         self.skin_resistance = [None, None]
         self.kpmag = 1
+        self.bertotti = False
         # here you can set user defined functions for calculating the skin-resistance,
         # according to the current frequency w. First function in list is for stator, second for rotor.
         # If None, the femagtools intern default implementation is used.
@@ -284,6 +286,13 @@ class SynchronousMachine(object):
                       'rotor_hyst': hf,
                       'rotor_eddy': ef}
 
+        if self.bertotti:
+            self.plexp.update({
+                        'styoke_excess': 1.5,
+                        'stteeth_excess':1.5,
+                        'rotor_excess': 1.5})
+            
+
     def pfric(self, n):
         """friction and windage losses"""
         return 2*np.pi*n*self.tfric
@@ -317,7 +326,7 @@ class SynchronousMachine(object):
         if n > 1e-3:
             f1 = self.p*n
             plfe = self.kpfe * (self.iqd_plfe1(iq, id, iex, f1)
-                                + self.iqd_plfe2(iq, id, f1))
+                                + self.iqd_plfe2(iq, id, iex, f1))
             return (plfe + self.pfric(n))/(2*np.pi*n)
         return 0
 
@@ -362,7 +371,7 @@ class SynchronousMachine(object):
     def iqd_plcu2(self, iq, id, iex):
         return self.plcu2((iq, id, iex))
 
-    def iqd_plfe2(self, iq, id, f1):
+    def iqd_plfe2_(self, iq, id, f1):
         return np.zeros(np.asarray(iq).shape)
 
     def iqd_plmag(self, iq, id, f1):
@@ -590,6 +599,7 @@ class SynchronousMachine(object):
             if T < 0:
                 i1max = -i1max
             w1type, Tf = self.w1_imax_umax(i1max, u1max)
+
         else:
             Tf = T
             w1type = self.w1_umax(u1max, iq, id, iex)
@@ -621,7 +631,7 @@ class SynchronousMachine(object):
         wmtab[0] = 0
 
         r = dict(u1=[], i1=[], id=[], iq=[], iex=[], T=[], cosphi=[], n=[],
-                 beta=[], plfe1=[], plcu1=[], plcu2=[])
+                 beta=[], plfe1=[], plfe2=[], plcu1=[], plcu2=[])
         # add type speed to result dict
         r['n_type'] = wmType/2/np.pi
         for wm, tq in zip(wmtab, [tload(wx) for wx in wmtab]):
@@ -649,12 +659,13 @@ class SynchronousMachine(object):
             gamma = np.arctan2(ud, uq)
             r['cosphi'].append(np.cos(gamma - beta))
             r['plfe1'].append(self.iqd_plfe1(iq, id, iex, f1))
+            r['plfe2'].append(self.iqd_plfe2(iq, id, iex, f1))
             r['plcu1'].append(self.m*i1**2*self.rstat(w1))
             r['plcu2'].append(iex**2*self.rrot(0))
             r['T'].append(tqx)
             r['n'].append(wm/2/np.pi)
 
-        r['plfe'] = r['plfe1']
+        r['plfe'] = (np.array(r['plfe1']) + np.array(r['plfe2'])).tolist()
         r['plcu'] = (np.array(r['plcu1']) + np.array(r['plcu2'])).tolist()
         r['plfw'] = [self.pfric(n) for n in r['n']]
         r['pmech'] = [2*np.pi*n*tq
@@ -689,6 +700,10 @@ class SynchronousMachinePsidq(SynchronousMachine):
                         eecpars['psidq'][0]['iq'][-1])
         self.idrange = (eecpars['psidq'][0]['id'][0],
                         eecpars['psidq'][0]['id'][-1])
+        
+        self.betarange = (-np.pi if min(self.iqrange) < 0 else -np.pi/2,
+                          0 if max(self.iqrange) > 0 else -np.pi/2)
+        self.i1range = (0, betai1(np.max(self.iqrange), 0)[1])
         islinear = True
         iexc = [l['ex_current'] for l in eecpars['psidq']]
         self.exc_max = iexc[-1]
@@ -726,9 +741,18 @@ class SynchronousMachinePsidq(SynchronousMachine):
         self.bounds = [(min(iq), max(iq)),
                        (min(id), 0),
                        (iexc[0], iexc[-1])]
+        
+        keys = self.plexp.keys()
         try:
             idname = 'psidq'
-            keys = self.plexp.keys()
+            # check if bertotti 
+            if 'styoke_excess' in eecpars[idname][0]['losses'] and \
+            np.any(np.array(eecpars[idname][0]['losses']['styoke_excess'])):
+                self.bertotti = True
+                keys.update({{
+                        'styoke_excess': 1.5,
+                        'stteeth_excess':1.5,
+                        'rotor_excess': 1.5}})
             if islinear:
                 pfe = {k: np.array([l['losses'][k]
                                     for l in eecpars[idname]])
@@ -762,14 +786,27 @@ class SynchronousMachinePsidq(SynchronousMachine):
             raise ex
 
     def plfe1(self, iq, id, iex, f1):
+        losskeys = ['styoke_eddy', 'styoke_hyst',
+                      'stteeth_eddy', 'stteeth_hyst']
+        if self.bertotti: 
+            losskeys += ['styoke_excess', 'stteeth_excess']
         return np.sum([
             self._losses[k]((iex, iq, id))*(f1/self.fo)**self.plexp[k][0]
-            for k in ('styoke_eddy', 'styoke_hyst',
-                      'stteeth_eddy', 'stteeth_hyst')], axis=0)
+            for k in losskeys], axis=0)
+    
+    def plfe2(self, iq, id, iex, f1):
+        losskeys = ['rotor_hyst', 'rotor_eddy']
+        if self.bertotti: 
+            losskeys += ['rotor_excess']
+        return np.sum([
+            self._losses[k]((iex, iq, id))*(f1/self.fo)**self.plexp[k][0]
+            for k in losskeys], axis=0)
 
     def iqd_plfe1(self, iq, id, iex, f1):
         return self.plfe1(iq, id, iex, f1)
 
+    def iqd_plfe2(self, iq, id, iex, f1): 
+        return self.plfe2(iq, id, iex, f1)
 
 class SynchronousMachineLdq(SynchronousMachine):
     def __init__(self, eecpars, lfe=1, wdg=1, **kwargs):
@@ -818,9 +855,20 @@ class SynchronousMachineLdq(SynchronousMachine):
         self.bounds = [(np.cos(min(beta))*i1max, i1max),
                        (-i1max, 0),
                        (iexc[0], iexc[-1])]
+
+        # iron losses 
         keys = self.plexp.keys()
         try:
             idname = 'ldq'
+            # check bertotti losses
+            if 'styoke_excess' in eecpars[idname][0]['losses'] and \
+            np.any(np.array(eecpars[idname][0]['losses']['styoke_excess'])):
+                self.bertotti = True
+                keys.update({{
+                        'styoke_excess': 1.5,
+                        'stteeth_excess':1.5,
+                        'rotor_excess': 1.5}})
+
             if islinear:
                 pfe = {k: np.array([l['losses'][k]
                                     for l in eecpars[idname]])
@@ -830,6 +878,7 @@ class SynchronousMachineLdq(SynchronousMachine):
                                     np.array([l['losses'][k]
                                              for l in eecpars[idname]]))
                        for k in keys}
+
         # fill value with nan outside range
             self._losses = {k: ip.RegularGridInterpolator(
                     (exc, beta, i1), lfe*np.array(pfe[k]),
@@ -838,12 +887,13 @@ class SynchronousMachineLdq(SynchronousMachine):
             self._set_losspar(eecpars[idname][0]['losses']['speed'],
                               eecpars[idname][0]['losses']['ef'],
                               eecpars[idname][0]['losses']['hf'])
-        except ValueError:
+        except KeyError:
             logger.warning("loss map missing")
             self._losses = {k: lambda x: 0 for k in (
                 'styoke_hyst', 'stteeth_hyst',
                 'styoke_eddy', 'stteeth_eddy',
                 'rotor_hyst', 'rotor_eddy')}
+            pass
 
     def psi(self, iq, id, iex):
         """return psid, psiq of currents iq, id"""
@@ -859,10 +909,22 @@ class SynchronousMachineLdq(SynchronousMachine):
             raise ex
 
     def plfe1(self, beta, i1, iex, f1):
+        losskeys =  ['styoke_eddy', 'styoke_hyst',
+                      'stteeth_eddy', 'stteeth_hyst']
+        if self.bertotti: 
+            losskeys += ['styoke_excess', 'stteeth_excess']
         return np.sum([
             self._losses[k]((iex, beta, i1))*(f1/self.fo)**self.plexp[k][0]
-            for k in ('styoke_eddy', 'styoke_hyst',
-                      'stteeth_eddy', 'stteeth_hyst')], axis=0)
+            for k in losskeys], axis=0)
+    
+    def plfe2(self, beta, i1, iex, f1):
+        losskeys =  ['rotor_hyst', 'rotor_eddy']
+        if self.bertotti: 
+            losskeys += ['rotor_excess']
+        return np.sum([
+            self._losses[k]((iex, beta, i1))*(f1/self.fo)**self.plexp[k][0]
+            for k in losskeys], axis=0)
+    
     def iqd_plfe1(self, iq, id, iex, f1):
         beta = np.arctan2(id, iq)
         if np.isscalar(beta):
@@ -872,6 +934,16 @@ class SynchronousMachineLdq(SynchronousMachine):
             beta[beta > 0] -= 2*np.pi
         i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
         return self.plfe1(beta, i1, iex, f1)
+
+    def iqd_plfe2(self, iq, id, iex, f1):
+        beta = np.arctan2(id, iq)
+        if np.isscalar(beta):
+            if beta > 0:
+                beta -= 2*np.pi
+        else:
+            beta[beta > 0] -= 2*np.pi
+        i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
+        return self.plfe2(beta, i1, iex, f1)
 
 
 if __name__ == '__main__':

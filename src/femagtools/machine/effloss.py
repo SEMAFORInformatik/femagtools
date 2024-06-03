@@ -309,10 +309,17 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             r['plcu1'].append(m.m*np.abs(i1)**2*m.rstat(w1))
             r['plcu2'].append(m.m*np.abs(i2)**2*m.rrot(w1-m.p*wm))
 
-    if isinstance(m, (PmRelMachine, SynchronousMachine)):
+    if isinstance(m, PmRelMachine):
         plfe1 = m.kpfe*m.iqd_plfe1(*iqd, f1)
         plfe2 = m.kpfe*m.iqd_plfe2(iqd[0], iqd[1], f1)
         plmag = m.kpmag*m.iqd_plmag(iqd[0], iqd[1], f1)
+        plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
+        plcu2 = m.iqd_plcu2(*iqd)
+        tfric = m.tfric
+    elif isinstance(m, SynchronousMachine):
+        plfe1 = m.kpfe*m.iqd_plfe1(*iqd, f1)
+        plfe2 = m.kpfe*m.iqd_plfe2(*iqd, f1)
+        plmag = np.zeros_like(plfe2)
         plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
         plcu2 = m.iqd_plcu2(*iqd)
         tfric = m.tfric

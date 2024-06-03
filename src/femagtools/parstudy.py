@@ -188,6 +188,9 @@ class ParameterStudy(object):
         simulation.update(model.winding)
         if 'pocfilename' not in simulation:
             simulation['pocfilename'] = f"{model.name}.poc"
+        if simulation['calculationMode'] == 'psd_psq_fast': 
+            simulation['pocfilename'] = f"{model.name}_{model.get('poles')}p.poc"
+
         fea = femagtools.model.FeaModel(simulation)
 
         prob = femagtools.moproblem.FemagMoProblem(decision_vars,

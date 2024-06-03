@@ -15,7 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 def agndst(da1, da2, Q, p, nodedist=1):
-    """ build agndst from set of useful number of nodes"""
+    """ build agndst from set of useful number of nodes
+    args:
+      da1: stator inner diameter
+      da2: rotor outer diameter
+      Q: number of stator slots
+      p: number of poles
+      nodedist: node distance factor
+    """
     num_nodes = [30, 48, 60, 96, 120, 144, 180, 240, 288, 336, 360,
                  432, 480]
     r = (da1 + da2)/4
@@ -28,7 +35,7 @@ def agndst(da1, da2, Q, p, nodedist=1):
                     num_nodes[i-1], p*num_nodes[i-1]/Q, nodedist)
         if nodedist > 1:
             return dagset[i-nd]*r
-        elif nodedist < 1 or i == 0:
+        if nodedist < 1 or i == 0:
             return dagset[i]*r
     except IndexError:
         pass

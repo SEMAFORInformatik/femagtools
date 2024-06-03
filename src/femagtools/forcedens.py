@@ -109,9 +109,9 @@ class ForceDensity(object):
             rec = l.split()[1:]
             if len(rec) == len(labels):
                 m.append([float(x) for x in rec])
-        logging.info("POSITION %s len %d: %s", d['position'],
-                     len(m), ','.join(labels))
-        d.update({k: v for k, v in zip(labels, list(zip(*m)))})
+        logging.debug("POSITION %s len %d: %s", d['position'],
+                      len(m), ','.join(labels))
+        d.update(dict(zip(labels, list(zip(*m)))))
 
         self.positions.append(d)
 
@@ -131,6 +131,19 @@ class ForceDensity(object):
                     self.__read_date_and_title(s)
                 elif s[0].startswith('POSITION'):
                     self.__read_position(s)
+            pos = [p['position'] for p in self.positions]
+            labels = self.positions[0].keys()
+            fn = [p['FN'] for p in self.positions]
+            fnmax = max([max(x) for x in fn])
+            fnmin = min([min(x) for x in fn])
+            flen = set([len(x) for x in fn])
+            if len(flen) > 1:
+                logging.warning("inhomogenous samples: %s", flen)
+            logging.info("%s shape (%s, %s): min %s max %s %s",
+                         filename, len(pos), min(list(flen)),
+                         (min(pos), fnmin),
+                         (max(pos), fnmax),
+                         ','.join(labels))
 
     def _prepare(self):
         """return FN and FT Matrix"""
@@ -148,8 +161,7 @@ class ForceDensity(object):
 
     def fft(self):
         """return 2D FFT of the Force Density"""
-        fdens = self._prepare()
-        FN, FT= fdens[0], fdens[1]
+        FN, FT = self._prepare()
         N = FN.size
         dim = FN.shape[0]//2
         # Dimension [Position °] X [Time Steps s]
@@ -157,9 +169,9 @@ class ForceDensity(object):
         FT_MAG = np.fft.fft2(FT)[0:dim, :]/N
 
         return dict(fn_harm=dict(amplitude=np.abs(FN_MAG),
-                                phase=np.angle(FN_MAG)),
+                                 phase=np.angle(FN_MAG)),
                     ft_harm=dict(amplitude=np.abs(FT_MAG),
-                                phase=np.angle(FT_MAG))
+                                 phase=np.angle(FT_MAG))
                     )
 
     def items(self):
@@ -227,19 +239,19 @@ if __name__ == "__main__":
     fdens = read(filename)
 
     # Show the results
-    print(fdens.version)
+    #print(fdens.version)
 
     title = '{}, Rotor position {}'.format(
         fdens.title, fdens.positions[0]['position'])
-    pos = fdens.positions[0]['X']
-    FT_FN = (fdens.positions[0]['FT'],
-             fdens.positions[0]['FN'])
-    femagtools.plot.forcedens(title, pos, FT_FN)
-    pl.show()
+    #pos = fdens.positions[0]['X']
+    #FT_FN = (fdens.positions[0]['FT'],
+    #         fdens.positions[0]['FN'])
+    #femagtools.plot.forcedens(title, pos, FT_FN)
+    #pl.show()
 
-    femagtools.plot.forcedens_surface(fdens)
-    pl.show()
+    #femagtools.plot.forcedens_surface(fdens)
+    #pl.show()
 
     title = 'Force Density Harmonics'
-    femagtools.plot.forcedens_fft(title, fdens)
+    femagtools.plot.forcedens_fft(title, fdens) #, harmmax=(250, 20))
     pl.show()

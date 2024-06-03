@@ -151,6 +151,7 @@ class PlotRenderer(object):
         self.ax.set_aspect('equal')
         if filename:
             pl.savefig(filename)
+            pl.close()
         else:
             pl.show()
 
@@ -376,3 +377,4 @@ class PlotRenderer(object):
         filename = '{}.png'.format(name)
         fig = self.figure()
         fig.savefig(filename)
+        pl.close()

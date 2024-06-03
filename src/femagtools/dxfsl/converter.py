@@ -269,7 +269,7 @@ def convert(dxfile,
 
     input_file = Path(dxfile)
     basename = input_file.stem
-    logger.info("***** start processing %s *****", basename)
+    logger.info("***** start processing %s part %s *****", basename, part)
     timer = Timer(start_it=True)
 
     journal = getJournal(name='converter', aktiv=debug_mode)
@@ -604,6 +604,11 @@ def convert(dxfile,
                            with_nodes=True,
                            single_view=True)
 
+        params = create_femag_parameters(machine_inner,
+                                         machine_outer,
+                                         nodedist)
+        conv.update(params)
+
         if write_fsl:
             if machine_inner.is_full() or machine_outer.is_full():
                 logger.warning("it's not possible to create fsl-file")
@@ -620,11 +625,6 @@ def convert(dxfile,
                 conv['fsl_magnet'] = inner
                 conv['fsl_rotor'] = outer
 
-            params = create_femag_parameters(machine_inner,
-                                             machine_outer,
-                                             nodedist)
-
-            conv.update(params)
             conv['fsl'] = fslrenderer.render_main(
                 machine,
                 machine_inner, machine_outer,
@@ -693,6 +693,8 @@ def convert(dxfile,
         else:
             machine.search_subregions(single=True)
 
+        if params:
+            conv.update(params)
         machine.delete_tiny_elements(mindist)
         machine.create_inner_corner_areas()
 
@@ -713,7 +715,7 @@ def convert(dxfile,
                               write_id=write_id,
                               fill_areas=True)
         elif small_plots:
-            p.figure().suptitle(input_file.name, fontsize=16)
+            #p.figure().suptitle(input_file.name, fontsize=16)
             p.render_elements(machine.geom, Shape,
                               draw_inside=True, title=title,
                               rows=1, cols=1, num=1, show=False,
@@ -758,6 +760,7 @@ def convert(dxfile,
 
 def create_femag_parameters(m_inner, m_outer, nodedist=1):
     if not (m_inner and m_outer):
+        logger.warning("inner %s outer %s", m_inner, m_outer)
         return {}
 
     params = {}
@@ -768,14 +771,14 @@ def create_femag_parameters(m_inner, m_outer, nodedist=1):
     parts_outer = int(m_outer.get_symmetry_part())
 
     if parts_inner > parts_outer:
-        num_slots = parts_inner
-        num_poles = parts_outer
+        num_slots = int(parts_inner)
+        num_poles = int(parts_outer)
         num_sl_gen = int(geom_inner.get_symmetry_copies()+1)
         alfa_slot = geom_inner.get_alfa()
         alfa_pole = geom_outer.get_alfa()
     else:
-        num_slots = parts_outer
-        num_poles = parts_inner
+        num_slots = int(parts_outer)
+        num_poles = int(parts_inner)
         num_sl_gen = int(geom_outer.get_symmetry_copies()+1)
         alfa_slot = geom_outer.get_alfa()
         alfa_pole = geom_inner.get_alfa()
@@ -814,7 +817,7 @@ def create_femag_parameters(m_inner, m_outer, nodedist=1):
 def create_femag_parameters_stator(motor, position):
     params = {}
     num_slots = motor.get_num_slots()
-    params['tot_num_slot'] = num_slots
+    params['tot_num_slot'] = int(num_slots)
     if position == 'in':
         params['da2'] = 2*motor.geom.max_radius
         params['dy2'] = 2*motor.geom.min_radius
@@ -827,7 +830,7 @@ def create_femag_parameters_stator(motor, position):
 def create_femag_parameters_rotor(motor, position):
     params = {}
     num_poles = motor.get_num_poles()
-    params['num_poles'] = num_poles
+    params['num_poles'] = int(num_poles)
     if position == 'in':
         params['da2'] = 2*motor.geom.max_radius
         params['dy2'] = 2*motor.geom.min_radius

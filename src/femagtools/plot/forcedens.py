@@ -73,7 +73,7 @@ def forcedens_surface(fdens, ax=0):
                   ('Rotor pos/°', 'Pos/°', 'F N / kN/m²'))
 
 
-def forcedens_fft(title, fdens, harmmax=40,
+def forcedens_fft(title, fdens, harmmax=(), #(200, 40),
                   cmap=mpl.colormaps['YlOrBr'],
                   ax=0):
     """plot force densities FFT
@@ -86,8 +86,10 @@ def forcedens_fft(title, fdens, harmmax=40,
         ax = plt.axes(projection="3d")
 
     FN = 1e-3*fdens.fft()['fn_harm']['amplitude']
-    shape = [min(harmmax, s)
-             for s in np.shape(FN)]
+    if harmmax:
+        shape = np.min((harmmax, np.shape(FN)), axis=0)
+    else:
+        shape = np.shape(FN)
 
     _x = np.arange(shape[0])+1
     _y = np.arange(shape[1])+1
@@ -95,7 +97,9 @@ def forcedens_fft(title, fdens, harmmax=40,
     x, y = _xx.ravel(), _yy.ravel()
     top = np.ravel(FN[:shape[0],:shape[1]])
     bottom = np.zeros_like(top)
-    width = depth = 1
+    maxy = max(x[-1], y[-1])
+    width, depth = 5*x[-1]/maxy, 5*y[-1]/maxy
+
     min_height = np.min(top)
     max_height = np.max(top)
     rgba = [cmap((k-min_height)/max_height) for k in top]

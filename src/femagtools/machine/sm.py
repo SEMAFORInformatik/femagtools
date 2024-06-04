@@ -436,7 +436,7 @@ class SynchronousMachine(object):
 
     def mtpa(self, i1max):
         """return iq, id, iex currents and maximum torque per current """
-        T0 = self.torque_iqd(np.sqrt(2)*i1max/2, 0, self.bounds[-1][1])/2
+        T0 = self.torque_iqd(np.sqrt(2)*i1max/2, 0, self.bounds[-1][1]/2)
         def i1tq(tq):
             return abs(i1max) - np.linalg.norm(self.iqd_torque(tq)[:2])/np.sqrt(2)
         with warnings.catch_warnings():

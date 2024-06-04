@@ -269,7 +269,10 @@ def convert(dxfile,
 
     input_file = Path(dxfile)
     basename = input_file.stem
-    logger.info("***** start processing %s part %s *****", basename, part)
+    if part:
+        logger.info("***** start processing %s part %s *****", basename, part)
+    else:
+        logger.info("***** start processing %s *****", basename)
     timer = Timer(start_it=True)
 
     journal = getJournal(name='converter', aktiv=debug_mode)

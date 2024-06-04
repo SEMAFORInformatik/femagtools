@@ -26,9 +26,8 @@ def getJournal(name=None, aktiv=False):
     global journal
     if not journal:
         if not name:
-            journal = Journal(name='none', aktiv=False)
-        else:
-            journal = Journal(name=name, aktiv=True)
+            name = 'none'
+        journal = Journal(name=name, aktiv=aktiv)
     return journal
 
 

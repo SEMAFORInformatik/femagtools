@@ -263,6 +263,7 @@ def convert(dxfile,
             write_fsl=True,
             write_png=False,
             write_id=False,
+            full_model=False,
             debug_mode=False):
     layers = ()
     conv = {}
@@ -270,7 +271,7 @@ def convert(dxfile,
     input_file = Path(dxfile)
     basename = input_file.stem
     if part:
-        logger.info("***** start processing %s part %s *****", basename, part)
+        logger.info("***** start processing %s *****", basename)
     else:
         logger.info("***** start processing %s *****", basename)
     timer = Timer(start_it=True)
@@ -559,7 +560,7 @@ def convert(dxfile,
                               write_id=write_id,
                               fill_areas=True)
         elif small_plots:
-            p.figure(figsize=(9, 5)).suptitle(input_file.name, fontsize=16)
+            #p.figure(figsize=(9, 5)).suptitle(input_file.name, fontsize=16)
             p.render_elements(machine_inner.geom, Shape,
                               draw_inside=True, title=inner_title,
                               rows=1, cols=2, num=1, show=False,
@@ -620,6 +621,8 @@ def convert(dxfile,
             fslrenderer = FslRenderer(basename)
             inner = fslrenderer.render(machine_inner, inner=True)
             outer = fslrenderer.render(machine_outer, outer=True)
+            if full_model:
+                params['num_sl_gen'] = params.get('tot_num_slot', 0)
 
             if machine_inner.geom.is_rotor():
                 conv['fsl_magnet'] = inner

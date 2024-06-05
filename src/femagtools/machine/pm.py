@@ -907,6 +907,8 @@ class PmRelMachine(object):
         with_mtpa -- (optional) use mtpa if True (default) in const speed range, set id=0 if false
         with_tmech -- (optional) use friction and windage losses if True (default)
         with_torque_corr -- (optional) T is corrected if out of range
+        Optional arguments:
+        i1max: max. phase current (RMS)
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
                  beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])

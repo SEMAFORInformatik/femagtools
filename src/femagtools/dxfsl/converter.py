@@ -435,11 +435,11 @@ def convert(dxfile,
             if bad_inner or bad_outer:
                 logger.warning("***** bad Airgap *****")
                 if bad_inner:
-                    plot_geom(True,  # for developer
+                    plot_geom(False,  # for developer
                               p, machine_inner.geom,
                               title="Bad Inner Airgap Geometry")
                 if bad_outer:
-                    plot_geom(True,  # for developer
+                    plot_geom(False,  # for developer
                               p, machine_outer.geom,
                               title="Bad Outer Airgap Geometry")
 

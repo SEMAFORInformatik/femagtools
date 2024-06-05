@@ -798,8 +798,8 @@ class PmRelMachine(object):
                         k, wx, wl, wu, 100*(wu-wl)/wl)
 
         self.check_extrapolation = True
-        w1max = min(w1max, self.w1_umax(
-            u1max, *iqd(-np.pi/2, abs(i1max))))
+        w1max = min(w1max, np.floor(self.w1_umax(
+            u1max, *iqd(-np.pi/2, abs(i1max)))))
         return [w/2/np.pi/self.p for w in (w1type, w1max)]  # ['MTPA']
 
 
@@ -1396,7 +1396,7 @@ class PmRelMachinePsidq(PmRelMachine):
                                   'rotor_excess']
             self._set_losspar(pfe)
             self._losses = {k: ip.RectBivariateSpline(
-                iq, id, np.array(pfe[k])).ev for k in self.losskeys 
+                iq, id, np.array(pfe[k])).ev for k in self.losskeys
                 if k in pfe}
         except KeyError as e:
             logger.warning("loss map missing: %s", e)

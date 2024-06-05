@@ -571,7 +571,11 @@ class SynchronousMachine(object):
         nsamples -- (optional) number of speed samples
         with_tmech -- (optional) use friction and windage losses
         with_torque_corr -- (optional) T is corrected if out of range
+        Optional arguments:
+        i1max: max. phase current (RMS)
         """
+        if kwargs.get('i1max', 0):
+                w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
         try:
             iq, id, iex = self.iqd_torque(T)
         except ValueError:

@@ -66,6 +66,7 @@ class Area(object):
         area_number += 1
         self.id = area_number
         self.areas_inside = {}
+        self.areas_of_group = []
 
     def identifier(self):
         return "{}-{}".format(self.id, self.type)
@@ -924,19 +925,6 @@ class Area(object):
                 return False
         return True
 
-    def has_round_edges(self):
-        arcs = 0
-        for e in self.area:
-            # if isinstance(e, Line):
-            #    if not np.isclose(angle, alpha_line(center, e.p1)):
-            #        return False
-            #    if not np.isclose(angle, alpha_line(center, e.p2)):
-            #        return False
-            if isinstance(e, Arc):
-                arcs += 1
-
-        return arcs > 0
-
     def is_shaft_area(self, center):
         logger.debug("Begin of check shaft")
 
@@ -965,11 +953,11 @@ class Area(object):
         logger.debug("End of check shaft: ok")
         return True
 
-    def is_magnet_rectangle(self):
+    def get_magnet_line_angles(self):
         lines = [e for e in self.area if is_Line(e)]
         if len(lines) < 4:
-            logger.debug("is_magnet_rectangle: only %s lines", len(lines))
-            return False
+            logger.debug("get_magnet_line_angles: only %s lines", len(lines))
+            return []
 
         angles = []
         prev_angle = lines[0].get_positive_angle()
@@ -983,38 +971,72 @@ class Area(object):
 
             if np.isclose(prev_angle, this_angle, rtol=1e-04, atol=1e-02):
                 # same direction
-                #prev_angle = middle_angle(prev_angle, this_angle)
                 prev_length += this_length
             else:
-                angles.append((prev_angle, prev_length))
+                angles.append((prev_length, prev_angle))
                 prev_angle = this_angle
                 prev_length = this_length
 
-        if len(angles) < 3:
-            logger.debug("is_magnet_rectangle: only %s angles", len(angles))
-            return False
+        if not angles:
+            logger.debug("get_magnet_line_angles: only one angle")
+            return []
 
-        this_angle, this_length = angles[0]
+        this_length, this_angle = angles[0]
         if not np.isclose(prev_angle, this_angle, rtol=1e-04, atol=1e-02):
-            angles.append((prev_angle, prev_length))
+            angles.append((prev_length, prev_angle))
         else:
-            #prev_angle = middle_angle(prev_angle, this_angle)
             prev_length += this_length
-            angles[0] = (prev_angle, prev_length)
+            angles[0] = (prev_length, prev_angle)
 
-        first_angle, l = angles[0]
-        last_angle, l = angles[-1]
+        l, first_angle = angles[0]
+        l, last_angle = angles[-1]
         if np.isclose(first_angle, last_angle, rtol=1e-04, atol=1e-02):
             del angles[-1]
+        return angles
+
+    def get_magnet_phi(self, angles):
+        if not angles:
+            return 0.0
+
+        angles.sort(reverse=True)
+        # calculate orientation (no rectangle check)
+        l, alpha = angles[0]
+        if alpha < 0.0:
+            alpha += np.pi
+        alpha = alpha + np.pi/2
+        if alpha > np.pi:
+            alpha = alpha - np.pi
+
+        mid = middle_angle(self.min_angle, self.max_angle)
+        angle1 = alpha_angle(mid, alpha)
+        angle2 = alpha_angle(alpha, mid)
+        logger.debug("alpha=%s, mid=%s, angle1=%s, angle2=%s", alpha, mid, angle1, angle2)
+
+        if angle1 > np.pi / 2 and angle2 > np.pi / 2:
+            if not np.isclose(angle1, np.pi*2):
+                alpha = normalise_angle(alpha + np.pi)
+
+        logger.debug("phi of magnet %s is %s", self.identifier(), alpha)
+        return alpha
+
+    def get_magnet_orientation(self):
+        angles = self.get_magnet_line_angles()
+        return self.get_magnet_phi(angles)
+
+    def is_magnet_rectangle(self):
+        angles = self.get_magnet_line_angles()
 
         if len(angles) != 4:
             logger.debug("is_magnet_rectangle: %s angles, not 4", len(angles))
             return False
 
-        angle_0, length_0 = angles[0]
-        angle_1, length_1 = angles[1]
-        angle_2, length_2 = angles[2]
-        angle_3, length_3 = angles[3]
+        for l, a in angles:
+            logger.debug("+ magnet_rectangle: alpha=%s,  length=%s", a, l)
+
+        length_0, angle_0 = angles[0]
+        length_1, angle_1 = angles[1]
+        length_2, angle_2 = angles[2]
+        length_3, angle_3 = angles[3]
 
         if not np.isclose(angle_0, angle_2, rtol=1e-03, atol=0.05):
             logger.debug("is_magnet_rectangle: angles %s and %s not equal",
@@ -1036,62 +1058,28 @@ class Area(object):
             logger.debug("is_magnet_rectangle: not a rectange (%s neq %s)", a0, a1)
             return False
 
-        max_length = max(length_0, length_1)
-        max_radius = max_length / 10
-        arcs = [e for e in self.area if is_Arc(e)]
-        for a in arcs:
-            if a.radius > max_radius:
-                logger.debug("is_magnet_rectangle: arcs radius %s > %s",
-                             a.radius, max_radius)
-                return False
+        turn_left = False
+        turn_right = False
+        for n1, n2, e in self.list_of_elements():
+            if is_Arc(e):
+                if e.get_node_number(n1) == 1:
+                    turn_left = True
+                else:
+                    turn_right = True
 
+        if turn_left and turn_right:
+            logger.debug("is_magnet_rectangle: arcs with different directions")
+            return False
+
+        self.phi = self.get_magnet_phi(angles)
+        logger.debug("Area %s is a rectangle with phi %s",
+                     self.identifier(), self.phi)
         return True
-
-    def get_mag_orient_rectangle(self):
-        lines = [[e.m(99999.0), e.length(), alpha_line(e.p1, e.p2)]
-                 for e in self.area
-                 if isinstance(e, Line)]
-        lines.sort()
-
-        m_prev = 999.999999
-        a_prev = 0.0
-        l_total = 0.0
-        line_length = []
-        for m, l, a in lines:
-            if np.isclose(m_prev, m):
-                l_total += l
-            else:
-                if l_total > 0.0:
-                    line_length.append((l_total, m_prev, a_prev))
-                l_total = l
-                m_prev = m
-                a_prev = a
-
-        if l_total > 0.0:
-            line_length.append((l_total, m_prev, a_prev))
-        line_length.sort(reverse=True)
-
-        alpha = line_length[0][2]
-        if alpha < 0.0:
-            alpha += np.pi
-        alpha = alpha + np.pi/2
-        if alpha > np.pi:
-            alpha = alpha - np.pi
-
-        mid = middle_angle(self.min_angle, self.max_angle)
-        angle1 = alpha_angle(mid, alpha)
-        angle2 = alpha_angle(alpha, mid)
-        logger.debug("alpha=%s, mid=%s, angle1=%s, angle2=%s", alpha, mid, angle1, angle2)
-
-        if angle1 > np.pi / 2 and angle2 > np.pi / 2:
-            if not np.isclose(angle1, np.pi*2):
-                logger.debug("turn alpha")
-                alpha = normalise_angle(alpha + np.pi)
-        return alpha
 
     def get_mag_orientation(self):
         if self.mag_rectangle:
-            return self.get_mag_orient_rectangle()
+            return self.get_magnet_orientation()
+
         if self.close_to_endangle:
             if self.close_to_startangle:
                 return middle_angle(self.min_angle, self.max_angle)
@@ -1345,8 +1333,6 @@ class Area(object):
             return self.type
 
         self.mag_rectangle = self.is_magnet_rectangle()
-        if self.mag_rectangle:
-            logger.debug("Area is a Rectangle")
 
         if self.close_to_ag:
             mm = self.minmax_angle_dist_from_center(center,
@@ -1356,7 +1342,6 @@ class Area(object):
             logger.debug(" - air_alpha          : {}".format(air_alpha))
 
             if self.mag_rectangle:
-                self.phi = self.get_mag_orientation()
                 self.type = 11  # magnet near airgap
                 logger.debug("***** magnet (airgap, embedded, phi={})\n".
                              format(self.phi))
@@ -1379,7 +1364,7 @@ class Area(object):
             return self.type
 
         if self.mag_rectangle:
-            self.phi = self.get_mag_orientation()
+            # phi is already calculated and set
             self.type = 4  # magnet embedded
             logger.debug("***** magnet (embedded, phi={})\n".format(
                 self.phi))
@@ -1421,7 +1406,6 @@ class Area(object):
         if self.is_magnet_rectangle():
             self.type = 4  # magnet embedded
             logger.debug(">>> magnet embedded")
-            self.phi = self.get_mag_orient_rectangle()
             return self.type
 
         close_to_max_radius = np.isclose(r_out, self.max_dist)

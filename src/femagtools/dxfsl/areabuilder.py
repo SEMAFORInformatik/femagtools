@@ -499,6 +499,7 @@ class AreaBuilder(object):
             logger.debug("<== %s", result['msg'])
             info_curr.set_all_tracked()
             result['ok'] = True
+            result['circle'] = True
             return result
 
         logger.debug("***** EDGE %s *****", 1)
@@ -796,3 +797,110 @@ class AreaBuilder(object):
         logger.debug("end of get_inner_airgap_line #%s", len(nodes))
         return nodes, elements
 
+    def create_one_area_group(self, areas):
+        logger.debug("begin of create_one_area_group")
+        assert(len(self.area_list) == 0)
+
+        self.set_edge_attributes()
+        if not self.build_group_area(areas):
+            logger.warning("Creation of an areagroup failed")
+            return True
+        return False
+
+    def create_area_groups(self, list_of_areas):
+        logger.debug("begin of create_area_groups")
+        assert(len(self.area_list) == 0)
+
+        area_id_list = [a.id for a in list_of_areas]
+        timer = Timer(start_it=True)
+        #   ---
+        def delete_id(id):
+            try:
+                i = area_id_list.index(id)
+            except ValueError:
+                return True
+            area_id_list[i] = 0
+        #   ---
+
+        group_list = {}
+        for area in list_of_areas:
+            if not area.id in area_id_list:
+                continue
+
+            areas = [area]
+            delete_id(area.id)
+            for a in list_of_areas:
+                if area.id == a.id:
+                    continue
+                if not a.id in area_id_list:
+                    continue
+                if area.is_in_touch_with_area(self.geom, a):
+                    areas.append(a)
+                    delete_id(a.id)
+
+            group_list[area.id] = areas
+
+        group_keys = [int(x) for x in group_list.keys()]
+        logger.debug("=== Area Group List ===")
+        self.set_edge_attributes()
+        errors = 0
+        for k in group_keys:
+            if not self.build_group_area(group_list[k]):
+                logger.warning("Creation of an areagroup failed")
+                errors += 1
+
+        t = timer.stop("areagroups created in %0.4f seconds")
+        logger.debug("end of create_area_groups: %s groups created",
+                     len(self.area_list))
+        return errors > 0
+
+    def build_group_area(self, area_list):
+        id_list = [a.id for a in area_list]
+        logger.debug("Area Group: %s", id_list)
+
+        max_x = 0
+        area = None
+        for a in area_list:
+            if a.max_x > max_x:
+                max_x = a.max_x
+                area = a
+
+        x0, y0 = -9999.0, 0.0
+        for x, y in area.list_of_nodes():
+            if x > x0:
+                x0 = x
+                y0 = y
+
+        node0 = (x0, y0)
+        if not self.geom.g.has_node(node0):
+            node0 = self.geom.find_the_node(node0)
+            x0, y0 = node0
+
+        nbrs = self.geom.get_neighbors(node0)
+        logger.debug("Neighbors of %s", node0)
+
+        alpha0 = alpha_line(node0, (x, -9999.0))
+        angle0 = np.pi * 2.0
+        for n in nbrs:
+            logger.debug("** nbr: %s", n)
+            alpha1 = alpha_line(node0, n)
+            angle1 = alpha_angle(alpha1, alpha0)
+            logger.debug("** nbr=%s,  alpha=%s,  angle=%s", n, alpha1, angle1)
+            logger.debug("** if %s < %s then", angle1, angle0)
+            if angle1 < angle0:
+                node1 = n
+                angle0 = angle1
+
+        logger.debug("** Start with nodes %s ==> %s", node0, node1)
+        rslt = self.get_new_area(node0, node1)
+        if rslt['ok'] and rslt.get('circle', False):
+            rslt['ok'] = False
+            rslt['reverse'] = True
+
+        logger.debug("** Result: ok=%s, reverse=%s", rslt['ok'], rslt['reverse'])
+        if not rslt['ok'] and rslt['reverse']:
+            # new areagroup
+            a = self.append_new_area(self.area_list, rslt['area'])
+            a.areas_of_group = area_list
+            return True
+        return False

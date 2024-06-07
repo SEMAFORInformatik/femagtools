@@ -271,6 +271,7 @@ class Geometry(object):
         self.sym_area = None
         self.airgaps = []
         self.area_list = []
+        self.areagroup_list = []
         self.g = nx.Graph()
         self.rtol = rtol
         self.atol = atol
@@ -1805,6 +1806,15 @@ class Geometry(object):
             return [h for (k, h) in legend.items()]
         return []
 
+    def render_areagroups(self, renderer):
+        if not self.areagroup_list:
+            return
+        for area in self.areagroup_list:
+            area.render(renderer,
+                        color="yellow",
+                        fill=False)
+        return
+
     def get_points_in_iron(self):
         points = []
         for area in self.list_of_areas():
@@ -2447,6 +2457,14 @@ class Geometry(object):
 
     def create_auxiliary_lines(self, rightangle, leftangle):
         logger.debug("begin of create_auxiliary_lines")
+        timer = Timer(start_it=True)
+
+        # for future (next release)
+        # area_list = self.list_of_areas()
+        # builder = AreaBuilder(geom=self)
+        # builder.create_area_groups(area_list)
+        # self.areagroup_list = builder.area_list
+
         self.set_areas_inside_for_all_areas()
 
         logger.debug("-> start create_auxiliary_lines")
@@ -2455,7 +2473,8 @@ class Geometry(object):
         for area in self.list_of_areas():
             if self.create_aux_lines(area, rightangle, leftangle):
                 done = True
-
+        t = timer.stop("-- auxiliary lines in %0.4f seconds --")
+        self.journal.put('auxiliary_lines', t)
         logger.debug("end of create_auxiliary_lines")
         return done
 
@@ -3184,7 +3203,8 @@ class Geometry(object):
                 for a in emb_mag_areas:
                     if a.surface < max_surface * 0.20:  # too small
                         logger.debug(
-                            "embedded magnet too small: convert to air")
+                            "embedded magnet %s too small: convert to air",
+                            a.identifier())
                         logger.debug("max surface : %s", max_surface)
                         logger.debug("area surface: %s", a.surface)
                         logger.debug("max phi     : %s", max_phi)
@@ -3219,7 +3239,7 @@ class Geometry(object):
                       a] for a in self.list_of_areas()
                      if a.type == 4]
 
-        if len(mag_areas) > 2:
+        if False:  # len(mag_areas) > 2:  ACHTUNG
             mag_areas.sort()
             mag_phi = {}
             phi_prev = mag_areas[0][0]
@@ -3245,7 +3265,7 @@ class Geometry(object):
             if len(phi_list) > 1:
                 c0 = phi_list[0][0]
                 c1 = phi_list[1][0]
-                first = 1
+                first = 2  # ACHTUNG
                 if c0 == c1 or np.isclose(phi_list[1][1], 0.0, rtol=1e-4, atol=1e-3):
                     first = 2
 
@@ -3261,15 +3281,40 @@ class Geometry(object):
 
         magnets = [a.type for a in self.list_of_areas() if a.is_magnet()]
         self.has_magnets = len(magnets) > 0
+        logger.debug("%s magnets found in rotor", len(magnets))
 
         if not single:
             if not magnets:
-                logger.debug("no magnets found in rotor")
                 [a.set_type(0) for a in self.list_of_areas()]
                 self.search_stator_subregions(startangle, endangle, single=single)
             return
 
         logger.debug("end of search_rotor_subregions")
+
+    def recalculate_magnet_orientation(self):
+        logger.debug("begin of recalculate_magnet_orientation")
+        magnet_areas = [a for a in self.list_of_areas() if a.type == 4]
+        self.recalculate_magnet_group(magnet_areas)
+        logger.debug("end of recalculate_magnet_orientation")
+
+    def recalculate_magnet_group(self, areas):
+        elements = []
+        for a in areas:
+            elements += a.elements()
+        geom = Geometry(elements, center=self.center)
+        builder = AreaBuilder(geom=geom)
+        if builder.create_area_groups(areas):
+            return  # bad
+        group_list = builder.area_list
+        self.areagroup_list = group_list
+        for group in group_list:
+            if not group.is_magnet_rectangle():
+                logger.debug("Warning: group is not a rectangle")
+            phi = group.get_magnet_orientation()
+            for a in group.areas_of_group:
+                logger.debug("Replace phi %s by %s", a.phi, phi)
+                a.phi = phi
+        return
 
     def search_unknown_subregions(self):
         logger.debug("begin of search_unknown_subregions")

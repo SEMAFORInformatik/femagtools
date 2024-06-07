@@ -16,8 +16,9 @@ import logging
 import inspect
 import sys
 from pathlib import Path
-from .corner import Corner
-from .area import Area
+from femagtools.dxfsl.corner import Corner
+from femagtools.dxfsl.area import Area
+import femagtools.dxfsl.area as AREA
 from .shape import Element, Shape, Circle, Arc, Line, Point
 from .shape import is_Circle, is_Arc, is_Line
 from .machine import Machine
@@ -2474,7 +2475,7 @@ class Geometry(object):
             if self.create_aux_lines(area, rightangle, leftangle):
                 done = True
         t = timer.stop("-- auxiliary lines in %0.4f seconds --")
-        self.journal.put('auxiliary_lines', t)
+        self.journal.put('time_auxiliary_lines', t)
         logger.debug("end of create_auxiliary_lines")
         return done
 
@@ -2894,11 +2895,11 @@ class Geometry(object):
         for a in self.list_of_areas():
             if not shaft.is_identical(a):
                 if shaft.is_inside(a, self):
-                    shaft.type = 6  # iron shaft (Zahn)
+                    shaft.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
                     return
                 if shaft.is_touching(a):
                     if not a.is_iron():
-                        shaft.type = 6  # iron shaft (Zahn)
+                        shaft.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
                         return
 
     def mark_connecting_edges(self, windings):
@@ -2923,7 +2924,8 @@ class Geometry(object):
         self.looking_for_corners()
 
     def get_windings(self, type):
-        windings = [a for a in self.list_of_areas() if a.type == type]
+        windings = [a for a in self.list_of_areas()
+                    if a.is_type(type)]
         for w in windings:
             inside = []
             for a in self.list_of_areas():
@@ -2931,13 +2933,14 @@ class Geometry(object):
                     if w.is_inside(a, self):
                         inside.append(a)
             if inside:
-                w.set_type(0)  # air
-        return [a for a in self.list_of_areas() if a.type == type]
+                w.set_type(AREA.TYPE_AIR)  # air
+        return [a for a in self.list_of_areas()
+                if a.is_type(type)]
 
     def collect_windings(self):
         logger.debug("begin of collect_windings")
-        good_windings = self.get_windings(2)
-        ugly_windings = self.get_windings(12)
+        good_windings = self.get_windings(AREA.TYPE_WINDINGS)
+        ugly_windings = self.get_windings(AREA.TYPE_WINDINGS_OR_AIR)
 
         logger.debug("-- %s good and %s ugly windings",
                      len(good_windings),
@@ -2949,8 +2952,8 @@ class Geometry(object):
 
         if not good_windings:
             logger.debug("#2 end of collect_windings: %s windings", len(ugly_windings))
-            [w.set_type(2) for w in ugly_windings]
-            return [a for a in self.list_of_areas() if a.type == 2]
+            [w.set_type(AREA.TYPE_WINDINGS) for w in ugly_windings]
+            return [a for a in self.list_of_areas() if a.is_type(AREA.TYPE_WINDINGS)]
 
         # ggod and ugly windings available
         found = True
@@ -2958,14 +2961,17 @@ class Geometry(object):
             found = False
             for a in ugly_windings:
                 if a.is_touching_areas(good_windings):
-                    a.set_type(2)
+                    a.set_type(AREA.TYPE_WINDINGS)
                     found = True
 
-            good_windings = [a for a in self.list_of_areas() if a.type == 2]
-            ugly_windings = [a for a in self.list_of_areas() if a.type == 12]
+            good_windings = [a for a in self.list_of_areas()
+                             if a.is_type(AREA.TYPE_WINDINGS)]
+            ugly_windings = [a for a in self.list_of_areas()
+                             if a.is_type(AREA.TYPE_WINDINGS_OR_AIR)]
 
-        [w.set_type(0) for w in ugly_windings]
-        good_windings = [a for a in self.list_of_areas() if a.type == 2]
+        [w.set_type(AREA.TYPE_AIR) for w in ugly_windings]
+        good_windings = [a for a in self.list_of_areas()
+                         if a.is_type(AREA.TYPE_WINDINGS)]
 
         logger.debug("return %s bad windings as good windings", len(good_windings))
         logger.debug("end of collect_windings")
@@ -2991,7 +2997,8 @@ class Geometry(object):
                                         self.max_radius)
 
         windings = self.collect_windings()
-        [a.set_type(0) for a in self.list_of_areas() if a.type == 12]
+        [a.set_type(AREA.TYPE_AIR) for a in self.list_of_areas()
+         if a.is_type(AREA.TYPE_WINDINGS_OR_AIR)]
         windings_found = len(windings)
         logger.debug("%d windings found", windings_found)
         self.has_windings = windings_found > 0
@@ -3003,7 +3010,7 @@ class Geometry(object):
             for sz, w in windings_surface:
                 logger.debug("winding size = %s", sz)
                 if sz / max_size < 0.95:
-                    w.set_type(0)
+                    w.set_type(AREA.TYPE_AIR)
                     if sz / max_size < 0.2:
                         windings_found -= 1
             windings = [a for a in self.list_of_areas()
@@ -3011,8 +3018,9 @@ class Geometry(object):
             if windings_found > 2 and len(windings) == 1:
                 logger.info("no windings remaining")
                 # no windings
-                [w.set_type(0) for w in windings]
-                [a.set_type(1) for a in self.list_of_areas() if a.is_iron()]
+                [w.set_type(AREA.TYPE_AIR) for w in windings]
+                [a.set_type(AREA.TYPE_IRON) for a in self.list_of_areas()
+                 if a.is_iron()]
                 windings = []
             elif len(windings) < windings_found:
                 logger.info("%d windings remaining", len(windings))
@@ -3048,7 +3056,8 @@ class Geometry(object):
                 self.wdg_is_mirrored = False
 
         # air or iron near windings and near airgap ?
-        air_areas = [a for a in self.list_of_areas() if a.type == 9]
+        air_areas = [a for a in self.list_of_areas()
+                     if a.is_type(AREA.TYPE_AIR_OR_IRON)]
         for a in air_areas:
             if a.around_windings(windings, self):
                 logger.debug("Area %s", a.identifier())
@@ -3062,7 +3071,7 @@ class Geometry(object):
                 if a.close_to_startangle:
                     if not wdg_close_to_startangle:
                         logger.debug("#0.1 ===> close to startangle")
-                        a.type = 6  # iron shaft (Zahn)
+                        a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
                         continue
 
                 if a.close_to_endangle:
@@ -3070,10 +3079,10 @@ class Geometry(object):
                         logger.debug("#0.2 ===> close to endangle")
                         if(a.min_angle < wdg_min_angle and
                            a.close_to_ag):
-                            a.type = 0  # air
+                            a.set_type(AREA.TYPE_AIR)  # air
                             continue
 
-                        a.type = 6  # iron shaft (Zahn)
+                        a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
                         continue
 
                 if greater_equal(a.min_air_angle, wdg_min_angle):
@@ -3083,40 +3092,42 @@ class Geometry(object):
 
                     if a.close_to_endangle and self.is_mirrored():
                         logger.debug("#1 ===> endangle and mirrored <===")
-                        a.type = 0  # air
+                        a.set_type(AREA.TYPE_AIR)  # air
                     elif less_equal(a.max_air_angle, wdg_max_angle):
                         logger.debug("#2 ===> %s <= %s <===",
                                      a.max_air_angle,
                                      wdg_max_angle)
-                        a.type = 0  # air
+                        a.set_type(AREA.TYPE_AIR)  # air
                     else:
                         logger.debug("#3 ===> %s > %s <===",
                                      a.max_air_angle,
                                      wdg_max_angle)
-                        a.type = 6  # iron shaft (Zahn)
+                        a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
                 else:
                     logger.debug("#4 ===> %s < %s <===",
                                  a.min_air_angle,
                                  wdg_min_angle)
-                    a.type = 6  # iron shaft (Zahn)
+                    a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
             else:
                 logger.debug("#5 not around windings")
-                a.type = 6  # iron shaft (Zahn)
+                a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
 
         # yoke or shaft ?
-        iron_areas = [a for a in self.list_of_areas() if a.type == 5]
+        iron_areas = [a for a in self.list_of_areas()
+                      if a.is_type(AREA.TYPE_YOKE)]
         for a in iron_areas:
             if a.around_windings(windings, self):
                 if less(a.min_dist, wdg_max_dist):
                     if less_equal(a.max_dist, wdg_max_dist):
-                        a.type = 6  # iron shaft (Zahn)
+                        a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
                     else:
                         dist_low = wdg_max_dist - a.min_dist
                         dist_up = a.max_dist - wdg_max_dist
                         if dist_low > dist_up:
-                            a.type = 6  # iron shaft (Zahn)
+                            a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
 
-        shaft_areas = [a for a in self.list_of_areas() if a.type == 10]
+        shaft_areas = [a for a in self.list_of_areas()
+                       if a.is_type(AREA.TYPE_SHAFT)]
         if shaft_areas:
             if len(shaft_areas) > 1:
                 logger.debug("More than one shaft in stator ?!?")
@@ -3148,12 +3159,13 @@ class Geometry(object):
             else:
                 types[t] = 1
 
-        if 10 in types:
+        if AREA.TYPE_SHAFT in types:
             logger.debug("Shaft is available")
 
-        if 11 in types: # magnet rectangle near ag
-            if 4 in types:  # magnet rectangle
-                mag_rectangles = [a for a in self.list_of_areas() if a.type == 4]
+        if AREA.TYPE_MAGNET_RECT_NEAR_AIRGAP in types: # magnet rectangle near ag
+            if AREA.TYPE_MAGNET_RECT in types:  # magnet rectangle
+                mag_rectangles = [a for a in self.list_of_areas()
+                                  if a.is_type(AREA.TYPE_MAGNET_RECT)]
                 for a in mag_rectangles:
                     if self.is_inner:
                         dist_1 = a.max_dist + 0.5
@@ -3172,26 +3184,32 @@ class Geometry(object):
                                                               include_end=False)
                     logger.debug("magnet intersect points: %s", pts)
                     if not pts:
-                        a.set_type(99)
-                mag_rectangles = [a for a in self.list_of_areas() if a.type == 4]
+                        a.set_type(AREA.TYPE_MAGNET_UNDEFINED)
+                mag_rectangles = [a for a in self.list_of_areas()
+                                  if a.is_type(AREA.TYPE_MAGNET_RECT)]
                 if mag_rectangles:  # undo
                     logger.debug("--- undo ---")
-                    [a.set_type(4) for a in self.list_of_areas() if a.type == 99]
+                    [a.set_type(AREA.TYPE_MAGNET_RECT) for a in self.list_of_areas()
+                     if a.is_type(AREA.TYPE_MAGNET_UNDEFINED)]
                 else:
                     logger.debug("--- set type 3 ---")
-                    [a.set_type(3) for a in self.list_of_areas() if a.type == 11]
-                    [a.set_type(3) for a in self.list_of_areas() if a.type == 99]
-                    types.pop(4)
+                    [a.set_type(AREA.TYPE_MAGNET_AIRGAP) for a in self.list_of_areas()
+                     if a.is_type(AREA.TYPE_MAGNET_RECT_NEAR_AIRGAP)]
+                    [a.set_type(AREA.TYPE_MAGNET_AIRGAP) for a in self.list_of_areas()
+                     if a.is_type(AREA.TYPE_MAGNET_UNDEFINED)]
+                    types.pop(AREA.TYPE_MAGNET_RECT)
             else:
                 # set magnet
-                [a.set_type(3) for a in self.list_of_areas() if a.type == 11]
-                types[11] = 0
+                [a.set_type(AREA.TYPE_MAGNET_AIRGAP) for a in self.list_of_areas()
+                 if a.is_type(AREA.TYPE_MAGNET_RECT_NEAR_AIRGAP)]
+                types[AREA.TYPE_MAGNET_RECT_NEAR_AIRGAP] = 0
 
-        if 4 in types:  # magnet rectangle
-            if types[4] > 1:
-                logger.debug("%s embedded magnets in rotor", types[4])
+        if AREA.TYPE_MAGNET_RECT in types:  # magnet rectangle
+            if types[AREA.TYPE_MAGNET_RECT] > 1:
+                logger.debug("%s embedded magnets in rotor",
+                             types[AREA.TYPE_MAGNET_RECT])
                 emb_mag_areas = [a for a in self.list_of_areas()
-                                 if a.type == 4]
+                                 if a.is_type(AREA.TYPE_MAGNET_RECT)]
                 [a.set_surface(self.is_mirrored()) for a in emb_mag_areas]
                 max_surface = 0.0
                 max_phi = 0.0
@@ -3210,24 +3228,27 @@ class Geometry(object):
                         logger.debug("max phi     : %s", max_phi)
                         logger.debug("area phi    : %s", a.phi)
                         if not np.isclose(a.phi, max_phi):
-                            a.set_type(0)  # air
+                            a.set_type(AREA.TYPE_AIR)  # air
 
             # set iron
-            [a.set_type(1) for a in self.list_of_areas() if a.type == 3]
+            [a.set_type(AREA.TYPE_IRON) for a in self.list_of_areas()
+             if a.is_type(AREA.TYPE_MAGNET_AIRGAP)]
 
-        iron_mag_areas = [a for a in self.list_of_areas() if a.type == 9]
-        air_mag_areas = [a for a in self.list_of_areas() if a.type == 8]
+        iron_mag_areas = [a for a in self.list_of_areas()
+                          if a.is_type(AREA.TYPE_MAGNET_OR_IRON)]
+        air_mag_areas = [a for a in self.list_of_areas()
+                         if a.is_type(AREA.TYPE_MAGNET_OR_AIR)]
         ag_areas = [a for a in self.list_of_areas() if a.close_to_ag]
         if len(ag_areas) == 1:
             if len(iron_mag_areas) == 1:
-                [a.set_type(3) for a in iron_mag_areas]
+                [a.set_type(AREA.TYPE_MAGNET_AIRGAP) for a in iron_mag_areas]
                 iron_mag_areas = []
             if len(air_mag_areas) == 1:
-                [a.set_type(3) for a in air_mag_areas]
+                [a.set_type(AREA.TYPE_MAGNET_AIRGAP) for a in air_mag_areas]
                 air_mag_areas = []
 
-        [a.set_type(1) for a in iron_mag_areas]
-        [a.set_type(0) for a in air_mag_areas]
+        [a.set_type(AREA.TYPE_IRON) for a in iron_mag_areas]
+        [a.set_type(AREA.TYPE_AIR) for a in air_mag_areas]
 
         if self.is_mirrored():
             mid_alfa = round(self.alfa, 3)
@@ -3237,55 +3258,24 @@ class Geometry(object):
         mag_areas = [[abs(round(a.phi, 3) - mid_alfa),
                       a.id,
                       a] for a in self.list_of_areas()
-                     if a.type == 4]
+                     if a.is_type(AREA.TYPE_MAGNET_RECT)]
 
-        if False:  # len(mag_areas) > 2:  ACHTUNG
-            mag_areas.sort()
-            mag_phi = {}
-            phi_prev = mag_areas[0][0]
-            phi_curr = phi_prev
-
-            logger.debug("Alpha=%s,  Mid=%s", self.alfa, mid_alfa)
-            for phi, id, a in mag_areas:
-                logger.debug("Magnet %s, phi=%s, rectangle=%s",
-                             a.identifier(), a.phi, a.mag_rectangle)
-                # group around mid_alfa
-                if phi > phi_prev + 0.33:
-                    phi_curr = phi
-
-                phi_prev = phi
-                x = mag_phi.get(phi_curr, [0, []])
-                x[0] += 1
-                x[1].append(a)
-                mag_phi[phi_curr] = x
-
-            phi_list = [[l[0], p, l[1]] for p, l in mag_phi.items()]
-            phi_list.sort(reverse=True)
-            [logger.debug("phi_list: %s", x) for x in phi_list]
-            if len(phi_list) > 1:
-                c0 = phi_list[0][0]
-                c1 = phi_list[1][0]
-                first = 2  # ACHTUNG
-                if c0 == c1 or np.isclose(phi_list[1][1], 0.0, rtol=1e-4, atol=1e-3):
-                    first = 2
-
-                for c, phi, a_lst in phi_list[first:]:
-                    [a.set_type(0) for a in a_lst]
-
-        shaft_areas = [a for a in self.list_of_areas() if a.type == 10]
+        shaft_areas = [a for a in self.list_of_areas()
+                       if a.is_type(AREA.TYPE_SHAFT)]
         if shaft_areas:
             if len(shaft_areas) > 1:
                 logger.debug("More than one shaft in rotor ?!?")
                 return
             self.check_shaft_area(shaft_areas[0])
 
-        magnets = [a.type for a in self.list_of_areas() if a.is_magnet()]
+        magnets = [1 for a in self.list_of_areas()
+                   if a.is_magnet()]
         self.has_magnets = len(magnets) > 0
         logger.debug("%s magnets found in rotor", len(magnets))
 
         if not single:
             if not magnets:
-                [a.set_type(0) for a in self.list_of_areas()]
+                [a.set_type(AREA.TYPE_AIR) for a in self.list_of_areas()]
                 self.search_stator_subregions(startangle, endangle, single=single)
             return
 
@@ -3293,7 +3283,8 @@ class Geometry(object):
 
     def recalculate_magnet_orientation(self):
         logger.debug("begin of recalculate_magnet_orientation")
-        magnet_areas = [a for a in self.list_of_areas() if a.type == 4]
+        magnet_areas = [a for a in self.list_of_areas()
+                        if a.is_type(AREA.TYPE_MAGNET_RECT)]
         self.recalculate_magnet_group(magnet_areas)
         logger.debug("end of recalculate_magnet_orientation")
 
@@ -3330,24 +3321,25 @@ class Geometry(object):
             else:
                 types[t] = 1
 
-        if 4 in types:  # magnet rectangle
-            if types[4] > 1:
-                logger.debug("%s embedded magnets in rotor", types[4])
-                emb_mag_areas = [a for a in self.list_of_areas()
-                                 if a.type == 4]
-                [a.set_surface(self.is_mirrored()) for a in emb_mag_areas]
-                max_surface = 0.0
-                for a in emb_mag_areas:
-                    max_surface = max(max_surface, a.surface)
+        if types.get(AREA.TYPE_MAGNET_RECT, 0) > 1:
+            logger.debug("%s embedded magnets in rotor",
+                         types[AREA.TYPE_MAGNET_RECT])
+            emb_mag_areas = [a for a in self.list_of_areas()
+                             if a.is_type(AREA.TYPE_MAGNET_RECT)]
+            [a.set_surface(self.is_mirrored()) for a in emb_mag_areas]
+            max_surface = 0.0
+            for a in emb_mag_areas:
+                max_surface = max(max_surface, a.surface)
 
-                for a in emb_mag_areas:
-                    if a.surface < max_surface * 0.20:  # too small
-                        a.set_type(0)  # air
+            for a in emb_mag_areas:
+                if a.surface < max_surface * 0.20:  # too small
+                    a.set_type(AREA.TYPE_AIR)  # air
 
         logger.debug("end of search_unknown_subregions")
 
     def magnets_in_the_middle(self, midangle):
-        mag_areas = [a for a in self.list_of_areas() if a.is_magnet()]
+        mag_areas = [a for a in self.list_of_areas()
+                     if a.is_magnet()]
         logger.debug("%s magnets in geom", len(mag_areas))
         for a in mag_areas:
             if a.max_angle > midangle and a.min_angle < midangle:
@@ -3371,14 +3363,14 @@ class Geometry(object):
 
     def num_areas_of_type(self, type):
         return len([area for area in self.list_of_areas()
-                    if area.type == type])
+                    if area.is_type(type)])
 
     def num_of_windings(self):
-        return self.num_areas_of_type(2)
+        return self.num_areas_of_type(AREA.TYPE_WINDINGS)
 
     def area_close_to_endangle(self, type):
         return len([area for area in self.list_of_areas()
-                    if area.type == type and area.close_to_endangle])
+                    if area.is_type(type) and area.close_to_endangle])
 
     def corners_dont_match(self):
         if self.is_mirrored():
@@ -3798,7 +3790,7 @@ class Geometry(object):
             d = distance(self.center, p)
             logger.debug("-- p = %s, dist = %s", p, d)
             for a in self.inside_area_list(p):
-                logger.debug("-- Area type = %s", a.type)
+                logger.debug("-- Area type = %s", a.legend())
                 logger.debug("        min=%s,  max= %s", a.min_dist, a.max_dist)
                 logger.debug("        close to start = %s", a.close_to_startangle)
                 logger.debug("        close to end   = %s", a.close_to_endangle)
@@ -4068,7 +4060,7 @@ class Geometry(object):
         if rslt.get('ok', False):
             area = rslt['area']
             a = Area(area, self.center, 0.0)
-            a.type = 0  # air
+            a.set_type(AREA.TYPE_AIR)  # air
             self.area_list.append(a)
             return True
         logger.error("No area for air near airgap!!")

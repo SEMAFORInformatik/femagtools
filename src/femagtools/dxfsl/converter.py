@@ -759,7 +759,8 @@ def convert(dxfile,
                 conv.update(params)
 
     conv['name'] = basename
-    timer.stop("-- all done in %0.4f seconds --", info=True)
+    t = timer.stop("-- all done in %0.4f seconds --", info=True)
+    journal.put('time_total', t)
     return conv
 
 

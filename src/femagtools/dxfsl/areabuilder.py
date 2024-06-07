@@ -12,7 +12,7 @@ import logging
 import sys
 from femagtools.dxfsl.shape import Element, Shape, Circle, Arc, Line
 from femagtools.dxfsl.shape import is_Circle, is_Arc, is_Line
-from femagtools.dxfsl.area import Area
+from femagtools.dxfsl.area import Area, TYPE_AIR
 from femagtools.dxfsl.functions import points_are_close, nodes_are_equal, distance
 from femagtools.dxfsl.functions import normalise_angle, positive_angle, point
 from femagtools.dxfsl.functions import alpha_line, alpha_points, alpha_angle
@@ -412,7 +412,7 @@ class AreaBuilder(object):
 
     def append_new_area(self, area_list, elements):
         a = Area(elements, self.geom.center, 0.0)
-        a.type = 0  # air
+        a.set_type(TYPE_AIR)  # air
         area_list.append(a)
         return a
 

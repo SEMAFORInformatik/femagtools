@@ -27,11 +27,26 @@ logger = logging.getLogger('femagtools.area')
 
 area_number = 0
 
+TYPE_AIR = 0
+TYPE_IRON = 1
+TYPE_WINDINGS = 2
+TYPE_MAGNET_AIRGAP = 3
+TYPE_MAGNET_RECT = 4
+TYPE_YOKE = 5
+TYPE_TOOTH = 6
+TYPE_MAGNET_OR_AIR = 8
+TYPE_AIR_OR_IRON = 9
+TYPE_MAGNET_OR_IRON = 9
+TYPE_SHAFT = 10
+TYPE_MAGNET_RECT_NEAR_AIRGAP = 11
+TYPE_WINDINGS_OR_AIR = 12
+TYPE_MAGNET_UNDEFINED = 99
+TYPE_GROUP = 20
 
 class Area(object):
     def __init__(self, area, center, sym_tolerance):
         self.area = area
-        self.type = 0  # material
+        self.type = -1  # material
         self.phi = 0.0
         self.min_angle = 0.0
         self.max_angle = 0.0
@@ -66,6 +81,7 @@ class Area(object):
         area_number += 1
         self.id = area_number
         self.areas_inside = {}
+        self.areas_of_group = []
 
     def identifier(self):
         return "{}-{}".format(self.id, self.type)
@@ -183,88 +199,94 @@ class Area(object):
             last_point = next_nodes[-1]
 
     def legend(self):
-        if self.type == 1:
+        if self.type == TYPE_IRON:
             return 'Iron'
-        if self.type == 2:
+        if self.type == TYPE_WINDINGS:
             return 'Windings'
-        if self.type == 3 or self.type == 4:
+        if self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT:
             return 'Magnet'
-        if self.type == 5:
+        if self.type == TYPE_YOKE:
             return 'Yoke'
-        if self.type == 6:
+        if self.type == TYPE_TOOTH:
             return 'Tooth'
-        if self.type == 10:
+        if self.type == TYPE_SHAFT:
             return 'Shaft'
         return ''
 
     def name(self):
-        if self.type == 1:
+        if self.type == TYPE_IRON:
             return 'Iron'
-        if self.type == 2:
+        if self.type == TYPE_WINDINGS:
             return 'Wndg'
-        if self.type == 3 or self.type == 4:
+        if self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT:
             return 'Mag'
-        if self.type == 5:
+        if self.type == TYPE_YOKE:
             return 'StJo'
-        if self.type == 6:
+        if self.type == TYPE_TOOTH:
             return 'StZa'
-        if self.type == 10:
+        if self.type == TYPE_SHAFT:
             return 'Shft'
         return ''
 
     def color(self):
-        if self.type == 1:
+        if self.type == TYPE_IRON:
             return 'cyan'
-        if self.type == 2:
+        if self.type == TYPE_WINDINGS:
             return 'green'
-        if self.type == 3 or self.type == 4:
+        if self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT:
             return 'red'
-        if self.type == 5:
+        if self.type == TYPE_YOKE:
             return 'cyan'
-        if self.type == 6:
+        if self.type == TYPE_TOOTH:
             return 'skyblue'
-        if self.type == 10:
+        if self.type == TYPE_SHAFT:
             return 'lightgrey'
         return 'white'
 
     def color_alpha(self):
-        if self.type == 1:
+        if self.type == TYPE_IRON:
             return 0.3
-        if self.type == 2:
+        if self.type == TYPE_WINDINGS:
             return 1.0
-        if self.type == 3 or self.type == 4:
+        if self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT:
             return 1.0
-        if self.type == 5:
+        if self.type == TYPE_YOKE:
             return 0.5
-        if self.type == 6:
+        if self.type == TYPE_TOOTH:
             return 1.0
-        if self.type == 10:
+        if self.type == TYPE_SHAFT:
             return 0.8
         return 1.0
 
     def is_iron(self):
-        return self.type == 1 or self.type == 5 or self.type == 6
+        return \
+            self.type == TYPE_IRON or \
+            self.type == TYPE_YOKE or \
+            self.type == TYPE_TOOTH
 
     def is_stator_iron_yoke(self):
-        return self.type == 5
+        return self.type == TYPE_YOKE
 
     def is_stator_iron_tooth(self):
-        return self.type == 6
+        return self.type == TYPE_TOOTH
 
     def is_rotor_iron(self):
-        return self.type == 1
+        return self.type == TYPE_IRON
 
     def is_winding(self):
-        return self.type == 2
+        return self.type == TYPE_WINDINGS
 
     def is_magnet(self):
-        return self.type == 3 or self.type == 4
+        return self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT
 
     def is_shaft(self):
-        return self.type == 10
+        return self.type == TYPE_SHAFT
 
     def is_air(self):
-        return self.type == 0
+        return self.type == TYPE_AIR
+
+    def is_type(self, type):
+        return self.type == type
 
     def set_type(self, t):
         self.type = t
@@ -924,19 +946,6 @@ class Area(object):
                 return False
         return True
 
-    def has_round_edges(self):
-        arcs = 0
-        for e in self.area:
-            # if isinstance(e, Line):
-            #    if not np.isclose(angle, alpha_line(center, e.p1)):
-            #        return False
-            #    if not np.isclose(angle, alpha_line(center, e.p2)):
-            #        return False
-            if isinstance(e, Arc):
-                arcs += 1
-
-        return arcs > 0
-
     def is_shaft_area(self, center):
         logger.debug("Begin of check shaft")
 
@@ -965,11 +974,11 @@ class Area(object):
         logger.debug("End of check shaft: ok")
         return True
 
-    def is_magnet_rectangle(self):
+    def get_magnet_line_angles(self):
         lines = [e for e in self.area if is_Line(e)]
         if len(lines) < 4:
-            logger.debug("is_magnet_rectangle: only %s lines", len(lines))
-            return False
+            logger.debug("get_magnet_line_angles: only %s lines", len(lines))
+            return []
 
         angles = []
         prev_angle = lines[0].get_positive_angle()
@@ -983,38 +992,72 @@ class Area(object):
 
             if np.isclose(prev_angle, this_angle, rtol=1e-04, atol=1e-02):
                 # same direction
-                #prev_angle = middle_angle(prev_angle, this_angle)
                 prev_length += this_length
             else:
-                angles.append((prev_angle, prev_length))
+                angles.append((prev_length, prev_angle))
                 prev_angle = this_angle
                 prev_length = this_length
 
-        if len(angles) < 3:
-            logger.debug("is_magnet_rectangle: only %s angles", len(angles))
-            return False
+        if not angles:
+            logger.debug("get_magnet_line_angles: only one angle")
+            return []
 
-        this_angle, this_length = angles[0]
+        this_length, this_angle = angles[0]
         if not np.isclose(prev_angle, this_angle, rtol=1e-04, atol=1e-02):
-            angles.append((prev_angle, prev_length))
+            angles.append((prev_length, prev_angle))
         else:
-            #prev_angle = middle_angle(prev_angle, this_angle)
             prev_length += this_length
-            angles[0] = (prev_angle, prev_length)
+            angles[0] = (prev_length, prev_angle)
 
-        first_angle, l = angles[0]
-        last_angle, l = angles[-1]
+        l, first_angle = angles[0]
+        l, last_angle = angles[-1]
         if np.isclose(first_angle, last_angle, rtol=1e-04, atol=1e-02):
             del angles[-1]
+        return angles
+
+    def get_magnet_phi(self, angles):
+        if not angles:
+            return 0.0
+
+        angles.sort(reverse=True)
+        # calculate orientation (no rectangle check)
+        l, alpha = angles[0]
+        if alpha < 0.0:
+            alpha += np.pi
+        alpha = alpha + np.pi/2
+        if alpha > np.pi:
+            alpha = alpha - np.pi
+
+        mid = middle_angle(self.min_angle, self.max_angle)
+        angle1 = alpha_angle(mid, alpha)
+        angle2 = alpha_angle(alpha, mid)
+        logger.debug("alpha=%s, mid=%s, angle1=%s, angle2=%s", alpha, mid, angle1, angle2)
+
+        if angle1 > np.pi / 2 and angle2 > np.pi / 2:
+            if not np.isclose(angle1, np.pi*2):
+                alpha = normalise_angle(alpha + np.pi)
+
+        logger.debug("phi of magnet %s is %s", self.identifier(), alpha)
+        return alpha
+
+    def get_magnet_orientation(self):
+        angles = self.get_magnet_line_angles()
+        return self.get_magnet_phi(angles)
+
+    def is_magnet_rectangle(self):
+        angles = self.get_magnet_line_angles()
 
         if len(angles) != 4:
             logger.debug("is_magnet_rectangle: %s angles, not 4", len(angles))
             return False
 
-        angle_0, length_0 = angles[0]
-        angle_1, length_1 = angles[1]
-        angle_2, length_2 = angles[2]
-        angle_3, length_3 = angles[3]
+        for l, a in angles:
+            logger.debug("+ magnet_rectangle: alpha=%s,  length=%s", a, l)
+
+        length_0, angle_0 = angles[0]
+        length_1, angle_1 = angles[1]
+        length_2, angle_2 = angles[2]
+        length_3, angle_3 = angles[3]
 
         if not np.isclose(angle_0, angle_2, rtol=1e-03, atol=0.05):
             logger.debug("is_magnet_rectangle: angles %s and %s not equal",
@@ -1036,62 +1079,28 @@ class Area(object):
             logger.debug("is_magnet_rectangle: not a rectange (%s neq %s)", a0, a1)
             return False
 
-        max_length = max(length_0, length_1)
-        max_radius = max_length / 10
-        arcs = [e for e in self.area if is_Arc(e)]
-        for a in arcs:
-            if a.radius > max_radius:
-                logger.debug("is_magnet_rectangle: arcs radius %s > %s",
-                             a.radius, max_radius)
-                return False
+        turn_left = False
+        turn_right = False
+        for n1, n2, e in self.list_of_elements():
+            if is_Arc(e):
+                if e.get_node_number(n1) == 1:
+                    turn_left = True
+                else:
+                    turn_right = True
 
+        if turn_left and turn_right:
+            logger.debug("is_magnet_rectangle: arcs with different directions")
+            return False
+
+        self.phi = self.get_magnet_phi(angles)
+        logger.debug("Area %s is a rectangle with phi %s",
+                     self.identifier(), self.phi)
         return True
-
-    def get_mag_orient_rectangle(self):
-        lines = [[e.m(99999.0), e.length(), alpha_line(e.p1, e.p2)]
-                 for e in self.area
-                 if isinstance(e, Line)]
-        lines.sort()
-
-        m_prev = 999.999999
-        a_prev = 0.0
-        l_total = 0.0
-        line_length = []
-        for m, l, a in lines:
-            if np.isclose(m_prev, m):
-                l_total += l
-            else:
-                if l_total > 0.0:
-                    line_length.append((l_total, m_prev, a_prev))
-                l_total = l
-                m_prev = m
-                a_prev = a
-
-        if l_total > 0.0:
-            line_length.append((l_total, m_prev, a_prev))
-        line_length.sort(reverse=True)
-
-        alpha = line_length[0][2]
-        if alpha < 0.0:
-            alpha += np.pi
-        alpha = alpha + np.pi/2
-        if alpha > np.pi:
-            alpha = alpha - np.pi
-
-        mid = middle_angle(self.min_angle, self.max_angle)
-        angle1 = alpha_angle(mid, alpha)
-        angle2 = alpha_angle(alpha, mid)
-        logger.debug("alpha=%s, mid=%s, angle1=%s, angle2=%s", alpha, mid, angle1, angle2)
-
-        if angle1 > np.pi / 2 and angle2 > np.pi / 2:
-            if not np.isclose(angle1, np.pi*2):
-                logger.debug("turn alpha")
-                alpha = normalise_angle(alpha + np.pi)
-        return alpha
 
     def get_mag_orientation(self):
         if self.mag_rectangle:
-            return self.get_mag_orient_rectangle()
+            return self.get_magnet_orientation()
+
         if self.close_to_endangle:
             if self.close_to_startangle:
                 return middle_angle(self.min_angle, self.max_angle)
@@ -1136,7 +1145,7 @@ class Area(object):
         alpha = round(alpha, 6)
 
         if self.is_circle():
-            self.type = 0  # air
+            self.type = TYPE_AIR  # air
             return self.type
 
         ag_delta = (r_out - r_in) / 500.0
@@ -1177,24 +1186,24 @@ class Area(object):
 
         if self.has_iron_separator():
             logger.debug("***** iron (has iron separator)\n")
-            self.type = 1  # iron
+            self.type = TYPE_IRON  # iron
             return self.type
 
         if is_inner:
             # looking for shaft
             if close_to_opposition and not self.close_to_ag:
                 if self.is_shaft_area(center):
-                    self.type = 10  # shaft
+                    self.type = TYPE_SHAFT  # shaft
                     logger.debug("***** shaft (close to opposition)\n")
                     return self.type
 
         if close_to_opposition:
-            self.type = 5  # iron yoke (Joch)
+            self.type = TYPE_YOKE  # iron yoke (Joch)
             logger.debug("***** iron yoke #1\n")
             return self.type
 
         if self.close_to_startangle and self.close_to_endangle:
-            self.type = 5  # iron yoke (Joch)
+            self.type = TYPE_YOKE  # iron yoke (Joch)
             logger.debug("***** iron yoke #2\n")
             return self.type
 
@@ -1211,21 +1220,21 @@ class Area(object):
 
             if self.alpha / air_alpha > 2:
                 logger.debug("***** windings near airgap\n")
-                self.type = 2  # windings
+                self.type = TYPE_WINDINGS  # windings
             else:
-                self.type = 9  # air or iron near windings and near airgap?
+                self.type = TYPE_AIR_OR_IRON  # air or iron near windings and near airgap?
                 logger.debug("***** air or iron ??\n")
             return self.type
 
         if self.close_to_startangle:
             if self.is_half_circle(center, self.min_angle):
-                self.type = 0  # air
+                self.type = TYPE_AIR  # air
                 logger.debug("***** air (part of a circle)\n")
                 return self.type
 
         if self.close_to_endangle:
             if self.is_half_circle(center, self.max_angle):
-                self.type = 0  # air
+                self.type = TYPE_AIR  # air
                 logger.debug("***** air (part of a circle)\n")
                 return self.type
 
@@ -1243,32 +1252,32 @@ class Area(object):
         if self.min_angle > 0.001:
             if self.max_angle < alpha - 0.001:
                 if bad_winding_position():
-                    self.type = 12  # windings or air
+                    self.type = TYPE_WINDINGS_OR_AIR  # windings or air
                     logger.debug("***** windings or air #1\n")
                 else:
-                    self.type = 2  # windings
+                    self.type = TYPE_WINDINGS  # windings
                     logger.debug("***** windings #1\n")
                 return self.type
             if mirrored:
                 if bad_winding_position():
-                    self.type = 12  # windings or air
+                    self.type = TYPE_WINDINGS_OR_AIR  # windings or air
                     logger.debug("***** windings or air #2\n")
                 else:
-                    self.type = 2  # windings
+                    self.type = TYPE_WINDINGS  # windings
                     logger.debug("***** windings #2\n")
                 return self.type
 
-            self.type = 0  # air
+            self.type = TYPE_AIR  # air
             logger.debug("***** air #3")
 
         if self.close_to_startangle or self.close_to_endangle:
             f = self.surface / stator_size
             if f < 0.02:  # area_size less then 2 percent of stator size
                 # Luftloch
-                self.type = 0  # air
+                self.type = TYPE_AIR  # air
                 logger.debug("***** small area => air\n")
             else:
-                self.type = 9  # air or iron near windings and near airgap?
+                self.type = TYPE_AIR_OR_IRON  # air or iron near windings and near airgap?
                 logger.debug("***** air or iron close to border\n")
             return self.type
 
@@ -1284,7 +1293,7 @@ class Area(object):
         alpha = round(alpha, 6)
 
         if self.is_circle():
-            self.type = 0  # air
+            self.type = TYPE_AIR  # air
             logger.debug(">>> air is a circle")
             return self.type
 
@@ -1322,7 +1331,7 @@ class Area(object):
 
         if self.has_iron_separator():
             logger.debug("***** iron (has iron separator)\n")
-            self.type = 1  # iron
+            self.type = TYPE_IRON  # iron
             return self.type
 
         if is_inner:
@@ -1330,23 +1339,21 @@ class Area(object):
             if close_to_opposition and not self.close_to_ag:
                 logger.debug("-- check for shaft")
                 if self.is_shaft_area(center):
-                    self.type = 10  # shaft
+                    self.type = TYPE_SHAFT  # shaft
                     logger.debug("***** shaft (close to opposition)\n")
                     return self.type
 
         if close_to_opposition:
-            self.type = 1  # iron
+            self.type = TYPE_IRON  # iron
             logger.debug("***** iron (close to opposition)\n")
             return self.type
 
         if self.close_to_startangle and self.close_to_endangle:
-            self.type = 1  # iron
+            self.type = TYPE_IRON  # iron
             logger.debug("***** iron (close to both sides)\n")
             return self.type
 
         self.mag_rectangle = self.is_magnet_rectangle()
-        if self.mag_rectangle:
-            logger.debug("Area is a Rectangle")
 
         if self.close_to_ag:
             mm = self.minmax_angle_dist_from_center(center,
@@ -1356,53 +1363,52 @@ class Area(object):
             logger.debug(" - air_alpha          : {}".format(air_alpha))
 
             if self.mag_rectangle:
-                self.phi = self.get_mag_orientation()
-                self.type = 11  # magnet near airgap
+                self.type = TYPE_MAGNET_RECT_NEAR_AIRGAP  # magnet near airgap
                 logger.debug("***** magnet (airgap, embedded, phi={})\n".
                              format(self.phi))
                 return self.type
 
             if air_alpha / alpha < 0.2:
                 self.phi = self.get_mag_orientation()
-                self.type = 8  # air or magnet ?
+                self.type = TYPE_MAGNET_OR_AIR  # air or magnet ?
                 logger.debug("***** air #1 (close to airgap)\n")
                 return self.type
 
             if air_alpha / alpha > 0.6:
                 self.phi = self.get_mag_orientation()
-                self.type = 3  # magnet (no rectangle)
+                self.type = TYPE_MAGNET_AIRGAP  # magnet (no rectangle)
                 logger.debug("***** magnet (close to airgap)\n")
             else:
                 self.phi = self.get_mag_orientation()
-                self.type = 9  # iron or magnet ?
+                self.type = TYPE_MAGNET_OR_IRON  # iron or magnet ?
                 logger.debug("***** iron or magnet(close to airgap)\n")
             return self.type
 
         if self.mag_rectangle:
-            self.phi = self.get_mag_orientation()
-            self.type = 4  # magnet embedded
+            # phi is already calculated and set
+            self.type = TYPE_MAGNET_RECT  # magnet embedded
             logger.debug("***** magnet (embedded, phi={})\n".format(
                 self.phi))
             return self.type
 
         if not (self.close_to_startangle or self.close_to_endangle):
-            self.type = 0  # air
+            self.type = TYPE_AIR  # air
             logger.debug("***** air (somewhere)\n")
             return self.type
 
         if self.close_to_startangle:
             if self.is_half_circle(center, self.min_angle):
-                self.type = 0  # air
+                self.type = TYPE_AIR  # air
                 logger.debug("***** air (part of a circle)\n")
                 return self.type
 
         if self.close_to_endangle:
             if self.is_half_circle(center, self.max_angle):
-                self.type = 0  # air
+                self.type = TYPE_AIR  # air
                 logger.debug("***** air (part of a circle)\n")
                 return self.type
 
-        self.type = 0  # air
+        self.type = TYPE_AIR  # air
         logger.debug("***** air (remains)\n")
         return self.type
 
@@ -1411,7 +1417,7 @@ class Area(object):
         logger.debug("mark_unknown_subregions")
 
         if self.is_circle():
-            self.type = 0  # air
+            self.type = TYPE_AIR  # air
             logger.debug(">>> air is a circle")
             return self.type
 
@@ -1419,25 +1425,24 @@ class Area(object):
         self.close_to_endangle = np.isclose(self.max_angle, alpha)
 
         if self.is_magnet_rectangle():
-            self.type = 4  # magnet embedded
+            self.type = TYPE_MAGNET_RECT  # magnet embedded
             logger.debug(">>> magnet embedded")
-            self.phi = self.get_mag_orient_rectangle()
             return self.type
 
         close_to_max_radius = np.isclose(r_out, self.max_dist)
         close_to_min_radius = np.isclose(r_in, self.min_dist)
 
         if close_to_max_radius and close_to_min_radius:
-            self.type = 1  # iron
+            self.type = TYPE_IRON  # iron
             logger.debug(">>> iron close to min- and max-radius")
             return self.type
 
         if self.close_to_startangle and self.close_to_endangle:
-            self.type = 1  # iron
+            self.type = TYPE_IRON  # iron
             logger.debug(">>> iron close to start- and end-angle")
             return self.type
 
-        self.type = 0  # air
+        self.type = TYPE_AIR  # air
         logger.debug(">>> air remains")
         return self.type
 

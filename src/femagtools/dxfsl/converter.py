@@ -192,10 +192,12 @@ def build_machine_rotor(machine, inner, mindist, plt, single=False):
         machine_temp.geom.area_list = []
 
     if machine_temp.create_auxiliary_lines():
+        logger.debug("Auxiliary Lines created: rebuild subregions")
         rebuild = True
     if rebuild:
         machine_temp.rebuild_subregions(single=single)
 
+    machine_temp.geom.recalculate_magnet_orientation()
     machine_temp.delete_tiny_elements(mindist)
     if inner:
         machine_temp.create_inner_corner_areas()
@@ -756,7 +758,8 @@ def convert(dxfile,
 
     conv.update(params)
     conv['name'] = basename
-    timer.stop("-- all done in %0.4f seconds --", info=True)
+    t = timer.stop("-- all done in %0.4f seconds --", info=True)
+    journal.put('time_total', t)
     return conv
 
 

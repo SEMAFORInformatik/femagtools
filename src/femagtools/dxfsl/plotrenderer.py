@@ -184,6 +184,7 @@ class PlotRenderer(object):
         neighbors = kwargs.get('neighbors', False)
         draw_center = kwargs.get('draw_center', False)
         draw_inside = kwargs.get('draw_inside', False)
+        draw_groups = kwargs.get('draw_groups', False)
         fill_areas = kwargs.get('fill_areas', False)
         write_id = kwargs.get('write_id', False)
         with_legend = kwargs.get('with_legend', True)
@@ -271,6 +272,8 @@ class PlotRenderer(object):
         for e in geom.elements(type):
             e.render(self, 'blue', with_nodes)
 
+        if draw_groups:
+            geom.render_areagroups(self)
         geom.render_cut_lines(self)
         geom.render_airgaps(self)
         if neighbors:

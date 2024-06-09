@@ -5,7 +5,7 @@ __title__ = 'femagtools'
 __version__ = '1.6.9dev'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
-__copyright__ = 'Copyright 2016-2022 SEMAFOR Informatik & Energie AG'
+__copyright__ = 'Copyright 2023-2024 Gamma Technology'
 
 from .asm import read
 from .bch import Reader

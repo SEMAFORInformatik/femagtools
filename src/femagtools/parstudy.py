@@ -188,7 +188,7 @@ class ParameterStudy(object):
         simulation.update(model.winding)
         if 'pocfilename' not in simulation:
             simulation['pocfilename'] = f"{model.name}.poc"
-        if simulation['calculationMode'] == 'psd_psq_fast': 
+        if simulation['calculationMode'] == 'psd_psq_fast':
             simulation['pocfilename'] = f"{model.name}_{model.get('poles')}p.poc"
 
         fea = femagtools.model.FeaModel(simulation)
@@ -199,7 +199,20 @@ class ParameterStudy(object):
         if immutable_model:
             modelfiles = self.setup_model(builder, model, recsin=fea.recsin)
             logger.info("Files %s", modelfiles+extra_files)
-
+            logger.info("model %s", model.props())
+            for k in ('name', 'poles', 'outer_diam', 'airgap', 'bore_diam',
+                      'external_rotor'):
+                if k not in machine:
+                    try:
+                        machine[k] = model.get(k)
+                    except:
+                        pass
+            for k in ('num_slots', 'num_slots_gen'):
+                if k not in machine['stator']:
+                    try:
+                        machine['stator'][k] = model.stator[k]
+                    except:
+                        pass
         job = engine.create_job(self.femag.workdir)
         # for progress logger
         job.num_cur_steps = fea.get_num_cur_steps()

@@ -611,7 +611,6 @@ def convert(dxfile,
         params = create_femag_parameters(machine_inner,
                                          machine_outer,
                                          nodedist)
-        conv.update(params)
 
         if write_fsl:
             if machine_inner.is_full() or machine_outer.is_full():
@@ -699,8 +698,6 @@ def convert(dxfile,
         else:
             machine.search_subregions(single=True)
 
-        if params:
-            conv.update(params)
         machine.delete_tiny_elements(mindist)
         machine.create_inner_corner_areas()
 
@@ -756,9 +753,8 @@ def convert(dxfile,
 
             fslrenderer = FslRenderer(basename)
             conv['fsl'] = fslrenderer.render(machine, inner, outer)
-            if params:
-                conv.update(params)
 
+    conv.update(params)
     conv['name'] = basename
     timer.stop("-- all done in %0.4f seconds --", info=True)
     return conv

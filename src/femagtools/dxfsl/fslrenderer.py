@@ -63,10 +63,10 @@ class FslRenderer(object):
         num = int(2*np.pi*radius)
         if num < 8:
             num = 8
-        circle = [u'cx, cy = {}, {}'.format(center[0],
+        circle = ['cx, cy = {}, {}'.format(center[0],
                                             center[1]),
-                  u'nc_circle_m(cx,cy,{}, {})'.format(radius, num),
-                  u'create_mesh_se(cx, cy)\n']
+                  'nc_circle_m(cx,cy,{}, {})'.format(radius, num),
+                  'create_mesh_se(cx, cy)\n']
         self.content += circle
 
     def arc(self, startangle, endangle, center, radius,
@@ -161,74 +161,74 @@ class FslRenderer(object):
             d_percent = min(1.0, d / dist)
             if ndt_list[n][0] < d_percent:
                 self.agndst = ndt_list[n][1] * self.agndst
-                self.content.append(u'\nndt({}*agndst)\n'.
+                self.content.append('\nndt({}*agndst)\n'.
                                     format(ndt_list[n][1]))
                 while ndt_list[n][0] < d_percent:
                     n += 1
             e.render(self)
 
-        self.content.append(u'\n')
+        self.content.append('\n')
 
         parts = int(machine.get_symmetry_part())
-        self.content += [u'-- parts      = {}'.format(parts)]
+        self.content += ['-- parts      = {}'.format(parts)]
         if geom.is_stator():
             if machine.get_num_slots() > 0:
                 self.content += [
-                    u'-- num_slots  = {}'.format(
+                    '-- num_slots  = {}'.format(
                         machine.get_num_slots())
                 ]
-        self.content += [u'-- min_radius = {}'.format(geom.min_radius),
-                         u'-- max_radius = {}'.format(geom.max_radius),
-                         u'-- min_corner = {}, {}'.format(
+        self.content += ['-- min_radius = {}'.format(geom.min_radius),
+                         '-- max_radius = {}'.format(geom.max_radius),
+                         '-- min_corner = {}, {}'.format(
                              geom.start_min_corner(0),
                              geom.start_min_corner(1)),
-                         u'-- max_corner = {}, {}'.format(
+                         '-- max_corner = {}, {}'.format(
                              geom.start_max_corner(0),
                              geom.start_max_corner(1)),
-                         u'\n']
+                         '\n']
         if inner:
-            self.content += [u'inner_da_start = {}'
+            self.content += ['inner_da_start = {}'
                              .format(geom.dist_start_max_corner()),
-                             u'inner_da_end = {}'
+                             'inner_da_end = {}'
                              .format(geom.dist_end_max_corner())]
         if outer:
             slice = 1 if machine.is_mirrored() else 2
             self.content += [
-                u'-- create air layer outside',
-                u'x0, y0 = {}, {}'.format(
+                '-- create air layer outside',
+                'x0, y0 = {}, {}'.format(
                     geom.start_max_corner(0),
                     geom.start_max_corner(1)),
-                u'hair = 1.0',
-                u'parts = {}'.format(machine.get_num_parts()),
-                u'r1 = {} + hair'.format(geom.max_radius),
-                u'r, phi = c2pr(x0, y0)',
-                u'x1, y1 = pr2c(r1, phi)',
-                u'x2, y2 = pr2c(r1, {}*math.pi/parts)'.format(slice),
-                u'x3, y3 = pr2c(r, {}*math.pi/parts)'.format(slice),
-                u'nc_line(x0, y0, x1, y1, 0)',
-                u'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
-                u'nc_line(x2, y2, x3, y3, 0)',
-                u'x0, y0 = pr2c(r1 - hair/2, math.pi/parts)',
-                u'create_mesh_se(x0, y0)',
-                u'\n',
-                u'outer_da_start = {}'.format(
+                'hair = 1.0',
+                'parts = {}'.format(machine.get_num_parts()),
+                'r1 = {} + hair'.format(geom.max_radius),
+                'r, phi = c2pr(x0, y0)',
+                'x1, y1 = pr2c(r1, phi)',
+                'x2, y2 = pr2c(r1, {}*math.pi/parts)'.format(slice),
+                'x3, y3 = pr2c(r, {}*math.pi/parts)'.format(slice),
+                'nc_line(x0, y0, x1, y1, 0)',
+                'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
+                'nc_line(x2, y2, x3, y3, 0)',
+                'x0, y0 = pr2c(r1 - hair/2, math.pi/parts)',
+                'create_mesh_se(x0, y0)',
+                '\n',
+                'outer_da_start = {}'.format(
                     geom.dist_start_min_corner()),
-                u'outer_da_end = {}'.format(
+                'outer_da_end = {}'.format(
                     geom.dist_end_min_corner())
             ]
 
-        self.content += [u'\n',
-                         u'xmag = {}',
-                         u'ymag = {}',
-                         u'mag_orient = {}',
-                         u'mag_exists = 0',
-                         u'if mcvkey_yoke == nil then',
-                         u'  mcvkey_yoke = "dummy"',
-                         u'end',
-                         u'x0_iron_tooth, y0_iron_tooth = 0.0, 0.0',
-                         u'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0',
-                         u'x0_shaft, y0_shaft = 0.0, 0.0',
-                         u'\n']
+        self.content += ['\n',
+                         'xmag = {}',
+                         'ymag = {}',
+                         'mag_orient = {}',
+                         'mag_exists = 0',
+                         'if mcvkey_yoke == nil then',
+                         '  mcvkey_yoke = "dummy"',
+                         'end',
+                         'x0_iron_tooth, y0_iron_tooth = 0.0, 0.0',
+                         'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0',
+                         'x0_shaft, y0_shaft = 0.0, 0.0',
+                         '\n']
 
         subregions = {}
         num_windings = 0
@@ -245,22 +245,22 @@ class FslRenderer(object):
                     if area.type not in subregions:
                         subregions[area.type] = 1
                     num_windings += 1
-                    self.content.append(u'm.xcoil_{}, m.ycoil_{} = x0, y0'.
+                    self.content.append('m.xcoil_{}, m.ycoil_{} = x0, y0'.
                                         format(num_windings, num_windings))
 
                 elif area.is_magnet():
                     if area.type not in subregions:
                         subregions[area.type] = 1
                     num_magnets += 1
-                    self.content.append(u'xmag[{}], ymag[{}] = x0, y0'.
+                    self.content.append('xmag[{}], ymag[{}] = x0, y0'.
                                         format(num_magnets, num_magnets))
-                    self.content.append(u'mag_orient[{}] = {}'.
+                    self.content.append('mag_orient[{}] = {}'.
                                         format(num_magnets, area.phi))
 
                 elif area.type > 0:
                     if area.type in subregions:
                         self.content.append(
-                            u'add_to_subreg(x0, y0, "{}")'.
+                            'add_to_subreg(x0, y0, "{}")'.
                             format(area.name()))
                     else:
                         subregions[area.type] = 1
@@ -268,31 +268,31 @@ class FslRenderer(object):
                         if color == 'cyan':
                             color = 'skyblue'
                         self.content.append(
-                            u'def_new_subreg(x0, y0, "{}", "{}")'.
+                            'def_new_subreg(x0, y0, "{}", "{}")'.
                             format(area.name(), color))
                     if area.is_stator_iron_yoke():
                         self.content.append(
-                            u'x0_iron_yoke, y0_iron_yoke = x0, y0')
+                            'x0_iron_yoke, y0_iron_yoke = x0, y0')
                     elif area.is_stator_iron_tooth():
                         self.content.append(
-                            u'x0_iron_tooth, y0_iron_tooth = x0, y0')
+                            'x0_iron_tooth, y0_iron_tooth = x0, y0')
                     elif area.is_rotor_iron():
                         self.content.append(
-                            u'x0_iron_yoke, y0_iron_yoke = x0, y0')
+                            'x0_iron_yoke, y0_iron_yoke = x0, y0')
                     elif area.is_shaft():
                         self.content.append(
-                            u'x0_shaft, y0_shaft = x0, y0')
+                            'x0_shaft, y0_shaft = x0, y0')
 
                 self.content.append(u"\n")
 
         txt = [u"if x0_iron_yoke > 0.0 then",
                u"  if mcvkey_yoke ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_iron_yoke, y0_iron_yoke, "blue", mcvkey_yoke, 100)',
-               u'  else',
-               u'    def_mat_fm(x0_iron_yoke, y0_iron_yoke, ur, 100)',
-               u'  end',
-               u'end\n']
-        self.content.append(u'\n'.join(txt))
+               '    def_mat_fm_nlin(x0_iron_yoke, y0_iron_yoke, "blue", mcvkey_yoke, 100)',
+               '  else',
+               '    def_mat_fm(x0_iron_yoke, y0_iron_yoke, ur, 100)',
+               '  end',
+               'end\n']
+        self.content.append('\n'.join(txt))
 
         txt = [u"if x0_iron_tooth > 0.0 then",
                u"  if(x0_iron_yoke == 0 and mcvkey_yoke ~= 'dummy') then",
@@ -304,96 +304,97 @@ class FslRenderer(object):
                u"      def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)",
                u"    end",
                u"  end",
-               u'end\n']
-        self.content.append(u'\n'.join(txt))
+               'end\n']
+        self.content.append('\n'.join(txt))
 
         txt = [u"if x0_shaft > 0.0 then",
                u"  if mcvkey_shaft ~= 'dummy' then",
-               u'    def_mat_fm_nlin(x0_shaft, y0_shaft, "lightgrey", mcvkey_shaft, 100)',
-               u'  else',
-               u'    def_mat_fm(x0_shaft, y0_shaft, ur, 100)',
-               u'  end',
-               u'end\n']
-        self.content.append(u'\n'.join(txt))
+               '    def_mat_fm_nlin(x0_shaft, y0_shaft, "lightgrey", mcvkey_shaft, 100)',
+               '  else',
+               '    def_mat_fm(x0_shaft, y0_shaft, ur, 100)',
+               '  end',
+               'end\n']
+        self.content.append('\n'.join(txt))
 
         if num_windings > 0:
             if geom.is_mirrored():
                 self.content += [
-                    u'r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
-                    u'm.xcoil_2, m.ycoil_2 = pr2c(r, {}*2.0 - phi)'.format(geom.alfa)]
-            self.content.append(u'm.wdg_location  = 1.0 -- stator\n')
+                    'r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
+                    'm.xcoil_2, m.ycoil_2 = pr2c(r, {}*2.0 - phi)'.format(geom.alfa)]
+            self.content.append('m.wdg_location  = 1.0 -- stator\n')
 
         if num_magnets > 0:
-            self.content.append(u'mag_exists   = {}'.
+            self.content.append('mag_exists   = {}'.
                                 format(num_magnets))
             if geom.is_mirrored():
-                self.content.append(u'mag_mirrored = true')
+                self.content.append('mag_mirrored = true')
             else:
-                self.content.append(u'mag_mirrored = false')
-            self.content.append(u'mag_alpha    = {}\n'
+                self.content.append('mag_mirrored = false')
+            self.content.append('mag_alpha    = {}\n'
                                 .format(geom.get_alfa()))
 
         if geom.is_mirrored():
-            self.content.append(u'-- mirror')
-            self.content.append(u'mirror_nodechains({}, {}, {}, {})\n'.format(
+            self.content.append('-- mirror')
+            self.content.append('mirror_nodechains({}, {}, {}, {})\n'.format(
                 geom.mirror_corners[1][0],   # max x1
                 geom.mirror_corners[1][1],   # max y1
                 geom.mirror_corners[0][0],   # min x2
                 geom.mirror_corners[0][1]))  # min y2
 
-        self.content.append(u'parts_gen = {}'.format(geom.num_variable()))
+        self.content.append('parts_gen = {}'.format(geom.num_variable()))
 
         # angle after mirroring
-        self.content.append(u'alfa = {}\n'.format(geom.get_alfa()))
+        self.content.append('alfa = {}\n'.format(geom.get_alfa()))
 
-        self.content += [u'-- rotate',
-                         u'x1, y1 = {}, {}'.format(
+        self.content += ['-- rotate',
+                         'x1, y1 = {}, {}'.format(
                              geom.start_corners[0][0],
                              geom.start_corners[0][1])]  # min xy1
         if outer:
-            self.content.append(u'x2, y2 = pr2c(r1, 0.0)')
+            self.content.append('x2, y2 = pr2c(r1, 0.0)')
         else:
-            self.content.append(u'x2, y2 = {}, {}'.format(
+            self.content.append('x2, y2 = {}, {}'.format(
                 geom.start_corners[1][0],
                 geom.start_corners[1][1]))  # max xy1
 
         if geom.is_mirrored():
-            self.content.append(u'x3, y3 = pr2c(x2, alfa)')
-            self.content.append(u'x4, y4 = pr2c(x1, alfa)')
+            self.content.append('x3, y3 = pr2c(x2, alfa)')
+            self.content.append('x4, y4 = pr2c(x1, alfa)')
         elif outer:
-            self.content += [u'x3, y3 = pr2c(r1, 2*math.pi/parts+phi)',
-                             u'x4, y4 = {}, {}'.format(
+            self.content += ['x3, y3 = pr2c(r1, 2*math.pi/parts+phi)',
+                             'x4, y4 = {}, {}'.format(
                                  geom.end_corners[0][0],
                                  geom.end_corners[0][1])]  # min xy4
         else:
-            self.content += [u'x3, y3 = {}, {}'.format(
+            self.content += ['x3, y3 = {}, {}'.format(
                                  geom.end_corners[-1][0],
                                  geom.end_corners[-1][1]), # min xy3
-                             u'x4, y4 = {}, {}'.format(
+                             'x4, y4 = {}, {}'.format(
                                  geom.end_corners[0][0],
-                                 geom.end_corners[0][1])]  # min xy4
+                                 geom.end_corners[0][1]),  # min xy4
+                             'def_bcond_vpo(x4, y4, x1, y1)']
 
-        self.content.append(u'if parts_gen > 1 then')
+        self.content.append('if parts_gen > 1 then')
         if geom.corners_dont_match():
-            txt = [u'  -- Warning: corners dont match',
-                   u'  mirror_nodechains(x3, y3, x4, y4)',
-                   u'  if {} > 2 then'.format(geom.num_variable()),
-                   u'    my_alfa = alfa * 2',
-                   u'    x3, y3 = pr2c(x2, my_alfa)',
-                   u'    x4, y4 = pr2c(x1, my_alfa)',
-                   u'    n = {} / 2'.format(geom.num_variable()),
-                   u'    rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,n-1)',
-                   u'  end']
-            self.content.append(u'\n'.join(txt))
+            txt = ['  -- Warning: corners dont match',
+                   '  mirror_nodechains(x3, y3, x4, y4)',
+                   '  if {} > 2 then'.format(geom.num_variable()),
+                   '    my_alfa = alfa * 2',
+                   '    x3, y3 = pr2c(x2, my_alfa)',
+                   '    x4, y4 = pr2c(x1, my_alfa)',
+                   '    n = {} / 2'.format(geom.num_variable()),
+                   '    rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,n-1)',
+                   '  end']
+            self.content.append('\n'.join(txt))
         else:
             self.content.append(
-                u'  rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,parts_gen-1)')
-        self.content.append(u'end')
+                '  rotate_copy_nodechains(x1,y1,x2,y2,x3,y3,x4,y4,parts_gen-1)')
+        self.content.append('end')
 
-        self.content.append(u'alfa = parts_gen * alfa\n')
+        self.content.append('alfa = parts_gen * alfa\n')
 
         if self.fm_nlin:
-            self.content.append(u'\nx0, y0 = {}, {}'. format(
+            self.content.append('\nx0, y0 = {}, {}'. format(
                 self.fm_nlin[0], self.fm_nlin[1]))
 
             mat = [u"if fm_nlin_mcvfile ~= 'dummy' then",
@@ -405,66 +406,66 @@ class FslRenderer(object):
                    u"else",
                    u"  def_mat_fm(x0,y0, 1000.0, fm_nlin_rlen)",
                    u"end"]
-            self.content.append(u'\n'.join(mat))
+            self.content.append('\n'.join(mat))
 
         if self.shaft:
-            mat = [u'\nif shaft_mat==1 then',
-                   u'  def_mat_fm_nlin(0.1,0.1,"lightgrey",fm_nlin_mcvfile_shft,fm_nlin_rlen)',
-                   u'end']
-            self.content.append(u'\n'.join(mat))
+            mat = ['\nif shaft_mat==1 then',
+                   '  def_mat_fm_nlin(0.1,0.1,"lightgrey",fm_nlin_mcvfile_shft,fm_nlin_rlen)',
+                   'end']
+            self.content.append('\n'.join(mat))
 
         if num_magnets:
             self.content += [
-                u'-- pm magnets',
-                u'if mag_exists > 0 then',
-                u'  if( m.remanenc == nil ) then',
-                u'     m.remanenc = 1.15',
-                u'     m.relperm  = 1.05',
-                u'  end',
-                u'  if( m.orient == nil ) then',
-                u'    m.orient = m.parallel',
-                u'  end',
-                u'  if( m.magncond == nil ) then',
-                u'    m.magncond = 625000.0',
-                u'  end',
-                u'  if( m.rlen == nil ) then',
-                u'    m.rlen = 100',
-                u'  end',
-                u'  for i=0, m.npols_gen-1 do',
-                u'    for n=1, mag_exists do',
-                u'      r, p = c2pr(xmag[n], ymag[n])',
-                u'      x0, y0 = pr2c(r, i*mag_alpha+p)',
-                u'      phi = (i*mag_alpha+mag_orient[n])*180/math.pi',
-                u'      if ( i % 2 == 0 ) then',
-                u'        phi = phi - 180',
-                u'        color = "red"',
-                u'      else',
-                u'        color = "green"',
-                u'      end',
-                u'      if(m.mcvkey_magnet == nil) then',
-                u'        def_mat_pm(x0, y0, color, m.remanenc, m.relperm,',
-                u'                   phi, m.orient, m.magncond, m.rlen)',
-                u'      else',
-                u'        def_mat_pm_nlin(x0, y0, color, m.mcvkey_magnet,',
-                u'                 phi, m.orient, m.magncond, m.rlen)',
-                u'      end',
-                u'      if mag_mirrored then',
-                u'        x0, y0 = pr2c(r, (i+1)*mag_alpha-p)',
-                u'        phi = ((i+1)*mag_alpha-mag_orient[n])*180/math.pi',
-                u'        if ( i % 2 == 0 ) then',
-                u'          phi = phi - 180',
-                u'        end',
-                u'        if(m.mcvkey_magnet == nil) then',
-                u'          def_mat_pm(x0, y0, color, m.remanenc, m.relperm,',
-                u'                       phi, m.orient, m.magncond, m.rlen)',
-                u'        else',
-                u'          def_mat_pm_nlin(x0, y0, color, m.mcvkey_magnet,',
-                u'                   phi, m.orient, m.magncond, m.rlen)',
-                u'        end',
-                u'      end',
-                u'    end',
-                u'  end',
-                u'end']
+                '-- pm magnets',
+                'if mag_exists > 0 then',
+                '  if( m.remanenc == nil ) then',
+                '     m.remanenc = 1.15',
+                '     m.relperm  = 1.05',
+                '  end',
+                '  if( m.orient == nil ) then',
+                '    m.orient = m.parallel',
+                '  end',
+                '  if( m.magncond == nil ) then',
+                '    m.magncond = 625000.0',
+                '  end',
+                '  if( m.rlen == nil ) then',
+                '    m.rlen = 100',
+                '  end',
+                '  for i=0, m.npols_gen-1 do',
+                '    for n=1, mag_exists do',
+                '      r, p = c2pr(xmag[n], ymag[n])',
+                '      x0, y0 = pr2c(r, i*mag_alpha+p)',
+                '      phi = (i*mag_alpha+mag_orient[n])*180/math.pi',
+                '      if ( i % 2 == 0 ) then',
+                '        phi = phi - 180',
+                '        color = "red"',
+                '      else',
+                '        color = "green"',
+                '      end',
+                '      if(m.mcvkey_magnet == nil) then',
+                '        def_mat_pm(x0, y0, color, m.remanenc, m.relperm,',
+                '                   phi, m.orient, m.magncond, m.rlen)',
+                '      else',
+                '        def_mat_pm_nlin(x0, y0, color, m.mcvkey_magnet,',
+                '                 phi, m.orient, m.magncond, m.rlen)',
+                '      end',
+                '      if mag_mirrored then',
+                '        x0, y0 = pr2c(r, (i+1)*mag_alpha-p)',
+                '        phi = ((i+1)*mag_alpha-mag_orient[n])*180/math.pi',
+                '        if ( i % 2 == 0 ) then',
+                '          phi = phi - 180',
+                '        end',
+                '        if(m.mcvkey_magnet == nil) then',
+                '          def_mat_pm(x0, y0, color, m.remanenc, m.relperm,',
+                '                       phi, m.orient, m.magncond, m.rlen)',
+                '        else',
+                '          def_mat_pm_nlin(x0, y0, color, m.mcvkey_magnet,',
+                '                   phi, m.orient, m.magncond, m.rlen)',
+                '        end',
+                '      end',
+                '    end',
+                '  end',
+                'end']
 
         return self.content
 
@@ -483,90 +484,90 @@ class FslRenderer(object):
                          2)
         self.agndst = params.get('agndst', 0.1)
         return [
-            u'-- generated from DXF by femagtools {}'.format(__version__),
-            u'exit_on_error = false',
-            u'exit_on_end = false',
-            u'verbosity = 2\n',
-            u'new_model_force("{}","Test")'.format(self.model),
-            u'global_unit(mm)',
-            u'pickdist(0.001)',
-            u'cosys(polar)\n',
-            u'dy1 = {}'.format(params.get('dy1', 0.0)),
-            u'da1 = {}'.format(params.get('da1', 0.0)),
-            u'dy2 = {}'.format(params.get('dy2', 0.0)),
-            u'da2 = {}'.format(params.get('da2', 0.0)),
-            u'ag  = (da1 - da2)/2\n',
-            u'm.tot_num_slot   = {}'.format(params.get('tot_num_slot', 0)),
-            u'm.num_sl_gen     = {}'.format(params.get('num_sl_gen', 0)),
-            u'm.num_poles      = {}'.format(params.get('num_poles', 0)),
-            u'm.num_pol_pair   = m.num_poles/2',
-            u'm.num_slots      = m.num_sl_gen',
-            u'm.npols_gen      = m.num_poles * m.num_sl_gen / m.tot_num_slot',
-            u'm.tot_num_sl     = m.tot_num_slot',
-            u'm.fc_radius      = (da1+da2)/4',
-            u'm.fc_radius1     = m.fc_radius',
-            u'm.arm_length     = 1.0',
-            u'pre_models("basic_modpar")\n',
-            u'm.airgap         = 2*ag/3',
-            u'm.nodedist       = 1.0',
-            u'agndst           = {}'.format(self.agndst),
-            u"mcvkey_teeth = 'dummy'",
-            u"mcvkey_yoke = 'dummy'",
-            u"mcvkey_shaft = 'dummy'",
-            u"ur = 1000.0",
-            u"ndt(agndst)"] + outer + [
-                u"mcvkey_teeth = 'dummy'",
-                u"mcvkey_yoke = 'dummy'",
-                u"mcvkey_shaft = 'dummy'",
-                u"ndt(agndst)"] + inner + [
-                    u'-- airgap',
-                    u'ndt(agndst)',
-                    u'r1 = m.fc_radius - ag/6',
-                    u'x1, y1 = pr2c(r1, alfa)',
-                    u'n = math.floor(r1*alfa/agndst + 1.5)',
-                    u'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
-                    u'r2 = m.fc_radius + ag/6',
-                    u'x2, y2 = pr2c(r2, alfa)',
-                    u'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
-                    u'if inner_da_start == nil then',
-                    u'  inner_da_start = da2/2',
-                    u'end',
-                    u'x1, y1 = pr2c(inner_da_start, 0.0)',
-                    u'nc_line(x1, y1, r1, 0.0, 0.0)\n',
-                    u'if outer_da_start == nil then',
-                    u'  outer_da_start = da1/2',
-                    u'end',
-                    u'x2, y2 = pr2c(outer_da_start, 0.0)',
-                    u'nc_line(r2, 0.0, x2, y2, 0.0)\n',
-                    u'if m.tot_num_slot > m.num_sl_gen then',
-                    u'  x3, y3 = pr2c(inner_da_end, alfa)',
-                    u'  x4, y4 = pr2c(r1, alfa)',
-                    u'  nc_line(x3, y3, x4, y4, 0, 0)\n',
-                    u'  x3, y3 = pr2c(outer_da_end, alfa)',
-                    u'  x4, y4 = pr2c(r2, alfa)',
-                    u'  nc_line(x3, y3, x4, y4, 0, 0)',
-                    u'end\n',
-                    u'x0, y0 = pr2c(r1-ag/6, alfa/2)',
-                    u'create_mesh_se(x0, y0)',
-                    u'x0, y0 = pr2c(r2+ag/6, alfa/2)',
-                    u'create_mesh_se(x0, y0)\n',
-                    u'connect_models()\n',
-                    u'-- Gen_winding',
-                    u'if m.xcoil_1 ~= nil then',
-                    u'  m.num_phases      = 3',
-                    u'  m.num_layers      = {}'.format(num_layers),
-                    u'  m.num_wires       = 1',
-                    u'  m.coil_span       = {}'.format(
+            '-- generated from DXF by femagtools {}'.format(__version__),
+            'exit_on_error = false',
+            'exit_on_end = false',
+            'verbosity = 2\n',
+            'new_model_force("{}","Test")'.format(self.model),
+            'global_unit(mm)',
+            'pickdist(0.001)',
+            'cosys(polar)\n',
+            'dy1 = {}'.format(params.get('dy1', 0.0)),
+            'da1 = {}'.format(params.get('da1', 0.0)),
+            'dy2 = {}'.format(params.get('dy2', 0.0)),
+            'da2 = {}'.format(params.get('da2', 0.0)),
+            'ag  = (da1 - da2)/2\n',
+            'm.tot_num_slot   = {}'.format(params.get('tot_num_slot', 0)),
+            'm.num_sl_gen     = {}'.format(params.get('num_sl_gen', 0)),
+            'm.num_poles      = {}'.format(params.get('num_poles', 0)),
+            'm.num_pol_pair   = m.num_poles/2',
+            'm.num_slots      = m.num_sl_gen',
+            'm.npols_gen      = m.num_poles * m.num_sl_gen / m.tot_num_slot',
+            'm.tot_num_sl     = m.tot_num_slot',
+            'm.fc_radius      = (da1+da2)/4',
+            'm.fc_radius1     = m.fc_radius',
+            'm.arm_length     = 1.0',
+            'pre_models("basic_modpar")\n',
+            'm.airgap         = 2*ag/3',
+            'm.nodedist       = 1.0',
+            'agndst           = {}'.format(self.agndst),
+            "mcvkey_teeth = 'dummy'",
+            "mcvkey_yoke = 'dummy'",
+            "mcvkey_shaft = 'dummy'",
+            "ur = 1000.0",
+            "ndt(agndst)"] + outer + [
+                "mcvkey_teeth = 'dummy'",
+                "mcvkey_yoke = 'dummy'",
+                "mcvkey_shaft = 'dummy'",
+                "ndt(agndst)"] + inner + [
+                    '-- airgap',
+                    'ndt(agndst)',
+                    'r1 = m.fc_radius - ag/6',
+                    'x1, y1 = pr2c(r1, alfa)',
+                    'n = math.floor(r1*alfa/agndst + 1.5)',
+                    'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
+                    'r2 = m.fc_radius + ag/6',
+                    'x2, y2 = pr2c(r2, alfa)',
+                    'nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)\n',
+                    'if inner_da_start == nil then',
+                    '  inner_da_start = da2/2',
+                    'end',
+                    'x1, y1 = pr2c(inner_da_start, 0.0)',
+                    'nc_line(x1, y1, r1, 0.0, 0.0)\n',
+                    'if outer_da_start == nil then',
+                    '  outer_da_start = da1/2',
+                    'end',
+                    'x2, y2 = pr2c(outer_da_start, 0.0)',
+                    'nc_line(r2, 0.0, x2, y2, 0.0)\n',
+                    'if m.tot_num_slot > m.num_sl_gen then',
+                    '  x3, y3 = pr2c(inner_da_end, alfa)',
+                    '  x4, y4 = pr2c(r1, alfa)',
+                    '  nc_line(x3, y3, x4, y4, 0, 0)\n',
+                    '  x3, y3 = pr2c(outer_da_end, alfa)',
+                    '  x4, y4 = pr2c(r2, alfa)',
+                    '  nc_line(x3, y3, x4, y4, 0, 0)',
+                    'end\n',
+                    'x0, y0 = pr2c(r1-ag/6, alfa/2)',
+                    'create_mesh_se(x0, y0)',
+                    'x0, y0 = pr2c(r2+ag/6, alfa/2)',
+                    'create_mesh_se(x0, y0)\n',
+                    'connect_models()\n',
+                    '-- Gen_winding',
+                    'if m.xcoil_1 ~= nil then',
+                    '  m.num_phases      = 3',
+                    '  m.num_layers      = {}'.format(num_layers),
+                    '  m.num_wires       = 1',
+                    '  m.coil_span       = {}'.format(
                         params.get(
                             'tot_num_slot', 1)//params.get('num_poles', 1)),
-                    u'  m.current         = 0.0',
-                    u'  m.mat_type        = 1.0 -- rotating',
-                    u'  m.wind_type       = 1.0 -- winding & current',
-                    u'  m.win_asym        = 1.0 -- sym',
-                    u'  m.wdg_location    = 1.0 -- stator',
-                    u'  m.curr_inp        = 0.0 -- const',
-                    u'  m.dq_offset       = 0',
-                    u'  pre_models("Gen_winding")',
-                    u'  pre_models("gen_pocfile")',
-                    u'end\n',
-                    u'save_model(cont)\n']
+                    '  m.current         = 0.0',
+                    '  m.mat_type        = 1.0 -- rotating',
+                    '  m.wind_type       = 1.0 -- winding & current',
+                    '  m.win_asym        = 1.0 -- sym',
+                    '  m.wdg_location    = 1.0 -- stator',
+                    '  m.curr_inp        = 0.0 -- const',
+                    '  m.dq_offset       = 0',
+                    '  pre_models("Gen_winding")',
+                    '  pre_models("gen_pocfile")',
+                    'end\n',
+                    'save_model(cont)\n']

@@ -65,7 +65,7 @@ class Model(object):
         """return value of key name
 
         Args:
-            name: key of parameter value
+            name (str or list of str): key of parameter value
 
         Return:
             value of parameter identified by key
@@ -214,7 +214,7 @@ class MachineModel(Model):
             logging.debug(slotgen)
             g = np.gcd.reduce(slotgen)
             if hasattr(self, 'magnet') and g > 1:
-                g /= m
+                g //= m
             if 'num_slots' in self.stator:
                 Q1 = self.stator['num_slots']
                 self.stator['num_slots_gen'] = Q1 // g
@@ -415,6 +415,16 @@ class MachineModel(Model):
     def has_magnet(self):  # either rotor or magnet
         return hasattr(self, 'magnet')
 
+    def props(self):
+        """returns dict of this model"""
+        keys = ('name', 'poles', 'outer_diam', 'airgap',
+                'bore_diam', 'external_rotor', 'agndst')
+        model = {k: getattr(self, k) for k in keys if hasattr(self, k)}
+        if hasattr(self, 'stator'):
+            model['stator'] = {k: self.stator[k]
+                               for k in ('num_slots', 'num_slots_gen')
+                               if k in self.stator}
+        return model
 
 class FeaModel(Model):
     """represents a simulation model for a FE analysis"""

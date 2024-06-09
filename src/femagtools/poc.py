@@ -11,11 +11,12 @@
 
 
 class Poc:
-    def __init__(self, arg, parameters=dict()):
+    def __init__(self, arg=999, parameters={}, current_angles=[]):
         """initialize this object from a set of parameters or a file
 
         Args:
-            arg filename or pole_pitch
+            arg: filename or pole_pitch
+            current_angles: list of current angles
         """
         self.skew_angle = 0.0
         self.num_skew_steps = 0
@@ -33,9 +34,12 @@ class Poc:
                                               [str(i+1) for i in range(3)])
             b = parameters.get('offset', 0)
             num_winding = len(self.key_winding)
-            self.phi_voltage_winding = parameters.get('phi_voltage_winding',
-                                                      [b+i*360/num_winding
-                                                       for i in range(num_winding)])
+            if current_angles:
+                self.phi_voltage_winding = current_angles
+            else:
+                self.phi_voltage_winding = parameters.get('phi_voltage_winding',
+                                                          [b+i*360/num_winding
+                                                           for i in range(num_winding)])
 
     def __setattr__(self, name, val):
         self.__dict__[name] = val  # this will create the attribute name

@@ -268,9 +268,11 @@ class PmRelMachine(object):
         u -- the maximum voltage (RMS)
         iq, id -- the d-q currents"""
         w10 = np.sqrt(2)*u/la.norm(self.psi(iq, id))
-        return so.fsolve(
-            lambda w1: la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2),
-            w10)[0]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return so.fsolve(
+                lambda w1: la.norm(self.uqd(w1, iq, id))-u*np.sqrt(2),
+                w10)[0]
 
     def w1_imax_umax(self, i1max, u1max):
         """return frequency w1 and torque at voltage u1max and current i1max
@@ -584,7 +586,7 @@ class PmRelMachine(object):
                                            i1max=i1max)
                 return iq, id, tq
             except ValueError as e:
-                logger.warning(e)
+                logger.debug(e)
 
         if with_tmech:
             tq = self.tmech_iqd(iq, id, w1/2/np.pi/self.p)

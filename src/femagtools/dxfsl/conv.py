@@ -142,6 +142,10 @@ def main():
                            help='print debug information in logfile',
                            dest='debugger',
                            action="store_true")
+    argparser.add_argument('--full_model',
+                           help='create full model (fsl only)',
+                           dest='full_model',
+                           action="store_true")
 
     args = argparser.parse_args()
 
@@ -232,7 +236,8 @@ def main():
                   write_fsl=args.write_fsl,
                   write_png=args.write_png,
                   write_id=args.write_id,
-                  debug_mode=args.debugger)
+                  debug_mode=args.debugger,
+                  full_model=args.full_model)
 
     if args.write_fsl:
         if res is not None:

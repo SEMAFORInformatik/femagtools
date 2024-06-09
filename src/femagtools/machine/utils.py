@@ -166,15 +166,15 @@ def wdg_leakage_inductances(machine):
     Juha Pyrhönen, Tapani Jokinen, Valeria Hrabovcova
     (Ed. 2008) page 236ff
     """
-    from ..windings import Winding
-    wdg = Winding(
+    wdgk = 'windings' if 'windings' in machine else 'winding'
+    wdg = windings.Winding(
         {'Q': machine['stator']['num_slots'],
-         'm': machine['windings']['num_phases'],
+         'm': machine[wdgk]['num_phases'],
          'p': machine['poles']//2,
-         'l': machine['windings']['num_layers'],
-         'yd': machine['windings']['coil_span']})
-    n1 = wdg.turns_per_phase(machine['windings']['num_wires'],
-                             machine['windings']['num_par_wdgs'])
+         'l': machine[wdgk]['num_layers'],
+         'yd': machine[wdgk]['coil_span']})
+    n1 = wdg.turns_per_phase(machine[wdgk]['num_wires'],
+                             machine[wdgk]['num_par_wdgs'])
     m = wdg.m
     p = wdg.p
     Q = wdg.Q
@@ -413,7 +413,7 @@ def dqparident(workdir, engine, temp, machine,
         elif 'dia_wire' in machine[wdgk]:
             aw = np.pi*machine[wdgk].get('dia_wire', 1e-3)**2/4
         elif ('wire_width' in machine[wdgk]) and ('wire_height' in machine[wdgk]):
-            aw = machine['windings']['wire_width']*machine[wdgk]['wire_height']
+            aw = machine[wdgk]['wire_width']*machine[wdgk]['wire_height']
         else:  # wire diameter from slot area
             aw = 0.75 * fcu * np.pi*da1*hs/Q1/wdg.l/N
         r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
@@ -522,12 +522,17 @@ def dqparident(workdir, engine, temp, machine,
         else:
             from .. import nc
             model = nc.read(str(pathlib.Path(workdir) / machine['name']))
-            Q1 = model.num_slots
-            #machine['stator']['num_slots'] = Q1
+            try:
+                nlayers = wdg.l
+            except UnboundLocalError:
+                wdg = create_wdg(machine)
+                nlayers = wdg.l
+                da1 = machine['outer_diam']
+            Q1 = wdg.Q
             istat = 0 if model.get_areas()[0]['slots'] else 1
             asl = model.get_areas()[istat]['slots']
             # diameter of wires
-            aw = fcu*asl/Q1/wdg.l/N
+            aw = fcu*asl/Q1/nlayers/N
             hs = asl/(np.pi*da1/3)
             dqpars['r1'] = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
 

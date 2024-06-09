@@ -51,6 +51,22 @@ def _readSections(f):
     yield section
 
 
+def _complete(positions):
+    """return FN and FT Matrix completed to full model"""
+    ntiles = int(360/positions[0]['X'][-1])
+    try:
+        FN = np.tile(
+            np.array([p['FN'][:-1] for p in positions[:-1]]), (1, ntiles))
+        FT = np.tile(
+            np.array([p['FT'][:-1] for p in positions[:-1]]), (1, ntiles))
+    except AttributeError:
+        return [[], []]
+
+    rotangle = positions[-1]['position'] - positions[0]['position']
+    mtiles = int(round(360/rotangle))
+    return np.tile(FN, (mtiles, 1)).T, np.tile(FT, (mtiles, 1)).T
+
+
 class ForceDensity(object):
 
     def __init__(self):
@@ -139,40 +155,25 @@ class ForceDensity(object):
             flen = set([len(x) for x in fn])
             if len(flen) > 1:
                 logging.warning("inhomogenous samples: %s", flen)
-            logging.info("%s shape (%s, %s): min %s max %s %s",
-                         filename, len(pos), min(list(flen)),
-                         (min(pos), fnmin),
-                         (max(pos), fnmax),
+            logging.info("%s shape %s: pos %s, FN %s %s",
+                         filename, (len(pos), min(list(flen))),
+                         (min(pos), max(pos)),
+                         (fnmin, fnmax),
                          ','.join(labels))
-
-    def _prepare(self):
-        """return FN and FT Matrix"""
-        ntiles = int(360/self.positions[0]['X'][-1])
-        try:
-            FN = np.tile(
-                np.array([p['FN'][:-1] for p in self.positions[:-1]]).T,
-                (ntiles, 1))
-            FT = np.tile(
-                np.array([p['FT'][:-1] for p in self.positions[:-1]]).T,
-                (ntiles, 1))
-        except AttributeError:
-            return []
-        return [FN, FT]
+            self.FN, self.FT = _complete(self.positions)
 
     def fft(self):
         """return 2D FFT of the Force Density"""
-        FN, FT = self._prepare()
-        N = FN.size
-        dim = FN.shape[0]//2
+        N = self.FN.size
+        dim = self.FN.shape[0]//2
         # Dimension [Position °] X [Time Steps s]
-        FN_MAG = np.fft.fft2(FN)[0:dim, :]/N
-        FT_MAG = np.fft.fft2(FT)[0:dim, :]/N
+        FN_MAG = np.fft.fft2(self.FN)[0:dim, :]/N
+        FT_MAG = np.fft.fft2(self.FT)[0:dim, :]/N
 
-        return dict(fn_harm=dict(amplitude=np.abs(FN_MAG),
-                                 phase=np.angle(FN_MAG)),
-                    ft_harm=dict(amplitude=np.abs(FT_MAG),
-                                 phase=np.angle(FT_MAG))
-                    )
+        return {'fn_harm': {'amplitude': np.abs(FN_MAG),
+                            'phase': np.angle(FN_MAG)},
+                'ft_harm': {'amplitude': np.abs(FT_MAG),
+                            'phase': np.angle(FT_MAG)}}
 
     def items(self):
         return [(k, getattr(self, k)) for k in ('version',
@@ -224,7 +225,7 @@ def readall(workdir='.'):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as pl
+    import matplotlib.pyplot as plt
     import femagtools.plot
     import sys
 
@@ -241,8 +242,8 @@ if __name__ == "__main__":
     # Show the results
     #print(fdens.version)
 
-    title = '{}, Rotor position {}'.format(
-        fdens.title, fdens.positions[0]['position'])
+    #title = '{}, Rotor position {}'.format(
+    #    fdens.title, fdens.positions[0]['position'])
     #pos = fdens.positions[0]['X']
     #FT_FN = (fdens.positions[0]['FT'],
     #         fdens.positions[0]['FN'])
@@ -252,6 +253,9 @@ if __name__ == "__main__":
     #femagtools.plot.forcedens_surface(fdens)
     #pl.show()
 
-    title = 'Force Density Harmonics'
-    femagtools.plot.forcedens_fft(title, fdens) #, harmmax=(250, 20))
-    pl.show()
+    title = 'Radial Force Density'
+    fig, ax = plt.subplots()
+    fig.suptitle(title)
+    femagtools.plot.forcedens_contour(fdens, ax=ax)
+    plt.tight_layout()
+    plt.show()

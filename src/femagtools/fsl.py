@@ -111,11 +111,13 @@ class Builder:
         conv = convert(model.stator['dxffile']['name'], **params)
 
         model.stator['num_slots'] = conv.get('tot_num_slot')
-        model.set_value('num_poles', conv.get('num_poles'))
+        model.set_value('poles', conv.get('num_poles'))
         self.set_diameter_parameter(model, conv)
         if model.get('dy1'):
             model.set_value('outer_diam', model.get('dy1'))
             model.set_value('bore_diam', model.get('da1'))
+        if 'agndst' in conv:
+            model.set_value('agndst', model.get('agndst'))
 
         model.stator['dxf'] = dict(fsl=conv['fsl'])
         self.fsl_stator = True
@@ -127,6 +129,8 @@ class Builder:
                 model.set_value(v, conv[v])
             except KeyError:
                 pass
+        if conv.keys() >= {'da1', 'da2'}:
+            model.set_value('airgap', abs(model.da1 - model.da2)/2)
 
     def prepare_diameter(self, model):
         dy1 = model.get('dy1', 0.0)
@@ -475,7 +479,7 @@ class Builder:
         params['write_fsl'] = True
         params['airgap'] = model.dxffile.get('airgap', 0.0)
         params['nodedist'] = model.dxffile.get('nodedist', 1)
-
+        params['full_model'] = model.dxffile.get('full_model', False)
         conv = convert(dxfname, **params)
 
         model.set_value('poles', conv.get('num_poles'))
@@ -488,11 +492,15 @@ class Builder:
         if not hasattr(model, 'stator'):
             setattr(model, 'stator', {})
         model.stator['num_slots'] = conv.get('tot_num_slot')
-        if model.stator.get('num_slots_gen', 0):
-            if model.stator['num_slots'] % model.stator['num_slots_gen'] > 0:
-                model.stator['num_slots_gen'] = conv.get('num_sl_gen')
+        if params['full_model']:
+            model.stator['num_slots_gen'] = model.stator['num_slots']
         else:
-            model.stator['num_slots_gen'] = conv.get('num_sl_gen')
+            if model.stator.get('num_slots_gen', 0):
+                if model.stator['num_slots'] % model.stator['num_slots_gen'] > 0:
+                    model.stator['num_slots_gen'] = conv.get('num_sl_gen')
+            else:
+                model.stator['num_slots_gen'] = conv.get('num_sl_gen')
+
         if 'fsl_stator' in conv:
             self.fsl_stator = True
             model.stator['dxf'] = dict(fsl=conv['fsl_stator'])
@@ -524,6 +532,10 @@ class Builder:
             logger.info("create new model '%s'", model.name)
             if model.is_dxffile():
                 self.prepare_model_with_dxf(model)
+                logger.info(" num poles %d num slots %d outer diameter %.4f m",
+                            model.poles, model.stator['num_slots'],
+                            model.outer_diam)
+
             else:
                 self.prepare_stator(model)
                 if hasattr(model, 'magnet'):
@@ -642,6 +654,11 @@ class Builder:
         except:
             return []
 
+    def create_displ_stator_rotor(self, exc):
+        if exc.keys() >= {'type', 'bore_diam', 'airgap', 'exc'}:
+            return self.__render(exc, 'displ_stator_rotor')
+        return []
+
     def create_analysis(self, sim):
         pfefunc = sim.get('loss_funct', '')
         custom_fefunc = ['']
@@ -654,9 +671,23 @@ class Builder:
 
         airgap_induc = (self.create_airgap_induc()
                         if sim.get('airgap_induc', 0) else [])
+        displ_stator_rotor = self.create_displ_stator_rotor(
+            sim.get('eccentricity', {}))
+        revert_displ = []
+        if displ_stator_rotor:
+            sim['eval_force'] = 1
+            sim['period_frac'] = 1
+            if sim['eccentricity']['type'] == 'static':
+                sim['explicit_mode'] = 1
+                sim['range_phi'] = 180
+            sim['eccentricity']['ecc'] = -sim['eccentricity']['ecc']
+            revert_displ = self.create_displ_stator_rotor(
+                sim['eccentricity'])
+
         felosses = custom_fefunc + self.create_fe_losses(sim)
-        fslcalc = (self.__render(sim, sim.get('calculationMode')) +
-                   airgap_induc)
+        fslcalc = (displ_stator_rotor
+                   + self.__render(sim, sim.get('calculationMode'))
+                   + airgap_induc + revert_displ)
         '''
         if pfefunc:
             sim['loss_funct'] = pfefunc
@@ -691,8 +722,8 @@ class Builder:
     def create(self, model, sim, magnets=None, condMat=[]):
         "create model and analysis function"
         try:
-            sim['lfe'] = model.get('lfe')
             num_poles = model.get('poles')
+            sim['lfe'] = model.get('lfe')
         except AttributeError:
             pass
         try:
@@ -721,6 +752,7 @@ class Builder:
             except UnboundLocalError:
                 logger.warning("unknown number of poles")
                 pass
+        logger.info("Poc file %s", sim.get('pocfilename', '<undefined>'))
 
         if 'phi_start' not in sim:
             sim['phi_start'] = 0.0

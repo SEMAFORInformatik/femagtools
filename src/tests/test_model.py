@@ -44,6 +44,14 @@ class ModelTest(unittest.TestCase):
         model.set_value(attr, newvalue)
         self.assertEqual(model.get(attr), newvalue)
 
+    def test_get_props(self):
+        m = dict(modelpars)
+        model = femagtools.MachineModel(m)
+        self.assertEqual(model.props(),
+                          {'name': 'PM130L4', 'poles': 4,
+                           'external_rotor': False,
+                           'stator': {'num_slots_gen':3, 'num_slots':12}})
+
     def test_magnet_material(self):
         m = dict(modelpars)
         m['magnet']['magnetSector'] = dict()
@@ -77,4 +85,3 @@ class ModelTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

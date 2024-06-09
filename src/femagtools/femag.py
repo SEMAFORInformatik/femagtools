@@ -26,6 +26,7 @@ import femagtools.airgap as ag
 import femagtools.fsl
 import femagtools.config
 import femagtools.ecloss
+import femagtools.forcedens
 
 from femagtools import ntib
 
@@ -248,6 +249,9 @@ class BaseFemag(object):
     def get_bch_file(self, modelname, offset=0):
         return self.get_result_file(modelname, 'B(AT)?CH', offset)
 
+    def get_plt_file(self, modelname, offset=0):
+        return self.get_result_file(modelname, 'PLT0', offset)
+
     def get_asm_file(self, modelname, offset=0):
         return self.get_result_file(modelname, 'ASM', offset)
 
@@ -316,6 +320,17 @@ class BaseFemag(object):
                          errors='ignore') as f:
                 result.read(f)
         return result
+
+    def read_forcedens(self, modelname=None, offset=0):
+        "read most recent PLT0 file and return result"
+        if not modelname:
+            modelname = self._get_modelname_from_log()
+
+        pltfile = self.get_plt_file(modelname, offset)
+        if pltfile:
+            logger.info("Read PLT0 {}".format(pltfile))
+            return femagtools.forcedens.read(pltfile)
+        return None
 
     def read_isa(self, modelname=None):
         "read most recent I7/ISA7 file and return result"
@@ -555,6 +570,13 @@ class Femag(BaseFemag):
                                               simulation)))
         if simulation:
             stateofproblem = simulation.get('stateofproblem', 'mag_static')
+            if 'eccentricity' in simulation:
+                #assert (self.model.stator['num_slots']
+                #        == self.model.stator['num_slots_gen'])
+                for k in ('bore_diam', 'airgap'):
+                    if k not in simulation['eccentricity']:
+                        simulation['eccentricity'][k] = self.model.get(k)
+
             if 'poc' in simulation:
                 with open(os.path.join(self.workdir,
                                        simulation['pocfilename']), 'w') as f:
@@ -579,8 +601,9 @@ class Femag(BaseFemag):
         self.run(fslfile, options, fsl_args, stateofproblem=stateofproblem)
         if simulation:
             return self.readResult(simulation)
-        return dict(status='ok', message=self.modelname)
 
+        return {'status': 'ok', 'message': self.modelname,
+                'model': self.model.props()}
 
 class FemagTask(threading.Thread):
     def __init__(self, port, args, workdir, logdir):
@@ -1096,7 +1119,9 @@ class ZmqFemag(BaseFemag):
             raise FemagError(r['message'])
 
         if not simulation:
-            return [r, dict(name=machine['name'])]
+            model = self.model.props()
+            model['name'] = machine['name']
+            return [r, model]
 
         result_file = r['result_file'][0]
         if simulation['calculationMode'] == "pm_sym_loss":

@@ -64,23 +64,21 @@ def forcedens_surface(fdens, attr='FN', ax=0, cmap=colormaps['jet']):
     if ax == 0:
         _create_3d_axis()
         ax = plt.gca()
-    xpos = np.arange(0, 360, fdens.positions[1]['position']
-                     - fdens.positions[0]['position'])
-    ypos = np.arange(0, 360, fdens.positions[0]['X'][1]
-                     - fdens.positions[0]['X'][0])
     z = 1e-3*np.array(getattr(fdens, attr))
-    _plot_surface(ax, xpos, ypos, z,
+    n, m = z.shape
+    x = np.linspace(0, 360, m)
+    y = np.linspace(0, 360, n)
+    _plot_surface(ax, x, y, z,
                   ('Rotor pos/°', 'Pos/°', f'{attr} / kN/m²'),
                   cmap=cmap)
 
 def forcedens_contour(fdens, attr='FN', ax=0, cmap=colormaps['jet']):
     if ax == 0:
         ax = plt.gca()
-    x = np.arange(0, 360, fdens.positions[1]['position']
-                  - fdens.positions[0]['position'])
-    y = np.arange(0, 360, fdens.positions[0]['X'][1]
-                  - fdens.positions[0]['X'][0])
     z = 1e-3*np.array(getattr(fdens, attr))
+    n, m = z.shape
+    x = np.linspace(0, 360, m)
+    y = np.linspace(0, 360, n)
     cs = ax.contourf(x, y, z, cmap=cmap)
     ax.set_xlabel('Rotor pos/°')
     ax.set_ylabel('Pos/°')

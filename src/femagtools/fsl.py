@@ -655,7 +655,7 @@ class Builder:
             return []
 
     def create_displ_stator_rotor(self, exc):
-        if exc.keys() >= {'type', 'bore_diam', 'airgap', 'exc'}:
+        if exc.keys() >= {'type', 'bore_diam', 'airgap', 'ecc'}:
             return self.__render(exc, 'displ_stator_rotor')
         return []
 

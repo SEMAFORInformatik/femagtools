@@ -23,17 +23,18 @@ def agndst(da1, da2, Q, p, nodedist=1):
       p: number of poles
       nodedist: node distance factor
     """
-    if Q % p == 0:
-        num_nodes = [30, 48, 60, 96, 120, 144, 180, 240, 288, 336, 360,
-                     432, 480]
-    else:
-        lcm = np.lcm(Q, p)//p
-        nmin, nmax = 30//lcm, 480//lcm
-        num_nodes = [i*lcm for i in range(nmin, nmax) if i*lcm%2==0]
     r = (da1 + da2)/4
-    dagset = [2*np.pi/p/i for i in num_nodes]
     ag = abs(da1 - da2)/6
+    num_nodes = [30, 48, 60, 96, 120, 144, 180, 240, 288, 336, 360,
+                 432, 480]
+    dagset = [2*np.pi/p/i for i in num_nodes]
     i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
+    if p*num_nodes[i-1] % Q:
+        lcm = np.lcm(Q, p)//p
+        nmin, nmax = num_nodes[0]//lcm, num_nodes[-1]//lcm
+        num_nodes = [i*lcm for i in range(nmin, nmax) if i*lcm%6==0]
+        dagset = [2*np.pi/p/i for i in num_nodes]
+        i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
     nd = min(round(nodedist), i)
     try:
         logger.info("Num nodes/p %d Num nodes/slot %g nodedist %g",
@@ -424,7 +425,7 @@ class FslRenderer(object):
         if num_magnets:
             # TODO: this is clearly a hack to adapt the mag orientation
             # for cases where magnets have multiple small slices
-            rotangle = 180
+            rotangle = 0
             mag = np.array(magor)
             x, y = mag.T[:2]
             if np.allclose(mag.T[2] - np.arctan2(y, x), np.pi/2, atol=2e-2):
@@ -452,10 +453,10 @@ class FslRenderer(object):
                 '      x0, y0 = pr2c(r, i*mag_alpha+p)',
                 '      phi = (i*mag_alpha+mag_orient[n])*180/math.pi',
                 '      if ( i % 2 == 0 ) then',
-                f'        phi = phi + {rotangle}',
+                f'        phi = phi - {rotangle}',
                 '        color = "red"',
                 '      else',
-                f'        phi = phi + {rotangle} - 180',
+                f'        phi = phi - {rotangle} + 180',
                 '        color = "green"',
                 '      end',
                 '      if(m.mcvkey_magnet == nil) then',
@@ -469,9 +470,9 @@ class FslRenderer(object):
                 '        x0, y0 = pr2c(r, (i+1)*mag_alpha-p)',
                 '        phi = ((i+1)*mag_alpha-mag_orient[n])*180/math.pi',
                 '        if ( i % 2 == 0 ) then',
-                f'          phi = phi + {rotangle}',
+                f'          phi = phi - {rotangle}',
                 '        else',
-                f'          phi = phi + {rotangle} - 180',
+                f'          phi = phi - {rotangle} + 180',
                 '        end',
                 '        if(m.mcvkey_magnet == nil) then',
                 '          def_mat_pm(x0, y0, color, m.remanenc, m.relperm,',

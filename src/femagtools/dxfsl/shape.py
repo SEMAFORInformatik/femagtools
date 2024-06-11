@@ -427,6 +427,10 @@ class Circle(Shape):
     def center_of_connection(self, ndec=6):
         return (self.center[0] + self.radius, self.center[1])
 
+    def maxdist(self, r):
+        r0 = np.linalg.norm(self.center)
+        return max(abs(r-r0-self.radius), abs(r-r0+self.radius))
+
     def overlapping_shape(self, e, rtol=1e-03, atol=1e-03):
         if not (isinstance(e, Arc) or isinstance(e, Circle)):
             # end overlapping_shape: Circle (not Arc or Circle)
@@ -761,6 +765,12 @@ class Arc(Circle):
         midangle = middle_angle(self.startangle, self.endangle)
         x, y = self(midangle)
         return (round(x, ndec), round(y, ndec))
+
+    def maxdist(self, r):
+        a = np.array([np.linalg.norm(self.center),
+                      np.linalg.norm(self.p1),
+                      np.linalg.norm(self.p2)])
+        return np.max(np.abs(a-r))
 
     def length(self):
         """returns length of this arc"""
@@ -1290,6 +1300,11 @@ class Line(Shape):
         x = (self.p1[0]+self.p2[0])/2
         y = (self.p1[1]+self.p2[1])/2
         return (x, y)
+
+    def maxdist(self, r):
+        r1 = np.linalg.norm(self.p1)
+        r2 = np.linalg.norm(self.p2)
+        return max([abs(r1-r), abs(r2-r)])
 
     def length(self):
         return np.sqrt(self.dx()**2 + self.dy()**2)

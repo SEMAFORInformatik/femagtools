@@ -238,7 +238,9 @@ def main():
                   write_id=args.write_id,
                   debug_mode=args.debugger,
                   full_model=args.full_model)
-
+    keys = ('tot_num_slot', 'num_sl_gen', 'num_poles', 'nodedist',
+            'dy1', 'da1', 'da2', 'dy2', 'agndst', 'name')
+    logger.info("%s", {k: res[k] for k in keys if k in res})
     if args.write_fsl:
         if res is not None:
             basename = os.path.basename(args.dxfile).split('.')[0]

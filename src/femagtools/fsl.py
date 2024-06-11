@@ -7,7 +7,7 @@ import mako.lookup
 import os
 import re
 import sys
-import math
+import numpy as np
 import femagtools.windings
 from femagtools.poc import Poc
 from . import __version__
@@ -73,7 +73,7 @@ class Builder:
 
             g = femagtools.gmsh.Gmsh(model.stator['mshfile']['name'])
             phi = g.get_section_angles()
-            model.stator['num_slots'] = round(math.pi/(phi[1]-phi[0]))
+            model.stator['num_slots'] = round(np.pi/(phi[1]-phi[0]))
             r = g.get_section_radius()
             model.set_value('outer_diam', 2*r[1])
             model.set_value('bore_diam', 2*r[0])
@@ -149,10 +149,11 @@ class Builder:
     def render_stator(self, model):
         templ = model.statortype()
         if templ == 'dxf':
-            return [
-                'agndst = {}'.format(model.agndst*1e3),
-                'ndt(agndst)'
-            ] + model.stator['dxf']['fsl']
+            agndst = []
+            if model.get('agndst', 0) > 0:
+                agndst = ['agndst = {}'.format(model.agndst*1e3)]
+            return (agndst + ['ndt(agndst)']
+                    + model.stator['dxf']['fsl'])
         if templ == 'statorFsl':
             #  obsolete
             if 'parameter' in model.stator['statorFsl']:
@@ -195,8 +196,8 @@ class Builder:
         if fslcode:
             if self.fsl_stator:
                 return (['agndst = {}'.format(model.agndst*1e3),
-                         'alfa = 2*math.pi*m.num_sl_gen/m.tot_num_slot',
-                         'num_agnodes = math.floor(m.fc_radius*alfa/agndst + 0.5)'] +
+                         'alfa = 2*np.pi*m.num_sl_gen/m.tot_num_slot',
+                         'num_agnodes = np.floor(m.fc_radius*alfa/agndst + 0.5)'] +
                         fslcode)
             if hasattr(model, 'num_agnodes'):
                 return fslcode
@@ -281,7 +282,7 @@ class Builder:
             g = femagtools.gmsh.Gmsh(model.magnet['mshfile']['name'])
             r = g.get_section_radius()
             phi = g.get_section_angles()
-            p = round(math.pi/(phi[1]-phi[0]))
+            p = round(np.pi/(phi[1]-phi[0]))
             model.set_value('poles', p)
             model.set_value('inner_diam', 2*r[0])
             ag = (model.get('bore_diam') - 2*r[1])/2
@@ -335,7 +336,7 @@ class Builder:
         if fslcode:
             return fslcode
 
-        logger.error('File {}.fsl not found'.format(templ))
+        logger.error('File %s.fsl not found', templ)
         return []
 
     def create_connect_models(self, model):
@@ -351,7 +352,7 @@ class Builder:
                     '-- thermal properties in airgap',
                     'ag_cond = 0.063',
                     'thcap = 1007',
-                    'beta = math.pi*m.npols_gen/m.num_poles + m.zeroangl/180*math.pi',
+                    'beta = np.pi*m.npols_gen/m.num_poles + m.zeroangl/180*np.pi',
                     'xai, yai = pr2c((da1+da2)/4, beta)',
                     'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
                     'xai, yai = pr2c((da1+da2)/4-ag/4, beta)',
@@ -439,13 +440,11 @@ class Builder:
             logger.info("Leakage type %s", k)
             if 'wiredia' not in model.winding[k[0]]:
                 if 'wire_gauge' in model.winding:
-                    import numpy as np
                     d = 2*np.sqrt(model.winding['wire_gauge']/np.pi)
                     model.winding[k[0]]['wiredia'] = d
                 elif 'dia_wire' in model.winding:
                     model.winding[k[0]]['wiredia'] = model.winding['dia_wire']
                 elif 'wire_width' in model.winding:
-                    import numpy as np
                     w = model.winding['wire_width']
                     h = model.winding['wire_height']
                     d = 2*np.sqrt(h*w/np.pi)
@@ -470,7 +469,7 @@ class Builder:
         if dxfname.split('.')[-1] not in ('dxf', 'svg'):  # add svg support
             dxfname += '.dxf'
         if not os.path.isfile(dxfname):
-            logger.error('File {} not found'.format(dxfname))
+            logger.error('File "%s" not found', dxfname)
             raise ValueError(f'File {dxfname} not found')
 
         params = {}
@@ -487,7 +486,6 @@ class Builder:
         model.set_value('bore_diam', conv.get('da1') * 1e-3)
         model.set_value('inner_diam', conv.get('dy2') * 1e-3)
         model.set_value('airgap', (conv.get('da1') - conv.get('da2'))/2/1e3)
-        model.set_value('agndst', conv.get('agndst')*1e-3)
 
         if not hasattr(model, 'stator'):
             setattr(model, 'stator', {})
@@ -532,6 +530,17 @@ class Builder:
             logger.info("create new model '%s'", model.name)
             if model.is_dxffile():
                 self.prepare_model_with_dxf(model)
+                if model.get('num_agnodes', 0) == 0:
+                    from femagtools.dxfsl.fslrenderer import agndst
+                    ag = model.get('airgap')
+                    model.set_value(
+                        'agndst',
+                        agndst(model.get('bore_diam'),
+                               model.get('bore_diam') - 2*ag,
+                               model.stator.get('num_slots'),
+                               model.get('poles'),
+                               model.stator.get('nodedist') or 1.0))
+
                 logger.info(" num poles %d num slots %d outer diameter %.4f m",
                             model.poles, model.stator['num_slots'],
                             model.outer_diam)
@@ -541,19 +550,16 @@ class Builder:
                 if hasattr(model, 'magnet'):
                     self.prepare_magnet(model)
                 self.prepare_diameter(model)
-                if self.fsl_stator:
+                if self.fsl_stator and model.get('num_agnodes', 0) == 0:
                     from femagtools.dxfsl.fslrenderer import agndst
-                    if model.get('agndst'):
-                        pass
-                    else:
-                        ag = model.get('airgap')
-                        model.set_value(
-                            'agndst',
-                            agndst(model.get('bore_diam'),
-                                   model.get('bore_diam') - 2*ag,
-                                   model.stator.get('num_slots'),
-                                   model.get('poles'),
-                                   model.stator.get('nodedist') or 1.0))
+                    ag = model.get('airgap')
+                    model.set_value(
+                        'agndst',
+                        agndst(model.get('bore_diam'),
+                               model.get('bore_diam') - 2*ag,
+                               model.stator.get('num_slots'),
+                               model.get('poles'),
+                               model.stator.get('nodedist') or 1.0))
 
                 model.set_num_slots_gen()
             if hasattr(model, 'magnet'):

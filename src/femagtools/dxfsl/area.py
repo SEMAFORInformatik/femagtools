@@ -1036,7 +1036,8 @@ class Area(object):
         if angle1 > np.pi / 2 and angle2 > np.pi / 2:
             if not np.isclose(angle1, np.pi*2):
                 alpha = normalise_angle(alpha + np.pi)
-
+        if alpha < 0:
+            alpha += np.pi
         logger.debug("phi of magnet %s is %s", self.identifier(), alpha)
         return alpha
 

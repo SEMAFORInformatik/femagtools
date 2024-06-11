@@ -3,7 +3,8 @@
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
 ## Release 1.7.0
-	- displ_stator_rotor: excentricity simulation
+	- displ_stator_rotor: eccentricity simulation and analysis
+	- improved force density plots (contour and surface)
 
 ## Release 1.6.4
 	- dxfsl: split option is deprecated

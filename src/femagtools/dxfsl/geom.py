@@ -3009,7 +3009,7 @@ class Geometry(object):
             max_size = windings_surface[0][0]
             for sz, w in windings_surface:
                 logger.debug("winding size = %s", sz)
-                if sz / max_size < 0.95:
+                if sz / max_size < 0.80:
                     w.set_type(AREA.TYPE_AIR)
                     if sz / max_size < 0.2:
                         windings_found -= 1

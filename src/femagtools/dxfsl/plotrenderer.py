@@ -8,6 +8,7 @@
 """
 import numpy as np
 from .geom import convex_hull
+from .functions import distance
 import logging
 try:
     import matplotlib
@@ -97,6 +98,26 @@ class PlotRenderer(object):
                                      color=color,
                                      linestyle=linestyle))
 
+    def arrow(self, start, end,
+              color='black',
+              shape='full',
+              linewidth=2):
+        x0, y0 = start
+        x1, y1 = end
+        length = distance(start, end)
+        xd = x1 - x0
+        yd = y1 - y0
+        head_width = length * 0.25
+        head_length = length * 0.2
+        pl.arrow(x0, y0, xd, yd,
+                 head_width=head_width,
+                 head_length=head_length,
+                 color=color,
+                 shape=shape,
+                 overhang=head_length/5,
+                 length_includes_head=True,
+                 linewidth=linewidth)
+
     def point(self, p, marker, color='blue'):
         pl.plot([p[0]], [p[1]], marker, color=color)
 
@@ -185,6 +206,7 @@ class PlotRenderer(object):
         draw_center = kwargs.get('draw_center', False)
         draw_inside = kwargs.get('draw_inside', False)
         draw_groups = kwargs.get('draw_groups', False)
+        draw_phi = kwargs.get('draw_phi', False)
         fill_areas = kwargs.get('fill_areas', False)
         write_id = kwargs.get('write_id', False)
         with_legend = kwargs.get('with_legend', True)
@@ -282,6 +304,9 @@ class PlotRenderer(object):
         if len(points) > 0:
             for p in points:
                 self.point(p, 'o', color='red')
+
+        if draw_phi:
+            geom.render_magnet_phi(self)
 
         if with_center and geom.center:
             self.point(geom.center, 'o', color='darkgreen')

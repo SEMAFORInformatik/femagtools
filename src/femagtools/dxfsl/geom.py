@@ -354,6 +354,9 @@ class Geometry(object):
         if adjust:
             self.adjust_all_points()
 
+        if delete and center:
+            self.set_minmax_radius()
+
         timer.stop("-- Geometry initialised in %0.4f seconds --")
         logger.debug("End Geometry(concatenated=%s, connected=%s)",
                      self.c_concat, self.c_connect)
@@ -1816,6 +1819,16 @@ class Geometry(object):
                         fill=False)
         return
 
+    def render_magnet_phi(self, renderer):
+        magnets = [a for a in self.list_of_areas()]
+        if not magnets:
+            return
+        arrow_len = [a.magnet_arrow_length() for a in magnets]
+        length = max(arrow_len)
+
+        for area in magnets:
+            area.render_magnet_phi(renderer, length)
+
     def get_points_in_iron(self):
         points = []
         for area in self.list_of_areas():
@@ -2973,7 +2986,7 @@ class Geometry(object):
         good_windings = [a for a in self.list_of_areas()
                          if a.is_type(AREA.TYPE_WINDINGS)]
 
-        logger.debug("return %s bad windings as good windings", len(good_windings))
+        logger.debug("return bad and ugly windings as %s good windings", len(good_windings))
         logger.debug("end of collect_windings")
         return good_windings
 
@@ -3006,8 +3019,8 @@ class Geometry(object):
         if windings_found > 1:
             windings_surface = [[w.surface, w] for w in windings]
             windings_surface.sort(reverse=True)
-            max_size = windings_surface[0][0]
-            for sz, w in windings_surface:
+            max_size, max_w = windings_surface[0]
+            for sz, w in windings_surface[1:]:
                 logger.debug("winding size = %s", sz)
                 if sz / max_size < 0.80:
                     w.set_type(AREA.TYPE_AIR)
@@ -3268,9 +3281,11 @@ class Geometry(object):
                 return
             self.check_shaft_area(shaft_areas[0])
 
-        magnets = [1 for a in self.list_of_areas()
+        magnets = [a for a in self.list_of_areas()
                    if a.is_magnet()]
         self.has_magnets = len(magnets) > 0
+        for m in magnets:
+            m.phi = m.get_magnet_orientation()
         logger.debug("%s magnets found in rotor", len(magnets))
 
         if not single:
@@ -3286,9 +3301,16 @@ class Geometry(object):
         magnet_areas = [a for a in self.list_of_areas()
                         if a.is_type(AREA.TYPE_MAGNET_RECT)]
         self.recalculate_magnet_group(magnet_areas)
+
+        magnet_areas = [a for a in self.list_of_areas()
+                        if a.is_type(AREA.TYPE_MAGNET_AIRGAP)]
+        for a in magnet_areas:
+            a.phi = a.get_magnet_orientation()
         logger.debug("end of recalculate_magnet_orientation")
 
     def recalculate_magnet_group(self, areas):
+        if not areas:
+            return
         elements = []
         for a in areas:
             elements += a.elements()
@@ -3301,11 +3323,11 @@ class Geometry(object):
         for group in group_list:
             if not group.is_magnet_rectangle():
                 logger.debug("Warning: group is not a rectangle")
+            group.set_type(AREA.TYPE_MAGNET_RECT)
             phi = group.get_magnet_orientation()
             for a in group.areas_of_group:
                 logger.debug("Replace phi %s by %s", a.phi, phi)
                 a.phi = phi
-        return
 
     def search_unknown_subregions(self):
         logger.debug("begin of search_unknown_subregions")

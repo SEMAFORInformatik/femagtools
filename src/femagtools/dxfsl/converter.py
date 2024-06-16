@@ -281,6 +281,7 @@ def convert(dxfile,
     journal = getJournal(name='converter', aktiv=debug_mode)
     journal.get_journal(input_file.name)
     journal.put_filename(str(input_file.resolve()))
+    journal.put('success', False)
 
     if part:
         if part[0] not in ('rotor', 'stator'):
@@ -551,6 +552,7 @@ def convert(dxfile,
                               with_nodes=False,
                               neighbors=False,
                               write_id=write_id,
+                              draw_phi=True,
                               fill_areas=True)
 
             p.render_elements(machine_outer.geom, Shape,
@@ -560,6 +562,7 @@ def convert(dxfile,
                               with_nodes=False,
                               neighbors=False,
                               write_id=write_id,
+                              draw_phi=True,
                               fill_areas=True)
         elif small_plots:
             #p.figure(figsize=(9, 5)).suptitle(input_file.name, fontsize=16)
@@ -570,6 +573,7 @@ def convert(dxfile,
                               with_nodes=False,
                               neighbors=False,
                               write_id=write_id,
+                              draw_phi=True,
                               fill_areas=True)
 
             p.render_elements(machine_outer.geom, Shape,
@@ -579,6 +583,7 @@ def convert(dxfile,
                               with_nodes=False,
                               neighbors=False,
                               write_id=write_id,
+                              draw_phi=True,
                               fill_areas=True)
 
         if show_plots or small_plots:
@@ -764,6 +769,7 @@ def convert(dxfile,
     conv['name'] = basename
     t = timer.stop("-- all done in %0.4f seconds --", info=True)
     journal.put('time_total', t)
+    journal.put('success', True)
     return conv
 
 

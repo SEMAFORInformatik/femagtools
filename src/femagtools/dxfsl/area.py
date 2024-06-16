@@ -58,6 +58,7 @@ class Area(object):
         self.close_to_startangle = False
         self.close_to_endangle = False
         self.mag_rectangle = False
+        self.mag_width = 0.0
         self.min_dist = 99999.0
         self.max_dist = 0.0
         self.min_x = None
@@ -899,6 +900,32 @@ class Area(object):
             renderer.fill(x, y, color, alpha)
         return True
 
+    def magnet_arrow_length(self):
+        if self.is_type(TYPE_MAGNET_AIRGAP):
+            return (self.max_dist - self.min_dist) * 0.9
+        if self.is_type(TYPE_MAGNET_RECT):
+            return self.mag_width
+        return 0.0
+
+    def render_magnet_phi(self, renderer, length):
+        if not self.is_magnet():
+            return
+        p1 = None
+        p2 = None
+        if self.is_type(TYPE_MAGNET_AIRGAP):
+            mid = middle_angle(self.min_angle, self.max_angle)
+            d = self.min_dist + (self.max_dist - self.min_dist) * 0.3
+            p1 = point((0.0, 0.0), d, mid)
+        if self.is_type(TYPE_MAGNET_RECT):
+            x = self.min_x + (self.max_x - self.min_x) / 2
+            y = self.min_y + (self.max_y - self.min_y) / 2
+            p1 = (x, y)
+        if p1 is None:
+            return
+        p2 = point(p1, length, self.phi)
+        renderer.arrow(p1, p2, linewidth=1.2)
+        return
+
     def render_legend(self, renderer):
         return renderer.new_legend_handle(self.color(),
                                           self.color_alpha(),
@@ -1022,28 +1049,35 @@ class Area(object):
         angles.sort(reverse=True)
         # calculate orientation (no rectangle check)
         l, alpha = angles[0]
-        if alpha < 0.0:
-            alpha += np.pi
-        alpha = alpha + np.pi/2
-        if alpha > np.pi:
-            alpha = alpha - np.pi
+        phi = normalise_angle(alpha + np.pi/2)
+        logger.debug("alpha = %s, phi = %s", alpha, phi)
 
         mid = middle_angle(self.min_angle, self.max_angle)
-        angle1 = alpha_angle(mid, alpha)
-        angle2 = alpha_angle(alpha, mid)
-        logger.debug("alpha=%s, mid=%s, angle1=%s, angle2=%s", alpha, mid, angle1, angle2)
+        angle = alpha_angle(mid, phi)
+        logger.debug("phi=%s, mid=%s, angle=%s", phi, mid, angle)
 
-        if angle1 > np.pi / 2 and angle2 > np.pi / 2:
-            if not np.isclose(angle1, np.pi*2):
-                alpha = normalise_angle(alpha + np.pi)
-        if alpha < 0:
-            alpha += np.pi
-        logger.debug("phi of magnet %s is %s", self.identifier(), alpha)
-        return alpha
+        if greater(angle, np.pi * 0.5, rtol=1e-5) and \
+           less(angle, np.pi * 1.5, rtol=1e-5):
+            phi = normalise_angle(phi + np.pi)
+
+        logger.debug("phi of magnet %s is %s", self.identifier(), phi)
+        return phi
 
     def get_magnet_orientation(self):
-        angles = self.get_magnet_line_angles()
-        return self.get_magnet_phi(angles)
+        logger.debug("get magnet orientation for %s", self.identifier())
+        if self.is_type(TYPE_MAGNET_RECT):
+            angles = self.get_magnet_line_angles()
+            return self.get_magnet_phi(angles)
+
+        if self.is_type(TYPE_MAGNET_AIRGAP):
+            if self.close_to_endangle:
+                if self.close_to_startangle:
+                    return middle_angle(self.min_angle, self.max_angle)
+                else:
+                    return self.max_angle
+            return middle_angle(self.min_angle, self.max_angle)
+
+        return 0.0
 
     def is_magnet_rectangle(self):
         angles = self.get_magnet_line_angles()
@@ -1094,20 +1128,12 @@ class Area(object):
             return False
 
         self.phi = self.get_magnet_phi(angles)
+        angles.sort()
+        l, alpha = angles[0]
+        self.mag_width = l
         logger.debug("Area %s is a rectangle with phi %s",
                      self.identifier(), self.phi)
         return True
-
-    def get_mag_orientation(self):
-        if self.mag_rectangle:
-            return self.get_magnet_orientation()
-
-        if self.close_to_endangle:
-            if self.close_to_startangle:
-                return middle_angle(self.min_angle, self.max_angle)
-            else:
-                return self.max_angle
-        return middle_angle(self.min_angle, self.max_angle)
 
     def around_windings(self, areas, geom):
         for a in areas:
@@ -1370,17 +1396,14 @@ class Area(object):
                 return self.type
 
             if air_alpha / alpha < 0.2:
-                self.phi = self.get_mag_orientation()
                 self.type = TYPE_MAGNET_OR_AIR  # air or magnet ?
                 logger.debug("***** air #1 (close to airgap)\n")
                 return self.type
 
             if air_alpha / alpha > 0.6:
-                self.phi = self.get_mag_orientation()
                 self.type = TYPE_MAGNET_AIRGAP  # magnet (no rectangle)
                 logger.debug("***** magnet (close to airgap)\n")
             else:
-                self.phi = self.get_mag_orientation()
                 self.type = TYPE_MAGNET_OR_IRON  # iron or magnet ?
                 logger.debug("***** iron or magnet(close to airgap)\n")
             return self.type

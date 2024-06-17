@@ -81,6 +81,7 @@ class Area(object):
         global area_number
         area_number += 1
         self.id = area_number
+        self.is_child = False
         self.areas_inside = {}
         self.areas_of_group = []
 
@@ -431,12 +432,14 @@ class Area(object):
                 d = distance(p1, p2)
                 gap_list.append((d, (p1, p2), dist_id, a.get_id()))
 
-        d, p1, p2 = a.get_nearest_point(center, radius, rightangle)
-        if p1:
-            gap_list.append((d, (p1, p2), dist_id, a.get_id()))
-        d, p1, p2 = a.get_nearest_point(center, radius, leftangle)
-        if p1:
-            gap_list.append((d, (p1, p2), dist_id, a.get_id()))
+        if rightangle is not None:
+            d, p1, p2 = a.get_nearest_point(center, radius, rightangle)
+            if p1:
+                gap_list.append((d, (p1, p2), dist_id, a.get_id()))
+        if leftangle is not None:
+            d, p1, p2 = a.get_nearest_point(center, radius, leftangle)
+            if p1:
+                gap_list.append((d, (p1, p2), dist_id, a.get_id()))
         if not gap_list:
             return []
         gap_list.sort()
@@ -1552,74 +1555,6 @@ class Area(object):
         for id, a in self.areas_inside.items():
             for i in a.nested_areas_inside():
                 yield i
-
-    def crunch_area(self, geom):
-        n1_prev = None
-        e_prev = None
-        logger.debug("crunch area %s", self.identifier())
-
-        if self.is_circle():
-            return 0
-
-        c = 0
-        for n1, n2, e in self.list_of_elements():
-            if e_prev is not None:
-                if len([nbr for nbr in geom.g.neighbors(n1)]) == 2:
-                    e_new = e_prev.concatenate(n1_prev, n2, e)
-                    if e_new is not None:
-                        e_prev_dict = geom.g.get_edge_data(n1_prev, n1)
-                        e_dict = geom.g.get_edge_data(n1, n2)
-
-                        logger.debug("--> remove from %s to %s [%s, %s, %s]",
-                                     n1_prev,
-                                     n1,
-                                     e_prev_dict[0],
-                                     e_prev_dict[1],
-                                     e_prev_dict[2])
-                        logger.debug("    remove %s", e_prev)
-                        geom.remove_edge(e_prev)
-
-                        logger.debug("--> remove from %s to %s [%s, %s, %s]",
-                                     n1,
-                                     n2,
-                                     e_dict[0],
-                                     e_dict[1],
-                                     e_dict[2])
-                        logger.debug("    remove %s", e)
-                        if e.get_node_number(n1) == 1:
-                            flag1 = e_dict[1]
-                            flag2 = e_dict[2]
-                        else:
-                            flag1 = e_dict[2]
-                            flag2 = e_dict[1]
-                        geom.remove_edge(e)
-
-                        logger.debug("--> add from %s to %s",
-                                     n1_prev,
-                                     n2)
-                        logger.debug("    add %s", e_new)
-                        geom.add_edge(n1_prev, n2, e_new)
-
-                        e_new_dict = geom.g.get_edge_data(n1_prev, n2)
-                        e_new_dict[0] = True
-                        if e_new.get_node_number(n1_prev) == 1:
-                            e_new_dict[1] = flag1
-                            e_new_dict[2] = flag2
-                        else:
-                            e_new_dict[1] = flag2
-                            e_new_dict[2] = flag1
-
-                        logger.debug("    new dict: [%s, %s, %s]",
-                                     e_new_dict[0],
-                                     e_new_dict[1],
-                                     e_new_dict[2])
-                        e_prev = e_new
-                        c += 1
-                        continue
-
-            n1_prev = n1
-            e_prev = e
-        return c
 
     def __str__(self):
         return "Area {}\n".format(self.id) + \

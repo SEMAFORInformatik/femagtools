@@ -33,7 +33,7 @@ def disable_logging():
     logger.debug("Logging level %s disabled", original_log_level)
 
     # Set the log level to a higher level, e.g., WARNING or CRITICAL
-    logging.disable(logging.CRITICAL)
+    logging.disable(logging.ERROR)
 
 
 def enable_logging():
@@ -338,7 +338,11 @@ class EdgeInfo(object):
         return True  # two lines
 
     def arc_line_direction_lefthand(self, start_edge, line_edge, builder):
-        logger.debug("begin of arc_line_direction_lefthand")
+        logger.info("begin of arc_line_direction_lefthand")
+        if not self.is_arc():
+            logger.critical("FATAL: unexpected %s at position %s", self.classname(), self.n1)
+            sys.exit(1)
+
         assert(self.is_arc())
         assert(line_edge.is_line())
         start_edge.log_edge(":::: start")
@@ -844,10 +848,12 @@ class AreaBuilder(object):
         logger.debug("=== Area Group List ===")
         self.set_edge_attributes()
         errors = 0
+        disable_logging()
         for k in group_keys:
             if not self.build_group_area(group_list[k]):
                 logger.warning("Creation of an areagroup failed")
                 errors += 1
+        enable_logging()
 
         t = timer.stop("areagroups created in %0.4f seconds")
         logger.debug("end of create_area_groups: %s groups created",

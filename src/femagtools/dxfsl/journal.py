@@ -102,6 +102,11 @@ class Journal(object):
         if self.get_total('appendices_deleted') > 0:
             self.put_warning("Problem with appendices")
 
+    def set(self, name, val):
+        if not self.data:
+            return
+        self.data[name] = val
+
     def put(self, name, val):
         if not self.data:
             return

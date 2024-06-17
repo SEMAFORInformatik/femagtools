@@ -634,12 +634,12 @@ def convert(dxfile,
                                       params.get('tot_num_slot'),
                                       params.get('num_poles'), 1)
 
-            if machine_inner.geom.is_rotor():
-                conv['fsl_magnet'] = inner
-                conv['fsl_stator'] = outer
+            if params['external_rotor']:
+                conv['fsl_magnet'] = outer
+                conv['fsl_stator'] = inner
             else:
                 conv['fsl_magnet'] = inner
-                conv['fsl_rotor'] = outer
+                conv['fsl_stator'] = outer
 
             conv['fsl'] = fslrenderer.render_main(
                 machine,
@@ -802,7 +802,7 @@ def create_femag_parameters(m_inner, m_outer, nodedist=1):
     params['num_sl_gen'] = num_sl_gen
     params['num_poles'] = num_poles
     params['nodedist'] = nodedist
-
+    params['external_rotor'] = parts_inner > parts_outer
     params['dy1'] = 2*geom_outer.max_radius
     params['da1'] = 2*geom_outer.min_radius
     params['da2'] = 2*geom_inner.max_radius

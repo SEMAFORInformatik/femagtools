@@ -486,6 +486,7 @@ class Builder:
         model.set_value('bore_diam', conv.get('da1') * 1e-3)
         model.set_value('inner_diam', conv.get('dy2') * 1e-3)
         model.set_value('airgap', (conv.get('da1') - conv.get('da2'))/2/1e3)
+        model.set_value('external_rotor', conv.get('external_rotor'))
 
         if not hasattr(model, 'stator'):
             setattr(model, 'stator', {})

@@ -329,7 +329,7 @@ class FslRenderer(object):
                 self.content += [
                     'r, phi = c2pr(m.xcoil_1, m.ycoil_1)',
                     'm.xcoil_2, m.ycoil_2 = pr2c(r, {}*2.0 - phi)'.format(geom.alfa)]
-            self.content.append('m.wdg_location  = 1.0 -- stator\n')
+            self.content.append('m.wdg_location  = 1 -- stator\n')
 
         if num_magnets > 0:
             self.content.append('mag_exists   = {}'.
@@ -498,6 +498,13 @@ class FslRenderer(object):
             logger.warning("ERROR: Rotor or Stator missing")
             return []
 
+        if params['external_rotor']:
+            stator = inner
+            rotor = outer
+        else:
+            stator = outer
+            rotor = inner
+
         num_layers = min(m_inner.num_of_layers() +
                          m_outer.num_of_layers(),
                          2)
@@ -534,11 +541,11 @@ class FslRenderer(object):
             "mcvkey_yoke = 'dummy'",
             "mcvkey_shaft = 'dummy'",
             "ur = 1000.0",
-            "ndt(agndst)"] + outer + [
+            "ndt(agndst)"] + stator + [
                 "mcvkey_teeth = 'dummy'",
                 "mcvkey_yoke = 'dummy'",
                 "mcvkey_shaft = 'dummy'",
-                "ndt(agndst)"] + inner + [
+                "ndt(agndst)"] + rotor + [
                     '-- airgap',
                     'ndt(agndst)',
                     'r1 = m.fc_radius - ag/6',

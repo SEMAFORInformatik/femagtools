@@ -26,6 +26,7 @@ def plot_geom(doit, plt, geom, title="Plot", areas=True):
     logger.info("Prepare Plot %s", title)
     plt.render_elements(geom, Shape,
                         draw_inside=areas,
+                        draw_groups=False,
                         title=title,
                         show=True,
                         with_corners=True,
@@ -271,9 +272,13 @@ def convert(dxfile,
     conv = {}
 
     input_file = Path(dxfile)
+    if not input_file.is_file():
+        logger.error("File %s is not available", input_file)
+        sys.exit(1)
+
     basename = input_file.stem
     if part:
-        logger.info("***** start processing %s *****", basename)
+        logger.info("***** start processing %s (%s) *****", basename, part)
     else:
         logger.info("***** start processing %s *****", basename)
     timer = Timer(start_it=True)
@@ -281,7 +286,8 @@ def convert(dxfile,
     journal = getJournal(name='converter', aktiv=debug_mode)
     journal.get_journal(input_file.name)
     journal.put_filename(str(input_file.resolve()))
-    journal.put('success', False)
+    journal.set('success', False)
+    journal.write_journal()
 
     if part:
         if part[0] not in ('rotor', 'stator'):
@@ -765,11 +771,12 @@ def convert(dxfile,
             fslrenderer = FslRenderer(basename)
             conv['fsl'] = fslrenderer.render(machine, inner, outer)
 
-    conv.update(params)
+    if params is not None:
+        conv.update(params)
     conv['name'] = basename
     t = timer.stop("-- all done in %0.4f seconds --", info=True)
     journal.put('time_total', t)
-    journal.put('success', True)
+    journal.set('success', True)
     return conv
 
 

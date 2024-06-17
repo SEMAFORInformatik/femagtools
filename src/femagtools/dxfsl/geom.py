@@ -2459,6 +2459,49 @@ class Geometry(object):
         #        logger.info(" ++ %s", id)
         logger.debug("end set_areas_inside_for_all_areas")
 
+    def set_groups_inside_for_all_areas(self):
+        logger.debug("begin set_groups_inside_for_all_areas")
+
+        groups_inside = {}
+        groups = {}
+        areas_outside = []
+        for area in self.list_of_areas():
+            grouplist = [a for a in self.areagroup_list
+                         if area.is_inside(a, self)]
+            if not grouplist:
+                continue
+            groups_inside = {g.id: g for g in grouplist}
+            area.areas_inside = groups_inside
+            areas_outside.append(area)
+            for g in  grouplist:
+                alist = groups.get(g.id, [])
+                alist.append(area)
+                groups[g.id] = alist
+
+        outside_id = [a.id for a in areas_outside]
+        logger.debug("Areas outside: %s", outside_id)
+
+        for id in groups.keys():
+            if len(groups[id]) > 1:
+                logger.warning("Attention: nested groups of areas")
+                self.journal.put("warning", "nested groups of areas")
+                areas = groups[id]
+                main_area = areas[0]
+                main_size = main_area.area_size()
+                for a in areas[1:]:
+                    sz = a.area_size()
+                    if sz < main_size:
+                        main_area = a
+                        main_size = sz
+                assert(main_area is not None)
+                main_area.is_child = True
+                for area in areas:
+                    if area.id != main_area.id:
+                        del area.areas_inside[id]
+
+        logger.debug("end set_areas_inside_for_all_areas")
+        return areas_outside
+
     def get_minmax_magnet(self):
         logger.debug("get_minmax_magnet")
         maglist = [a for a in self.list_of_areas() if a.is_magnet()]
@@ -2472,21 +2515,26 @@ class Geometry(object):
     def create_auxiliary_lines(self, rightangle, leftangle):
         logger.debug("begin of create_auxiliary_lines")
         timer = Timer(start_it=True)
-
-        # for future (next release)
-        # area_list = self.list_of_areas()
-        # builder = AreaBuilder(geom=self)
-        # builder.create_area_groups(area_list)
-        # self.areagroup_list = builder.area_list
-
-        self.set_areas_inside_for_all_areas()
-
-        logger.debug("-> start create_auxiliary_lines")
-
         done = False
-        for area in self.list_of_areas():
-            if self.create_aux_lines(area, rightangle, leftangle):
-                done = True
+
+        if True:  # new style
+            logger.debug("-> start create_auxiliary_lines")
+            area_list = self.list_of_areas()
+            builder = AreaBuilder(geom=self)
+            builder.create_area_groups(area_list)
+            self.areagroup_list = builder.area_list
+            area_list = self.set_groups_inside_for_all_areas()
+            for area in area_list:
+                if self.create_aux_lines(area, rightangle, leftangle):
+                    done = True
+        else:
+            logger.debug("-> start create_auxiliary_lines")
+            self.set_areas_inside_for_all_areas()
+            done = False
+            for area in self.list_of_areas():
+                if self.create_aux_lines(area, rightangle, leftangle):
+                    done = True
+
         t = timer.stop("-- auxiliary lines in %0.4f seconds --")
         self.journal.put('time_auxiliary_lines', t)
         logger.debug("end of create_auxiliary_lines")
@@ -2505,6 +2553,10 @@ class Geometry(object):
 
         aux_color = 'red'
         aux_linestyle = 'dotted'
+        if area.is_child:
+            logger.debug("Area %s is a child of another nested area", area.id)
+            rightangle = None
+            leftangle = None
 
         areas_border = {a.get_id(): a for a in areas_inside
                         if area.has_connection(self, a, ndec)}
@@ -3319,7 +3371,8 @@ class Geometry(object):
         if builder.create_area_groups(areas):
             return  # bad
         group_list = builder.area_list
-        self.areagroup_list = group_list
+        # for debugging
+        # self.areagroup_list = group_list
         for group in group_list:
             if not group.is_magnet_rectangle():
                 logger.debug("Warning: group is not a rectangle")

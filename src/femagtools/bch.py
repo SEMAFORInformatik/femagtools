@@ -296,7 +296,7 @@ class Reader:
     def __findNums(self, l):
         rec = self._numPattern.findall(l)
         if 3 * '*' in l:  # min 3 '*'
-            li = re.sub(r'[\*]+', str(np.NaN), l)
+            li = re.sub(r'[\*]+', str(np.nan), l)
             rec = self._numPatternNaN.findall(li)
             logger.debug("Numbers with **** In: %s", l)
             logger.debug("Out: %s", li)

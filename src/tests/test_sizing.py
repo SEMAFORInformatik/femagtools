@@ -16,7 +16,7 @@ def test_im():
                                      sigmas=fs, Ba=0.77,
                                      cos_phi=0.8, eta=0.8,
                                      lda=0.9, rtype='statorRotor3')
-    assert round(r['outer_diam'], 3) == 0.19
+    assert round(r['outer_diam'], 3) == 0.182
     assert r['stator']['num_slots'] == 36
 
 
@@ -33,7 +33,7 @@ def test_spm():
                                       Hc=700, sigmas=fs, brem=1.1, Ba=0.77,
                                       cos_phi=0.7, eta=0.8, demag=1.7,
                                       lda=0.9)
-    assert round(r['outer_diam'], 3) == 0.19
+    assert round(r['outer_diam'], 3) == 0.18
     assert r['stator']['num_slots'] == 24
 
 

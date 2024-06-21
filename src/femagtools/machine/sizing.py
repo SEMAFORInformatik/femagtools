@@ -310,7 +310,7 @@ def get_stator_dimensions(par, slots=[]):
     bns = taus*(Da+2*hs1) - bds
 
     hns = (-bns + np.sqrt(bns**2 + 4*ans*np.tan(taus)))/2/np.tan(taus)
-    hys = psi1/2/lfe*By
+    hys = psi1/2/lfe/By
 
     # airgap and yoke diameter
     airgap = par['airgap']

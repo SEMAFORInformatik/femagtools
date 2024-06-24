@@ -207,6 +207,7 @@ class PlotRenderer(object):
         draw_inside = kwargs.get('draw_inside', False)
         draw_groups = kwargs.get('draw_groups', False)
         draw_phi = kwargs.get('draw_phi', False)
+        critical = kwargs.get('critical', False)
         fill_areas = kwargs.get('fill_areas', False)
         write_id = kwargs.get('write_id', False)
         with_legend = kwargs.get('with_legend', True)
@@ -307,6 +308,9 @@ class PlotRenderer(object):
 
         if draw_phi:
             geom.render_magnet_phi(self)
+
+        if critical:
+            geom.render_critical(self)
 
         if with_center and geom.center:
             self.point(geom.center, 'o', color='darkgreen')

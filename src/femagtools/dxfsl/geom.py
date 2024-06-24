@@ -283,6 +283,7 @@ class Geometry(object):
         self.has_magnets = False
         self.journal = getJournal()
         self.area_errors = 0
+        self.critical_points = []
         i = 0
 
         logger.debug("Geometry(split=%s, concat=%s, connect=%s, delete=%s, adjust=%s, main=%s,",
@@ -1829,6 +1830,10 @@ class Geometry(object):
         for area in magnets:
             area.render_magnet_phi(renderer, length)
 
+    def render_critical(self, renderer):
+        for e in self.critical_points:
+            e.render(renderer, 'darkred')
+
     def get_points_in_iron(self):
         points = []
         for area in self.list_of_areas():
@@ -2913,7 +2918,7 @@ class Geometry(object):
         edges = self.search_tiny_elements(mindist)
         if not edges:
             logger.debug("-- no tiny elements found")
-            return
+            return 0
 
         deleted = 0
         for edge in edges:
@@ -2953,8 +2958,27 @@ class Geometry(object):
 
         if deleted:
             logger.debug("%s tiny elements deleted", deleted)
+            self.journal.put("tiny_elements_deleted", deleted)
         logger.debug("end of delete_tiny_elements")
-        return
+        return deleted
+
+    def search_critical_elements(self, mindist):
+        for n in self.g.nodes():
+            nbrs = self.get_neighbors(n)
+            if len(nbrs) < 3:
+                continue
+            critical_point = False
+            critical_dist = 9999
+            for nbr in nbrs:
+                e = self.get_edge_element(n, nbr)
+                if e.is_tiny(mindist):
+                    critical_point = True
+                    critical_dist = min(critical_dist, e.length())
+            if critical_point:
+                logger.debug("Warning: maybe critical point %s", n)
+                self.journal.put("maybe_critical_points", (n, critical_dist))
+                c = Circle(Element(center=n, radius=1))
+                self.critical_points.append(c)
 
     def check_shaft_area(self, shaft):
         for a in self.list_of_areas():

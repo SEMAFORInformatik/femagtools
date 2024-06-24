@@ -1069,7 +1069,10 @@ class Machine(object):
         return self.geom.has_magnets
 
     def delete_tiny_elements(self, mindist):
-        self.geom.delete_tiny_elements(mindist)
+        return self.geom.delete_tiny_elements(mindist)
+
+    def search_critical_elements(self, mindist):
+        self.geom.search_critical_elements(mindist)
 
     def create_arc(self, radius,
                    color='red', linestyle='dotted',

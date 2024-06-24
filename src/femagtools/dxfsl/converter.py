@@ -27,6 +27,8 @@ def plot_geom(doit, plt, geom, title="Plot", areas=True):
     plt.render_elements(geom, Shape,
                         draw_inside=areas,
                         draw_groups=False,
+                        draw_phi=True,
+                        critical=True,
                         title=title,
                         show=True,
                         with_corners=True,
@@ -166,6 +168,7 @@ def build_machine_rotor(machine, inner, mindist, plt, single=False):
     if machine.is_mirrored():
         logger.debug("Rotor is mirrored")
         machine_temp = machine.undo_mirror()
+        machine_temp.delete_tiny_elements(mindist)
         machine_temp.geom.set_rotor()
         machine_temp.search_rotor_subregions(single=single)
     else:
@@ -199,7 +202,6 @@ def build_machine_rotor(machine, inner, mindist, plt, single=False):
         machine_temp.rebuild_subregions(single=single)
 
     machine_temp.geom.recalculate_magnet_orientation()
-    machine_temp.delete_tiny_elements(mindist)
     if inner:
         machine_temp.create_inner_corner_areas()
 
@@ -221,6 +223,7 @@ def build_machine_stator(machine, inner, mindist, plt, single=False):
     if machine.has_mirrored_windings():
         logger.debug("undo mirrored windings")
         machine_temp = machine.undo_mirror()
+        machine_temp.delete_tiny_elements(mindist)
         machine_temp.geom.set_stator()
         machine_temp.search_stator_subregions(single=single)
         machine_temp.create_mirror_lines_outside_windings()
@@ -229,7 +232,6 @@ def build_machine_stator(machine, inner, mindist, plt, single=False):
     if machine_temp.create_auxiliary_lines():
         machine_temp.rebuild_subregions(single=single)
 
-    machine_temp.delete_tiny_elements(mindist)
     if inner:
         machine_temp.create_inner_corner_areas()
 
@@ -246,7 +248,7 @@ def build_machine_stator(machine, inner, mindist, plt, single=False):
 def convert(dxfile,
             rtol=1e-04,
             atol=1e-03,
-            mindist=0.0,
+            mindist=0.01,
             symtol=0.001,
             sympart=0,
             split=False,
@@ -533,6 +535,9 @@ def convert(dxfile,
                                                  p)
         machine_inner.sync_with_counterpart(machine_outer)
 
+        machine_inner.search_critical_elements(mindist)
+        machine_outer.search_critical_elements(mindist)
+
         logger.info("***** END of work: %s *****", basename)
 
         if machine_inner.geom.is_rotor():
@@ -680,6 +685,7 @@ def convert(dxfile,
                                   rows=3,  # rows
                                   cols=2,  # cols
                                   num=3)   # start num
+        machine.delete_tiny_elements(mindist)
 
         if da > 0.0 or dy > 0.0:
             if inner:
@@ -715,7 +721,6 @@ def convert(dxfile,
         else:
             machine.search_subregions(single=True)
 
-        machine.delete_tiny_elements(mindist)
         machine.create_inner_corner_areas()
 
         logger.info("***** END of work: %s *****", basename)
@@ -733,6 +738,7 @@ def convert(dxfile,
                               with_nodes=False,
                               neighbors=False,
                               write_id=write_id,
+                              draw_phi=True,
                               fill_areas=True)
         elif small_plots:
             #p.figure().suptitle(input_file.name, fontsize=16)
@@ -743,6 +749,7 @@ def convert(dxfile,
                               with_nodes=False,
                               neighbors=False,
                               write_id=write_id,
+                              draw_phi=True,
                               fill_areas=True)
 
         if show_plots or small_plots:

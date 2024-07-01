@@ -338,9 +338,9 @@ class SynchronousMachine(object):
     def torquemax(self, i1, iex):
         "returns maximum torque of i1, iex (nan if i1 out of range)"
         def torquei1b(b):
-            return -self.torque_iqd(*iqd(b[0], i1), iex)
+            return self.torque_iqd(*iqd(b[0], i1), iex)
         res = so.minimize(torquei1b, (0,))
-        return -res.fun
+        return res.fun
 
     def torquemin(self, i1, iex):
         "returns minimum torque of i1, iex (nan if i1 out of range)"
@@ -576,7 +576,7 @@ class SynchronousMachine(object):
         i1max: max. phase current (RMS)
         """
         if kwargs.get('i1max', 0):
-                w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
+            w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
         try:
             iq, id, iex = self.iqd_torque(T)
         except ValueError:

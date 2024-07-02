@@ -102,6 +102,8 @@ def parident(workdir, engine, machine,
                 num_cur_steps=kwargs.get('num_cur_steps', 5),
                 num_beta_steps=kwargs.get('num_beta_steps', 13),
                 num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
+                skew_angle=kwargs.get('skew_angle', 0.0),
+                num_skew_steps=kwargs.get('num_skew_steps', 0.0),
                 period_frac=kwargs.get('period_frac', 6),
                 speed=kwargs.get('speed', 50))
 

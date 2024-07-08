@@ -215,7 +215,7 @@ class FslRenderer(object):
                 'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
                 'nc_line(x2, y2, x3, y3, 0)',
                 'x0, y0 = pr2c(r1 - hair/2, math.pi/parts)',
-                'create_mesh_se(x0, y0)',
+                'create_mesh_se((x0+x2+x3)/3, (y0+y2+y3)/3)',   # see gt-femag/femag#684
                 '\n',
                 'outer_da_start = {}'.format(
                     geom.dist_start_min_corner()),

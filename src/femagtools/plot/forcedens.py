@@ -8,7 +8,17 @@
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import colormaps
+try:
+    from matplotlib import colormaps
+    cmap_viridis = colormaps['viridis']
+    cmap_jet = colormaps['jet']
+    cmap_YlOrBr = colormaps['YlOrBr']
+except:  # older matplotlib
+    from matplotlib import cm
+    cmap_viridis = cm.viridis
+    cmap_jet = cm.jet
+    cmap_YlOrBr = cm.YlOrBr
+
 
 def _create_3d_axis():
     """creates a subplot with 3d projection if one does not already exist"""
@@ -24,7 +34,7 @@ def _create_3d_axis():
         plt.subplot(111, projection='3d')
 
 
-def _plot_surface(ax, x, y, z, labels, azim=None, cmap=colormaps['viridis']):
+def _plot_surface(ax, x, y, z, labels, azim=None, cmap=cmap_viridis):
     """helper function for surface plots"""
     # ax.tick_params(axis='both', which='major', pad=-3)
     assert np.size(x) > 1 and np.size(y) > 1 and np.size(z) > 1
@@ -60,7 +70,7 @@ def forcedens(title, pos, fdens, ax=0):
     ax.set_ylabel('Force Density / kN/m²')
 
 
-def forcedens_surface(fdens, attr='FN', ax=0, cmap=colormaps['jet']):
+def forcedens_surface(fdens, attr='FN', ax=0, cmap=cmap_jet):
     if ax == 0:
         _create_3d_axis()
         ax = plt.gca()
@@ -72,7 +82,7 @@ def forcedens_surface(fdens, attr='FN', ax=0, cmap=colormaps['jet']):
                   ('Rotor pos/°', 'Pos/°', f'{attr} / kN/m²'),
                   cmap=cmap)
 
-def forcedens_contour(fdens, attr='FN', ax=0, cmap=colormaps['jet']):
+def forcedens_contour(fdens, attr='FN', ax=0, cmap=cmap_jet):
     if ax == 0:
         ax = plt.gca()
     z = 1e-3*np.array(getattr(fdens, attr))
@@ -91,7 +101,7 @@ def forcedens_contour(fdens, attr='FN', ax=0, cmap=colormaps['jet']):
     cbar.ax.set_ylabel('kN/m²')
 
 def forcedens_fft(title, fdens, harmmax=(), #(200, 40),
-                  cmap=colormaps['YlOrBr'],
+                  cmap=cmap_YlOrBr,
                   ax=0):
     """plot force densities FFT
     Args:

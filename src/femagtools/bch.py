@@ -70,7 +70,7 @@ def sttylosses(losses):
         except KeyError:
             pass
         return d
-
+    
     if sregs == {'StYoke', 'StTeeth'}:
         return hysteddy('StYoke', 'StTeeth', losses)
     if sregs == {'StJo', 'StZa'}:
@@ -94,6 +94,21 @@ def sttylosses(losses):
             pass
         return l
     return {}
+
+def losses_mapping_external_rotor(losses): 
+    styoke = 'rotor'
+    rotor = 'Iron'    
+    d = {}
+    try:
+        d['styoke_hyst'] = losses[styoke+'_hyst']
+        d['rotor_hyst'] = losses[rotor+'_hyst']
+        d['styoke_eddy'] = losses[styoke+'_eddy']
+        d['rotor_eddy'] = losses[rotor+'_eddy']
+        d['styoke_excess'] = losses[styoke+'_excess']
+        d['rotor_excess'] = losses[rotor+'_excess']
+    except KeyError:
+        pass
+    return d
 
 
 def _readSections(f):
@@ -1150,6 +1165,10 @@ class Reader:
         m = []
         subregs = [name.split()[-1]
                    for name in content[2].split('\t') if name][2:]
+        # outer rotor motor
+        if 'Iron' in subregs and \
+            'Rotor' in subregs: 
+            self.external_rotor = True
         logger.info("Stator Subregions: %s", subregs)
         speed = float(content[0].split()[-1])/60.
         logger.info('losses for speed %f', speed)
@@ -1209,7 +1228,10 @@ class Reader:
                                          (nrows, ncols)).T.tolist()
                            for k, v in zip(cols, m[2:])})
         ls['speed'] = speed
-        ls.update(sttylosses(ls))
+        if self.external_rotor: 
+            ls.update(losses_mapping_external_rotor(ls))
+        else: 
+            ls.update(sttylosses(ls))
         if self.ldq:
             self.ldq['losses'] = ls
         elif self.psidq:

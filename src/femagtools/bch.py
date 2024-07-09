@@ -1486,6 +1486,10 @@ class Reader:
     def __read_losses(self, content):
         losses = {}
         i = 0
+        # check if external rotor 
+        if self.weights[0][1] == 0.0 and \
+            self.weights[0][-1] > 0: 
+            self.external_rotor = True
         # find results for angle:
         while True:
             try:
@@ -1543,8 +1547,12 @@ class Reader:
                     losses['total'] += losses['staza']+losses['stajo']
                 elif len(rec) == 1:
                     t = l.split(':')[-1].strip()
-                    if t == 'Iron':
-                        losses['staza'] = floatnan(rec[0])
+                    if t == 'Iron': 
+                        if self.external_rotor: 
+                            losses['rotfe'] = floatnan(rec[0])
+                            losses['total'] += losses['rotfe']
+                        else:
+                            losses['staza'] = floatnan(rec[0])
                     else:
                         losses['stajo'] += floatnan(rec[0])
                     losses['total'] += losses['staza']+losses['stajo']
@@ -1552,11 +1560,17 @@ class Reader:
                 continue
 
             if _rotloss.search(l):
+                if l.find('StZa') > -1: 
+                    self.external_rotor = True
                 rec = self.__findNums(content[i+2])
                 if len(rec) == 1:
-                    rotfe = floatnan(rec[0])
-                    losses['rotfe'] += rotfe
-                    losses['total'] += rotfe
+                    if self.external_rotor: 
+                        losses['staza'] = floatnan(rec[0])
+                        losses['total'] += losses['staza']
+                    else: 
+                        rotfe = floatnan(rec[0])
+                        losses['rotfe'] += rotfe
+                        losses['total'] += rotfe
                 i += 3
                 continue
 
@@ -1585,6 +1599,10 @@ class Reader:
                         losses['total'] += losses['staza']+losses['stajo']
 
                     if content[i+1].split() == ['rotf', '----']:
+                        losses['rotfe'] = sum([floatnan(x) for x in rec])
+                        losses['total'] += losses['rotfe']
+                    
+                    if content[i+1].split() == ['Iron', '----']: # external rotor
                         losses['rotfe'] = sum([floatnan(x) for x in rec])
                         losses['total'] += losses['rotfe']
                 i += 4
@@ -1644,7 +1662,10 @@ class Reader:
                     l.find('RoZa') > -1:
                 k = 'staza'
             elif l.find('Iron') > -1 and l.find('Stator') > -1:
-                k = 'staza'
+                if self.external_rotor:
+                    k = 'rotor'
+                else:
+                    k = 'staza'
             elif l.find('Iron') > -1:
                 if self.external_rotor:
                     k = 'staza'

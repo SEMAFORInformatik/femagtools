@@ -569,10 +569,9 @@ class PmRelMachine(object):
             if abs(du) > 0.1:
                 logger.debug('oops? iqd_imax_umax one more torque reduction')
                 if with_tmech:
-                    iq, id = self.iqd_tmech(torque, w1/2/np.pi/self.p,
-                                            iq, id)[:2]
+                    iq, id = self.iqd_tmech_umax(torque, w1, u1max)[:2]
                 else:
-                    iq, id = self.iqd_torque(torque)[:2]
+                    iq, id = self.iqd_torque_umax(torque, w1, u1max)[:2]
         if with_mtpv:
             try:
                 if with_tmech:

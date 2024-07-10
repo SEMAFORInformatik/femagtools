@@ -16,7 +16,7 @@ PM_DEFAULTS = dict(
     eta=0.92,  # efficiency
     cos_phi=0.95,  # power factor
     m=3,  # number of phases
-    ui_u=0.62,  # U ind / U
+    ui_u=0.64,  # U ind / U
     lda=1.33,  # length/taup ratio 0.5 .. sqrt(p)
     J=3.8e6,  # current density 3 .. 6 A/mm²
     sigmas=17e3,  # shear force 10 .. 45 kN/m2
@@ -27,10 +27,10 @@ PM_DEFAULTS = dict(
     mag_width=0.8,  # rel magnet width 0.6 .. 1
     Hc=700,  # max. coercitive field strength, 500 .. 900 kA/m
     brem=1.15,  # remanence 0.3 .. 1.3 T
-    demag=1.5,  # safety factor for demagnetisation
+    demag=6,  # safety factor for demagnetisation (nom current)
     external_rotor=False,
     coil_span=0,
-    hfe=1e-3  # iron height between magnet and airgap (IPM)
+    hfe=1.5e-3  # iron height between magnet and airgap (IPM)
 )
 """default sizing parameters for PM"""
 
@@ -204,18 +204,22 @@ def _stator_slots(par, slots):
         par['Q1'] = Q1
         r = get_stator_dimensions(par)
         hb = r['hns']/r['bns']
+        logging.debug(f"Q1 {Q1} hs/bs {hb}")
         if hb > 5:
             break
-        if hb > 3:
-            q.append((Q1, Q1//np.gcd(Q1, p), abs(4-hb), r['kw']))
+        if hb > 2.5:
+            # ideal height/width ratio: 3.2
+            q.append((Q1, Q1//np.gcd(Q1, p), abs(3.2-hb), r['kw']))
 
     if q:
         qhbmin = np.argmin(q, axis=0)
-        logger.debug("q %s", q)
-        # check sim factor, height/width ratio, winding factor
+        logger.debug("q %s qhbmin %s", q, qhbmin)
+         # check sim factor, height/width ratio
         if qhbmin[1] == len(q)-1:
-            return q[qhbmin[1]][0]
+            # last has smallest sim factor
+             return q[qhbmin[1]][0]
         elif q[qhbmin[1]][2] < q[qhbmin[1]+1][2]:
+            # select ideal height/width ratio (3.2)
             return q[qhbmin[1]][0]
         return q[qhbmin[1]+1][0]
     return slotset[0]
@@ -282,7 +286,7 @@ def get_stator_dimensions(par, slots=[]):
     kw = kwz * kws
 
     # flux density amplitude of base harmonic
-    if 'brem' in par:
+    if 'mag_width' in par:
         mag_width = par['mag_width']
         Bd1 = 4.0/np.pi*Ba*np.sin(np.pi/2.0*mag_width)
     else:
@@ -295,7 +299,7 @@ def get_stator_dimensions(par, slots=[]):
 
     # number of turns per phase, first estimation
     Ui = Ui_U * u1nom
-    N = round(np.sqrt(2)*Ui/(2*np.pi*f1nom*kw*psi1), 1)
+    N = np.sqrt(2)*Ui/(2*np.pi*f1nom*kw*psi1)
 
     # coils per phase and pole
     # q = Q/2/p/m
@@ -305,8 +309,11 @@ def get_stator_dimensions(par, slots=[]):
     # feasible number of turns per coil...
     ncoils = Q1 // 2 // m * layers
     ngroups = [1] + [g for g in range(2, layers*p + 1) if layers * p % g == 0]
-    a_calc = ngroups[np.argmin([abs(N - ncoils // a * round(a * N / ncoils))
-                                for a in ngroups])]
+    ndiff = [abs(N - ncoils // a * a * round(N / ncoils))
+             for a in ngroups]
+    logger.debug("N %f ngroups %s ndiffs %s",
+                 N, ngroups, ndiff)
+    a_calc = ngroups[np.argmin(ndiff)]
     a = par.get("a", a_calc)
     if not a in ngroups:
         logger.warning("Check given number %s of parallel wdg groups. Valid ngroups are: %s",
@@ -340,13 +347,9 @@ def get_stator_dimensions(par, slots=[]):
     aw = ans * kq / layers / num_wires
     # round wire: pi*d²/4
     dwire = 2 * np.sqrt(aw/np.pi)
-    relculen = 1.4  # TODO: For very short machines, this needs to be in the range of 2.0 - 2.5 !!!
-                    #       The copper length in the endwining is about as long as the stator stack,
-                    #       at least for distributed windings!
-     #r1 = wdg_resistance(N, relculen * lfe, dwire) / a
     wdg = Winding({'Q': Q1, 'p': p, 'm': 3, 'yd': coil_span, 'l': layers})
     r1 = wdg_resistance(wdg, num_wires, a, aw, Da, hns, lfe)
-
+    relculen = 1.4
     # airgap and yoke diameter
     airgap = par['airgap']
     if par['external_rotor']:
@@ -419,7 +422,7 @@ def get_stator_dimensions(par, slots=[]):
         wire_diam=round(dwire, 5),
         num_phases=m,
         cufilfact=kq,
-        culength=1.4,
+        culength=relculen,
         num_par_wdgs=a,
         num_layers=layers,
         resistance=round(r1, 4),
@@ -439,8 +442,7 @@ def _get_magnet_height(I1, N, kw, par):
     Hc = Hc*1e3  # unit kA/m
     # Safety Factor for demagnetization
     demag = par['demag']
-    I1max = 4*I1
-    THETA1 = m/np.pi*np.sqrt(2)*I1max*N*kw/p
+    THETA1 = m/np.pi*np.sqrt(2)*I1*N*kw/p
     # minimal magnet height with safety factor
     hM = THETA1/Hc*demag
     Br = par['brem']
@@ -724,6 +726,7 @@ def ipm(pnom: float, speed: float, p: int, **kwargs) -> dict:
         pnom=pnom, speed=speed, p=p)
     par.update(kwargs)
     _set_pm_defaults(par)
+    par.pop('mag_width')
 
     # stator and magnet parameters of interior mounted magnet machine
     r = get_stator_dimensions(par)

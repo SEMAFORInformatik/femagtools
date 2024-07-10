@@ -317,6 +317,25 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(bch.psidq['losses']['styoke_excess'][0],  [2.235, 2.235, 2.839])
         self.assertEqual(bch.psidq['losses']['stteeth_excess'][0],  [6.58, 6.576, 7.176])
         self.assertEqual(bch.psidq['losses']['rotor_excess'][0],  [0.0, 0.0, 0.0])
-        
+    
+    def test_read_pm_sym_outer_rotor(self): 
+        bch = self.read_bch('pm_sym_fast_outer_rotor.BATCH')
+        self.assertEqual(bch.losses[-1]['staza'],  54.219)
+        self.assertEqual(bch.losses[-1]['stajo'],  8.853)
+        self.assertEqual(bch.losses[-1]['rotfe'],  0.091)
+        self.assertEqual(list(bch.losses[-1]['fft']['rotor']['order_mech']),  [12, 24])
+        self.assertEqual(list(bch.losses[-1]['fft']['rotor']['eddy']),  [0.057, 0.033])
+        self.assertEqual(list(bch.losses[-1]['fft']['staza']['order_mech']),  [4, 12, 20, 28, 36, 44, 52])
+        self.assertEqual(list(bch.losses[-1]['fft']['staza']['eddy']),  [45.215, 4.582, 2.881, 0.839, 0.425, 0.197, 0.059])
+        self.assertEqual(list(bch.losses[-1]['fft']['stajo']['order_mech']),  [4, 12, 20, 28, 36])
+        self.assertEqual(list(bch.losses[-1]['fft']['stajo']['eddy']),  [7.845, 0.64, 0.311, 0.044, 0.011])
+
+    def test_read_ldlq_outer_rotor(self): 
+        bch = self.read_bch('ldlq_outer_rotor.BATCH')
+        self.assertEqual(bch.ldq['losses']['styoke_eddy'][0],  [63.32, 39.69, 42.85, 65.62])
+        self.assertEqual(bch.ldq['losses']['styoke_hyst'][0],  [0.0, 0.0, 0.0, 0.0])
+        self.assertEqual(bch.ldq['losses']['rotor_eddy'][0],  [0.05937, 0.4195, 1.74, 2.705])
+        self.assertEqual(bch.ldq['losses']['rotor_hyst'][0],  [0.0, 0.0, 0.0, 0.0])
+
 if __name__ == '__main__':
     unittest.main()

@@ -5,6 +5,8 @@
 """
 import numpy as np
 import logging
+from ..windings import Winding
+from .utils import wdg_resistance
 
 logger = logging.getLogger("femagools.machine.sizing")
 
@@ -88,10 +90,10 @@ def iron_losses(dy, lfe, hy, wt, ht, q1, B, f):
     return Wfe * dens*vol
 
 
-def wdg_resistance(w1, l, d):
-    S = 56e6  # conductivity of copper 1/Ohm m
-    a = np.pi*d**2/4
-    return 2*w1*l/S/a
+#def wdg_resistance(w1, l, d):
+#    S = 56e6  # conductivity of copper 1/Ohm m
+#    a = np.pi*d**2/4
+#    return 2*w1*l/S/a
 
 
 def check_symmetry_conditions(Q1, p, layers, m):
@@ -222,7 +224,6 @@ def _stator_slots(par, slots):
 def get_stator_dimensions(par, slots=[]):
     # Check symmetry
     if 'Q1' in par:
-        from ..windings import Winding
         wdg = Winding({'Q': par['Q1'], 'p': par['p'], 'm': 3})
     # nominal (rated) operating parameters
     pnom = par['pnom']
@@ -237,7 +238,8 @@ def get_stator_dimensions(par, slots=[]):
 
     # pole width
     taup = np.pi * Da/(2*p)
-    lfe = taup*lda
+    lfe_q = par.get('lfe_q', 0.001)
+    lfe = lfe_q * round(taup*lda/lfe_q)
 
     if 'udc' in par:
         u1nom = 0.9*par['udc']/np.sqrt(2)/np.sqrt(3)  # phase voltage
@@ -254,8 +256,6 @@ def get_stator_dimensions(par, slots=[]):
     else:
         Q1 = par['Q1']
     coil_span = par.get('coil_span', 0)
-    if np.gcd(Q1, 2*p) == coil_span:
-        coil_span = 0
     layers = 1 if coil_span == 0 else 2
     req_poles = np.gcd(Q1, 2*p)
     if req_poles != 2*p:
@@ -293,8 +293,33 @@ def get_stator_dimensions(par, slots=[]):
     # stator winding
     psi1 = 2.0/np.pi*taup*lfe*Bd1
 
+    # number of turns per phase, first estimation
     Ui = Ui_U * u1nom
     N = round(np.sqrt(2)*Ui/(2*np.pi*f1nom*kw*psi1), 1)
+
+    # coils per phase and pole
+    # q = Q/2/p/m
+    # num wires per coil side (number of coil groups a)
+    # n = a*N / 2 / p / q
+
+    # feasible number of turns per coil...
+    ncoils = Q1 // 2 // m * layers
+    ngroups = [1] + [g for g in range(2, layers*p + 1) if layers * p % g == 0]
+    a_calc = ngroups[np.argmin([abs(N - ncoils // a * round(a * N / ncoils))
+                                for a in ngroups])]
+    a = par.get("a", a_calc)
+    if not a in ngroups:
+        logger.warning("Check given number %s of parallel wdg groups. Valid ngroups are: %s",
+                       a, ngroups)
+    num_wires = round(a * N / ncoils)
+
+    # correction of number of turns per phase
+    N_old = N
+    N = num_wires * ncoils / a
+
+    # correction of voltage
+    Ui = Ui/N_old*N
+    u1nom = Ui/Ui_U
 
     # current loading
     # A = np.sqrt(2)*sigmas/kw/Ba
@@ -311,6 +336,16 @@ def get_stator_dimensions(par, slots=[]):
 
     hns = (-bns + np.sqrt(bns**2 + 4*ans*np.tan(taus)))/2/np.tan(taus)
     hys = psi1/2/lfe/By
+
+    aw = ans * kq / layers / num_wires
+    # round wire: pi*d²/4
+    dwire = 2 * np.sqrt(aw/np.pi)
+    relculen = 1.4  # TODO: For very short machines, this needs to be in the range of 2.0 - 2.5 !!!
+                    #       The copper length in the endwining is about as long as the stator stack,
+                    #       at least for distributed windings!
+     #r1 = wdg_resistance(N, relculen * lfe, dwire) / a
+    wdg = Winding({'Q': Q1, 'p': p, 'm': 3, 'yd': coil_span, 'l': layers})
+    r1 = wdg_resistance(wdg, num_wires, a, aw, Da, hns, lfe)
 
     # airgap and yoke diameter
     airgap = par['airgap']
@@ -338,7 +373,9 @@ def get_stator_dimensions(par, slots=[]):
         kw=round(kw, 4),
         q=qt,
         i1=round(I1, 3),  # np.pi*Da1*A/2/m/N
-        psi1=round(psi1, 5))
+        psi1=round(psi1, 5),
+        u1=u1nom,
+        ui=Ui)
 
     slotwidth = np.floor(0.3*np.pi*Da1/Q1*2000+0.5)/2000.0
     tw = bds  # np.pi*(Da1+hns)/Q1 - bns
@@ -375,18 +412,7 @@ def get_stator_dimensions(par, slots=[]):
             wedge_width1=0,  # bns1,
             wedge_width2=0,
             middle_line=0 if layers < 2 else middle_line))
-    # coils per phase and pole
-    # q = Q/2/p/m
-    # num wires per coil side (number of coil groups a)
-    # n = a*N / 2 / p / q
-    ncoils = Q1//2//m*layers
-    ngroups = [1] + [g for g in range(2, p+1) if p%g == 0]
-    a = ngroups[np.argmin([abs(N-ncoils//a*round(a*N/ncoils))
-                           for a in ngroups])]
-    num_wires = round(a*N/ncoils)
-    dwire = 2*np.sqrt(ans*kq/layers/np.pi/num_wires)
-    relculen = 1.4
-    r1 = wdg_resistance(N, relculen*lfe, dwire)/a
+
     r['pcu'] = round(m*r1*I1**2, 1)
 
     r['winding'] = dict(

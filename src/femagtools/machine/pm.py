@@ -778,7 +778,7 @@ class PmRelMachine(object):
                                           maxtorque=T > 0)[:2])
                     w, _, ier, _ = so.fsolve(voltw1, wx, full_output=True)
                     logger.debug("fsolve ier %d T %f w %f w1 %f", ier, T, w, wx)
-                    if ier in (1, 4, 5):
+                    if ier == 1: #in (1, 4, 5):
                         if abs(w[0]) <= wx:
                             self.check_extrapolation = True
                             return [w/2/np.pi/self.p
@@ -787,6 +787,8 @@ class PmRelMachine(object):
                             wl += (wu-wl)/4
                         else:
                             wl = w[0]
+                    else:
+                        break
                 except ValueError as e:
                     logger.debug("%s: wx %f wl %f wu %f", e, wx, wl, wu)
                     wl = wx

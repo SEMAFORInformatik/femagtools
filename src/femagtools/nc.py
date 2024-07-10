@@ -195,7 +195,7 @@ class Reader(object):
                 grp.variables['delta_node_angle'].getValue().data)
             self.poles_sim = int(grp.variables['poles_sim'].getValue().data)
             self.slots = int(grp.variables['num_slots'].getValue().data)
-            self.arm_length = int(grp.variables['arm_length'].getValue().data)
+            self.arm_length = float(grp.variables['arm_length'].getValue().data)
         except:
             pass
 
@@ -281,10 +281,10 @@ class Reader(object):
                 cw = float(mcgrp.variables['cw'][i].data)
                 cw_freq_exp = float(mcgrp.variables['cw_exp'][i].data)
                 cw_ind_exp = float(mcgrp.variables['ind_exp'][i].data)
-                try: 
+                try:
                     ce = float(mcgrp.variables['ce'][i].data)
                     cw_ind_beta_exp = float(mcgrp.variables['ind_beta_exp'][i].data)
-                except: 
+                except:
                     pass
                 spec_weight = float(mcgrp.variables['spec_weight'][i].data)
                 fillfactor = float(mcgrp.variables['fillfac'][i].data)

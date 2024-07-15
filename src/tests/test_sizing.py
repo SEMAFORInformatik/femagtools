@@ -31,9 +31,9 @@ def test_spm():
 
     r = femagtools.machine.sizing.spm(P, n, p, udc=udc,
                                       Hc=700, sigmas=fs, brem=1.1, Ba=0.77,
-                                      cos_phi=0.7, eta=0.8, demag=1.7,
+                                      cos_phi=0.7, eta=0.8, demag=6.8,
                                       lda=0.9)
-    assert round(r['outer_diam'], 3) == 0.18
+    assert round(r['outer_diam'], 3) == 0.181
     assert r['stator']['num_slots'] == 24
 
 

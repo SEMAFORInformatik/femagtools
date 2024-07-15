@@ -21,6 +21,17 @@ numPattern = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)')
 HBpattern = re.compile(r'H.+\s+B')
 BPpattern = re.compile(r'B.+\s+P')
 
+_tranlate = {
+    "ch": "Hysteresis Loss Factor", 
+    "cw": "Eddy Current Loss Factor", 
+    "ce": "Excess Loss Factor", 
+    "ch_freq": "Hyteresis Exponent", 
+    "cw_freq": "Eddy Current Exponent", 
+    "b_coeff": "Induction Loss Exponent", 
+    "alpha": "Induction Loss Exponent (Bertotti)",
+    "Bo": "Reference Induction", 
+    "fo": "Reference Frequency", 
+}
 
 def readlist(section):
     x = []
@@ -109,7 +120,8 @@ class Reader(object):
             self.cw = z[2]
             self.cw_freq = z[3]
             self.b_coeff = z[4]
-
+            self.jordan = {'ch': z[0], 'cw': z[2], 'ch_freq': z[1], 'cw_freq': z[3], 'b_coeff': z[4],
+                            'Bo': self.Bo, 'fo': self.fo}
             z = lc.fitsteinmetz(
                 self.losses['f'],
                 self.losses['B'],
@@ -122,11 +134,15 @@ class Reader(object):
             self.losses['cw_freq'] = z[1]
             self.losses['b_coeff'] = z[2]
 
+            self.steinmetz = {'cw': z[0], 'cw_freq': z[1], 'b_coeff': z[2], 
+                              'Bo': self.Bo, 'fo': self.fo}
+
             self.losses['Bo'] = self.Bo
             self.losses['fo'] = self.fo
             z = lc.fit_bertotti(self.losses['f'],
                                 self.losses['B'], pfe)
-            self.bertotti = {'ch': z[0], 'alpha': 2.0, 'cw': z[1], 'ce': z[2]}
+            self.bertotti = {'ch': z[0], 'cw': z[1], 'ce': z[2], 
+                             'alpha': 2.0, 'Bo': 1, 'fo': 1}
             logger.info("Bertotti loss coeffs %s", z)
 
             # must normalize pfe matrix:
@@ -156,7 +172,27 @@ class Reader(object):
             'b_coeff': self.b_coeff,
             'rho': self.rho,
             'losses': self.losses}
-
+    
+def tableview(Reader): 
+    """pretty print loss coeff table"""
+    losscoeff = [Reader.jordan, Reader.steinmetz, Reader.bertotti]
+    # Title
+    strlen = 101
+    print('='*strlen)
+    print('| {:^34} '.format(' ') + '| {:^18} | {:^18} | {:^18} |'.format(*["Jordan", "Steinmetz", 'Bertotti']))
+    print('='*strlen)
+    # data 
+    for key, item in _tranlate.items(): 
+        fout = ''
+        for i in losscoeff: 
+            if key in i: 
+                fout += '| ' + f'{i[key]:^18.8e} '
+            else: 
+                tmp = '-'
+                fout += '| ' + f'{tmp:^18} '
+        print(f'| {item:^34}' + ' ' + fout + '|')
+        print('='*strlen)
+    return 
 
 def read(filename, filecontent=None):
     """read Thyssen File TKS and return mc dict"""

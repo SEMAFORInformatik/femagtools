@@ -102,6 +102,8 @@ def parident(workdir, engine, machine,
                 num_cur_steps=kwargs.get('num_cur_steps', 5),
                 num_beta_steps=kwargs.get('num_beta_steps', 13),
                 num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
+                skew_angle=kwargs.get('skew_angle', 0.0),
+                num_skew_steps=kwargs.get('num_skew_steps', 0.0),
                 period_frac=kwargs.get('period_frac', 6),
                 speed=kwargs.get('speed', 50))
 
@@ -338,9 +340,9 @@ class SynchronousMachine(object):
     def torquemax(self, i1, iex):
         "returns maximum torque of i1, iex (nan if i1 out of range)"
         def torquei1b(b):
-            return -self.torque_iqd(*iqd(b[0], i1), iex)
+            return self.torque_iqd(*iqd(b[0], i1), iex)
         res = so.minimize(torquei1b, (0,))
-        return -res.fun
+        return res.fun
 
     def torquemin(self, i1, iex):
         "returns minimum torque of i1, iex (nan if i1 out of range)"
@@ -576,7 +578,7 @@ class SynchronousMachine(object):
         i1max: max. phase current (RMS)
         """
         if kwargs.get('i1max', 0):
-                w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
+            w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
         try:
             iq, id, iex = self.iqd_torque(T)
         except ValueError:

@@ -550,7 +550,7 @@ class FslRenderer(object):
                     'ndt(agndst)',
                     'r1 = m.fc_radius - ag/6',
                     'x1, y1 = pr2c(r1, alfa)',
-                    'n = math.floor(r1*alfa/agndst + 1.5)',
+                    'n = math.floor(m.fc_radius*alfa/agndst + 1.5)',
                     'nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)\n',
                     'r2 = m.fc_radius + ag/6',
                     'x2, y2 = pr2c(r2, alfa)',

@@ -540,7 +540,7 @@ class Builder:
                                model.get('bore_diam') - 2*ag,
                                model.stator.get('num_slots'),
                                model.get('poles'),
-                               model.stator.get('nodedist') or 1.0))
+                               model.dxffile.get('nodedist')))
 
                 logger.info(" num poles %d num slots %d outer diameter %.4f m",
                             model.poles, model.stator['num_slots'],

@@ -643,7 +643,8 @@ def convert(dxfile,
             params['agndst'] = agndst(params.get('da1'),
                                       params.get('da2'),
                                       params.get('tot_num_slot'),
-                                      params.get('num_poles'), 1)
+                                      params.get('num_poles'),
+                                      params.get('nodedist'))
 
             if params['external_rotor']:
                 conv['fsl_magnet'] = outer

@@ -35,6 +35,7 @@ def agndst(da1, da2, Q, p, nodedist=1):
         num_nodes = [i*lcm for i in range(nmin, nmax) if i*lcm%6==0]
         dagset = [2*np.pi/p/i for i in num_nodes]
         i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
+        # nodedist 0.5, 2, 4, 6
     nd = min(round(nodedist), i)
     try:
         logger.info("Num nodes/p %d Num nodes/slot %g nodedist %g",

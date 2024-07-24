@@ -352,7 +352,7 @@ class Builder:
                     '-- thermal properties in airgap',
                     'ag_cond = 0.063',
                     'thcap = 1007',
-                    'beta = np.pi*m.npols_gen/m.num_poles + m.zeroangl/180*np.pi',
+                    'beta = math.pi*m.npols_gen/m.num_poles + m.zeroangl/180*math.pi',
                     'xai, yai = pr2c((da1+da2)/4, beta)',
                     'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
                     'xai, yai = pr2c((da1+da2)/4-ag/4, beta)',

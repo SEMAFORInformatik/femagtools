@@ -100,6 +100,7 @@ def losses_mapping_external_rotor(losses):
     rotor = 'Iron'    
     d = {}
     try:
+        d['styoke'] = losses[styoke]
         d['styoke_hyst'] = losses[styoke+'_hyst']
         d['rotor_hyst'] = losses[rotor+'_hyst']
         d['styoke_eddy'] = losses[styoke+'_eddy']

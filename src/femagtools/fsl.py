@@ -106,6 +106,7 @@ class Builder:
         params['show_plots'] = model.stator[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
+        params['nodedist'] = model.stator.get('nodedist', 1)
         pos = 'in' if model.external_rotor else 'out'
         params['part'] = ('stator', pos)
         conv = convert(model.stator['dxffile']['name'], **params)
@@ -491,6 +492,11 @@ class Builder:
         if not hasattr(model, 'stator'):
             setattr(model, 'stator', {})
         model.stator['num_slots'] = conv.get('tot_num_slot')
+        if model.get('num_agnodes', 0) == 0:
+            model.set_value('agndst', conv['agndst']*1e-3)
+            logger.info("num poles %d num slots %d outer diameter %.4f m agndst %.4f mm",
+                        model.poles, model.stator['num_slots'],
+                        model.outer_diam, model.agndst*1e3)
         if params['full_model']:
             model.stator['num_slots_gen'] = model.stator['num_slots']
         else:
@@ -531,21 +537,6 @@ class Builder:
             logger.info("create new model '%s'", model.name)
             if model.is_dxffile():
                 self.prepare_model_with_dxf(model)
-                if model.get('num_agnodes', 0) == 0:
-                    from femagtools.dxfsl.fslrenderer import agndst
-                    ag = model.get('airgap')
-                    model.set_value(
-                        'agndst',
-                        agndst(model.get('bore_diam'),
-                               model.get('bore_diam') - 2*ag,
-                               model.stator.get('num_slots'),
-                               model.get('poles'),
-                               model.dxffile.get('nodedist')))
-
-                logger.info(" num poles %d num slots %d outer diameter %.4f m",
-                            model.poles, model.stator['num_slots'],
-                            model.outer_diam)
-
             else:
                 self.prepare_stator(model)
                 if hasattr(model, 'magnet'):
@@ -553,9 +544,9 @@ class Builder:
                 self.prepare_diameter(model)
                 if self.fsl_stator and model.get('num_agnodes', 0) == 0:
                     from femagtools.dxfsl.fslrenderer import agndst
-                    if model.get('agndst'): 
+                    if model.get('agndst'):
                         pass
-                    else: 
+                    else:
                         ag = model.get('airgap')
                         model.set_value(
                             'agndst',

@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Scientific/Engineering"
 ]
 dependencies = [
-    'numpy',
+    'numpy<=1.26.4', # lmfit restriction
     'scipy',
     'mako',
     'six',

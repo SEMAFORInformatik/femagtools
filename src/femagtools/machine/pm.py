@@ -1451,10 +1451,12 @@ class PmRelMachinePsidq(PmRelMachine):
         return iqmax, np.max(self.idrange)
 
     def iqd_plfe1(self, iq, id, f1):
-        stator_losskeys = ['styoke_eddy', 'styoke_hyst',
-                            'stteeth_eddy', 'stteeth_hyst']
+        stator_losskeys = [k for k in ['styoke_eddy', 'styoke_hyst',
+                                       'stteeth_eddy', 'stteeth_hyst']
+                           if k in self._losses]
         if self.bertotti:
-            stator_losskeys += ['styoke_excess', 'stteeth_excess']
+            stator_losskeys += [k for k in ('styoke_excess', 'stteeth_excess')
+                                if k in self._losses]
         return np.sum([
             self._losses[k](iq, id)*(f1/self.fo)**self.plexp[k] for
             k in tuple(stator_losskeys)], axis=0)

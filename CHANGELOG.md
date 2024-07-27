@@ -2,6 +2,9 @@
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
 
+## Release 1.7.4
+	- added optional parameter dqpar for psd_psq or ld_lq (default) identification in pm parident
+
 ## Release 1.7.0
 	- displ_stator_rotor: eccentricity simulation and analysis
 	- improved force density plots (contour and surface)

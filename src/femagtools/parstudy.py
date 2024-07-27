@@ -186,11 +186,6 @@ class ParameterStudy(object):
         except AttributeError: #  if dxf or pure fsl model
             simulation['range_phi'] = 0.0
         simulation.update(model.winding)
-        if 'pocfilename' not in simulation:
-            simulation['pocfilename'] = f"{model.name}.poc"
-        if simulation['calculationMode'] == 'psd_psq_fast':
-            simulation['pocfilename'] = f"{model.name}_{model.get('poles')}p.poc"
-
         fea = femagtools.model.FeaModel(simulation)
 
         prob = femagtools.moproblem.FemagMoProblem(decision_vars,
@@ -214,6 +209,8 @@ class ParameterStudy(object):
                     except:
                         pass
         job = engine.create_job(self.femag.workdir)
+        if self.femag.cmd:
+            engine.cmd = [self.femag.cmd]
         # for progress logger
         job.num_cur_steps = fea.get_num_cur_steps()
 
@@ -225,6 +222,8 @@ class ParameterStudy(object):
         if hasattr(fea, 'poc'):
             fea.poc.pole_pitch = 2*360/model.get('poles')
             fea.pocfilename = fea.poc.filename()
+        if not hasattr(fea, 'pocfilename'):
+            fea.pocfilename = f"{model.name}_{model.get('poles')}p.poc"
         elapsedTime = 0
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:

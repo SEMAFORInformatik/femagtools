@@ -284,12 +284,17 @@ def dqpar_interpol(xfit, dqpars, ipkey='temperature'):
       dqpars -- list of dict with id, iq (or i1, beta), Psid and Psiq values
       ipkey -- key (string) to interpolate
     """
-    # check current range
-    ckeys = (('i1', 'beta'), ('id', 'iq'))
-    dqtype = 0
-    fpip = {k: dqpars[0][k] for k in ckeys[dqtype]}
+    dqtype = ''
+    if set(('i1', 'beta')).issubset(dqpars[0]):
+        dqtype = 'ldq'
+    elif set(('id', 'iq')).issubset(dqpars[0]):
+        dqtype = 'psidq'
+    else:
+        raise ValueError("missing current in dqpars parameter")
+    ckeys = ('i1', 'beta') if dqtype == 'ldq' else ('id', 'iq')
+    fpip = {k: dqpars[0][k] for k in ckeys}
     fpip['losses'] = dict()
-    for k in ckeys[dqtype]:
+    for k in ckeys:
         curr = np.array([f[k] for f in dqpars], dtype=object)
         shape = curr.shape
         if curr.shape != (len(dqpars), len(curr[0])):
@@ -421,13 +426,27 @@ def dqparident(workdir, engine, temp, machine,
         r1 = 0  # cannot calc winding resistance
 
     n = len(temp)
-    parvardef = {
-        "decision_vars": [
-            {"values": sorted(2*temp), "name": "magn_temp"},
-            {"values": n*[0, -90], "name": "beta_max"},
-            {"values": n*[-90, -180], "name": "beta_min"}
-        ]
-    }
+    dqtype = kwargs.get('dqtype', 'ldq')
+    num_cur_steps = kwargs.get('num_cur_steps', 5)
+    if dqtype == 'ldq':
+        parvardef = {
+            "decision_vars": [
+                {"values": sorted(2*temp), "name": "magn_temp"},
+                {"values": n*[0, -90], "name": "beta_max"},
+                {"values": n*[-90, -180], "name": "beta_min"}
+            ]
+        }
+    else:
+        delta = round(i1_max*np.sqrt(2)/num_cur_steps)
+        iqmax = num_cur_steps*delta
+        idmin = -iqmax
+        parvardef = {
+            "decision_vars": [
+                {"values": sorted(2*temp), "name": "magn_temp"},
+                {"values": n*[0, -iqmax], "name": "miniq"},
+                {"values": n*[iqmax, 0], "name": "maxiq"}
+            ]
+        }
 
     parvar = parstudy.List(
         workdir, condMat=condMat,
@@ -441,19 +460,35 @@ def dqparident(workdir, engine, temp, machine,
     if machine.get('external_rotor', False):
         period_frac = 1  # TODO: missing femag support
 
-    simulation = dict(
-        calculationMode='ld_lq_fast',
-        i1_max=kwargs.get('i1_max', i1_max),
-        magn_temp=20,
-        wind_temp=20,
-        beta_max=0,
-        beta_min=-90,
-        num_move_steps=26,
-        num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
-        num_cur_steps=kwargs.get('num_cur_steps', 5),
-        num_beta_steps=kwargs.get('num_beta_steps', 7),
-        speed=kwargs.get('speed', defspeed),
-        period_frac=period_frac)
+    if dqtype == 'ldq':
+        simulation = dict(
+            calculationMode='ld_lq_fast',
+            i1_max=kwargs.get('i1_max', i1_max),
+            magn_temp=20,
+            wind_temp=20,
+            beta_max=0,
+            beta_min=-90,
+            num_move_steps=kwargs.get('num_move_steps', 26),
+            num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
+            num_cur_steps=num_cur_steps,
+            num_beta_steps=kwargs.get('num_beta_steps', 7),
+            speed=kwargs.get('speed', defspeed),
+            period_frac=period_frac)
+    else:
+        simulation = dict(
+            calculationMode='psd_psq_fast',
+            magn_temp=20,
+            wind_temp=20,
+            maxiq=0,
+            miniq=0,
+            maxid=0,
+            minid=idmin,
+            num_move_steps=kwargs.get('num_move_steps', 26),
+            num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
+            delta_id=delta,
+            delta_iq=delta,
+            speed=kwargs.get('speed', defspeed),
+            period_frac=period_frac)
 
     # TODO: cleanup()  # remove previously created files in workdir
     # start calculation
@@ -475,18 +510,34 @@ def dqparident(workdir, engine, temp, machine,
     except KeyError:
         rotor_mass = 0  # need femag classic > rel-9.3.x-48-gca42bbd0
 
-    ldq = []
-    for i in range(0, len(results['f']), 2):
-        d = dict(i1=results['f'][i]['ldq']['i1'],
-                 beta=results['f'][i+1]['ldq']['beta'][:-1] + results['f'][i]['ldq']['beta'])
-        d.update(
-            {k: np.vstack((np.array(results['f'][i+1]['ldq'][k])[:-1, :],
-                           np.array(results['f'][i]['ldq'][k]))).tolist()
-             for k in ('psid', 'psiq', 'torque', 'ld', 'lq', 'psim')})
-        ldq.append(d)
+    dq = []
+    if dqtype == 'ldq':
+        for i in range(0, len(results['f']), 2):
+            d = dict(i1=results['f'][i]['ldq']['i1'],
+                     beta=(results['f'][i+1]['ldq']['beta'][:-1]
+                           + results['f'][i]['ldq']['beta']))
+            d.update(
+                {k: np.vstack((np.array(results['f'][i+1]['ldq'][k])[:-1, :],
+                               np.array(results['f'][i]['ldq'][k]))).tolist()
+                 for k in ('psid', 'psiq', 'torque', 'ld', 'lq', 'psim')})
+            dq.append(d)
+    else:
+        for i in range(0, len(results['f']), 2):
+            d = dict(id=results['f'][i]['psidq']['id'],
+                     iq=(results['f'][i+1]['psidq']['iq'][:-1]
+                         + results['f'][i]['psidq']['iq']))
+            d.update(
+                {k: np.vstack((np.array(results['f'][i+1]['psidq'][k])[:-1, :],
+                               np.array(results['f'][i]['psidq'][k]))).tolist()
+                 for k in ('psid', 'psiq', 'torque')})
+            d.update(
+                {k: np.vstack((np.array(results['f'][i+1]['psidq_ldq'][k])[:-1, :],
+                               np.array(results['f'][i]['psidq_ldq'][k]))).tolist()
+                 for k in ('ld', 'lq', 'psim')})
+            dq.append(d)
     # collect existing losses only
     losskeymap = {'magnet': 'magnet'}
-    losskeys = [k for k in results['f'][0]['ldq']['losses']
+    losskeys = [k for k in results['f'][0][dqtype]['losses']
                 if len(k.split('_')) > 1] + ['magnet']
     for k in losskeys:
         if k.find('_') > -1:
@@ -499,21 +550,21 @@ def dqparident(workdir, engine, temp, machine,
                 losskeymap[k] = k
     for i in range(0, len(results['f']), 2):
         j = i//2
-        ldq[j]['temperature'] = results['x'][0][i]
-        ldq[j]['losses'] = {losskeymap[k]: np.vstack(
-            (np.array(results['f'][i+1]['ldq']['losses'][k])[:-1, :],
-             np.array(results['f'][i]['ldq']['losses'][k]))).tolist()
+        dq[j]['temperature'] = results['x'][0][i]
+        dq[j]['losses'] = {losskeymap[k]: np.vstack(
+            (np.array(results['f'][i+1][dqtype]['losses'][k])[:-1, :],
+             np.array(results['f'][i][dqtype]['losses'][k]))).tolist()
                             for k in losskeys}
-        ldq[j]['losses']['speed'] = results['f'][i]['ldq']['losses']['speed']
+        dq[j]['losses']['speed'] = results['f'][i][dqtype]['losses']['speed']
         for k in ('hf', 'ef'):
-            ldq[j]['losses'][k] = results['f'][i]['lossPar'][k]
+            dq[j]['losses'][k] = results['f'][i]['lossPar'][k]
 
     dqpars = {
         'm': machine[wdgk]['num_phases'],
         'p': machine['poles']//2,
         'ls1': ls1,
         "rotor_mass": rotor_mass, "kfric_b": 1,
-        'ldq': ldq}
+        dqtype: dq}
     if 'resistance' in machine[wdgk]:
         dqpars['r1'] = machine[wdgk]['resistance']
     else:

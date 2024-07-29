@@ -52,3 +52,14 @@ def read(filename, pmod=0):
         return(dict())
 
     return fft(bag[0], bag[1], pmod)
+
+if __name__ == '__main__':
+    import sys
+    import matplotlib.pyplot as plt
+    import femagtools.plot.fluxdens
+    ag = read(sys.argv[1])
+    fig, axs = plt.subplots(nrows=2)
+    femagtools.plot.fluxdens.airgap(ag, ax=axs[0])
+    femagtools.plot.fluxdens.airgap_fft(ag, ax=axs[1])
+    fig.tight_layout()
+    plt.show()

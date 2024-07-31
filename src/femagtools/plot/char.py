@@ -296,7 +296,10 @@ def _plot_contour(speed, torque, z, ax, title='', levels=[],
     from matplotlib.patches import PathPatch
     x = 60*np.asarray(speed)
     y = np.asarray(torque)
-
+    tunit = 'Nm'
+    if max(np.abs(y)) > 10e3:
+        y *=1e-3
+        tunit = 'kNm'
     x, xscale = _normalize10(x, **kwargs)
     y, yscale = _normalize10(y, **kwargs)
 
@@ -344,7 +347,7 @@ def _plot_contour(speed, torque, z, ax, title='', levels=[],
             return round(yscale*tick_val)
         ax.yaxis.set_major_formatter(format_fn)
 
-    ax.set_ylabel('Torque / Nm')
+    ax.set_ylabel(f'Torque / {tunit}')
     ax.set_xlabel('Speed / rpm')
     ax.set_title(title)
     if cbar:

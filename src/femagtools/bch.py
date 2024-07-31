@@ -70,7 +70,7 @@ def sttylosses(losses):
         except KeyError:
             pass
         return d
-    
+
     if sregs == {'StYoke', 'StTeeth'}:
         return hysteddy('StYoke', 'StTeeth', losses)
     if sregs == {'StJo', 'StZa'}:
@@ -95,9 +95,9 @@ def sttylosses(losses):
         return l
     return {}
 
-def losses_mapping_external_rotor(losses): 
+def losses_mapping_external_rotor(losses):
     styoke = 'rotor'
-    rotor = 'Iron'    
+    rotor = 'Iron'
     d = {}
     try:
         d['styoke'] = losses[styoke]
@@ -1046,7 +1046,7 @@ class Reader:
         '''
         diff = np.floor(np.abs(np.diff(idList)))
         if idList[-1] == 0 and len(idList) > 2 and \
-           not np.all(diff == diff[0]):
+           diff[-1] == 0:
             idList = idList[:-1]
         return idList
 
@@ -1062,7 +1062,8 @@ class Reader:
                 m.append([floatnan(x) for x in rec])
 
         m = np.array(m).T
-        ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        d = np.diff(m[1])
+        ncols = (len(d)+1)//(len(d[d < 0])+1)
         if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:  # simple correction
             ncols = 2
         iq = np.reshape(m[1], (-1, ncols))[0]
@@ -1071,7 +1072,8 @@ class Reader:
             ncols = ncols-1
 
         id = np.reshape(m[0], (-1, ncols)).T[0]
-        id = self.__removeTrailingZero(id)
+        if id[0] >= 0:
+            id = self.__removeTrailingZero(id)
         nrows = len(id)
         if nrows > 1 and id[nrows-1] < id[nrows-2]:
             nrows = nrows-1
@@ -1096,7 +1098,8 @@ class Reader:
                 m.append([floatnan(x) for x in rec])
 
         m = np.array(m).T
-        ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        d = np.diff(m[1])
+        ncols = (len(d)+1)//(len(d[d < 0])+1)
         if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:  # simple correction
             ncols = 2
         iq = np.linspace(np.min(m[1]), np.max(m[1]), ncols)
@@ -1105,7 +1108,8 @@ class Reader:
             ncols = ncols-1
 
         id = np.reshape(m[0], (-1, ncols)).T[0]
-        id = self.__removeTrailingZero(id)
+        if id[0] >= 0:
+            id = self.__removeTrailingZero(id)
         nrows = len(id)
         if nrows > 1 and id[nrows-1] < id[nrows-2]:
             nrows = nrows-1
@@ -1168,7 +1172,7 @@ class Reader:
                    for name in content[2].split('\t') if name][2:]
         # outer rotor motor
         if 'Iron' in subregs and \
-            'Rotor' in subregs: 
+            'Rotor' in subregs:
             self.external_rotor = True
         logger.info("Stator Subregions: %s", subregs)
         speed = float(content[0].split()[-1])/60.
@@ -1184,7 +1188,11 @@ class Reader:
         if not m:
             return
         m = np.array(m).T
-        ncols = np.argmax(np.abs(m[1][1:]-m[1][:-1]))+1
+        d = np.diff(m[1])
+        if self.ldq:
+            ncols = (len(d)+1)//(len(d[d > 0])+1)
+        else:
+            ncols = (len(d)+1)//(len(d[d < 0])+1)
         if ncols == 1 and len(m[1]) > 1 and m[1][0] != m[1][1]:
             ncols = 2
         id = np.reshape(m[0], (-1, ncols)).T[0]
@@ -1229,9 +1237,9 @@ class Reader:
                                          (nrows, ncols)).T.tolist()
                            for k, v in zip(cols, m[2:])})
         ls['speed'] = speed
-        if self.external_rotor: 
+        if self.external_rotor:
             ls.update(losses_mapping_external_rotor(ls))
-        else: 
+        else:
             ls.update(sttylosses(ls))
         if self.ldq:
             self.ldq['losses'] = ls
@@ -1487,9 +1495,9 @@ class Reader:
     def __read_losses(self, content):
         losses = {}
         i = 0
-        # check if external rotor 
+        # check if external rotor
         if self.weights[0][1] == 0.0 and \
-            self.weights[0][-1] > 0: 
+            self.weights[0][-1] > 0:
             self.external_rotor = True
         # find results for angle:
         while True:
@@ -1548,8 +1556,8 @@ class Reader:
                     losses['total'] += losses['staza']+losses['stajo']
                 elif len(rec) == 1:
                     t = l.split(':')[-1].strip()
-                    if t == 'Iron': 
-                        if self.external_rotor: 
+                    if t == 'Iron':
+                        if self.external_rotor:
                             losses['rotfe'] = floatnan(rec[0])
                             losses['total'] += losses['rotfe']
                         else:
@@ -1561,14 +1569,14 @@ class Reader:
                 continue
 
             if _rotloss.search(l):
-                if l.find('StZa') > -1: 
+                if l.find('StZa') > -1:
                     self.external_rotor = True
                 rec = self.__findNums(content[i+2])
                 if len(rec) == 1:
-                    if self.external_rotor: 
+                    if self.external_rotor:
                         losses['staza'] = floatnan(rec[0])
                         losses['total'] += losses['staza']
-                    else: 
+                    else:
                         rotfe = floatnan(rec[0])
                         losses['rotfe'] += rotfe
                         losses['total'] += rotfe
@@ -1602,7 +1610,7 @@ class Reader:
                     if content[i+1].split() == ['rotf', '----']:
                         losses['rotfe'] = sum([floatnan(x) for x in rec])
                         losses['total'] += losses['rotfe']
-                    
+
                     if content[i+1].split() == ['Iron', '----']: # external rotor
                         losses['rotfe'] = sum([floatnan(x) for x in rec])
                         losses['total'] += losses['rotfe']

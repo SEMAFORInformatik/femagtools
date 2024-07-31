@@ -493,6 +493,7 @@ def dqparident(workdir, engine, temp, machine,
     # TODO: cleanup()  # remove previously created files in workdir
     # start calculation
     results = parvar(parvardef, machine, simulation, engine)
+
     if 'poles' not in machine:  # dxf model?
         machine['poles'] = 2*results['f'][0]['machine']['p']
         da1 = 2*results['f'][0]['machine']['fc_radius']
@@ -551,10 +552,16 @@ def dqparident(workdir, engine, temp, machine,
     for i in range(0, len(results['f']), 2):
         j = i//2
         dq[j]['temperature'] = results['x'][0][i]
-        dq[j]['losses'] = {losskeymap[k]: np.vstack(
-            (np.array(results['f'][i+1][dqtype]['losses'][k])[:-1, :],
-             np.array(results['f'][i][dqtype]['losses'][k]))).tolist()
-                            for k in losskeys}
+        if dqtype == 'ldq':
+            dq[j]['losses'] = {losskeymap[k]: np.vstack(
+                (np.array(results['f'][i+1][dqtype]['losses'][k])[:-1, :],
+                 np.array(results['f'][i][dqtype]['losses'][k]))).tolist()
+                               for k in losskeys}
+        else:
+            dq[j]['losses'] = {losskeymap[k]: np.hstack(
+                (np.array(results['f'][i+1][dqtype]['losses'][k])[:, :-1],
+                 np.array(results['f'][i][dqtype]['losses'][k]))).T.tolist()
+                               for k in losskeys}
         dq[j]['losses']['speed'] = results['f'][i][dqtype]['losses']['speed']
         for k in ('hf', 'ef'):
             dq[j]['losses'][k] = results['f'][i]['lossPar'][k]

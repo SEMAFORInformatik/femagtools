@@ -5,9 +5,10 @@ import logging
 import warnings
 import numpy as np
 import numpy.linalg as la
-from .utils import iqd, betai1, skin_resistance, dqparident, KTH
+from .utils import iqd, betai1, skin_resistance, dqparident, KTH, K
 import scipy.optimize as so
 import scipy.interpolate as ip
+import scipy.integrate as ig
 from functools import partial
 
 logger = logging.getLogger(__name__)
@@ -1392,6 +1393,11 @@ class PmRelMachinePsidq(PmRelMachine):
 
         self._psid = ip.RectBivariateSpline(iq, id, psid).ev
         self._psiq = ip.RectBivariateSpline(iq, id, psiq).ev
+        # used for transient
+        self.psid = psid
+        self.psiq = psiq
+        self.id = id
+        self.iq = iq
         try:
             pfe = kwargs['losses']
             if 'styoke_excess' in pfe and np.any(pfe['styoke_excess']):
@@ -1480,3 +1486,64 @@ class PmRelMachinePsidq(PmRelMachine):
 
     def betai1_plmag(self, beta, i1, f1):
         return self.iqd_plmag(*iqd(beta, i1), f1)
+
+
+    ### EXPERIMENTAL
+
+    def transient(self, u1, tload, speed,
+                  fault_type=3, # 'LLL', 'LL', 'LG',
+                  tend=0.1, nsamples=200):
+
+        tshort = 0
+        w1 = 2*np.pi*self.p*speed
+        res = so.minimize(
+            lambda iqd: np.linalg.norm(iqd), self.io, method='SLSQP',
+            constraints=(
+                {'type': 'eq',
+                 'fun': lambda iqd: self.tmech_iqd(*iqd, speed) - tload},
+                {'type': 'ineq',
+                 'fun': lambda iqd: np.sqrt(2)*u1
+                 - la.norm(self.uqd(w1, *iqd))}))
+        iqx, idx = res.x
+        uq0, ud0 = self.uqd(w1, iqx, idx)
+        logger.info("transient: Torque %f Nm, Speed %f rpm, Curr %f A",
+                    tload, speed*60, betai1(iqx, idx)[1])
+        if fault_type == 3:  # 3 phase short circuit
+            USC = lambda t: np.zeros(2)
+        else: # 2 phase short circuit
+            #ustat = np.array([K(w1*x).dot((uq, ud)) for x in t])
+            USC = lambda t: np.array([
+                uq0/2*(1+np.cos(2*w1*t)),
+                uq0/2*np.sin(2*w1*t)])
+        U = lambda t: (uq0, ud0) if t < tshort else USC(t)
+
+        psid = ip.RectBivariateSpline(self.iq, self.id, self.psid, kx=3, ky=3)
+        psiq = ip.RectBivariateSpline(self.iq, self.id, self.psiq, kx=3, ky=3)
+        #ld = ip.RectBivariateSpline(iq, id, dqpars['psidq'][0]['ld'], kx=3, ky=3)
+        #lq = ip.RectBivariateSpline(iq, id, dqpars['psidq'][0]['lq'], kx=3, ky=3)
+        #psim = ip.RectBivariateSpline(iq, id, dqpars['psidq'][0]['psim'], kx=3, ky=3)
+
+        def didt(t, iqd):
+            uq, ud = U(t)
+            ldd = psid(*iqd, dx=0, dy=1)[0,0]
+            lqq = psiq(*iqd, dx=1, dy=0)[0,0]
+            ldq = psid(*iqd, dx=1, dy=0)[0,0]
+            lqd = psiq(*iqd, dx=0, dy=1)[0,0]
+            psi = psid(*iqd)[0,0], psiq(*iqd)[0,0]
+            return [
+                (-ldd*psi[0]*w1 + ldd*(uq-self.r1*iqd[0])
+                 - lqd*psi[1]*w1 - lqd*(ud-self.r1*iqd[1]))/(ldd*lqq - ldq*lqd),
+                (ldq*psi[0]*w1 - ldq*(uq-self.r1*iqd[0])
+                 + lqq*psi[1]*w1 + lqq*(ud-self.r1*iqd[1]))/(ldd*lqq - ldq*lqd)]
+
+        t = np.linspace(0, tend, nsamples)
+        Y0 = iqx, idx
+        sol = ig.solve_ivp(didt, (t[0], t[-1]), Y0, dense_output=True)
+        y = sol.sol(t).T
+
+        return {
+            't': t.tolist(),
+            'iq': y[:,0], 'id': y[:,1],
+            'istat': np.array([K(w1*x[0]).dot(x[1])
+                               for x in zip(t, y)]).T.tolist(),
+            'torque': [self.torque_iqd(*iqd) for iqd in y]}

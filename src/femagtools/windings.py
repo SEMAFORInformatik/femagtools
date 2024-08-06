@@ -74,7 +74,10 @@ class Winding(object):
         if hasattr(self, 'windings'):
             # calculate coil width yd and num layers l
             taus = 360/self.Q
-            ngen = arg.machine.get('qs_sim', 0)
+            try:
+                ngen = arg.machine.get('qs_sim', 0)
+            except AttributeError:
+                ngen = 0
             if 'slots' in self.windings[1]:  # custom winding def
                 for k in self.windings:
                     w = self.windings[k]

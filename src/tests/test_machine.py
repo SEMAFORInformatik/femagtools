@@ -272,10 +272,10 @@ def test_invpark():
     iq = 1
     id = 0
     ia, ib, ic = femagtools.machine.invpark(w1t, iq, id)
-    assert ia[0] == pytest.approx(-1.0)
-    assert ib[0] == pytest.approx(0.5)
-    assert ic[0] == pytest.approx(0.5)
-    assert ic[-1] == pytest.approx(-0.5, rel=1e-3)
+    assert ia[0] == pytest.approx(1.0)
+    assert ib[0] == pytest.approx(-0.5)
+    assert ic[0] == pytest.approx(-0.5)
+    assert ic[-1] == pytest.approx(0.5, rel=1e-3)
 
 
 def test_psidq_create():

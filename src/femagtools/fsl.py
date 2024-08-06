@@ -544,7 +544,7 @@ class Builder:
                 self.prepare_diameter(model)
                 if self.fsl_stator and model.get('num_agnodes', 0) == 0:
                     from femagtools.dxfsl.fslrenderer import agndst
-                    if model.get('agndst'):
+                    if model.get('agndst',0):
                         pass
                     else:
                         ag = model.get('airgap')

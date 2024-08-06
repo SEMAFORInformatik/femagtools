@@ -21,9 +21,9 @@ def K(d):
     returns transformation matrix
     """
     return np.array((
-        (-np.cos(d), np.sin(d)),
-        (-np.cos(d-2*np.pi/3), np.sin(d-2*np.pi/3)),
-        (-np.cos(d+2*np.pi/3), np.sin(d+2*np.pi/3))))
+        (np.cos(d), -np.sin(d)),
+        (np.cos(d-2*np.pi/3), -np.sin(d-2*np.pi/3)),
+        (np.cos(d+2*np.pi/3), -np.sin(d+2*np.pi/3))))
 
 
 def T(d):
@@ -34,9 +34,9 @@ def T(d):
 
     returns transformation matrix
     """
-    return np.array((
-        (-np.cos(d), -np.cos(d-2*np.pi/3), -np.cos(d+2*np.pi/3)),
-        (np.sin(d), np.sin(d-2*np.pi/3), np.sin(d+2*np.pi/3))))/3*2
+    return 2/3*np.array((
+        (np.cos(d), np.cos(d-2*np.pi/3), np.cos(d+2*np.pi/3)),
+        (-np.sin(d), -np.sin(d-2*np.pi/3), -np.sin(d+2*np.pi/3))))
 
 
 def invpark(a, q, d):
@@ -49,9 +49,9 @@ def invpark(a, q, d):
         q: value in quadrature axis
     """
     if np.isscalar(a) and np.isscalar(q) and np.isscalar(d):
-        return np.dot(K(a), (q, d))
+        return np.dot(K(a), (d, q))
     if np.isscalar(q) and np.isscalar(d):
-        return np.array([K(x).dot((q, d)) for x in a]).T
+        return np.array([K(x).dot((d, q)) for x in a]).T
     return np.array([K(x).dot((y, z)) for x, y, z in zip(a, d, q)]).T
 
 

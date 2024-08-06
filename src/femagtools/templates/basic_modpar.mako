@@ -109,6 +109,8 @@ else
   agndst = 1 -- last resort
 end
 % endif
+% elif hasattr(model, 'agndst'):
+  agndst = ${model.agndst*1e3}
 % endif
 % if hasattr(model, 'afmtype'):
 m.model_type      =  "${model['afmtype']}"

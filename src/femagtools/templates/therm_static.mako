@@ -7,18 +7,18 @@ state_of_problem("therm_static")
 
 beta = 360*slots_gen/num_slots
 m.zeroangl = 0
--- heat transfer outside
-heat_transfer_coefficient = ${model['heat_transfer_coefficient'][0]}
-area_factor = 1
-dy1 = ${model['outer_diam']*1e3}
-x,y = pd2c(dy1/2+0.05, beta/2+m.zeroangl)
-def_heat_transfer(x,y,yellow,heat_transfer_coefficient, area_factor)
--- heat transfer inside
+
+heat_transfer_coefficient = ${model['heat_transfer_coefficient']}
+area_factor = 5
+
 % if 'inner_diam' in model and len(model['heat_transfer_coefficient'])>1:
-dy2 = ${model['inner_diam']*1e3}
-heat_transfer_coefficient = ${model['heat_transfer_coefficient'][1]}
-area_factor = 1
-x,y = pd2c(dy2/2-0.05, beta/2+m.zeroangl)
+  -- heat transfer inside
+  dy2 = ${model['inner_diam']*1e3}
+  x,y = pd2c(dy2/2-0.05, beta/2+m.zeroangl)
+% else:
+  -- heat transfer outside
+  dy1 = ${model['outer_diam']*1e3}
+  x,y = pd2c(dy1/2+0.05, beta/2+m.zeroangl)
 def_heat_transfer(x,y,yellow,heat_transfer_coefficient, area_factor)
 %endif
 ---------------------------------------------
@@ -36,8 +36,10 @@ def_losses ( x,y,'red', ${i[1]})
 %endfor
 %endif
 
-color_gradation_th(0,0,tot,Losses,0,0,model.."_losses.svg")
+color_gradation_th(0,0,tot,Losses,0,0, "losses.svg")
 
 ---------------------------------------------
 calc_therm_field()
-color_gradation_th(0,0,tot,Temp,0.0,0,model.."_temp.svg")
+color_gradation_th(0,0,tot,Temp,0.0,0, "temp.svg")
+
+state_of_problem("mag_static")

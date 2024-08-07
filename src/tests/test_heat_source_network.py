@@ -9,7 +9,7 @@ def data_dir():
 
 
 def test_heat_source_network(data_dir):
-    model = hsn.HeatSourceNetwork(str(data_dir / 'temp_model.hsn'))
+    model = hsn.read(str(data_dir / 'temp_model.hsn'))
     assert [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13] == model.nodes
     names = model.get_node_names()
     assert ['StZa', 'outs', 'StJo', 'Slot',

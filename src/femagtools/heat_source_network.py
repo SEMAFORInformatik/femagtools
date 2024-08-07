@@ -18,10 +18,8 @@ class HeatSourceNetwork:
     #Parameter:
     #   filename (str): Filename of heat source network with extension (.hsn)
 
-    def __init__(self,filename):
-
-        with open(filename) as fp:
-            self.netlist = json.load(fp)
+    def __init__(self, netlist):
+        self.netlist = netlist
         self.process()
 
     def get_node_names(self):
@@ -84,6 +82,11 @@ class HeatSourceNetwork:
         HeatSourceDiagram.draw(self.netlist,filename)
         return()
 
+
+def read(filename):
+    with open(filename) as fp:
+        netlist = json.load(fp)
+    return HeatSourceNetwork(netlist)
 
 
 class HeatSourceDiagram:

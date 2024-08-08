@@ -275,7 +275,7 @@ class MachineModel(Model):
         """
         names = []
         missing = []
-
+        thkeys = 'thcap', 'thcond'
         mcv = 0
         if 'stator' in self.__dict__:
             fillfac = self.stator.get('fillfac', 1.0)
@@ -292,6 +292,12 @@ class MachineModel(Model):
                                     mcv, fillfac)
                                 names.append((mcv, fillfac))
                                 self.stator[mcvname] = mcv
+                                m = magcurves.find_by_name(mcv)
+                                if m and set(thkeys).issubset(m.keys()):
+                                    for k in thkeys:
+                                        self.stator[k] = m[k]
+                                    logger.info('stator mcv %s set therm prop in stator',
+                                                mcv)
                             else:
                                 missing.append(self.stator[k])
                                 logger.error('stator mcv %s not found',
@@ -327,6 +333,11 @@ class MachineModel(Model):
                     rotor['mcvkey_yoke'] = magcurves.fix_name(
                         mcv, fillfac)
                     rotor['mcvkey_yoke_name'] = mcv
+                    m = magcurves.find_by_name(mcv)
+                    if m and set(thkeys).issubset(m.keys()):
+                        for k in thkeys:
+                            rotor[k] = m[k]
+                        logger.debug('stator mcv %s set therm prop in rotor', mcv)
                     names.append((mcv, fillfac))
                 else:
                     missing.append(rotor['mcvkey_yoke'])

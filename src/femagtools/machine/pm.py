@@ -1522,6 +1522,11 @@ class PmRelMachinePsidq(PmRelMachine):
         #ld = ip.RectBivariateSpline(iq, id, dqpars['psidq'][0]['ld'], kx=3, ky=3)
         #lq = ip.RectBivariateSpline(iq, id, dqpars['psidq'][0]['lq'], kx=3, ky=3)
         #psim = ip.RectBivariateSpline(iq, id, dqpars['psidq'][0]['psim'], kx=3, ky=3)
+        #def didtl(t, iqd):
+        #    lqd = lq(*iqd)[0,0], ld(*iqd)[0,0]
+        #    return [
+        #        (uq-r1*iqd[0] -w1 * lqd[1]*iqd[1] - w1*psim(*iqd)[0,0])/lqd[0],
+        #        (ud-r1*iqd[1] +w1*lqd[0]*iqd[0])/lqd[1]]
 
         def didt(t, iqd):
             uq, ud = U(t)
@@ -1544,6 +1549,6 @@ class PmRelMachinePsidq(PmRelMachine):
         return {
             't': t.tolist(),
             'iq': y[:,0], 'id': y[:,1],
-            'istat': np.array([K(w1*x[0]).dot(x[1])
+            'istat': np.array([K(w1*x[0]).dot((x[1][1], x[1][0]))
                                for x in zip(t, y)]).T.tolist(),
             'torque': [self.torque_iqd(*iqd) for iqd in y]}

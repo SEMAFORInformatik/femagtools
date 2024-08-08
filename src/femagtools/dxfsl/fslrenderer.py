@@ -189,7 +189,7 @@ class FslRenderer(object):
                          '-- min_corner = {}, {}'.format(
                              geom.start_min_corner(0),
                              geom.start_min_corner(1)),
-                         '-- max_corner = {}, {}'.format(
+                         '-- max_corner start = {}, {}'.format(
                              geom.start_max_corner(0),
                              geom.start_max_corner(1)),
                          '\n']
@@ -211,11 +211,12 @@ class FslRenderer(object):
                 'r, phi = c2pr(x0, y0)',
                 'x1, y1 = pr2c(r1, phi)',
                 'x2, y2 = pr2c(r1, {}*math.pi/parts)'.format(slice),
+                f'r = {geom.dist_end_max_corner()}',
                 'x3, y3 = pr2c(r, {}*math.pi/parts)'.format(slice),
                 'nc_line(x0, y0, x1, y1, 0)',
                 'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
                 'nc_line(x2, y2, x3, y3, 0)',
-                'x0, y0 = pr2c(r1 - hair/2, math.pi/parts)',
+                'x0, y0 = pr2c(r1 - hair/2, math.pi/parts/2)',
                 'create_mesh_se(x0, y0)',
                 '\n',
                 'outer_da_start = {}'.format(

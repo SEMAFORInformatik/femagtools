@@ -2478,7 +2478,8 @@ class Geometry(object):
             groups_inside = {g.id: g for g in grouplist}
             area.areas_inside = groups_inside
             areas_outside.append(area)
-            for g in  grouplist:
+            for g in grouplist:
+                g.group_is_inside = True
                 alist = groups.get(g.id, [])
                 alist.append(area)
                 groups[g.id] = alist
@@ -2531,6 +2532,11 @@ class Geometry(object):
             area_list = self.set_groups_inside_for_all_areas()
             for area in area_list:
                 if self.create_aux_lines(area, rightangle, leftangle):
+                    done = True
+            main_groups = [g for g in self.areagroup_list
+                           if not g.group_is_inside]
+            if len(main_groups) > 1:
+                if self.create_outside_aux_lines(main_groups):
                     done = True
         else:
             logger.debug("-> start create_auxiliary_lines")
@@ -2854,6 +2860,35 @@ class Geometry(object):
 
         logger.debug("end create_aux_lines() for %s",
                      area.get_id())
+        return done
+
+    def create_outside_aux_lines(self, grouplist):
+        done = False
+        aux_color = 'blue'
+        aux_linestyle = 'dotted'
+
+        i = 0
+        gaps = []
+        for group in grouplist:
+            i += 1
+            for g in grouplist[i:]:
+                gaps += group.get_lowest_gap_list(g,
+                                                  self.center, self.max_radius,
+                                                  None, None)
+        gaps.sort()
+        for d, points, token, id in gaps[:-1]:
+            line = Line(Element(start=points[0],
+                                end=points[1]),
+                                color=aux_color,
+                                linestyle=aux_linestyle,
+                                attr='outside_auxline')
+            n1 = self.find_the_node(line.node1(ndec))
+            n2 = self.find_the_node(line.node2(ndec))
+            if n1 and n2:
+                self.add_element(line,
+                                 rtol=self.rtol,
+                                 atol=self.atol)
+                done = True
         return done
 
     def set_rotor(self):

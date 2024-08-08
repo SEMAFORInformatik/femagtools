@@ -84,6 +84,7 @@ class Area(object):
         self.is_child = False
         self.areas_inside = {}
         self.areas_of_group = []
+        self.group_is_inside = False
 
     def identifier(self):
         return "{}-{}".format(self.id, self.type)

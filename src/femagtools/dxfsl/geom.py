@@ -2876,7 +2876,10 @@ class Geometry(object):
                                                   self.center, self.max_radius,
                                                   None, None)
         gaps.sort()
-        for d, points, token, id in gaps[:-1]:
+
+        l = len(grouplist) -1
+        for d, points, token, id in gaps[:l]:
+            logger.info("Token %s", token)
             line = Line(Element(start=points[0],
                                 end=points[1]),
                                 color=aux_color,

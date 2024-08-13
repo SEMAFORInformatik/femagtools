@@ -1496,10 +1496,11 @@ class PmRelMachinePsidq(PmRelMachine):
 
         tshort = 0
         w1 = 2*np.pi*self.p*speed
+        i0 = self.iqd_torque(tload)
         res = so.minimize(
-            lambda iqd: np.linalg.norm(iqd), self.io, method='SLSQP',
+            np.linalg.norm, i0, method='SLSQP',
             constraints=(
-                {'type': 'eq',
+                {'type': 'ineq',
                  'fun': lambda iqd: self.tmech_iqd(*iqd, speed) - tload},
                 {'type': 'ineq',
                  'fun': lambda iqd: np.sqrt(2)*u1

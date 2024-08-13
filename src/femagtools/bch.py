@@ -613,6 +613,7 @@ class Reader:
 
     def __read_general_machine_data(self, content):
         mcfiles = []
+        slotsides = 1
         for l in content:
             try:
                 if l.find('Armature Length') > -1:
@@ -631,8 +632,10 @@ class Reader:
                     self.machine['p_sim'] = int(l.split()[-1])
                 elif l.find('Total Number of Slots') > -1:
                     self.machine['Q'] = int(l.split()[-1])
+                elif l.find('Total Number of Slot-Sides') > -1:
+                    slotsides = int(l.split()[-1])
                 elif l.find('Number of Slot-Sides sim.') > -1:
-                    self.machine['qs_sim'] = int(l.split()[-1])
+                    self.machine['qs_sim'] = int(l.split()[-1])*self.machine['Q']//slotsides
                 elif l.find('POC-File used in calculation') > -1:
                     self.machine['pocfile'] = l.split(
                         ':')[-1].strip().replace('\\', '\\\\')

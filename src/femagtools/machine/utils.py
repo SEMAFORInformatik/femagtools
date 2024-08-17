@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def K(d):
     """space phasor transformation matrix
-    (Inverse Park Transformation) T-1 * dq
+    (Inverse Park Transformation) T-1 * dq --> abc
     arguments:
       d: rotation angle
 
@@ -28,7 +28,7 @@ def K(d):
 
 def T(d):
     """space phasor transformation matrix
-    (Park Transformation) T * abc
+    (Park Transformation) T * abc --> dq
     arguments:
       d: rotation angle
 

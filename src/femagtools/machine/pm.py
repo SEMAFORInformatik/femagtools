@@ -5,7 +5,7 @@ import logging
 import warnings
 import numpy as np
 import numpy.linalg as la
-from .utils import iqd, betai1, skin_resistance, dqparident, KTH, K
+from .utils import iqd, betai1, skin_resistance, dqparident, KTH, K, T
 import scipy.optimize as so
 import scipy.interpolate as ip
 import scipy.integrate as ig
@@ -1492,9 +1492,8 @@ class PmRelMachinePsidq(PmRelMachine):
 
     def transient(self, u1, tload, speed,
                   fault_type=3, # 'LLL', 'LL', 'LG',
-                  tend=0.1, nsamples=200):
-
-        tshort = 0
+                  tshort=0, tend=0.1, nsamples=200):
+        ns = round(tshort/tend*nsamples), round((tend-tshort)/tend*nsamples)
         w1 = 2*np.pi*self.p*speed
         i0 = self.iqd_torque(tload)
         res = so.minimize(
@@ -1507,49 +1506,125 @@ class PmRelMachinePsidq(PmRelMachine):
                  - la.norm(self.uqd(w1, *iqd))}))
         iqx, idx = res.x
         uq0, ud0 = self.uqd(w1, iqx, idx)
+        psid = ip.RectBivariateSpline(self.iq, self.id, self.psid, kx=3, ky=3)
+        psiq = ip.RectBivariateSpline(self.iq, self.id, self.psiq, kx=3, ky=3)
         logger.info("transient: Torque %f Nm, Speed %f rpm, Curr %f A",
                     tload, speed*60, betai1(iqx, idx)[1])
         if fault_type == 3:  # 3 phase short circuit
-            USC = lambda t: np.zeros(2)
+            Y0 = iqx, idx
+            def U(t):
+                return (uq0, ud0) if t < tshort else (0, 0)
+            def didt(t, iqd):
+                uq, ud = U(t)
+                ldd = psid(*iqd, dx=0, dy=1)[0,0]
+                lqq = psiq(*iqd, dx=1, dy=0)[0,0]
+                ldq = psid(*iqd, dx=1, dy=0)[0,0]
+                lqd = psiq(*iqd, dx=0, dy=1)[0,0]
+                psi = psid(*iqd)[0,0], psiq(*iqd)[0,0]
+                return [
+                    (-ldd*psi[0]*w1 + ldd*(uq-self.r1*iqd[0])
+                     - lqd*psi[1]*w1 - lqd*(ud-self.r1*iqd[1]))/(ldd*lqq - ldq*lqd),
+                    (ldq*psi[0]*w1 - ldq*(uq-self.r1*iqd[0])
+                     + lqq*psi[1]*w1 + lqq*(ud-self.r1*iqd[1]))/(ldd*lqq - ldq*lqd)]
+            #def didtl(t, iqd):
+            #    lqd = lq(*iqd)[0,0], ld(*iqd)[0,0]
+            #    return [
+            #        (uq-r1*iqd[0] -w1 * ld*iqd[1] - w1*psim(*iqd)[0,0])/lq,
+            #        (ud-r1*iqd[1] +w1 * lq*iqd[0])/ld]
         else: # 2 phase short circuit
-            #ustat = np.array([K(w1*x).dot((uq, ud)) for x in t])
-            USC = lambda t: np.array([
-                uq0/2*(1+np.cos(2*w1*t)),
-                uq0/2*np.sin(2*w1*t)])
-        U = lambda t: (uq0, ud0) if t < tshort else USC(t)
+            def ext_array(id, iq, a):
+                """extend array a if current is 0 at edge
+                id: list of n id values
+                iq: list of m iq values
+                a: nxm array to extend"""
+                if id[0] == 0:
+                    y = np.array(a)[:, 1].reshape((-1, 1))
+                    m = np.hstack((y, a))
+                elif id[-1] == 0:
+                    y = np.array(a)[:, -2].reshape((-1, 1))
+                    m = np.hstack((a, y))
+                else:
+                    m = np.array(a)
 
-        psid = ip.RectBivariateSpline(self.iq, self.id, self.psid, kx=3, ky=3)
-        psiq = ip.RectBivariateSpline(self.iq, self.id, self.psiq, kx=3, ky=3)
-        #ld = ip.RectBivariateSpline(iq, id, dqpars['psidq'][0]['ld'], kx=3, ky=3)
-        #lq = ip.RectBivariateSpline(iq, id, dqpars['psidq'][0]['lq'], kx=3, ky=3)
-        #psim = ip.RectBivariateSpline(iq, id, dqpars['psidq'][0]['psim'], kx=3, ky=3)
-        #def didtl(t, iqd):
-        #    lqd = lq(*iqd)[0,0], ld(*iqd)[0,0]
-        #    return [
-        #        (uq-r1*iqd[0] -w1 * lqd[1]*iqd[1] - w1*psim(*iqd)[0,0])/lqd[0],
-        #        (ud-r1*iqd[1] +w1*lqd[0]*iqd[0])/lqd[1]]
+                if iq[0] == 0:
+                    return np.concatenate(([m[1]], m))
+                elif iq[-1] == 0:
+                    return np.concatenate((m, [m[-2]]))
 
-        def didt(t, iqd):
-            uq, ud = U(t)
-            ldd = psid(*iqd, dx=0, dy=1)[0,0]
-            lqq = psiq(*iqd, dx=1, dy=0)[0,0]
-            ldq = psid(*iqd, dx=1, dy=0)[0,0]
-            lqd = psiq(*iqd, dx=0, dy=1)[0,0]
-            psi = psid(*iqd)[0,0], psiq(*iqd)[0,0]
-            return [
-                (-ldd*psi[0]*w1 + ldd*(uq-self.r1*iqd[0])
-                 - lqd*psi[1]*w1 - lqd*(ud-self.r1*iqd[1]))/(ldd*lqq - ldq*lqd),
-                (ldq*psi[0]*w1 - ldq*(uq-self.r1*iqd[0])
-                 + lqq*psi[1]*w1 + lqq*(ud-self.r1*iqd[1]))/(ldd*lqq - ldq*lqd)]
+                return m
 
-        t = np.linspace(0, tend, nsamples)
-        Y0 = iqx, idx
+            idn = np.append(self.id, -self.id[-2])
+            iqz = np.where(self.iq == 0.)[0][0]
+            if iqz in {0, len(self.iq)-1}:
+                iqn = np.insert(self.iq, 0, -self.iq[1])
+            elif iqz == len(self.iq)-1:
+                iqn = np.append(self.iq, -self.iq[iqz-1])
+            else:
+                iqn = np.array(self.iq)
+            psid2 = ext_array(self.id, self.iq, self.psid)
+            psiq2 = ext_array(self.id, self.iq, self.psiq)
+
+            # create n x m matrix of currents
+            id = np.ones(psid2.shape) * idn
+            iq = (np.ones(psid2.shape).T * iqn).T
+
+            # calculate ec model parameters
+            psim = (np.ones(psid2.shape).T * psid2[id == 0]).T
+            nz = np.any(id != 0, axis=0)
+            ld = ((psid2-psim)[:, nz])/id[:, nz]
+            nz = np.any(iq != 0, axis=1)
+            lq = (psiq2[nz, :])/iq[nz, :]
+
+            # create interpolation functions
+            _ld = ip.RectBivariateSpline(iq[:, 0], id[0][id[0] != 0], ld)
+            _lq = ip.RectBivariateSpline(iq[:, 0][iq[:, 0] != 0], id[0], lq)
+            _psim = ip.RectBivariateSpline(iq[:, 0], id[0], psim)
+
+            Ld = _ld(iqx, idx)[0, 0]
+            Lq = _lq(iqx, idx)[0, 0]
+            psim = _psim(iqx, idx)[0, 0]
+            Y0 = (0,)
+            def didt(t, i):
+                gamma = w1*t
+                # idy, iqy = T(gamma).dot([i[0], -i[0], 0])
+                # ua - ub = 0; ia = -ib; ic = 0
+                B = np.sqrt(3)*psim*np.cos(gamma + np.pi/6)
+                A = 2*Ld*np.cos(gamma + np.pi/6)**2 + 2*Lq*np.sin(gamma + np.pi/6)**2
+                dAdt = 4*w1*np.cos(gamma+np.pi/6)*np.sin(gamma+np.pi/6)*(Ld - Lq)
+                dBdt = np.sqrt(3)*w1*psim*np.sin(gamma+np.pi/6)
+
+                return -(i*dAdt + dBdt + 2*self.r1*i)/A
+
+        t = np.linspace(tshort, tend, ns[1])
         sol = ig.solve_ivp(didt, (t[0], t[-1]), Y0, dense_output=True)
         y = sol.sol(t).T
 
+        t = np.linspace(0, tend, nsamples)
+        if fault_type == 3:  # 3 phase short circuit
+            if ns[0] > 0:
+                iqd = np.vstack(
+                    (np.ones((ns[0], 2)) * (iqx, idx), y))
+            else:
+                iqd = y
+            return {
+                't': t.tolist(),
+                'iq': iqd[:,0], 'id': iqd[:,1],
+                'istat': np.array([K(w1*x[0]).dot((x[1][1], x[1][0]))
+                                   for x in zip(t, iqd)]).T.tolist(),
+                'torque': [self.torque_iqd(*x) for x in iqd]}
+        if ns[0] > 0:
+            iabc = np.hstack(
+                (np.array(
+                    [K(w1*t).dot((idx, iqx))
+                     for t in np.linspace(0, tshort, ns[0])]).T,
+                 [y[:, 0], (-y)[:, 0], np.zeros(ns[1])]))
+        else:
+            iabc = np.array(
+                 [y[:, 0], (-y)[:, 0], np.zeros(len(t))])
+        idq = np.array([T(w1*x[0]).dot(x[1])
+                        for x in zip(t, iabc.T)]).T
         return {
             't': t.tolist(),
-            'iq': y[:,0], 'id': y[:,1],
-            'istat': np.array([K(w1*x[0]).dot((x[1][1], x[1][0]))
-                               for x in zip(t, y)]).T.tolist(),
-            'torque': [self.torque_iqd(*iqd) for iqd in y]}
+            'iq': idq[1], 'id': idq[0],
+            'istat': iabc.tolist(),
+            'torque': self.torque_iqd(idq[1], idq[0])}

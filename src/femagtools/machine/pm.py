@@ -14,6 +14,38 @@ from functools import partial
 logger = logging.getLogger(__name__)
 
 
+def find_peaks_and_valleys(t, iabc, tshort):
+    """ return peaks and valleys of phase current with maximum amplitude
+    """
+    iph = iabc[np.argmax([np.max(np.abs(iph))
+                          for iph in iabc])]
+    ts = t[t>tshort]
+    Z = iph[t>tshort]
+    peaks = (np.diff(np.sign(np.diff(Z))) < 0).nonzero()[0] + 1
+    if len(peaks>0):
+        p = {'ip': Z[peaks].tolist(), 'tp': ts[peaks].tolist()}
+    else:
+        p = {'ip': [], 'tp': []}
+    valleys = (np.diff(np.sign(np.diff(Z))) > 0).nonzero()[0] + 1
+    if len(valleys>0):
+        v = {'iv': Z[valleys].tolist(), 'tv': ts[valleys].tolist()}
+    else:
+        v = {'iv': [], 'tv': []}
+    try:
+        cs = ip.CubicSpline(ts[peaks], Z[peaks])
+        p.update({'i': cs(ts).tolist(), 't': ts.tolist()})
+    except ValueError as e:
+        logger.warning("no peaks in current: %d",
+                       len(peaks))
+    try:
+        cs = ip.CubicSpline(ts[valleys], Z[valleys])
+        v.update({'i': cs(ts).tolist(), 't': ts.tolist()})
+    except ValueError as e:
+        logger.warning("no valleys in current: %d",
+                       len(valleys))
+    return p, v
+
+
 def parident(workdir, engine, temp, machine,
              magnetizingCurves, magnetMat, condMat,
              **kwargs):
@@ -1487,6 +1519,55 @@ class PmRelMachinePsidq(PmRelMachine):
     def betai1_plmag(self, beta, i1, f1):
         return self.iqd_plmag(*iqd(beta, i1), f1)
 
+    def ldlqpsim(self):
+        def ext_array(id, iq, a):
+            """extend array a if current is 0 at edge
+            id: list of n id values
+            iq: list of m iq values
+            a: nxm array to extend"""
+            if id[0] == 0:
+                y = np.array(a)[:, 1].reshape((-1, 1))
+                m = np.hstack((y, a))
+            elif id[-1] == 0:
+                y = np.array(a)[:, -2].reshape((-1, 1))
+                m = np.hstack((a, y))
+            else:
+                m = np.array(a)
+
+            if iq[0] == 0:
+                return np.concatenate(([m[1]], m))
+            elif iq[-1] == 0:
+                return np.concatenate((m, [m[-2]]))
+
+            return m
+
+        idn = np.append(self.id, -self.id[-2])
+        iqz = np.where(self.iq == 0.)[0][0]
+        if iqz in {0, len(self.iq)-1}:
+            iqn = np.insert(self.iq, 0, -self.iq[1])
+        elif iqz == len(self.iq)-1:
+            iqn = np.append(self.iq, -self.iq[iqz-1])
+        else:
+            iqn = np.array(self.iq)
+        psid2 = ext_array(self.id, self.iq, self.psid)
+        psiq2 = ext_array(self.id, self.iq, self.psiq)
+
+        # create n x m matrix of currents
+        id = np.ones(psid2.shape) * idn
+        iq = (np.ones(psid2.shape).T * iqn).T
+
+        # calculate ec model parameters
+        psim = (np.ones(psid2.shape).T * psid2[id == 0.]).T
+        nz = np.any(id != 0., axis=0)
+        ld = ((psid2-psim)[:, nz])/id[:, nz]
+        nz = np.any(iq != 0., axis=1)
+        lq = (psiq2[nz, :])/iq[nz, :]
+
+        # create interpolation functions
+        return (ip.RectBivariateSpline(iq[:, 0], id[0][id[0] != 0], ld),
+                ip.RectBivariateSpline(iq[:, 0][iq[:, 0] != 0], id[0], lq),
+                ip.RectBivariateSpline(iq[:, 0], id[0], psim))
+
 
     ### EXPERIMENTAL
 
@@ -1510,6 +1591,12 @@ class PmRelMachinePsidq(PmRelMachine):
         psiq = ip.RectBivariateSpline(self.iq, self.id, self.psiq, kx=3, ky=3)
         logger.info("transient: Torque %f Nm, Speed %f rpm, Curr %f A",
                     tload, speed*60, betai1(iqx, idx)[1])
+        #_ld, _lq, _psim = self.ldlqpsim()
+        #Ld = _ld(iqx, idx)[0, 0]
+        #Lq = _lq(iqx, idx)[0, 0]
+        #psim = _psim(iqx, idx)[0, 0]
+        #logger.info("idx %f iqx %f, Ld %f, Lq %f, psim %f",
+        #            idx, iqx, Ld, Lq, psim)
         if fault_type == 3:  # 3 phase short circuit
             Y0 = iqx, idx
             def U(t):
@@ -1532,68 +1619,39 @@ class PmRelMachinePsidq(PmRelMachine):
             #        (uq-r1*iqd[0] -w1 * ld*iqd[1] - w1*psim(*iqd)[0,0])/lq,
             #        (ud-r1*iqd[1] +w1 * lq*iqd[0])/ld]
         else: # 2 phase short circuit
-            def ext_array(id, iq, a):
-                """extend array a if current is 0 at edge
-                id: list of n id values
-                iq: list of m iq values
-                a: nxm array to extend"""
-                if id[0] == 0:
-                    y = np.array(a)[:, 1].reshape((-1, 1))
-                    m = np.hstack((y, a))
-                elif id[-1] == 0:
-                    y = np.array(a)[:, -2].reshape((-1, 1))
-                    m = np.hstack((a, y))
-                else:
-                    m = np.array(a)
-
-                if iq[0] == 0:
-                    return np.concatenate(([m[1]], m))
-                elif iq[-1] == 0:
-                    return np.concatenate((m, [m[-2]]))
-
-                return m
-
-            idn = np.append(self.id, -self.id[-2])
-            iqz = np.where(self.iq == 0.)[0][0]
-            if iqz in {0, len(self.iq)-1}:
-                iqn = np.insert(self.iq, 0, -self.iq[1])
-            elif iqz == len(self.iq)-1:
-                iqn = np.append(self.iq, -self.iq[iqz-1])
-            else:
-                iqn = np.array(self.iq)
-            psid2 = ext_array(self.id, self.iq, self.psid)
-            psiq2 = ext_array(self.id, self.iq, self.psiq)
-
-            # create n x m matrix of currents
-            id = np.ones(psid2.shape) * idn
-            iq = (np.ones(psid2.shape).T * iqn).T
-
-            # calculate ec model parameters
-            psim = (np.ones(psid2.shape).T * psid2[id == 0]).T
-            nz = np.any(id != 0, axis=0)
-            ld = ((psid2-psim)[:, nz])/id[:, nz]
-            nz = np.any(iq != 0, axis=1)
-            lq = (psiq2[nz, :])/iq[nz, :]
-
-            # create interpolation functions
-            _ld = ip.RectBivariateSpline(iq[:, 0], id[0][id[0] != 0], ld)
-            _lq = ip.RectBivariateSpline(iq[:, 0][iq[:, 0] != 0], id[0], lq)
-            _psim = ip.RectBivariateSpline(iq[:, 0], id[0], psim)
-
+            _ld, _lq, _psim = self.ldlqpsim()
             Ld = _ld(iqx, idx)[0, 0]
             Lq = _lq(iqx, idx)[0, 0]
             psim = _psim(iqx, idx)[0, 0]
             Y0 = (0,)
             def didt(t, i):
                 gamma = w1*t
+                iqd = [2/3*i*(-np.sin(gamma) + np.sin(gamma+2*np.pi/3)),
+                       2/3*i*(np.cos(gamma) + np.cos(gamma+2*np.pi/3))]
+                ldd = psid(*iqd, dx=0, dy=1)[0,0]
+                lqq = psiq(*iqd, dx=1, dy=0)[0,0]
+                ldq = psid(*iqd, dx=1, dy=0)[0,0]
+                lqd = psiq(*iqd, dx=0, dy=1)[0,0]
+                psi = psid(*iqd)[0, 0], psiq(*iqd)[0, 0]
+                A = ((ldd-lqq)*np.cos(2*gamma + np.pi/3)
+                     - (ldq+lqd)*np.sin(2*gamma + np.pi/3) + lqq + ldd)
+                B = 2/3*w1*((ldd-lqq)*np.sin(2*gamma + np.pi/3)
+                            + (ldq+lqd)*np.cos(2*gamma + np.pi/3)
+                            + ldq - lqd) + 2*self.r1
+                C = np.sqrt(3)*w1*(psi[0]*np.sin(gamma + np.pi/6)
+                                   + psi[1]*np.cos(gamma + np.pi/6))
+                return -(B*i + C)/A
+
+            #def didt2(t, i):
+            #    gamma = w1*t
                 # idy, iqy = T(gamma).dot([i[0], -i[0], 0])
                 # ua - ub = 0; ia = -ib; ic = 0
-                B = np.sqrt(3)*psim*np.cos(gamma + np.pi/6)
-                A = 2*Ld*np.cos(gamma + np.pi/6)**2 + 2*Lq*np.sin(gamma + np.pi/6)**2
-                dAdt = 4*w1*np.cos(gamma+np.pi/6)*np.sin(gamma+np.pi/6)*(Ld - Lq)
-                dBdt = np.sqrt(3)*w1*psim*np.sin(gamma+np.pi/6)
+            #    B = np.sqrt(3)*psim*np.cos(gamma + np.pi/6)
+            #    A = 2*Ld*np.cos(gamma + np.pi/6)**2 + 2*Lq*np.sin(gamma + np.pi/6)**2
+            #    dAdt = 4*w1*np.cos(gamma+np.pi/6)*np.sin(gamma+np.pi/6)*(Ld - Lq)
+            #    dBdt = np.sqrt(3)*w1*psim*np.sin(gamma+np.pi/6)
 
-                return -(i*dAdt + dBdt + 2*self.r1*i)/A
+            #    return -(i*dAdt + dBdt + 2*self.r1*i)/A
 
         t = np.linspace(tshort, tend, ns[1])
         sol = ig.solve_ivp(didt, (t[0], t[-1]), Y0, dense_output=True)
@@ -1606,11 +1664,22 @@ class PmRelMachinePsidq(PmRelMachine):
                     (np.ones((ns[0], 2)) * (iqx, idx), y))
             else:
                 iqd = y
+            iabc = np.array([K(w1*x[0]).dot((x[1][1], x[1][0]))
+                             for x in zip(t, iqd)]).T
+            peaks, valleys = find_peaks_and_valleys(t, iabc, tshort)
+
+            #iqx, idx = iqd[-1, 0], iqd[-1, 1],
+            #Ld = _ld(iqx, idx)[0, 0]
+            #Lq = _lq(iqx, idx)[0, 0]
+            #psim = _psim(iqx, idx)[0, 0]
+            #logger.info("idx %f iqx %f, Ld %f, Lq %f, psim %f",
+            #            idx, iqx, Ld, Lq, psim)
             return {
                 't': t.tolist(),
                 'iq': iqd[:,0], 'id': iqd[:,1],
-                'istat': np.array([K(w1*x[0]).dot((x[1][1], x[1][0]))
-                                   for x in zip(t, iqd)]).T.tolist(),
+                'istat': iabc.tolist(),
+                'peaks': peaks,
+                'valleys': valleys,
                 'torque': [self.torque_iqd(*x) for x in iqd]}
         if ns[0] > 0:
             iabc = np.hstack(
@@ -1621,10 +1690,13 @@ class PmRelMachinePsidq(PmRelMachine):
         else:
             iabc = np.array(
                  [y[:, 0], (-y)[:, 0], np.zeros(len(t))])
+        peaks, valleys = find_peaks_and_valleys(t, iabc, tshort)
         idq = np.array([T(w1*x[0]).dot(x[1])
                         for x in zip(t, iabc.T)]).T
         return {
             't': t.tolist(),
             'iq': idq[1], 'id': idq[0],
             'istat': iabc.tolist(),
+            'peaks': peaks,
+            'valleys': valleys,
             'torque': self.torque_iqd(idq[1], idq[0])}

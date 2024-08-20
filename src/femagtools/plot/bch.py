@@ -508,19 +508,33 @@ def transientsc(bch, title=''):
     row = 1
     plt.subplot(rows, cols, row)
     ax = plt.gca()
-    ax.set_title('Currents / A')
     ax.grid(True)
-    for i in ('ia', 'ib', 'ic'):
-        ax.plot(bch.scData['time'], bch.scData[i], label=i)
+    istat = np.array([bch.scData[i]
+                      for i in ('ia', 'ib', 'ic')])
+    if np.max(istat) > 4000:
+        istat *= 1e-3
+        ax.set_title('Currents / kA')
+    else:
+        ax.set_title('Currents / A')
+
+    for i, iph in zip(('ia', 'ib', 'ic'), istat):
+        ax.plot(bch.scData['time'], iph, label=i)
     ax.set_xlabel('Time / s')
     ax.legend()
 
     row = 2
     plt.subplot(rows, cols, row)
     ax = plt.gca()
-    ax.set_title('Torque / Nm')
+    scale = 1
+    torque = np.array(bch.scData['torque'])
+    if np.max(torque) > 4000:
+        torque *= 1e-3
+        ax.set_title('Torque / kNm')
+    else:
+        ax.set_title('Torque / Nm')
+
     ax.grid(True)
-    ax.plot(bch.scData['time'], bch.scData['torque'])
+    ax.plot(bch.scData['time'], torque)
     ax.set_xlabel('Time / s')
 
     fig.tight_layout(h_pad=2)

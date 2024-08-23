@@ -254,6 +254,9 @@ class FslRenderer(object):
                     if area.type not in subregions:
                         subregions[area.type] = 1
                     num_windings += 1
+                    rmin, rmax = area.minmax_dist_from_center((0,0))
+                    self.content.append(
+                        f'rcoil_{num_windings} = {rmin}, {rmax}')
                     self.content.append('m.xcoil_{}, m.ycoil_{} = x0, y0'.
                                         format(num_windings, num_windings))
 

@@ -37,7 +37,6 @@ m.rlength     = ${model.get('rlength',1)*100}
 % if model.get('ac_loss', False):
   m.ac_loss = ${model.get('ac_loss', 3)}
 % endif
-
 m.mcvkey_yoke = mcvkey_yoke
 
 pre_models("STATOR_3")

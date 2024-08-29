@@ -324,6 +324,17 @@ class Area(object):
             return True
         return False
 
+    def minmax_dist_from_center(self, center):
+        rmin = 1e20
+        rmax = 0
+        for n in self.list_of_nodes():
+            r = np.linalg.norm(np.array(n)-center)
+            if r < rmin:
+                rmin = r
+            if r > rmax:
+                rmax = r
+        return rmin, rmax
+
     def minmax_angle_dist_from_center(self, center, dist):
         circ = Circle(Element(center=center, radius=dist))
         s = self.area[0]

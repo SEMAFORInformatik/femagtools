@@ -768,7 +768,10 @@ class Builder:
 
         return (fslmodel + self.create_analysis(sim) +
                 ['save_model("close")'])
-
+    
+    def create_detailed_wire(self, params, templ): 
+        return self.__render(params, templ)
+    
     def __render(self, model, templ, stator=False, magnet=False):
         if templ.split('.')[-1] in ('fsl', 'mako'):
             try:

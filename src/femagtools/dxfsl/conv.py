@@ -25,6 +25,16 @@ def main():
         description='Process DXF file and create a plot or FSL file.')
     argparser.add_argument('dxfile',
                            help='name of DXF file')
+    argparser.add_argument('--PMSM',
+                           help='Permanent Magnet Synchronous Motor',
+                           dest='PMSM',
+                           action="store_true",
+                           default=False)
+    argparser.add_argument('--EESM',
+                           help='Electric Excited Synchronous Motor',
+                           dest='EESM',
+                           action="store_true",
+                           default=False)
     argparser.add_argument('--inner',
                            help='name of inner element',
                            dest='inner',
@@ -209,12 +219,17 @@ def main():
         if args.sym_part not in (3, 4, 6, 8):
             logger.error("Argument sympart not in (3, 4, 6, 8)")
             sys.exit(1)
+    if args.EESM:
+        if args.PMSM:
+            logger.error("PMSM or EESM expected (default PMSM)")
+            sys.exit(1)
 
     if not args.write_fsl:
         if not (args.show_plots or args.show_areas or args.view):
             args.write_fsl = True
 
     res = convert(args.dxfile,  # DXF-Filename
+                  args.EESM,    # motor type EESM or PMSM
                   rtol=args.rtol,    # relative pickdist toleranz
                   atol=args.atol,    # absolute pickdist toleranz
                   symtol=args.sym_tolerance,

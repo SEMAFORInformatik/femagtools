@@ -3040,11 +3040,20 @@ class Geometry(object):
                     for e in elist:
                         e.init_attributes('lightblue', 'no_fsl')
 
-    def search_subregions(self, startangle, endangle, single=False):
+    def search_subregions(self, startangle, endangle, EESM, single=False):
         if self.is_stator():
-            self.search_stator_subregions(startangle, endangle, single=single)
+            self.search_stator_subregions(startangle,
+                                          endangle,
+                                          single=single)
         elif self.is_rotor():
-            self.search_rotor_subregions(startangle, endangle, single=single)
+            if EESM:
+                self.search_EESM_rotor_subregions(startangle,
+                                                  endangle,
+                                                  single=single)
+            else:
+                self.search_PMSM_rotor_subregions(startangle,
+                                                  endangle,
+                                                  single=single)
         else:
             logger.warning("no stator or rotor assigned")
             self.search_unknown_subregions()
@@ -3262,25 +3271,88 @@ class Geometry(object):
             self.check_shaft_area(shaft_areas[0])
         logger.debug("End of search_stator_subregions")
 
-    def search_rotor_subregions(self,
-                                startangle,
-                                endangle,
-                                single=False):
-        logger.debug("Begin of search_rotor_subregions")
+    def search_EESM_rotor_subregions(self,
+                                     startangle,
+                                     endangle,
+                                     single=False):
+        logger.debug("Begin of search_EESM_rotor_subregions")
 
         if self.alfa == 0.0:
             self.alfa = np.pi * 2.0
 
         types = {}
         for area in self.list_of_areas():
-            t = area.mark_rotor_subregions(self.is_inner,
-                                           self.is_mirrored(),
-                                           self.alfa,
-                                           self.center,
-                                           self.min_radius,
-                                           self.max_radius,
-                                           startangle,
-                                           endangle)
+            t = area.mark_EESM_rotor_subregions(self.is_inner,
+                                                self.is_mirrored(),
+                                                self.alfa,
+                                                self.center,
+                                                self.min_radius,
+                                                self.max_radius,
+                                                startangle,
+                                                endangle)
+            if t in types:
+                types[t] += 1
+            else:
+                types[t] = 1
+
+        windings = [a for a in self.list_of_areas()
+                    if a.is_type(AREA.TYPE_WINDINGS_OR_IRON)]
+
+        if self.is_mirrored():
+            [a.set_type(AREA.TYPE_IRON) for a in windings
+             if a.close_to_endangle]
+            wlist = [(a.max_angle, a) for a in self.list_of_areas()
+                     if a.is_type(AREA.TYPE_WINDINGS_OR_IRON)]
+            if wlist:
+                wlist.sort(reverse=True)
+                a, w = wlist[0]
+                w.set_type(AREA.TYPE_FD_WINDINGS)
+        else:
+            midangle = middle_angle(startangle, endangle)
+            [a.set_type(AREA.TYPE_IRON) for a in windings
+             if a.max_angle > midangle and a.min_angle < midangle]
+            windings = [a for a in self.list_of_areas()
+                        if a.is_type(AREA.TYPE_WINDINGS_OR_IRON)]
+            if len(windings) > 1:
+                wlist = []
+                for w in windings:
+                    if w.max_angle < midangle:
+                        angle = alpha_angle(w.max_angle, midangle)
+                    else:
+                        angle = alpha_angle(midangle, w.min_angle)
+                    wlist.append((angle, w))
+                wlist.sort()
+                a1, w1 = wlist[0]
+                a2, w2 = wlist[1]
+                if np.isclose(a1, a2):
+                    w1.set_type(AREA.TYPE_FD_WINDINGS)
+                    w2.set_type(AREA.TYPE_FD_WINDINGS)
+
+        # all remaining areas are in iron
+        [a.set_type(AREA.TYPE_IRON) for a in self.list_of_areas()
+         if a.is_type(AREA.TYPE_WINDINGS_OR_IRON)]
+
+        logger.debug("End of search_EESM_rotor_subregions")
+
+    def search_PMSM_rotor_subregions(self,
+                                     startangle,
+                                     endangle,
+                                     single=False):
+        logger.debug("Begin of search_PMSM_rotor_subregions")
+
+        if self.alfa == 0.0:
+            self.alfa = np.pi * 2.0
+
+        types = {}
+        for area in self.list_of_areas():
+            t = area.mark_PMSM_rotor_subregions(self.is_inner,
+                                                self.is_mirrored(),
+                                                self.alfa,
+                                                self.center,
+                                                self.min_radius,
+                                                self.max_radius,
+                                                startangle,
+                                                endangle)
             if t in types:
                 types[t] += 1
             else:
@@ -3408,7 +3480,7 @@ class Geometry(object):
                 self.search_stator_subregions(startangle, endangle, single=single)
             return
 
-        logger.debug("end of search_rotor_subregions")
+        logger.debug("end of search_PMSM_rotor_subregions")
 
     def recalculate_magnet_orientation(self):
         logger.debug("begin of recalculate_magnet_orientation")

@@ -1046,21 +1046,36 @@ class Machine(object):
         cp_machine.geom.sym_counterpart = self.get_symmetry_part()
         cp_machine.geom.sym_part = cp_machine.get_symmetry_part()
 
-    def search_subregions(self, single=False):
+    def search_subregions(self, EESM, single=False):
         logger.debug("Search subregions")
-        self.geom.search_subregions(self.startangle, self.endangle, single=single)
+        self.geom.search_subregions(self.startangle,
+                                    self.endangle,
+                                    EESM,
+                                    single=single)
 
-    def search_rotor_subregions(self, single=False):
-        self.geom.search_rotor_subregions(self.startangle, self.endangle, single=single)
+    def search_rotor_subregions(self, EESM, single=False):
+        if EESM:
+            self.geom.search_EESM_rotor_subregions(self.startangle,
+                                                   self.endangle,
+                                                   single=single)
+        else:
+            self.geom.search_PMSM_rotor_subregions(self.startangle,
+                                                   self.endangle,
+                                                   single=single)
 
     def search_stator_subregions(self, single=False):
-        self.geom.search_stator_subregions(self.startangle, self.endangle, single=single)
+        self.geom.search_stator_subregions(self.startangle,
+                                           self.endangle,
+                                           single=single)
 
-    def rebuild_subregions(self, single=False):
+    def rebuild_subregions(self, EESM, single=False):
         logger.debug("Rebuild subregions")
         self.geom.set_edge_attributes()
         self.geom.area_list = []
-        self.geom.search_subregions(self.startangle, self.endangle, single=single)
+        self.geom.search_subregions(self.startangle,
+                                    self.endangle,
+                                    EESM,
+                                    single=single)
 
     def has_windings(self):
         return self.geom.has_windings
@@ -1170,7 +1185,9 @@ class Machine(object):
             self.geom.area_list = []
             logger.debug("create subregions again")
             self.geom.create_list_of_areas()
-            self.geom.search_subregions(self.startangle, self.endangle)
+            self.geom.search_subregions(self.startangle,
+                                        self.endangle,
+                                        False)
 
         logger.debug("end create_mirror_lines_outside_windings")
 

@@ -158,7 +158,7 @@ def symmetry_search(machine,
     return machine_ok
 
 
-def build_machine_rotor(machine, inner, mindist, plt, single=False):
+def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
     logger.debug("Begin of build_machine_rotor")
     if machine.has_windings():
         logger.debug("do nothing here with windings in rotor")
@@ -170,7 +170,7 @@ def build_machine_rotor(machine, inner, mindist, plt, single=False):
         machine_temp = machine.undo_mirror()
         machine_temp.delete_tiny_elements(mindist)
         machine_temp.geom.set_rotor()
-        machine_temp.search_rotor_subregions(single=single)
+        machine_temp.search_rotor_subregions(EESM, single=single)
     else:
         machine_temp = machine
 
@@ -199,7 +199,7 @@ def build_machine_rotor(machine, inner, mindist, plt, single=False):
         logger.debug("Auxiliary Lines created: rebuild subregions")
         rebuild = True
     if rebuild:
-        machine_temp.rebuild_subregions(single=single)
+        machine_temp.rebuild_subregions(EESM, single=single)
 
     machine_temp.geom.recalculate_magnet_orientation()
     if inner:
@@ -215,7 +215,7 @@ def build_machine_rotor(machine, inner, mindist, plt, single=False):
     return machine_temp
 
 
-def build_machine_stator(machine, inner, mindist, plt, single=False):
+def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False):
     logger.debug("Begin of build_machine_stator")
     if not machine.geom.is_stator():
         logger.debug("Rotor with windings")
@@ -230,7 +230,7 @@ def build_machine_stator(machine, inner, mindist, plt, single=False):
     else:
         machine_temp = machine
     if machine_temp.create_auxiliary_lines():
-        machine_temp.rebuild_subregions(single=single)
+        machine_temp.rebuild_subregions(EESM, single=single)
 
     if inner:
         machine_temp.create_inner_corner_areas()
@@ -246,6 +246,7 @@ def build_machine_stator(machine, inner, mindist, plt, single=False):
 
 
 def convert(dxfile,
+            EESM=False,
             rtol=1e-04,
             atol=1e-03,
             mindist=0.01,
@@ -505,34 +506,38 @@ def convert(dxfile,
 
         machine_inner.sync_with_counterpart(machine_outer)
 
-        machine_inner.search_subregions()
-        machine_outer.search_subregions()
+        machine_inner.search_subregions(EESM)
+        machine_outer.search_subregions(EESM)
 
         # Inner mirrored rotor
         if machine_inner.geom.is_rotor():
             machine_inner = build_machine_rotor(machine_inner,
                                                 True,  # is inner
                                                 mindist,
-                                                p)
+                                                p,
+                                                EESM=EESM)
 
         # Outer mirrored rotor
         if machine_outer.geom.is_rotor():
             machine_outer = build_machine_rotor(machine_outer,
                                                 False,  # is outer
                                                 mindist,
-                                                p)
+                                                p,
+                                                EESM=EESM)
 
         if machine_inner.geom.is_stator() or machine_inner.has_windings():
             machine_inner = build_machine_stator(machine_inner,
                                                  True,
                                                  mindist,
-                                                 p)
+                                                 p,
+                                                 EESM=EESM)
 
         if machine_outer.geom.is_stator() or machine_outer.has_windings():
             machine_outer = build_machine_stator(machine_outer,
                                                  False,
                                                  mindist,
-                                                 p)
+                                                 p,
+                                                 EESM=EESM)
         machine_inner.sync_with_counterpart(machine_outer)
 
         machine_inner.search_critical_elements(mindist)
@@ -707,20 +712,30 @@ def convert(dxfile,
                 machine.geom.set_stator()
                 machine.set_inner_or_outer(part[1])
                 machine.search_stator_subregions(single=True)
-                machine = build_machine_stator(machine, inner, mindist, p, single=True)
+                machine = build_machine_stator(machine,
+                                               inner,
+                                               mindist,
+                                               p,
+                                               EESM=EESM,
+                                               single=True)
 
                 params = create_femag_parameters_stator(machine,
                                                         part[1])
             else:
                 machine.geom.set_rotor()
                 machine.set_inner_or_outer(part[1])
-                machine.search_rotor_subregions(single=True)
-                machine = build_machine_rotor(machine, inner, mindist, p, single=True)
+                machine.search_rotor_subregions(EESM, single=True)
+                machine = build_machine_rotor(machine,
+                                              inner,
+                                              mindist,
+                                              p,
+                                              EESM=EESM,
+                                              single=True)
 
                 params = create_femag_parameters_rotor(machine,
                                                        part[1])
         else:
-            machine.search_subregions(single=True)
+            machine.search_subregions(EESM, single=True)
 
         machine.create_inner_corner_areas()
 

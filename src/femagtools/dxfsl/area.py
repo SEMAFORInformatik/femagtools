@@ -40,6 +40,8 @@ TYPE_MAGNET_OR_IRON = 9
 TYPE_SHAFT = 10
 TYPE_MAGNET_RECT_NEAR_AIRGAP = 11
 TYPE_WINDINGS_OR_AIR = 12
+TYPE_WINDINGS_OR_IRON = 13
+TYPE_FD_WINDINGS = 15
 TYPE_MAGNET_UNDEFINED = 99
 TYPE_GROUP = 20
 
@@ -206,6 +208,8 @@ class Area(object):
             return 'Iron'
         if self.type == TYPE_WINDINGS:
             return 'Windings'
+        if self.type == TYPE_FD_WINDINGS:
+            return 'Field Windings'
         if self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT:
             return 'Magnet'
         if self.type == TYPE_YOKE:
@@ -221,6 +225,8 @@ class Area(object):
             return 'Iron'
         if self.type == TYPE_WINDINGS:
             return 'Wndg'
+        if self.type == TYPE_FD_WINDINGS:
+            return 'FD_Wndg'
         if self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT:
             return 'Mag'
         if self.type == TYPE_YOKE:
@@ -236,6 +242,8 @@ class Area(object):
             return 'cyan'
         if self.type == TYPE_WINDINGS:
             return 'green'
+        if self.type == TYPE_FD_WINDINGS:
+            return 'yellow'
         if self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT:
             return 'red'
         if self.type == TYPE_YOKE:
@@ -250,6 +258,8 @@ class Area(object):
         if self.type == TYPE_IRON:
             return 0.3
         if self.type == TYPE_WINDINGS:
+            return 1.0
+        if self.type == TYPE_FD_WINDINGS:
             return 1.0
         if self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT:
             return 1.0
@@ -277,7 +287,9 @@ class Area(object):
         return self.type == TYPE_IRON
 
     def is_winding(self):
-        return self.type == TYPE_WINDINGS
+        return \
+            self.type == TYPE_WINDINGS or \
+            self.type == TYPE_FD_WINDINGS
 
     def is_magnet(self):
         return self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT
@@ -1326,11 +1338,16 @@ class Area(object):
         logger.debug("***** air #4\n")
         return 0
 
-    def mark_rotor_subregions(self, is_inner, mirrored, alpha,
-                              center, r_in, r_out,
-                              startangle,
-                              endangle):
-        logger.debug("mark_rotor_subregions")
+    def mark_EESM_rotor_subregions(self,
+                                   is_inner,
+                                   mirrored,
+                                   alpha,
+                                   center,
+                                   r_in,
+                                   r_out,
+                                   startangle,
+                                   endangle):
+        logger.debug("mark_EESM_rotor_subregions")
 
         alpha = round(alpha, 6)
 
@@ -1357,7 +1374,80 @@ class Area(object):
         self.close_to_endangle = np.isclose(self.max_angle, endangle,
                                             1e-04, 1e-04)
 
-        logger.debug("\n***** mark_rotor_subregions [{}] *****"
+        logger.debug("\n***** mark_EESM_rotor_subregions [{}] *****"
+                     .format(self.id))
+        logger.debug(" - close_to_ag        : %s", self.close_to_ag)
+        logger.debug(" - close_to_opposition: %s", close_to_opposition)
+        logger.debug(" - min dist           : %3.12f", self.min_dist)
+        logger.debug(" - max dist           : %3.12f", self.max_dist)
+        logger.debug(" - airgap radius      : %3.12f", airgap_radius)
+        logger.debug(" - opposite radius    : %3.12f", opposite_radius)
+        logger.debug(" - close_to_startangle: %s", self.close_to_startangle)
+        logger.debug(" - close_to_endangle  : %s", self.close_to_endangle)
+        logger.debug(" - alpha              : %3.12f", alpha)
+        logger.debug(" - min_angle          : %3.12f", self.min_angle)
+        logger.debug(" - max_angle          : %3.12f", self.max_angle)
+
+        if self.has_iron_separator():
+            logger.debug("***** iron (has iron separator)\n")
+            self.type = TYPE_IRON  # iron
+            return self.type
+
+        if is_inner:
+            # looking for shaft
+            if close_to_opposition and not self.close_to_ag:
+                logger.debug("-- check for shaft")
+                if self.is_shaft_area(center):
+                    self.type = TYPE_SHAFT  # shaft
+                    logger.debug("***** shaft (close to opposition)\n")
+                    return self.type
+
+        if close_to_opposition or self.close_to_ag:
+            self.type = TYPE_IRON  # iron
+            logger.debug("***** iron (close to opposition)\n")
+            return self.type
+
+        self.type = TYPE_WINDINGS_OR_IRON  # windings or iron
+        logger.debug("***** air (somewhere)\n")
+        return self.type
+
+    def mark_PMSM_rotor_subregions(self,
+                                   is_inner,
+                                   mirrored,
+                                   alpha,
+                                   center,
+                                   r_in,
+                                   r_out,
+                                   startangle,
+                                   endangle):
+        logger.debug("mark_PMSM_rotor_subregions")
+
+        alpha = round(alpha, 6)
+
+        if self.is_circle():
+            self.type = TYPE_AIR  # air
+            logger.debug(">>> air is a circle")
+            return self.type
+
+        if is_inner:
+            self.close_to_ag = np.isclose(r_out, self.max_dist, rtol=1e-9, atol=0.005)
+            close_to_opposition = greater_equal(r_in * 1.05, self.min_dist)
+            airgap_radius = r_out
+            opposite_radius = r_in
+            airgap_toleranz = -(self.max_dist - self.min_dist) / 50.0  # 2%
+        else:
+            self.close_to_ag = np.isclose(r_in, self.min_dist, rtol=1e-9, atol=0.005)
+            close_to_opposition = greater_equal(self.max_dist * 1.05, r_out)
+            airgap_radius = r_in
+            opposite_radius = r_out
+            airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
+
+        self.close_to_startangle = np.isclose(self.min_angle, startangle,
+                                              1e-04, 1e-04)
+        self.close_to_endangle = np.isclose(self.max_angle, endangle,
+                                            1e-04, 1e-04)
+
+        logger.debug("\n***** mark_PMSM_rotor_subregions [{}] *****"
                      .format(self.id))
         logger.debug(" - close_to_ag        : %s", self.close_to_ag)
         logger.debug(" - close_to_opposition: %s", close_to_opposition)

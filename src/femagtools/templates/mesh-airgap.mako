@@ -14,13 +14,22 @@ if not airgap_created then
     end
 % if hasattr(model, 'bore_diam'):
     r1 = m.fc_radius - ag/6
+    if(m.npols_gen == m.num_poles) then
+      alfa = alfa / 2
+    end
     x1, y1 = pr2c(r1, alfa)
     n = math.floor(m.fc_radius*alfa/agndst + 1.5)
     nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)
+    if(m.npols_gen == m.num_poles) then
+       nc_circle_m(x1, y1, r1, 0, 0.0, 0.0, n)
+    end
 
     r2 = m.fc_radius + ag/6
     x2, y2 = pr2c(r2, alfa)
     nc_circle_m(r2, 0, x2, y2, 0.0, 0.0, n)
+    if(m.npols_gen == m.num_poles) then
+       nc_circle_m(x2, y2, r2, 0, 0.0, 0.0, n)
+    end
 
     if inner_da_start == nil then
       inner_da_start = da2/2

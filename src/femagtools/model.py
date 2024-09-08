@@ -392,6 +392,8 @@ class MachineModel(Model):
         for k in self.rotor:
             # anything that is a dict must represent the type
             if isinstance(self.rotor[k], dict):
+                if k == 'rot_hsm':
+                    return 'EESM'
                 return k
         raise AttributeError("Missing rotor model in {}".format(self.magnet))
 

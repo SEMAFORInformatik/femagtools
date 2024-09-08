@@ -52,12 +52,13 @@ def agndst(da1, da2, Q, p, nodedist=1):
 class FslRenderer(object):
     """a model that can created by FSL"""
 
-    def __init__(self, name):
+    def __init__(self, name, mtype):
         self.model = name
         self.mirror_axis = None
         self.fm_nlin = None
         self.shaft = None
         self.agndst = 1
+        self.mtype = mtype
 
     def mirror_nodechains(self, p0, p1):
         self.mirror_axis = np.array((p0, p1)).ravel().tolist()
@@ -224,14 +225,16 @@ class FslRenderer(object):
                 'outer_da_end = {}'.format(
                     geom.dist_end_min_corner())
             ]
-
-        self.content += ['\n',
+        if self.mtype == 'PMSM':
+            self.content += [
                          'xmag = {}',
                          'ymag = {}',
-                         'mag_orient = {}',
+                         'mag_orient = {}']
+        self.content += ['\n',
                          'mag_exists = 0',
                          'if mcvkey_yoke == nil then',
                          '  mcvkey_yoke = "dummy"',
+                         '  ur = 1000.0',
                          'end',
                          'x0_iron_tooth, y0_iron_tooth = 0.0, 0.0',
                          'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0',
@@ -253,12 +256,15 @@ class FslRenderer(object):
                 if area.is_winding():
                     if area.type not in subregions:
                         subregions[area.type] = 1
-                    num_windings += 1
-                    rmin, rmax = area.minmax_dist_from_center((0,0))
-                    self.content.append(
-                        f'rcoil_{num_windings} = {rmin}, {rmax}')
-                    self.content.append('m.xcoil_{}, m.ycoil_{} = x0, y0'.
-                                        format(num_windings, num_windings))
+                    if self.mtype == 'PMSM' or outer:
+                        num_windings += 1
+                        rmin, rmax = area.minmax_dist_from_center((0,0))
+                        self.content.append(
+                            f'rcoil_{num_windings} = {rmin}, {rmax}')
+                        self.content.append('m.xcoil_{}, m.ycoil_{} = x0, y0'.
+                                            format(num_windings, num_windings))
+                    else:
+                        self.content.append('m.xcoil_r, m.ycoil_r = x0, y0')
 
                 elif area.is_magnet():
                     if area.type not in subregions:
@@ -494,7 +500,6 @@ class FslRenderer(object):
         return self.content
 
     def render_main(self,
-                    motor,
                     m_inner, m_outer,
                     inner, outer,
                     params):
@@ -514,6 +519,27 @@ class FslRenderer(object):
                          m_outer.num_of_layers(),
                          2)
         self.agndst = params.get('agndst', 0.1)
+        excwin = []
+        if self.mtype == 'EESM':
+            excwin = [
+                'r,beta  = c2pr(m.xcoil_r, m.ycoil_r)',
+                'phi = math.pi/m.num_poles',
+                'alpha = phi-beta',
+                'm.num_wires = 1',
+                'dir = {"wi", "wo"}',
+                'xcoil, ycoil = pr2c(r, phi - alpha)',
+                'def_new_wdg(xcoil, ycoil, "violet", "Exc", m.num_wires, 10.0, dir[1])',
+                'xcoil, ycoil = pr2c(r, phi + alpha)',
+                'add_to_wdg(xcoil, ycoil, wsamekey, dir[2], "wser")',
+                'for i = 2, m.npols_gen do',
+                '  n = (i+1) % 2 + 1',
+                '  phi = phi + 2*math.pi/m.num_poles',
+                '  xcoil, ycoil = pr2c(r, phi - alpha)',
+                '  add_to_wdg(xcoil, ycoil, wsamekey, dir[n], "wser")',
+                '  xcoil, ycoil = pr2c(r, phi + alpha)',
+                '  n = i % 2 + 1',
+                '  add_to_wdg(xcoil, ycoil, wsamekey, dir[n], "wser")',
+                'end']
         return [
             '-- generated from DXF by femagtools {}'.format(__version__),
             'exit_on_error = false',
@@ -601,4 +627,4 @@ class FslRenderer(object):
                     '  pre_models("Gen_winding")',
                     '  pre_models("gen_pocfile")',
                     'end\n',
-                    'save_model(cont)\n']
+                    'save_model(cont)\n'] + excwin

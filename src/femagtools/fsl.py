@@ -42,7 +42,7 @@ class Builder:
             default_filters=['decode.utf8'])
 
         self.fsl_stator = False
-        self.fsl_magnet = False
+        self.fsl_rotor = False
 
     def create_wdg_def(self, model):
         name = 'winding'
@@ -216,7 +216,7 @@ class Builder:
                .format(model.magnet.get('mcvkey_shaft', 'dummy'))]
 
         if 'magnetFsl' in model.magnet:
-            self.fsl_magnet = True
+            self.fsl_rotor = True
             #  obsolete
             if 'parameter' in model.magnet['magnetFsl']:
                 return mcv + self.render_template(
@@ -242,10 +242,10 @@ class Builder:
         magmodel['mcvkey_magnet'] = model.get_mcvkey_magnet()
         if templ == 'dxf':
             return mcv + [
-                u'xmag = {}',
-                u'ymag = {}',
-                u'mag_orient = {}',
-                u'ndt(agndst)'] + model.magnet['dxf']['fsl']
+                'xmag = {}',
+                'ymag = {}',
+                'mag_orient = {}',
+                'ndt(agndst)'] + model.magnet['dxf']['fsl']
 
         return mcv + self.render_rotor(magmodel, templ)
 
@@ -267,12 +267,16 @@ class Builder:
                 rotmodel['winding_inside'] = not model.external_rotor
                 culosses = self.create_cu_losses(rotmodel, condMat)
 
-        rotmodel.update(model.rotor[templ])
         rotmodel['is_rotor'] = True  # just in case for the template
+        if templ == 'EESM':
+            if 'dxf' in rotmodel:
+                return mcv + ['ndt(agndst)'] + rotmodel['dxf']['fsl']
+            templ = 'rot_hsm'
+        rotmodel.update(model.rotor[templ])
         return mcv + culosses + self.render_rotor(rotmodel, templ)
 
     def create_rotor_winding(self, model):
-        if hasattr(model, 'rotor') and model.rotortype() == 'rot_hsm':
+        if hasattr(model, 'rotor') and model.rotortype() == 'EESM':
             return self.render_rotor(model.rotor, 'rotor_winding')
         return []
 
@@ -306,21 +310,22 @@ class Builder:
 
         if templ == 'dxf':
             # reuse dxfsl model
-            self.fsl_magnet = True
+            self.fsl_rotor = True
         if templ != 'dxffile':
             return
 
         from femagtools.dxfsl.converter import convert
         params = {}
-        params['split'] = model.magnet[templ].get('split', False)
-        params['show_plots'] = model.magnet[templ].get('plot', False)
+        rotor = model.magnet
+        params['split'] = rotor[templ].get('split', False)
+        params['show_plots'] = rotor[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
         pos = 'out' if model.external_rotor else 'in'
         params['part'] = ('rotor', pos)
         logger.info("Conv rotor from %s",
-                    model.magnet[templ]['name'])
-        conv = convert(model.magnet[templ]['name'], **params)
+                    rotor[templ]['name'])
+        conv = convert(rotor[templ]['name'], **params)
         model.set_value('poles', int(conv.get('num_poles')))
         self.set_diameter_parameter(model, conv)
         if model.get('da2'):
@@ -328,9 +333,9 @@ class Builder:
             ag = (model.get('bore_diam') - model.get('da2')/1e3)/2
             model.set_value('airgap', ag)
 
-        model.magnet['dxf'] = dict(fsl=conv['fsl'])
-        self.fsl_magnet = True
-        del model.magnet[templ]
+        rotor['dxf'] = dict(fsl=conv['fsl'])
+        self.fsl_rotor = True
+        del rotor[templ]
 
     def render_rotor(self, magmodel, templ):
         fslcode = self.__render(magmodel, templ, magnet=True)
@@ -480,6 +485,9 @@ class Builder:
         params['airgap'] = model.dxffile.get('airgap', 0.0)
         params['nodedist'] = model.dxffile.get('nodedist', 1)
         params['full_model'] = model.dxffile.get('full_model', False)
+        params['EESM'] = model.dxffile.get('type', 'PMSM') == 'EESM'
+        if params['EESM']:
+            model.rotor['EESM'] = {}
         conv = convert(dxfname, **params)
 
         model.set_value('poles', conv.get('num_poles'))
@@ -509,11 +517,17 @@ class Builder:
         if 'fsl_stator' in conv:
             self.fsl_stator = True
             model.stator['dxf'] = dict(fsl=conv['fsl_stator'])
-        if not hasattr(model, 'magnet'):
-            setattr(model, 'magnet', {})
-        if 'fsl_magnet' in conv:
-            self.fsl_magnet = True
-            model.magnet['dxf'] = dict(fsl=conv['fsl_magnet'])
+        if not (hasattr(model, 'magnet') or hasattr(model, 'rotor')):
+            if params['EESM']:
+                setattr(model, 'rotor', {})
+            else:
+                setattr(model, 'magnet', {})
+        if 'fsl_rotor' in conv:
+            self.fsl_rotor = True
+            if hasattr(model, 'magnet'):
+                model.magnet['dxf'] = dict(fsl=conv['fsl_rotor'])
+            if hasattr(model, 'rotor'):
+                model.rotor['dxf'] = dict(fsl=conv['fsl_rotor'])
 
     def create_model(self, model, magnets=[], condMat=[], ignore_material=False):
         magnetMat = {}
@@ -714,11 +728,10 @@ class Builder:
         return self.__render(model, 'colorgrad')
 
     def mesh_airgap(self, model):
-        if ((self.fsl_stator and self.fsl_magnet) or
+        if ((self.fsl_stator and self.fsl_rotor) or
                 model.get('num_agnodes', 0)):
             return self.__render(model, 'mesh-airgap')
-        else:
-            return []
+        return []
 
     def create(self, model, sim, magnets=None, condMat=[]):
         "create model and analysis function"
@@ -768,10 +781,10 @@ class Builder:
 
         return (fslmodel + self.create_analysis(sim) +
                 ['save_model("close")'])
-    
-    def create_detailed_wire(self, params, templ): 
+
+    def create_detailed_wire(self, params, templ):
         return self.__render(params, templ)
-    
+
     def __render(self, model, templ, stator=False, magnet=False):
         if templ.split('.')[-1] in ('fsl', 'mako'):
             try:
@@ -791,7 +804,7 @@ class Builder:
             if stator:
                 self.fsl_stator = True
             if magnet:
-                self.fsl_magnet = True
+                self.fsl_rotor = True
 
         return template.render_unicode(model=model).split('\n')
 

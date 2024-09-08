@@ -1,12 +1,16 @@
--- Winding (ROT_HSM only!)
+-- Winding (ROT_HSM or dxf)
 m.num_wires =  ${model['num_wires']}
 
-a = m.rotor_diam/2 - ag - m.pole_height - m.core_height/2
-b = ((m.core_width1 + m.core_width2)/4 + m.pole_width/2)/2
-r = math.sqrt(a^2 + b^2)
-alpha = math.atan2(b, a)
-
 phi = math.pi/m.num_poles
+if m.xcoil_r == nil then -- ROT_HSM
+  a = m.rotor_diam/2 - ag - m.pole_height - m.core_height/2
+  b = ((m.core_width1 + m.core_width2)/4 + m.pole_width/2)/2
+  r = math.sqrt(a^2 + b^2)
+  alpha = math.atan2(b, a)
+else
+  r,beta  = c2pr(m.xcoil_r, m.ycoil_r)
+  alpha = phi - beta
+end
 dir = {'wi', 'wo'}
 xcoil, ycoil = pr2c(r, phi - alpha)
 def_new_wdg(xcoil, ycoil, yellow, "Exc", m.num_wires, 10.0, dir[1])

@@ -640,7 +640,8 @@ def convert(dxfile,
                 logger.warning("it's not possible to create fsl-file")
                 return None
 
-            fslrenderer = FslRenderer(basename)
+            mtype = 'EESM' if EESM else 'PMSM'
+            fslrenderer = FslRenderer(basename, mtype)
             inner = fslrenderer.render(machine_inner, inner=True)
             outer = fslrenderer.render(machine_outer, outer=True)
             if full_model:
@@ -652,14 +653,13 @@ def convert(dxfile,
                                       params.get('nodedist'))
 
             if params['external_rotor']:
-                conv['fsl_magnet'] = outer
+                conv['fsl_rotor'] = outer
                 conv['fsl_stator'] = inner
             else:
-                conv['fsl_magnet'] = inner
+                conv['fsl_rotor'] = inner
                 conv['fsl_stator'] = outer
 
             conv['fsl'] = fslrenderer.render_main(
-                machine,
                 machine_inner, machine_outer,
                 inner, outer,
                 params)

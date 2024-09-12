@@ -307,12 +307,12 @@ class SynchronousMachine(object):
             self.tfric = 0
 
         self.fo = 50
-        self.plexp = {'styoke_hyst': 1.0,
-                      'stteeth_hyst': 1.0,
-                      'styoke_eddy': 2.0,
-                      'stteeth_eddy': 2.0,
-                      'rotor_hyst': 1.0,
-                      'rotor_eddy': 2.0}
+        self.plexp = {'styoke_hyst': [1.0, 1.0],
+                      'stteeth_hyst': [1.0, 1.0],
+                      'styoke_eddy': [2.0,2.0],
+                      'stteeth_eddy': [2.0,2.0],
+                      'rotor_hyst': [1.0,1.0],
+                      'rotor_eddy': [2.0, 2.0]}
 
     def _set_losspar(self, speed, ef, hf):
         self.fo = speed*self.p
@@ -599,54 +599,54 @@ class SynchronousMachine(object):
                         with_tmech=True, with_torque_corr=False, **kwargs):
         """calculate torque speed characteristics.
         return dict with list values of
-            n, T, u1, i1, beta, cosphi, pmech, n_type
+        n, T, u1, i1, beta, cosphi, pmech, n_type
 
         Keyword arguments:
-            T -- (float) the maximum torque in Nm
-            n -- (float) the maximum speed in 1/s
-            u1max -- (float) the maximum voltage in V rms
-            nsamples -- (optional) number of speed samples
-            with_tmech -- (optional) use friction and windage losses
-            with_torque_corr -- (optional) T is corrected if out of range
-            Optional arguments:
-            i1max: max. phase current (RMS)
-            """
+        T -- (float) the maximum torque in Nm
+        n -- (float) the maximum speed in 1/s
+        u1max -- (float) the maximum voltage in V rms
+        nsamples -- (optional) number of speed samples
+        with_tmech -- (optional) use friction and windage losses
+        with_torque_corr -- (optional) T is corrected if out of range
+        Optional arguments:
+        i1max: max. phase current (RMS)
+        """
         if kwargs.get('i1max', 0):
             w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
         try:
             iq, id, iex = self.iqd_torque(T)
         except ValueError:
             tmax = self.torquemax(
-                self.i1range[1], self.exc_max)
+                    self.i1range[1], self.exc_max)
             tmin = 0
             if self.betarange[0] < -np.pi/2:
                 tmin = -self.torquemin(
-                    self.i1range[1], self.exc_max)
+                        self.i1range[1], self.exc_max)
             if with_torque_corr:
                 Torig = T
                 if T > 0:
                     T = np.floor(0.94*tmax)
                 else:
                     T = np.ceil(0.94*tmin)
-                    logger.warning("corrected torque %f -> %f Nm",
-                                   Torig, T)
-                    iq, id, iex = self.iqd_torque(T)
+                logger.warning("corrected torque %f -> %f Nm",
+                               Torig, T)
+                iq, id, iex = self.iqd_torque(T)
             else:
                 raise ValueError(
-                    f"torque {T} Nm out of range ({tmin:.1f}, {tmax:.1f} Nm)")
+                        f"torque {T} Nm out of range ({tmin:.1f}, {tmax:.1f} Nm)")
 
         if with_tmech:
             i1max = betai1(iq, id)[1]
             if T < 0:
                 i1max = -i1max
-                w1type, Tf = self.w1_imax_umax(i1max, u1max)
+            w1type, Tf = self.w1_imax_umax(i1max, u1max)
 
         else:
             Tf = T
             w1type = self.w1_umax(u1max, iq, id, iex)
-            logger.debug("w1type %f", w1type)
-            wmType = w1type/self.p
-            pmax = Tf*wmType
+        logger.debug("w1type %f", w1type)
+        wmType = w1type/self.p
+        pmax = Tf*wmType
 
         def tload(wm):
             if abs(wm*Tf) < abs(pmax):
@@ -679,32 +679,32 @@ class SynchronousMachine(object):
             w1 = wm*self.p
             if with_tmech:
                 iq, id, iex, tqx = self.iqd_tmech_umax(
-                    tq, w1, u1max)
+                        tq, w1, u1max)
             else:
                 iq, id, iex, tqx = self.iqd_torque_umax(
-                    tq, w1, u1max)
+                        tq, w1, u1max)
                 tqx -= self.tfric
-                uq, ud = self.uqd(w1, iq, id, iex)
-                u1 = np.linalg.norm((uq, ud))/np.sqrt(2)
-                f1 = w1/2/np.pi
-                r['id'].append(id)
-                r['iq'].append(iq)
-                r['iex'].append(iex)
-                r['u1'].append(u1)
-                beta = np.arctan2(id, iq)
+            uq, ud = self.uqd(w1, iq, id, iex)
+            u1 = np.linalg.norm((uq, ud))/np.sqrt(2)
+            f1 = w1/2/np.pi
+            r['id'].append(id)
+            r['iq'].append(iq)
+            r['iex'].append(iex)
+            r['u1'].append(u1)
+            beta = np.arctan2(id, iq)
             if beta > 0:
                 beta -= 2*np.pi
-                i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
-                r['i1'].append(i1)
-                r['beta'].append(beta/180*np.pi)
-                gamma = np.arctan2(ud, uq)
-                r['cosphi'].append(np.cos(gamma - beta))
-                r['plfe1'].append(self.iqd_plfe1(iq, id, iex, f1))
-                r['plfe2'].append(self.iqd_plfe2(iq, id, iex, f1))
-                r['plcu1'].append(self.m*i1**2*self.rstat(w1))
-                r['plcu2'].append(iex**2*self.rrot(0))
-                r['T'].append(tqx)
-                r['n'].append(wm/2/np.pi)
+            i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
+            r['i1'].append(i1)
+            r['beta'].append(beta/180*np.pi)
+            gamma = np.arctan2(ud, uq)
+            r['cosphi'].append(np.cos(gamma - beta))
+            r['plfe1'].append(self.iqd_plfe1(iq, id, iex, f1))
+            r['plfe2'].append(self.iqd_plfe2(iq, id, iex, f1))
+            r['plcu1'].append(self.m*i1**2*self.rstat(w1))
+            r['plcu2'].append(iex**2*self.rrot(0))
+            r['T'].append(tqx)
+            r['n'].append(wm/2/np.pi)
 
         r['plfe'] = (np.array(r['plfe1']) + np.array(r['plfe2'])).tolist()
         r['plcu'] = (np.array(r['plcu1']) + np.array(r['plcu2'])).tolist()
@@ -730,7 +730,6 @@ class SynchronousMachine(object):
                 r['eta'] += (p1[i:]/pmech[i:]).tolist()
 
         return r
-
 
 class SynchronousMachinePsidq(SynchronousMachine):
 
@@ -941,7 +940,7 @@ class SynchronousMachineLdq(SynchronousMachine):
         beta = np.arctan2(id, iq)
         if beta > 0:
             beta -= 2*np.pi
-            i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
+        i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
         try:
             return self.psidf((iex, beta, i1)), self.psiqf((iex, beta, i1))
         except ValueError as ex:
@@ -973,7 +972,7 @@ class SynchronousMachineLdq(SynchronousMachine):
                 beta -= 2*np.pi
         else:
             beta[beta > 0] -= 2*np.pi
-            i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
+        i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
         return self.plfe1(beta, i1, iex, f1)
 
     def iqd_plfe2(self, iq, id, iex, f1):
@@ -983,7 +982,7 @@ class SynchronousMachineLdq(SynchronousMachine):
                 beta -= 2*np.pi
         else:
             beta[beta > 0] -= 2*np.pi
-            i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
+        i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
         return self.plfe2(beta, i1, iex, f1)
 
 

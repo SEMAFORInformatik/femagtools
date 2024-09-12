@@ -390,21 +390,12 @@ def dqparident(workdir, engine, temp, machine,
         fcu = 0.42
 
     try: # calc basic dimensions if not fsl or dxf model
+        from ..model import MachineModel
         wdg = create_wdg(machine)
         Q1 = wdg.Q
-        slotmodel = [k for k in machine['stator'] if isinstance(
-            machine['stator'][k], dict)][-1]
-        if slotmodel == 'stator1':
-            hs = machine['stator']['stator1']['slot_rf1'] - \
-                machine['stator']['stator1']['tip_rh1']
-        else:
-            da1 = machine['bore_diam']
-            dy1 = machine['outer_diam']
-            hs = machine['stator'][slotmodel].get(
-                'slot_height', 0.6*(dy1-da1)/2)
-
+        model = MachineModel(machine)
         Jmax = 30e6  # max current density in A/m2
-        Acu = fcu*np.pi*(da1+hs)*hs/Q1/2  # approx. copper area of one slot
+        Acu = fcu*model.slot_area()  # approx. copper area of one slot
         i1_max = round(g*Acu/wdg.l/N*Jmax/10)*10
     except KeyError:
         if kwargs.get('i1_max', 0) == 0:

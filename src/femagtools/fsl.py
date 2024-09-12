@@ -500,6 +500,7 @@ class Builder:
         if not hasattr(model, 'stator'):
             setattr(model, 'stator', {})
         model.stator['num_slots'] = conv.get('tot_num_slot')
+        model.stator['slot_area'] = conv.get('slot_area')
         if model.get('num_agnodes', 0) == 0:
             model.set_value('agndst', conv['agndst']*1e-3)
             logger.info("num poles %d num slots %d outer diameter %.4f m agndst %.4f mm",

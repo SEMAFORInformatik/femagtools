@@ -791,7 +791,8 @@ def convert(dxfile,
                 logger.warning("it's not possible to create fsl-file")
                 return None
 
-            fslrenderer = FslRenderer(basename)
+            mtype = 'EESM' if EESM else 'PMSM'
+            fslrenderer = FslRenderer(basename, mtype)
             conv['fsl'] = fslrenderer.render(machine, inner, outer)
 
     if params is not None:
@@ -815,13 +816,18 @@ def create_femag_parameters(m_inner, m_outer, nodedist=1):
     parts_inner = int(m_inner.get_symmetry_part())
     parts_outer = int(m_outer.get_symmetry_part())
 
+    slot_area = 0
     if parts_inner > parts_outer:
+        from .area import TYPE_WINDINGS
+        slot_area = geom_inner.area_size_of_type(TYPE_WINDINGS)
         num_slots = int(parts_inner)
         num_poles = int(parts_outer)
         num_sl_gen = int(geom_inner.get_symmetry_copies()+1)
         alfa_slot = geom_inner.get_alfa()
         alfa_pole = geom_outer.get_alfa()
     else:
+        from .area import TYPE_WINDINGS
+        slot_area = geom_outer.area_size_of_type(TYPE_WINDINGS)
         num_slots = int(parts_outer)
         num_poles = int(parts_inner)
         num_sl_gen = int(geom_outer.get_symmetry_copies()+1)
@@ -829,6 +835,7 @@ def create_femag_parameters(m_inner, m_outer, nodedist=1):
         alfa_pole = geom_inner.get_alfa()
 
     params['tot_num_slot'] = num_slots
+    params['slot_area'] = slot_area
     params['num_sl_gen'] = num_sl_gen
     params['num_poles'] = num_poles
     params['nodedist'] = nodedist
@@ -866,6 +873,7 @@ def create_femag_parameters_stator(motor, position):
     else:
         params['dy1'] = 2*motor.geom.max_radius
         params['da1'] = 2*motor.geom.min_radius
+    params['slot_area'] = motor.slot_area()
     return params
 
 
@@ -879,4 +887,5 @@ def create_femag_parameters_rotor(motor, position):
     else:
         params['dy1'] = 2*motor.geom.max_radius
         params['da1'] = 2*motor.geom.min_radius
+    params['slot_area'] = motor.slot_area()
     return params

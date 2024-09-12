@@ -3574,6 +3574,10 @@ class Geometry(object):
         return len([area for area in self.list_of_areas()
                     if area.is_type(type)])
 
+    def area_size_of_type(self, type):
+        return sum([area.surface for area in self.list_of_areas()
+                    if area.is_type(type)])*1e-3
+
     def num_of_windings(self):
         return self.num_areas_of_type(AREA.TYPE_WINDINGS)
 

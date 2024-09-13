@@ -435,6 +435,14 @@ def points_on_arc(center, radius, startangle, endangle, parts=8):
                center[1] + radius * np.sin(alpha))
 
 
+def points_on_line(p1, p2, parts=2):
+    x_dist = (p2[0] - p1[0]) / parts
+    y_dist = (p2[1] - p1[1]) / parts
+    x, y = p1
+    for i in range(1, parts):
+        yield (x + i*x_dist, y + i*y_dist)
+
+
 class Timer(object):
     def __init__(self, start_it=False):
         self.starttime = None

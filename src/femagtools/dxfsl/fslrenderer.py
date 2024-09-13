@@ -157,10 +157,21 @@ class FslRenderer(object):
         '''create fsl statements with nodechains'''
         machine.set_alfa_and_corners()
         geom = machine.geom
-        geom.split_lines_longer_than(geom.max_radius/4)
+        split_len = (geom.max_radius - geom.min_radius) / 4
+        geom.split_all_lines_longer_than(split_len)
         self.content = []
 
-        ndt_list = [(0.2, 1.5), (0.45, 2), (0.7, 3.0), (1.1, 3.0)]
+        ndt_list = [(0.00, 1.1),
+                    (0.05, 1.5),
+                    (0.10, 1.7),
+                    (0.15, 2.0),
+                    (0.20, 2.3),
+                    (0.30, 2.7),
+                    (0.40, 3.1),
+                    (0.50, 3.5),
+                    (0.70, 4.5),
+                    (0.85, 5.5),
+                    (1.10, 5.5)]
         dist = geom.max_radius - geom.min_radius
         el_sorted = self.sorted_elements(geom, inner)
 

@@ -9,6 +9,7 @@
 """
 import numpy as np
 from .shape import Shape
+from .area import TYPE_TOOTH, TYPE_YOKE
 import logging
 from .. import __version__
 logger = logging.getLogger(__name__)
@@ -92,7 +93,7 @@ class FslRenderer(object):
         p2 = (center[0] + radius*np.cos(endangle),
               center[1] + radius*np.sin(endangle))
         self.content.append(
-            u"nc_circle_m({}, {}, {}, {}, {}, {}, {})".format(
+            "nc_circle_m({}, {}, {}, {}, {}, {}, {})".format(
                 p1[0], p1[1], p2[0], p2[1],
                 center[0], center[1], num))
 
@@ -119,7 +120,7 @@ class FslRenderer(object):
         n0 = nodes[0]
         for n1 in nodes[1:]:
             self.content.append(
-                u"nc_line({}, {}, {}, {}, {}) -- ellipse".format(
+                "nc_line({}, {}, {}, {}, {}) -- ellipse".format(
                     n0[0], n0[1], n1[0], n1[1], 0))
             n0 = n1
 
@@ -135,12 +136,12 @@ class FslRenderer(object):
                 return
             if e.has_attribute('auxline'):
                 self.content.append(
-                    u"nc_line({}, {}, {}, {}, {}) -- auxiliary".format(
+                    "nc_line({}, {}, {}, {}, {}) -- auxiliary".format(
                         p1[0], p1[1], p2[0], p2[1], num))
                 return
 
         self.content.append(
-            u"nc_line({}, {}, {}, {}, {})".format(
+            "nc_line({}, {}, {}, {}, {})".format(
                 p1[0], p1[1], p2[0], p2[1], num))
 
     def sorted_elements(self, geom, inner=False):
@@ -196,6 +197,15 @@ class FslRenderer(object):
                     '-- num_slots  = {}'.format(
                         machine.get_num_slots())
                 ]
+                # fix stator subregions
+                sregs = [a.type for a in geom.list_of_areas()
+                         if a.type in (TYPE_YOKE, TYPE_TOOTH)]
+                if len(sregs) > 0 and set(sregs) == {TYPE_TOOTH}:
+                    for a in geom.list_of_areas():
+                        if a.type == TYPE_TOOTH:
+                            a.type = TYPE_YOKE
+                            logger.debug("FIXED STATOR SUBREGION")
+
         self.content += ['-- min_radius = {}'.format(geom.min_radius),
                          '-- max_radius = {}'.format(geom.max_radius),
                          '-- min_corner = {}, {}'.format(
@@ -256,13 +266,14 @@ class FslRenderer(object):
         num_windings = 0
         num_magnets = 0
         magor = []
+
         for area in geom.list_of_areas():
             if area.number_of_elements() > 1:
                 p = area.get_point_inside(geom)
                 if p:
-                    self.content.append(u"x0, y0 = {}, {}".format(p[0], p[1]))
-                    # self.content.append(u"point(x0, y0, red, 4)")  # for debugging
-                    self.content.append(u"create_mesh_se(x0, y0)")
+                    self.content.append("x0, y0 = {}, {}".format(p[0], p[1]))
+                    # self.content.append("point(x0, y0, red, 4)")  # for debugging
+                    self.content.append("create_mesh_se(x0, y0)")
 
                 if area.is_winding():
                     if area.type not in subregions:
@@ -313,10 +324,10 @@ class FslRenderer(object):
                         self.content.append(
                             'x0_shaft, y0_shaft = x0, y0')
 
-                self.content.append(u"\n")
+                self.content.append("\n")
 
-        txt = [u"if x0_iron_yoke > 0.0 then",
-               u"  if mcvkey_yoke ~= 'dummy' then",
+        txt = ["if x0_iron_yoke > 0.0 then",
+               "  if mcvkey_yoke ~= 'dummy' then",
                '    def_mat_fm_nlin(x0_iron_yoke, y0_iron_yoke, "blue", mcvkey_yoke, 100)',
                '  else',
                '    def_mat_fm(x0_iron_yoke, y0_iron_yoke, ur, 100)',
@@ -324,21 +335,21 @@ class FslRenderer(object):
                'end\n']
         self.content.append('\n'.join(txt))
 
-        txt = [u"if x0_iron_tooth > 0.0 then",
-               u"  if(x0_iron_yoke == 0 and mcvkey_yoke ~= 'dummy') then",
-               u"    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_yoke, 100)",
-               u"  else",
-               u"    if (mcvkey_teeth ~= 'dummy' and mcvkey_teeth ~= nil) then",
-               u"      def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_teeth, 100)",
-               u"    else",
-               u"      def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)",
-               u"    end",
-               u"  end",
+        txt = ["if x0_iron_tooth > 0.0 then",
+               "  if(x0_iron_yoke == 0 and mcvkey_yoke ~= 'dummy') then",
+               "    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_yoke, 100)",
+               "  else",
+               "    if (mcvkey_teeth ~= 'dummy' and mcvkey_teeth ~= nil) then",
+               "      def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_teeth, 100)",
+               "    else",
+               "      def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)",
+               "    end",
+               "  end",
                'end\n']
         self.content.append('\n'.join(txt))
 
-        txt = [u"if x0_shaft > 0.0 then",
-               u"  if mcvkey_shaft ~= 'dummy' then",
+        txt = ['if x0_shaft > 0.0 then',
+               "  if mcvkey_shaft ~= 'dummy' then",
                '    def_mat_fm_nlin(x0_shaft, y0_shaft, "lightgrey", mcvkey_shaft, 100)',
                '  else',
                '    def_mat_fm(x0_shaft, y0_shaft, ur, 100)',
@@ -427,15 +438,15 @@ class FslRenderer(object):
             self.content.append('\nx0, y0 = {}, {}'. format(
                 self.fm_nlin[0], self.fm_nlin[1]))
 
-            mat = [u"if fm_nlin_mcvfile ~= 'dummy' then",
-                   u"  if fm_nlin_mcvfile == 'air' then",
-                   u"    def_mat_fm(x0,y0, 1.0, fm_nlin_rlen)",
-                   u"  else",
-                   u"    def_mat_fm_nlin(x0,y0, fm_nlin_colour, fm_nlin_mcvfile, fm_nlin_rlen)",
-                   u"  end",
-                   u"else",
-                   u"  def_mat_fm(x0,y0, 1000.0, fm_nlin_rlen)",
-                   u"end"]
+            mat = ["if fm_nlin_mcvfile ~= 'dummy' then",
+                   "  if fm_nlin_mcvfile == 'air' then",
+                   "    def_mat_fm(x0,y0, 1.0, fm_nlin_rlen)",
+                   "  else",
+                   "    def_mat_fm_nlin(x0,y0, fm_nlin_colour, fm_nlin_mcvfile, fm_nlin_rlen)",
+                   "  end",
+                   "else",
+                   "  def_mat_fm(x0,y0, 1000.0, fm_nlin_rlen)",
+                   "end"]
             self.content.append('\n'.join(mat))
 
         if self.shaft:

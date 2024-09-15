@@ -49,6 +49,7 @@ def parident(workdir, engine, machine,
         beta_min: minimal current angle (default -180°)
         beta_max: maximal current angle (default 0°)
         num_move_steps: number of move steps
+        cmd: femag command (default None, platform executable)
         """
     cmd = kwargs.get('cmd', None)
 
@@ -76,14 +77,16 @@ def parident(workdir, engine, machine,
 
     ifnom = machine['rotor']['ifnom']
     exc_logspace = True
+    ifmin, ifmax = ifnom/4, 1.4*ifnom
     if exc_logspace:
-        excur = np.logspace(np.log(ifnom/4), np.log(1.4*ifnom),
+        excur = np.logspace(np.log(ifmin), np.log(ifmax),
                             kwargs.get("num_exc_steps", 6),
                             base=np.exp(1)).tolist()
     else:
-        excur = np.linspace(ifnom/4, 1.4*ifnom,
+        excur = np.linspace(ifmin, ifmax,
                             kwargs.get("num_exc_steps", 6))
 
+    logger.info("Exc current %s", excur)
     parvardef = {
         "decision_vars": [
             {"values": excur, "name": "load_ex_cur"}
@@ -252,9 +255,9 @@ def _splinterp(beta, i1, betax, i1x, a):
 
 
 def _islinear(exc):
-    return np.abs(np.sum(
-        np.asarray(exc)**2 -
-        np.linspace(exc[0], exc[-1], len(exc))**2)) < 1e-2
+    d = np.diff(exc)
+    m = np.mean(d)
+    return np.max(np.abs(d**2 - m**2)) < 1e-9
 
 
 def _gradient_respecting_bounds(bounds, fun, eps=1e-8):
@@ -756,10 +759,10 @@ class SynchronousMachinePsidq(SynchronousMachine):
             exc = iexc
             psid = wdg*lfe*np.array([
                 _splinterp(iq, id, iqx, idx, l['psid'])
-                    for l in eecpars['psidq']])
+                for l in eecpars['psidq']])
             psiq = wdg*lfe*np.array([
                 _splinterp(iq, id, iqx, idx, l['psiq'])
-                    for l in eecpars['psidq']])
+                for l in eecpars['psidq']])
         else:
             islinear = False
             nsamples = 10
@@ -767,10 +770,10 @@ class SynchronousMachinePsidq(SynchronousMachine):
             exc = iexcl
             psid = wdg*lfe*_linsampl(iexc, iexcl, np.array(
                 [_splinterp(iq, id, iqx, idx, l['psid'])
-                     for l in eecpars['psidq']]))
+                 for l in eecpars['psidq']]))
             psiq = wdg*lfe*_linsampl(iexc, iexcl, np.array(
                 [_splinterp(iq, id, iqx, idx, l['psiq'])
-                     for l in eecpars['psidq']]))
+                 for l in eecpars['psidq']]))
 
         self.psidf = ip.RegularGridInterpolator(
             (exc, iqx, idx), psid,
@@ -781,10 +784,10 @@ class SynchronousMachinePsidq(SynchronousMachine):
         self.bounds = [(min(iq), max(iq)),
                        (min(id), 0),
                        (iexc[0], iexc[-1])]
-
-        keys = self.plexp.keys()
+        # iron losses
+        idname = 'psidq'
+        keys = [k for k in self.plexp.keys() if k in eecpars[idname][0]['losses']]
         try:
-            idname = 'psidq'
             # check if bertotti
             if 'styoke_excess' in eecpars[idname][0]['losses'] and \
                np.any(np.array(eecpars[idname][0]['losses']['styoke_excess'])):
@@ -803,7 +806,7 @@ class SynchronousMachinePsidq(SynchronousMachine):
                                              for l in eecpars[idname]]))
                        for k in keys}
                 self._losses = {k: ip.RegularGridInterpolator(
-                    (exc, iq, id), lfe*np.array(pfe[k]),
+                    (exc, iq, id), lfe*pfe[k],
                     method='cubic', bounds_error=False, fill_value=None)
                             for k in keys}
                 self._set_losspar(eecpars[idname][0]['losses']['speed'],
@@ -826,8 +829,9 @@ class SynchronousMachinePsidq(SynchronousMachine):
             raise ex
 
     def plfe1(self, iq, id, iex, f1):
-        losskeys = ['styoke_eddy', 'styoke_hyst',
-                    'stteeth_eddy', 'stteeth_hyst']
+        losskeys = [k for k in self._losses if k in [
+            'styoke_eddy', 'styoke_hyst',
+            'stteeth_eddy', 'stteeth_hyst']]
         if self.bertotti:
             losskeys += ['styoke_excess', 'stteeth_excess']
         return np.sum([
@@ -863,6 +867,8 @@ class SynchronousMachineLdq(SynchronousMachine):
         betax = np.linspace(beta[0], beta[-1], 20)
 
         if _islinear(iexc):
+            logger.info("Linear sampled ex current: %s",
+                        iexc)
             exc = iexc
             psid = wdg*lfe*np.array([
                 _splinterp(beta, i1, betax, i1x, l['psid'])
@@ -872,6 +878,8 @@ class SynchronousMachineLdq(SynchronousMachine):
                     for l in eecpars['ldq']])
         else:
             islinear = False
+            logger.info("Non Linear sampled ex current %s",
+                        iexc)
             nsamples = 10
             iexcl = np.linspace(iexc[0], iexc[-1], nsamples)
             exc = iexcl
@@ -897,9 +905,9 @@ class SynchronousMachineLdq(SynchronousMachine):
                        (iexc[0], iexc[-1])]
 
         # iron losses
-        keys = self.plexp.keys()
+        idname = 'ldq'
+        keys = [k for k in self.plexp.keys() if k in eecpars[idname][0]['losses']]
         try:
-            idname = 'ldq'
             # check bertotti losses
             if 'styoke_excess' in eecpars[idname][0]['losses'] and \
                np.any(np.array(eecpars[idname][0]['losses']['styoke_excess'])):
@@ -921,9 +929,9 @@ class SynchronousMachineLdq(SynchronousMachine):
 
         # fill value with nan outside range
             self._losses = {k: ip.RegularGridInterpolator(
-                (exc, beta, i1), lfe*np.array(pfe[k]),
+                (exc, beta, i1), lfe*pfe[k],
                 method='cubic', bounds_error=False, fill_value=None)
-                            for k in keys}
+                            for k in pfe.keys()}
             self._set_losspar(eecpars[idname][0]['losses']['speed'],
                               eecpars[idname][0]['losses']['ef'],
                               eecpars[idname][0]['losses']['hf'])
@@ -949,13 +957,13 @@ class SynchronousMachineLdq(SynchronousMachine):
             raise ex
 
     def plfe1(self, beta, i1, iex, f1):
-        losskeys =  ['styoke_eddy', 'styoke_hyst',
+        losskeys = ['styoke_eddy', 'styoke_hyst',
                      'stteeth_eddy', 'stteeth_hyst']
         if self.bertotti:
             losskeys += ['styoke_excess', 'stteeth_excess']
         return np.sum([
             self._losses[k]((iex, beta, i1))*(f1/self.fo)**self.plexp[k][0]
-            for k in losskeys], axis=0)
+            for k in losskeys if k in self._losses], axis=0)
 
     def plfe2(self, beta, i1, iex, f1):
         losskeys =  ['rotor_hyst', 'rotor_eddy']

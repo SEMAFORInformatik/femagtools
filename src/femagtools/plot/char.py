@@ -326,15 +326,15 @@ def _plot_contour(speed, torque, z, ax, title='', levels=[],
     contf = ax.tricontourf(x, y, z,
                            levels=levels, cmap=cmap)
 
+    #ax.plot(x, y, "k.", ms=3)
+    if clabel:
+        ax.clabel(cont, inline=True, colors='k', fontsize=8, inline_spacing=0)
+
     clippath = Path(_get_nT_boundary(x, y))
     patch = PathPatch(clippath, facecolor='none')
     ax.add_patch(patch)
     for c in cont.collections:
         c.set_clip_path(patch)
-    #ax.plot(x, y, "k.", ms=3)
-    if clabel:
-        ax.clabel(cont, inline=True, colors='k', fontsize=8, inline_spacing=0)
-
     for c in contf.collections:
         c.set_clip_path(patch)
 

@@ -63,9 +63,12 @@ def sttylosses(losses):
         try:
             d['styoke_hyst'] = losses[yoke+'_hyst']
             d['styoke_eddy'] = losses[yoke+'_eddy']
-            d['styoke_excess'] = losses[yoke+'_excess']
             d['stteeth_hyst'] = losses[teeth+'_hyst']
             d['stteeth_eddy'] = losses[teeth+'_eddy']
+        except KeyError:
+            pass
+        try:
+            d['styoke_excess'] = losses[yoke+'_excess']
             d['stteeth_excess'] = losses[teeth+'_excess']
         except KeyError:
             pass

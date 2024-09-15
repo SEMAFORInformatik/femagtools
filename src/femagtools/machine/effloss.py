@@ -323,6 +323,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
         plcu2 = m.iqd_plcu2(*iqd)
         tfric = m.tfric
+        logger.info("Iex %f %f",
+                    np.min(iqd[2]), np.max(iqd[2]))
     else:
         plfe1 = np.array(r['plfe1'])
         plfe2 = np.zeros(ntmesh.shape[1])

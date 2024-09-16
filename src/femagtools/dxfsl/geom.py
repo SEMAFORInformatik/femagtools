@@ -34,7 +34,7 @@ from .functions import middle_point_of_line, middle_point_of_arc
 from .functions import middle_angle, positive_angle
 from .functions import normalise_angle, is_same_angle
 from .functions import part_of_circle, gcd
-from .functions import point_on_arc, nodes_are_equal
+from .functions import point_on_arc, points_on_line, nodes_are_equal
 from .functions import area_size
 import io
 import time
@@ -746,6 +746,38 @@ class Geometry(object):
             self._remove_edge(p1, p2)
         for new_ln in new_lines:
             self.add_element(new_ln,
+                             rtol=self.rtol,
+                             atol=self.atol)
+
+    def split_all_lines_longer_than(self, length):
+        """split lines longer than length"""
+        new_lines = []
+        rem_lines = []
+        elist = self.elements_and_nodes(Line)
+
+        for p1, p2, line in elist:
+            line_len = line.length()
+            if line_len < length:
+                continue
+            d = abs(distance(self.center, p1) - distance(self.center, p2))
+            parts = 3
+            if d > line_len / 2:
+                parts = 5
+            elif d > line_len / 3:
+                parts = 4
+            p_start = p1
+
+            for p_next in points_on_line(p1, p2, parts=parts):
+                new_lines.append(Line(Element(start=p_start, end=p_next)))
+                p_start = p_next
+
+            new_lines.append(Line(Element(start=p_start, end=p2)))
+            rem_lines.append((p1, p2))
+
+        for p1, p2 in rem_lines:
+            self._remove_edge(p1, p2)
+        for new_line in new_lines:
+            self.add_element(new_line,
                              rtol=self.rtol,
                              atol=self.atol)
 
@@ -3573,6 +3605,10 @@ class Geometry(object):
     def num_areas_of_type(self, type):
         return len([area for area in self.list_of_areas()
                     if area.is_type(type)])
+
+    def area_size_of_type(self, type):
+        return sum([area.surface for area in self.list_of_areas()
+                    if area.is_type(type)])*1e-3
 
     def num_of_windings(self):
         return self.num_areas_of_type(AREA.TYPE_WINDINGS)

@@ -590,6 +590,10 @@ class Machine(object):
             return w*2
         return w
 
+    def slot_area(self):
+        from .area import TYPE_WINDINGS
+        return self.geom.area_size_of_type(TYPE_WINDINGS)
+
     def find_symmetry(self, sym_tolerance, is_inner, is_outer, plt):
         logger.debug("begin of find_symmetry")
         if self.radius <= 0.0:

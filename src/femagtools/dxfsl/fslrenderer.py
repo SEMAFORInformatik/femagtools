@@ -9,6 +9,7 @@
 """
 import numpy as np
 from .shape import Shape
+from .area import TYPE_TOOTH, TYPE_YOKE
 import logging
 from .. import __version__
 logger = logging.getLogger(__name__)
@@ -52,12 +53,13 @@ def agndst(da1, da2, Q, p, nodedist=1):
 class FslRenderer(object):
     """a model that can created by FSL"""
 
-    def __init__(self, name):
+    def __init__(self, name, mtype):
         self.model = name
         self.mirror_axis = None
         self.fm_nlin = None
         self.shaft = None
         self.agndst = 1
+        self.mtype = mtype
 
     def mirror_nodechains(self, p0, p1):
         self.mirror_axis = np.array((p0, p1)).ravel().tolist()
@@ -91,7 +93,7 @@ class FslRenderer(object):
         p2 = (center[0] + radius*np.cos(endangle),
               center[1] + radius*np.sin(endangle))
         self.content.append(
-            u"nc_circle_m({}, {}, {}, {}, {}, {}, {})".format(
+            "nc_circle_m({}, {}, {}, {}, {}, {}, {})".format(
                 p1[0], p1[1], p2[0], p2[1],
                 center[0], center[1], num))
 
@@ -118,7 +120,7 @@ class FslRenderer(object):
         n0 = nodes[0]
         for n1 in nodes[1:]:
             self.content.append(
-                u"nc_line({}, {}, {}, {}, {}) -- ellipse".format(
+                "nc_line({}, {}, {}, {}, {}) -- ellipse".format(
                     n0[0], n0[1], n1[0], n1[1], 0))
             n0 = n1
 
@@ -134,12 +136,12 @@ class FslRenderer(object):
                 return
             if e.has_attribute('auxline'):
                 self.content.append(
-                    u"nc_line({}, {}, {}, {}, {}) -- auxiliary".format(
+                    "nc_line({}, {}, {}, {}, {}) -- auxiliary".format(
                         p1[0], p1[1], p2[0], p2[1], num))
                 return
 
         self.content.append(
-            u"nc_line({}, {}, {}, {}, {})".format(
+            "nc_line({}, {}, {}, {}, {})".format(
                 p1[0], p1[1], p2[0], p2[1], num))
 
     def sorted_elements(self, geom, inner=False):
@@ -156,10 +158,21 @@ class FslRenderer(object):
         '''create fsl statements with nodechains'''
         machine.set_alfa_and_corners()
         geom = machine.geom
-        geom.split_lines_longer_than(geom.max_radius/4)
+        split_len = (geom.max_radius - geom.min_radius) / 4
+        geom.split_all_lines_longer_than(split_len)
         self.content = []
 
-        ndt_list = [(0.2, 1.5), (0.45, 2), (0.7, 3.0), (1.1, 3.0)]
+        ndt_list = [(0.00, 1.1),
+                    (0.05, 1.5),
+                    (0.10, 1.7),
+                    (0.15, 2.0),
+                    (0.20, 2.3),
+                    (0.30, 2.7),
+                    (0.40, 3.1),
+                    (0.50, 3.5),
+                    (0.70, 4.5),
+                    (0.85, 5.5),
+                    (1.10, 5.5)]
         dist = geom.max_radius - geom.min_radius
         el_sorted = self.sorted_elements(geom, inner)
 
@@ -184,6 +197,15 @@ class FslRenderer(object):
                     '-- num_slots  = {}'.format(
                         machine.get_num_slots())
                 ]
+                # fix stator subregions
+                sregs = [a.type for a in geom.list_of_areas()
+                         if a.type in (TYPE_YOKE, TYPE_TOOTH)]
+                if len(sregs) > 0 and set(sregs) == {TYPE_TOOTH}:
+                    for a in geom.list_of_areas():
+                        if a.type == TYPE_TOOTH:
+                            a.type = TYPE_YOKE
+                            logger.debug("FIXED STATOR SUBREGION")
+
         self.content += ['-- min_radius = {}'.format(geom.min_radius),
                          '-- max_radius = {}'.format(geom.max_radius),
                          '-- min_corner = {}, {}'.format(
@@ -224,14 +246,16 @@ class FslRenderer(object):
                 'outer_da_end = {}'.format(
                     geom.dist_end_min_corner())
             ]
-
-        self.content += ['\n',
+        if self.mtype == 'PMSM':
+            self.content += [
                          'xmag = {}',
                          'ymag = {}',
-                         'mag_orient = {}',
+                         'mag_orient = {}']
+        self.content += ['\n',
                          'mag_exists = 0',
                          'if mcvkey_yoke == nil then',
                          '  mcvkey_yoke = "dummy"',
+                         '  ur = 1000.0',
                          'end',
                          'x0_iron_tooth, y0_iron_tooth = 0.0, 0.0',
                          'x0_iron_yoke, y0_iron_yoke = 0.0, 0.0',
@@ -242,23 +266,27 @@ class FslRenderer(object):
         num_windings = 0
         num_magnets = 0
         magor = []
+
         for area in geom.list_of_areas():
             if area.number_of_elements() > 1:
                 p = area.get_point_inside(geom)
                 if p:
-                    self.content.append(u"x0, y0 = {}, {}".format(p[0], p[1]))
-                    # self.content.append(u"point(x0, y0, red, 4)")  # for debugging
-                    self.content.append(u"create_mesh_se(x0, y0)")
+                    self.content.append("x0, y0 = {}, {}".format(p[0], p[1]))
+                    # self.content.append("point(x0, y0, red, 4)")  # for debugging
+                    self.content.append("create_mesh_se(x0, y0)")
 
                 if area.is_winding():
                     if area.type not in subregions:
                         subregions[area.type] = 1
-                    num_windings += 1
-                    rmin, rmax = area.minmax_dist_from_center((0,0))
-                    self.content.append(
-                        f'rcoil_{num_windings} = {rmin}, {rmax}')
-                    self.content.append('m.xcoil_{}, m.ycoil_{} = x0, y0'.
-                                        format(num_windings, num_windings))
+                    if self.mtype == 'PMSM' or outer:
+                        num_windings += 1
+                        rmin, rmax = area.minmax_dist_from_center((0,0))
+                        self.content.append(
+                            f'rcoil_{num_windings} = {rmin}, {rmax}')
+                        self.content.append('m.xcoil_{}, m.ycoil_{} = x0, y0'.
+                                            format(num_windings, num_windings))
+                    else:
+                        self.content.append('m.xcoil_r, m.ycoil_r = x0, y0')
 
                 elif area.is_magnet():
                     if area.type not in subregions:
@@ -296,10 +324,10 @@ class FslRenderer(object):
                         self.content.append(
                             'x0_shaft, y0_shaft = x0, y0')
 
-                self.content.append(u"\n")
+                self.content.append("\n")
 
-        txt = [u"if x0_iron_yoke > 0.0 then",
-               u"  if mcvkey_yoke ~= 'dummy' then",
+        txt = ["if x0_iron_yoke > 0.0 then",
+               "  if mcvkey_yoke ~= 'dummy' then",
                '    def_mat_fm_nlin(x0_iron_yoke, y0_iron_yoke, "blue", mcvkey_yoke, 100)',
                '  else',
                '    def_mat_fm(x0_iron_yoke, y0_iron_yoke, ur, 100)',
@@ -307,21 +335,21 @@ class FslRenderer(object):
                'end\n']
         self.content.append('\n'.join(txt))
 
-        txt = [u"if x0_iron_tooth > 0.0 then",
-               u"  if(x0_iron_yoke == 0 and mcvkey_yoke ~= 'dummy') then",
-               u"    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_yoke, 100)",
-               u"  else",
-               u"    if (mcvkey_teeth ~= 'dummy' and mcvkey_teeth ~= nil) then",
-               u"      def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_teeth, 100)",
-               u"    else",
-               u"      def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)",
-               u"    end",
-               u"  end",
+        txt = ["if x0_iron_tooth > 0.0 then",
+               "  if(x0_iron_yoke == 0 and mcvkey_yoke ~= 'dummy') then",
+               "    def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_yoke, 100)",
+               "  else",
+               "    if (mcvkey_teeth ~= 'dummy' and mcvkey_teeth ~= nil) then",
+               "      def_mat_fm_nlin(x0_iron_tooth, y0_iron_tooth, 'blue', mcvkey_teeth, 100)",
+               "    else",
+               "      def_mat_fm(x0_iron_tooth, y0_iron_tooth, ur, 100)",
+               "    end",
+               "  end",
                'end\n']
         self.content.append('\n'.join(txt))
 
-        txt = [u"if x0_shaft > 0.0 then",
-               u"  if mcvkey_shaft ~= 'dummy' then",
+        txt = ['if x0_shaft > 0.0 then',
+               "  if mcvkey_shaft ~= 'dummy' then",
                '    def_mat_fm_nlin(x0_shaft, y0_shaft, "lightgrey", mcvkey_shaft, 100)',
                '  else',
                '    def_mat_fm(x0_shaft, y0_shaft, ur, 100)',
@@ -410,15 +438,15 @@ class FslRenderer(object):
             self.content.append('\nx0, y0 = {}, {}'. format(
                 self.fm_nlin[0], self.fm_nlin[1]))
 
-            mat = [u"if fm_nlin_mcvfile ~= 'dummy' then",
-                   u"  if fm_nlin_mcvfile == 'air' then",
-                   u"    def_mat_fm(x0,y0, 1.0, fm_nlin_rlen)",
-                   u"  else",
-                   u"    def_mat_fm_nlin(x0,y0, fm_nlin_colour, fm_nlin_mcvfile, fm_nlin_rlen)",
-                   u"  end",
-                   u"else",
-                   u"  def_mat_fm(x0,y0, 1000.0, fm_nlin_rlen)",
-                   u"end"]
+            mat = ["if fm_nlin_mcvfile ~= 'dummy' then",
+                   "  if fm_nlin_mcvfile == 'air' then",
+                   "    def_mat_fm(x0,y0, 1.0, fm_nlin_rlen)",
+                   "  else",
+                   "    def_mat_fm_nlin(x0,y0, fm_nlin_colour, fm_nlin_mcvfile, fm_nlin_rlen)",
+                   "  end",
+                   "else",
+                   "  def_mat_fm(x0,y0, 1000.0, fm_nlin_rlen)",
+                   "end"]
             self.content.append('\n'.join(mat))
 
         if self.shaft:
@@ -494,7 +522,6 @@ class FslRenderer(object):
         return self.content
 
     def render_main(self,
-                    motor,
                     m_inner, m_outer,
                     inner, outer,
                     params):
@@ -514,6 +541,27 @@ class FslRenderer(object):
                          m_outer.num_of_layers(),
                          2)
         self.agndst = params.get('agndst', 0.1)
+        excwin = []
+        if self.mtype == 'EESM':
+            excwin = [
+                'r,beta  = c2pr(m.xcoil_r, m.ycoil_r)',
+                'phi = math.pi/m.num_poles',
+                'alpha = phi-beta',
+                'm.num_wires = 1',
+                'dir = {"wi", "wo"}',
+                'xcoil, ycoil = pr2c(r, phi - alpha)',
+                'def_new_wdg(xcoil, ycoil, "violet", "Exc", m.num_wires, 10.0, dir[1])',
+                'xcoil, ycoil = pr2c(r, phi + alpha)',
+                'add_to_wdg(xcoil, ycoil, wsamekey, dir[2], "wser")',
+                'for i = 2, m.npols_gen do',
+                '  n = (i+1) % 2 + 1',
+                '  phi = phi + 2*math.pi/m.num_poles',
+                '  xcoil, ycoil = pr2c(r, phi - alpha)',
+                '  add_to_wdg(xcoil, ycoil, wsamekey, dir[n], "wser")',
+                '  xcoil, ycoil = pr2c(r, phi + alpha)',
+                '  n = i % 2 + 1',
+                '  add_to_wdg(xcoil, ycoil, wsamekey, dir[n], "wser")',
+                'end']
         return [
             '-- generated from DXF by femagtools {}'.format(__version__),
             'exit_on_error = false',
@@ -601,4 +649,4 @@ class FslRenderer(object):
                     '  pre_models("Gen_winding")',
                     '  pre_models("gen_pocfile")',
                     'end\n',
-                    'save_model(cont)\n']
+                    'save_model(cont)\n'] + excwin

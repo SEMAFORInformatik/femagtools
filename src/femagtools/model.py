@@ -191,6 +191,28 @@ class MachineModel(Model):
         except (KeyError, AttributeError):
             pass
 
+    def slot_height(self):
+        if 'statorRotor3' in self.stator:
+            return self.stator['statorRotor3']['slot_height']
+        if 'stator1' in self.stator:
+            return self.stator['stator1']['slot_rf1'] - self.stator['stator1']['tip_rh1']
+        if 'stator4' in self.stator:
+            return self.stator['stator4']['slot_height']
+        da1 = self.bore_diam
+        if self.external_rotor:
+            yh = da1-self.inner_diam
+        else:
+            yh = da1+self.outer_diam
+        return 0.6*yh/2
+
+    def slot_area(self):
+        if 'slot_area' in self.stator:
+            return self.stator['slot_area']
+        da1 = self.bore_diam
+        Q1 = self.stator['num_slots']
+        hs = self.slot_height()
+        return np.pi*hs*(da1+hs)/Q1/2
+
     def set_num_slots_gen(self):
         if 'num_slots_gen' not in self.stator:
             try:
@@ -392,6 +414,8 @@ class MachineModel(Model):
         for k in self.rotor:
             # anything that is a dict must represent the type
             if isinstance(self.rotor[k], dict):
+                if k == 'rot_hsm':
+                    return 'EESM'
                 return k
         raise AttributeError("Missing rotor model in {}".format(self.magnet))
 
@@ -433,7 +457,7 @@ class MachineModel(Model):
         model = {k: getattr(self, k) for k in keys if hasattr(self, k)}
         if hasattr(self, 'stator'):
             model['stator'] = {k: self.stator[k]
-                               for k in ('num_slots', 'num_slots_gen')
+                               for k in ('num_slots', 'num_slots_gen', 'slot_area')
                                if k in self.stator}
         return model
 

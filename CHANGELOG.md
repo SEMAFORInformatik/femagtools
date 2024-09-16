@@ -1,10 +1,12 @@
 # Changelog
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
+## Release 1.7.7
+	- dxfsl: new machine type EESM
 
 ## Release 1.7.4
 	- added optional parameter dqpar for psd_psq or ld_lq (default) identification in pm parident
-    - added method transient for PMRelMachinePsidq (experimental)
+	- added method transient for PMRelMachinePsidq (experimental)
 
 ## Release 1.7.0
 	- displ_stator_rotor: eccentricity simulation and analysis

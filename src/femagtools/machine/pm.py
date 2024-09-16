@@ -141,6 +141,14 @@ class PmRelMachine(object):
     def rstat(self, w):
         """stator resistance
         """
+        if isinstance(self.zeta1, list): 
+            logger.info("setup ac loss parameters...")
+            # polyfit from ac loss calculation
+            freq = w/2/np.pi
+            kr = self.zeta1[0]*freq**3 + self.zeta1[1]*freq**2 + \
+                self.zeta1[2]*freq + self.zeta1[3]
+            kr[kr<1] = 1.
+            return self.r1*(1 - self.kth1*(self.tcu1 - 20))*kr  # ref 20°C
         if self.skin_resistance is not None:
             return self.skin_resistance(self.r1, w, self.tcu1, kth=self.kth1)
 

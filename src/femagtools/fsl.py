@@ -438,7 +438,12 @@ class Builder:
         return []
 
     def create_gen_winding(self, model):
-        genwdg = self.__render(model, 'gen_winding')
+        if 'wire' in model.windings:
+            model.windings['wire'].update({"num_layers": model.windings["num_layers"]})
+            genwdg = self.__render(model.windings['wire'], \
+                                   'gen_' + model.windings['wire'].get('name') + '_winding')
+        else:
+            genwdg = self.__render(model, 'gen_winding')
         k = list({'leak_dist_wind',
                   'leak_evol_wind',
                   'leak_tooth_wind'}.intersection(model.winding))
@@ -578,10 +583,9 @@ class Builder:
                         'remanenc', 1.2)
                     model['magnet']['relperm'] = magnetMat.get('relperm', 1.05)
                     model['magnet']['rlen'] = magnetMat.get('rlen', 1.0)
-                    for k in ('thcond', 'thcap'):
+                    for k in ('spmaweight', 'thcond', 'thcap'):
                         if k in magnetMat:
-                            model['magnet'][k] = magnetMat[k]
-
+                            model['magnet'][k+'_magnet'] = magnetMat[k]
                 rotor = (self.create_magnet(model) +
                          self.create_magnet_model(model))
                 if magnetMat:

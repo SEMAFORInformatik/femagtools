@@ -44,16 +44,25 @@ beta = math.pi/m.num_poles
 xrb,yrb = pr2c(m.yoke_rad+0.1, beta)  -- rotor lamination
 thcond = ${model['thcond']}
 thcap = ${model['thcap']}
-def_mat_therm(xrb,yrb,'blue',7700,thcond,thcap,1)
-def_mat_therm(m.yoke_rad/2,0.1,'blue',7700,thcond,thcap,1) -- Shaft
+density = ${model.get('density')*1e3}
+def_mat_therm(xrb,yrb,'blue',density,thcond,thcap,1)
 
+%if model.get('thcond_shaft', 0) and model.get('thcap_shaft', 0):
+if m.shaft_rad < m.yoke_rad then
+   thcond = ${model['thcond_shaft']}
+   thcap = ${model['thcap_shaft']}
+   density = ${model['spmaweight_shaft']*1e3}
+   def_mat_therm(m.yoke_rad/2,0.1,'blue',density,thcond,thcap,1) -- Shaft
+end
+%endif
 rm = m.magn_rad*math.cos(beta)
-thcond = 8
-thcap = 440
+density = ${model['spmaweight_magnet']*1e3}
+thcond = ${model.get('thcond_magnet', 8)}
+thcap = ${model.get('thcap_magnet', 440)}
 for i = 1,m.npols_gen do -- Magnete
   alfa = (2*i-1) * beta
   xmx,ymx = pr2c(rm,alfa)
-  def_mat_therm(xmx,ymx,darkgreen-i%2,7500,thcond,thcap,1)
+  def_mat_therm(xmx,ymx,darkgreen-i%2,density,thcond,thcap,1)
 end
 
 if m.air_triangle > 0 then
@@ -67,4 +76,21 @@ if m.air_triangle > 0 then
     def_mat_therm(xsx,ysx,skyblue,1.12,0.026,1007,1)
   end
 end
+
+
+-- add air layer (inside) for heat transfer
+h = 3.8
+beta = 360*m.npols_gen/m.num_poles
+
+
+x0, y0 = pd2c(m.shaft_rad, m.zeroangl)
+x1, y1 = pd2c(m.shaft_rad-h, m.zeroangl)
+x2, y2 = pd2c(m.shaft_rad-h, beta+m.zeroangl)
+x3, y3 = pd2c(m.shaft_rad, beta+m.zeroangl)
+nc_line(x0, y0, x1, y1, 0)
+nc_circle(x1, y1, x2, y2, 0)
+nc_line(x2, y2, x3, y3, 0)
+x0, y0 = pd2c(m.shaft_rad-h/2, beta/2+m.zeroangl)
+create_mesh_se(x0, y0)
+
 %endif

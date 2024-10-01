@@ -99,19 +99,18 @@ if m.slot_height ~= nil then
   elseif m.middle_line == 2 then
     dr = 1
   end
-  lamCu = 400
-  capCu = 385
-  da = 1.0785
-  dCu = 1.0
-  lam = lamCu*(dCu/(da-dCu)+(da-dCu)/da)
-  cap = capCu*da^2/(dCu^2*math.pi/4)
+
+  density = ${model.windings['spmaweight']*1e3}
+  lam = ${model.windings['thcond']}
+  cap = ${model.windings['thcap']}
+
   for i=1,m.num_sl_gen do
     a = (2*i-1)*math.pi/m.tot_num_sl + m.zeroangl/180*math.pi
     xwl,ywl = pr2c(rw+dr,a+dw)
-    def_mat_therm(xwl,ywl,'yellow',8920,lam,cap,1)
+    def_mat_therm(xwl,ywl,'yellow',density,lam,cap,1)
     if m.middle_line > 0 then
       xwr,ywr = pr2c(rw-dr,a-dw)
-      def_mat_therm(xwr,ywr,'yellow',8920,lam,cap,1)
+      def_mat_therm(xwr,ywr,'yellow',density,lam,cap,1)
     end
   end
 end

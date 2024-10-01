@@ -35,7 +35,7 @@ m.zeroangl    = ${model.get('zeroangle',0)}
 m.rlength     = ${model.get('rlength',1)*100}
 
 % if model.get('ac_loss', False):
-  m.ac_loss = ${model.get('ac_loss', 3)}
+  m.ac_loss = ${model.get('ac_loss', 6)}
 % endif
 m.mcvkey_yoke = mcvkey_yoke
 
@@ -148,14 +148,14 @@ end
 %endif
 
 %if model.get('thcond', 0) and model.get('thcap', 0):
-
+thcond = ${model.get('thcond', 24)}
+thcap = ${model.get('thcap', 480)}
+density = ${model.get('density', 7700)}
 -- Thermal properties: iron in yoke and tooth
 xst,yst = pd2c(m.inside_diam/2+1,m.zeroangl+0.1)    -- stator tooth
 xsj,ysj = pd2c(m.yoke_diam/2-1,m.zeroangl+0.1)  -- stator yoke
-thcond = 24
-thcap = 480
-def_mat_therm(xst,yst,'darkblue',7700,thcond,thcap,1)
-def_mat_therm(xsj,ysj,'darkblue',7700,thcond,thcap,1)
+def_mat_therm(xst,yst,'darkblue',density,thcond,thcap,1)
+def_mat_therm(xsj,ysj,'darkblue',density,thcond,thcap,1)
 -- insulation
 if m.slot_indul > 0 then
   thickness = 0.25 -- mm

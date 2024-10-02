@@ -141,7 +141,7 @@ class PmRelMachine(object):
     def rstat(self, w):
         """stator resistance
         """
-        if isinstance(self.zeta1, list): 
+        if isinstance(self.zeta1, list):
             logger.info("setup ac loss parameters...")
             # polyfit from ac loss calculation
             freq = w/2/np.pi
@@ -955,7 +955,7 @@ class PmRelMachine(object):
         i1max: max. phase current (RMS)
         """
         r = dict(id=[], iq=[], uq=[], ud=[], u1=[], i1=[], T=[],
-                 beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[])
+                 beta=[], gamma=[], phi=[], cosphi=[], pmech=[], n=[], type_op=[])
 
         if kwargs.get('i1max', 0):
             w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
@@ -1040,6 +1040,7 @@ class PmRelMachine(object):
                 r['n'].append(nx)
                 r['T'].append(Tf)
 
+            r['type_op'] = list(betai1(iq, id))
             Pmax = 2*np.pi*n1*Tf
             for ns, nu, iv in zip(nstab[1:], speedrange[2:], interv):
                 # find id, iq, torque in fieldweakening range

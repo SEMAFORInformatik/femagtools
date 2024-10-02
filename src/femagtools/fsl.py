@@ -439,9 +439,12 @@ class Builder:
 
     def create_gen_winding(self, model):
         if model.windings.get('wire', 'dummy') != 'dummy':
-            model.windings['wire'].update({"num_layers": model.windings["num_layers"]})
-            genwdg = self.__render(model.windings['wire'], \
-                                   'gen_' + model.windings['wire'].get('name') + '_winding')
+            if model.windings['wire']['name'] == 'hairpin_winding':
+                model.windings['wire'].update({"num_layers": model.windings["num_layers"]})
+                genwdg = self.__render(model.windings['wire'], \
+                                       'gen_' + model.windings['wire'].get('name') + '_winding')
+            else:
+                genwdg = self.__render(model, 'gen_winding')
         else:
             genwdg = self.__render(model, 'gen_winding')
         k = list({'leak_dist_wind',

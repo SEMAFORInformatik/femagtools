@@ -438,7 +438,7 @@ class Builder:
         return []
 
     def create_gen_winding(self, model):
-        if 'wire' in model.windings:
+        if model.windings.get('wire', 'dummy') != 'dummy':
             model.windings['wire'].update({"num_layers": model.windings["num_layers"]})
             genwdg = self.__render(model.windings['wire'], \
                                    'gen_' + model.windings['wire'].get('name') + '_winding')

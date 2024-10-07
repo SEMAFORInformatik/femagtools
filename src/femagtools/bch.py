@@ -309,6 +309,13 @@ class Reader:
                      'torque': tq.tolist()}]
         except (KeyError, IndexError):
             pass
+        
+        # check number of phases
+        try: 
+            if 'm' not in self.machine:
+                self.machine['m'] = len(self.current_angles)
+        except: 
+            pass
 
         return self
 

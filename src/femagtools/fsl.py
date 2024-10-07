@@ -356,23 +356,25 @@ class Builder:
             if 'thcond' in model.stator:
                 fslcmds += [
                     '-- thermal properties in airgap',
-                    'ag_cond = 0.063',
-                    'thcap = 1007',
-                    'beta = math.pi*m.npols_gen/m.num_poles + m.zeroangl/180*math.pi',
-                    'xai, yai = pr2c((da1+da2)/4, beta)',
-                    'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
-                    'xai, yai = pr2c((da1+da2)/4-ag/4, beta)',
-                    'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
-                    'xai, yai = pr2c((da1+da2)/4+ag/4, beta)',
-                    'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
+                    'if m.zeroangl ~= nil then',
+                    '   ag_cond = 0.063',
+                    '   thcap = 1007',
+                    '   beta = math.pi*m.npols_gen/m.num_poles + m.zeroangl/180*math.pi',
+                    '   xai, yai = pr2c((da1+da2)/4, beta)',
+                    '   def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
+                    '   xai, yai = pr2c((da1+da2)/4-ag/4, beta)',
+                    '   def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
+                    '   xai, yai = pr2c((da1+da2)/4+ag/4, beta)',
+                    '   def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
                     '',
-                    'state_of_problem("therm_static") -- thermic boundary conditions',
-                    'x1,y1 = pd2c(dy2/2,m.zeroangl)',
-                    'x2,y2 = pd2c(dy1/2,m.zeroangl)',
-                    'beta = 360*m.npols_gen/m.num_poles',
-                    'x3,y3 = pd2c(dy1/2,beta+m.zeroangl)',
-                    'x4,y4 = pd2c(dy2/2,beta+m.zeroangl)',
-                    'def_bcond_tp(x1,y1,x2,y2,x3,y3,x4,y4, 4)',
+                    '   state_of_problem("therm_static") -- thermic boundary conditions',
+                    '   x1,y1 = pd2c(dy2/2,m.zeroangl)',
+                    '   x2,y2 = pd2c(dy1/2,m.zeroangl)',
+                    '   beta = 360*m.npols_gen/m.num_poles',
+                    '   x3,y3 = pd2c(dy1/2,beta+m.zeroangl)',
+                    '   x4,y4 = pd2c(dy2/2,beta+m.zeroangl)',
+                    '   def_bcond_tp(x1,y1,x2,y2,x3,y3,x4,y4, 4)',
+                    'end',
                     'state_of_problem("mag_static")']
             return fslcmds
         return []
@@ -441,8 +443,8 @@ class Builder:
         if model.windings.get('wire', 'dummy') != 'dummy':
             if model.windings['wire']['name'] == 'hairpin_winding':
                 model.windings['wire'].update({"num_layers": model.windings["num_layers"]})
-                genwdg = self.__render(model.windings['wire'], \
-                                       'gen_' + model.windings['wire'].get('name') + '_winding')
+                genwdg = self.__render(model.windings, \
+                                       'gen_' + model.windings['wire'].get('name'))
             else:
                 genwdg = self.__render(model, 'gen_winding')
         else:

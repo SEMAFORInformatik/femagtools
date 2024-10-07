@@ -4,17 +4,18 @@ rcoil, phi_coil = c2pd(m.xcoil_1, m.ycoil_1)
 
 slot_div_angle = 360/m.tot_num_slot
 
+-- delete existing mesh in the slot
 for i = 1, m.num_sl_gen do
     xc, yc = pd2c(rcoil, phi_coil+(i-1)*slot_div_angle)
     delete_mesh_se(xc, yc)
 end
-
-wire_height = ${model["wire_height"]*1e3}
-wire_width = ${model["wire_width"]*1e3}
-wire_corner_r = ${model["corner_radius"]*1e3}
-wire_gap = ${model["wire_separation"]*1e3}
-TH1 = ${model["wire_th1"]*1e3} -- distance to the bore radius
-nwires = ${model["num_layers"]}
+-- wire params
+wire_height = ${model['wire']["wire_height"]*1e3}
+wire_width = ${model['wire']["wire_width"]*1e3}
+wire_corner_r = ${model['wire']["corner_radius"]*1e3}
+wire_gap = ${model['wire']["wire_separation"]*1e3}
+TH1 = ${model['wire']["wire_th1"]*1e3} -- distance to the bore radius
+nwires = ${model['wire']["num_layers"]}
 
 fml = require "fml"
 
@@ -141,7 +142,7 @@ create_mesh()
 
 -- create winding
 
-widfile = io.open("hairpin.wid", 'r')
+widfile = io.open("wid.fsl", 'r')
 
 nrows = 1
 winding = {}
@@ -204,3 +205,5 @@ for i = 1, #winding do
         end
    end
 end
+
+m.num_par_wdgs = ${model.get('num_par_wdgs', 1)}

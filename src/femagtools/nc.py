@@ -191,6 +191,8 @@ class Reader(object):
             self.speed = float(grp.variables['speed'].getValue().data)
             self.FC_RADIUS = float(grp.variables['fc_radius'].getValue().data)
             self.pole_pairs = int(grp.variables['pole_pairs'].getValue().data)
+            self.layers = int(grp.variables['num_layers'].getValue().data)
+            self.coil_span = int(grp.variables['coil_span'].getValue().data)
             self.delta_node_angle = float(  # rad
                 grp.variables['delta_node_angle'].getValue().data)
             self.poles_sim = int(grp.variables['poles_sim'].getValue().data)

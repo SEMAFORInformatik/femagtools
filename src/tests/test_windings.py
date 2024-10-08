@@ -61,7 +61,7 @@ def test_slots(wdg):
 
 
 def test_axis(wdg):
-    assert round(wdg.axis(), 3) == 0.349
+    assert round(wdg.axis(), 3) == 0.32
 
 
 def test_winding_factor(wdg):

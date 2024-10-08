@@ -30,10 +30,27 @@ def spel(isa, superelements=[], with_axis=False, ax=0):
         spels = isa.superelements
     for se in spels:
         ax.add_patch(Polygon([n.xy
-                              for nc in se.nodechains
-                              for n in nc.nodes],
-                             color=isa.color[se.color], lw=0))
+                            for nc in se.nodechains
+                            for n in nc.nodes],
+                            color=isa.color[se.color], lw=0))
+        try:
+            # draw wire direction
+            if se.subregion: 
+                if se.subregion.curdir != 0: 
+                        wkey = se.subregion.winding.key
+                        if se.subregion.curdir < 0: 
+                            label = str(se.subregion.curdir*wkey)
+                        else: 
+                            label = '+'+str(se.subregion.curdir*wkey)
 
+                        xy = np.array([n.xy
+                            for nc in se.nodechains
+                            for n in nc.nodes])
+                        cx, cy = np.mean(np.unique(xy[:, 0])), np.mean(np.unique(xy[:, -1]))
+                        ax.text(cx, cy, label, rotation=np.arctan2(cy, cx)/np.pi*180-90, 
+                                horizontalalignment='center', verticalalignment='center')
+        except:
+            pass
     ax.autoscale(enable=True)
     if not with_axis:
         ax.axis('off')

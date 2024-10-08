@@ -528,7 +528,7 @@ class Isa7(object):
 
     color = {1: [1.0, 0.0, 0.0],  # RED
              2: [0.0, 1.0, 0.0],  # GREEN
-             3: [1.0, 1.0, 0.0],  # DARKYELLOW
+             3: [1.0, 0.8, 0.0],  # DARKYELLOW
              4: [0.0, 0.5019607843137255, 1.0], # BLUE
              5: [0.9803921568627451, 0.0, 1.0], # MAGENTA
              6: [0.0, 1.0, 0.8235294117647058], # CYAN
@@ -749,7 +749,7 @@ class Isa7(object):
                                      for e in self.elements])
 
         for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim',
-                  'delta_node_angle', 'speed',
+                  'layers', 'coil_span', 'delta_node_angle', 'speed',
                   'MAGN_TEMPERATURE', 'BR_TEMP_COEF',
                   'MA_SPEZ_WEIGHT', 'CU_SPEZ_WEIGHT'):
             v = getattr(reader, a, '')

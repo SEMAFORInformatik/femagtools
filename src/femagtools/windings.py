@@ -262,31 +262,44 @@ class Winding(object):
         """returns the dimensionless magnetomotive force
         (ampere-turns/turns/ampere) and winding angle of phase k (rad)
         Arguments:
-        k: (int) winding key
+        k: (int) winding key (all if 0 or 'all')
         nmax: (int) max order of harmonic (in electrical system)
         """
-        slots = self.slots(k)[0]
-        dirs = self.windings[k]['dir']
-        # turns = self.windings[k]['N']
-        r = len(slots)//len(dirs)
-        curr = np.concatenate([np.array(dirs)*(1 - 2*(n % 2))
-                               for n in range(r)])
-
+        m = len(self.windings)  # number of phases
+        if k in (0, 'all'):
+            keys = self.windings.keys()
+        else:
+            keys = [k]
+        t = femagtools.windings.num_basic_windings(self.Q, self.p, self.l)
+        curr = np.zeros(self.Q//t)
+        for z in self.zoneplan():
+            if z:
+                for j in keys:
+                    a = np.zeros(self.Q//t)
+                    for s in z[j-1]:
+                        d = -1 if s < 0 else 1
+                        a[abs(s)-1] = d*np.cos((j-1)*2*np.pi/m)
+                    toggles = np.sort(np.hstack(
+                        (np.nonzero(a>0), np.nonzero(a<0)))[0])
+                    l = 0
+                    for u in toggles:
+                        if a[l] == 0:
+                            a[l:u] = a[toggles[-1]]
+                        else:
+                            a[l:u] = a[l]
+                        l = u
+                    a[l:] = a[l]
+                    curr += a
         NY = 4096
-        t = np.gcd(self.Q, self.p)
-        y = np.zeros(NY*self.Q//t)
-        for i in range(1, self.Q//t+1):
-            if i in set(slots):
-                y[NY*(i-1)+NY//2] = np.sum(curr[slots == i])
-        yy = [np.sum(y[:i+1]) for i in range(0, len(y))]
-        yy[:NY//2] = yy[-NY//2:]
-        yy = np.tile(yy-np.mean(yy), t)
+        y = [[c]*NY for c in curr]
+        yy = np.tile(np.hstack(
+            (y[-1][-NY//2:], np.ravel(y[:-1]), y[-1][:-NY//2])), t)
         yy /= np.max(yy)
 
         # calc spectrum
+        pb = self.p//t
         N = len(yy)
         Y = np.fft.fft(yy)
-        pb = self.p//t
         if self.q < 1:
             imax = pb
         else:
@@ -305,7 +318,7 @@ class Winding(object):
                 2*np.abs(Y)/N) if f > 0]).T
 
         return dict(
-            pos=[i*taus/NY for i in range(len(y))],
+            pos=[i*taus/NY for i in range(NY*self.Q//t)],
             mmf=yy[:NY*self.Q//t].tolist(),
             alfa0=-alfa0/self.p,
             nue=nue.tolist(),

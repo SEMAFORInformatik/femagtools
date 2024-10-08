@@ -48,19 +48,28 @@ def mmf_fft(f, title='', mmfmin=1e-2, ax=0):
         pass
 
 
-def zoneplan(wdg, ax=0):
+def zoneplan(wdg, write_title=True, max_slots=0, ax=0):
     """plot zone plan of winding wdg"""
     from matplotlib.patches import Rectangle
     upper, lower = wdg.zoneplan()
     Qb = len([n for l in upper for n in l])
+    if max_slots:
+        Qb = max_slots
     from femagtools.windings import coil_color
-    rh = 0.5
+    h = 0.5
+    w = 1
+    dx = -1.5, -1.5
+    dt = 0.5, 0.5
+    yl = 0, 0.
+    ymax = h
     if lower:
-        yl = rh
-        ymax = 2*rh + 0.2
-    else:
-        yl = 0
-        ymax = rh + 0.2
+        if wdg.q < 1:
+            dx = -1, -1.5
+            dt = 0.2, 0.2
+            w = 0.5
+        else:
+            yl = h, 0
+            ymax = 2*h
     if ax == 0:
         ax = plt.gca()
     ax.axis('off')
@@ -70,28 +79,31 @@ def zoneplan(wdg, ax=0):
 
     for i, p in enumerate(upper):
         for x in p:
-            ax.add_patch(Rectangle((abs(x)-1.5, yl), 1, rh,
-                                   facecolor=coil_color[i],
-                                   edgecolor='white', fill=True))
-            s = f'+{i+1}' if x > 0 else f'-{i+1}'
-            ax.text(abs(x)-1, yl+rh/2, s, color='black',
-                    ha="center", va="center")
+            if abs(x) < Qb+1:
+                ax.add_patch(Rectangle((abs(x)+dx[0], yl[0]), w, h,
+                                       facecolor=coil_color[i],
+                                       edgecolor='white', fill=True))
+                s = f'+{i+1}' if x > 0 else f'-{i+1}'
+                ax.text(abs(x)+dx[0]+dt[0], yl[0]+h/2, s, color='black',
+                        ha="center", va="center")
     for i, p in enumerate(lower):
         for x in p:
-            ax.add_patch(Rectangle((abs(x)-1.5, yl-rh), 1, rh,
-                                   facecolor=coil_color[i],
-                                   edgecolor='white', fill=True))
-            s = f'+{i+1}' if x > 0 else f'-{i+1}'
-            ax.text(abs(x)-1, yl-rh/2, s, color='black',
-                    ha="center", va="center")
+            if abs(x) < Qb+1:
+                ax.add_patch(Rectangle((abs(x)+dx[1], yl[1]), w, h,
+                                       facecolor=coil_color[i],
+                                       edgecolor='white', fill=True))
+                s = f'+{i+1}' if x > 0 else f'-{i+1}'
+                ax.text(abs(x)+dx[1]+dt[1], yl[1]+h/2, s, color='black',
+                        ha="center", va="center")
 
-    yu = yl+rh
+    yu = yl[0]+h
     step = 1 if Qb < 25 else 2
-    if lower:
-        yl -= rh
+    yl = min(yl)
     margin = 0.05
-    ax.text(-0.5, yu+margin, f'Q={wdg.Q}, p={wdg.p}, q={round(wdg.q,4)}',
-            ha='left', va='bottom', size=15)
+    if write_title:
+        ax.text(-0.5, yu+margin,
+                f'Q={wdg.Q}, p={wdg.p}, q={round(wdg.q,4)}, yd={wdg.yd}',
+                ha='left', va='bottom', size=15)
     for i in range(0, Qb, step):
         ax.text(i, yl-margin, f'{i+1}', ha="center", va="top")
 
@@ -99,7 +111,7 @@ def zoneplan(wdg, ax=0):
 def winding_factors(wdg, n=8, ax=0):
     """plot winding factors"""
     ax = plt.gca()
-    ax.set_title(f'Winding factors Q={wdg.Q}, p={wdg.p}, q={round(wdg.q,4)}')
+    ax.set_title(f'Winding factors Q={wdg.Q}, p={wdg.p}, q={round(wdg.q,4)}, yd={wdg.yd}')
     ax.grid(True)
     order, kwp, kwd, kw = np.array(
         [(n, k1, k2, k3)

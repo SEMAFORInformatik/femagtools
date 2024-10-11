@@ -416,10 +416,10 @@ class Builder:
                 cond = condMat.find(windings['material'])
             if not cond:
                 raise FslBuilderError(
-                    'conductor material {} not found'.format(
-                        windings['material']))
+                    'conductor material {} not found in {}'.format(
+                        windings['material'], condMat))
             windings['cuconduct'] = cond['elconduct']
-            for k in ('thcond', 'thcap'):
+            for k in ('thcond', 'thcap', 'spmaweight'):
                 if k in cond:
                     windings[k] = cond[k]
 
@@ -440,14 +440,13 @@ class Builder:
         return []
 
     def create_gen_winding(self, model):
-        if model.windings.get('wire', 'dummy') != 'dummy':
-            if model.windings['wire']['name'] == 'hairpin_winding':
-                model.windings['wire'].update({"num_layers": model.windings["num_layers"]})
-                genwdg = self.__render(model.windings, \
-                                       'gen_' + model.windings['wire'].get('name'))
-            else:
-                genwdg = self.__render(model, 'gen_winding')
-        else:
+        try:
+            if model.winding['wire']['name'] == 'hairpin_winding':
+                model.winding['wire'].update(
+                    {"num_layers": model.winding["num_layers"]})
+                genwdg = self.__render(model.winding,
+                                       'gen_' + model.winding['wire'].get('name'))
+        except KeyError:  # not hairpin_winding
             genwdg = self.__render(model, 'gen_winding')
         k = list({'leak_dist_wind',
                   'leak_evol_wind',

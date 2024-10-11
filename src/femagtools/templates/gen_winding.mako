@@ -100,9 +100,9 @@ if m.slot_height ~= nil then
     dr = 1
   end
 
-  density = ${model.windings['spmaweight']*1e3}
-  lam = ${model.windings['thcond']}
-  cap = ${model.windings['thcap']}
+  density = ${model.winding['spmaweight']*1e3}
+  lam = ${model.winding['thcond']}
+  cap = ${model.winding['thcap']}
 
   for i=1,m.num_sl_gen do
     a = (2*i-1)*math.pi/m.tot_num_sl + m.zeroangl/180*math.pi

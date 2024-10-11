@@ -77,7 +77,8 @@ class Optimizer(object):
             set_magnet_properties(self.model, self.fea, self.femag.magnets)
             task.add_file('femag.fsl',
                           self.builder.create(self.model, self.fea,
-                                              self.femag.magnets))
+                                              self.femag.magnets,
+                                              self.femag.condMat))
             if 'poc' in self.fea:
                 task.add_file(self.fea['pocfilename'],
                               self.fea['poc'].content())

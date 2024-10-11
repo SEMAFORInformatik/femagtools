@@ -71,6 +71,9 @@ class Nsga2:
                                           rnd*alpha))**(1.0/(self.eta_c+1.0))
 
                         c1 = 0.5*((y1+y2)-betaq*(y2-y1))
+                        if isinstance(c1, complex):
+                            logger.warning(f"c1 {c1} is complex")
+                            c1 = abs(c1)
 
                         beta = 1.0 + (2.0*(yu-y2)/(y2-y1))
                         alpha = 2.0 - beta**(-(self.eta_c+1.0))
@@ -81,6 +84,9 @@ class Nsga2:
                                           rnd*alpha))**(1.0/(self.eta_c+1.0))
 
                         c2 = 0.5*((y1+y2)+betaq*(y2-y1))
+                        if isinstance(c2, complex):
+                            logger.warning(f"c2 {c2} is complex")
+                            c2 = abs(c2)
 
                         if c1<yl : c1=yl
                         if c2<yl : c2=yl

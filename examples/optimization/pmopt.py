@@ -8,6 +8,7 @@ import femagtools.opt
 import logging
 import glob
 import pathlib
+import matplotlib.pyplot as plt
 import os
 
 from femagtools.multiproc import Engine
@@ -21,7 +22,8 @@ opt = {
     "objective_vars": [
         {"desc": "Torque / Nm", "name": "dqPar.torque[-1]", "sign": -1},
         {"desc": "Torque Ripple / Nm", "name": "torque[-1].ripple"},
-        {"desc": "Iron Loss / W", "name": "machine.plfe[-1]"}
+        {"desc": "Total Loss / W", "name": "machine.plfe[-1]"},
+        {"desc": "Material Cost / €", "name": "machine.plfe[-1]"}
     ],
     "population_size": 16,
     "decision_vars": [
@@ -32,7 +34,7 @@ opt = {
     ]
 }
 
-operatingConditions = {
+simulation = {
     "angl_i_up": -10.0,
     "calculationMode": "pm_sym_fast",
     "wind_temp": 60.0,
@@ -116,23 +118,16 @@ machine = dict(
 )
 
 
-def get_losses(task):
+def get_cost(task):
     """adds extra results for optimization:
-         total losses and efficiency"""
+         total cost"""
     bch = femagtools.bch.read(
-        glob.glob(os.path.join(task.directory, '*.B*CH'))[-1])
-
-    pltot = sum((bch.losses[-1]['winding'],
-                 bch.losses[-1]['staza'], bch.losses[-1]['stajo'],
-                 bch.losses[-1]['rotfe'],
-                 bch.losses[-1]['magnetJ']))
-    eff = bch.machine['p2']/(bch.machine['p2'] + pltot)
-
-    bch.machine['pltotal'] = [pltot]
-    bch.machine['eff'] = eff
-
+        sorted(pathlib.Path(task.directory).glob(
+                '*_[0-9][0-9][0-9].B*CH'))[-1])
+    material_cost = {'iron': 2, 'conductor': 9, 'magnet': 80}
+    bch.machine['cost'] = sum(
+        [bch.weight[k]*material_cost[k] for k in material_cost.keys()])
     return bch
-
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,
@@ -146,10 +141,19 @@ if __name__ == '__main__':
 
     o = femagtools.opt.Optimizer(workdir,
                                  magnetizingCurve, magnetMat,
-                                 result_func=get_losses)
+                                 result_func=get_cost)
 
     num_generations = 3
     results = o.optimize(num_generations,
-                         opt, machine, operatingConditions, engine)
+                         opt, machine, simulation, engine)
 
-    json.dump(results, sys.stdout)
+    with open('results.json', 'w') as fp:
+        json.dump(results, fp)
+
+    fig, ax = plt.subplots()
+    ax.plot([t for t in results['f'][0] if t>0],
+            [p for p in results['f'][2] if p>0], 'o')
+    ax.set_xlabel(opt['objective_vars'][0]['desc'])
+    ax.set_ylabel(opt['objective_vars'][3]['desc'])
+    ax.grid()
+    plt.show()

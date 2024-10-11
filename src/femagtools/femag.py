@@ -366,9 +366,9 @@ class BaseFemag(object):
         with open(os.path.join(self.workdir, 'FEMAG-FSL.log')) as f:
             for l in f:
                 if l.startswith('New model') or l.startswith('Load model'):
-                    model = l.split('"')[1]
-                    break
-        return model
+                    return l.split('"')[1]
+
+        raise ValueError(f"Model not found in {self.workdir}/'FEMAG-FSL.log'")
 
     def readResult(self, simulation, bch=None):
         if simulation:

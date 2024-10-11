@@ -15,6 +15,12 @@ MODELNAME_CHARS = string.printable[:63] + "-_äöüéè"
 # maximum name length
 MAX_MODEL_NAME_LEN = 255
 
+default_th_properties = {
+    "spmaweight": 8.96,
+    "tempcoef": 3.9e-3,
+    "thcond": 30,
+    "thcap": 480
+}
 
 def movesteps(nodes):
     """returns list of move steps
@@ -453,7 +459,7 @@ class MachineModel(Model):
     def props(self):
         """returns dict of this model"""
         keys = ('name', 'poles', 'outer_diam', 'airgap',
-                'bore_diam', 'external_rotor', 'agndst')
+                'bore_diam', 'inner_diam', 'external_rotor', 'agndst')
         model = {k: getattr(self, k) for k in keys if hasattr(self, k)}
         if hasattr(self, 'stator'):
             model['stator'] = {k: self.stator[k]

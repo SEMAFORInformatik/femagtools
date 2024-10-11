@@ -35,19 +35,19 @@ def spel(isa, superelements=[], with_axis=False, ax=0):
                             color=isa.color[se.color], lw=0))
         try:
             # draw wire direction
-            if se.subregion: 
-                if se.subregion.curdir != 0: 
+            if se.subregion:
+                if se.subregion.curdir != 0:
                         wkey = se.subregion.winding.key
-                        if se.subregion.curdir < 0: 
+                        if se.subregion.curdir < 0:
                             label = str(se.subregion.curdir*wkey)
-                        else: 
+                        else:
                             label = '+'+str(se.subregion.curdir*wkey)
 
                         xy = np.array([n.xy
                             for nc in se.nodechains
                             for n in nc.nodes])
                         cx, cy = np.mean(np.unique(xy[:, 0])), np.mean(np.unique(xy[:, -1]))
-                        ax.text(cx, cy, label, rotation=np.arctan2(cy, cx)/np.pi*180-90, 
+                        ax.text(cx, cy, label, rotation=np.arctan2(cy, cx)/np.pi*180-90,
                                 horizontalalignment='center', verticalalignment='center')
         except:
             pass
@@ -296,3 +296,20 @@ def loss_density(isa, subreg=[], cmap=DEFAULT_CMAP, ax=0):
     elements = [e for e in __elements_of_subreg(isa, subreg)]
     lossd = np.array([e.loss_density*1e-3 for e in elements])
     _contour(ax, 'Loss Density kW/m³', elements, lossd, '', cmap)
+
+def temperature_distribution(isa, ax=0, cmap='plasma'):
+    """plot temperature distribution of NC/I7/ISA7 model
+
+    Args:
+        isa: Isa7/NC object
+    """
+    temp = []
+    elements = [e for e in isa.elements]
+    for e in isa.elements:
+        tmp = 0
+        ctr = 1
+        for n in e.vertices:
+            tmp += n.vpot[-1]
+            ctr = ctr + 1
+        temp.append(tmp/ctr)
+    _contour(ax, 'Temperature in K', elements, temp, '', cmap)

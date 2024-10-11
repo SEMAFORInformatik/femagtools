@@ -401,6 +401,10 @@ class BaseFemag(object):
                 ttemp = list(zip(*temp))
                 return {'t': ttemp[0], 'temperature': ttemp[1]}
 
+            if simulation['calculationMode'] == 'hsn':
+                model = self.read_nc()
+                return model.get_minmax_temp()
+
             if not bch:
                 bch = self.read_bch(self.modelname)
             if simulation['calculationMode'] == 'pm_sym_fast' or \

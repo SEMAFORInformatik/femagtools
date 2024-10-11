@@ -23,6 +23,7 @@ class Reader(object):
 
     def __init__(self, filename):
         ds = netCDF4.Dataset(filename)
+        node_temperature = None
         self.POINT_ISA_POINT_REC_PT_CO_X = []
         self.POINT_ISA_POINT_REC_PT_CO_Y = []
         self.LINE_ISA_LINE_REC_LN_PNT_1 = []
@@ -54,6 +55,11 @@ class Reader(object):
              grp.variables[k][:-1]
              for k in ('bnd_cnd', 'bnd_cnd', 'per_nod',
                        'co_1', 'co_2', 'co_rad', 'co_phi', 'vp_re', 'vp_im')]
+        try:
+            node_temperature = grp.variables['temperature'][:-1]
+        except:
+            pass
+
         logger.debug('Nodes: %d', len(self.NODE_ISA_NODE_REC_ND_CO_1))
 
         grp = ds.groups['node_elements']
@@ -198,9 +204,15 @@ class Reader(object):
             self.poles_sim = int(grp.variables['poles_sim'].getValue().data)
             self.slots = int(grp.variables['num_slots'].getValue().data)
             self.arm_length = float(grp.variables['arm_length'].getValue().data)
+            self.state_of_problem = int(grp.variables['state_of_problem'].getValue().data)
         except:
             pass
 
+        if hasattr(self, 'state_of_problem'):
+            if self.state_of_problem == 5:
+                # th simulation
+                if node_temperature is not None:
+                    self.NODE_ISA_NODE_REC_ND_VP_IM = node_temperature
         self.MAGN_TEMPERATURE = 20
         self.BR_TEMP_COEF = 0
         try:

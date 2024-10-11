@@ -544,6 +544,10 @@ class Isa7(object):
              16: [0.8274509803921568, 0.8274509803921568, 0.8274509803921568]} # LIGHGREY
 
     def __init__(self, reader):
+        try:
+            self.state_of_problem = reader.state_of_problem
+        except:
+            pass
         self.points = [Point(x, y)
                        for x, y in zip(reader.POINT_ISA_POINT_REC_PT_CO_X,
                                        reader.POINT_ISA_POINT_REC_PT_CO_Y)]
@@ -1139,6 +1143,43 @@ class Isa7(object):
                 sreg[sr.name] = [0,0,0]
         return sreg
 
+    def get_minmax_temp(self):
+        def node_subregion(subregion_name):
+            node_temperature = []
+            for i in self.subregions:
+                if i.name.lower() == subregion_name:
+                    for j in i.elements():
+                        for k in j.vertices:
+                            node_temperature.append(k.vpot[-1])
+            ndtemp = np.unique(node_temperature)
+            return [np.amax(ndtemp), np.amin(ndtemp), np.mean(ndtemp)]
+
+        zero_temp = [0.0, 0.0, 0.0]
+        component_temperature = dict(styoke=zero_temp, stteeth=zero_temp,
+                                     magnet=zero_temp, winding=zero_temp)
+        for i in self.subregions:
+            if i.name:
+                sreg_name = i.name.lower()
+                if sreg_name in ('stza', 'stth', 'stteeth'):
+                    component_temperature['stteeth'] = node_subregion(sreg_name)
+                elif sreg_name in ('styk', 'styoke', 'stjo'):
+                    component_temperature['styoke'] = node_subregion(sreg_name)
+                elif sreg_name == 'iron':
+                    component_temperature['iron'] = node_subregion(sreg_name)
+                elif sreg_name == 'pmag':
+                    component_temperature['magnet'] = node_subregion(sreg_name)
+                else:
+                    pass
+
+        wdg_temps = []
+        for j in self.wdg_elements():
+            for k in j.vertices:
+                wdg_temps.append(k.vpot[-1])
+        wdg_temp = np.unique(wdg_temps)
+        component_temperature['winding'] = [np.amax(wdg_temp),
+                                            np.amin(wdg_temp),
+                                            np.mean(wdg_temp)]
+        return component_temperature
 
     def flux_dens(self, x, y, icur, ibeta):
         el = self.get_element(x, y)

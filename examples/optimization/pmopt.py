@@ -23,9 +23,9 @@ opt = {
         {"desc": "Torque / Nm", "name": "dqPar.torque[-1]", "sign": -1},
         {"desc": "Torque Ripple / Nm", "name": "torque[-1].ripple"},
         {"desc": "Total Loss / W", "name": "machine.plfe[-1]"},
-        {"desc": "Material Cost / €", "name": "machine.plfe[-1]"}
+        {"desc": "Material Cost / €", "name": "machine.cost"}
     ],
-    "population_size": 16,
+    "population_size": 32,
     "decision_vars": [
         {"desc": "Magn width", "bounds": [0.75, 0.85],
          "name": "magnet.magnetSector.magn_width_pct"},
@@ -130,10 +130,12 @@ def get_cost(task):
     return bch
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(message)s')
+    logging.basicConfig(format='%(asctime)s %(message)s')
 
+    logger = logging.getLogger('femagtools.opt')
+    logger.setLevel(logging.INFO)
     logger = logging.getLogger('pmopt')
+    logger.setLevel(logging.INFO)
     engine = Engine()
 
     workdir = pathlib.Path.home() / 'opti'
@@ -143,17 +145,21 @@ if __name__ == '__main__':
                                  magnetizingCurve, magnetMat,
                                  result_func=get_cost)
 
-    num_generations = 3
+    num_generations = 5
     results = o.optimize(num_generations,
                          opt, machine, simulation, engine)
 
     with open('results.json', 'w') as fp:
         json.dump(results, fp)
 
+    comp = [0, 3]
     fig, ax = plt.subplots()
-    ax.plot([t for t in results['f'][0] if t>0],
-            [p for p in results['f'][2] if p>0], 'o')
-    ax.set_xlabel(opt['objective_vars'][0]['desc'])
-    ax.set_ylabel(opt['objective_vars'][3]['desc'])
+    ax.plot([t for t in results['f'][comp[0]] if t>0],
+            [p for p in results['f'][comp[1]] if p>0], 'o')
+    ax.set_xlabel(opt['objective_vars'][comp[0]]['desc'])
+    ax.set_ylabel(opt['objective_vars'][comp[1]]['desc'])
     ax.grid()
+    plt.show()
+
+    o.pop.plot_pareto_fronts(comp=comp)
     plt.show()

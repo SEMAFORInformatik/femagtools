@@ -198,21 +198,23 @@ class Population:
         self.update_pareto_information()
         retval = [[] for s in range(max(self.pareto_rank)+1)]
         for i, j in enumerate(self.individuals):
-            retval[self.pareto_rank[i]].append(i)
+            retval[self.pareto_rank[i]].append(j)
         return retval
 
     def compute_ideal(self):
-        return [min(x)
+        return [np.min(np.array(x)[np.isfinite(x)])
                 for x in zip(*[i.cur_f
-                               for i in self.individuals if i.rank == 0])]
+                               for i in self.individuals
+                               if i.rank == 0])]
 
     def compute_nadir(self):
-        return [max(x)
+        return [np.max(np.array(x)[np.isfinite(x)])
                 for x in zip(*[i.cur_f
-                               for i in self.individuals if i.rank == 0])]
+                               for i in self.individuals
+                               if i.rank == 0])]
 
     def compute_worst(self):
-        return [max(x)
+        return [np.max(np.array(x)[np.isfinite(x)])
                 for x in zip(*[i.cur_f
                                for i in self.individuals])]
 
@@ -252,7 +254,7 @@ class Population:
             raise ValueError(
                 'Invalid components of the objective function selected for plot')
 
-        p_dim = self.problem.f_dimension
+        p_dim = self.problem.f_dim
 
         if p_dim == 1:
             raise ValueError(

@@ -112,7 +112,7 @@ class Task(object):
         if bchfile_list:
             result = femagtools.bch.Reader()
             with open(bchfile_list[-1]) as f:
-                logger.info("Reading %s",
+                logger.debug("Reading %s",
                             bchfile_list[-1])
                 result.read(f)
             if bagdat.exists():
@@ -127,7 +127,7 @@ class Task(object):
             asm_list = sorted(basedir.glob(
                 '*_[0-9][0-9][0-9].ASM'))
             if asm_list:
-                logger.info("Reading %s",
+                logger.debug("Reading %s",
                             asm_list[-1])
                 result = femagtools.asm.read(asm_list[-1])
                 if bagdat.exists():

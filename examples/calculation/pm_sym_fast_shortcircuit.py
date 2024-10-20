@@ -109,6 +109,5 @@ Short Circuit    Current         Torque
            r.scData['peakWindingCurrents']))
 print('Demag {}'.format(r.demag[-1]))
 
-fig, ax = plt.subplots()
 femagtools.plot.transientsc(r)
 plt.show()

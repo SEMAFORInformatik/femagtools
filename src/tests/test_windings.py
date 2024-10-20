@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
 import pytest
+import numpy as np
 import femagtools.windings
 
 
@@ -60,8 +61,18 @@ def test_slots(wdg):
         [[1, -5, -6], [4, -8, -9], [-2, -3, 7]])
 
 
-def test_axis(wdg):
-    assert round(wdg.axis(), 3) == 0.32
+def test_axis():
+    for wpar, expected in [
+            ({'Q': 168, 'p': 7, 'm': 3, 'l': 2, 'yd': 10}, 14.99973842075893),
+            ({'Q': 90, 'p': 12, 'm': 3, 'l': 2, 'yd': 4},  11.99951171875),  # TODO
+            ({'Q': 108, 'p': 9, 'm': 3, 'l': 2, 'yd': 5},  11.666259765625),
+            ({'Q': 96, 'p': 4, 'm': 3, 'l': 2, 'yd': 10},  26.249542236328125),
+            ({'Q': 144, 'p': 16, 'm': 3, 'l': 2, 'yd': 4},  7.49969482421875),
+            ({'Q': 144, 'p': 12, 'm': 3, 'l': 2, 'yd': 5},  8.74969482421875),
+            ({'Q': 54, 'p': 3, 'm': 3, 'l': 2, 'yd': 8},  36.66585286458334),
+            ({'Q': 48, 'p': 4, 'm': 3, 'l': 1, 'yd': 6}, 29.99908447265625)]:
+        wdg = femagtools.windings.Winding(wpar)
+        assert round(wdg.axis()/np.pi*180, 2) == round(expected, 2)
 
 
 def test_winding_factor(wdg):

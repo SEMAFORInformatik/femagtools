@@ -254,44 +254,70 @@ class Winding(object):
                  for x in self.windings[key]['PHI'][:dim]]
         return np.array(slots).reshape((np.gcd(self.Q, self.p), -1))
 
-    def axis(self):
+    def axis(self, k=1):
         """returns axis angle of winding 1 in mechanical system"""
-        return self.mmf()['alfa0']
+        return self.mmf(k=k)['alfa0']
 
-    def mmf(self, k=1, nmax=21):
+    def currdist(self, k=1, phi=0):
+        """return the current density of slots
+        Arguments:
+          k: (int) winding key (all if 0 or 'all')
+          phi: (float) current angle (default 0)
+        """
+        if k == 0 or k == 'all':
+            keys = self.windings.keys()
+        elif np.isscalar(k):
+            keys = [k]
+        else:
+            keys = k
+        m = len(self.windings)
+        t = num_basic_windings(self.Q, self.p, self.l)
+        cdist = {k: np.zeros(self.Q//t) for k in keys}
+        for z in self.zoneplan():
+            if z:
+                for j in keys:
+                    a = np.zeros(self.Q//t)
+                    curr = np.cos((j-1)*2*np.pi/m - phi)
+                    for s in z[j-1]:
+                        d = -1 if s < 0 else 1
+                        a[abs(s)-1] = d*curr
+                    cdist[j] += a
+        return cdist
+
+    def mmf(self, k=1, nmax=21, phi=0):
         """returns the dimensionless magnetomotive force
         (ampere-turns/turns/ampere) and winding angle of phase k (rad)
         Arguments:
         k: (int) winding key (all if 0 or 'all')
         nmax: (int) max order of harmonic (in electrical system)
+        phi: (float) current angle (default 0)
         """
-        m = len(self.windings)  # number of phases
-        if k in (0, 'all'):
-            keys = self.windings.keys()
-        else:
-            keys = [k]
-        t = femagtools.windings.num_basic_windings(self.Q, self.p, self.l)
-        curr = np.zeros(self.Q//t)
-        for z in self.zoneplan():
-            if z:
-                for j in keys:
-                    a = np.zeros(self.Q//t)
-                    for s in z[j-1]:
-                        d = -1 if s < 0 else 1
-                        a[abs(s)-1] = d*np.cos((j-1)*2*np.pi/m)
-                    toggles = np.sort(np.hstack(
-                        (np.nonzero(a>0), np.nonzero(a<0)))[0])
-                    l = 0
-                    for u in toggles:
-                        if a[l] == 0:
-                            a[l:u] = a[toggles[-1]]
-                        else:
-                            a[l:u] = a[l]
-                        l = u
-                    a[l:] = a[l]
-                    curr += a
-        NY = 4096
-        y = [[c]*NY for c in curr]
+        cdist = self.currdist(k, phi)
+        num_slots = len(cdist[list(cdist.keys())[0]])
+        t = self.Q//num_slots
+        clink = np.zeros(num_slots)
+        for j in cdist:
+            a = cdist[j]
+            ap = np.zeros(len(a))
+            l = 0
+            v = 0
+            for n in np.nonzero(a>0)[0]:
+                ap[l:n] = v
+                v += cdist[j][n]
+                l = n
+            ap[n:] = v
+            an = np.zeros(len(a))
+            l = 0
+            v = 0
+            for n in np.nonzero(a<0)[0]:
+                an[l:n] = v
+                v += cdist[j][n]
+                l = n
+            an[n:] = v
+            clink += an + ap
+
+        NY = 4096  # number of samples per slot
+        y = [[c]*NY for c in (clink-np.mean(clink))]
         yy = np.tile(np.hstack(
             (y[-1][-NY//2:], np.ravel(y[:-1]), y[-1][:-NY//2])), t)
         yy /= np.max(yy)
@@ -309,7 +335,6 @@ class Winding(object):
         freq = np.fft.fftfreq(N, d=taus/NY)
         T0 = np.abs(1/freq[imax])
         alfa0 = np.angle(Y[imax])
-        # if alfa0 < 0: alfa0 += 2*np.pi
         pos_fft = np.linspace(0, 2*np.pi/t, 20*pb)
         D = (a*np.cos(2*np.pi*pos_fft/T0+alfa0))
         nue, mmf_nue = np.array(
@@ -317,11 +342,15 @@ class Winding(object):
                 np.arange(0, nmax),
                 2*np.abs(Y)/N) if f > 0]).T
 
+        if alfa0 > 0:
+            alfa0 -= 2*np.pi
+
         return dict(
-            pos=[i*taus/NY for i in range(NY*self.Q//t)],
+            pos=(taus/NY*np.arange(NY*self.Q//t)).tolist(),
             mmf=yy[:NY*self.Q//t].tolist(),
             alfa0=-alfa0/self.p,
             nue=nue.tolist(),
+            currdist={k: cdist[k].tolist() for k in cdist},
             mmf_nue=mmf_nue.tolist(),
             pos_fft=pos_fft.tolist(),
             mmf_fft=D.tolist())

@@ -9,14 +9,38 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def mmf(f, title='', ax=0):
-    """plot magnetomotive force (mmf) of winding"""
+def currdist(wdg, title='', k='all', phi=0, ax=0):
+    """plot current distribution  of winding
+    Arguments:
+          k: (int) winding key (all if 0 or 'all', default all)
+          phi: (float) current angle (default 0)
+    """
     if ax == 0:
         ax = plt.gca()
     if title:
         ax.set_title(title)
-    ax.plot(np.array(f['pos'])/np.pi*180, f['mmf'])
-    ax.plot(np.array(f['pos_fft'])/np.pi*180, f['mmf_fft'])
+    cdist = wdg.currdist(k=k, phi=phi)
+    taus = 360/wdg.Q
+    c = np.sum([cdist[j] for j in cdist], axis=0)
+    pos = np.arange(0, len(cdist[1]))*taus + taus/2
+    cbars = ax.bar(pos, c/np.max(c), width=taus/4)
+    ax.set_xlabel("Position / Deg")
+    ax.grid()
+    return cbars
+
+
+def mmf(f, title='', ax=0):
+    """plot magnetomotive force (mmf) of winding
+    Arguments
+      f: (dict) windings mmf
+      title: (str) plot title
+    """
+    if ax == 0:
+        ax = plt.gca()
+    if title:
+        ax.set_title(title)
+    yphi = ax.plot(np.array(f['pos'])/np.pi*180, f['mmf'])
+    yfft = ax.plot(np.array(f['pos_fft'])/np.pi*180, f['mmf_fft'])
     ax.set_xlabel('Position / Deg')
 
     phi = [f['alfa0']/np.pi*180, f['alfa0']/np.pi*180]
@@ -28,7 +52,7 @@ def mmf(f, title='', ax=0):
     ax.annotate(f"", xy=(phi[0], y[0]),
                 xytext=(0, y[0]), arrowprops=dict(arrowstyle="->"))
     ax.grid()
-
+    return yphi, yfft
 
 def mmf_fft(f, title='', mmfmin=1e-2, ax=0):
     """plot winding mmf harmonics"""
@@ -37,7 +61,16 @@ def mmf_fft(f, title='', mmfmin=1e-2, ax=0):
     if title:
         ax.set_title(title)
     else:
-        ax.set_title('MMF Harmonics (per phase)')
+        def single_phase(f):
+            try:
+                return len(f['currdens']) == 1
+            except KeyError:
+                return True
+        if single_phase(f):
+            ax.set_title('MMF Harmonics (single phase)')
+        else:
+            ax.set_title('MMF Harmonics')
+
     ax.grid(True)
     order, mmf = np.array([(n, m) for n, m in zip(f['nue'],
                                                   f['mmf_nue']) if m > mmfmin]).T

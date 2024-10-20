@@ -411,6 +411,7 @@ def dqparident(workdir, engine, temp, machine,
         elif ('wire_width' in machine[wdgk]) and ('wire_height' in machine[wdgk]):
             aw = machine[wdgk]['wire_width']*machine[wdgk]['wire_height']
         else:  # wire diameter from slot area
+            da1 = machine['bore_diam']
             aw = 0.75 * fcu * np.pi*da1*hs/Q1/wdg.l/N
         r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
     except (NameError, KeyError):
@@ -489,6 +490,8 @@ def dqparident(workdir, engine, temp, machine,
         machine['poles'] = 2*results['f'][0]['machine']['p']
         da1 = 2*results['f'][0]['machine']['fc_radius']
         wdg = create_wdg(machine)
+    if 'bore_diam' in machine:
+        da1 = machine['bore_diam']
     ls1 = 0
     try:
         leakages = [float(x)
@@ -569,14 +572,12 @@ def dqparident(workdir, engine, temp, machine,
         if r1:
             dqpars['r1'] = r1
         else:
-            from .. import nc
-            model = nc.read(str(pathlib.Path(workdir) / machine['name']))
+            model = parvar.femag.read_nc()
             try:
                 nlayers = wdg.l
             except UnboundLocalError:
                 wdg = create_wdg(machine)
                 nlayers = wdg.l
-                da1 = machine['outer_diam']
             Q1 = wdg.Q
             istat = 0 if model.get_areas()[0]['slots'] else 1
             asl = model.get_areas()[istat]['slots']

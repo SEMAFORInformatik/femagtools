@@ -148,26 +148,7 @@ end
 %endif
 
 %if model.get('thcond', 0) and model.get('thcap', 0):
-thcond = ${model.get('thcond', 24)}
-thcap = ${model.get('thcap', 480)}
-density = ${model.get('density', 7700)}
--- Thermal properties: iron in yoke and tooth
-xst,yst = pd2c(m.inside_diam/2+1,m.zeroangl+0.1)    -- stator tooth
-xsj,ysj = pd2c(m.yoke_diam/2-1,m.zeroangl+0.1)  -- stator yoke
-def_mat_therm(xst,yst,'darkblue',density,thcond,thcap,1)
-def_mat_therm(xsj,ysj,'darkblue',density,thcond,thcap,1)
--- insulation
-if m.slot_indul > 0 then
-  thickness = 0.25 -- mm
-  thcond = 0.31
-  thcap = 1100
-  xip, yip = pr2c(m.slot_height + m.inside_diam/2-m.slot_indul/2,
-                  math.pi/m.tot_num_slot+m.zeroangl/180*math.pi)
-  def_insulation(xip,yip,'darkred',thickness,1340,thcond,thcap)
-end
--- air in slot opening
-xnl, ynl = pr2c(m.inside_diam/2+m.slot_h1/2, math.pi/m.tot_num_slot+m.zeroangl/180*math.pi)
-sl_cond = 0.15
-sl_cap = 1007
-def_mat_therm(xnl,ynl,'cyan',1.19,sl_cond,sl_cap,1)
+stator_thcond = ${model.get('thcond', 24)}
+stator_thcap = ${model.get('thcap', 480)}
+stator_density = ${model.get('density', 7700)}
 %endif

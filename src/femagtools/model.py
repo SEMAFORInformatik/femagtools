@@ -386,6 +386,13 @@ class MachineModel(Model):
                 if mcv:
                     logger.debug('shaft mcv %s', mcv)
                     rotor['mcvkey_shaft'] = magcurves.fix_name(mcv)
+                    mshaft = magcurves.find_by_name(mcv)
+                    thkeys_shaft = ['thcond', 'thcap', 'rho']
+                    if mshaft and set(thkeys_shaft).issubset(mshaft.keys()):
+                        for k in thkeys_shaft:
+                            rotor[k+'_shaft'] = mshaft[k]
+                        rotor['spmaweight_shaft'] = rotor['rho_shaft']
+                    
                     self.stator['mcvkey_shaft_name'] = mcv
                     names.append((mcv, 1.0))
                 else:

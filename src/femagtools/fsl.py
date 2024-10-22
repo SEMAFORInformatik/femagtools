@@ -357,17 +357,9 @@ class Builder:
                 fslcmds += [
                     '-- thermal properties in airgap',
                     'if m.zeroangl == nil then',
-                    '   m.zeroangl = 0.0', 
+                    '   m.zeroangl = 0.0',
                     'end',
-                    'ag_cond = 0.063',
-                    'thcap = 1007',
                     'beta = math.pi*m.npols_gen/m.num_poles + m.zeroangl/180*math.pi',
-                    'xai, yai = pr2c((da1+da2)/4, beta)',
-                    'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
-                    'xai, yai = pr2c((da1+da2)/4-ag/4, beta)',
-                    'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
-                    'xai, yai = pr2c((da1+da2)/4+ag/4, beta)',
-                    'def_mat_therm(xai,yai,"cyan",1.19,ag_cond,thcap,1)',
                     '',
                     'state_of_problem("therm_static") -- thermic boundary conditions',
                     'x1,y1 = pd2c(dy2/2,m.zeroangl)',
@@ -441,14 +433,14 @@ class Builder:
         return []
 
     def create_gen_winding(self, model):
-        try:
-            if model.winding['wire']['name'] == 'hairpin_winding':
-                model.winding['wire'].update(
-                    {"num_layers": model.winding["num_layers"]})
-                genwdg = self.__render(model.winding,
-                                       'gen_' + model.winding['wire'].get('name'))
-        except KeyError:  # not hairpin_winding
+        try: 
+            model.winding['wire'].update(
+                {"num_layers": model.winding["num_layers"]})
+            genwdg = self.__render(model.winding,
+                                    'gen_' + model.winding['wire'].get('name'))
+        except: 
             genwdg = self.__render(model, 'gen_winding')
+
         k = list({'leak_dist_wind',
                   'leak_evol_wind',
                   'leak_tooth_wind'}.intersection(model.winding))
@@ -511,6 +503,9 @@ class Builder:
             setattr(model, 'stator', {})
         model.stator['num_slots'] = conv.get('tot_num_slot')
         model.stator['slot_area'] = conv.get('slot_area')
+        model.stator['dy1'] = conv.get('dy1')*1e-3
+        model.stator['dy2'] = conv.get('dy2')*1e-3
+
         if model.get('num_agnodes', 0) == 0:
             model.set_value('agndst', conv['agndst']*1e-3)
             logger.info("num poles %d num slots %d outer diameter %.4f m agndst %.4f mm",
@@ -527,18 +522,37 @@ class Builder:
 
         if 'fsl_stator' in conv:
             self.fsl_stator = True
-            model.stator['dxf'] = dict(fsl=conv['fsl_stator'])
+            th_props = [' ']
+            if model.stator.get('thcond', 0):
+                th_props = [f'stator_density = {1e3*model.stator["density"]}',
+                            f'stator_thcond = {model.stator["thcond"]}',
+                            f'stator_thcap = {model.stator["thcap"]}',
+                            ]
+                model.stator['dxf'] = dict(fsl=conv['fsl_stator'] + th_props)
         if not (hasattr(model, 'magnet') or hasattr(model, 'rotor')):
             if params['EESM']:
                 setattr(model, 'rotor', {})
             else:
                 setattr(model, 'magnet', {})
+
         if 'fsl_rotor' in conv:
             self.fsl_rotor = True
+            th_props = ['']
             if hasattr(model, 'magnet'):
-                model.magnet['dxf'] = dict(fsl=conv['fsl_rotor'])
+                if model['magnet'].get('thcond', 0):
+                    logger.info(model['magnet'])
+                    th_props = [f'rotor_density = {1e3*model["magnet"]["density"]}',
+                                f'rotor_thcond = {model["magnet"]["thcond"]}',
+                                f'rotor_thcap = {model["magnet"]["thcap"]}'
+                                ]
+                    model.magnet['dxf'] = dict(fsl=conv['fsl_rotor'] + th_props)
             if hasattr(model, 'rotor'):
                 model.rotor['dxf'] = dict(fsl=conv['fsl_rotor'])
+
+    def create_thermal_properties(self, model):
+        if model.stator.get('thcond'):
+            return self.__render(model, 'prepare_thermal')
+        return ['']
 
     def create_model(self, model, magnets=[], condMat=[], ignore_material=False):
         magnetMat = {}
@@ -595,6 +609,35 @@ class Builder:
                          self.create_magnet_model(model))
                 if magnetMat:
                     rotor += self.create_magnet(model, magnetMat)
+
+                if model['magnet'].get('thcond_magnet', 0):
+                    th_props = [f'magn_density = {1e3*model["magnet"]["spmaweight_magnet"]}',
+                                f'magn_thcond = {model["magnet"]["thcond_magnet"]}',
+                                f'magn_thcap = {model["magnet"]["thcap_magnet"]}'
+                                ]
+                    rotor += th_props
+                    if model.is_dxffile() or 'dxf' in model['magnet']:
+                        rotor += ['if x0_shaft == 0.0 then',
+                                  '-- add air layer (inside) for heat transfer',
+                                  '   h = dy2/2/3',
+                                  '   if h > 5 then',
+                                  '      h = 3.8',
+                                  '   end ',
+                                  '   if m.zeroangl == nil then ',
+                                  '      m.zeroangl = 0.0',
+                                  '   end',
+                                  '   beta = 360*m.npols_gen/m.num_poles',
+                                  '   x0, y0 = pd2c(dy2/2, m.zeroangl)',
+                                  '   x1, y1 = pd2c(dy2/2-h, m.zeroangl)',
+                                  '   x2, y2 = pd2c(dy2/2-h, beta+m.zeroangl)',
+                                  '   x3, y3 = pd2c(dy2/2, beta+m.zeroangl)',
+                                  '   nc_line(x0, y0, x1, y1, 0)',
+                                  '   nc_circle(x1, y1, x2, y2, 0)',
+                                  '   nc_line(x2, y2, x3, y3, 0)',
+                                  '   x0, y0 = pd2c(dy2/2-h/2, beta/2+m.zeroangl)',
+                                  '   create_mesh_se(x0, y0)',
+                                'end'
+                                 ]
             else:
                 rotor = self.create_rotor_model(
                     model, condMat, ignore_material)
@@ -636,7 +679,8 @@ class Builder:
                     rotor +
                     self.mesh_airgap(model) +
                     self.create_connect_models(model) +
-                    self.create_rotor_winding(model))
+                    self.create_rotor_winding(model)) + \
+                    self.create_thermal_properties(model)
 
         return (self.open_model(model) +
                 self.create_fe_losses(model) +

@@ -88,6 +88,12 @@ m.num_poles       =  ${model.poles}
 
 % if 'thcap' in model.winding:
 -- Thermal Material properties
+
+conductor_density = ${model.winding['spmaweight']*1e3}
+conductor_thcond = ${model.winding['thcond']}
+conductor_thcap = ${model.winding['thcap']}
+
+--[[
 if m.slot_height ~= nil then
   -- FEMAG slot model
   -- TODO: slot model from user
@@ -114,4 +120,5 @@ if m.slot_height ~= nil then
     end
   end
 end
+]]--
 %endif

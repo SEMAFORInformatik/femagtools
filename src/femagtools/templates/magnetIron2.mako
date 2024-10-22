@@ -41,3 +41,42 @@ for i = 0, m.npols_gen-1 do
     end
 end
 %endif
+%if model.get('thcond', 0) and model.get('thcap', 0):
+if m.shaft_rad == nil then 
+    m.shaft_rad = dy2/2
+end 
+if m.shaft_rad > dy2/2 then 
+    m.shaft_rad = dy2/2
+end 
+beta = math.pi/m.num_poles
+rotor_thcond = ${model['thcond']}
+rotor_thcap = ${model['thcap']}
+rotor_density = ${model.get('density')*1e3}
+
+%if model.get('thcond_shaft', 0) and model.get('thcap_shaft', 0):
+if m.shaft_rad < m.yoke_rad then
+   shaft_thcond = ${model['thcond_shaft']}
+   shaft_thcap = ${model['thcap_shaft']}
+   shaft_density = ${model['spmaweight_shaft']*1e3}
+   r_shaft = (m.shaft_rad + m.yoke_rad)/2
+   x0_shaft, y0_shaft = pd2c(r_shaft, beta/2)
+end
+%endif
+
+if x0_shaft == nil then
+   -- add air layer (inside) for heat transfer
+   h = 3.8
+   beta = 360*m.npols_gen/m.num_poles
+
+   x0, y0 = pd2c(m.shaft_rad, m.zeroangl)
+   x1, y1 = pd2c(m.shaft_rad-h, m.zeroangl)
+   x2, y2 = pd2c(m.shaft_rad-h, beta+m.zeroangl)
+   x3, y3 = pd2c(m.shaft_rad, beta+m.zeroangl)
+   nc_line(x0, y0, x1, y1, 0)
+   nc_circle(x1, y1, x2, y2, 0)
+   nc_line(x2, y2, x3, y3, 0)
+   x0, y0 = pd2c(m.shaft_rad-h/2, beta/2+m.zeroangl)
+   create_mesh_se(x0, y0)
+end
+
+%endif

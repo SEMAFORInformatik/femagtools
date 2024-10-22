@@ -472,6 +472,11 @@ class BaseFemag(object):
                     bch.magnet_loss_th = m.th_loss
                 except:
                     pass
+            try: 
+                if hasattr(self, 'dy2'): 
+                    setattr(bch, 'dy2', self.dy2)
+            except: 
+                pass 
             return bch
 
 
@@ -603,6 +608,11 @@ class Femag(BaseFemag):
             stateofproblem = 'mag_static'
 
         self.run(fslfile, options, fsl_args, stateofproblem=stateofproblem)
+        
+        try: 
+            setattr(self, "dy2", machine['stator']['dy2'])
+        except: 
+            pass
         if simulation:
             return self.readResult(simulation)
 

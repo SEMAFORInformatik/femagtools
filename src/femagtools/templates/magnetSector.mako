@@ -69,54 +69,39 @@ for i = 0, m.npols_gen-1 do
 end
 %endif
 %if model.get('thcond', 0) and model.get('thcap', 0):
-beta = math.pi/m.num_poles + m.zeroangl/180*math.pi
-xrb,yrb = pr2c(m.yoke_rad+0.1, beta)  -- rotor lamination
-thcond = 24 -- ${model['thcond']}
-thcap = 480 -- ${model['thcap']}
-def_mat_therm(xrb,yrb,'blue',7700,thcond,thcap,1)
---def_mat_therm(m.yoke_rad/2,0.1,'blue',7700,thcond,thcap,1) -- Shaft
+if m.shaft_rad == nil then 
+    m.shaft_rad = m.condshaft_r
+end 
+if m.shaft_rad > dy2/2 then 
+    m.shaft_rad = dy2/2
+end 
+beta = math.pi/m.num_poles
+rotor_thcond = ${model['thcond']}
+rotor_thcap = ${model['thcap']}
+rotor_density = ${model.get('density')*1e3}
 
-rm = m.rotor_rad - m.magn_height/2
-thcond = 8
-thcap = 440
-for i = 1,m.npols_gen do -- Magnets
-  alfa = (2*i-1) * beta
-  xmx,ymx = pr2c(rm,alfa-beta/2)
-  def_mat_therm(xmx,ymx,darkgreen-i%2,7500,thcond,thcap,1)
+%if model.get('thcond_shaft', 0) and model.get('thcap_shaft', 0):
+if m.shaft_rad < m.yoke_rad then
+   shaft_thcond = ${model['thcond_shaft']}
+   shaft_thcap = ${model['thcap_shaft']}
+   shaft_density = ${model['spmaweight_shaft']*1e3}
+   r_shaft = (m.shaft_rad + m.yoke_rad)/2
+   x0_shaft, y0_shaft = pd2c(r_shaft, beta/2)
 end
+%endif
+if x0_shaft == nil then
+   -- add air layer (inside) for heat transfer
+   h = 3.8
+   beta = 360*m.npols_gen/m.num_poles
 
-thcond = 0.026   -- air
-thcap = 1007
-get_spel_keys("sekeys")      -- Get all subregions of the model
-for i=1, #sekeys do
-  srkey =  get_spel_data("srkey", sekeys[i])
-  if srkey > 0 then
-    srname = get_sreg_data("name",srkey)
-    if srname == '    ' then
-      srkey = 0
-    end
-  end
-  if srkey == 0 then
-    elkeys = get_spel_data("elkeys", sekeys[i])
-    Ex, Ey = get_elem_data("xycp", elkeys[1])
-    r, phi = c2pr(Ex, Ey)
-    if r < m.rotor_rad then -- rotor only
-      def_mat_therm(Ex,Ey,'skyblue',1.12,thcond,thcap,1)
-    end
-  end
+   x0, y0 = pd2c(m.shaft_rad, m.zeroangl)
+   x1, y1 = pd2c(m.shaft_rad-h, m.zeroangl)
+   x2, y2 = pd2c(m.shaft_rad-h, beta+m.zeroangl)
+   x3, y3 = pd2c(m.shaft_rad, beta+m.zeroangl)
+   nc_line(x0, y0, x1, y1, 0)
+   nc_circle(x1, y1, x2, y2, 0)
+   nc_line(x2, y2, x3, y3, 0)
+   x0, y0 = pd2c(m.shaft_rad-h/2, beta/2+m.zeroangl)
+   create_mesh_se(x0, y0)
 end
---[[
--- add air layer (inside) for heat transfer
-h = 3.8
-beta = 360*m.npols_gen/m.num_poles
-x0, y0 = pd2c(dy2/2, m.zeroangl)
-x1, y1 = pd2c(dy2/2-h, m.zeroangl)
-x2, y2 = pd2c(dy2/2-h, beta+m.zeroangl)
-x3, y3 = pd2c(dy2/2, beta+m.zeroangl)
-nc_line(x0, y0, x1, y1, 0)
-nc_circle(x1, y1, x2, y2, 0)
-nc_line(x2, y2, x3, y3, 0)
-x0, y0 = pd2c(dy2/2-h/2, beta/2+m.zeroangl)
-create_mesh_se(x0, y0)
---]]
 %endif

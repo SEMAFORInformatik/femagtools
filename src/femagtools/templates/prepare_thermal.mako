@@ -110,6 +110,7 @@ for i =1,  #spel_keys do
 %if model.get('htc_inner', 0):
                   def_heat_transfer(xc,yc,yellow,${model['htc_inner']}, 1.0)
 %endif
+                  def_new_sreg(xc,yc, 'INAR', 'yellow')
                   color_spel(spel_keys[i], 16) -- light grey inner air
               end
            end
@@ -171,11 +172,7 @@ for i = 1, #magnet_spel do
     end 
 end 
 
-for i = 1, #rotor_air do 
-  if is_exist(magnet_pocket_spel, rotor_air[i]) then 
-    rotor_air[i] = nil
-  end 
-end 
+
 
 for i = 1, #rotor_air do 
   if rotor_air[i] ~= nil then 
@@ -196,9 +193,6 @@ for i = 1, #rotor_air do
   end 
 end 
 
-save_metafile(model..'.ps')
-
---[[
 for i = 1, #rotor_air do 
   if rotor_air[i] ~= nil then 
     if is_exist(non_uniform_airgap, rotor_air[i]) then 
@@ -206,4 +200,20 @@ for i = 1, #rotor_air do
     end    
   end 
 end 
-]]--
+
+for i = 1, #rotor_air do 
+   if is_exist(magnet_pocket_spel, rotor_air[i]) then 
+     rotor_air[i] = nil
+   end 
+ end 
+ 
+
+for i = 1, #rotor_air do 
+   if rotor_air[i] ~= nil then 
+      els = get_spel_data('elkeys', rotor_air[i])
+      xc, yc = get_xy(els[1])
+      def_mat_therm(xc, yc, 'red', 1.12,0.026,1007, 1)
+   end 
+end 
+
+save_metafile(model..'.ps')

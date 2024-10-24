@@ -68,7 +68,7 @@ for i = 0, m.npols_gen-1 do
     end
 end
 %endif
-%if model.get('thcond', 0) and model.get('thcap', 0):
+%if model.get('thcond', 0) and model.get('thcap', 0) and model.get('density', 0):
 if m.shaft_rad == nil then 
     m.shaft_rad = m.condshaft_r
 end 

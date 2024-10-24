@@ -65,7 +65,7 @@ end
 end
 
 %endif
-%if model.get('thcond', 0) and model.get('thcap', 0):
+%if model.get('thcond', 0) and model.get('thcap', 0) and model.get('density', 0):
 if m.shaft_rad == nil then 
     m.shaft_rad = dy2/2
 end 

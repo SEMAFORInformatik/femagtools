@@ -550,7 +550,8 @@ class Builder:
                 model.rotor['dxf'] = dict(fsl=conv['fsl_rotor'])
 
     def create_thermal_properties(self, model):
-        if model.stator.get('thcond'):
+        if model.stator.get('thcond') and model.stator.get('thcap') and \
+            model.stator.get('density'):
             return self.__render(model, 'prepare_thermal')
         return ['']
 

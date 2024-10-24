@@ -528,7 +528,7 @@ class Builder:
                             f'stator_thcond = {model.stator["thcond"]}',
                             f'stator_thcap = {model.stator["thcap"]}',
                             ]
-                model.stator['dxf'] = dict(fsl=conv['fsl_stator'] + th_props)
+            model.stator['dxf'] = dict(fsl=conv['fsl_stator'] + th_props)
         if not (hasattr(model, 'magnet') or hasattr(model, 'rotor')):
             if params['EESM']:
                 setattr(model, 'rotor', {})
@@ -545,7 +545,7 @@ class Builder:
                                 f'rotor_thcond = {model["magnet"]["thcond"]}',
                                 f'rotor_thcap = {model["magnet"]["thcap"]}'
                                 ]
-                    model.magnet['dxf'] = dict(fsl=conv['fsl_rotor'] + th_props)
+                model.magnet['dxf'] = dict(fsl=conv['fsl_rotor'] + th_props)
             if hasattr(model, 'rotor'):
                 model.rotor['dxf'] = dict(fsl=conv['fsl_rotor'])
 

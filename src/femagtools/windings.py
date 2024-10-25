@@ -181,14 +181,11 @@ class Winding(object):
             nue = n
         else:
             nue = self.kw_order(n)
-        if q1 == q2:  # integral slot winding
-            q = self.Q/2/self.m/self.p
-            nuep = nue/self.p
-            return np.sin(nuep*np.pi/2/self.m)/q/np.sin(nuep*np.pi/2/self.m/q)
         k = 2 if self.l == 1 else 1
         a = nue*k*np.pi/self.Q*Yk
-        t = num_basic_windings(self.Q, self.p, self.l)
-        return np.real((np.sin(a*q1) - np.exp(1j*np.pi/t*Yk*nue)*np.sin(a*q2))/((q1+q2)*np.sin(a)))
+        t = self.Q//Qb
+        return ((np.sin(a*q1) - np.cos(np.pi/t*Yk*nue)*np.sin(a*q2))
+                /((q1+q2)*np.sin(a)))
 
     def kw(self, n=0):
         """return winding factor"""

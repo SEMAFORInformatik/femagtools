@@ -645,6 +645,9 @@ class AFPM:
                 parameters={
                     'phi_voltage_winding': current_angles})
             logger.info("Current angles: %s", current_angles)
+        elif (simulation['calculationMode'] == 'cogg_calc' and
+            'poc' not in simulation):
+            simulation['poc'] = poc.Poc(machine['pole_width'])
 
         lresults = self.parstudy(
             parvardef,
@@ -652,5 +655,6 @@ class AFPM:
             simulation, engine)  # Note: imcomplete machine prevents rebuild
 
         results = process(lfe, pole_width, machine, lresults['f'])
-        results.update(_psidq_ldq(results, nlresults))
+        if nlresults:
+            results.update(_psidq_ldq(results, nlresults))
         return results

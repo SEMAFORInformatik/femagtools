@@ -101,9 +101,14 @@ def get_shapes(path):
 
 def svgshapes(svgfile):
     svg = ET.parse(svgfile)
+    bcolor = re.compile('fill:([^;]+)')
+    sr = 0
     for p in svg.findall(".//{http://www.w3.org/2000/svg}path"):
-        logger.info(" %s", p.get('style'))
+        m = bcolor.search(p.get('style'))
+        if m:
+            logger.info("subregion %d: %s", sr, m.groups()[0])
         yield from get_shapes(p.get('d'))
+        sr += 1
     for p in svg.findall(".//{http://www.w3.org/2000/svg}line"):
         yield Line(Element(start=[float(p.get('x1')), float(p.get('y1'))],
                            end=[float(p.get('x2')), float(p.get('y2'))]))

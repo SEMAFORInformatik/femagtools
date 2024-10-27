@@ -20,6 +20,11 @@ def main():
                            help='stator without airgap in/out',
                            dest='stator',
                            default='')
+    argparser.add_argument('--EESM',
+                           help='Electric Excited Synchronous Motor',
+                           dest='EESM',
+                           action="store_true",
+                           default=False)
     argparser.add_argument('-p', '--plot',
                            help='show plots',
                            dest='show_plots',
@@ -61,6 +66,7 @@ def main():
 
     res = convert(args.svgfile,  # SVG-Filename
                   part=part,
+                  EESM=EESM,
                   view_only=args.view,
                   show_plots=args.show_plots,
                   show_areas=args.show_areas,

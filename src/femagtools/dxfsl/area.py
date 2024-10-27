@@ -171,6 +171,39 @@ class Area(object):
                 if e1.n1 == e2.n1 and e1.n2 == e2.n2:
                     yield e1
 
+    def reduce_nodes(self, mindist=0.01):
+        """reduces number of nodes (lines only)
+        https://rdp.readthedocs.io/en/latest
+        """
+        import rdp
+        def reduce_nodes_(lines, mindist):
+            nodes = [n for le in lines
+                     for n in le.get_nodes()]
+            r = rdp.rdp(nodes,
+                        epsilon=mindist)
+            if len(r) < len(nodes):
+                return [Line(Element(start=n1, end=n2))
+                        for n1, n2 in zip(r, r[1:])]
+            return lines
+
+        lines = []
+        reduced = []
+        for e in self.area:
+            if isinstance(e, Line):
+                lines.append(e)
+            else:
+                reduced.append(e)
+                reduced += reduce_nodes_(lines, mindist)
+                lines = []
+        if lines:
+            reduced += reduce_nodes_(lines, mindist)
+
+        if len(self.area) > len(reduced):
+            logger.info("reduced areas %d -> %d",
+                        len(self.area), len(reduced))
+            return reduced
+        return []
+
     def virtual_nodes(self, render=False, parts=64):
         if len(self.area) < 2:
             return
@@ -337,15 +370,9 @@ class Area(object):
         return False
 
     def minmax_dist_from_center(self, center):
-        rmin = 1e20
-        rmax = 0
-        for n in self.list_of_nodes():
-            r = np.linalg.norm(np.array(n)-center)
-            if r < rmin:
-                rmin = r
-            if r > rmax:
-                rmax = r
-        return rmin, rmax
+        nodes = np.array([n for e in self.area for n in e.get_nodes()])
+        return (np.min(np.linalg.norm(nodes-center, axis=1)),
+                np.max(np.linalg.norm(nodes-center, axis=1)))
 
     def minmax_angle_dist_from_center(self, center, dist):
         circ = Circle(Element(center=center, radius=dist))

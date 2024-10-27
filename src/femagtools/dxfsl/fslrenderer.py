@@ -162,6 +162,8 @@ class FslRenderer(object):
         geom.split_all_lines_longer_than(split_len)
         self.content = []
 
+        MAXDST=4.0
+        NUMLEVELS=10
         ndt_list = [(0.00, 1.1),
                     (0.05, 1.5),
                     (0.10, 1.7),
@@ -173,6 +175,9 @@ class FslRenderer(object):
                     (0.70, 4.5),
                     (0.85, 5.5),
                     (1.10, 5.5)]
+        ndt_list = [(1.1*nl/NUMLEVELS, nl/NUMLEVELS*(MAXDST-1.1)+1.1)
+                    for nl in range(NUMLEVELS+1)]
+
         dist = geom.max_radius - geom.min_radius
         el_sorted = self.sorted_elements(geom, inner)
 
@@ -182,7 +187,7 @@ class FslRenderer(object):
             if ndt_list[n][0] < d_percent:
                 self.agndst = ndt_list[n][1] * self.agndst
                 self.content.append('\nndt({}*agndst)\n'.
-                                    format(ndt_list[n][1]))
+                                    format(round(ndt_list[n][1], 1)))
                 while ndt_list[n][0] < d_percent:
                     n += 1
             e.render(self)
@@ -233,6 +238,8 @@ class FslRenderer(object):
                 'r, phi = c2pr(x0, y0)',
                 'x1, y1 = pr2c(r1, phi)',
                 'x2, y2 = pr2c(r1, {}*math.pi/parts)'.format(slice),
+                f'-- end max corner {geom.end_corners[-1]}',
+                f'-- center {geom.center}',
                 f'r = {geom.dist_end_max_corner()}',
                 'x3, y3 = pr2c(r, {}*math.pi/parts)'.format(slice),
                 'nc_line(x0, y0, x1, y1, 0)',

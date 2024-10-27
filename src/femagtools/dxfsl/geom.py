@@ -91,11 +91,12 @@ def create_geometry(new_elements, split=False):
 
 
 def intersect_and_split(inp_elements, rtol, atol):
-    logger.info("Load input elements ... ")
+    logger.info("Load input elements ... %s", len(inp_elements))
     out_elements = []
     for e in inp_elements:
         out_size = len(out_elements)
         intersect_and_split_element(e, out_elements, 0, out_size, rtol, atol)
+    logger.debug(" done", e)
     return out_elements
 
 
@@ -650,9 +651,9 @@ class Geometry(object):
             return True
         return False
 
-    def get_edge(self, eg):
+    def get_edge(self, obj):
         return [[e[0], e[1], e[2]['object']] for e in self.g.edges(data=True)
-                if e[2]['object'] is eg]
+                if e[2]['object'] is obj]
 
     def get_edge_element(self, n1, n2):
         e_dict = self.g.get_edge_data(n1, n2)
@@ -679,9 +680,9 @@ class Geometry(object):
         assert(len(e) == 1)
         self._remove_edge(e[0][0], e[0][1])
 
-    def remove_edges(self, edges):
-        for e in edges:
-            self.remove_edge(e)
+    def remove_edges(self, objs):
+        for o in objs:
+            self.remove_edge(o)
 
     def _remove_node(self, n):
         for nbr in self.g.neighbors(n):
@@ -867,8 +868,8 @@ class Geometry(object):
         logger.debug("begin of dist_end_max_corner")
         logger.debug("end corners: %s", self.end_corners)
 
-        if self.is_mirrored():
-            return self.dist_start_max_corner()
+        #if self.is_mirrored():
+        #    return self.dist_start_max_corner()
         d = distance(self.center, self.end_corners[-1])
         logger.debug("end of dist_end_max_corner: %s", d)
         return d
@@ -1842,6 +1843,16 @@ class Geometry(object):
         if legend:
             return [h for (k, h) in legend.items()]
         return []
+
+    def reduce_winding_nodes(self, mindist=0.01):
+        for area in self.list_of_areas():
+            if area.is_winding():
+                reduced_shapes = area.reduce_nodes(mindist)
+                if reduced_shapes:
+                    area.remove_edges(self.g, ndec)
+                    area.area = reduced_shapes
+                    for r in reduced_shapes:
+                        self.add_element(r, rtol=self.rtol, atol=self.atol)
 
     def render_areagroups(self, renderer):
         if not self.areagroup_list:

@@ -533,6 +533,7 @@ def convert(dxfile,
                                                  EESM=EESM)
 
         if machine_outer.geom.is_stator() or machine_outer.has_windings():
+            machine_outer.geom.reduce_winding_nodes()
             machine_outer = build_machine_stator(machine_outer,
                                                  False,
                                                  mindist,
@@ -718,7 +719,7 @@ def convert(dxfile,
                                                p,
                                                EESM=EESM,
                                                single=True)
-
+                machine.geom.reduce_winding_nodes()
                 params = create_femag_parameters_stator(machine,
                                                         part[1])
             else:

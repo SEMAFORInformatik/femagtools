@@ -177,8 +177,7 @@ class Area(object):
         """
         import rdp
         def reduce_nodes_(lines, mindist):
-            nodes = [n for le in lines
-                     for n in le.get_nodes()]
+            nodes = [le.get_nodes()[0] for le in lines]
             r = rdp.rdp(nodes,
                         epsilon=mindist)
             if len(r) < len(nodes):
@@ -986,11 +985,14 @@ class Area(object):
                                           self.legend())
 
     def remove_edges(self, g, ndec):
+        r = 0
         for e in self.area:
             try:
                 g.remove_edge(e.node1(ndec), e.node2(ndec))
+                r+=1
             except Exception:
                 continue
+        return r
 
     def is_circle(self):
         e = self.area[0]

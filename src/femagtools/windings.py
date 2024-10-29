@@ -160,11 +160,13 @@ class Winding(object):
 
     def kw_order(self, n):
         """return winding factor harmonics"""
-        if n == 0:
-            return self.p
-        g = np.arange(-n, n, 1)
-        t = num_basic_windings(self.Q, self.p, self.l)
-        return self.p + g * self.m*t
+        if np.isscalar(n):
+            if n == 0:
+                return self.p
+            g = np.arange(-n, n, 1)
+            t = num_basic_windings(self.Q, self.p, self.l)
+            return self.p + g * self.m*t
+        return n
 
     def kwp(self, n=0):
         """pitch factor"""

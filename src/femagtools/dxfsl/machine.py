@@ -533,7 +533,7 @@ class Machine(object):
     def repair_hull_geom(self, geom, startangle, endangle):
         logger.debug('begin repair_hull_geom (%s, %s)', startangle, endangle)
 
-        rtol = 1e-4
+        rtol = 1e-3
         atol = 1e-4
         c_corner = Corner(self.center, self.center)
         start_c_added, start_corners = geom.get_corner_list(self.center, startangle,

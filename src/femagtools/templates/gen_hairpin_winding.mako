@@ -1,8 +1,12 @@
 -- hairpin winding template
 
-rcoil, phi_coil = c2pd(m.xcoil_1, m.ycoil_1)
-
 slot_div_angle = 360/m.tot_num_slot
+
+if m.xcoil_1 ~= nil and m.ycoil_1 ~= nil then 
+  rcoil, phi_coil = c2pd(m.xcoil_1, m.ycoil_1)
+else
+  rcoil, phi_coil = da1/2 + m.slot_height/2, slot_div_angle/2
+end 
 
 -- delete existing mesh in the slot
 for i = 1, m.num_sl_gen do
@@ -12,7 +16,7 @@ end
 -- wire params
 wire_height = ${model['wire']["wire_height"]*1e3}
 wire_width = ${model['wire']["wire_width"]*1e3}
-wire_corner_r = ${model['wire']["corner_radius"]*1e3}
+wire_corner_r = 0.0
 wire_gap = ${model['wire']["wire_separation"]*1e3}
 TH1 = ${model['wire']["wire_th1"]*1e3} -- distance to the bore radius
 nwires = ${model['wire']["num_layers"]}
@@ -128,7 +132,7 @@ for j = 1, m.num_sl_gen do
    end
 end
 
-ndt(agndst)
+ndt(agndst*1.5)
 for j = 1, m.num_sl_gen do
   for i = 1, nwires do
     dx, dy = x0+(wire_gap+wire_height)*(i-1), y0
@@ -142,8 +146,8 @@ create_mesh()
 
 -- create winding
 
-widfile = io.open("wid.fsl", 'r')
-
+--widfile = io.open("wid.fsl", 'r')
+widfile = io.open("wid.txt", 'r')
 nrows = 1
 winding = {}
 
@@ -158,52 +162,39 @@ for i in widfile:lines() do
 end
 
 --[[
-
 winding table
-
-1  slot_go pos_in_slot slot_ret pos_in_slot
-
+key slot layer dir
 ]]--
 dir = 'wi'
 cols = {"green", "yellow", "cyan"}
 wk = 1
 for i = 1, #winding do
-    idx = winding[i][2]
-    idxp = winding[i][3]
-    idy = winding[i][4]
-    idyp = winding[i][5]
+    windingskey = winding[i][1]
+    slot_nr = winding[i][2]
+    layer = winding[i][3]
+    direction = winding[i][4]
+    if direction < 0 then 
+      dir = 'wo'
+    else
+      dir = 'wi'
+    end 
+    if i == 1 then
+          if slot_nr <= m.num_sl_gen then
+              wkey = def_new_wdg(wire_xy[slot_nr][layer].x, wire_xy[slot_nr][layer].y, cols[winding[i][1]], "Phase"..winding[i][1], 1, 0, 0, dir)
+          end
 
-   if i == 1 then
-        if idx <= m.num_sl_gen then
-            wkey = def_new_wdg(wire_xy[idx][idxp].x, wire_xy[idx][idxp].y, cols[winding[i][1]], "Phase"..winding[i][1], 1, 0, 0, dir)
-        end
-
-        if math.abs(idy) <= m.num_sl_gen then
-            add_to_wdg (wire_xy[math.abs(idy)][idyp].x, wire_xy[math.abs(idy)][idyp].y, "wsamekey", "wo", "wser")
-        end
-   else
-        if winding[i][1] == winding[i-1][1] and winding[i][1] == wk then
-            if idx <= m.num_sl_gen then
-                add_to_wdg (wire_xy[idx][idxp].x, wire_xy[idx][idxp].y, "wsamekey", dir, "wser")
-            end
-            if math.abs(idy) <= m.num_sl_gen then
-                add_to_wdg (wire_xy[math.abs(idy)][idyp].x, wire_xy[math.abs(idy)][idyp].y, "wsamekey", "wo", "wser")
-            end
-        else
-            if idx <= m.num_sl_gen then
-                wkey = def_new_wdg(wire_xy[idx][idxp].x, wire_xy[idx][idxp].y, cols[winding[i][1]], "Phase"..winding[i][1], 1, 0, 0, dir)
-                wk = wk + 1
-            end
-            if math.abs(idy) <= m.num_sl_gen then
-                if wk == winding[i][1] then
-                  add_to_wdg (wire_xy[math.abs(idy)][idyp].x, wire_xy[math.abs(idy)][idyp].y, "wsamekey", "wo", "wser")
-                else
-                  wkey = def_new_wdg(wire_xy[math.abs(idy)][idyp].x, wire_xy[math.abs(idy)][idyp].y, cols[winding[i][1]], "Phase"..winding[i][1], 1, 0, 0, "wo")
+    else
+          if winding[i][1] == winding[i-1][1] and winding[i][1] == wk then
+              if slot_nr <= m.num_sl_gen then
+                  add_to_wdg (wire_xy[slot_nr][layer].x, wire_xy[slot_nr][layer].y, "wsamekey", dir, "wser")
+              end
+            
+          else
+              if slot_nr <= m.num_sl_gen then
+                  wkey = def_new_wdg(wire_xy[slot_nr][layer].x, wire_xy[slot_nr][layer].y, cols[winding[i][1]], "Phase"..winding[i][1], 1, 0, 0, dir)
                   wk = wk + 1
-                end
-            end
-        end
+              end
+          end
    end
 end
-
 m.num_par_wdgs = ${model.get('num_par_wdgs', 1)}

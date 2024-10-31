@@ -32,8 +32,9 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-dxfsl = ['dxfgrabber', 'networkx', 'rdp']
-svgfsl = ['dxfgrabber', 'networkx', 'lxml', 'rdp']
+rdp = ['rdp']  # reduce nodes in dxf/svg fsl conversion
+dxfsl = ['dxfgrabber', 'networkx']
+svgfsl = ['dxfgrabber', 'networkx', 'lxml']
 mplot =  ['matplotlib']
 meshio = ['meshio']
 vtk = ['vtk']

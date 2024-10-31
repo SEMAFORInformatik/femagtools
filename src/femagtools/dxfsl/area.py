@@ -174,33 +174,38 @@ class Area(object):
     def reduce_nodes(self, mindist=0.01):
         """reduces number of nodes (lines only)
         https://rdp.readthedocs.io/en/latest
+        Note: this feature is deactivated silently
+          if the rdp package is not installed.
         """
-        import rdp
-        def reduce_nodes_(lines, mindist):
-            nodes = [le.get_nodes()[0] for le in lines]
-            r = rdp.rdp(nodes,
-                        epsilon=mindist)
-            if len(r) < len(nodes):
-                return [Line(Element(start=n1, end=n2))
-                        for n1, n2 in zip(r, r[1:])]
-            return lines
+        try:
+            import rdp
+            def reduce_nodes_(lines, mindist):
+                nodes = [le.get_nodes()[0] for le in lines]
+                r = rdp.rdp(nodes,
+                            epsilon=mindist)
+                if len(r) < len(nodes):
+                    return [Line(Element(start=n1, end=n2))
+                            for n1, n2 in zip(r, r[1:])]
+                return lines
 
-        lines = []
-        reduced = []
-        for e in self.area:
-            if isinstance(e, Line):
-                lines.append(e)
-            else:
-                reduced.append(e)
+            lines = []
+            reduced = []
+            for e in self.area:
+                if isinstance(e, Line):
+                    lines.append(e)
+                else:
+                    reduced.append(e)
+                    reduced += reduce_nodes_(lines, mindist)
+                    lines = []
+            if lines:
                 reduced += reduce_nodes_(lines, mindist)
-                lines = []
-        if lines:
-            reduced += reduce_nodes_(lines, mindist)
 
-        if len(self.area) > len(reduced):
-            logger.info("reduced areas %d -> %d",
-                        len(self.area), len(reduced))
-            return reduced
+            if len(self.area) > len(reduced):
+                logger.info("reduced areas %d -> %d",
+                            len(self.area), len(reduced))
+                return reduced
+        except ModuleNotFoundError:
+            pass
         return []
 
     def virtual_nodes(self, render=False, parts=64):

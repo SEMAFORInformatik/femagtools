@@ -359,6 +359,43 @@ class BaseFemag(object):
 
         return dict()
 
+    def read_hsn(self, modelname=None): 
+        "read heat network result"
+        _map = {
+            "StZa": "plfe1", 
+            "outs": "-",
+            "StJo": "plfe1", 
+            "Slot": "-",
+            "Shaf": "-", 
+            "Iron": "plfe2", 
+            "PMag": "plmag",
+            "PMag_1": "plmag",
+            "PMag_2": "plmag",
+            "PMag_3": "plmag",
+            "PMag_4": "plmag",
+            "W1  ":   "plcu1", 
+            "W2  ":   "plcu1", 
+            "W3  ":   "plcu1"
+        }
+        if not modelname:
+            modelname = self._get_modelname_from_log()
+        hsn_list = sorted(glob.glob(os.path.join(
+            self.workdir, modelname+'.hsn')))
+        with open(hsn_list[-1], 'r') as f: 
+            hsn_data = json.load(f)
+        pmag_index = []
+        if "Nodes" in hsn_data: 
+            for k ,i in enumerate(hsn_data['Nodes']): 
+                i.update({"mass": i['weight'], "losses": _map[i['Name']]})
+                if "PMag" in i['Name']: 
+                    pmag_index.append(k)
+            if pmag_index: 
+                for i in range(len(pmag_index)): 
+                    hsn_data["Nodes"][pmag_index[i]]['Name'] = f"PMag_{i+1}" 
+        with open(hsn_list[-1], 'w') as f: 
+            json.dump(hsn_data, f)
+        return hsn_data
+
     def _get_modelname_from_log(self):
         """
         Read the modelname from the Femag Log file
@@ -402,6 +439,10 @@ class BaseFemag(object):
                 return {'t': ttemp[0], 'temperature': ttemp[1]}
 
             if simulation['calculationMode'] == 'hsn':
+                try: 
+                    hsn_result = self.read_hsn()
+                except: 
+                    pass 
                 model = self.read_nc()
                 return model.get_minmax_temp()
 

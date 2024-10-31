@@ -66,7 +66,7 @@ def main():
 
     res = convert(args.svgfile,  # SVG-Filename
                   part=part,
-                  EESM=EESM,
+                  EESM=args.EESM,
                   view_only=args.view,
                   show_plots=args.show_plots,
                   show_areas=args.show_areas,

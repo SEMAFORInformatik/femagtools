@@ -153,11 +153,11 @@ def winding_factors(wdg, n=8, ax=0):
                                   wdg.kwd(n),
                                   wdg.kw(n))]).T
     try:
-        markerline1, stemlines1, _ = ax.stem(order-1, kwp,
+        markerline1, stemlines1, _ = ax.stem(order-0.5, kwp,
                                              'C1:', basefmt=" ",
                                              markerfmt='C1.',
                                              label='Pitch')
-        markerline2, stemlines2, _ = ax.stem(order+1, kwd,
+        markerline2, stemlines2, _ = ax.stem(order+0.5, kwd,
                                              'C2:', basefmt=" ",
                                              markerfmt='C2.',
                                              label='Distribution')

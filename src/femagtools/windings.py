@@ -32,18 +32,18 @@ def q1q2yk(Q, p, m, l=1):
     """returns q1, q2, Yk, Qb"""
     t = num_basic_windings(Q, p, l)
     Qb = Q//t
-    qqb = Qb if l == 2 else Qb//2
+    qbb = Qb if l==2 else Qb//2
     pb = p//t
-    if qqb//m % 2:  # odd
-        q2 = (qqb + m)//(2*m) - 1
+    if qbb//m % 2:  # odd
+        q2 = (qbb + m)//(2*m) - 1
         q1 = q2 + 1
     else:
-        q2 = (qqb)//(2*m)
+        q2 = (qbb)//(2*m)
         q1 = q2
     n = 1
-    while (n*qqb + 1) % pb:
+    while (n*qbb + 1) % pb:
         n += 1
-    Yk = (n*qqb + 1)//pb
+    Yk = (n*qbb + 1)//pb
     return q1, q2, Yk, Qb
 
 
@@ -118,22 +118,22 @@ class Winding(object):
         self.yd = coilwidth
 
         q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
+        j = 2 if layers == 1 else 1
         k1 = [(q1 + q2)*i for i in range(self.m)]
         k2 = (q1*(self.m+1) + q2*(self.m-1))//2
-        j = 2 if layers == 1 else 1
         pos = [[(j*Yk*(k + n)) % Qb
                 for n in range(q1)] for k in k1]
         neg = [[j*Yk*(k + n + k2) % Qb
                 for n in range(q2)] for k in k1]
-        if layers > 1:
+        if self.l > 1:
             slots = [sorted([(k, 1, 1)
                              for k in p] + [(k, -1, 1)
                                             for k in n])
                      for n, p in zip(neg, pos)]
             for i, p in enumerate(slots):
                 slots[i] = sorted(slots[i] +
-                                  [((k[0]+coilwidth) % Qb, -k[1], 0)
-                                   for k in slots[i]], key=lambda s: s[0])
+                                  [((k[0]+self.yd) % Qb, -k[1], 0)
+                                   for k in slots[i]])
         else:
             if (coilwidth + 1) % 2:
                 coilwidth += 1
@@ -147,10 +147,6 @@ class Winding(object):
             slots = [sorted([(k, 1, 1) for k in p] + [(k, -1, 1) for k in n])
                      for n, p in zip(xneg, xpos)]
 
-        if self.m > 3:  # TODO: check this hack
-            slots = slots[:self.m//2] + [[((k[0]+1) % self.Q, k[1], k[2])
-                                          for k in s]
-                                         for s in slots[:self.m//2]]
         taus = 360/self.Q
         self.windings = {
             i+1:  dict(dir=[k[1] for k in s],
@@ -183,6 +179,10 @@ class Winding(object):
             nue = n
         else:
             nue = self.kw_order(n)
+        #if q1 == q2:  # integral slot winding
+        #    q = self.Q/2/self.m/self.p
+        #    nuep = nue/self.p
+        #    return np.sin(nuep*np.pi/2/self.m)/q/np.sin(nuep*np.pi/2/self.m/q)
         k = 2 if self.l == 1 else 1
         a = nue*k*np.pi/self.Q*Yk
         t = self.Q//Qb
@@ -244,14 +244,19 @@ class Winding(object):
 
     def slots(self, key):
         """returns slot indexes of winding key"""
-        ngen = self.m*self.Q//np.gcd(self.Q, self.m*2*self.p)
         taus = 360/self.Q
-
-        dim = int(self.l*ngen/self.m)
-        slots = [(round((x-taus/2)/taus) + ngen*n) % self.Q + 1
-                 for n in range(self.Q//ngen)
+        t = num_basic_windings(self.Q, self.p, self.l)
+        Qb = self.Q//t
+        dim = self.l*Qb//self.m
+        ngen = t
+        qgen = Qb
+        if dim > len(self.windings[key]['PHI']):
+            qgen = qgen//2
+            ngen = 2*t
+        slots = [(round((x-taus/2)/taus) + qgen*n) % self.Q + 1
+                 for n in range(ngen)
                  for x in self.windings[key]['PHI'][:dim]]
-        return np.array(slots).reshape((np.gcd(self.Q, self.p), -1))
+        return np.array(slots).reshape(t, -1)
 
     def axis(self, k=1):
         """returns axis angle of winding 1 in mechanical system"""

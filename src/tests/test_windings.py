@@ -158,3 +158,8 @@ def test_num_layers():
 
     assert w.l == 2
     assert w.yd == 4
+
+def test_zoneplan():
+    w = femagtools.windings.Winding(
+        {'Q': 60, 'p': 32, 'm': 3, 'l': 1})
+    assert [1, -2, 3, -4, 5, -6, -17, 18, -19, 20] == w.zoneplan()[0][0]

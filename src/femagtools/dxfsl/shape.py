@@ -54,6 +54,9 @@ class Shape(object):
     def classname(self):
         return "Shape"
 
+    def set_my_color(self, color):
+        self.my_color = color
+
     def get_my_color(self):
         if hasattr(self, 'my_color'):
             return self.my_color

@@ -811,6 +811,10 @@ class Geometry(object):
     def get_neighbors(self, n):
         return [nbr for nbr in self.g.neighbors(n)]
 
+    def num_of_neighbors(self, n):
+        nbrs = [nbr for nbr in self.g.neighbors(n)]
+        return len(nbrs)
+
     def angle_nodes(self, center, angle, rtol, atol):
         if np.isclose(abs(angle), np.pi, rtol, atol):
             angle_func = positive_angle
@@ -1845,14 +1849,22 @@ class Geometry(object):
         return []
 
     def reduce_winding_nodes(self, mindist=0.01):
+        return self.reduce_line_nodes(mindist=mindist,
+                                      area_types=(AREA.TYPE_WINDINGS,))
+
+    def reduce_line_nodes(self, mindist=0.01, area_types=()):
+        timer = Timer(start_it=True)
+        nodes_deleted = 0
         for area in self.list_of_areas():
-            if area.is_winding():
-                reduced_shapes = area.reduce_nodes(mindist)
-                if reduced_shapes:
-                    area.remove_edges(self.g, ndec)
-                    area.area = reduced_shapes
-                    for r in reduced_shapes:
-                        self.add_element(r, rtol=self.rtol, atol=self.atol)
+            if not area_types or area.type in area_types:
+                nodes_deleted += area.reduce_line_nodes(self, mindist)
+
+        t = timer.stop("-- {} nodes deleted in %0.4f seconds --".format(nodes_deleted))
+        self.journal.put('time_deleting_nodes', t)
+        if nodes_deleted:
+            self.journal.put('nodes_deleted', nodes_deleted)
+            self.area_list = []
+        return nodes_deleted > 0
 
     def render_areagroups(self, renderer):
         if not self.areagroup_list:

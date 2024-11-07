@@ -229,7 +229,15 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
         machine_temp.create_mirror_lines_outside_windings()
     else:
         machine_temp = machine
-    if machine_temp.create_auxiliary_lines():
+
+    rebuild = machine_temp.create_auxiliary_lines()
+    if machine_temp.geom.reduce_winding_nodes(mindist):
+        plot_geom(False,  # for developer
+                  plt, machine_temp.geom,
+                  title="Nodes reduced",
+                  areas=False)
+        rebuild = True
+    if rebuild:
         machine_temp.rebuild_subregions(EESM, single=single)
 
     if inner:
@@ -533,7 +541,6 @@ def convert(dxfile,
                                                  EESM=EESM)
 
         if machine_outer.geom.is_stator() or machine_outer.has_windings():
-            machine_outer.geom.reduce_winding_nodes()
             machine_outer = build_machine_stator(machine_outer,
                                                  False,
                                                  mindist,
@@ -719,7 +726,6 @@ def convert(dxfile,
                                                p,
                                                EESM=EESM,
                                                single=True)
-                machine.geom.reduce_winding_nodes()
                 params = create_femag_parameters_stator(machine,
                                                         part[1])
             else:

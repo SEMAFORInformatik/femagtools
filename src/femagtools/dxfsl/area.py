@@ -171,7 +171,7 @@ class Area(object):
                 if e1.n1 == e2.n1 and e1.n2 == e2.n2:
                     yield e1
 
-    def reduce_nodes(self, mindist=0.01):
+    def reduce_line_nodes(self, geom, mindist=0.01):
         """reduces number of nodes (lines only)
         https://rdp.readthedocs.io/en/latest
         Note: this feature is deactivated silently
@@ -179,34 +179,58 @@ class Area(object):
         """
         try:
             import rdp
-            def reduce_nodes_(lines, mindist):
-                nodes = [le.get_nodes()[0] for le in lines]
-                r = rdp.rdp(nodes,
-                            epsilon=mindist)
-                if len(r) < len(nodes):
-                    return [Line(Element(start=n1, end=n2))
-                            for n1, n2 in zip(r, r[1:])]
-                return lines
-
-            lines = []
-            reduced = []
-            for e in self.area:
-                if isinstance(e, Line):
-                    lines.append(e)
-                else:
-                    reduced.append(e)
-                    reduced += reduce_nodes_(lines, mindist)
-                    lines = []
-            if lines:
-                reduced += reduce_nodes_(lines, mindist)
-
-            if len(self.area) > len(reduced):
-                logger.info("reduced areas %d -> %d",
-                            len(self.area), len(reduced))
-                return reduced
         except ModuleNotFoundError:
-            pass
-        return []
+            return 0
+
+        def is_valid_line_(n1, e):
+            if not isinstance(e, Line):
+                return False
+            if e.has_attribute('del'):
+                return False
+            return True
+
+        def reduce_nodes_(lines, mindist):
+            if not len(lines) > 1:
+                return 0
+
+            nodes = [n1 for n1, n2, e in lines]
+            n1, n2, e = lines[-1]
+            nodes.append(n2)
+
+            remaining_nodes = rdp.rdp(nodes,
+                                      epsilon=mindist)
+            nodes_deleted = len(nodes) - len(remaining_nodes)
+            if not nodes_deleted:
+                return 0
+
+            for n1, n2, e in lines:
+                e.set_attribute('del')
+                e.set_my_color('yellow')
+                geom.remove_edge(e)
+
+            n1 = remaining_nodes[0]
+            for n2 in remaining_nodes[1:]:
+                geom.add_line(n1, n2)
+                n1 = n2
+
+            self.area = []
+            return nodes_deleted
+
+        # -----
+        nodes_deleted = 0
+        lines = []
+        for n1, n2, e in self.list_of_elements():
+            if not is_valid_line_(n1, e):
+                nodes_deleted += reduce_nodes_(lines, mindist)
+                lines = []
+            elif not geom.num_of_neighbors(n1) == 2:
+                nodes_deleted += reduce_nodes_(lines, mindist)
+                lines = [(n1, n2, e)]
+            else:
+                lines.append((n1, n2, e))
+
+        nodes_deleted += reduce_nodes_(lines, mindist)
+        return nodes_deleted
 
     def virtual_nodes(self, render=False, parts=64):
         if len(self.area) < 2:

@@ -872,8 +872,8 @@ class Geometry(object):
         logger.debug("begin of dist_end_max_corner")
         logger.debug("end corners: %s", self.end_corners)
 
-        #if self.is_mirrored():
-        #    return self.dist_start_max_corner()
+        if self.is_mirrored():
+            return self.dist_start_max_corner()
         d = distance(self.center, self.end_corners[-1])
         logger.debug("end of dist_end_max_corner: %s", d)
         return d

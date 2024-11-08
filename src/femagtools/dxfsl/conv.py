@@ -9,18 +9,13 @@ import os
 import io
 import femagtools
 from femagtools.dxfsl.converter import convert
-from femagtools.dxfsl.journal import Journal, getJournal
 import argparse
 import logging
 import logging.config
 
 logger = logging.getLogger(__name__)
-journal = None
-
 
 def main():
-    global journal
-
     argparser = argparse.ArgumentParser(
         description='Process DXF file and create a plot or FSL file.')
     argparser.add_argument('dxfile',
@@ -187,8 +182,6 @@ def main():
         logger.info("Python: %s", sys.version)
         sys.exit(0)
 
-    journal = getJournal(name='converter_journal', aktiv=args.journal)
-
     if args.airgap > 0.0:
         if args.airgap2 > 0.0:
             logger.info("Airgap is set from {} to {}"
@@ -252,7 +245,8 @@ def main():
                   write_png=args.write_png,
                   write_id=args.write_id,
                   debug_mode=args.debugger,
-                  full_model=args.full_model)
+                  full_model=args.full_model,
+                  write_journal=args.journal)
     keys = ('tot_num_slot', 'num_sl_gen', 'num_poles', 'nodedist',
             'dy1', 'da1', 'da2', 'dy2', 'agndst', 'name')
     logger.info("%s", {k: res[k] for k in keys if k in res})
@@ -261,7 +255,6 @@ def main():
             basename = os.path.basename(args.dxfile).split('.')[0]
             with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
                 f.write('\n'.join(res['fsl']))
-    journal.write_journal()
 
 if __name__ == "__main__":
     loglevel = logging.INFO

@@ -3,6 +3,7 @@
 """
 import os
 from pathlib import Path
+from femagtools import __version__
 from femagtools.dxfsl.geom import Geometry
 from femagtools.dxfsl.shape import Shape
 from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
@@ -278,7 +279,8 @@ def convert(dxfile,
             write_png=False,
             write_id=False,
             full_model=False,
-            debug_mode=False):
+            debug_mode=False,
+            write_journal=False):
     layers = ()
     conv = {}
 
@@ -289,14 +291,19 @@ def convert(dxfile,
 
     basename = input_file.stem
     if part:
-        logger.info("***** start processing %s (%s) *****", basename, part)
+        logger.info("***** start processing %s (%s) [%s] *****",
+                    basename,
+                    part,
+                    __version__)
     else:
-        logger.info("***** start processing %s *****", basename)
+        logger.info("***** start processing %s [%s] *****",
+                    basename,
+                    __version__)
     timer = Timer(start_it=True)
 
-    journal = getJournal(name='converter', aktiv=debug_mode)
+    journal = getJournal(name='converter_journal', aktiv=write_journal)
     journal.get_journal(input_file.name)
-    journal.put_filename(str(input_file.resolve()))
+    journal.set_filename(str(input_file.resolve()))
     journal.set('success', False)
     journal.write_journal()
 
@@ -808,6 +815,7 @@ def convert(dxfile,
     t = timer.stop("-- all done in %0.4f seconds --", info=True)
     journal.put('time_total', t)
     journal.set('success', True)
+    journal.write_journal()
     return conv
 
 

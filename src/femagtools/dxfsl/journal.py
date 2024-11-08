@@ -121,8 +121,8 @@ class Journal(object):
         data_list.append(val)
         self.data[name] = data_list
 
-    def put_filename(self, val):
-        self.put('filename', val)
+    def set_filename(self, val):
+        self.set('filename', val)
 
     def put_areas(self, val):
         self.put('areas', val)

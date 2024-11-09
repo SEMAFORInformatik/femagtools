@@ -374,6 +374,9 @@ class Writer(Mcv):
 
     def _prepare(self, fillfac, recsin):
         """prepare output format (internal use only)"""
+        self.mc1_curves = len(self.curve)
+        if self.mc1_type == MAGCRV and self.mc1_curves > 1:
+            self.mc1_type = ORIENT_CRV
         if self.mc1_type in (ORIENT_CRV, ORIENT_PM_CRV):
             self.version_mc_curve = self.ORIENTED_VERSION_MC_CURVE
         elif self.mc1_type == DEMCRV_BR:
@@ -392,10 +395,10 @@ class Writer(Mcv):
         if fillfac or recsin:
             if hasattr(self, 'mc1_fe_sat_magnetization'):
                 self.mc1_fe_sat_magnetization = fe_sat_mag(curve)
-        logger.info("%s Type: %d Num Curves %d",
+        logger.info("%s Type: %d (%s) Num Curves %d fillfac %f",
                     self.name, self.version_mc_curve,
-                    len(self.curve))
-        self.mc1_curves = len(self.curve)
+                    types[self.mc1_type],
+                    len(self.curve), self.mc1_fillfac)
         self.mc1_ni = [min(len(c['hi']),
                            len(c['bi']))
                        for c in self.curve if 'hi' in c]
@@ -528,10 +531,10 @@ class Writer(Mcv):
         if not hasattr(self, 'losses') or not self.losses:
             # new variables: ce factor for bertotti losses
             # b_beta_coeff for modified steinmetz
-            try: 
-                self.writeBlock([float(self.mc1_ce_factor), 
+            try:
+                self.writeBlock([float(self.mc1_ce_factor),
                                  float(self.mc1_induction_beta_factor)])
-            except: 
+            except:
                 pass
             return
 
@@ -599,7 +602,7 @@ class Writer(Mcv):
             logger.info('Losses n freq %d n ind %d', nfreq, nind)
         except Exception as e:
             logger.error("Exception %s", e, exc_info=True)
-        
+
     def writeMcv(self, filename, fillfac=None, recsin=''):
         # windows needs this strip to remove '\r'
         filename = filename.strip()
@@ -873,7 +876,7 @@ class Reader(Mcv):
 
         self.ce = 0
         self.b_beta_coeff = 0
-        try: 
+        try:
             if not self.losses['f'][0]:
                 self.fp.seek(-16, 1)
             res = self.readBlock([float]*2)
@@ -882,30 +885,33 @@ class Reader(Mcv):
             pass
 
     def get_results(self):
+        self.desc = self.mc1_title
+        self.fillfac = self.mc1_fillfac
+        #self.cversion = self.version_mc_curve
         result = {
-            'name': self.name,
-            'desc': self.mc1_title,
-            'cversion': self.version_mc_curve,
-            'ctype': self.mc1_type,
-            'recalc': self.mc1_recalc,
-            'remz': self.mc1_remz,
-            'bsat': self.mc1_bsat,
-            'bref': self.mc1_bref,
-            'fillfac': self.mc1_fillfac,
-            'fo': self.fo,
-            'Bo': self.Bo,
-            'ch': self.ch,
-            'ch_freq': self.ch_freq,
-            'cw': self.cw,
-            'ce': self.ce,
-            'b_beta_coeff': self.b_beta_coeff,
-            'cw_freq': self.cw_freq,
-            'b_coeff': self.b_coeff,
-            'rho': self.rho,
-            'fe_sat_mag': self.fe_sat_mag,
-            'curve': [{k: c[k] for k in ('hi', 'bi')}
-                      for c in self.curve]
-        }
+            k: getattr(self, k) for k in (
+                'name',
+                'desc',
+                'cversion',
+                'ctype',
+                'recalc',
+                'remz',
+                'bsat',
+                'bref',
+                'fillfac',
+                'fo',
+                'Bo',
+                'ch',
+                'ch_freq',
+                'cw',
+                'ce',
+                'b_beta_coeff',
+                'cw_freq',
+                'b_coeff',
+                'rho',
+                'fe_sat_mag') if hasattr(self, k)}
+        result['curve'] = [{k: c[k] for k in ('hi', 'bi')}
+                           for c in self.curve]
         try:
             if self.losses:
                 result['losses'] = self.losses

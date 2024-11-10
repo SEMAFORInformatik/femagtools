@@ -92,3 +92,24 @@ def test_read_write_mcv_with_losses():
                                    reader2.losses['f'], 5)
     np.testing.assert_almost_equal(reader.losses['B'],
                                    reader2.losses['B'], 5)
+
+def test_extrapol():
+    mcv = {'name':"M222",
+           'curve':[{
+            'bi':[0.0, 0.09, 0.179, 0.267, 0.358,
+                0.45, 0.543, 0.6334, 0.727,
+                0.819, 0.9142, 1.0142, 1.102,
+                1.196, 1.314, 1.3845, 1.433,
+                1.576, 1.677, 1.745, 1.787,
+                1.81, 1.825, 1.836],
+
+            'hi':[0.0, 22.16, 31.07, 37.25, 43.174,
+                49.54, 56.96, 66.11, 78.291,
+                95, 120.64, 164.6, 259.36,
+                565.86, 1650.26, 3631.12, 5000, 10000,
+                15000, 20000, 25000, 30000, 35000, 40000]}]}
+    c = femagtools.mcv.extrapol(mcv['curve'][0])
+    assert len(c['bi']) > len(mcv['curve'][0]['bi'])
+    assert len(c['hi']) > len(mcv['curve'][0]['hi'])
+    assert np.all(np.diff(c['bi']) > 0)
+    assert np.all(np.diff(c['hi']) > 0)

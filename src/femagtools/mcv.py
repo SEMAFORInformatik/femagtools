@@ -103,6 +103,54 @@ def norm_pfe(B, pfe):
                   for x in Bv[:n]] + [None]*(len(Bv)-n))
     return Bv.tolist(), m
 
+def extrapol(crv, jsat=0, bmax=3):
+    """extends BH curve into saturation range"""
+    curve = copy.deepcopy(crv)
+    dh = curve['hi'][-1]-curve['hi'][-2]
+    db = curve['bi'][-1]-curve['bi'][-2]
+    mue_d = db/dh
+    mue = curve['bi'][-1]/curve['hi'][-1]
+    db = 3e-2*curve['bi'][-1]
+    b2 = 1.5
+
+    curve['muer'] = [b/MUE0/h if h>0 else float('nan')
+                     for b, h in zip(curve['bi'],
+                                     curve['hi'])]
+
+    # extend bh-curve into saturation
+    while mue_d > 1.01*MUE0 and mue > 1.5*MUE0:
+        mue_d = MUE0 + (mue_d-MUE0)/np.sqrt(b2)
+        curve['bi'].append(curve['bi'][-1]+db)
+        curve['hi'].append(curve['hi'][-1]+db/mue_d)
+        curve['muer'].append(curve['bi'][-1]/MUE0/curve['hi'][-1])
+        b2 += 2
+        mue = curve['bi'][-1]/curve['hi'][-1]
+
+    # Fröhlich-Kennelly coefficients
+    if jsat:
+        hx = curve['hi'][-1]
+        bx = curve['bi'][-1]
+        fkb = 1./jsat
+        fka = (hx/(bx - MUE0*hx) - hx/jsat)
+    else:
+        Js1 = curve['bi'][-1] - MUE0*curve['hi'][-1]
+        Js0 = curve['bi'][-2] - MUE0*curve['hi'][-2]
+        fkb = ((curve['hi'][-1]/Js1 - curve['hi'][-2]/Js0)
+               /(curve['hi'][-1] - curve['hi'][-2]))
+        fka = curve['hi'][-1]/Js1 - fkb*curve['hi'][-1]
+    logger.debug("B values %d Fröhlich-Kennelly coeffs: a %f b %f",
+                 len(curve['bi']), fka, fkb)
+    bstep = 0.15
+    bx = np.arange(curve['bi'][-1] + bstep, bmax, bstep)
+    # Fröhlich-Kennelly approximation
+    b = fkb * bx - MUE0*fka - 1
+    a = fkb * bx
+    c = MUE0*fka
+    nuer = (b + np.sqrt(b*b + 4*a*c))/2/a
+    curve['bi'] += bx.tolist()
+    curve['hi'] += (nuer*bx/MUE0).tolist()
+    return curve
+
 
 def recalc_bsin(curve):
     """recalculates B-H curve (static problems) into effective
@@ -159,7 +207,7 @@ def recalc_hsin(curve):
     return ncurve
 
 
-def approx(db2, curve):
+def approx(db2, curve, ctype):
     """return nuer, bi2, a, b approx for curve"""
     nuek0 = (curve['hi'][1] - curve['hi'][0]) / \
             (curve['bi'][1]-curve['bi'][0])
@@ -191,12 +239,22 @@ def approx(db2, curve):
         nuer.append(MUE0*nuek1)
         bi2.append(bk12)
 
-    a.append(1.0)
-    b.append(MUE0*curve['hi'][-1]-curve['bi'][-1])
+    if ctype in (DEMCRV, MAG_AC_CRV):
+        dhdbn = 0
+        k = len(bi2)-1
+        if curve['bi'][k] - curve['bi'][k-1] > 0:
+            dhdbn = ((curve['hi'][k] - curve['h'][k-1],KK)
+                     /(curve['bi'][k] - curve['bi'][k-1]))
+        a.append(MUE0*dhdbn)
+        b.append(MUE0*curve['hi'][k] - dhdbn*curve['bi'][k])
+    else:
+        a.append(1.0)
+        b.append(MUE0*curve['hi'][-1]-curve['bi'][-1])
     return dict(nuer=nuer, a=a, b=b, bi2=bi2)
 
 
 def fe_sat_mag(curve):
+    """returns maximum polarization of all BH curves"""
     fesat = 0
     for c in curve:
         js2 = c['bi'][-1] - MUE0*c['hi'][-1]
@@ -219,7 +277,7 @@ def findNotNone(l):
 
 
 class Mcv(object):
-    def __init__(self):
+    def __init__(self, data={}):
         # default values from file: mcv.par
         self.ACT_VERSION_MC_CURVE = 0
         self.ORIENTED_VERSION_MC_CURVE = 1
@@ -248,7 +306,6 @@ class Mcv(object):
         self.mc1_induction_factor = self.MC1_INDUCTION_FACTOR
         self.mc1_induction_beta_factor = self.MC1_INDUCTION_BETA_FACTOR
         self.mc1_fe_spez_weigth = self.MC1_FE_SPEZ_WEIGTH
-        self.mc1_fe_sat_magnetization = self.MC1_FE_SAT_MAGNETIZATION
 
         self.mc1_title = ''
         self.version_mc_curve = self.ACT_VERSION_MC_CURVE
@@ -274,25 +331,17 @@ class Mcv(object):
 
         self.mc1_energy = [[0]*self.MCURVES_MAX]*self.MC1_NIMAX
 
-    def rtrimValueList(self, vlist):
-        """cut list at first 0"""
-        le = len(vlist)
-        for i in range(le-1, -1, -1):
-            if vlist[i] != 0.:
-                break
-        return list(vlist[:i+1])
-
-    def __getitem__(self, key):
-        if key == 'ctype':  # for compatibility purposes
-            return self.mc1_type
-        return getattr(self, key)
-
-
-class Writer(Mcv):
-    def __init__(self, data=None):
-        Mcv.__init__(self)
         if data:
             self.setData(data)
+
+            self.mc1_curves = len(self.curve)
+            if self.mc1_type == MAGCRV and self.mc1_curves > 1:
+                self.mc1_type = ORIENT_CRV
+            if self.mc1_type in (ORIENT_CRV, ORIENT_PM_CRV):
+                self.version_mc_curve = self.ORIENTED_VERSION_MC_CURVE
+            elif self.mc1_type == DEMCRV_BR:
+                self.version_mc_curve = self.PARAMETER_PM_CURVE
+
 
     def __setattr__(self, key, val):
         try:
@@ -316,6 +365,24 @@ class Writer(Mcv):
         except Exception:
             pass
         return
+
+    def rtrimValueList(self, vlist):
+        """cut list at first 0"""
+        le = len(vlist)
+        for i in range(le-1, -1, -1):
+            if vlist[i] != 0.:
+                break
+        return list(vlist[:i+1])
+
+    def __getitem__(self, key):
+        if key == 'ctype':  # for compatibility purposes
+            return self.mc1_type
+        return getattr(self, key)
+
+
+class Writer(Mcv):
+    def __init__(self, data=None):
+        Mcv.__init__(self, data)
 
     def getBlockLength(self, d):
         if isinstance(d, string_types) or isinstance(d, bytes):
@@ -374,14 +441,6 @@ class Writer(Mcv):
 
     def _prepare(self, fillfac, recsin):
         """prepare output format (internal use only)"""
-        self.mc1_curves = len(self.curve)
-        if self.mc1_type == MAGCRV and self.mc1_curves > 1:
-            self.mc1_type = ORIENT_CRV
-        if self.mc1_type in (ORIENT_CRV, ORIENT_PM_CRV):
-            self.version_mc_curve = self.ORIENTED_VERSION_MC_CURVE
-        elif self.mc1_type == DEMCRV_BR:
-            self.version_mc_curve = self.PARAMETER_PM_CURVE
-
         curve = copy.deepcopy(self.curve)
         if fillfac:
             alpha = fillfac/self.mc1_fillfac
@@ -395,17 +454,17 @@ class Writer(Mcv):
         if fillfac or recsin:
             if hasattr(self, 'mc1_fe_sat_magnetization'):
                 self.mc1_fe_sat_magnetization = fe_sat_mag(curve)
-        logger.info("%s Type: %d (%s) Num Curves %d fillfac %f",
+        logger.info("%s Type: %d (%s) Num Curves %d",
                     self.name, self.version_mc_curve,
                     types[self.mc1_type],
-                    len(self.curve), self.mc1_fillfac)
+                    len(self.curve))
         self.mc1_ni = [min(len(c['hi']),
                            len(c['bi']))
                        for c in self.curve if 'hi' in c]
         self.mc1_db2 = [(c['bi'][-1]**2 - c['bi'][0]**2)/n
                         for c, n in zip(curve, self.mc1_mi)]
         for db2, c in zip(self.mc1_db2, curve):
-            c.update(approx(db2, c))
+            c.update(approx(db2, c, self.mc1_type))
         if not hasattr(self, 'mc1_fe_sat_magnetization'):
             self.mc1_fe_sat_magnetization = fe_sat_mag(curve)
         self.mc1_mi = [len(c['a'])
@@ -516,6 +575,7 @@ class Writer(Mcv):
                 self.mc1_cw_factor = cw
                 self.mc1_cw_freq_factor = beta
                 self.mc1_induction_factor = gamma
+
         except AttributeError:
             pass
         self.writeBlock([float(self.mc1_base_frequency),
@@ -615,7 +675,7 @@ class Writer(Mcv):
         else:
             binary = False
             self.fp = open(filename, "wb")
-        logger.info("Write File %s, binary format %d", filename, binary)
+        logger.info("Write File %s, binary format", filename)
 
         self.writeBinaryFile(fillfac, recsin)
         self.fp.close()
@@ -740,8 +800,9 @@ class Reader(Mcv):
             if self.version_mc_curve == self.ORIENTED_VERSION_MC_CURVE or \
                self.version_mc_curve == self.PARAMETER_PM_CURVE:
                 self.mc1_curves = int(line[4])
-        logger.debug("MC file %s Version %s Curves %d",
-                     filename, self.version_mc_curve, self.mc1_curves)
+        logger.info("Read file %s %s Type: %d (%s) Num Curves %d",
+                    filename, self.name, self.version_mc_curve,
+                    types[self.mc1_type], self.mc1_curves)
         if self.mc1_type == DEMCRV_BR:
             self.mc1_angle[self.mc1_curves-1] = self.mc1_remz
 
@@ -1008,69 +1069,6 @@ class MagnetizingCurve(object):
         except Exception:
             pass
         return None
-
-    def recalc(self):
-        for m in self.mcv:
-            curve = self.mcv[m]['curve'][0]
-            mi = MC1_MIMAX-2
-            dh = curve['hi'][-1]-curve['hi'][-2]
-            db = curve['bi'][-1]-curve['bi'][-2]
-            dmue_d = db/dh
-            dmue = curve['bi'][-1]/curve['hi'][-1]
-            db = 3e-2*curve['bi'][-1]
-            n3 = 1.5
-
-            curve['muer'] = [b/MUE0/h
-                             for b, h in zip(curve['bi'],
-                                             curve['hi'])]
-
-            # extend bh-curve into saturation
-            while dmue_d > 1.01*MUE0 and dmue > 1.5*MUE0:
-                dmue_d = MUE0 + (dmue_d-MUE0)/np.sqrt(n3)
-                curve['bi'].append(curve['bi'][-1]+db)
-                curve['hi'].append(curve['hi'][-1]+db/dmue_d)
-                curve['muer'].append(curve['bi'][-1]/MUE0/curve['hi'][-1])
-                n3 += 0.2
-                dmue = curve['bi'][-1]/curve['hi'][-1]
-
-            self.mcv[m]['db2'] = (curve['bi'][-1]**2 -
-                                  curve['bi'][0]**2)/(mi-1)
-            nuek0 = (curve['hi'][1] - curve['hi'][0]) / \
-                    (curve['bi'][1]-curve['bi'][0])
-            for j1 in range(len(curve['bi'])):
-                bk02 = curve['bi'][j1]**2
-                if bk02 > 0:
-                    break
-            curve['nuer'] = [MUE0*nuek0]
-            curve['bi2'] = [bk02]
-            curve['a'] = []
-            curve['b'] = []
-
-            bk1 = 0.0
-            while bk1 <= curve['bi'][-1]:
-                bk12 = bk02 + self.mcv[m]['db2']
-                bk1 = np.sqrt(bk12)
-                j = 2
-                while j < len(curve['bi']) and bk1 <= curve['bi'][j]:
-                    j += 1
-                j -= 1
-                bdel = curve['bi'][j] - curve['bi'][j1]
-                c1 = (curve['hi'][j] - curve['hi'][j1])/bdel
-                c2 = curve['hi'][j1] - c1*curve['bi'][j1]
-
-                nuek1 = c1 + c2/bk1
-
-                curve['a'].append(MUE0*(bk12*nuek0 -
-                                        bk02*nuek1)/self.mcv[m]['db2'])
-                curve['b'].append(MUE0*(nuek1 - nuek0)/self.mcv[m]['db2'])
-                nuek0 = nuek1
-                bk02 = bk12
-
-                curve['nuer'].append(MUE0*nuek1)
-                curve['bi2'].append(bk12)
-
-            curve['a'].append(1.0)
-            curve['b'].append(MUE0*curve['hi'][-1]-curve['bi'][-1])
 
     def fix_name(self, name, fillfac=1.0):
         """return os compatible mcv name including fillfac"""

@@ -37,10 +37,12 @@ def mcv_hbj(mcv, log=True, ax=0):
             label = 'Flux Density ({0}°)'.format(mcv.mc1_angle[k])
         if log:
             ax.semilogx(hi, bi, label=label)
+            ax.semilogx(hi, bi, 'k.')
             if ji:
                 ax.semilogx(hi, ji, label='Polarisation')
         else:
             ax.plot(hi, bi, label=label)
+            ax.plot(hi, bi, 'k.')
             if ji:
                 ax.plot(hi, ji, label='Polarisation')
     ax.set_xlabel('H / kA/m')
@@ -59,8 +61,24 @@ def mcv_muer(mcv, ax=0):
     if ax == 0:
         ax = plt.gca()
     ax.plot(bi, ur)
+    ax.plot(bi, ur, 'k.')
     ax.set_xlabel('B / T')
     ax.set_title('rel. Permeability')
+    ax.grid()
+
+def mcv_nuer(mcv, ax=0):
+    """plot rel. reluctivity vs. B of mcv dict"""
+    MUE0 = 4e-7*np.pi
+    bi, ur = zip(*[(bx, bx/hx/MUE0)
+                   for bx, hx in zip(mcv['curve'][0]['bi'],
+                                     mcv['curve'][0]['hi']) if not hx == 0])
+    if ax == 0:
+        ax = plt.gca()
+    nuer = 1/np.array(ur)
+    ax.plot(bi, 1/np.array(ur))
+    ax.plot(bi, nuer, 'k.')
+    ax.set_xlabel('B / T')
+    ax.set_title('rel. Reluctivity')
     ax.grid()
 
 

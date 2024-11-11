@@ -1,7 +1,7 @@
 -- prepare thermal model
 
 save_model('cont')
-
+state_of_problem("therm_static")
 function get_xy(elkey)
   -- get element xy
   local x, y
@@ -45,7 +45,7 @@ stator_air = {} -- black, 8
 airgap = {} -- white, 8
 magnet_pocket_spel = {}  -- red, 1
 non_uniform_airgap = {} -- white, 8
-
+slot_opening = {} 
 -- search all components
 for i =1,  #spel_keys do
   -- loop over all spel keys
@@ -216,4 +216,138 @@ for i = 1, #rotor_air do
    end 
 end 
 
+
 save_metafile(model..'.ps')
+
+
+
+---------------------------------------------
+-- material slot insulation
+---------------------------------------------
+
+function get_boundary_node(num_slots)
+
+   local ctr
+   -- get the number of winding
+   get_wdg_keys("wkeys")
+   -- search subregions
+   local srkey_sl = {}
+   ctr = 1
+   for i = 1, #wkeys do
+      tmpksl = get_wdg_data("srkeys", wkeys[i])
+      for j = 1, #tmpksl do
+         srkey_sl[ctr] = tmpksl[j]
+         ctr = ctr + 1
+      end
+   end
+   -- search superelements
+   local sekey_sl = {}
+   ctr = 1
+   for k = 1, #srkey_sl do
+      sl_se = get_sreg_data("sekeys", srkey_sl[k])
+      for kk =1, #sl_se do
+         sl_nd = get_spel_data("bndkeys", sl_se[kk])
+         x, y = get_node_data("xy", sl_nd[1])
+         r, phi = c2pd(x, y)
+         if phi < 360/num_slots then
+            sekey_sl[ctr] = sl_se[kk]
+            ctr = ctr + 1
+         end
+      end
+   end
+
+   local xn  = {}
+   local yn = {}
+   local node = {}
+   local bndnodes = {}
+   local bnd_unique = {}
+
+   ctr = 1
+
+   for i = 1, #sekey_sl do
+      bnd = get_spel_data("bndkeys", sekey_sl[i])
+
+      for j = 1, #bnd do
+         bndnodes[ctr] = bnd[j]
+         ctr = ctr + 1
+         if bnd_unique[bnd[j]] == true then
+            bnd_unique[bnd[j]] = false
+         else
+            bnd_unique[bnd[j]] = true
+         end
+      end
+   end
+
+   ctr =  1
+   for j = 1, #bndnodes do
+     x, y = get_node_data("xy", bndnodes[j])
+
+     r, phi = c2pd(x, y)
+     if (phi < 360/num_slots/2 - 0.05) and (bnd_unique[bndnodes[j]] == true)  then
+
+        node[ctr] = bndnodes[j]
+        xn[ctr] = x
+        yn[ctr] = y
+        ctr = ctr + 1
+       end
+   end
+
+
+   local indx = {1, math.floor(#node/4), math.floor(#node/2), math.floor(#node/4*3), #node}
+
+   local x_new = {}
+   local y_new = {}
+
+   for i = 1, 10 do
+      x_new[i] = 0
+      y_new[i] = 0
+   end
+
+   for i = 1, #indx do
+      x_new[i] = xn[indx[i]]
+      y_new[i] = yn[indx[i]]
+      r, phi = c2pd(x_new[i], y_new[i])
+      x_new[10 - (i-1)], y_new[10 - (i-1)] = pd2c(r, 360/num_slots - phi)
+   end
+
+   local rn = {}
+   local phin = {}
+
+   for i = 1, #x_new do
+      rn[i], phin[i] = c2pd(x_new[i], y_new[i])
+   end
+   return rn, phin
+end
+
+
+rn, phin = get_boundary_node(m.tot_num_slot)
+thickness = ${model.get('slot_insul', 0.15)}
+conductivity = ${model.get('slot_insul_cond', 0.31)}
+
+for i = 1,m.num_sl_gen do
+x = {}
+y = {}
+
+for j = 1, #rn do
+   x[j], y[j] = pd2c(rn[j], phin[j] + (i-1)*360/m.tot_num_slot)
+   point(x[j], y[j],"black","x") 
+end
+
+def_insulation_by_nodechain(thickness,conductivity,
+      x[1],y[1],
+      x[2],y[2],
+      x[3],y[3],
+      x[4],y[4],
+      x[5],y[5],
+      x[6],y[6],
+      x[7],y[7],
+      x[8],y[8],
+      x[9],y[9],
+      x[10],y[10],
+      x[1], y[1]
+      )
+
+end
+save_metafile('insulation.ps')
+
+state_of_problem("mag_static")

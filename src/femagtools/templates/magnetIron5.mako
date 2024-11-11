@@ -50,7 +50,7 @@ end
 beta = math.pi/m.num_poles
 rotor_thcond = ${model['thcond']}
 rotor_thcap = ${model['thcap']}
-rotor_density = ${model.get('density')*1e3}
+rotor_density = ${model.get('density')}
 
 %if model.get('thcond_shaft', 0) and model.get('thcap_shaft', 0):
 if m.shaft_rad < m.yoke_rad then

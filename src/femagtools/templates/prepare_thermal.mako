@@ -90,7 +90,8 @@ for i =1,  #spel_keys do
 
            elseif rc > da2/2 and rc < da1/2 then
               table.insert(airgap, spel_keys[i])
-              def_mat_therm(xc, yc, 'yellow', 1.19,0.063,1007, 1)
+              def_mat_therm(xc, yc, 'yellow', 1.19,0.15,1007, 1)
+              add_to_sreg(xc, yc, 'Slot')
               color_spel(spel_keys[i], 7) -- white air
 
 --           elseif rc > dy2/2 then
@@ -185,7 +186,8 @@ for i = 1, #rotor_air do
           table.insert(non_uniform_airgap, rotor_air[i])
           els = get_spel_data('elkeys', rotor_air[i])
           xc, yc = get_xy(els[1])
-          def_mat_therm(xc, yc, 'yellow', 1.19,0.063,1007, 1)
+          def_mat_therm(xc, yc, 'yellow', 1.19,1.15,1007, 1)
+          add_to_sreg(xc, yc, 'Slot')
           color_spel(rotor_air[i], 7)
         end 
       end 

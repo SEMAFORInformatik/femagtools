@@ -367,7 +367,9 @@ class Builder:
                     'beta = 360*m.npols_gen/m.num_poles',
                     'x3,y3 = pd2c(dy1/2,beta+m.zeroangl)',
                     'x4,y4 = pd2c(dy2/2,beta+m.zeroangl)',
-                    'def_bcond_tp(x1,y1,x2,y2,x3,y3,x4,y4, 4)',
+                    'if m.b_min == 0 then', 
+                    '   def_bcond_tp(x1,y1,x2,y2,x3,y3,x4,y4, 4)',
+                    'end',
                     'state_of_problem("mag_static")']
             return fslcmds
         return []

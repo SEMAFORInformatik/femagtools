@@ -164,18 +164,12 @@ class FslRenderer(object):
 
         MAXDST=4.0
         NUMLEVELS=10
-        ndt_list = [(0.00, 1.1),
-                    (0.05, 1.5),
-                    (0.10, 1.7),
-                    (0.15, 2.0),
-                    (0.20, 2.3),
-                    (0.30, 2.7),
-                    (0.40, 3.1),
-                    (0.50, 3.5),
-                    (0.70, 4.5),
-                    (0.85, 5.5),
-                    (1.10, 5.5)]
-        ndt_list = [(1.1*nl/NUMLEVELS, nl/NUMLEVELS*(MAXDST-1.1)+1.1)
+        NDT0=1.1
+        # ndt list format [ (rdistx, ndtx) ...]
+        # where
+        #   - rdistx is rel dist from airgap (range 0 .. 1)
+        #   - ndtx nodedist (range NDT0 .. MAXDST(-1.1) + NDT0)
+        ndt_list = [(1.1*nl/NUMLEVELS, nl/NUMLEVELS*(MAXDST-1.1)+NDT0)
                     for nl in range(NUMLEVELS+1)]
 
         dist = geom.max_radius - geom.min_radius

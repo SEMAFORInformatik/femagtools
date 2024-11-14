@@ -167,8 +167,8 @@ class FslRenderer(object):
         NDT0=1.1
         # ndt list format [ (rdistx, ndtx) ...]
         # where
-        #   - rdistx is rel dist from airgap (range 0 .. 1)
-        #   - ndtx nodedist (range NDT0 .. MAXDST(-1.1) + NDT0)
+        #   - rdistx is rel dist from airgap (range 0 .. NUMLEVELS-1/NUMLEVELS)
+        #   - ndtx nodedist (range NDT0 .. (NUMLEVELS-1/NUMLEVELS))*(MAXDST-1.1) + NDT0)
         ndt_list = [(1.1*nl/NUMLEVELS, nl/NUMLEVELS*(MAXDST-1.1)+NDT0)
                     for nl in range(NUMLEVELS+1)]
 

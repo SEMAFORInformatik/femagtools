@@ -5,14 +5,15 @@
 from __future__ import print_function
 import numpy as np
 import logging
-from .shape import Element, Circle, Arc, Line, Shape
-from .corner import Corner
+from femagtools.dxfsl.shape import Element, Circle, Arc, Line, Shape
+from femagtools.dxfsl.corner import Corner
 from femagtools.dxfsl.symmetry import Symmetry
-from .functions import point, points_are_close, distance
-from .functions import alpha_angle, normalise_angle, middle_angle, third_angle
-from .functions import alpha_line, line_m, line_n, mirror_point
-from .functions import within_interval, part_of_circle
-from .functions import less, less_equal, greater, greater_equal
+import femagtools.dxfsl.area as AREA
+from femagtools.dxfsl.functions import point, points_are_close, distance
+from femagtools.dxfsl.functions import alpha_angle, normalise_angle, middle_angle, third_angle
+from femagtools.dxfsl.functions import alpha_line, line_m, line_n, mirror_point
+from femagtools.dxfsl.functions import within_interval, part_of_circle
+from femagtools.dxfsl.functions import less, less_equal, greater, greater_equal
 logger = logging.getLogger('femagtools.geom')
 
 
@@ -282,11 +283,6 @@ class Machine(object):
         machine.mirror_endangle = endangle
         logger.debug("end of copy_mirror")
         return machine
-
-    def has_mirrored_windings(self):
-        if not self.is_mirrored():
-            return False
-        return self.geom.area_close_to_endangle(2) > 0
 
     def undo_mirror(self):
         assert(self.is_mirrored())
@@ -1137,6 +1133,11 @@ class Machine(object):
             r_min = r[0]
 
         return 0.0
+
+    def has_windings_in_the_middle(self):
+        midangle = middle_angle(self.startangle,
+                                self.endangle)
+        return self.geom.windings_in_the_middle(midangle)
 
     def create_mirror_lines_outside_windings(self):
         logger.debug("create_mirror_lines_outside_windings")

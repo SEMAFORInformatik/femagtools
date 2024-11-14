@@ -232,6 +232,81 @@ class Area(object):
         nodes_deleted += reduce_nodes_(lines, mindist)
         return nodes_deleted
 
+    def reduce_element_nodes(self, geom, mindist=0.01):
+        """reduces number of nodes (lines only)
+        https://rdp.readthedocs.io/en/latest
+        Note: this feature is deactivated silently
+          if the rdp package is not installed.
+        """
+        corners = geom.start_corners + geom.end_corners
+
+        try:
+            import rdp
+        except ModuleNotFoundError:
+            return 0
+
+        def is_valid_element_(n1, e):
+            return not e.has_attribute('del')
+
+        def reduce_nodes_(elements, mindist):
+            if not len(elements) > 1:
+                return 0
+
+            old_nodes = []
+            for n1, n2, e in elements:
+                old_nodes.append(n1)
+                nodes = [n for n in e.get_nodes(parts=24)]
+                if len(nodes) > 2:
+                    if points_are_close(n1, nodes[0]):
+                        old_nodes += nodes[1:-1]
+                    elif points_are_close(n2, nodes[0]):
+                        nodes.reverse()
+                        old_nodes += nodes[1:-1]
+            n1, n2, e = elmts[-1]
+            old_nodes.append(n2)
+
+            new_nodes = rdp.rdp(old_nodes,
+                                epsilon=mindist)
+            nodes_deleted = len(old_nodes) - len(new_nodes)
+            if not nodes_deleted:
+                return 0
+
+            for n1, n2, e in elements:
+                e.set_attribute('del')
+                e.set_my_color('yellow')
+                geom.remove_edge(e)
+
+            n1 = new_nodes[0]
+            for n2 in new_nodes[1:]:
+                geom.add_line(n1, n2)
+                n1 = n2
+
+            self.area = []
+            return nodes_deleted
+
+        # -----
+        nodes_deleted = 0
+        tiny_mindist = 0.05
+        elmts = []
+        has_tiny = False
+        for n1, n2, e in self.list_of_elements():
+            if not is_valid_element_(n1, e):
+                if has_tiny:
+                    nodes_deleted += reduce_nodes_(elmts, mindist)
+                elmts = []
+            elif not geom.num_of_neighbors(n1) == 2 or n1 in corners:
+                if has_tiny:
+                    nodes_deleted += reduce_nodes_(elmts, mindist)
+                has_tiny = e.is_tiny(tiny_mindist)
+                elmts = [(n1, n2, e)]
+            else:
+                if e.is_tiny(tiny_mindist):
+                    has_tiny = True
+                elmts.append((n1, n2, e))
+        if has_tiny:
+            nodes_deleted += reduce_nodes_(elmts, mindist)
+        return nodes_deleted
+
     def virtual_nodes(self, render=False, parts=64):
         if len(self.area) < 2:
             return

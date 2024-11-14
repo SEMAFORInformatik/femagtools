@@ -1849,15 +1849,15 @@ class Geometry(object):
         return []
 
     def reduce_winding_nodes(self, mindist=0.01):
-        return self.reduce_line_nodes(mindist=mindist,
-                                      area_types=(AREA.TYPE_WINDINGS,))
+        return self.reduce_element_nodes(mindist=mindist,
+                                         area_types=(AREA.TYPE_WINDINGS,))
 
-    def reduce_line_nodes(self, mindist=0.01, area_types=()):
+    def reduce_element_nodes(self, mindist=0.01, area_types=()):
         timer = Timer(start_it=True)
         nodes_deleted = 0
         for area in self.list_of_areas():
             if not area_types or area.type in area_types:
-                nodes_deleted += area.reduce_line_nodes(self, mindist)
+                nodes_deleted += area.reduce_element_nodes(self, mindist)
 
         t = timer.stop("-- {} nodes deleted in %0.4f seconds --".format(nodes_deleted))
         self.journal.put('time_deleting_nodes', t)
@@ -3607,6 +3607,16 @@ class Geometry(object):
         logger.debug("%s magnets in geom", len(mag_areas))
         for a in mag_areas:
             if a.max_angle > midangle and a.min_angle < midangle:
+                return True
+        return False
+
+    def windings_in_the_middle(self, midangle):
+        wdg_areas = [a for a in self.list_of_areas()
+                     if a.is_winding()]
+        logger.info("%s windings in geom", len(wdg_areas))
+        for a in wdg_areas:
+            if greater(a.max_angle, midangle) and \
+               less(a.min_angle, midangle):
                 return True
         return False
 

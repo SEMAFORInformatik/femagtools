@@ -221,18 +221,27 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
     if not machine.geom.is_stator():
         logger.debug("Rotor with windings")
 
-    if machine.has_mirrored_windings():
+    if machine.is_mirrored():
+        plot_geom(False,  # for developer
+                  plt, machine.previous_machine.geom,
+                  title="Mirrored Stator",
+                  areas=True)
+
         logger.debug("undo mirrored windings")
         machine_temp = machine.undo_mirror()
         machine_temp.delete_tiny_elements(mindist)
         machine_temp.geom.set_stator()
         machine_temp.search_stator_subregions(single=single)
-        machine_temp.create_mirror_lines_outside_windings()
+        if not machine_temp.has_windings_in_the_middle():
+            logger.debug("Back to the mirrored machine")
+            machine_temp = machine  # undo
+        else:
+            machine_temp.create_mirror_lines_outside_windings()
     else:
         machine_temp = machine
 
     rebuild = machine_temp.create_auxiliary_lines()
-    if machine_temp.geom.reduce_winding_nodes(mindist):
+    if machine_temp.geom.reduce_element_nodes(mindist):
         plot_geom(False,  # for developer
                   plt, machine_temp.geom,
                   title="Nodes reduced",

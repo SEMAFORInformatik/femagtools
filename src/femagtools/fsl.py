@@ -95,12 +95,12 @@ class Builder:
         if templ in ('statorFsl', 'dxf'):
             self.fsl_stator = True
 
-        if templ != 'dxffile':
+        if templ not in ('dxffile', 'svgfile'):
             return
 
         from femagtools.dxfsl.converter import convert
         logger.info("Conv stator from %s",
-                    model.stator['dxffile']['name'])
+                    model.stator[templ]['name'])
         params = {}
         params['split'] = model.stator[templ].get('split', False)
         params['show_plots'] = model.stator[templ].get('plot', False)
@@ -109,7 +109,7 @@ class Builder:
         params['nodedist'] = model.stator.get('nodedist', 1)
         pos = 'in' if model.external_rotor else 'out'
         params['part'] = ('stator', pos)
-        conv = convert(model.stator['dxffile']['name'], **params)
+        conv = convert(model.stator[templ]['name'], **params)
 
         model.stator['num_slots'] = conv.get('tot_num_slot')
         model.set_value('poles', conv.get('num_poles'))
@@ -311,7 +311,7 @@ class Builder:
         if templ == 'dxf':
             # reuse dxfsl model
             self.fsl_rotor = True
-        if templ != 'dxffile':
+        if templ not in ('dxffile', 'svgfile'):
             return
 
         from femagtools.dxfsl.converter import convert
@@ -367,7 +367,7 @@ class Builder:
                     'beta = 360*m.npols_gen/m.num_poles',
                     'x3,y3 = pd2c(dy1/2,beta+m.zeroangl)',
                     'x4,y4 = pd2c(dy2/2,beta+m.zeroangl)',
-                    'if m.b_min == 0 then', 
+                    'if m.b_min == 0 then',
                     '   def_bcond_tp(x1,y1,x2,y2,x3,y3,x4,y4, 4)',
                     'end',
                     'state_of_problem("mag_static")']
@@ -435,12 +435,12 @@ class Builder:
         return []
 
     def create_gen_winding(self, model):
-        try: 
+        try:
             model.winding['wire'].update(
                 {"num_layers": model.winding["num_layers"]})
             genwdg = self.__render(model.winding,
                                     'gen_' + model.winding['wire'].get('name'))
-        except: 
+        except:
             genwdg = self.__render(model, 'gen_winding')
 
         k = list({'leak_dist_wind',
@@ -469,30 +469,31 @@ class Builder:
                      'file_leak:close()'])
         return genwdg
 
-    def prepare_model_with_dxf(self, model):
+    def prepare_model_with_dxf_or_svg(self, model):
         from femagtools.dxfsl.converter import convert
-        dxfname = model.dxffile.get('name', None)
-        if not dxfname:
-            logger.error('Name of dxf-file expected')
+        fmt = model.dxffile if hasattr(model, 'dxffile') else model.svgfile
+        fname = fmt.get('name', None)
+        if not fname:
+            logger.error('Name of dxf or svg file expected')
             return []
 
-        if dxfname.split('.')[-1] not in ('dxf', 'svg'):  # add svg support
-            dxfname += '.dxf'
-        if not os.path.isfile(dxfname):
-            logger.error('File "%s" not found', dxfname)
-            raise ValueError(f'File {dxfname} not found')
+        if fname.split('.')[-1] not in ('dxf', 'svg'):  # add svg support
+            fname += fmt[:3]
+        if not os.path.isfile(fname):
+            logger.error('File "%s" not found', fname)
+            raise ValueError(f'File {fname} not found')
 
         params = {}
-        params['split'] = model.dxffile.get('split', False)
-        params['show_plots'] = model.dxffile.get('plot', False)
+        params['split'] = fmt.get('split', False)
+        params['show_plots'] = fmt.get('plot', False)
         params['write_fsl'] = True
-        params['airgap'] = model.dxffile.get('airgap', 0.0)
-        params['nodedist'] = model.dxffile.get('nodedist', 1)
-        params['full_model'] = model.dxffile.get('full_model', False)
-        params['EESM'] = model.dxffile.get('type', 'PMSM') == 'EESM'
+        params['airgap'] = fmt.get('airgap', 0.0)
+        params['nodedist'] = fmt.get('nodedist', 1)
+        params['full_model'] = fmt.get('full_model', False)
+        params['EESM'] = fmt.get('type', 'PMSM') == 'EESM'
         if params['EESM']:
             model.rotor['EESM'] = {}
-        conv = convert(dxfname, **params)
+        conv = convert(fname, **params)
 
         model.set_value('poles', conv.get('num_poles'))
         model.set_value('outer_diam', conv.get('dy1') * 1e-3)
@@ -577,8 +578,8 @@ class Builder:
                 magnetMat['magntemp'] = 20
         if model.is_complete():
             logger.info("create new model '%s'", model.name)
-            if model.is_dxffile():
-                self.prepare_model_with_dxf(model)
+            if model.is_dxffile() or model.is_svgfile():
+                self.prepare_model_with_dxf_or_svg(model)
             else:
                 self.prepare_stator(model)
                 if hasattr(model, 'magnet'):

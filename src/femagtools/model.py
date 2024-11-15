@@ -392,7 +392,7 @@ class MachineModel(Model):
                         for k in thkeys_shaft:
                             rotor[k+'_shaft'] = mshaft[k]
                         rotor['spmaweight_shaft'] = rotor['rho_shaft']
-                    
+
                     self.stator['mcvkey_shaft_name'] = mcv
                     names.append((mcv, 1.0))
                 else:
@@ -442,7 +442,7 @@ class MachineModel(Model):
 
     def is_complete(self):
         """check completeness of models"""
-        if self.is_dxffile():
+        if self.is_dxffile() or self.is_svgfile():
             return True
         try:
             self.statortype()
@@ -457,6 +457,12 @@ class MachineModel(Model):
     def is_dxffile(self):
         if 'dxffile' in self.__dict__:
             if isinstance(self.dxffile, dict):
+                return True
+        return False
+
+    def is_svgfile(self):
+        if 'svgfile' in self.__dict__:
+            if isinstance(self.svgfile, dict):
                 return True
         return False
 

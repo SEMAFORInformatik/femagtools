@@ -34,20 +34,26 @@ if not airgap_created then
     if inner_da_start == nil then
       inner_da_start = da2/2
     end
-    nc_line(r1, 0.0, r2, 0.0, 2)
+    x1, y1 = pr2c(inner_da_start, 0.0)
+    nc_line(x1, y1, r1, 0.0, 0.0)
 
     if outer_da_start == nil then
       outer_da_start = da1/2
     end
-    nc_line(r2, 0.0, outer_da_start, 0.0, 0)
+    x2, y2 = pr2c(outer_da_start, 0.0)
+    nc_line(r2, 0.0, x2, y2, 0.0)
 
     if m.tot_num_slot > m.num_sl_gen then
-      x4, y4 = pr2c(outer_da_start, alfa)
-      nc_line(x1, y1, x2, y2, 2)
-      nc_line(x4, y4, x2, y2, 0)
+      x3, y3 = pr2c(inner_da_end, alfa)
+      x4, y4 = pr2c(r1, alfa)
+      nc_line(x3, y3, x4, y4, 0, 0)
+
+      x3, y3 = pr2c(outer_da_end, alfa)
+      x4, y4 = pr2c(r2, alfa)
+      nc_line(x3, y3, x4, y4, 0, 0)
     end
 
-    x0, y0 = pr2c(r2-ag/6, alfa/2)
+    x0, y0 = pr2c(r1-ag/6, alfa/2)
     create_mesh_se(x0, y0)
     x0, y0 = pr2c(r2+ag/6, alfa/2)
     create_mesh_se(x0, y0)

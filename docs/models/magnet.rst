@@ -83,7 +83,7 @@ gap_ma_iron     DE_FEM  m
 air_triangle    BS      m
 iron_height     HS      m
 magn_num                       number of magnets
-shaft_rad               m      conducting shaft radius if < RI
+condshaft_rad           m      conducting shaft radius if < RI
 magn_ori                       orientation 1: parallel, 2: polar, 3: halbach
 gap_ma_right    BR      m
 gap_ma_left     BL      m

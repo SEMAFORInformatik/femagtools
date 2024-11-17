@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.lines as mpl
 
-rgbpat = re.compile('rgb\((\d+),(\d+),(\d+)\)')
+rgbpat = re.compile(r'rgb\((\d+),(\d+),(\d+)\)')
 
 def fieldlines(svgfilename, ax=0):
     """plot fieldlines from svg file"""

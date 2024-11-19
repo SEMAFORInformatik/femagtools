@@ -527,7 +527,7 @@ class Builder:
             self.fsl_stator = True
             th_props = [' ']
             if model.stator.get('thcond', 0):
-                th_props = [f'stator_density = {1e3*model.stator["density"]}',
+                th_props = [f'stator_density = {model.stator["density"]}',
                             f'stator_thcond = {model.stator["thcond"]}',
                             f'stator_thcap = {model.stator["thcap"]}',
                             ]
@@ -541,10 +541,10 @@ class Builder:
         if 'fsl_rotor' in conv:
             self.fsl_rotor = True
             th_props = ['']
+            logger.info(model['magnet'])
             if hasattr(model, 'magnet'):
                 if model['magnet'].get('thcond', 0):
-                    logger.info(model['magnet'])
-                    th_props = [f'rotor_density = {1e3*model["magnet"]["density"]}',
+                    th_props = [f'rotor_density = {model["magnet"]["density"]}',
                                 f'rotor_thcond = {model["magnet"]["thcond"]}',
                                 f'rotor_thcap = {model["magnet"]["thcap"]}'
                                 ]
@@ -620,28 +620,6 @@ class Builder:
                                 f'magn_thcap = {model["magnet"]["thcap_magnet"]}'
                                 ]
                     rotor += th_props
-                    if model.is_dxffile() or 'dxf' in model['magnet']:
-                        rotor += ['if x0_shaft == 0.0 then',
-                                  '-- add air layer (inside) for heat transfer',
-                                  '   h = dy2/2/3',
-                                  '   if h > 5 then',
-                                  '      h = 3.8',
-                                  '   end ',
-                                  '   if m.zeroangl == nil then ',
-                                  '      m.zeroangl = 0.0',
-                                  '   end',
-                                  '   beta = 360*m.npols_gen/m.num_poles',
-                                  '   x0, y0 = pd2c(dy2/2, m.zeroangl)',
-                                  '   x1, y1 = pd2c(dy2/2-h, m.zeroangl)',
-                                  '   x2, y2 = pd2c(dy2/2-h, beta+m.zeroangl)',
-                                  '   x3, y3 = pd2c(dy2/2, beta+m.zeroangl)',
-                                  '   nc_line(x0, y0, x1, y1, 0)',
-                                  '   nc_circle(x1, y1, x2, y2, 0)',
-                                  '   nc_line(x2, y2, x3, y3, 0)',
-                                  '   x0, y0 = pd2c(dy2/2-h/2, beta/2+m.zeroangl)',
-                                  '   create_mesh_se(x0, y0)',
-                                'end'
-                                 ]
             else:
                 rotor = self.create_rotor_model(
                     model, condMat, ignore_material)

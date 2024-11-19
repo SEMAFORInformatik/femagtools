@@ -46,6 +46,7 @@ airgap = {} -- white, 8
 magnet_pocket_spel = {}  -- red, 1
 non_uniform_airgap = {} -- white, 8
 slot_opening = {} 
+slot_sreg_exist = 0
 -- search all components
 for i =1,  #spel_keys do
   -- loop over all spel keys
@@ -87,7 +88,13 @@ for i =1,  #spel_keys do
               table.insert(stator_air, spel_keys[i])
               def_mat_therm(xc, yc, 'yellow', 1.19,0.15,1007, 1)
               color_spel(spel_keys[i], 8) 
-
+              key_exist_sl = get_sreg_key(xc, yc)
+              if key_exist_sl <= 0 and slot_sreg_exist == 0 then 
+                  def_new_sreg(xc, yc, 'Slot', 'yellow')
+                  slot_sreg_exist = 1
+              else 
+                  add_to_sreg(xc, yc, 'Slot')
+              end        
            elseif rc > da2/2 and rc < da1/2 then
               table.insert(airgap, spel_keys[i])
               def_mat_therm(xc, yc, 'yellow', 1.19,0.15,1007, 1)
@@ -105,14 +112,6 @@ for i =1,  #spel_keys do
               if x0_shaft ~= nil and x0_shaft ~= 0.0 then
                   table.insert(shaft_spel, spel_keys[i])
                   def_mat_therm(xc, yc, 'lightgrey', shaft_density, shaft_thcond, shaft_thcap, 1)
-              else
-                  -- is inner air
-                  table.insert(inner_air, spel_keys[i])
-%if model.get('htc_inner', 0):
-                  def_heat_transfer(xc,yc,yellow,${model['htc_inner']}, 1.0)
-%endif
-                  def_new_sreg(xc,yc, 'INAR', 'yellow')
-                  color_spel(spel_keys[i], 16) -- light grey inner air
               end
            end
         end

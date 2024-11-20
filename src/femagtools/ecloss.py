@@ -1,7 +1,7 @@
 '''Calculate Magnet Losses with IALH Method
 
 '''
-__author__ = 'Max Hullmann, Dapu Zhang'
+__author__ = 'Max Hullmann, Dapu Zhang, Ivan Solc'
 
 import logging
 import warnings
@@ -95,6 +95,59 @@ def binterp(x, y, xq, yq, b):
     inp = f(np.array([[i, j] for i, j in zip(xq, yq)]))
     return inp.reshape(len(np.unique(yq)), len(np.unique(xq)), -1)
 
+def binterp_ialh2(x, y, xq, yq, b):
+    '''interpolate flux density with Rbf interpolator'''
+    f = RBFInterpolator(np.array([[i, j] for i, j in zip(x, y)]), b)
+    inp = f(np.array([[i, j] for i, j in zip(xq, yq)]))
+    return inp.reshape(len(np.unique(xq)), -1)
+
+def Segmentation(wm, hm, lm, elxy, nsegx, nsegy, nsegz):
+    ''' Creates new magnet elements' center points' x,y coordinates based on the number of segments and the original data resolution
+
+    Inputs:  total magnet dimensions (width - wm, height - hm, axial length - lm)
+             elxy - dictionary with global and local reference frame x,y coordinates of elements centerpoints
+             number of magnet segments : nsegx - number of segments in x (wm), nsegy - segments in y = 1 (hm), nsegz - segments in axial direction (lm)
+    Returns: number of elements in x direction per magnet segment - nx_new
+             number of elements in y direction per magnet segment - ny new
+             number of elements in z direction per magnet segment - nz new
+             x,y coordinates of each element's centerpoint in local reference frame, for entire magnet - xx, yy
+    '''
+    #default nx,ny,nz without considering the segmentation
+    be = np.sqrt(wm*hm/elxy['excp'].shape[0])  #square elements
+    nx_new = int(np.around(wm/be))
+    ny_new = int(np.around(hm/be))
+    nz_new = int(np.around(lm/be))
+
+    if (nsegx > 1) or (nsegy > 1):
+        # limits the number of elements per segment to 10 to avoid unnecessarily detailed resolution
+        nx_new = int(max(10,int(np.around(nx_new*np.sqrt(1/nsegx)))))
+        ny_new = int(max(10,int(np.around(ny_new*np.sqrt(1/nsegy)))))
+        nz_new = int(max(10,int(np.around(nz_new*np.sqrt(1/nsegz)))))
+
+    wms = wm/nsegx
+    hms = hm/nsegy
+    x0 = 0 # offset for excpl
+    y0 = 0 # offset for eycpl
+
+    segxcpl = np.linspace(wms/2/nx_new, wms - wms/nx_new/2, nx_new) + x0 # x center points of wanted elements distribution, local ref frame, 1st segment
+    segycpl = np.linspace(hms/2/ny_new, hms - hms/ny_new/2, ny_new) + y0 # y center points of wanted elements distribution, local ref frame, 1st segment
+
+    x,y = np.meshgrid(segycpl, segxcpl)
+    xx = np.zeros((x.shape[0]*nsegx, x.shape[1]*nsegy))  # new centerpoint coordinates for entire magnet
+    yy = np.zeros_like(xx)
+    a=np.zeros((x.shape[0]*nsegx))
+    b=np.zeros((y.shape[1]*nsegy))
+
+    for ii in range(nsegx):
+        a[ii*nx_new: (ii+1)*nx_new] = segxcpl + wms*ii # generation of x coordinates of elements for each magnet segment
+    for jj in range(ny_new*nsegy):
+        xx[:,jj] = np.atleast_2d(a)
+    for jj in range(nsegy):
+        b[jj*ny_new: (jj+1)*ny_new] = segycpl + hms*jj # generation of y coordinates of elements for each magnet segment
+    for ii in range(nx_new*nsegx):
+        yy[ii,:] = np.atleast_2d(b)
+
+    return nx_new, ny_new, nz_new, xx, yy
 
 class MagnLoss(Amela):
     '''Calculate Magnet Losses with IALH Methode
@@ -386,3 +439,252 @@ class MagnLoss(Amela):
             all_load_cases.append(ialh_loss)
 
         return all_load_cases
+
+
+
+    def ialh2(self, sx_ampl, sy_ampl, sx_phase, sy_phase, freq, wm, hm, lm, delta_eff):
+        ''' Calculates eddy current losses for each point (sx, sy, f) in one magnet segment, using ialh2 method
+
+        Inputs:  sx_ampl - dBx/dt amplitudes for each element, for each frequency, for that magnet segment
+                 sy_ampl - dBy/dt amplitudes for each element, for each frequency, for that magnet segment
+                 sx_phase - x phase of each element for each frequency, for that magnet segment
+                 sy_phase - y phase of each element for each frequency, for that magnet segment
+                 freq - every considered frequency in Hertz
+                 nx, ny - number of elements in each magnet segment
+                 wm,hm,lm - width (x), height (y), axial length (z) of each magnet segment
+                 delta_eff - effective airgap between magnet and rotor iron
+        Returns: Ploss_x - losses [W] generated from x component of magnetic flux, for a given magnet segment
+                 Ploss_y - losses [W] generated from y component of magnetic flux, for a given magnet segment
+        '''
+        sigma_x = self.sigma
+        sigma_y = self.sigma
+        sigma_z = self.sigma
+        delta_xy_x = delta_eff
+        delta_xy_y = delta_eff
+        delta_yz_y = delta_eff
+        delta_xz_x = delta_eff
+        epsilon_z_y = 1. + self.mur*delta_xy_y / hm
+        epsilon_z_x = 1. + self.mur*delta_xy_x / hm
+        epsilon_x_y = 1. + self.mur*delta_yz_y / hm
+        epsilon_y_x = 1. + self.mur*delta_xz_x / hm
+        rx = sigma_z/sigma_x
+        ry = sigma_z/sigma_y
+        p0 = 0.5*hm*lm*wm**3*sigma_z
+
+        (nx, ny, nf) = sx_ampl.shape
+
+        Ploss_x = np.zeros((nx,ny,nf))
+        Ploss_y = np.zeros_like(Ploss_x)
+
+        for f in range (nf):   #loop over each frequency
+            epsilon = wm*np.sqrt(MUR0*self.mur*sigma_z/epsilon_z_y*np.pi*freq[f])
+
+            for n in range (int(nx/2)):
+                for m in range (int(ny/2)):
+                    symmetry = 4 if (m > 0) & (n > 0) else 2 # symmetry factor 4 due to double symmetry utilization.
+
+                    for k in range (0,1000,2): # loop is symmetrical on one side
+                        complex_xnmkf = sx_ampl[n,m,f]*2/(np.pi*(k+1))*epsilon_z_x/epsilon_z_y*(m*np.pi*wm/hm)/(2j *epsilon**2 + (n*np.pi)**2 + (m*np.pi*wm/hm)**2 + ry*((k+1)*np.pi*wm/lm)**2)
+                        complex_ynmkf = sy_ampl[n,m,f]*2/(np.pi*(k+1)) *n*np.pi/(2j *epsilon**2 + (n*np.pi)**2 + (m*np.pi*wm/hm)**2 + rx*((k+1)*np.pi*wm/lm)**2)
+                        real_x_nmkf = np.real(complex_xnmkf)
+                        imag_x_nmkf = np.imag(complex_xnmkf)
+                        real_y_nmkf = np.real(complex_ynmkf)
+                        imag_y_nmkf = np.imag(complex_ynmkf)
+
+                        # Loss component x
+                        Plossxnmkf = 2.*symmetry*p0*((sx_ampl[n,m,f]*2/(np.pi*(k+1))*epsilon_y_x/epsilon_z_y)**2*ry
+                                                     *((k+1)*np.pi*wm/lm)**2/(4*epsilon**4 + ((n*np.pi)**2 + (m*np.pi*wm/hm)**2 + ry*((k+1)*np.pi*wm/lm)**2)**2) + real_x_nmkf**2 + imag_x_nmkf**2
+                                                     - 2*np.cos(sy_phase[n,m,f] - sx_phase[n,m,f])*(real_y_nmkf*real_x_nmkf + imag_y_nmkf*imag_x_nmkf)
+                                                     - 2*np.sin(sy_phase[n,m,f] - sx_phase[n,m,f])*(real_y_nmkf*imag_x_nmkf - imag_y_nmkf*real_x_nmkf))
+                        # Loss component y
+                        Plossynmkf = 2.*symmetry*p0*((sy_ampl[n,m,f]*2/(np.pi*(k+1))*epsilon_x_y/epsilon_z_y)**2*rx
+                                                     *((k+1)*np.pi*wm/lm)**2/(4*epsilon**4 + ((n*np.pi)**2 + (m*np.pi*wm/hm)**2 + rx*((k+1)*np.pi*wm/lm)**2)**2) + real_y_nmkf**2 + imag_y_nmkf**2)
+
+                        if (Ploss_x[n,m,f] + Ploss_y[n,m,f]) == 0:      # preventing division by zero in termination criteria evaluation
+                            Ploss_x[n,m,f] += Plossxnmkf
+                            Ploss_y[n,m,f] += Plossynmkf
+                            continue
+                        # termination criteria for k loop -> amplitude proportional to 1/k^2
+                        if (k > 1) & ((Plossxnmkf + Plossynmkf)/(Ploss_x[n,m,f] + Ploss_y[n,m,f]) < 1e-4):
+                            Ploss_x[n,m,f] += Plossxnmkf
+                            Ploss_y[n,m,f] += Plossynmkf
+                            break
+
+                        Ploss_x[n,m,f] += Plossxnmkf
+                        Ploss_y[n,m,f] += Plossynmkf
+
+        return np.sum(Ploss_x), np.sum(Ploss_y)
+
+    def diffDQ(self, bx_pm_3D, by_pm_3D, T):
+        ''' Calculates the time derivative of Bx, By
+
+        Inputs:  bx_pm_3D - bx (AC component) for each element for entire magnet, for each simulation step
+                 by_pm_3D - by (AC component) for each element for entire magnet, for each simulation step
+                 T - total simulation time for periodic simulation (see periodicity_id fcn for more)
+        Returns: sx_pm - dBx/dt for each element for entire magnet, for each simulation step
+                 sy_pm - dBy/dt for each element for entire magnet, for each simulation step
+        '''
+        (Nx, Ny, Nt) = bx_pm_3D.shape   # Nx, Ny - total number of elements for entire magnet, not for 1 segment (in this fcn only)
+        sx_pm_3D = np.zeros((Nx, Ny, Nt))
+        sy_pm_3D = np.zeros_like(sx_pm_3D)
+
+
+        ti = np.linspace(0, T, Nt)
+        timestep = ti[1] - ti[0]
+
+        sx_pm_3D = -np.diff(bx_pm_3D, n=1, axis=-1, append=np.reshape(bx_pm_3D[:,:,1], (Nx, Ny, 1)))/timestep
+        sy_pm_3D = -np.diff(by_pm_3D, n=1, axis=-1, append=np.reshape(by_pm_3D[:,:,1], (Nx, Ny, 1)))/timestep
+
+
+        return sx_pm_3D, sy_pm_3D
+
+    def Process_B_data(self, nx, ny, nsegx, nsegy, nt, elxy, bxy, excpl_new, eycpl_new):
+        ''' Processes flux density data: interpolates Bx, By to new resolution defined in Segmentation fcn
+                      calculates the dB/dt for x,y axes
+                      calculates the FFT of those derivations
+
+        Inputs:  nx,ny - number of elements for each magnet segment (inherited from Segmentation fcn)
+                 nsegx,nsegy - number of magnet segments in x,y axis
+                 nt - number of time steps (inherited from result of periodicity function), corresponds to 1 period
+                 elxy - dictionary with original excpl,eycpl
+                 bxy - dictionary with original flux denisities bxl, byl - bx, by in local reference frame
+                 excpl_new, eycpl_new - x,y coordinates for new elements (inherited from Segmentation fcn)
+        Returns: sx_abs - dBx/dt amplitudes for each element, for each frequency, for entire magnet
+                 sy_abs - dBy/dt amplitudes for each element, for each frequency, for entire magnet
+                 sx_phase - x phase of each element for each frequency, for entire magnet
+                 sy_phase - y phase of each element for each frequency, for entire magnet
+                 freq_range - every considered frequency in Hertz
+        '''
+        nx_tot = int(nx*nsegx)
+        ny_tot = int(ny*nsegy)
+
+        Bxl_ac = np.zeros((np.asarray(bxy['bxl']).shape))
+        Byl_ac = np.zeros_like(Bxl_ac)
+
+        # removal of DC component of original bxl, byl
+        for ii in range(Bxl_ac.shape[0]):
+            Bxl_ac[ii,:] = bxy['bxl'][ii,:] - np.mean(bxy['bxl'][ii,:])
+        for ii in range(Byl_ac.shape[0]):
+            Byl_ac[ii,:] = bxy['byl'][ii,:] - np.mean(bxy['byl'][ii,:])
+
+        xx_ = excpl_new.ravel()
+        yy_ = eycpl_new.ravel()
+        bx_3d_ac = np.zeros((nx_tot,ny_tot,nt))
+        by_3d_ac = np.zeros_like(bx_3d_ac)
+
+        # interpolation to the new resolution -> [nx*nsegx, ny*nsegy, nt]
+        by_3d_ac = binterp_ialh2(elxy['excpl'], elxy['eycpl'], xx_, yy_, Byl_ac[:, 0:nt])
+        if self.is_x:
+            bx_3d_ac = binterp_ialh2(elxy['excpl'], elxy['eycpl'], xx_, yy_, Bxl_ac[:, 0:nt])
+        bx_3d_ac = bx_3d_ac.reshape(nx_tot,ny_tot,nt)
+        by_3d_ac = by_3d_ac.reshape(nx_tot,ny_tot,nt)
+
+        xx_ = xx_.reshape(nx_tot, ny_tot)
+        yy_ = yy_.reshape(nx_tot, ny_tot)
+
+        # dB/dt for each magnet element
+        sx_pm, sy_pm = self.diffDQ(bx_3d_ac, by_3d_ac, self.tgrid)
+
+        # FFT section
+        if nt % 2:
+            nf = int((nt - 1)/2 + 1)
+        else:
+            nf = int(nt / 2)
+
+        sx_abs = np.zeros((2*nx_tot, 2*ny_tot, nf))
+        sy_abs = np.zeros_like(sx_abs)
+        sx_phase = np.zeros_like(sx_abs)
+        sy_phase = np.zeros_like(sx_phase)
+        for ii in range (nsegx):
+            for jj in range (nsegy):
+
+                sx_pm_seg = sx_pm[ii*nx:(ii+1)*nx, jj*ny:(jj+1)*ny,:]
+                sy_pm_seg = sy_pm[ii*nx:(ii+1)*nx, jj*ny:(jj+1)*ny,:]
+
+                Gx_seg = np.zeros((2*nx, 2*ny, nt-1))                  # omit the last step of time vector -> duplicated with the first step
+                Gx_seg[0:nx, 0:ny,:] = +sx_pm_seg[:,:, 0:-1]
+                Gx_seg[0:nx,ny:,:] = -sx_pm_seg[:,::-1, 0:-1]          # this section flips and "doubles" the data for each segment, so FFT can include every point properly
+                Gx_seg[nx:,:,:] = np.flipud(Gx_seg[0:nx,:,:])
+
+                Gy_seg = np.zeros((2*nx, 2*ny, nt-1))                  # omit the last step of time vector -> duplicated with the first step
+                Gy_seg[0:nx, 0:ny,:] = +sy_pm_seg[:,:, 0:-1]
+                Gy_seg[nx:,0:ny,:] = -sy_pm_seg[::-1,:, 0:-1]          # this section flips and "doubles" the data for each segment, so FFT can include every point properly
+                Gy_seg[:,ny:,:] = np.fliplr(Gy_seg[:,0:ny,:])
+
+                sx_FFT_seg = np.fft.rfftn(Gx_seg)
+                sy_FFT_seg = np.fft.rfftn(Gy_seg)
+                sx_abs_seg = 2*abs(sx_FFT_seg /(2*nx*2*ny*(nt - 1)))    # dBx/dt amplitudes for each segment element, for each frequency for that magnet segment
+                sy_abs_seg = 2*abs(sy_FFT_seg /(2*nx*2*ny*(nt - 1)))    # dBy/dt amplitudes for each segment element, for each frequency for that magnet segment
+                sx_phase_seg = np.angle(sx_FFT_seg)
+                sy_phase_seg = np.angle(sy_FFT_seg)
+                freq_range = np.fft.rfftfreq(nt-1, self.tgrid/(nt-1))   # every considered frequency in Hertz
+
+                sx_abs[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:] = sx_abs_seg     # dBx/dt amplitudes for each element, for each frequency, for entire magnet
+                sy_abs[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:] = sy_abs_seg     # dBy/dt amplitudes for each element, for each frequency, for entire magnet
+                sx_phase[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:] = sx_phase_seg # x phase of each element for each frequency, for entire magnet
+                sy_phase[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:] = sy_phase_seg # y phase of each element for each frequency, for entire magnet
+
+        return sx_abs, sy_abs, sx_phase, sy_phase, freq_range
+
+    def loss_ialh2(self, sx_abs, sy_abs, sx_phase, sy_phase, freq_range, nx, ny, wm, hm, lm, nsegx, nsegy, nsegz, delta_eff):
+        ''' Loops over each magnet segment and calculates the losses for the entire magnet
+
+        Inputs:  sx_abs, sy_abs - dBx/dt, dBy/dt amplitudes for each element, for each frequency, in entire magnet
+                 sx_phase, sy_phase - corresponding phases of each freq for each element in entire magnet
+                 freq_range - every considered frequency in Hz
+                 nx, ny - number of elements in each magnet segment in x and y direction
+                 wm, hm, lm - total magnet width (x), height (y), axial length (z)
+                 nsegx, nsegy, nsegz - number of magnet segments in x,y,z direction
+                 delta_eff - needed for ialh2 losses calculation, effective airgap between magnet and rotor iron
+        Returns: total eddy current losses for entire magnet (all segments), for 1 magnet of the machine
+        '''
+        pec = np.zeros((nsegx, nsegy, nsegz))
+
+        for ii in range(nsegx):
+            for jj in range(nsegy):    # nsegy is always = 1
+                for kk in range(nsegz):
+                    Plossx, Plossy = self.ialh2(sx_abs[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:], sy_abs[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:],
+                                                sx_phase[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:], sy_phase[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:],
+                                                freq_range, wm/nsegx, hm/nsegy, lm/nsegz, delta_eff)
+                    pec[ii,jj,kk] = (Plossx + Plossy)
+
+        return np.sum(pec)  # total eddy current losses for the entire magnet (all segments)
+
+
+    def calc_losses_ialh2(self, nsegx=1, nsegy=1, nsegz=1):
+        ''' Calculates magnet losses for every load case
+
+        Inputs:  number of magnet segments in x,y,z direction
+        Returns: all_load_cases: list of losses for all load cases
+        '''
+
+        nsegx = max(1,nsegx)    #  1 = no segmentation
+        nsegz = max(1,nsegz)    #  1 = no segmentation
+        if nsegy != 1:
+            nsegy = 1           # y segmentation not supported, nsegy is always = 1
+
+        delta_eff = 0
+
+        all_load_cases = []
+        for k in self.pm:               # loop for each load case
+            ialh_loss = 0
+            loss_detail = []
+            for i in k:                 # loop for each superelement in a case
+                logger.info(f'magnet width and height: {i["wm"]:.2f}mm {i["hm"]:.2f}mm')
+                logger.info(f'number of magnet segments: x: {nsegx:.0f} y: {nsegy:.0f} z: {nsegz:.0f}')
+                (nt, bx_fft, by_fft) = self.periodicity_id(i['bl'])             # finds the time periodic part of the simulation
+                (nx, ny, nz, excpl_new, eycpl_new) = Segmentation(i['wm'], i['hm'], i['lm'], i['elcp'], nsegx, nsegy, nsegz)
+                # conversion from mm to m for wm,hm,lm
+                wm = i['wm']/1000
+                hm = i['hm']/1000
+                lm = i['lm']/1000
+                self.consider_bx(wm, hm, bx_fft, by_fft)
+                (sx_abs, sy_abs, sx_phase, sy_phase, freq_range) = self.Process_B_data(nx, ny, nsegx, nsegy, nt, i['elcp'], i['bl'], excpl_new, eycpl_new)
+                loss = self.loss_ialh2(sx_abs, sy_abs, sx_phase, sy_phase, freq_range, nx, ny, wm, hm, lm, nsegx, nsegy, nsegz, delta_eff) * self.numpoles
+                ialh_loss += loss
+                loss_detail.append([i['spel_key'], loss/self.numpoles])
+            self.th_loss.append(loss_detail)
+            all_load_cases.append(ialh_loss)
+
+        return all_load_cases
+

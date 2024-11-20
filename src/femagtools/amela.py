@@ -90,7 +90,7 @@ def transform_coord(geometry, xcp, ycp):
     # transformation
     elcp = tf(b1=np.array(xcp)-geometry['x0'],
               b2=np.array(ycp)-geometry['y0'],
-              alpha=geometry['alpha'])
+              alpha=np.pi + geometry['alpha'])
     return dict(excpl=elcp[0, :]+geometry['wm']/2,
                 eycpl=elcp[1, :]+geometry['hm']/2,
                 excp=np.array(xcp),
@@ -101,7 +101,7 @@ def transform_flux_denstiy(geometry, bx, by):
     # transformation
     bxy = tf(b1=bx,
              b2=by,
-             alpha=geometry['alpha'])
+             alpha=np.pi + geometry['alpha'])
 
     # remove DC component
     bxf = np.mean(bxy[0].T - np.mean(bxy[0],axis=1).T,axis=1)

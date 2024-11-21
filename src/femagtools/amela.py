@@ -90,7 +90,7 @@ def transform_coord(geometry, xcp, ycp):
     # transformation
     elcp = tf(b1=np.array(xcp)-geometry['x0'],
               b2=np.array(ycp)-geometry['y0'],
-              alpha=np.pi + geometry['alpha'])
+              alpha=geometry['alpha'])
     return dict(excpl=elcp[0, :]+geometry['wm']/2,
                 eycpl=elcp[1, :]+geometry['hm']/2,
                 excp=np.array(xcp),
@@ -101,7 +101,7 @@ def transform_flux_denstiy(geometry, bx, by):
     # transformation
     bxy = tf(b1=bx,
              b2=by,
-             alpha=np.pi + geometry['alpha'])
+             alpha=geometry['alpha'])
 
     # remove DC component
     bxf = np.mean(bxy[0].T - np.mean(bxy[0],axis=1).T,axis=1)
@@ -200,10 +200,10 @@ class Amela():
         for k, i in enumerate(mag_spels):
 
             cond = i.conduc
-            if cond == 0: 
+            if cond == 0:
                 cond = 625000
                 logger.info('Magnet conductivity equals 0, using 625000 S/m')
-                
+
             mur = np.abs(1/i.elements[0].reluc[0])
             logger.debug('Magnet: mur=%s, conductivity=%s', mur, cond)
 

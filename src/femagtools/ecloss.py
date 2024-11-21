@@ -112,7 +112,7 @@ def Segmentation(wm, hm, lm, elxy, nsegx, nsegy, nsegz):
              number of elements in z direction per magnet segment - nz new
              x,y coordinates of each element's centerpoint in local reference frame, for entire magnet - xx, yy
     '''
-    #default nx,ny,nz without considering the segmentation
+    # Default nx,ny,nz without considering the segmentation
     be = np.sqrt(wm*hm/elxy['excp'].shape[0])  #square elements
     nx_new = int(np.around(wm/be))
     ny_new = int(np.around(hm/be))
@@ -188,7 +188,7 @@ class MagnLoss(Amela):
 
         self.segz = kwargs.get('segz', [0])
         self.is_meter = False
-        # determine the number of segments in z direction
+        # Determine the number of segments in z direction
         for i in range(len(self.segz)):
             if self.segz[i] > 0:
                 self.lm = self.ls/self.segz[i]
@@ -518,23 +518,96 @@ class MagnLoss(Amela):
     def diffDQ(self, bx_pm_3D, by_pm_3D, T):
         ''' Calculates the time derivative of Bx, By
 
-        Inputs:  bx_pm_3D - bx (AC component) for each element for entire magnet, for each simulation step
-                 by_pm_3D - by (AC component) for each element for entire magnet, for each simulation step
+        Inputs:  bx_pm_3D - bx (AC component) for each element for one magnet segment, for each simulation step
+                 by_pm_3D - by (AC component) for each element for one magnet segment, for each simulation step
                  T - total simulation time for periodic simulation (see periodicity_id fcn for more)
-        Returns: sx_pm - dBx/dt for each element for entire magnet, for each simulation step
-                 sy_pm - dBy/dt for each element for entire magnet, for each simulation step
+        Returns: sx_pm - dBx/dt for each element for one magnet segment, for each simulation step
+                 sy_pm - dBy/dt for each element for one magnet segment, for each simulation step
         '''
-        (Nx, Ny, Nt) = bx_pm_3D.shape   # Nx, Ny - total number of elements for entire magnet, not for 1 segment (in this fcn only)
-        sx_pm_3D = np.zeros((Nx, Ny, Nt))
+        (nx, ny, nt) = bx_pm_3D.shape
+        sx_pm_3D = np.zeros((nx, ny, nt))
         sy_pm_3D = np.zeros_like(sx_pm_3D)
 
-
-        ti = np.linspace(0, T, Nt)
+        ti = np.linspace(0, T, nt)
         timestep = ti[1] - ti[0]
 
-        sx_pm_3D = -np.diff(bx_pm_3D, n=1, axis=-1, append=np.reshape(bx_pm_3D[:,:,1], (Nx, Ny, 1)))/timestep
-        sy_pm_3D = -np.diff(by_pm_3D, n=1, axis=-1, append=np.reshape(by_pm_3D[:,:,1], (Nx, Ny, 1)))/timestep
+        sx_pm_3D = -np.diff(bx_pm_3D, n=1, axis=-1, append=np.reshape(bx_pm_3D[:,:,1], (nx, ny, 1)))/timestep
+        sy_pm_3D = -np.diff(by_pm_3D, n=1, axis=-1, append=np.reshape(by_pm_3D[:,:,1], (nx, ny, 1)))/timestep
 
+        return sx_pm_3D, sy_pm_3D
+
+    def diffFreqD(self, bx_pm_3D, by_pm_3D, T):
+        ''' Calculates the time derivative of Bx, By, advanced method
+
+        Inputs:  bx_pm_3D - bx (AC component) for each element for one magnet segment, for each simulation step
+                 by_pm_3D - by (AC component) for each element for one magnet segment, for each simulation step
+                 T - total simulation time for periodic simulation (see periodicity_id fcn for more)
+        Returns: sx_pm - dBx/dt for each element for one magnet segment, for each simulation step
+                 sy_pm - dBy/dt for each element for one magnet segment, for each simulation step
+        '''
+
+        (nx, ny, nt) = bx_pm_3D.shape
+        sx_pm_3D = np.zeros((nx, ny, nt))
+        sy_pm_3D = np.zeros((nx, ny, nt))
+        ti = np.linspace(0, T, nt)
+        timestep = ti[1] - ti[0]
+
+        freq = np.fft.rfftfreq(nt-1, timestep)
+        nf = freq.shape[0]
+        amplbx = np.zeros((freq.shape))
+        amplby = np.zeros((freq.shape))
+        complbx = np.zeros((nx, ny, nf)).astype(complex)
+        complby = np.zeros((nx, ny, nf)).astype(complex)
+
+        for ii in range(nx):
+            for jj in range (ny):
+                complbx[ii,jj,:] = np.fft.rfftn(bx_pm_3D[ii,jj,0:nt-1])
+                complby[ii,jj,:] = np.fft.rfftn(by_pm_3D[ii,jj,0:nt-1])
+                amplbx = amplbx + abs(complbx[ii,jj,0:nf])/nf
+                amplby = amplby + abs(complby[ii,jj,0:nf])/nf
+
+        amplbx = amplbx/(nx*ny)
+        amplby = amplby/(nx*ny)
+        amplb = np.sqrt(amplbx**2 + amplby**2)
+        fmax2 = 0.5*freq[-1]
+
+        if sum(amplb) > 0:
+            pec = (np.multiply(amplb,freq))**2
+            pecmax = np.max(pec)
+            pec = pec/pecmax
+
+            fecmax = fmax2
+            imax = int(np.floor(nf/2))
+            filt0 = np.ones((nf))
+            for ii in range(imax,nf):
+                filt0[ii] = fecmax/freq[ii]
+
+            # determine the last significant frequency
+            pecf = pec*filt0
+            ilim = 0
+            feclim = 0
+            Ath = 0.05
+            for ii in range(1,nf):
+                jj = nf - 1 - ii
+                if pecf[jj] - pecf[jj + 1] > Ath:
+                    ilim = jj
+                    feclim = freq[jj]
+                    break
+
+            filt = np.ones((nf))
+            for ii in range(ilim,nf):
+                filt[ii] = (feclim/freq[ii])
+        for ii in range(nx):       # Derivation in frequency domain
+            for jj in range(ny):
+                complbx[ii,jj,:] = -complbx[ii,jj,:]*freq*filt*np.pi*2j
+                complby[ii,jj,:] = -complby[ii,jj,:]*freq*filt*np.pi*2j
+
+        for ii in range (nx):       # Inverse Fourier-Transformation
+            for jj in range (ny):
+                sx_pm_3D[ii,jj,0:-1] = np.fft.irfftn(complbx[ii,jj,:])
+                sy_pm_3D[ii,jj,0:-1] = np.fft.irfftn(complby[ii,jj,:])
+        sx_pm_3D[ii,jj,nt-1] = sx_pm_3D[ii,jj,0]
+        sy_pm_3D[ii,jj,nt-1] = sy_pm_3D[ii,jj,0]
 
         return sx_pm_3D, sy_pm_3D
 
@@ -561,7 +634,7 @@ class MagnLoss(Amela):
         Bxl_ac = np.zeros((np.asarray(bxy['bxl']).shape))
         Byl_ac = np.zeros_like(Bxl_ac)
 
-        # removal of DC component of original bxl, byl
+        # Remove the DC component of the original bxl, byl
         for ii in range(Bxl_ac.shape[0]):
             Bxl_ac[ii,:] = bxy['bxl'][ii,:] - np.mean(bxy['bxl'][ii,:])
         for ii in range(Byl_ac.shape[0]):
@@ -572,7 +645,7 @@ class MagnLoss(Amela):
         bx_3d_ac = np.zeros((nx_tot,ny_tot,nt))
         by_3d_ac = np.zeros_like(bx_3d_ac)
 
-        # interpolation to the new resolution -> [nx*nsegx, ny*nsegy, nt]
+        # Interpolation to the new resolution -> [nx*nsegx, ny*nsegy, nt]
         by_3d_ac = binterp_ialh2(elxy['excpl'], elxy['eycpl'], xx_, yy_, Byl_ac[:, 0:nt])
         if self.is_x:
             bx_3d_ac = binterp_ialh2(elxy['excpl'], elxy['eycpl'], xx_, yy_, Bxl_ac[:, 0:nt])
@@ -582,10 +655,6 @@ class MagnLoss(Amela):
         xx_ = xx_.reshape(nx_tot, ny_tot)
         yy_ = yy_.reshape(nx_tot, ny_tot)
 
-        # dB/dt for each magnet element
-        sx_pm, sy_pm = self.diffDQ(bx_3d_ac, by_3d_ac, self.tgrid)
-
-        # FFT section
         if nt % 2:
             nf = int((nt - 1)/2 + 1)
         else:
@@ -598,17 +667,24 @@ class MagnLoss(Amela):
         for ii in range (nsegx):
             for jj in range (nsegy):
 
-                sx_pm_seg = sx_pm[ii*nx:(ii+1)*nx, jj*ny:(jj+1)*ny,:]
-                sy_pm_seg = sy_pm[ii*nx:(ii+1)*nx, jj*ny:(jj+1)*ny,:]
+                diffgrad = 3   # choose the derivation metod. diffFreqD method recommended
+                if diffgrad == 1:
+                    sx_pm, sy_pm = self.diffDQ(bx_3d_ac[ii*nx:(ii+1)*nx, jj*ny:(jj+1)*ny,:],
+                                               by_3d_ac[ii*nx:(ii+1)*nx, jj*ny:(jj+1)*ny,:],
+                                               self.tgrid)
+                else:
+                    sx_pm, sy_pm = self.diffFreqD(bx_3d_ac[ii*nx:(ii+1)*nx, jj*ny:(jj+1)*ny,:],
+                                                  by_3d_ac[ii*nx:(ii+1)*nx, jj*ny:(jj+1)*ny,:],
+                                                  self.tgrid)
 
-                Gx_seg = np.zeros((2*nx, 2*ny, nt-1))                  # omit the last step of time vector -> duplicated with the first step
-                Gx_seg[0:nx, 0:ny,:] = +sx_pm_seg[:,:, 0:-1]
-                Gx_seg[0:nx,ny:,:] = -sx_pm_seg[:,::-1, 0:-1]          # this section flips and "doubles" the data for each segment, so FFT can include every point properly
+                Gx_seg = np.zeros((2*nx, 2*ny, nt-1))                  # omit the last step of the time vector -> duplicated with the first step
+                Gx_seg[0:nx, 0:ny,:] = +sx_pm[:,:, 0:-1]
+                Gx_seg[0:nx,ny:,:] = -sx_pm[:,::-1, 0:-1]          # this section flips and "doubles" the data for each segment, so FFT can include every point properly
                 Gx_seg[nx:,:,:] = np.flipud(Gx_seg[0:nx,:,:])
 
                 Gy_seg = np.zeros((2*nx, 2*ny, nt-1))                  # omit the last step of time vector -> duplicated with the first step
-                Gy_seg[0:nx, 0:ny,:] = +sy_pm_seg[:,:, 0:-1]
-                Gy_seg[nx:,0:ny,:] = -sy_pm_seg[::-1,:, 0:-1]          # this section flips and "doubles" the data for each segment, so FFT can include every point properly
+                Gy_seg[0:nx, 0:ny,:] = +sy_pm[:,:, 0:-1]
+                Gy_seg[nx:,0:ny,:] = -sy_pm[::-1,:, 0:-1]          # this section flips and "doubles" the data for each segment, so FFT can include every point properly
                 Gy_seg[:,ny:,:] = np.fliplr(Gy_seg[:,0:ny,:])
 
                 sx_FFT_seg = np.fft.rfftn(Gx_seg)
@@ -682,6 +758,7 @@ class MagnLoss(Amela):
                 (sx_abs, sy_abs, sx_phase, sy_phase, freq_range) = self.Process_B_data(nx, ny, nsegx, nsegy, nt, i['elcp'], i['bl'], excpl_new, eycpl_new)
                 loss = self.loss_ialh2(sx_abs, sy_abs, sx_phase, sy_phase, freq_range, nx, ny, wm, hm, lm, nsegx, nsegy, nsegz, delta_eff) * self.numpoles
                 ialh_loss += loss
+                #print(f'Loadcase {i['loadcase']}, Superelement {i['spel_key']}, Total losses =  {loss:.3f} W')
                 loss_detail.append([i['spel_key'], loss/self.numpoles])
             self.th_loss.append(loss_detail)
             all_load_cases.append(ialh_loss)

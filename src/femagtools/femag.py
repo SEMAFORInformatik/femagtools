@@ -392,32 +392,32 @@ class BaseFemag(object):
         for i in nc_file.windings:
             for j in i.subregions:
                 wdg_area.append(j.area())
+        
         slot_area = np.sum(wdg_area).item()/3
-        stza_area = 0.0
-        stjo_area = 0.0
-        for i in nc_file.subregions:
-            if i.name == "StZa":
-                stza_area = i.area().item()
-            elif i.name == "StJo":
-                stjo_area = i.area().item()
-            else:
-                pass
+        magnet_area = 0.0
+        num_sreg_mag = 0
+        area = dict()
+        for i in nc_file.subregions: 
+            if i.name in ("StZa", "StJo", "Iron"): 
+                area[i.name] = i.area().item()
+            elif i.name == "PMag":
+                magnet_area += i.area().item()
+                num_sreg_mag += 1
+            else: 
+                pass 
+        
+        area['PMag'] = magnet_area/num_sreg_mag
+        for i in ('W1', 'W2', 'W3'): 
+            area[i] = slot_area
+
         pmag_index = []
         if "Nodes" in hsn_data:
             for k ,i in enumerate(hsn_data['Nodes']):
                 i.update({"mass": i['weight'], "losses": _map[i['Name']]})
                 if "PMag" in i['Name']:
                     pmag_index.append(k)
-                if i['Name'] == 'StZa':
-                    i.update({"area":stza_area})
-                elif i['Name'] == 'StJo':
-                    i.update({"area":stjo_area})
-                elif i['Name'].strip() == 'W1' or \
-                     i['Name'].strip() == 'W2' or \
-                     i['Name'].strip() == 'W3':
-                    i.update({"area":slot_area})
-                else:
-                    pass
+                if i['Name'].strip() in area.keys(): 
+                    i.update({"area": area[i['Name'].strip()]})
             if pmag_index:
                 for i in range(len(pmag_index)):
                     hsn_data["Nodes"][pmag_index[i]]['Name'] = f"PMag_{i+1}"

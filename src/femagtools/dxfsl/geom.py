@@ -2753,7 +2753,7 @@ class Geometry(object):
             intersection = False
             inner_gap_list = []
             for no_a in my_notouch:
-                if no_a.intersect_line(line):
+                if no_a.intersect_area(line):
                     intersection = True
                     logger.debug("   --> intersection with %s",
                                  no_a.get_id())

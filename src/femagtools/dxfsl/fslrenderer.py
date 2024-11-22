@@ -154,13 +154,21 @@ class FslRenderer(object):
         return sorted([(abs(r - np.linalg.norm(e.center_of_connection())), e)
                        for e in geom.elements(Shape)])
 
-    def render(self, machine, inner=False, outer=False):
+    def render(self, machine, inner=False, outer=False, standalone=False):
         '''create fsl statements with nodechains'''
         machine.set_alfa_and_corners()
         geom = machine.geom
         split_len = (geom.max_radius - geom.min_radius) / 4
         geom.split_all_lines_longer_than(split_len)
         self.content = []
+
+        if standalone:
+            self.content += ['if (agndst == nil) then',
+                             '  agndst = 0.5',
+                             '  m.npols_gen = 2',
+                             '  m.num_sl_gen = 2',
+                             '  new_model_force("{}","Test")'.format(self.model),
+                             'end']
 
         MAXDST=4.0
         NUMLEVELS=10

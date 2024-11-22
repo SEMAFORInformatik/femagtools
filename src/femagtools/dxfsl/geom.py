@@ -2817,6 +2817,7 @@ class Geometry(object):
                 pts = self.split_and_get_intersect_points(line)
                 if len(pts) != 2:
                     logger.error("ERROR in create_aux_lines()")
+                    self.journal.put("warning", "Error while creating auxiliary lines")
                     logger.debug("Points: %s", pts)
                     logger.debug("Line: %s", line)
 
@@ -4240,89 +4241,132 @@ class Geometry(object):
         logger.debug("end repair_border_line")
         return True
 
-    def create_boundery_nodes(self,
+    def create_boundary_nodes(self,
                               center,
                               startangle,
                               endangle,
                               rtol=None, atol=None):
+        logger.debug("begin of create_boundary_nodes")
         if not rtol:
-            rtol = 1e-4
+            rtol = 1e-3
         if not atol:
             atol = 1e-3
 
-        start_nodes = [n for n in self.angle_nodes(center, startangle, rtol, atol)]
-        end_nodes = [n for n in self.angle_nodes(center, endangle, rtol, atol)]
-        alpha = alpha_angle(startangle, endangle)
+        def check_line(nlist):
+            d, n1, b = nlist[0]
+            for d, n2, b in nlist[1:]:
+                if not self.get_edge_element(n1, n2):
+                    return False
+                n1 = n2
+            return True
 
-        logger.debug("begin of create_boundery_nodes")
-        start_rot_nodes = self.rotate_nodes(alpha, start_nodes)
-        end_rot_nodes = self.rotate_nodes(-alpha, end_nodes)
-
-        def miss_nodelist(src_nodelist, dest_nodelist):
-            nlist = []
-            for src_n in src_nodelist:
-                ok = False
-                for dest_n in dest_nodelist:
-                    if points_are_close(src_n, dest_n, rtol=rtol, atol=atol):
-                        ok = True
-                        break
-                if not ok:
-                    nlist.append(src_n)
-            return nlist
-
-        logger.debug("Begin with Nodes Start=%s,  End=%s", len(start_nodes), len(end_nodes))
-
-        missing_end_nodes = miss_nodelist(start_rot_nodes, end_nodes)
-        missing_start_nodes = miss_nodelist(end_rot_nodes, start_nodes)
-
-        if missing_start_nodes:
-            logger.debug("%s missing start nodes", len(missing_start_nodes))
-            start_nodes = [(distance(center, n), n, True) for n in start_nodes]
-            for n in missing_start_nodes:
-                start_nodes.append((distance(center, n), n, False))
-            start_nodes.sort()
-            if not self.repair_border_line(start_nodes):
-                logger.debug("end of create_boundery_nodes (failed)")
-                return
-        else:
-            start_nodes = [(distance(center, n), n, True) for n in start_nodes]
-            start_nodes.sort()
-
-        if missing_end_nodes:
-            logger.debug("%s missing end nodes", len(missing_end_nodes))
-            end_nodes = [(distance(center, n), n, True) for n in end_nodes]
-            for n in missing_end_nodes:
-                end_nodes.append((distance(center, n), n, False))
-            end_nodes.sort()
-            if not self.repair_border_line(end_nodes):
-                logger.debug("end of create_boundery_nodes (failed)")
-                return
-        else:
-            end_nodes = [(distance(center, n), n, True) for n in end_nodes]
-            end_nodes.sort()
-
-        start_nodes = [(distance(center, n), n)
+        start_nodes = [(distance(center, n), n, True)
                        for n in self.angle_nodes(center, startangle, rtol, atol)]
         start_nodes.sort()
-        end_nodes = [(distance(center, n), n)
+        d_start1, n, b = start_nodes[0]
+        if not points_are_close(self.start_corners[0], n):
+            logger.warning("end of create_boundary_nodes: corner missing in start boundary")
+            return False
+        d_start2, n, b = start_nodes[-1]
+        if not points_are_close(self.start_corners[-1], n):
+            logger.warning("end of create_boundary_nodes: corner missing in start boundary")
+            return False
+        if not check_line(start_nodes):
+            logger.warning("end of create_boundary_nodes: bad start boundary")
+            return False
+
+        logger.debug("Start Nodes")
+        [logger.debug(" --> %s", x) for x in start_nodes]
+
+        end_nodes = [(distance(center, n), n, True)
                      for n in self.angle_nodes(center, endangle, rtol, atol)]
         end_nodes.sort()
+        d_end1, n, b = end_nodes[0]
+        if not points_are_close(self.end_corners[0], n):
+            logger.warning("end of create_boundary_nodes: corner missing in end boundary")
+            return False
+        d_end2, n, b = end_nodes[-1]
+        if not points_are_close(self.end_corners[-1], n):
+            logger.warning("end of create_boundary_nodes: corner missing in end boundary")
+            return False
+        if not check_line(end_nodes):
+            logger.warning("end of create_boundary_nodes: bad end boundary")
+            return False
 
-        logger.debug("End with Nodes Start=%s,  End=%s", len(start_nodes), len(end_nodes))
+        logger.debug("End Nodes")
+        [logger.debug(" --> %s", x) for x in end_nodes]
 
-        nodes = [n for d, n in start_nodes]
-        start_rot_nodes = self.rotate_nodes(alpha, nodes)
+        logger.debug("Lower Corners: %s <> %s", d_start1, d_end1)
+        if not np.isclose(d_start1, d_end1, rtol=self.rtol, atol=self.atol):
+            logger.warning("end of create_boundary_nodes: corners dont match")
+            return False
 
-        for d, node in start_nodes:
-            self.set_point_of_node(node, node)
-        i = 0
-        if len(end_nodes) == len(start_rot_nodes):
-            for d, node in end_nodes:
-                self.set_point_of_node(node, start_rot_nodes[i])
-                i += 1
+        logger.debug("Upper Corners: %s <> %s", d_start2, d_end2)
+        if not np.isclose(d_start2, d_end2, rtol=self.rtol, atol=self.atol):
+            logger.warning("end of create_boundary_nodes: corners dont match")
+            return False
 
-        logger.debug("end of create_boundery_nodes")
-        return
+        if len(start_nodes) == 2 and len(end_nodes) == 2:
+            logger.debug("end of create_boundary_nodes: only corners available")
+            return False  # ok
+
+        def node_distance_list(nodelist1, nodelist2):
+            distlist = []
+            i1 = 0
+            i2 = 0
+            while i1 < len(nodelist1) and i2 < len(nodelist2):
+                d1, n1, b1 = nodelist1[i1]
+                d2, n2, b2 = nodelist2[i2]
+                if np.isclose(d1, d2, rtol=self.rtol, atol=self.atol):
+                    distlist.append((d1, True, True))
+                    i1 += 1
+                    i2 += 1
+                elif d1 > d2:
+                    distlist.append((d2, False, True))
+                    i2 += 1
+                else:
+                    distlist.append((d1, True, False))
+                    i1 += 1
+            if not i1 == len(nodelist1) and i2 == len(nodelist2):
+                return []
+            return distlist
+
+        distance_list = node_distance_list(start_nodes, end_nodes)
+        [logger.debug("distance: %s, (%s, %s)", d, b1, b2)
+         for d, b1, b2 in distance_list]
+
+        diff = len(distance_list) - len(start_nodes)
+        done = False
+        if not diff == 0:
+            logger.debug("%s missing start nodes", diff)
+            done = True
+            for d, in_start, in_end in distance_list:
+                if not in_start:
+                    p = point(self.center, d, startangle)
+                    start_nodes.append((d, p, False))
+            start_nodes.sort()
+            assert(len(start_nodes) == len(distance_list))
+            if not self.repair_border_line(start_nodes):
+                logger.debug("end of create_boundary_nodes (failed)")
+                return False
+
+        diff = len(distance_list) - len(end_nodes)
+        if not diff == 0:
+            logger.debug("%s missing end nodes", diff)
+            done = True
+            for d, in_start, in_end in distance_list:
+                if not in_end:
+                    p = point(self.center, d, endangle)
+                    end_nodes.append((d, p, False))
+            end_nodes.sort()
+            assert(len(end_nodes) == len(distance_list))
+
+            if not self.repair_border_line(end_nodes):
+                logger.debug("end of create_boundary_nodes (failed)")
+                return False
+
+        logger.debug("end of create_boundary_nodes")
+        return done
 
     def set_point_of_node(self, node, p):
         if isinstance(node, list):

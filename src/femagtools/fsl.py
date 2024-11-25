@@ -157,10 +157,18 @@ class Builder:
                     + model.stator['dxf']['fsl'])
         if templ == 'statorFsl':
             #  obsolete
+            th_props = [' ']
+            try: 
+                th_props = [f'stator_density = {model.stator["density"]}',
+                            f'stator_thcond = {model.stator["thcond"]}',
+                            f'stator_thcap = {model.stator["thcap"]}',
+                            ]
+            except: 
+                pass 
             if 'parameter' in model.stator['statorFsl']:
                 return self.render_template(
                     model.stator['statorFsl']['content_template'],
-                    model.stator['statorFsl']['parameter'])
+                    model.stator['statorFsl']['parameter']) + th_props
             elif model.stator['statorFsl'].get('content'):
                 return (['agndst = {}'.format(model.get('agndst', 1e-3)*1e3),
                         'ndt(agndst)'] +
@@ -214,16 +222,24 @@ class Builder:
                .format(model.magnet.get('mcvkey_yoke', 'dummy')),
                "mcvkey_shaft = '{}'"
                .format(model.magnet.get('mcvkey_shaft', 'dummy'))]
-
         if 'magnetFsl' in model.magnet:
             self.fsl_rotor = True
             #  obsolete
+            th_props = [' ']
+            try: 
+                logger.info(model.magnet)
+                th_props = [f'rotor_density = {model["magnet"]["density"]}',
+                            f'rotor_thcond = {model["magnet"]["thcond"]}',
+                            f'rotor_thcap = {model["magnet"]["thcap"]}'
+                            ]
+            except: 
+                pass 
             if 'parameter' in model.magnet['magnetFsl']:
                 return mcv + self.render_template(
                     model.magnet['magnetFsl']['content_template'],
-                    model.magnet['magnetFsl']['parameter'])
+                    model.magnet['magnetFsl']['parameter']) + th_props
             elif model.magnet['magnetFsl'].get('content'):
-                return mcv + model.magnet['magnetFsl']['content'].split('\n')
+                return mcv + model.magnet['magnetFsl']['content'].split('\n') 
             if isinstance(model.magnet['magnetFsl']
                           ['content_template'], str):
                 with open(model.magnet['magnetFsl']
@@ -231,9 +247,8 @@ class Builder:
                     templ = [l.strip() for l in f.readlines()]
             else:
                 templ = model.magnet['magnetFsl']['content_template']
-
             return mcv + self.render_template(
-                '\n'.join(templ),
+                '\n'.join(templ), 
                 model.magnet['magnetFsl'])
 
         templ = model.magnettype()

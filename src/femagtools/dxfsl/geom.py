@@ -3636,16 +3636,21 @@ class Geometry(object):
             area.mark_airgap_corners(start_cp, end_cp)
         return
 
-    def num_areas_of_type(self, type):
+    def num_areas_of_type(self, types=()):
         return len([area for area in self.list_of_areas()
-                    if area.is_type(type)])
+                    if area.type in types])
 
     def area_size_of_type(self, type):
         return sum([area.surface for area in self.list_of_areas()
                     if area.is_type(type)])*1e-3
 
     def num_of_windings(self):
-        return self.num_areas_of_type(AREA.TYPE_WINDINGS)
+        return self.num_areas_of_type((AREA.TYPE_WINDINGS,))
+
+    def num_of_irons(self):
+        return self.num_areas_of_type((AREA.TYPE_IRON,
+                                       AREA.TYPE_YOKE,
+                                       AREA.TYPE_TOOTH,))
 
     def area_close_to_endangle(self, type):
         return len([area for area in self.list_of_areas()
@@ -4207,9 +4212,9 @@ class Geometry(object):
         if not ok1:  # fatal => ignore
             logger.debug("end repair_border_line: missing point %s", n1)
             return False
-        d1, n1, ok1 = nodes[-1]
-        if not ok1:  # fatal => ignore
-            logger.debug("end repair_border_line: missing point %s", n1)
+        d2, n2, ok2 = nodes[-1]
+        if not ok2:  # fatal => ignore
+            logger.debug("end repair_border_line: missing point %s", n2)
             return False
 
         remove_n1 = None

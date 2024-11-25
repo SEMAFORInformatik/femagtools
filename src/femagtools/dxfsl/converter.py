@@ -2,6 +2,7 @@
 
 """
 import os
+import io
 from pathlib import Path
 from femagtools import __version__
 from femagtools.dxfsl.geom import Geometry
@@ -160,11 +161,15 @@ def symmetry_search(machine,
 
 
 def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
+    global journal
     logger.debug("Begin of build_machine_rotor")
+
     if machine.has_windings():
         logger.debug("do nothing here with windings in rotor")
         logger.debug("End of build_machine_rotor")
         return machine
+
+    timer = Timer(start_it=True)
 
     if machine.is_mirrored():
         logger.debug("Rotor is mirrored")
@@ -207,17 +212,27 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
         machine_temp.create_inner_corner_areas()
 
     if not machine_temp.is_mirrored():
-        machine_temp.create_boundery_nodes()
+        plot_geom(False,  # for developer
+                  plt, machine_temp.geom,
+                  title="Rotor before Boundery Corr")
+        machine_temp.create_boundary_nodes()
 
     plot_geom(False,  # for developer
               plt, machine_temp.geom,
               title="Final Rotor")
+
+    t = timer.stop("-- rotor created in %0.4f seconds --")
+    journal.put('time_rotor_created', t)
+
     logger.debug("End of build_machine_rotor")
     return machine_temp
 
 
 def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False):
+    global journal
     logger.debug("Begin of build_machine_stator")
+    timer = Timer(start_it=True)
+
     if not machine.geom.is_stator():
         logger.debug("Rotor with windings")
 
@@ -240,25 +255,34 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
     else:
         machine_temp = machine
 
-    rebuild = machine_temp.create_auxiliary_lines()
     if machine_temp.geom.reduce_element_nodes(mindist):
+        machine_temp.rebuild_subregions(EESM, single=single)
         plot_geom(False,  # for developer
                   plt, machine_temp.geom,
-                  title="Nodes reduced",
-                  areas=False)
-        rebuild = True
-    if rebuild:
+                  title="Nodes reduced")
+
+    if machine_temp.create_auxiliary_lines():
         machine_temp.rebuild_subregions(EESM, single=single)
+        plot_geom(False,  # for developer
+                  plt, machine_temp.geom,
+                  title="Stator with Auxiliary Lines")
 
     if inner:
         machine_temp.create_inner_corner_areas()
 
     if not machine_temp.is_mirrored():
-        machine_temp.create_boundery_nodes()
+        plot_geom(False,  # for developer
+                  plt, machine_temp.geom,
+                  title="Stator before Boundery Corr")
+        machine_temp.create_boundary_nodes()
 
     plot_geom(False,  # for developer
               plt, machine_temp.geom,
               title="Final Stator")
+
+    t = timer.stop("-- stator created in %0.4f seconds --")
+    journal.put('time_stator_created', t)
+
     logger.debug("End of build_machine_stator")
     return machine_temp
 
@@ -290,6 +314,7 @@ def convert(dxfile,
             full_model=False,
             debug_mode=False,
             write_journal=False):
+    global journal
     layers = ()
     conv = {}
 
@@ -816,10 +841,19 @@ def convert(dxfile,
 
             mtype = 'EESM' if EESM else 'PMSM'
             fslrenderer = FslRenderer(basename, mtype)
-            conv['fsl'] = fslrenderer.render(machine, inner, outer)
+            conv['fsl'] = fslrenderer.render(machine, inner, outer, standalone=True)
 
     if params is not None:
         conv.update(params)
+
+    if write_fsl:
+        logger.debug("Write fsl")
+        if conv and conv['fsl']:
+            with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
+                f.write('\n'.join(conv['fsl']))
+        else:
+            logger.warning("No fsl data available")
+
     conv['name'] = basename
     t = timer.stop("-- all done in %0.4f seconds --", info=True)
     journal.put('time_total', t)

@@ -250,11 +250,6 @@ def main():
     keys = ('tot_num_slot', 'num_sl_gen', 'num_poles', 'nodedist',
             'dy1', 'da1', 'da2', 'dy2', 'agndst', 'name')
     logger.info("%s", {k: res[k] for k in keys if k in res})
-    if args.write_fsl:
-        if res is not None:
-            basename = os.path.basename(args.dxfile).split('.')[0]
-            with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
-                f.write('\n'.join(res['fsl']))
 
 if __name__ == "__main__":
     loglevel = logging.INFO

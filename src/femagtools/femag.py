@@ -359,42 +359,71 @@ class BaseFemag(object):
 
         return dict()
 
-    def read_hsn(self, modelname=None): 
+    def read_hsn(self, modelname=None):
+        import numpy as np
         "read heat network result"
         _map = {
-            "StZa": "plfe1", 
+            "StZa": "plfe1",
             "outs": "-",
-            "StJo": "plfe1", 
+            "StJo": "plfe1",
             "Slot": "-",
-            "Shaf": "-", 
-            "Iron": "plfe2", 
+            "Shaf": "-",
+            "Iron": "plfe2",
             "PMag": "plmag",
             "PMag_1": "plmag",
             "PMag_2": "plmag",
             "PMag_3": "plmag",
             "PMag_4": "plmag",
-            "W1  ":   "plcu1", 
-            "W2  ":   "plcu1", 
+            "W1  ":   "plcu1",
+            "W2  ":   "plcu1",
             "W3  ":   "plcu1"
         }
         if not modelname:
             modelname = self._get_modelname_from_log()
         hsn_list = sorted(glob.glob(os.path.join(
             self.workdir, modelname+'.hsn')))
-        with open(hsn_list[-1], 'r') as f: 
+        with open(hsn_list[-1], 'r') as f:
             hsn_data = json.load(f)
+
+        # area calculation
+        nc_file = self.read_nc(modelname)
+        slot_area = 0.0
+        wdg_area = []
+        for i in nc_file.windings:
+            for j in i.subregions:
+                wdg_area.append(j.area())
+        
+        slot_area = np.sum(wdg_area).item()/3
+        magnet_area = 0.0
+        num_sreg_mag = 0
+        area = dict()
+        for i in nc_file.subregions: 
+            if i.name in ("StZa", "StJo", "Iron"): 
+                area[i.name] = i.area().item()
+            elif i.name == "PMag":
+                magnet_area += i.area().item()
+                num_sreg_mag += 1
+            else: 
+                pass 
+        
+        area['PMag'] = magnet_area/num_sreg_mag
+        for i in ('W1', 'W2', 'W3'): 
+            area[i] = slot_area
+
         pmag_index = []
-        if "Nodes" in hsn_data: 
-            for k ,i in enumerate(hsn_data['Nodes']): 
+        if "Nodes" in hsn_data:
+            for k ,i in enumerate(hsn_data['Nodes']):
                 i.update({"mass": i['weight'], "losses": _map[i['Name']]})
-                if "PMag" in i['Name']: 
+                if "PMag" in i['Name']:
                     pmag_index.append(k)
-            if pmag_index: 
-                for i in range(len(pmag_index)): 
-                    hsn_data["Nodes"][pmag_index[i]]['Name'] = f"PMag_{i+1}" 
-        with open(hsn_list[-1], 'w') as f: 
+                if i['Name'].strip() in area.keys(): 
+                    i.update({"area": area[i['Name'].strip()]})
+            if pmag_index:
+                for i in range(len(pmag_index)):
+                    hsn_data["Nodes"][pmag_index[i]]['Name'] = f"PMag_{i+1}"
+        with open(hsn_list[-1], 'w') as f:
             json.dump(hsn_data, f)
-        return hsn_data
+        return nc_file
 
     def _get_modelname_from_log(self):
         """
@@ -439,11 +468,13 @@ class BaseFemag(object):
                 return {'t': ttemp[0], 'temperature': ttemp[1]}
 
             if simulation['calculationMode'] == 'hsn':
-                try: 
-                    hsn_result = self.read_hsn()
-                except: 
-                    pass 
-                model = self.read_nc()
+                model = None
+                try:
+                    model = self.read_hsn()
+                except:
+                    pass
+                if model is None:
+                    model = self.read_nc()
                 return model.get_minmax_temp()
 
             if not bch:
@@ -513,11 +544,11 @@ class BaseFemag(object):
                     bch.magnet_loss_th = m.th_loss
                 except:
                     pass
-            try: 
-                if hasattr(self, 'dy2'): 
+            try:
+                if hasattr(self, 'dy2'):
                     setattr(bch, 'dy2', self.dy2)
-            except: 
-                pass 
+            except:
+                pass
             return bch
 
 
@@ -649,10 +680,10 @@ class Femag(BaseFemag):
             stateofproblem = 'mag_static'
 
         self.run(fslfile, options, fsl_args, stateofproblem=stateofproblem)
-        
-        try: 
+
+        try:
             setattr(self, "dy2", machine['stator']['dy2'])
-        except: 
+        except:
             pass
         if simulation:
             return self.readResult(simulation)

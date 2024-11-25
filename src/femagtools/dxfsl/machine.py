@@ -14,6 +14,7 @@ from femagtools.dxfsl.functions import alpha_angle, normalise_angle, middle_angl
 from femagtools.dxfsl.functions import alpha_line, line_m, line_n, mirror_point
 from femagtools.dxfsl.functions import within_interval, part_of_circle
 from femagtools.dxfsl.functions import less, less_equal, greater, greater_equal
+from femagtools.dxfsl.journal import Journal, getJournal
 logger = logging.getLogger('femagtools.geom')
 
 
@@ -38,6 +39,7 @@ class Machine(object):
         self.airgap2_radius = 0.0
         self.airgap_second = None
         self.previous_machine = None
+        self.journal = getJournal()
 
         if not self.center:
             raise ValueError("FATAL ERROR: no center in Geometry")
@@ -554,8 +556,9 @@ class Machine(object):
                               rtol=rtol, atol=atol)
         logger.debug('end of repair_hull_geom')
 
-    def create_boundery_nodes(self):
-        self.geom.create_boundery_nodes(self.center, self.startangle, self.endangle)
+    def create_boundary_nodes(self):
+        if self.geom.create_boundary_nodes(self.center, self.startangle, self.endangle):
+            logger.debug("___additional boundary nodes created___")
 
     def create_auxiliary_lines(self):
         logger.debug("create_auxiliary_lines")

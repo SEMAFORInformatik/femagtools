@@ -822,9 +822,9 @@ class Area(object):
             mm[3] = max(mm[3], n[3])
         return mm
 
-    def intersect_line(self, line):
+    def intersect_area(self, line):
         for e in self.area:
-            if e.intersect_line(line):
+            if e.intersect_shape(line, include_end=True):
                 return True
         return False
 

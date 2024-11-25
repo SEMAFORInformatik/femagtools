@@ -763,7 +763,7 @@ class MagnLoss(Amela):
                 (sx_abs, sy_abs, sx_phase, sy_phase, freq_range) = self.Process_B_data(nx, ny, nsegx, nsegy, nt, i['elcp'], i['bl'], excpl_new, eycpl_new)
                 loss = self.loss_ialh2(sx_abs, sy_abs, sx_phase, sy_phase, freq_range, nx, ny, wm, hm, lm, nsegx, nsegy, nsegz, delta_eff) * self.numpoles
                 ialh_loss += loss
-                logger.info(f'Loadcase {i['loadcase']}, Superelement {i['spel_key']}, Total losses =  {loss:.3f} W')
+                logger.info(f'Loadcase {i["loadcase"]}, Superelement {i["spel_key"]}, Total losses =  {loss:.3f} W')
                 loss_detail.append([i['spel_key'], loss/self.numpoles])
             self.th_loss.append(loss_detail)
             all_load_cases.append(ialh_loss)

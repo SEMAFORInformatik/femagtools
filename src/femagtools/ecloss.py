@@ -97,7 +97,7 @@ def binterp(x, y, xq, yq, b):
 
 def binterp_ialh2(x, y, xq, yq, b):
     '''interpolate flux density with Rbf interpolator'''
-    f = RBFInterpolator(np.array([[i, j] for i, j in zip(x, y)]), b)
+    f = RBFInterpolator(np.array([[i, j] for i, j in zip(x, y)]), b, kernel='thin_plate_spline')
     inp = f(np.array([[i, j] for i, j in zip(xq, yq)]))
     return inp.reshape(len(np.unique(xq)), -1)
 
@@ -571,6 +571,10 @@ class MagnLoss(Amela):
         amplb = np.sqrt(amplbx**2 + amplby**2)
         fmax2 = 0.5*freq[-1]
 
+        if sum(amplb) == 0:
+            warnings.warn('Bx and By data equals to zero, check simulation parameters for this loadcase')
+            filt = 0
+
         if sum(amplb) > 0:
             pec = (np.multiply(amplb,freq))**2
             pecmax = np.max(pec)
@@ -604,10 +608,12 @@ class MagnLoss(Amela):
 
         for ii in range (nx):       # Inverse Fourier-Transformation
             for jj in range (ny):
-                sx_pm_3D[ii,jj,0:-1] = np.fft.irfftn(complbx[ii,jj,:])
-                sy_pm_3D[ii,jj,0:-1] = np.fft.irfftn(complby[ii,jj,:])
-        sx_pm_3D[ii,jj,nt-1] = sx_pm_3D[ii,jj,0]
-        sy_pm_3D[ii,jj,nt-1] = sy_pm_3D[ii,jj,0]
+                sx = np.fft.irfftn(complbx[ii,jj,:], [nt - 1])
+                sy = np.fft.irfftn(complby[ii,jj,:], [nt - 1])
+                sx = np.append(sx, sx[0])
+                sy = np.append(sy, sy[0])
+                sx_pm_3D[ii,jj,:] = sx
+                sy_pm_3D[ii,jj,:] = sy
 
         return sx_pm_3D, sy_pm_3D
 
@@ -736,8 +742,7 @@ class MagnLoss(Amela):
 
         nsegx = max(1,nsegx)    #  1 = no segmentation
         nsegz = max(1,nsegz)    #  1 = no segmentation
-        if nsegy != 1:
-            nsegy = 1           # y segmentation not supported, nsegy is always = 1
+        nsegy = 1               # y segmentation not supported, nsegy is always = 1
 
         delta_eff = 0
 
@@ -758,7 +763,7 @@ class MagnLoss(Amela):
                 (sx_abs, sy_abs, sx_phase, sy_phase, freq_range) = self.Process_B_data(nx, ny, nsegx, nsegy, nt, i['elcp'], i['bl'], excpl_new, eycpl_new)
                 loss = self.loss_ialh2(sx_abs, sy_abs, sx_phase, sy_phase, freq_range, nx, ny, wm, hm, lm, nsegx, nsegy, nsegz, delta_eff) * self.numpoles
                 ialh_loss += loss
-                #print(f'Loadcase {i['loadcase']}, Superelement {i['spel_key']}, Total losses =  {loss:.3f} W')
+                logger.info(f'Loadcase {i['loadcase']}, Superelement {i['spel_key']}, Total losses =  {loss:.3f} W')
                 loss_detail.append([i['spel_key'], loss/self.numpoles])
             self.th_loss.append(loss_detail)
             all_load_cases.append(ialh_loss)

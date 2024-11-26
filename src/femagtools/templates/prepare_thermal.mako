@@ -322,11 +322,10 @@ end
 
 
 rn, phin = get_boundary_node(m.tot_num_slot)
-if m.slot_indul == nil then
-   m.slot_indul = 0.15
-end
-
-thickness = m.slot_indul
+thickness = ${model.windings.get('slot_insulation_thickness', 0.15e-3)*1e3}
+if thickness == 0.0 then 
+   thickness = 0.15
+end 
 conductivity = ${model.get('slot_insul_cond', 0.31)}
 
 for i = 1,m.num_sl_gen do

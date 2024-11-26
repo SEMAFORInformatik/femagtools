@@ -392,22 +392,22 @@ class BaseFemag(object):
         for i in nc_file.windings:
             for j in i.subregions:
                 wdg_area.append(j.area())
-        
+
         slot_area = np.sum(wdg_area).item()/3
         magnet_area = 0.0
         num_sreg_mag = 0
         area = dict()
-        for i in nc_file.subregions: 
-            if i.name in ("StZa", "StJo", "Iron"): 
+        for i in nc_file.subregions:
+            if i.name in ("StZa", "StJo", "Iron"):
                 area[i.name] = i.area().item()
             elif i.name == "PMag":
                 magnet_area += i.area().item()
                 num_sreg_mag += 1
-            else: 
-                pass 
-        
+            else:
+                pass
+
         area['PMag'] = magnet_area/num_sreg_mag
-        for i in ('W1', 'W2', 'W3'): 
+        for i in ('W1', 'W2', 'W3'):
             area[i] = slot_area
 
         pmag_index = []
@@ -416,7 +416,7 @@ class BaseFemag(object):
                 i.update({"mass": i['weight'], "losses": _map[i['Name']]})
                 if "PMag" in i['Name']:
                     pmag_index.append(k)
-                if i['Name'].strip() in area.keys(): 
+                if i['Name'].strip() in area.keys():
                     i.update({"area": area[i['Name'].strip()]})
             if pmag_index:
                 for i in range(len(pmag_index)):
@@ -528,7 +528,8 @@ class BaseFemag(object):
                 ops = [k for k in range(len(bch.torque))]
                 m = femagtools.ecloss.MagnLoss(self.workdir, self.modelname, ibeta=ops)
                 try:
-                    magn_losses = m.calc_losses()
+                    # change from ialh to ialh2: since v1.8.1
+                    magn_losses = m.calc_losses_ialh2()
                 except:
                     magn_losses = [0 for i in range(len(ops))]
 

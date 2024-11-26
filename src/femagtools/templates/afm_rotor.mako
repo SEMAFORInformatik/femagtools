@@ -91,7 +91,11 @@ m.nodedist        = ${model.get('nodedist', 1)}
   x,y = (P22.x+P32.x)/2,(P21.y+P22.y)/2
   if m.remanenc == nil then
     m.remanenc = 1.2
+  end
+  if m.relperm == nil then
     m.relperm = 1.05
+  end
+  if m.rlen == nil then
     m.rlen = 100
   end
   for i = 1,m.npols_gen do

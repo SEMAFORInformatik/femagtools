@@ -449,8 +449,8 @@ def dqparident(workdir, engine, temp, machine,
     leakfile.unlink(missing_ok=True)
 
     period_frac = kwargs.get('period_frac', 6)
-    if machine.get('external_rotor', False):
-        period_frac = 1  # TODO: missing femag support
+    if machine.get('external_rotor', False) and period_frac > 1:
+        logger.warning("period frac for external rotor requires GT femag version >= 2024")
 
     if dqtype == 'ldq':
         simulation = dict(

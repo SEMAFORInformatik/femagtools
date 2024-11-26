@@ -344,13 +344,13 @@ class SynchronousMachine(object):
             freq = w/2/np.pi
             kr = self.zeta1[0]*freq**3 + self.zeta1[1]*freq**2 + \
                 self.zeta1[2]*freq + self.zeta1[3]
-            if isinstance(kr, list): 
+            if isinstance(kr, list):
                 kr = np.array(kr)
                 kr[kr<1.0] = 1.0
             elif isinstance(kr, np.ndarray):
                 kr[kr<1.0] = 1.0
-            else: 
-                if kr < 1.0: 
+            else:
+                if kr < 1.0:
                     kr = 1.0
             return self.r1*(1 + self.kth1*(self.tcu1 - 20))*kr  # ref 20°C
         sr = self.skin_resistance[0]
@@ -806,10 +806,7 @@ class SynchronousMachinePsidq(SynchronousMachine):
             if 'styoke_excess' in eecpars[idname][0]['losses'] and \
                np.any(np.array(eecpars[idname][0]['losses']['styoke_excess'])):
                 self.bertotti = True
-                keys.update({{
-                    'styoke_excess': 1.5,
-                    'stteeth_excess':1.5,
-                    'rotor_excess': 1.5}})
+                keys += ['styoke_excess', 'stteeth_excess','rotor_excess']
             if islinear:
                 pfe = {k: np.array([l['losses'][k]
                                     for l in eecpars[idname]])
@@ -926,10 +923,7 @@ class SynchronousMachineLdq(SynchronousMachine):
             if 'styoke_excess' in eecpars[idname][0]['losses'] and \
                np.any(np.array(eecpars[idname][0]['losses']['styoke_excess'])):
                 self.bertotti = True
-                keys.update({{
-                    'styoke_excess': 1.5,
-                    'stteeth_excess':1.5,
-                    'rotor_excess': 1.5}})
+                keys += ['styoke_excess', 'stteeth_excess','rotor_excess']
 
             if islinear:
                 pfe = {k: np.array([l['losses'][k]

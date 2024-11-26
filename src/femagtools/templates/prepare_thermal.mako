@@ -40,12 +40,12 @@ shaft_spel = {} ---- lightgrey, 16
 magnet_spel = {} -- black, 8
 outer_air = {} -- darkred, 10
 inner_air = {} -- lightgrey, 16
-rotor_air = {} 
+rotor_air = {}
 stator_air = {} -- black, 8
 airgap = {} -- white, 8
 magnet_pocket_spel = {}  -- red, 1
 non_uniform_airgap = {} -- white, 8
-slot_opening = {} 
+slot_opening = {}
 slot_sreg_exist = 0
 -- search all components
 for i =1,  #spel_keys do
@@ -74,7 +74,7 @@ for i =1,  #spel_keys do
 %if model.get('htc_outer', 0):
               def_heat_transfer(xc,yc,yellow,${model['htc_outer']}, 1.0)
 %endif
-              color_spel(spel_keys[i], 10) 
+              color_spel(spel_keys[i], 10)
 
            elseif rc > dy2/2 and rc < da2/2 then
               -- rotor air
@@ -87,14 +87,14 @@ for i =1,  #spel_keys do
               -- stator air
               table.insert(stator_air, spel_keys[i])
               def_mat_therm(xc, yc, 'yellow', 1.19,0.15,1007, 1)
-              color_spel(spel_keys[i], 8) 
+              color_spel(spel_keys[i], 8)
               key_exist_sl = get_sreg_key(xc, yc)
-              if key_exist_sl <= 0 and slot_sreg_exist == 0 then 
+              if key_exist_sl <= 0 and slot_sreg_exist == 0 then
                   def_new_sreg(xc, yc, 'Slot', 'yellow')
                   slot_sreg_exist = 1
-              else 
+              else
                   add_to_sreg(xc, yc, 'Slot')
-              end        
+              end
            elseif rc > da2/2 and rc < da1/2 then
               table.insert(airgap, spel_keys[i])
               def_mat_therm(xc, yc, 'yellow', 1.19,0.15,1007, 1)
@@ -139,83 +139,83 @@ end
 
 function is_exist(arr, val)
    local i
-   if #arr == 0 then 
-      return false 
-   end 
-   for i = 1, #arr do 
-      if arr[i] == val then 
+   if #arr == 0 then
+      return false
+   end
+   for i = 1, #arr do
+      if arr[i] == val then
          return true
-      end 
-   end 
+      end
+   end
    return false
-end 
--- identify magnet air pocket 
+end
+-- identify magnet air pocket
 
-for i = 1, #magnet_spel do 
+for i = 1, #magnet_spel do
     bkeys = get_spel_data ( "bndkeys", magnet_spel[i])
-    for j = 1, #bkeys do 
+    for j = 1, #bkeys do
          elks = get_node_data ( "elkeys", bkeys[j] )
-         for k = 1, #elks do 
+         for k = 1, #elks do
             p1, p2 = get_elem_data("perm", elks[k])
             sek = get_elem_data("sekey", elks[k])
-            if p1 == 1.0 then 
-                  if (not is_exist(magnet_pocket_spel, sek)) and (not is_exist(airgap, sek)) then  
+            if p1 == 1.0 then
+                  if (not is_exist(magnet_pocket_spel, sek)) and (not is_exist(airgap, sek)) then
                      table.insert(magnet_pocket_spel, sek)
                      els = get_spel_data('elkeys', sek)
                      xc, yc = get_xy(els[1])
                      def_mat_therm(xc, yc, 'red', 1.12,0.026,1007, 1)
                      --table.remove(rotor_air, sek)
                      color_spel(sek, 1)
-                  end 
-            end 
-         end 
-    end 
-end 
+                  end
+            end
+         end
+    end
+end
 
 
 
-for i = 1, #rotor_air do 
-  if rotor_air[i] ~= nil then 
+for i = 1, #rotor_air do
+  if rotor_air[i] ~= nil then
     bkeys = get_spel_data ( "bndkeys", rotor_air[i])
-    for j = 1, #bkeys do 
+    for j = 1, #bkeys do
       x, y = get_node_data ( "xy", bkeys[j] )
-      r, phi = c2pd(x, y) 
-      if math.abs(r - da2/2) < 1e-5 then 
-        if not is_exist(non_uniform_airgap,rotor_air[i]) then 
+      r, phi = c2pd(x, y)
+      if math.abs(r - da2/2) < 1e-5 then
+        if not is_exist(non_uniform_airgap,rotor_air[i]) then
           table.insert(non_uniform_airgap, rotor_air[i])
           els = get_spel_data('elkeys', rotor_air[i])
           xc, yc = get_xy(els[1])
           def_mat_therm(xc, yc, 'yellow', 1.19,1.15,1007, 1)
           add_to_sreg(xc, yc, 'Slot')
           color_spel(rotor_air[i], 7)
-        end 
-      end 
-    end 
-  end 
-end 
+        end
+      end
+    end
+  end
+end
 
-for i = 1, #rotor_air do 
-  if rotor_air[i] ~= nil then 
-    if is_exist(non_uniform_airgap, rotor_air[i]) then 
+for i = 1, #rotor_air do
+  if rotor_air[i] ~= nil then
+    if is_exist(non_uniform_airgap, rotor_air[i]) then
       rotor_air[i] = nil
-    end    
-  end 
-end 
+    end
+  end
+end
 
-for i = 1, #rotor_air do 
-   if is_exist(magnet_pocket_spel, rotor_air[i]) then 
+for i = 1, #rotor_air do
+   if is_exist(magnet_pocket_spel, rotor_air[i]) then
      rotor_air[i] = nil
-   end 
- end 
- 
+   end
+ end
 
-for i = 1, #rotor_air do 
-   if rotor_air[i] ~= nil then 
+
+for i = 1, #rotor_air do
+   if rotor_air[i] ~= nil then
       els = get_spel_data('elkeys', rotor_air[i])
       xc, yc = get_xy(els[1])
       def_mat_therm(xc, yc, 'red', 1.12,0.026,1007, 1)
-   end 
-end 
+   end
+end
 
 
 save_metafile(model..'.ps')
@@ -322,7 +322,11 @@ end
 
 
 rn, phin = get_boundary_node(m.tot_num_slot)
-thickness = ${model.get('slot_insul', 0.15)}
+if m.slot_indul == nil then
+   m.slot_indul = 0.15
+end
+
+thickness = m.slot_indul
 conductivity = ${model.get('slot_insul_cond', 0.31)}
 
 for i = 1,m.num_sl_gen do
@@ -331,7 +335,7 @@ y = {}
 
 for j = 1, #rn do
    x[j], y[j] = pd2c(rn[j], phin[j] + (i-1)*360/m.tot_num_slot)
-   point(x[j], y[j],"black","x") 
+   point(x[j], y[j],"black","x")
 end
 
 def_insulation_by_nodechain(thickness,conductivity,

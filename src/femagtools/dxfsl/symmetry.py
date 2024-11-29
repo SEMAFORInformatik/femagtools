@@ -12,6 +12,7 @@ import logging
 import sys
 from femagtools.dxfsl.shape import Element, Line
 from femagtools.dxfsl.area import Area
+import femagtools.dxfsl.area as AREA
 from femagtools.dxfsl.functions import alpha_angle, positive_angle, is_same_angle
 from femagtools.dxfsl.functions import min_angle, max_angle, gcd, point
 from femagtools.dxfsl.functions import less_equal, less, points_are_close
@@ -100,14 +101,10 @@ class Symmetry(object):
         return positive_angle(alpha_angle(self.startangle,
                                           a.get_mid_angle(self.geom.center)))
 
-    def find_symmetry(self):
+    def build_area_list(self, types=()):
         arealist = self.geom.list_of_areas()
-        logger.debug("begin of Symmetry::find_symmetry: %s areas available", len(arealist))
-        if len(arealist) == 0:
-            logger.debug("end of find_symmetry: no areas")
-            return 0
-
-        logger.debug("startangle=%s, endangle=%s", self.startangle, self.endangle)
+        if types:
+            arealist = [a for a in arealist if a.type in types]
 
         areas = []
         for a in arealist:
@@ -117,7 +114,9 @@ class Symmetry(object):
                           self.calc_mid_angle(a),
                           a))
         areas.sort(reverse=True)
+        return areas
 
+    def build_results(self, areas):
         a0_alpha, a0_min_dist, a0_height, a0_mid_angle, a0 = areas[0]
         equal_areas = [(a0_mid_angle, a0)]
         check_rslt = []
@@ -146,6 +145,41 @@ class Symmetry(object):
         rslt['area'] = a0
         rslt['areasize'] = areasize
         check_rslt.append((areasize, rslt))
+        return check_rslt
+
+    def get_winding_symmetry(self):
+        areas = self.build_area_list((AREA.TYPE_WINDINGS,))
+
+        logger.debug("begin of Symmetry::get_winding_symmetry: %s areas available", len(areas))
+        if not areas:
+            logger.debug("end of Symmetry::get_winding_symmetry: no areas")
+            return 0
+
+        check_rslt = self.build_results(areas)
+        logger.debug("%s results available", len(check_rslt))
+        [logger.debug("Result: %s", rslt) for rslt in check_rslt]
+
+        parts, start_delta = self.get_symmetry_parts(check_rslt)
+        if parts <= 1:
+            return 0
+        self.create_cut_lines(parts, start_delta)
+
+        sym = self.geom_part * parts
+        delta = 2*np.pi/sym
+        self.set_symmetry_parameters(self.startangle, parts, delta)
+
+        logger.debug("end of Symmetry::get_winding_symmetry: parts=%s", parts)
+        return parts
+
+    def find_symmetry(self):
+        areas = self.build_area_list()
+
+        logger.debug("begin of Symmetry::find_symmetry: %s areas available", len(areas))
+        if not areas:
+            logger.debug("end of Symmetry::find_symmetry: no areas")
+            return 0
+
+        check_rslt = self.build_results(areas)
 
         parts, start_delta = self.get_symmetry_parts(check_rslt)
         if parts < 2:
@@ -156,18 +190,7 @@ class Symmetry(object):
             self.startangle = self.startangle - self.delta_angle_corr
             self.endangle = self.endangle - self.delta_angle_corr
 
-        self.geom.clear_cut_lines()
-        for alpha in self.symmetry_lines(parts,
-                                         self.startangle,
-                                         start_delta,
-                                         self.endangle):
-            plus = self.geom.max_radius / 10
-            min_radius = max(10, self.geom.min_radius - plus)
-            p1 = point(self.geom.center, min_radius, alpha)
-            p2 = point(self.geom.center, self.geom.max_radius + plus, alpha)
-            line = Line(Element(start=p1, end=p2))
-            line.init_attributes(color='green')
-            self.geom.add_cut_line(line)
+        self.create_cut_lines(parts, start_delta)
 
         logger.debug("end of Symmetry::find_symmetry: -> %s", parts)
         return parts
@@ -375,9 +398,6 @@ class Symmetry(object):
 
                     dlist = []
                     x = 0
-                    # logger.info("inx: %s", inx)
-                    # [logger.info("%s deltas: %s", n, d) for n, d in deltas]
-                    # [logger.info("area: %s", m) for m, a in area_list]
 
                     for i in inx:
                         for n in range(x, i):
@@ -833,6 +853,20 @@ class Symmetry(object):
         logger.debug("return %s parts", parts)
         return parts
 
+    def create_cut_lines(self, parts, start_delta):
+        self.geom.clear_cut_lines()
+        for alpha in self.symmetry_lines(parts,
+                                         self.startangle,
+                                         start_delta,
+                                         self.endangle):
+            plus = self.geom.max_radius / 10
+            min_radius = max(10, self.geom.min_radius - plus)
+            p1 = point(self.geom.center, min_radius, alpha)
+            p2 = point(self.geom.center, self.geom.max_radius + plus, alpha)
+            line = Line(Element(start=p1, end=p2))
+            line.init_attributes(color='green')
+            self.geom.add_cut_line(line)
+
     def symmetry_lines(self, parts, startangle, start_delta, endangle):
         logger.debug("begin symmetry_lines from %s to %s with start %s",
                      startangle,
@@ -858,14 +892,17 @@ class Symmetry(object):
             yield start
 
         # Damit man anschliessend ohne Umstände schneiden kann.
-        self.geom.sym_startangle = sym_startangle
-        self.geom.sym_endangle = sym_startangle + delta
+        self.set_symmetry_parameters(sym_startangle, parts, delta)
+        logger.debug("end symmetry_lines")
+
+    def set_symmetry_parameters(self, startangle, parts, delta):
+        self.geom.sym_startangle = startangle
+        self.geom.sym_endangle = startangle + delta
         self.geom.sym_slices = parts
         self.geom.sym_slice_angle = delta
         self.geom.sym_area = Area([], (0,0), 0.0)
         self.geom.sym_area.sym_startangle = self.geom.sym_startangle
         self.geom.sym_area.sym_endangle = self.geom.sym_endangle
-        logger.debug("end symmetry_lines")
 
     def check_symmetry_of_mirror(self, mirror_geom, mirrorangle):
         logger.debug("begin of Symmetry::check_symmetry_of_mirror")

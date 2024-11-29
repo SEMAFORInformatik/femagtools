@@ -532,7 +532,7 @@ class Machine(object):
         logger.debug('begin repair_hull_geom (%s, %s)', startangle, endangle)
 
         rtol = 1e-3
-        atol = 1e-4
+        atol = 1e-3
         c_corner = Corner(self.center, self.center)
         start_c_added, start_corners = geom.get_corner_list(self.center, startangle,
                                                             rtol=rtol, atol=atol)
@@ -592,6 +592,15 @@ class Machine(object):
     def slot_area(self):
         from .area import TYPE_WINDINGS
         return self.geom.area_size_of_type(TYPE_WINDINGS)
+
+    def get_winding_symmetry(self):
+        logger.debug("begin of find_winding_symmetry")
+        symmetry = Symmetry(geom=self.geom,
+                            startangle=self.startangle,
+                            endangle=self.endangle)
+        parts = symmetry.get_winding_symmetry()
+        logger.debug("end of find_winding_symmetry (parts=%s)", parts)
+        return parts
 
     def find_symmetry(self, sym_tolerance, is_inner, is_outer, plt):
         logger.debug("begin of find_symmetry")
@@ -760,6 +769,15 @@ class Machine(object):
                      .format(self.geom.symmetry_startangle(),
                              self.geom.symmetry_endangle()))
         return machine_slice
+
+    def get_forced_winding_slice(self):
+        logger.debug("___FORCED_WINDING___")
+        if self.geom.num_of_windings() < 2:
+            return None  # nothing to do
+        parts = self.get_winding_symmetry()
+        if parts < 2:
+            return None  # nothing to do
+        return self.get_symmetry_slice()
 
     def get_forced_symmetry(self, part):
         logger.debug("begin get_forced_symmetry")

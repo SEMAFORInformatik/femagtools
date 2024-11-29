@@ -239,8 +239,7 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
     if machine.is_mirrored():
         plot_geom(False,  # for developer
                   plt, machine.previous_machine.geom,
-                  title="Mirrored Stator",
-                  areas=True)
+                  title="Mirrored Stator")
 
         logger.debug("undo mirrored windings")
         machine_temp = machine.undo_mirror()
@@ -261,6 +260,19 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
                   plt, machine_temp.geom,
                   title="Nodes reduced")
 
+    machine_slice = machine_temp.get_forced_winding_slice()
+    if machine_slice:
+        plot_geom(False,  # for developer
+                  plt, machine_slice.geom,
+                  title="Stator Winding Slice")
+
+        machine_temp = machine_slice
+        machine_temp.geom.set_stator()
+        machine_temp.rebuild_subregions(EESM, single=single)
+        plot_geom(False,  # for developer
+                  plt, machine_temp.geom,
+                  title="Stator Winding Slice after Rebuild")
+
     if machine_temp.create_auxiliary_lines():
         machine_temp.rebuild_subregions(EESM, single=single)
         plot_geom(False,  # for developer
@@ -275,6 +287,10 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
                   plt, machine_temp.geom,
                   title="Stator before Boundery Corr")
         machine_temp.create_boundary_nodes()
+
+    if not machine_temp.has_windings():
+        logger.debug("___NO WINDINGS___")
+        logger.debug("   matching corners : %s", machine_temp.geom.corners_dont_match())
 
     plot_geom(False,  # for developer
               plt, machine_temp.geom,

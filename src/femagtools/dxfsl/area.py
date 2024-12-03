@@ -1321,6 +1321,32 @@ class Area(object):
         return np.isclose(angle, border_angle,
                           rtol=1e-03, atol=1e-03)
 
+    def set_subregion_parameters(self,
+                                 is_inner,
+                                 min_radius,
+                                 max_radius,
+                                 startangle,
+                                 endangle):
+        ag_delta = (max_radius - min_radius) / 500.0
+        if is_inner:
+            self.close_to_ag = greater_equal(self.max_dist + ag_delta, max_radius)
+            close_to_opposition = np.isclose(min_radius, self.min_dist)
+            airgap_radius = max_radius
+            opposite_radius = min_radius
+        else:
+            self.close_to_ag = less_equal(self.min_dist - ag_delta, min_radius)
+            close_to_opposition = np.isclose(max_radius, self.max_dist)
+            airgap_radius = min_radius
+            opposite_radius = max_radius
+
+        airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
+
+        self.close_to_startangle = np.isclose(self.min_angle, startangle,
+                                              1e-04, 1e-04)
+        self.close_to_endangle = np.isclose(self.max_angle, endangle,
+                                            1e-04, 1e-04)
+        self.surface = self.area_size()
+
     def mark_stator_subregions(self,
                                is_inner,
                                stator_size,
@@ -1790,6 +1816,16 @@ class Area(object):
         for id, a in self.areas_inside.items():
             for i in a.nested_areas_inside():
                 yield i
+
+    def mirror_area(self, center, axis_m, axis_n):
+        elements = []
+        for e in self.area:
+            el = e.mirror_shape(center, axis_m, axis_n)
+            if el:
+                elements.append(el)
+        area = Area(elements, center, 0.0)
+        area.type = self.type
+        return area
 
     def __str__(self):
         return "Area {}\n".format(self.id) + \

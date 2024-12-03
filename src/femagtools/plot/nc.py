@@ -14,7 +14,7 @@ DEFAULT_CMAP='viridis'
 """default colormap (see https://matplotlib.org/stable/users/explain/colors/colormaps.html)"""
 
 
-def spel(isa, superelements=[], with_axis=False, ax=0):
+def spel(isa, superelements=[], with_axis=False, with_wiredir=False, ax=0):
     """plot super elements of I7/ISA7 model
     Args:
       isa: Isa7 object
@@ -35,7 +35,7 @@ def spel(isa, superelements=[], with_axis=False, ax=0):
                             color=isa.color[se.color], lw=0))
         try:
             # draw wire direction
-            if se.subregion:
+            if se.subregion and with_wiredir:
                 if se.subregion.curdir != 0:
                         wkey = se.subregion.winding.key
                         if se.subregion.curdir < 0:

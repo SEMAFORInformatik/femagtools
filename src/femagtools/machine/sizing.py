@@ -10,6 +10,25 @@ from .utils import wdg_resistance
 
 logger = logging.getLogger("femagools.machine.sizing")
 
+AFPM_DEFAULTS = dict(
+    airgap=2e-3,
+    kd=0.7,  # ratio of inner vs outer diameter 0.6 .. 0.8
+    eta=0.92,  # efficiency
+    cos_phi=0.95,  # power factor
+    m=3,  # number of phases
+    ui_u=0.8,  # U ind / U
+    J=8.5e6,  # current density  A/mm²
+    sigmas=40e3,  # shear force 30 .. 65 kN/m2
+    Ba=0.7,  # flux density in airgap
+    Bth=1.5,  # flux density in teeth 1.5 .. 2 T
+    By=1.2,  # flux density in yoke 1.2 .. 1.5 T
+    kq=0.6,  # stator winding fill factor 0.35 .. 0.75
+    mag_width=0.95,  # rel magnet width 0.6 .. 1
+    Hc=700,  # max. coercitive field strength, 500 .. 900 kA/m
+    brem=1.2,  # remanence 0.3 .. 1.3 T
+    demag=6  # safety factor for demagnetisation (nom current)
+)
+"""default sizing parameters for AFPM"""
 
 PM_DEFAULTS = dict(
     airgap=1.5e-3,  # airgap width m
@@ -217,7 +236,7 @@ def _stator_slots(par, slots):
          # check sim factor, height/width ratio
         if qhbmin[1] == len(q)-1:
             # last has smallest sim factor
-             return q[qhbmin[1]][0]
+            return q[qhbmin[1]][0]
         elif q[qhbmin[1]][2] < q[qhbmin[1]+1][2]:
             # select ideal height/width ratio (3.2)
             return q[qhbmin[1]][0]
@@ -270,7 +289,7 @@ def get_stator_dimensions(par, slots=[]):
     Ui_U = par['ui_u']
 
     # design parameters
-    # AJ = papyr['AJ'] # 100*1e9 # thermal load, typically 100 .. 300 A²/mm³
+    # AJ = par['AJ'] # 100*1e9 # thermal load, typically 100 .. 300 A²/mm³
     J = par['J']   # current density 3 .. 6 A/mm²
     Ba = par['Ba']     # airgap flux density, typically 0.6 .. 1.5 T
     kq = par['kq']      # winding fill factor, typically 0.35 .. 0.75
@@ -431,15 +450,13 @@ def get_stator_dimensions(par, slots=[]):
 
     return r
 
-
 def _get_magnet_height(I1, N, kw, par):
     airgap = par['airgap']
     Ba = par['Ba']
     p = par['p']
     m = par['m']
 
-    Hc = par['Hc']
-    Hc = Hc*1e3  # unit kA/m
+    Hc = par['Hc']*1e3  # unit kA/m -> A/m
     # Safety Factor for demagnetization
     demag = par['demag']
     THETA1 = m/np.pi*np.sqrt(2)*I1*N*kw/p
@@ -648,6 +665,10 @@ def _set_defaults(par, defaults):
             par[k] = defaults[k]
 
 
+def _set_afpm_defaults(par):
+    _set_defaults(par, AFPM_DEFAULTS)
+
+
 def _set_pm_defaults(par):
     _set_defaults(par, PM_DEFAULTS)
 
@@ -705,6 +726,161 @@ def spm(pnom: float, speed: float, p: int, **kwargs) -> dict:
     _set_genpars(r, 2*par['p'])
     r['name'] = f"SPM-{r['poles']}"
 
+    return r
+
+
+def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
+    """returns dimension of a AFPM machine
+
+    Args:
+    pnom: power at rated speed (W)
+    speed: rotation speed (1/s)
+    p: number of pole pairs
+    afmtype: one of 'S1R1', 'S2R1', 'S1R2'
+
+    udc: (optional) DC link voltage (V)
+    u1: (optional)  phase voltage (Vrms)
+    Q1: (optional) total number of stator slots
+    brem: (optional) remanence of magnet (T)
+    """
+    par = dict(
+        pnom=pnom, speed=speed, p=p)
+    par.update(kwargs)
+    _set_afpm_defaults(par)
+
+    kp = 1 if afmtype == 'S1R1' else 2
+    kd = par['kd']  # ratio of inner_diam/outer_diam
+    tnom = pnom/(2*np.pi*speed)
+    sigmas = par['sigmas']  # shear force
+    # outer diameter:
+    # https://web.mit.edu/kirtley/binlustuff/literature/electric%20machine/designOfAxialFluxPMM.pdf
+    Do = 2*np.power(tnom/(kp*sigmas*np.pi*kd*(1-kd**2)), 1/3)
+    Di = Do*kd
+    # pole width and iron length
+    Davg = (Do+Di)/2
+    taup = np.pi * Davg/(2*p)
+    lfe = (Do-Di)/2
+    # flux density in airgap
+    Bd1 = 4.0/np.pi*par['Ba']*np.sin(np.pi/2.0*par['mag_width'])
+
+    # rated phase voltage
+    if 'udc' in par:
+        u1nom = 0.9*par['udc']/np.sqrt(2)/np.sqrt(3)
+    else:
+        u1nom = par['u1']
+    f1 = speed*p
+    # flux linkage
+    psi1 = 2.0/np.pi*taup*lfe*Bd1
+
+    # winding factor
+    Q1 = par['Q1']
+    m = par['m']
+    yd = par.get('coil_span', 0)
+    if yd:
+        wdg = Winding({'Q': par['Q1'], 'p': par['p'], 'm': 3,
+                       'yd': yd, 'l': 2})
+    else:
+        wdg = Winding({'Q': par['Q1'], 'p': par['p'], 'm': 3, 'l': 2})
+
+    kw = wdg.kw()
+
+    Ui = par['ui_u'] * u1nom
+    N = np.sqrt(2)*Ui/(2*np.pi*f1*kw*psi1)
+
+    # coils per phase and pole
+    # q = Q/2/p/m
+    # num wires per coil side (number of coil groups a)
+    # n = a*N / 2 / p / q
+
+    # feasible number of turns per coil...
+    layers = wdg.l
+    ncoils = Q1 // 2 // m * layers
+    ngroups = [1] + [g for g in range(2, layers*p + 1) if layers * p % g == 0]
+    ndiff = [abs(N - ncoils // a * a * round(N / ncoils))
+             for a in ngroups]
+    logger.debug("N %f ngroups %s ndiffs %s", N, ngroups, ndiff)
+    a_calc = ngroups[np.argmin(ndiff)]
+    a = par.get("a", a_calc)
+    if a not in ngroups:
+        logger.warning("Check given number %s of parallel wdg groups. Valid ngroups are: %s",
+                       a, ngroups)
+    num_wires = round(a * N / ncoils)
+
+    # correction of number of turns per phase
+    N_old = N
+    N = num_wires * ncoils / a
+
+    # correction of voltage
+    Ui = Ui/N_old*N
+    u1nom = Ui/par['ui_u']
+
+    # current loading
+    # A = np.sqrt(2)*sigmas/kw/Ba
+    I1 = pnom/(m*par['eta']*par['cos_phi']*u1nom)
+    A = 2*m*N*I1/np.pi/Di
+    # slot area
+    # J = AJ/A
+    hs1 = 1e-3  # slot opening height
+    taus = np.pi/Q1
+    ans = taus*Di*A/(par['kq']*par['J'])
+    bds = taus*(Di+2*hs1)*Bd1/par['Bth']
+    bns = taus*(Di+2*hs1) - bds
+
+    hns = (-bns + np.sqrt(bns**2 + 4*ans*np.tan(taus)))/2/np.tan(taus)
+    hys = psi1/2/lfe/par['By']
+
+    aw = ans * par['kq'] / layers / num_wires
+
+    r = {'outer_diam': Do, 'inner_diam': Di, 'airgap': par['airgap'],
+         'afmtype': afmtype,
+         'poles': 2*p,
+         'ans': round(ans, 6),
+         'hns': round(hns, 4),
+         'bns': round(bns, 4),
+         'A': round(A, 3),
+         'AJ': round(par['J']*A, 0),
+         'w1': int(N),
+         'kw': round(kw, 4),
+         'q': wdg.q,
+         'i1': round(I1, 3),  # np.pi*Da1*A/2/m/N
+         'psi1': round(psi1, 5),
+         'u1': u1nom,
+         'ui': Ui}
+    hs1 = 0
+    hs2 = 0
+    r['stator'] = dict(
+        u1nom=round(u1nom, 1), f1nom=round(f1, 1),
+        num_slots=Q1,
+        nodedist=1,
+        # num_slots_gen = req_poles*Q1/2/p,
+        afm_stator=dict(
+            slot_width=r['bns'],
+            slot_height=hs1+r['hns'],
+            slot_h1=hs1,
+            slot_h2=hs1,
+            slot_open_width=r['bns'],
+            slot_r1=0,
+            slot_r2=0,  # bns2/2,
+            yoke_height=round(hys, 4)))
+
+    r['winding'] = dict(
+        #wire_diam=round(dwire, 5),
+        num_phases=m,
+        cufilfact=par['kq'],
+        #culength=relculen,
+        num_par_wdgs=a,
+        num_layers=layers,
+        #resistance=round(r1, 4),
+        coil_span=wdg.yd,
+        num_wires=int(num_wires))
+
+    hm = _get_magnet_height(r['i1'], r['w1'], r['kw'], par)
+    r['magnet'] = dict(
+        afm_rotor=dict(
+            yoke_height=round(hys, 4),
+            rel_magn_width=par['mag_width'],
+            magn_height=round(hm, 4))
+    )
     return r
 
 
@@ -808,11 +984,11 @@ def eesm(pnom: float, speed: float, p: int, **kwargs) -> dict:
 
 
 if __name__ == "__main__":
-
-    pnom = 10e3
-    speed = 4400/60
-    p = 4
-    udc = 600
+    # sizing example with SPM
+    pnom = 10e3  # shaft power in W
+    speed = 4400/60  # speed in 1/s
+    p = 4  # number of pole pairs
+    udc = 600  # DC voltage in V
 
     r = spm(pnom, speed, p, udc=udc)
 

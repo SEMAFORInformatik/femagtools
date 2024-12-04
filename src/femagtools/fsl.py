@@ -158,13 +158,13 @@ class Builder:
         if templ == 'statorFsl':
             #  obsolete
             th_props = [' ']
-            try: 
+            try:
                 th_props = [f'stator_density = {model.stator["density"]}',
                             f'stator_thcond = {model.stator["thcond"]}',
                             f'stator_thcap = {model.stator["thcap"]}',
                             ]
-            except: 
-                pass 
+            except:
+                pass
             if 'parameter' in model.stator['statorFsl']:
                 return self.render_template(
                     model.stator['statorFsl']['content_template'],
@@ -226,20 +226,20 @@ class Builder:
             self.fsl_rotor = True
             #  obsolete
             th_props = [' ']
-            try: 
+            try:
                 logger.info(model.magnet)
                 th_props = [f'rotor_density = {model["magnet"]["density"]}',
                             f'rotor_thcond = {model["magnet"]["thcond"]}',
                             f'rotor_thcap = {model["magnet"]["thcap"]}'
                             ]
-            except: 
-                pass 
+            except:
+                pass
             if 'parameter' in model.magnet['magnetFsl']:
                 return mcv + self.render_template(
                     model.magnet['magnetFsl']['content_template'],
                     model.magnet['magnetFsl']['parameter']) + th_props
             elif model.magnet['magnetFsl'].get('content'):
-                return mcv + model.magnet['magnetFsl']['content'].split('\n') 
+                return mcv + model.magnet['magnetFsl']['content'].split('\n')
             if isinstance(model.magnet['magnetFsl']
                           ['content_template'], str):
                 with open(model.magnet['magnetFsl']
@@ -248,7 +248,7 @@ class Builder:
             else:
                 templ = model.magnet['magnetFsl']['content_template']
             return mcv + self.render_template(
-                '\n'.join(templ), 
+                '\n'.join(templ),
                 model.magnet['magnetFsl'])
 
         templ = model.magnettype()
@@ -364,9 +364,8 @@ class Builder:
         """return connect_model if rotating machine and incomplete model
         (Note: femag bug with connect model)"
         """
-        if (model.get('move_action') == 0 and (
-                model.connect_full or
-                model.stator['num_slots'] > model.stator['num_slots_gen'])):
+        if (model.connect_full or
+                model.stator['num_slots'] > model.stator['num_slots_gen']):
             fslcmds = ['pre_models("connect_models")\n']
             if 'thcond' in model.stator:
                 fslcmds += [

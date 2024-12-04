@@ -1,6 +1,6 @@
 """general design of an AC electrical machine
 
-   Types: spm, ipm, eesm, im
+   Types: spm, ipm, eesm, im, afpm
 
 """
 import numpy as np
@@ -832,7 +832,7 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
     aw = ans * par['kq'] / layers / num_wires
 
     r = {'outer_diam': Do, 'inner_diam': Di, 'airgap': par['airgap'],
-         'afmtype': afmtype,
+         'afmtype': afmtype, 'lfe': lfe,
          'poles': 2*p,
          'ans': round(ans, 6),
          'hns': round(hns, 4),
@@ -841,6 +841,7 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
          'AJ': round(par['J']*A, 0),
          'w1': int(N),
          'kw': round(kw, 4),
+         'ess': round(1e-3*pnom/(60*speed)/(Do**2*lfe), 4),
          'q': wdg.q,
          'i1': round(I1, 3),  # np.pi*Da1*A/2/m/N
          'psi1': round(psi1, 5),
@@ -863,11 +864,12 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
             slot_r2=0,  # bns2/2,
             yoke_height=round(hys, 4)))
 
+    relculen = 1.4
     r['winding'] = dict(
         #wire_diam=round(dwire, 5),
         num_phases=m,
         cufilfact=par['kq'],
-        #culength=relculen,
+        culength=relculen,
         num_par_wdgs=a,
         num_layers=layers,
         #resistance=round(r1, 4),

@@ -68,8 +68,9 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
         psid = rwdg*rlfe*dqp['psid']
         psiq = rwdg*rlfe*dqp['psiq']
         losses = __scale_losses(dqp['losses'], rlfe)
-        losses['ef'] = dqpars[-1]['losses']['ef']
-        losses['eh'] = dqpars[-1]['losses']['ef']
+        losses['ef'] = dqpars[-1]['losses'].get('ef', [2.0, 2.0])
+        losses['hf'] = dqpars[-1]['losses'].get('hf', [1.0, 1.0])
+        # TODO handle bertotti excess loss factor
 
         if 'psidq' in eecpars:
             machine = PmRelMachinePsidq(
@@ -140,7 +141,7 @@ def create(bch, r1, ls, lfe=1, wdg=1):
             try:
                 losses = __scale_losses(bch.psidq['losses'], rlfe)
                 losses['ef'] = bch.lossPar.get('ef', [2.0, 2.0])
-                losses['eh'] = bch.lossPar.get('eh', [1.0, 1.0])
+                losses['hf'] = bch.lossPar.get('hf', [1.0, 1.0])
             except KeyError:
                 losses = {}
             if 'ex_current' in bch.machine:
@@ -162,7 +163,7 @@ def create(bch, r1, ls, lfe=1, wdg=1):
             try:
                 losses = __scale_losses(bch.ldq['losses'], rlfe)
                 losses['ef'] = bch.lossPar.get('ef', [2.0, 2.0])
-                losses['eh'] = bch.lossPar.get('eh', [1.0, 1.0])
+                losses['hf'] = bch.lossPar.get('hf', [1.0, 1.0])
             except KeyError:
                 losses = {}
             if 'ex_current' in bch.machine:

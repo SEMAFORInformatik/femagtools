@@ -325,7 +325,7 @@ class ParameterStudy(object):
                                 shutil.copy(ff, repdir)
                         calcid += 1
                     if isinstance(r, dict) and 'error' in r:
-                        logger.warn("job %d failed: %s", k, r['error'])
+                        logger.warning("job %d failed: %s", k, r['error'])
                         if objective_vars:
                             f.append([float('nan')]*len(objective_vars))
                         else:

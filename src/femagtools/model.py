@@ -410,7 +410,7 @@ class MachineModel(Model):
             missing += m
             names += n
         if missing:
-            raise MCerror("MC pars missing: {}".format(
+            raise MCerror("Material properties missing: {}".format(
                 ', '.join(set(missing))))
         return set(names)
 

@@ -1208,6 +1208,7 @@ class Area(object):
 
         angles.sort(reverse=True)
         # calculate orientation (no rectangle check)
+
         l, alpha = angles[0]
         phi = normalise_angle(alpha + np.pi/2)
         logger.debug("alpha = %s, phi = %s", alpha, phi)
@@ -1216,9 +1217,13 @@ class Area(object):
         angle = alpha_angle(mid, phi)
         logger.debug("phi=%s, mid=%s, angle=%s", phi, mid, angle)
 
-        if greater(angle, np.pi * 0.5, rtol=1e-5) and \
+        if np.isclose(mid, alpha, rtol=1e-3, atol=1e-3):
+            phi = mid
+            logger.debug("correction of phi=%s", phi)
+        elif greater(angle, np.pi * 0.5, rtol=1e-5) and \
            less(angle, np.pi * 1.5, rtol=1e-5):
             phi = normalise_angle(phi + np.pi)
+            logger.debug("correction of phi=%s", phi)
 
         logger.debug("phi of magnet %s is %s", self.identifier(), phi)
         return phi

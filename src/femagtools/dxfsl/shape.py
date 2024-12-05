@@ -11,7 +11,7 @@ from __future__ import print_function
 import numpy as np
 import logging
 from .functions import less_equal, greater_equal
-from .functions import distance, line_m, line_n
+from .functions import distance, line_m, line_n, mirror_point
 from .functions import point, points_are_close, points_on_arc
 from .functions import alpha_line, alpha_angle, alpha_triangle
 from .functions import normalise_angle, min_angle, max_angle, get_angle_of_arc
@@ -313,6 +313,32 @@ class Shape(object):
 
     def is_near(self, n):
         return False
+
+    def mirror_shape(self, geom_center, axis_m, axis_n):
+        n2 = mirror_point(self.start(), geom_center, axis_m, axis_n)
+        n1 = mirror_point(self.end(), geom_center, axis_m, axis_n)
+
+        el = None
+        if isinstance(self, Line):
+            el = Line(Element(start=n1, end=n2))
+
+        elif isinstance(self, Arc):
+            c = mirror_point(self.center, geom_center, axis_m, axis_n)
+            alpha1 = alpha_line(c, n1)
+            alpha2 = alpha_line(c, n2)
+            el = Arc(Element(center=c,
+                             radius=self.radius,
+                             start_angle=alpha1*180/np.pi,
+                             end_angle=alpha2*180/np.pi))
+
+        elif isinstance(self, Circle):
+            c = mirror_point(self.center, geom_center, axis_m, axis_n)
+            el = Circle(Element(center=c,
+                                radius=self.radius))
+
+        if el:
+            el.copy_attributes(self)
+        return el
 
     def print_nodes(self):
         return " n1={}/n2={}".format(self.n1, self.n2)

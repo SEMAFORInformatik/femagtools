@@ -236,7 +236,8 @@ class FslRenderer(object):
                     geom.start_max_corner(1)),
                 'hair = 1.0',
                 'parts = {}'.format(machine.get_num_parts()),
-                'r1 = {} + hair'.format(geom.dist_start_max_corner()),
+                'rmax = {}'.format(geom.max_radius),
+                'r1 = rmax + hair',
                 'r, phi = c2pr(x0, y0)',
                 'x1, y1 = pr2c(r1, phi)',
                 'x2, y2 = pr2c(r1, {}*math.pi/parts)'.format(slice),
@@ -247,7 +248,7 @@ class FslRenderer(object):
                 'nc_line(x0, y0, x1, y1, 0)',
                 'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
                 'nc_line(x2, y2, x3, y3, 0)',
-                'x0, y0 = pr2c(r1 - hair/2, math.pi/parts/2)',
+                'x0, y0 = pr2c(rmax + hair/2, math.pi/parts/2)',
                 'create_mesh_se(x0, y0)',
                 '\n',
                 'outer_da_start = {}'.format(

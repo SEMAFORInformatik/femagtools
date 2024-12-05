@@ -106,7 +106,7 @@ def svgshapes(svgfile):
     for p in svg.findall(".//{http://www.w3.org/2000/svg}path"):
         m = bcolor.search(p.get('style'))
         if m:
-            logger.info("subregion %d: %s", sr, m.groups()[0])
+            logger.debug("subregion %d: %s", sr, m.groups()[0])
         yield from get_shapes(p.get('d'))
         sr += 1
     for p in svg.findall(".//{http://www.w3.org/2000/svg}line"):

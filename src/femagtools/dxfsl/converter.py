@@ -12,6 +12,7 @@ from femagtools.dxfsl.plotrenderer import PlotRenderer
 from femagtools.dxfsl.concat import Concatenation
 from femagtools.dxfsl.functions import Timer, middle_angle
 from femagtools.dxfsl.journal import Journal, getJournal
+from femagtools.dxfsl.area import TYPE_WINDINGS
 import logging
 import logging.config
 import numpy as np
@@ -180,15 +181,25 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
     else:
         machine_temp = machine
 
-    midangle = middle_angle(machine_temp.startangle,
-                            machine_temp.endangle)
-
     plot_geom(False,  # for developer
               plt, machine_temp.geom,
-              title="Inner Rotor check magnets {}".format(midangle))
+              title="Inner Rotor check magnets")
+
+    machine_slice = machine_temp.get_forced_magnet_slice()
+    if machine_slice:
+        plot_geom(False,  # for developer
+                  plt, machine_slice.geom,
+                  title="Rotor Magnet Slice")
+
+        machine_temp = machine_slice
+        machine_temp.geom.set_rotor()
+        machine_temp.rebuild_subregions(EESM, single=single)
+        plot_geom(False,  # for developer
+                  plt, machine_temp.geom,
+                  title="Rotor Magnet Slice after Rebuild")
 
     rebuild = False
-    if machine_temp.geom.magnets_in_the_middle(midangle):
+    if machine_temp.has_magnets_in_the_middle():
         logger.debug("Magnets cut")
         rebuild = machine_temp.create_mirror_lines_outside_magnets()
     else:
@@ -269,6 +280,9 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
         machine_temp = machine_slice
         machine_temp.geom.set_stator()
         machine_temp.rebuild_subregions(EESM, single=single)
+        if machine_temp.has_windings_in_the_middle():
+            machine_temp.create_mirror_lines_outside_windings()
+
         plot_geom(False,  # for developer
                   plt, machine_temp.geom,
                   title="Stator Winding Slice after Rebuild")
@@ -285,12 +299,8 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
     if not machine_temp.is_mirrored():
         plot_geom(False,  # for developer
                   plt, machine_temp.geom,
-                  title="Stator before Boundery Corr")
+                  title="Stator before Boundary Corr")
         machine_temp.create_boundary_nodes()
-
-    if not machine_temp.has_windings():
-        logger.debug("___NO WINDINGS___")
-        logger.debug("   matching corners : %s", machine_temp.geom.corners_dont_match())
 
     plot_geom(False,  # for developer
               plt, machine_temp.geom,
@@ -890,30 +900,29 @@ def create_femag_parameters(m_inner, m_outer, nodedist=1):
     parts_inner = int(m_inner.get_symmetry_part())
     parts_outer = int(m_outer.get_symmetry_part())
 
-    slot_area = 0
-    if parts_inner > parts_outer:
-        from .area import TYPE_WINDINGS
-        slot_area = geom_inner.area_size_of_type(TYPE_WINDINGS)
-        num_slots = int(parts_inner)
-        num_poles = int(parts_outer)
-        num_sl_gen = int(geom_inner.get_symmetry_copies()+1)
-        alfa_slot = geom_inner.get_alfa()
-        alfa_pole = geom_outer.get_alfa()
+    if m_inner.geom.is_rotor():
+        geom_slots = geom_outer
+        geom_poles = geom_inner
+        num_slots = int(m_outer.get_symmetry_part())
+        num_poles = int(m_inner.get_symmetry_part())
     else:
-        from .area import TYPE_WINDINGS
-        slot_area = geom_outer.area_size_of_type(TYPE_WINDINGS)
-        num_slots = int(parts_outer)
-        num_poles = int(parts_inner)
-        num_sl_gen = int(geom_outer.get_symmetry_copies()+1)
-        alfa_slot = geom_outer.get_alfa()
-        alfa_pole = geom_inner.get_alfa()
+        geom_slots = geom_inner
+        geom_poles = geom_outer
+        num_slots = int(m_inner.get_symmetry_part())
+        num_poles = int(m_outer.get_symmetry_part())
+
+    slot_area = 0
+    slot_area = geom_slots.area_size_of_type(TYPE_WINDINGS)
+    num_sl_gen = int(geom_slots.get_symmetry_copies()+1)
+    alfa_slot = geom_slots.get_alfa()
+    alfa_pole = geom_poles.get_alfa()
 
     params['tot_num_slot'] = num_slots
     params['slot_area'] = slot_area
     params['num_sl_gen'] = num_sl_gen
     params['num_poles'] = num_poles
     params['nodedist'] = nodedist
-    params['external_rotor'] = parts_inner > parts_outer
+    params['external_rotor'] = m_outer.geom.is_rotor()
     params['dy1'] = 2*geom_outer.max_radius
     params['da1'] = 2*geom_outer.min_radius
     params['da2'] = 2*geom_inner.max_radius

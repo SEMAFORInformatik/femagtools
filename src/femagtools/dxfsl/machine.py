@@ -247,16 +247,21 @@ class Machine(object):
                            startangle=self.startangle,
                            endangle=self.endangle)
 
-    def full_copy(self, concatenate_matching_el=False):
+    def clone(self):
         clone = self.geom.copy_shape(self.radius,
                                      0.0, 2*np.pi,
-                                     0.0, self.radius+9999,
-                                     concatenate_matching_el=concatenate_matching_el)
+                                     0.0,
+                                     self.radius+9999,
+                                     concatenate=False,
+                                     connect=False)
         clone.kind = self.geom.kind
         clone.sym_part = self.geom.sym_part
         clone.sym_counterpart = self.geom.sym_counterpart
         clone.alfa = self.geom.alfa
-        self.geom = clone
+        return Machine(clone,
+                       radius = self.radius,
+                       startangle=self.startangle,
+                       endangle=self.endangle)
 
     def copy_mirror(self, startangle, midangle, endangle):
         logger.debug("begin of copy_mirror")
@@ -590,16 +595,33 @@ class Machine(object):
         return w
 
     def slot_area(self):
-        from .area import TYPE_WINDINGS
-        return self.geom.area_size_of_type(TYPE_WINDINGS)
+        return self.geom.area_size_of_type(AREA.TYPE_WINDINGS)
 
-    def get_winding_symmetry(self):
-        logger.debug("begin of find_winding_symmetry")
+    def get_winding_symmetry(self, inside=False):
+        logger.debug("begin of get_winding_symmetry")
         symmetry = Symmetry(geom=self.geom,
                             startangle=self.startangle,
                             endangle=self.endangle)
-        parts = symmetry.get_winding_symmetry()
-        logger.debug("end of find_winding_symmetry (parts=%s)", parts)
+        parts = symmetry.get_winding_symmetry(inside=inside)
+        logger.debug("end of get_winding_symmetry (parts=%s)", parts)
+        return parts
+
+    def get_magnet_symmetry(self):
+        logger.debug("begin of get_magnet_symmetry")
+        symmetry = Symmetry(geom=self.geom,
+                            startangle=self.startangle,
+                            endangle=self.endangle)
+        parts = symmetry.get_magnet_symmetry()
+        logger.debug("end of get_magnet_symmetry (parts=%s)", parts)
+        return parts
+
+    def get_symmetry(self):
+        logger.debug("begin of get_symmetry")
+        symmetry = Symmetry(geom=self.geom,
+                            startangle=self.startangle,
+                            endangle=self.endangle)
+        parts = symmetry.find_symmetry()
+        logger.debug("end of get_symmetry (parts=%s)", parts)
         return parts
 
     def find_symmetry(self, sym_tolerance, is_inner, is_outer, plt):
@@ -771,13 +793,95 @@ class Machine(object):
         return machine_slice
 
     def get_forced_winding_slice(self):
-        logger.debug("___FORCED_WINDING___")
-        if self.geom.num_of_windings() < 2:
+        logger.debug("get_forced_winding_slice()")
+        if not self.geom.is_outer:
+            return None
+
+        areas = len(self.geom.area_list)
+        winding_areas = self.geom.num_of_windings()
+        iron_areas = self.geom.num_of_irons()
+        air_areas = self.geom.num_areas_of_type((AREA.TYPE_AIR,))
+
+        if not (winding_areas + iron_areas + air_areas == areas):
+            logger.warning("Warning: strange areas in stator")
+
+        if winding_areas == 0:
+            return self.get_possible_windings()
+
+        if winding_areas < 2:
             return None  # nothing to do
         parts = self.get_winding_symmetry()
         if parts < 2:
             return None  # nothing to do
         return self.get_symmetry_slice()
+
+    def get_possible_windings(self, EESM=False, single=False):
+        if not self.geom.is_outer:
+            return None
+
+        machine = self.clone()
+        machine.repair_hull()
+        machine.set_alfa_and_corners()
+        machine.geom.set_subregion_parameters(self.startangle,
+                                              self.endangle)
+        machine.geom.looking_for_corners()
+        dist_start = machine.geom.dist_start_min_corner()
+        dist_end = machine.geom.dist_end_min_corner()
+
+        if not np.isclose(dist_start, dist_end, rtol=1e-3, atol=1e-3):
+            angle = machine.geom.alfa
+            if dist_start > dist_end:
+                machine.mirror_all_areas(self.startangle)
+                machine.rotate_to(angle)
+                machine.geom.create_list_of_areas(delete=True)
+                machine.startangle -= angle
+            else:
+                machine.mirror_all_areas(self.endangle)
+                machine.endangle += angle
+            machine.set_alfa_and_corners()
+            machine.part = machine.part_of_circle()
+            machine.geom.set_subregion_parameters(self.startangle,
+                                                  self.endangle)
+            machine.geom.looking_for_corners()
+
+        if machine.geom.close_outer_winding_areas():
+            machine.geom.create_list_of_areas(delete=True)
+            machine.geom.set_subregion_parameters(self.startangle,
+                                                  self.endangle)
+            machine.geom.looking_for_corners()
+            parts = machine.get_winding_symmetry(inside=True)
+
+            if parts == 1:
+                return machine
+            if parts > 1:
+                return machine.get_symmetry_slice()
+
+        return machine
+
+    def get_forced_magnet_slice(self):
+        logger.debug("get_forced_magnet_slice()")
+        areas = len(self.geom.area_list)
+        magnet_areas = self.geom.num_of_magnets()
+        iron_areas = self.geom.num_of_irons()
+        air_areas = self.geom.num_areas_of_type((AREA.TYPE_AIR,))
+
+        if magnet_areas < 2:
+            return None  # nothing to do
+        parts = self.get_magnet_symmetry()
+
+        if parts < 2:
+            return None  # nothing to do
+        slice = self.get_symmetry_slice()
+        match = slice.geom.min_max_corners_match()
+        while parts > 1 and not match:
+            parts = parts - 1
+            self.geom.rotate_symmetry_parameters()
+            slice = self.get_symmetry_slice()
+            match = slice.geom.min_max_corners_match()
+        if match:
+            slice.geom.set_rotor()
+            return slice
+        return None
 
     def get_forced_symmetry(self, part):
         logger.debug("begin get_forced_symmetry")
@@ -1059,6 +1163,13 @@ class Machine(object):
 
     def sync_with_counterpart(self, cp_machine):
         logger.debug("sync_with_counterpart")
+
+        def not_tiny_areas(geom):
+            sz_list = [a.area_size() for a in geom.list_of_areas()]
+            max_sz = max(sz_list)
+            large_sz_list = [sz for sz in sz_list if sz > max_sz * 0.005]
+            return len(large_sz_list)
+
         self.geom.sym_counterpart = cp_machine.get_symmetry_part()
         self.geom.sym_part = self.get_symmetry_part()
         logger.debug("part/sym-part: self=%s/%s, cp=%s/%s",
@@ -1066,6 +1177,14 @@ class Machine(object):
                      cp_machine.part, self.geom.sym_counterpart)
         cp_machine.geom.sym_counterpart = self.get_symmetry_part()
         cp_machine.geom.sym_part = cp_machine.get_symmetry_part()
+
+        if not_tiny_areas(self.geom) == 1:
+            if not_tiny_areas(cp_machine.geom) > 1:
+                self.geom.force_to_be_stator()
+                cp_machine.geom.force_to_be_rotor()
+        elif not_tiny_areas(cp_machine.geom) == 1:
+            self.geom.force_to_be_rotor()
+            cp_machine.geom.force_to_be_stator()
 
     def search_subregions(self, EESM, single=False):
         logger.debug("Search subregions")
@@ -1159,6 +1278,11 @@ class Machine(object):
         midangle = middle_angle(self.startangle,
                                 self.endangle)
         return self.geom.windings_in_the_middle(midangle)
+
+    def has_magnets_in_the_middle(self):
+        midangle = middle_angle(self.startangle,
+                                self.endangle)
+        return self.geom.magnets_in_the_middle(midangle)
 
     def create_mirror_lines_outside_windings(self):
         logger.debug("create_mirror_lines_outside_windings")
@@ -1290,3 +1414,14 @@ class Machine(object):
             self.clear_cut_lines()
             self.repair_hull()
             self.set_alfa_and_corners()
+
+    def mirror_all_areas(self, mirror_angle):
+        self.geom.mirror_all_areas(mirror_angle)
+
+    def check_airgap_connecting_nodes(self, m_outer):
+        logger.info("check_airgap_connecting_nodes")
+        assert(self.geom.is_inner)
+        assert(m_outer.geom.is_outer)
+        self.geom.check_airgap_connecting_nodes(m_outer.geom,
+                                                self.startangle,
+                                                self.endangle)

@@ -101,6 +101,13 @@ class Symmetry(object):
         return positive_angle(alpha_angle(self.startangle,
                                           a.get_mid_angle(self.geom.center)))
 
+    def area_list_entry(self, a):
+        return (round(a.get_alpha(self.geom.center), 3),
+                round(a.min_dist, 1),
+                round(a.height, 1),
+                self.calc_mid_angle(a),
+                a)
+
     def build_area_list(self, types=()):
         arealist = self.geom.list_of_areas()
         if types:
@@ -108,11 +115,7 @@ class Symmetry(object):
 
         areas = []
         for a in arealist:
-            areas.append((round(a.get_alpha(self.geom.center), 3),
-                          round(a.min_dist, 1),
-                          round(a.height, 1),
-                          self.calc_mid_angle(a),
-                          a))
+            areas.append(self.area_list_entry(a))
         areas.sort(reverse=True)
         return areas
 
@@ -147,8 +150,12 @@ class Symmetry(object):
         check_rslt.append((areasize, rslt))
         return check_rslt
 
-    def get_winding_symmetry(self):
-        areas = self.build_area_list((AREA.TYPE_WINDINGS,))
+    def get_winding_symmetry(self, inside=False):
+        if inside:
+            areas = [self.area_list_entry(a) for a in self.geom.list_of_areas()
+                     if not a.close_to_ag]
+        else:
+            areas = self.build_area_list((AREA.TYPE_WINDINGS,))
 
         logger.debug("begin of Symmetry::get_winding_symmetry: %s areas available", len(areas))
         if not areas:
@@ -169,6 +176,47 @@ class Symmetry(object):
         self.set_symmetry_parameters(self.startangle, parts, delta)
 
         logger.debug("end of Symmetry::get_winding_symmetry: parts=%s", parts)
+        return parts
+
+    def get_magnet_symmetry(self):
+        areas = self.build_area_list((AREA.TYPE_MAGNET_AIRGAP, AREA.TYPE_MAGNET_RECT,))
+        air = self.build_area_list((AREA.TYPE_AIR,))
+        mag_list = [a for a in self.geom.list_of_areas() if a.is_magnet()]
+        air_list = [a for a in self.geom.list_of_areas() if a.is_air()]
+        sz_list = [a.area_size() for a in self.geom.list_of_areas()]
+        max_sz = max(sz_list)
+        for a in air_list:
+            if a.area_size() < max_sz * 0.005:
+                continue
+            for m in mag_list:
+                if a.is_touching(m):
+                    areas.append(self.area_list_entry(a))
+                    break
+
+        logger.debug("begin of Symmetry::get_magnet_symmetry: %s areas available", len(areas))
+        if not areas:
+            logger.debug("end of Symmetry::get_magnet_symmetry: no areas")
+            return 0
+
+        check_rslt = self.build_results(areas)
+        logger.debug("%s results available", len(check_rslt))
+        [logger.debug("Result: %s", rslt) for rslt in check_rslt]
+        for sz, rslt in check_rslt:
+            if not rslt.get('startdelta', 0.0) == 0.0:
+                return 0  # not proper
+            if rslt.get('halfslice', None):
+                return 0  # not proper
+
+        parts, start_delta = self.get_symmetry_parts(check_rslt)
+        if parts <= 1:
+            return 0
+        self.create_cut_lines(parts, start_delta)
+
+        sym = self.geom_part * parts
+        delta = 2*np.pi/sym
+        self.set_symmetry_parameters(self.startangle, parts, delta)
+
+        logger.debug("end of Symmetry::get_magnet_symmetry: parts=%s", parts)
         return parts
 
     def find_symmetry(self):

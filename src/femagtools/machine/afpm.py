@@ -189,7 +189,8 @@ def parident(workdir, engine, temp, machine,
 
             nlresults = pstudy(nlparvardef, machine, nlcalc, engine)
             if nlresults['status'].count('C') != len(nlresults['status']):
-                raise ValueError('Noload simulation failed %s', nlresults['status'])
+                raise ValueError(
+                    f"Noload simulation failed {nlresults['status']}")
         else:
             nlresults = {"x": [], "f": []}
             i = 0
@@ -210,7 +211,7 @@ def parident(workdir, engine, temp, machine,
                 nlresults['f'].append({k: v for k, v in r.items()})
                 i = i + 1
         nlresults.update(process(lfe, pole_width, machine, nlresults['f']))
-
+        weights = nlresults['weights']
         current_angles = nlresults['f'][0]['current_angles']
         results = []
         i = 0
@@ -325,7 +326,7 @@ def parident(workdir, engine, temp, machine,
                                       (-1, num_beta_steps)),
                            axis=1).T.tolist()})
         ldq.append({'temperature': magtemp,
-                    'i1':i1, 'beta':beta,
+                    'i1': i1, 'beta': beta,
                     'psid': psid.tolist(), 'psiq': psiq.tolist(),
                     'ld': ld, 'lq': lq,
                     'torque': torque.tolist(),
@@ -334,7 +335,8 @@ def parident(workdir, engine, temp, machine,
         #iq, id = femagtools.machine.utils.iqd(*np.meshgrid(beta, i1))
 
     return {'m': machine[wdgk]['num_phases'],
-            'p': machine['poles']//2,
+            'p': machine['poles']//2, 'weights': weights,
+            'rotor_mass': sum(weights[1]), "kfric_b": 1,
             'ls1': 0, 'r1': r1, 'ldq': ldq}
 
 
@@ -442,8 +444,17 @@ def process(lfe, pole_width, machine, bch):
                         mmod.outer_diam, mmod.inner_diam)
     i1 = np.mean([np.max(c) for c in currents])/np.sqrt(2)
     plcu = mmod.winding['num_phases']*i1**2*r1
+    weights = np.array([[0, 0, 0], [0, 0, 0]])
+    try:
+        for b in bch:
+            weights = weights + b['weights']
+        weights *= scale_factor
+    except KeyError as exc:
+        #logger.warning("missing key %s", exc)
+        pass
 
     return {
+        'weights': weights.tolist(),
         'pos': pos.tolist(), 'r1': r1,
         'torque': torque,
         'emf': emf,

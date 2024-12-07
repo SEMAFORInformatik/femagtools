@@ -335,9 +335,8 @@ class Mcv(object):
             self.setData(data)
 
             self.mc1_curves = len(self.curve)
-            if self.mc1_type == MAGCRV and self.mc1_curves > 1:
-                self.mc1_type = ORIENT_CRV
-            if self.mc1_type in (ORIENT_CRV, ORIENT_PM_CRV):
+            if (self.mc1_type in (ORIENT_CRV, ORIENT_PM_CRV)
+                or self.mc1_curves > 1):
                 self.version_mc_curve = self.ORIENTED_VERSION_MC_CURVE
             elif self.mc1_type == DEMCRV_BR:
                 self.version_mc_curve = self.PARAMETER_PM_CURVE

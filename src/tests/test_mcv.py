@@ -33,7 +33,7 @@ def test_write_mcv_orient_crv(tmpdir):
     mcvr = femagtools.mcv.Reader()
     mcvr.readMcv(filename+ext)
     assert mcvr['version_mc_curve'] == 1
-    assert mcvr['ctype'] == femagtools.mcv.ORIENT_CRV
+    assert mcvr['ctype'] == femagtools.mcv.MAGCRV
     assert mcvr['curve'][0]['bi'] == pytest.approx(B, 1e-3)
     assert mcvr['curve'][0]['hi'] == pytest.approx(H, 1e-3)
     assert mcvr['curve'][1]['bi'] == pytest.approx(B, 1e-3)

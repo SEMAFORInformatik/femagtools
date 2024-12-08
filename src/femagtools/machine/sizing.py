@@ -749,6 +749,8 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
     _set_afpm_defaults(par)
 
     kp = 1 if afmtype == 'S1R1' else 2
+    kps = 1 if afmtype in ('S1R1', 'S1R2') else 2
+    kpr = 2 if afmtype == 'S1R2' else 1
     kd = par['kd']  # ratio of inner_diam/outer_diam
     tnom = pnom/(2*np.pi*speed)
     sigmas = par['sigmas']  # shear force
@@ -787,23 +789,21 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
     Ui = par['ui_u'] * u1nom
     N = np.sqrt(2)*Ui/(2*np.pi*f1*kw*psi1)
 
-    # coils per phase and pole
-    # q = Q/2/p/m
-    # num wires per coil side (number of coil groups a)
-    # n = a*N / 2 / p / q
-
     # feasible number of turns per coil...
     layers = wdg.l
-    ncoils = Q1 // 2 // m * layers
+    # coils per phase (kps: number of stators)
+    ncoils = kps*Q1 // 2 // m * layers
     ngroups = [1] + [g for g in range(2, layers*p + 1) if layers * p % g == 0]
     ndiff = [abs(N - ncoils // a * a * round(N / ncoils))
              for a in ngroups]
     logger.debug("N %f ngroups %s ndiffs %s", N, ngroups, ndiff)
+    # parallel groups
     a_calc = ngroups[np.argmin(ndiff)]
     a = par.get("a", a_calc)
     if a not in ngroups:
         logger.warning("Check given number %s of parallel wdg groups. Valid ngroups are: %s",
                        a, ngroups)
+    # num wires per coil side (number of coil groups a)
     num_wires = round(a * N / ncoils)
 
     # correction of number of turns per phase
@@ -826,12 +826,12 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
     bds = taus*(Di+2*hs1)*Bd1/par['Bth']
     bns = taus*(Di+2*hs1) - bds
 
-    hns = (-bns + np.sqrt(bns**2 + 4*ans*np.tan(taus)))/2/np.tan(taus)
-    hys = psi1/2/lfe/par['By']
+    hns = (-bns + np.sqrt(bns**2 + 4*ans*np.tan(taus)))/2/np.tan(taus)/kps
+    hys = psi1/lfe/par['By']/kps
 
-    aw = ans * par['kq'] / layers / num_wires
+    aw = ans * par['kq'] / layers / num_wires * kps
 
-    r = {'outer_diam': Do, 'inner_diam': Di, 'airgap': par['airgap'],
+    r = {'outer_diam': Do, 'inner_diam': Di, 'airgap': par['airgap']/kp,
          'afmtype': afmtype, 'lfe': lfe,
          'poles': 2*p,
          'ans': round(ans, 6),
@@ -876,7 +876,7 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
         coil_span=wdg.yd,
         num_wires=int(num_wires))
 
-    hm = _get_magnet_height(r['i1'], r['w1'], r['kw'], par)
+    hm = _get_magnet_height(r['i1'], r['w1'], r['kw'], par)/kpr
     r['magnet'] = dict(
         afm_rotor=dict(
             yoke_height=round(hys, 4),

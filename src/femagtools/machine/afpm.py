@@ -25,6 +25,25 @@ AFM_TYPES = (
     "S2R1_all"   # 2 stator, 1 rotor, all simulated
 )
 
+def num_agnodes(Q, p, pw, ag):
+    """return total number of nodes in airgap per pole
+     Args:
+      Q: (int) number of slots
+      p: (int) number of pole pairs
+      pw: (float) pole width
+      ag: (float) airgap height
+    """
+    num_nodes = np.arange(12, 120, 6)
+    i = np.argmin(np.abs(pw/num_nodes - ag/2))
+    if p*num_nodes[i-1] % Q:
+        lcm = np.lcm(Q, 2*p)//p
+        nmin, nmax = num_nodes[0]//lcm, num_nodes[-1]//lcm
+        num_nodes = np.array(
+            [i*lcm for i in range(nmin, nmax) if i*lcm % 6 == 0])
+        i = np.argmin(np.abs(pw/num_nodes - ag/2))
+        # nodedist 0.5, 2, 4, 6
+    return num_nodes[i-1]
+
 def _integrate(radius, pos, val):
     interp = RegularGridInterpolator((radius, pos), val)
     def func(x, y):
@@ -141,10 +160,8 @@ def parident(workdir, engine, temp, machine,
 
     if "num_agnodes" not in machine:
         for pw in pole_width:
-            machine['num_agnodes'] = 6*round(pw/machine['airgap']/4)
-
-            #if machine['num_agnodes'] < nper:
-            #    machine['num_agnodes'] = 8*round(pw/machine['airgap']/4)
+            machine['num_agnodes'] = num_agnodes(Q1, p//2, pw,
+                                                 machine['airgap'])
 
     nlparvardef = {
         "decision_vars": [
@@ -614,14 +631,12 @@ class AFPM:
                     for pw in pole_width]
 
         if "num_agnodes" not in machine:
+            Q1 = machine['stator']['num_slots']
+            p = machine['poles']
             for pw in pole_width:
-                machine['num_agnodes'] = 6*round(pw/machine['airgap']/4)
-                #Q = machine['stator']['num_slots']
-                #p = machine['poles']
-                #nper = np.lcm(Q, p)
-                #if machine['num_agnodes'] < nper:
-                #    machine['num_agnodes'] = 8*round(pw/machine['airgap']/4)
-
+                machine['num_agnodes'] = num_agnodes(Q1, p//2, pw,
+                                                     machine['airgap'])
+            logger.info("Num agnodes/pole %d", machine['num_agnodes'])
         parvardef = {
             "decision_vars": [
                 {"values": pole_width,

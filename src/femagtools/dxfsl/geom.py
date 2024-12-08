@@ -3613,7 +3613,7 @@ class Geometry(object):
             return
         elements = []
         for a in areas:
-            elements += a.elements()
+            elements += a.copy_of_elements()
         geom = Geometry(elements, center=self.center, type=self.sym_type)
         builder = AreaBuilder(geom=geom)
         if builder.create_area_groups(areas):
@@ -4210,15 +4210,12 @@ class Geometry(object):
         return False
 
     def create_inner_corner_areas(self, startangle, endangle):
-        self.set_edge_attributes()
-
         builder = AreaBuilder(geom=self)
-        builder.create_inner_corner_auxiliary_areas(startangle, endangle)
+        return builder.create_inner_corner_auxiliary_areas(startangle, endangle)
 
     def close_outer_winding_areas(self):
         logger.debug("begin close_outer_winding_areas(%s areas)",
                      len(self.area_list))
-        self.set_edge_attributes()
 
         builder = AreaBuilder(geom=self)
         rslt = builder.close_outer_winding_areas()

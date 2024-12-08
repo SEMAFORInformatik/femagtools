@@ -630,7 +630,7 @@ class AreaBuilder(object):
         logger.debug("begin of create_inner_corner_auxiliary_areas")
         if not self.geom.is_inner:
             logger.debug("end of create_inner_corner_auxiliary_areas: not inner")
-            return
+            return False
 
         self.set_edge_attributes()
 
@@ -647,17 +647,18 @@ class AreaBuilder(object):
 
         if start_exists and end_exists:
             logger.debug("end of create_inner_corner_auxiliary_areas: no aktion")
-            return
+            return False
 
         airgap_line, airgap_el = self.get_inner_airgap_line()
         if not airgap_el:
             logger.debug("end of create_inner_corner_auxiliary_areas: no airgapline found")
-            return
+            return False
 
         logger.debug("airgapline found !!")
         airgap_nodes = [n for n in airgap_line[1:]]
         del airgap_nodes[-1]
 
+        created = False
         if not start_exists:
             cp = self.geom.start_corners[-1]
             logger.debug("Start Corner: %s -- %s", cp, start_cp)
@@ -683,6 +684,7 @@ class AreaBuilder(object):
                                            n,
                                            color='red',
                                            linestyle='dotted')
+                    created = True
                     start_node = self.geom.get_node(start_cp)
                     self.geom.add_edge(cp, start_node, start_line)
                     result = self.get_new_area(start_node, n)
@@ -715,6 +717,7 @@ class AreaBuilder(object):
                         self.geom.add_line(end_cp, n,
                                            color='red',
                                            linestyle='dotted')
+                    created = True
                     end_node = self.geom.get_node(end_cp)
                     self.geom.add_edge(cp, end_node, end_line)
                     result = self.get_new_area(n, end_node)
@@ -725,9 +728,12 @@ class AreaBuilder(object):
                     break
 
         logger.debug("end of create_inner_corner_auxiliary_areas")
+        return created
 
     def get_airgap_line(self, start_node, end_node, area):
         logger.debug("get_airgap_line")
+
+        self.set_edge_attributes()
 
         nodes = [n for n in area.list_of_nodes()]
         if not nodes:
@@ -819,6 +825,7 @@ class AreaBuilder(object):
 
     def close_outer_winding_areas(self):
         logger.debug("close_outer_winding_areas")
+
         airgap_line, airgap_el = self.get_outer_airgap_line()
         logger.debug("Outer Airgap with %s Nodes", len(airgap_line))
 
@@ -897,7 +904,7 @@ class AreaBuilder(object):
             nodes.append(n2)
             elements.append(info.element)
 
-        logger.debug("end of get_inner_airgap_line #%s", len(nodes))
+        logger.debug("end of get_element_line #%s", len(nodes))
         return nodes, elements
 
     def create_one_area_group(self, areas):

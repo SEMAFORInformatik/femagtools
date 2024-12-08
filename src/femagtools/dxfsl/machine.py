@@ -1210,8 +1210,7 @@ class Machine(object):
 
     def rebuild_subregions(self, EESM, single=False):
         logger.debug("Rebuild subregions")
-        self.geom.set_edge_attributes()
-        self.geom.area_list = []
+        self.geom.create_list_of_areas(delete=True)
         self.geom.search_subregions(self.startangle,
                                     self.endangle,
                                     EESM,

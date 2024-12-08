@@ -210,7 +210,7 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
         else:
             rebuild = machine_temp.create_mirror_lines_outside_magnets()
     if rebuild:
-        machine_temp.geom.area_list = []
+        machine_temp.geom.create_list_of_areas(delete=True)
 
     if machine_temp.create_auxiliary_lines():
         logger.debug("Auxiliary Lines created: rebuild subregions")

@@ -3615,20 +3615,31 @@ class Geometry(object):
         for a in areas:
             elements += a.copy_of_elements()
         geom = Geometry(elements, center=self.center, type=self.sym_type)
+        geom.create_list_of_areas()
+        mag_areas = geom.list_of_areas()
+
         builder = AreaBuilder(geom=geom)
-        if builder.create_area_groups(areas):
+        if builder.create_area_groups(mag_areas):
             return  # bad
         group_list = builder.area_list
-        # for debugging
-        # self.areagroup_list = group_list
+
         for group in group_list:
             if not group.is_magnet_rectangle():
                 logger.debug("Warning: group is not a rectangle")
             group.set_type(AREA.TYPE_MAGNET_RECT)
             phi = group.get_magnet_orientation()
             for a in group.areas_of_group:
-                logger.debug("Replace phi %s by %s", a.phi, phi)
                 a.phi = phi
+                p = a.get_best_point_inside(geom)
+                phi_set = False
+                for area in areas:
+                    if area.the_point_is_inside_area(p):
+                        logger.debug("Replace phi %s by %s", area.phi, phi)
+                        area.phi = phi
+                        phi_set = True
+                        break
+                if not phi_set:
+                    logger.warning("___MAGNET PHI NOT SET. AREA NOT FOUND IN GEOMETRY___")
 
     def search_unknown_subregions(self):
         logger.debug("begin of search_unknown_subregions")

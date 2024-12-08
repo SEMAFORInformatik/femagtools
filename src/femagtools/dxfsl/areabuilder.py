@@ -338,7 +338,7 @@ class EdgeInfo(object):
         return True  # two lines
 
     def arc_line_direction_lefthand(self, start_edge, line_edge, builder):
-        logger.info("begin of arc_line_direction_lefthand")
+        logger.debug("begin of arc_line_direction_lefthand")
         if not self.is_arc():
             logger.critical("FATAL: unexpected %s at position %s", self.classname(), self.n1)
             sys.exit(1)

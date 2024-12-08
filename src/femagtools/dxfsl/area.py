@@ -100,6 +100,9 @@ class Area(object):
     def elements(self):
         return self.area
 
+    def copy_of_elements(self):
+        return [e.clone() for e in self.elements() if e]
+
     def list_of_nodes(self):
         if len(self.area) < 1:
             return

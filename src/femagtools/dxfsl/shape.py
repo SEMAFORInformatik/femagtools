@@ -54,6 +54,9 @@ class Shape(object):
     def classname(self):
         return "Shape"
 
+    def clone(self):
+        return None
+
     def set_my_color(self, color):
         self.my_color = color
 
@@ -379,6 +382,10 @@ class Circle(Shape):
 
     def classname(self):
         return "Circle"
+
+    def clone(self):
+        return Circle(Element(center=self.center,
+                              radius=self.radius))
 
     def render(self, renderer, color='blue', with_nodes=False):
         tmp_color = self.get_my_color()
@@ -767,6 +774,14 @@ class Arc(Circle):
 
     def classname(self):
         return "Arc"
+
+    def clone(self):
+        alpha_start = alpha_line(self.center, self.p1)
+        alpha_end = alpha_line(self.center, self.p2)
+        return Arc(Element(center=self.center,
+                           radius=self.radius,
+                           start_angle=alpha_start*180/np.pi,
+                           end_angle=alpha_end*180/np.pi))
 
     def render(self, renderer, color='blue', with_nodes=False):
         tmp_color = self.get_my_color()
@@ -1310,6 +1325,10 @@ class Line(Shape):
 
     def classname(self):
         return "Line"
+
+    def clone(self):
+        return Line(Element(start=self.p1,
+                            end=self.p2))
 
     def render(self, renderer, color='blue', with_nodes=False):
         tmp_color = self.get_my_color()

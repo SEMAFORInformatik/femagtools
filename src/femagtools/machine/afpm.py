@@ -591,10 +591,10 @@ class AFPM:
     condMat: conductor material
     """
     def __init__(self, workdir, magnetizingCurves='.', magnetMat='',
-                 condMat=''):
+                 condMat='', cmd=None):
         self.parstudy = parstudy.List(
             workdir, condMat=condMat, magnets=magnetMat,
-            magnetizingCurves=magnetizingCurves)
+            magnetizingCurves=magnetizingCurves, cmd=cmd)
 
     def __call__(self, engine, machine, simulation, num_slices):
         """ run FE simulation

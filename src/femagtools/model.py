@@ -136,14 +136,15 @@ class MachineModel(Model):
         name = 'DRAFT'
         if isinstance(parameters, str):
             name = parameters
+            self.connect_full = False  # no matter
         else:
             if 'name' in parameters:
                 name = parameters['name']
             if 'windings' in parameters:
                 self.winding = self.windings
 
-        # connect model even for complete model (see fsl connect_models)
-        self.connect_full = parameters.get('afmtype', '') == ''
+            # connect model even for complete model (see fsl connect_models)
+            self.connect_full = parameters.get('afmtype', '') == ''
         # must sanitize name to prevent femag complaints
         self.name = ''.join([n
                              for n in name.strip()

@@ -827,7 +827,7 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
     bns = taus*(Di+2*hs1) - bds
 
     hns = (-bns + np.sqrt(bns**2 + 4*ans*np.tan(taus)))/2/np.tan(taus)/kps
-    hys = psi1/lfe/par['By']/kps
+    hys = psi1/2/lfe/par['By']/kps
 
     aw = ans * par['kq'] / layers / num_wires * kps
 

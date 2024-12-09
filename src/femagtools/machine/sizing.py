@@ -772,7 +772,7 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
         u1nom = par['u1']
     f1 = speed*p
     # flux linkage
-    psi1 = 2.0/np.pi*taup*lfe*Bd1
+    psi1 = kpr*2.0/np.pi*taup*lfe*Bd1
 
     # winding factor
     Q1 = par['Q1']
@@ -862,7 +862,7 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
             slot_open_width=r['bns'],
             slot_r1=0,
             slot_r2=0,  # bns2/2,
-            yoke_height=round(hys, 4)))
+            yoke_height=round(hys, 4) if kpr == 1 else 0))
 
     relculen = 1.4
     r['winding'] = dict(
@@ -879,7 +879,7 @@ def afpm(pnom: float, speed: float, p: int, afmtype: str, **kwargs) -> dict:
     hm = _get_magnet_height(r['i1'], r['w1'], r['kw'], par)/kpr
     r['magnet'] = dict(
         afm_rotor=dict(
-            yoke_height=round(hys, 4),
+            yoke_height=round(hys/kpr, 4) if kps == 1 else 0,
             rel_magn_width=par['mag_width'],
             magn_height=round(hm, 4))
     )

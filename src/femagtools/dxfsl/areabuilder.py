@@ -781,47 +781,12 @@ class AreaBuilder(object):
             logger.debug("end of get_inner_airgap_line: %s areas found", len(area))
             return [], []
 
-        end_corner = self.geom.end_corners[-1]
-        logger.debug("END CORNER %s", end_corner)
+        start_node = self.geom.end_corners[-1]
+        logger.debug("START NODE %s", start_node)
+        end_node = self.geom.start_corners[-1]
+        logger.debug("END NODE %s", end_node)
 
-        nodes = [n for n in area[0].list_of_nodes()]
-        if not nodes:
-            logger.debug("end of get_inner_airgap_line: no nodes found")
-            return [], []
-
-        n1 = nodes[0]
-        if points_are_close(end_corner, n1):
-            n2 = nodes[-1]
-        else:
-            n2 = n1
-            for n1 in nodes[1:]:
-                if points_are_close(end_corner, n1):
-                    break
-                n2 = n1
-
-        if not points_are_close(end_corner, n1):
-            logger.debug("end of get_inner_airgap_line: not close to endcorner")
-            return [], []
-
-        start_corner = self.geom.start_corners[-1]
-        logger.debug("START CORNER %s", end_corner)
-
-        logger.debug("EDGE FOUND: %s - %s", n1, n2)
-        nodes = [n1, n2]
-        info = self.get_edge_info(n1, n2)
-        elements = [info.element]
-
-        while not points_are_close(start_corner, n2):
-            info.set_start_angle()
-            info = self.next_edge_lefthand_side(info)
-            if not info:  # bad
-                return [], []
-            n2 = info.n2
-            nodes.append(n2)
-            elements.append(info.element)
-
-        logger.debug("end of get_inner_airgap_line #%s", len(nodes))
-        return nodes, elements
+        return self.get_airgap_line(start_node, end_node, area[0])
 
     def close_outer_winding_areas(self):
         logger.debug("close_outer_winding_areas")
@@ -883,29 +848,6 @@ class AreaBuilder(object):
         logger.debug("END NODE %s", end_node)
 
         return self.get_airgap_line(start_node, end_node, area[0])
-
-    def get_element_line(self, start_node, end_node):
-        logger.debug("begin of get_element_line")
-        assert(self.geom.area_list)
-
-        logger.debug("-- get line from %s to %s", start_node, end_node)
-
-        logger.debug("EDGE FOUND: %s - %s", n1, n2)
-        nodes = [n1, n2]
-        info = self.get_edge_info(n1, n2)
-        elements = [info.element]
-
-        while not points_are_close(start_corner, n2):
-            info.set_start_angle()
-            info = self.next_edge_lefthand_side(info)
-            if not info:  # bad
-                return []
-            n2 = info.n2
-            nodes.append(n2)
-            elements.append(info.element)
-
-        logger.debug("end of get_element_line #%s", len(nodes))
-        return nodes, elements
 
     def create_one_area_group(self, areas):
         logger.debug("begin of create_one_area_group")

@@ -102,6 +102,7 @@ class Symmetry(object):
                                           a.get_mid_angle(self.geom.center)))
 
     def area_list_entry(self, a):
+        a.set_symmetry_parameter(self.geom.center)
         return (round(a.get_alpha(self.geom.center), 3),
                 round(a.min_dist, 1),
                 round(a.height, 1),
@@ -124,19 +125,34 @@ class Symmetry(object):
         equal_areas = [(a0_mid_angle, a0)]
         check_rslt = []
         for a1_alpha, a1_min_dist, a1_height, a1_mid_angle, a1 in areas[1:]:
-            if self.equal_area(a0_min_dist, a0_height, a0_alpha,
-                               a1_min_dist, a1_height, a1_alpha,
-                               rtol=0.001, atol=0.05):
+            if (self.equal_area(a0_min_dist, a0_height, a0_alpha,
+                                a1_min_dist, a1_height, a1_alpha,
+                                rtol=0.001, atol=0.05)):
                 a0_min_dist = (a0_min_dist + a1_min_dist) / 2
                 a0_height = (a0_height + a1_height) / 2
                 a0_alpha = (a0_alpha + a1_alpha) / 2
                 equal_areas.append((a1_mid_angle, a1))
             else:
-                rslt = self.check_delta(equal_areas)
-                areasize = a0.area_size()
-                rslt['area'] = a0
-                rslt['areasize'] = areasize
-                check_rslt.append((areasize, rslt))
+                # alpha Wechsel
+                id_list = []
+                for i in range(len(equal_areas)):
+                    mid_angle0, area0 = equal_areas[i]
+                    if area0.get_id() in id_list:
+                        continue
+                    equal_areas_check = [(mid_angle0, area0)]
+                    for mid_angle1, area1 in equal_areas[i+1:]:
+                        if area1.get_id() in id_list:
+                            continue
+                        if area0.is_symmetry_equal(area1):
+                            equal_areas_check.append((mid_angle1, area1))
+                            id_list.append(area1.get_id())
+
+                    rslt = self.check_delta(equal_areas_check)
+                    areasize = a0.area_size()
+                    rslt['area'] = a0
+                    rslt['areasize'] = areasize
+                    check_rslt.append((areasize, rslt))
+
                 equal_areas = [(a1_mid_angle, a1)]
                 a0_min_dist = a1_min_dist
                 a0_height = a1_height
@@ -154,6 +170,7 @@ class Symmetry(object):
         if inside:
             areas = [self.area_list_entry(a) for a in self.geom.list_of_areas()
                      if not a.close_to_ag]
+            areas.sort(reverse=True)
         else:
             areas = self.build_area_list((AREA.TYPE_WINDINGS,))
 
@@ -228,6 +245,8 @@ class Symmetry(object):
             return 0
 
         check_rslt = self.build_results(areas)
+        logger.debug("%s results available", len(check_rslt))
+        [logger.debug("Result: %s", rslt) for rslt in check_rslt]
 
         parts, start_delta = self.get_symmetry_parts(check_rslt)
         if parts < 2:
@@ -248,6 +267,7 @@ class Symmetry(object):
         result = {'areas': len(area_list),
                   'startdelta': 0.0,
                   'slices': None}
+        result['area_id_list'] = [a.get_id() for m, a in area_list]
         if not area_list:
             logger.debug("end of check_delta: no areas")
             return result

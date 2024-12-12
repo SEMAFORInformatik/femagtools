@@ -1986,7 +1986,7 @@ class Geometry(object):
                                startangle=0.0,
                                endangle=np.pi/2)
 
-        elif np.isclose(width, height*2, self.rtol, self.atol):
+        elif np.isclose(width, height*2, rtol=1e-2, atol=1e-2):
             radius = width/2
             self.set_center([mm[1]-height, mm[2]])
             logger.info("check for half machine")
@@ -2005,7 +2005,7 @@ class Geometry(object):
                                startangle=np.pi,
                                endangle=0.0)
 
-        elif np.isclose(width*2, height, self.rtol, self.atol):
+        elif np.isclose(width*2, height, rtol=1e-2, atol=1e-2):
             radius = width
             logger.info("check for half machine")
             self.set_center([mm[1], mm[3]-width])
@@ -2409,31 +2409,31 @@ class Geometry(object):
         logger.debug("end check_airgap: return %s", len(area_id_list) > 1)
         return len(area_id_list) > 1  # bad
 
-    def is_border_line(self, center, startangle, endangle, e, atol):
+    def is_border_line(self, center, startangle, endangle, e, rtol=1e-3, atol=1e-3):
         if isinstance(e, Line):
             if np.isclose(startangle, endangle):
                 return False  # full
 
             if points_are_close(center, e.p1):
                 angle_p2 = alpha_line(center, e.p2)
-                if np.isclose(startangle, angle_p2, 1e-3, atol):
+                if np.isclose(startangle, angle_p2, rtol=rtol, atol=atol):
                     return True
-                return np.isclose(endangle, angle_p2, 1e-3, atol)
+                return np.isclose(endangle, angle_p2, rtol=rtol, atol=atol)
 
             if points_are_close(center, e.p2):
                 angle_p1 = alpha_line(center, e.p1)
-                if np.isclose(startangle, angle_p1, 1e-3, atol):
+                if np.isclose(startangle, angle_p1, rtol=rtol, atol=atol):
                     return True
-                return np.isclose(endangle, angle_p1, 1e-3, atol)
+                return np.isclose(endangle, angle_p1, rtol=rtol, atol=atol)
 
             angle_p1 = alpha_line(center, e.p1)
-            if np.isclose(startangle, angle_p1, 1e-3, atol):
+            if np.isclose(startangle, angle_p1, rtol=rtol, atol=atol):
                 angle_p2 = alpha_line(center, e.p2)
-                return np.isclose(startangle, angle_p2, 1e-3, atol)
+                return np.isclose(startangle, angle_p2, rtol=rtol, atol=atol)
 
-            if np.isclose(endangle, angle_p1, 1e-3, atol):
+            if np.isclose(endangle, angle_p1, rtol=rtol, atol=atol):
                 angle_p2 = alpha_line(center, e.p2)
-                return np.isclose(endangle, angle_p2, 1e-3, atol)
+                return np.isclose(endangle, angle_p2, rtol=rtol, atol=atol)
         return False
 
     def get_gaplist(self, center):
@@ -2457,7 +2457,7 @@ class Geometry(object):
         """
         gaplist = []
         for e in self.elements(Shape):
-            if not self.is_border_line(center, startangle, endangle, e, atol):
+            if not self.is_border_line(center, startangle, endangle, e, atol=atol):
                 gaplist += [e.minmax_from_center(center)]
             else:
                 min_r, max_r = e.minmax_from_center(center)

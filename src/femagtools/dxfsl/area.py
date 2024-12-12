@@ -12,6 +12,7 @@ import numpy as np
 import networkx as nx
 import logging
 from .functions import less_equal, less, greater_equal, greater
+from .functions import greater_angle, less_angle
 from .functions import distance, alpha_angle, alpha_line, min_angle, max_angle
 from .functions import point, line_m, line_n, intersect_point, points_are_close
 from .functions import middle_angle, part_of_circle, is_same_angle
@@ -75,6 +76,10 @@ class Area(object):
         self.start = 0.0
         self.sym_startangle = 0.0
         self.sym_endangle = 0.0
+        self.sym_upper_left_dist = None
+        self.sym_upper_right_dist = None
+        self.sym_lower_left_dist = None
+        self.sym_lower_right_dist = None
         self.sym_type = 0
         self.symmetry = 0
         self.sym_tolerance = sym_tolerance
@@ -673,6 +678,66 @@ class Area(object):
            np.isclose(self.max_angle, area.max_angle):
             return True
         return False
+
+    def set_symmetry_parameter(self, center):
+        all_list = [(distance(center, n), alpha_line(center, n))
+                    for n in self.list_of_nodes()]
+        mid = middle_angle(self.min_angle, self.max_angle)
+        left_list = [(d, a) for d, a in all_list if greater_angle(a, mid)]
+        right_list = [(d, a) for d, a in all_list if less_angle(a, mid)]
+        left_list.sort()
+        right_list.sort()
+
+        if left_list:
+            l_low_d, l_low_a = left_list[0]
+            l_up_d, l_up_a = left_list[-1]
+        else:
+            l_low_d = self.min_dist
+            l_up_d = self.max_dist
+        if right_list:
+            r_low_d, r_low_a = right_list[0]
+            r_up_d, r_up_a = right_list[-1]
+        else:
+            r_low_d = self.min_dist
+            r_up_d = self.max_dist
+        self.sym_upper_left_dist = l_up_d
+        self.sym_upper_right_dist = r_up_d
+        self.sym_lower_left_dist = l_low_d
+        self.sym_lower_right_dist = r_low_d
+
+    def is_symmetry_equal(self, area):
+        logger.debug("check area %s -- %s", self.get_id(), area.get_id())
+
+        bad = False
+        if not np.isclose(self.sym_lower_left_dist, area.sym_lower_left_dist,
+                           rtol=5e-1, atol=5e-1):
+            logger.debug("Lower left: %s != %s",
+                         self.sym_lower_left_dist,
+                         area.sym_lower_left_dist)
+            bad = True
+
+        if not np.isclose(self.sym_lower_right_dist, area.sym_lower_right_dist,
+                          rtol=5e-1, atol=5e-1):
+            logger.debug("Lower right: %s != %s",
+                         self.sym_lower_right_dist,
+                         area.sym_lower_right_dist)
+            bad = True
+
+        if not np.isclose(self.sym_upper_left_dist, area.sym_upper_left_dist,
+                          rtol=5e-1, atol=5e-1):
+            logger.debug("Upper left: %s != %s",
+                         self.sym_upper_left_dist,
+                         area.sym_upper_left_dist)
+            bad = True
+
+        if not np.isclose(self.sym_upper_right_dist, area.sym_upper_right_dist,
+                          rtol=5e-1, atol=5e-1):
+            logger.debug("Upper right: %s != %s",
+                         self.sym_upper_right_dist,
+                         area.sym_upper_right_dist)
+            bad = True
+
+        return not bad
 
     def increment(self, a):
         if self.is_identical(a):

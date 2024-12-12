@@ -18,7 +18,7 @@ logger = logging.getLogger('femagtools.journal')
 journal = None
 
 #############################
-#           concat          #
+#          journal          #
 #############################
 
 

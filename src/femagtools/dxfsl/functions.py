@@ -85,16 +85,24 @@ def alpha_angle(startangle, endangle):
     return angle - 2.0*np.pi
 
 
-def max_angle(alpha1, alpha2):
+def less_angle(alpha1, alpha2):
     angle = alpha_angle(alpha1, alpha2)
-    if angle < np.pi or angle > 2.0*np.pi:
-        return alpha2
-    return alpha1
+    return (angle < np.pi or angle > 2.0*np.pi)
+
+
+def greater_angle(alpha1, alpha2):
+    angle = alpha_angle(alpha1, alpha2)
+    return not (angle < np.pi or angle > 2.0*np.pi)
+
+
+def max_angle(alpha1, alpha2):
+    if greater_angle(alpha1, alpha2):
+        return alpha1
+    return alpha2
 
 
 def min_angle(alpha1, alpha2):
-    angle = alpha_angle(alpha1, alpha2)
-    if angle < np.pi or angle > 2.0*np.pi:
+    if less_angle(alpha1, alpha2):
         return alpha1
     return alpha2
 

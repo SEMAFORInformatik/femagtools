@@ -335,6 +335,7 @@ def convert(dxfile,
             show_areas=False,
             small_plots=False,
             write_fsl=True,
+            write_fsl_single=False,
             write_png=False,
             write_id=False,
             full_model=False,
@@ -387,6 +388,9 @@ def convert(dxfile,
     if not (part or view_only):
         split_ini = False
         split_cpy = split
+
+    if write_fsl_single:
+        write_fsl = True
 
     try:
         if input_file.suffix in ['.fem', '.FEM']:
@@ -719,6 +723,14 @@ def convert(dxfile,
             fslrenderer = FslRenderer(basename, mtype)
             inner = fslrenderer.render(machine_inner, inner=True)
             outer = fslrenderer.render(machine_outer, outer=True)
+            if write_fsl_single:
+                inner_single = fslrenderer.render(machine_inner, inner=True,
+                                                  standalone=True)
+                outer_single = fslrenderer.render(machine_outer, outer=True,
+                                                  standalone=True)
+            else:
+                inner_single = None
+                outer_single = None
             if full_model:
                 params['num_sl_gen'] = params.get('tot_num_slot', 0)
             params['agndst'] = agndst(params.get('da1'),
@@ -729,10 +741,18 @@ def convert(dxfile,
 
             if params['external_rotor']:
                 conv['fsl_rotor'] = outer
+                if outer_single:
+                    conv['fsl_rotor_single'] = outer_single
                 conv['fsl_stator'] = inner
+                if inner_single:
+                    conv['fsl_stator_single'] = inner_single
             else:
                 conv['fsl_rotor'] = inner
+                if inner_single:
+                    conv['fsl_rotor_single'] = inner_single
                 conv['fsl_stator'] = outer
+                if outer_single:
+                    conv['fsl_stator_single'] = outer_single
 
             conv['fsl'] = fslrenderer.render_main(
                 machine_inner, machine_outer,
@@ -875,10 +895,23 @@ def convert(dxfile,
     if write_fsl:
         logger.debug("Write fsl")
         if conv and conv['fsl']:
-            with io.open(basename + '.fsl', 'w', encoding='utf-8') as f:
+            with io.open(basename + '.fsl', 'w',
+                         encoding='utf-8') as f:
                 f.write('\n'.join(conv['fsl']))
         else:
             logger.warning("No fsl data available")
+
+        if conv:
+            if conv.get('fsl_rotor_single', None):
+                with io.open(basename + '_ROTOR.fsl', 'w',
+                             encoding='utf-8') as f:
+                    f.write('\n'.join(conv['fsl_rotor_single']))
+                del conv['fsl_rotor_single']
+            if conv.get('fsl_stator_single', None):
+                with io.open(basename + '_STATOR.fsl', 'w',
+                             encoding='utf-8') as f:
+                    f.write('\n'.join(conv['fsl_stator_single']))
+                del conv['fsl_stator_single']
 
     conv['name'] = basename
     t = timer.stop("-- all done in %0.4f seconds --", info=True)

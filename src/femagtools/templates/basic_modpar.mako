@@ -88,9 +88,6 @@ m.pole_width      = ${model['pole_width']*1e3}
 % if hasattr(model, 'lfe'):
 m.arm_length      =   ${model.get(['lfe'])*1e3}
 % endif
-% if hasattr(model, 'lfe'):
-m.arm_length      =   ${model.get(['lfe'])*1e3}
-% endif
 % if hasattr(model, 'winding'):
 % if 'num_par_wdgs' in model.winding:
 m.num_par_wdgs    = ${model.winding['num_par_wdgs']}

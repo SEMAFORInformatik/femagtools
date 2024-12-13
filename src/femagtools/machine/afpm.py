@@ -33,11 +33,12 @@ def num_agnodes(Q, p, pw, ag):
       pw: (float) pole width
       ag: (float) airgap height
     """
-    num_nodes = np.arange(12, 120, 6)
+    num_nodes = np.arange(6, 120, 6)
     i = np.argmin(np.abs(pw/num_nodes - ag/2))
     if p*num_nodes[i-1] % Q:
         lcm = np.lcm(Q, 2*p)//p
         nmin, nmax = num_nodes[0]//lcm, num_nodes[-1]//lcm
+        nmin = max(1, nmin)
         num_nodes = np.array(
             [i*lcm for i in range(nmin, nmax) if i*lcm % 6 == 0])
         i = np.argmin(np.abs(pw/num_nodes - ag/2))
@@ -381,7 +382,7 @@ def process(lfe, pole_width, machine, bch):
     num_slots = machine['stator']['num_slots']
     mmod = model.MachineModel(machine)
     slots_gen = mmod.stator['num_slots_gen']
-    scale_factor =_get_scale_factor(model_type, num_slots, slots_gen)
+    scale_factor = _get_scale_factor(model_type, num_slots, slots_gen)
     endpos = [2*pw*1e3 for pw in pole_width]
     displ = [[d for d in r['linearForce'][0]['displ']
               if d < e*(1+1/len(r['linearForce'][0]['displ']))]
@@ -392,11 +393,14 @@ def process(lfe, pole_width, machine, bch):
     currents = [bch[0]['flux'][k][0]['current_k'][:n]
                 for k in bch[0]['flux']]
     if len(pole_width) > 1:
+        # check homogenity:
+        if np.diff([len(d) for d in displ]).any():
+            raise ValueError(
+                f"inhomogenous number of steps: {[len(d) for d in displ]}")
+        lfx = [r['linearForce'][0]['force_x'] for r in bch]
         torque = _integrate(radius, rotpos[0], np.array(
             [r*scale_factor*np.array(fx[:-1])/l
-             for l, r, fx in zip(lfe, radius,
-                                 [r['linearForce'][0]['force_x']
-                                  for r in bch])]))
+             for l, r, fx in zip(lfe, radius, lfx)]))
 
         voltage = {k: [scale_factor * np.array(ux[:-1])/l
                        for l, ux in zip(lfe, [r['flux'][k][0]['voltage_dpsi']

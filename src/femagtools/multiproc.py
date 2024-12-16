@@ -12,6 +12,7 @@ import pathlib
 import logging
 from .job import Job
 import femagtools.config as cfg
+from femagtools.femag import SubscriberTask
 try:
     from subprocess import DEVNULL
 except ImportError:
@@ -69,7 +70,7 @@ class ProtFile:
                   line.startswith('Id')):
                 self.n += 1
             elif line.startswith('Number movesteps Fe-Losses'):
-                return ''
+                return f'{self.percent():3.1f}%' # 100%
             elif line.startswith('begin'):
                 self.name = line.split()[1].strip()
 
@@ -77,12 +78,13 @@ class ProtFile:
 
 
 class ProgressLogger(threading.Thread):
-    def __init__(self, dirs, num_cur_steps, timestep):
+    def __init__(self, dirs, num_cur_steps, timestep, notify):
         threading.Thread.__init__(self)
         self.dirs = dirs
         self.num_cur_steps = num_cur_steps
         self.running = False
         self.timestep = timestep
+        self.notify = notify
 
     def run(self):
         self.running = True
@@ -99,6 +101,9 @@ class ProgressLogger(threading.Thread):
                 logger.info('%s: %s',
                             ', '.join(labels),
                             ', '.join(summary))
+                if self.notify:
+                    self.notify(["progress_logger",
+                                 f"{len(self.dirs)}:{', '.join(summary)}"])
             else:
                 logger.info('collecting FE losses ...')
                 return
@@ -107,7 +112,7 @@ class ProgressLogger(threading.Thread):
         self.running = False
 
 
-def run_femag(cmd, workdir, fslfile):
+def run_femag(cmd, workdir, fslfile, port):
     """Start the femag command as subprocess.
 
     :internal:
@@ -120,7 +125,8 @@ def run_femag(cmd, workdir, fslfile):
     with open(os.path.join(workdir, "femag.out"), "wb") as out, \
             open(os.path.join(workdir, "femag.err"), "wb") as err:
         try:
-            proc = subprocess.Popen(cmd + ['-b', fslfile],
+            args = ['-b', str(port), fslfile] if port else ['-b', fslfile]
+            proc = subprocess.Popen(cmd + args,
                                     shell=False,
                                     stdin=DEVNULL,
                                     stdout=out,
@@ -168,6 +174,8 @@ class Engine:
 
     def __init__(self, **kwargs):
         self.process_count = kwargs.get('process_count', None)
+        self.notify = kwargs.get('notify', None)
+        self.port = kwargs.get('port', 5755)
         cmd = kwargs.get('cmd', '')
         if cmd:
             self.cmd = [cmd]
@@ -210,19 +218,27 @@ class Engine:
                     t.stateofproblem)] + args
 
         self.pool = multiprocessing.Pool(self.process_count)
+        self.subscriber = [SubscriberTask(self.port + i * 5, '127.0.0.1',
+                                          self.notify, b'xyplot')
+                           for i, t in enumerate(self.job.tasks)]
+        [s.start() for s in  self.subscriber]
         self.tasks = [self.pool.apply_async(run_femag,
                                             args=(t.cmd,
                                                   t.directory,
-                                                  t.fsl_file))
-                      for t in self.job.tasks]
+                                                  t.fsl_file,
+                                                  str(self.port + i * 5)))
+                      for i, t in enumerate(self.job.tasks)]
         self.pool.close()
+        [s.stop() for s in  self.subscriber]
+        self.subscriber = None
 
         if (self.progress_timestep and
                 self.job.num_cur_steps):
             self.progressLogger = ProgressLogger(
                 [t.directory for t in self.job.tasks],
                 num_cur_steps=self.job.num_cur_steps,
-                timestep=self.progress_timestep)
+                timestep=self.progress_timestep,
+                notify=self.notify)
             self.progressLogger.start()
         return len(self.tasks)
 

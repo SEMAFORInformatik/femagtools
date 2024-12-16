@@ -716,17 +716,23 @@ class FemagTask(threading.Thread):
 
 
 class SubscriberTask(threading.Thread):
-    def __init__(self, port, host, notify):
+    def __init__(self, port, host, notify, header=b''):
         threading.Thread.__init__(self)
         context = zmq.Context.instance()
         self.subscriber = context.socket(zmq.SUB)
+        self.port = port
+        self.header = header
         if not host:
             host = 'localhost'
         self.subscriber.connect(f'tcp://{host}:{port}')
-        self.subscriber.setsockopt(zmq.SUBSCRIBE, b'')
+        self.subscriber.setsockopt(zmq.SUBSCRIBE, header)
         self.controller = zmq.Context.instance().socket(zmq.PULL)
         self.controller_url = 'inproc://publisher'
-        self.controller.bind(self.controller_url)
+        try:
+            self.controller.bind(self.controller_url)
+        except zmq.error.ZMQError:
+            pass # ignore
+
         self.poller = zmq.Poller()
         self.poller.register(self.subscriber, zmq.POLLIN)
         self.poller.register(self.controller, zmq.POLLIN)
@@ -740,7 +746,7 @@ class SubscriberTask(threading.Thread):
         socket.close()
 
     def run(self):
-        self.logger.info("subscriber is ready")
+        self.logger.info("subscriber is ready, port: {self.port}")
         while True:
             socks = dict(self.poller.poll())
             if socks.get(self.subscriber) == zmq.POLLIN:
@@ -749,6 +755,12 @@ class SubscriberTask(threading.Thread):
                     # Sometimes femag send messages with only len = 1. These messages must be ignored
                     if len(response) < 2:
                         continue
+                    # header xyplot (add ylabel)
+                    if response[0] == self.header and self.header == b'xyplot':
+                        d = json.loads(response[1].decode(), strict=False)
+                        d['ylabel'] = str(self.port)
+                        response[1] = json.dumps(d).encode()
+
                     self.notify([s.decode('latin1') for s in response])
 
                 except Exception:

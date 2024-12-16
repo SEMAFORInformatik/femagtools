@@ -360,6 +360,9 @@ class Mcv(object):
         for k in wtrans:
             if wtrans[k] in data.keys():
                 self.__setattr__(k, data[wtrans[k]])
+        for k in ('bertotti', 'jordan', 'steinmetz'):
+            if k in data:
+                self.__setattr__(k, data[k])
         self.curve = data['curve']
         try:
             self.mc1_angle = [c['angle'] for c in data['curve']]
@@ -484,6 +487,7 @@ class Writer(Mcv):
         arguments:
         fillfac: (float) fill actor
         recsin: (str) either 'flux' or 'cur'
+        feloss: (str) iron loss method (bertotti, jordan)
         """
         curve = self._prepare(fillfac, recsin)
         try:
@@ -493,7 +497,8 @@ class Writer(Mcv):
             else:
                 for k in self.jordan:
                     setattr(self, transl[k], self.jordan[k])
-        except AttributeError:
+        except AttributeError as e:
+            logger.warning("%s", e)
             pass
         mc1_type = self.mc1_type
         mc1_recalc = self.mc1_recalc

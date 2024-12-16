@@ -180,7 +180,7 @@ class BaseFemag(object):
     def copy_winding_file(self, name, wdg):
         wdg.write(name, self.workdir)
 
-    def copy_magnetizing_curves(self, model, dir=None, recsin=''):
+    def copy_magnetizing_curves(self, model, dir=None, recsin='', feloss=''):
         """extract mc names from model and write files into workdir or dir if given
 
         Return:
@@ -188,7 +188,9 @@ class BaseFemag(object):
         """
         dest = dir if dir else self.workdir
         return [self.magnetizingCurves.writefile(m[0], dest,
-                                                 fillfac=m[1], recsin=recsin)
+                                                 fillfac=m[1],
+                                                 recsin=recsin,
+                                                 feloss=feloss)
                 for m in model.set_magcurves(
             self.magnetizingCurves, self.magnets)]
 
@@ -214,7 +216,8 @@ class BaseFemag(object):
         recsin = ''
         if simulation:
             recsin = simulation.get('recsin', '')
-        self.copy_magnetizing_curves(self.model, recsin=recsin)
+            feloss = simulation.get('feloss', '')
+        self.copy_magnetizing_curves(self.model, recsin=recsin, feloss=feloss)
         try:
             if 'wdgdef' in self.model.winding:
                 self.model.winding['wdgfile'] = self.create_wdg_def(
@@ -751,7 +754,7 @@ class SubscriberTask(threading.Thread):
         SubscriberTask.ylabel_postfix = 65
 
     def run(self):
-        self.logger.info("subscriber is ready, port: {self.port}")
+        self.logger.info("subscriber is ready, port: %s", {self.port})
         while True:
             socks = dict(self.poller.poll())
             if socks.get(self.subscriber) == zmq.POLLIN:
@@ -1183,7 +1186,7 @@ class ZmqFemag(BaseFemag):
         wdg.write(name, self.workdir)
         self.upload(os.path.join(self.workdir, name+'.WID'))
 
-    def copy_magnetizing_curves(self, model, dir=None, recsin=''):
+    def copy_magnetizing_curves(self, model, dir=None, recsin='', feloss=''):
         """extract mc names from model and write files into workdir or dir if given
            and upload to Femag
 
@@ -1195,7 +1198,9 @@ class ZmqFemag(BaseFemag):
             self.magnetizingCurves, self.magnets)]
         for m in mc_names:
             f = self.magnetizingCurves.writefile(m[0], dest,
-                                                 fillfac=m[1], recsin=recsin)
+                                                 fillfac=m[1],
+                                                 recsin=recsin,
+                                                 feloss=feloss)
             self.upload(os.path.join(dest, f))
         return mc_names
 

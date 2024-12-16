@@ -175,7 +175,7 @@ class Engine:
     def __init__(self, **kwargs):
         self.process_count = kwargs.get('process_count', None)
         self.notify = kwargs.get('notify', None)
-        self.port = kwargs.get('port', 5755)
+        self.port = kwargs.get('port', 0)
         cmd = kwargs.get('cmd', '')
         if cmd:
             self.cmd = [cmd]
@@ -218,19 +218,22 @@ class Engine:
                     t.stateofproblem)] + args
 
         self.pool = multiprocessing.Pool(self.process_count)
-        self.subscriber = [SubscriberTask(self.port + i * 5, '127.0.0.1',
-                                          self.notify, b'xyplot')
-                           for i, t in enumerate(self.job.tasks)]
-        [s.start() for s in  self.subscriber]
-        self.tasks = [self.pool.apply_async(run_femag,
-                                            args=(t.cmd,
-                                                  t.directory,
-                                                  t.fsl_file,
-                                                  str(self.port + i * 5)))
-                      for i, t in enumerate(self.job.tasks)]
+        if self.port:
+            self.subscriber = [SubscriberTask(self.port + i * 5, '127.0.0.1',
+                                              self.notify, b'xyplot')
+                               for i, t in enumerate(self.job.tasks)]
+            [s.start() for s in self.subscriber]
+            self.tasks = [self.pool.apply_async(
+                run_femag, args=(t.cmd, t.directory, t.fsl_file, self.port + i * 5))
+                          for i, t in enumerate(self.job.tasks)]
+        else:
+            self.tasks = [self.pool.apply_async(
+                run_femag, args=(t.cmd, t.directory, t.fsl_file, 0))
+                          for t in self.job.tasks]
         self.pool.close()
-        [s.stop() for s in  self.subscriber]
-        self.subscriber = None
+        if self.port:
+            [s.stop() for s in  self.subscriber]
+            self.subscriber = None
 
         if (self.progress_timestep and
                 self.job.num_cur_steps):

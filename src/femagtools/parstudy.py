@@ -105,10 +105,10 @@ class ParameterStudy(object):
             raise ValueError("directory {} is not empty".format(dirname))
         self.reportdir = dirname
 
-    def setup_model(self, builder, model, recsin=''):
+    def setup_model(self, builder, model, recsin='', feloss=''):
         """builds model in current workdir and returns its filenames"""
         # get and write mag curves
-        mc_files = self.femag.copy_magnetizing_curves(model, recsin=recsin)
+        mc_files = self.femag.copy_magnetizing_curves(model, recsin=recsin, feloss=feloss)
 
         if model.is_complete():
             logger.info("setup model in %s", self.femag.workdir)
@@ -192,7 +192,8 @@ class ParameterStudy(object):
                                                    objective_vars)
 
         if immutable_model:
-            modelfiles = self.setup_model(builder, model, recsin=fea.recsin)
+            modelfiles = self.setup_model(builder, model, recsin=fea.recsin,
+                                          feloss=simulation.get('feloss', ''))
             logger.info("Files %s", modelfiles+extra_files)
             logger.info("model %s", model.props())
             for k in ('name', 'poles', 'outer_diam', 'airgap', 'bore_diam',

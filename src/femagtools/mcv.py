@@ -8,6 +8,7 @@ import sys
 import copy
 import logging
 import os.path
+import pathlib
 import struct
 import math
 import numpy as np
@@ -292,7 +293,12 @@ class Mcv(object):
         self.MC1_CW_FREQ_FACTOR = 0.0
         self.MC1_INDUCTION_FACTOR = 0.0
         self.MC1_INDUCTION_BETA_FACTOR = 0.0
-
+        self.jordan = {}
+        # {'ch': 0, 'cw': 0, 'ch_freq':0, 'cw_freq':0}
+        self.steinmetz = {}
+        # {'ch': 0, 'cw': 0, 'ch_freq':0, 'cw_freq':0}
+        self.bertotti = {}
+        # {'ch': 0, 'cw': 0, 'ce':0, 'ch_freq':0, 'cw_freq':0}
         self.MC1_FE_SPEZ_WEIGTH = 7.65
         self.MC1_FE_SAT_MAGNETIZATION = 2.15
 
@@ -363,6 +369,9 @@ class Mcv(object):
             self.losses = data['losses']
         except Exception:
             pass
+        # assume jordan iron loss parameters
+        for k in self.jordan:
+            self.jordan[k] = getattr(self, transl[k])
         return
 
     def rtrimValueList(self, vlist):
@@ -470,13 +479,22 @@ class Writer(Mcv):
                        for c in curve]
         return curve
 
-    def writeBinaryFile(self, fillfac=None, recsin=''):
+    def writeBinaryFile(self, fillfac=None, recsin='', feloss=''):
         """write binary file after conversion if requested.
         arguments:
         fillfac: (float) fill actor
         recsin: (str) either 'flux' or 'cur'
         """
         curve = self._prepare(fillfac, recsin)
+        try:
+            if feloss.lower() == 'bertotti':
+                for k in self.bertotti:
+                    setattr(self, transl[k], self.bertotti[k])
+            else:
+                for k in self.jordan:
+                    setattr(self, transl[k], self.jordan[k])
+        except AttributeError:
+            pass
         mc1_type = self.mc1_type
         mc1_recalc = self.mc1_recalc
         mc1_fillfac = self.mc1_fillfac
@@ -556,6 +574,7 @@ class Writer(Mcv):
 
         try:
             if not (self.mc1_ch_factor or self.mc1_cw_factor) and self.losses:
+                # fit loss parameters
                 pfe = self.losses['pfe']
                 f = self.losses['f']
                 B = self.losses['B']
@@ -662,21 +681,20 @@ class Writer(Mcv):
         except Exception as e:
             logger.error("Exception %s", e, exc_info=True)
 
-    def writeMcv(self, filename, fillfac=None, recsin=''):
+    def writeMcv(self, filename, fillfac=None, recsin='', feloss='Jordan'):
         # windows needs this strip to remove '\r'
-        filename = filename.strip()
-        self.name = os.path.splitext(filename)[0]
+        filename = pathlib.Path(filename)
+        self.name = filename.stem
 
-        if filename.upper().endswith('.MCV') or \
-           filename.upper().endswith('.MC'):
+        if filename.suffix.upper() in ('.MCV', '.MC'):
             binary = True
-            self.fp = open(filename, "wb")
+            self.fp = filename.open(mode="wb")
         else:
             binary = False
-            self.fp = open(filename, "wb")
+            self.fp = filename.open(mode="w")
         logger.info("Write File %s, binary format", filename)
 
-        self.writeBinaryFile(fillfac, recsin)
+        self.writeBinaryFile(fillfac, recsin, feloss)
         self.fp.close()
 
 
@@ -737,17 +755,16 @@ class Reader(Mcv):
 
     def readMcv(self, filename):
         # intens bug : windows needs this strip to remove '\r'
-        filename = filename.strip()
+        filename = pathlib.Path(filename)
 
-        if filename.upper().endswith('.MCV') or \
-           filename.upper().endswith('.MC'):
+        if filename.suffix in ('.MCV', '.MC'):
             binary = True
-            self.fp = open(filename, "rb")
+            self.fp = filename.open(mode="rb")
         else:
             binary = False
-            self.fp = open(filename, "r")
+            self.fp = filename.open(mode="r")
 
-        self.name = os.path.splitext(os.path.basename(filename))[0]
+        self.name = filename.stem
         # read curve version (INTEGER)
         if binary:
             self.version_mc_curve = self.readBlock(int)
@@ -902,6 +919,8 @@ class Reader(Mcv):
 
         if self.MC1_INDUCTION_FACTOR > 2.0:
             self.MC1_INDUCTION_FACTOR = 2.0
+
+        # TODO: handle self.mc1_ce_factor, self.mc1_induction_beta_factor
 
         self.losses = {}
         try:
@@ -1085,13 +1104,14 @@ class MagnetizingCurve(object):
                                 repls.items(), name)
 
     def writefile(self, name, directory='.',
-                  fillfac=None, recsin=''):
+                  fillfac=None, recsin='', feloss='jordan'):
         """find magnetic curve by name or id and write binary file
         Arguments:
           name: key of mcv dict (name or id)
           directory: destination directory (must be writable)
           fillfac: (float) new fill factor (curves will be recalulated if not None or 0)
           recsin: (str) either 'flux' or 'cur' recalculates for eddy current calculation (dynamic simulation)
+          feloss: (str) iron loss calc method ('jordan', 'bertotti', 'steinmetz')
 
         returns filename if found else None
         """
@@ -1125,7 +1145,7 @@ class MagnetizingCurve(object):
         filename = ''.join((bname, ext))
         writer = Writer(mcv)
         writer.writeMcv(os.path.join(directory, filename),
-                        fillfac=fillfac, recsin=recsin)
+                        fillfac=fillfac, recsin=recsin, feloss=feloss)
         return filename
 
     def fitLossCoeffs(self):

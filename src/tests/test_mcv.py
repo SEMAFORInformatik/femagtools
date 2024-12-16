@@ -3,6 +3,11 @@ import os
 import pytest
 import numpy as np
 import femagtools.mcv
+import pathlib
+
+@pytest.fixture
+def mcv_data_dir():
+    return pathlib.Path(__file__).with_name('data')
 
 def test_write_mcv_magcrv(tmpdir):
     filename = f"{tmpdir}/mcvData"
@@ -40,13 +45,10 @@ def test_write_mcv_orient_crv(tmpdir):
     assert mcvr['curve'][1]['hi'] == pytest.approx(H, 1e-3)
     assert len(mcvr['curve']) == 2
 
-def test_read_mcv_magcrv():
-    testPath = os.path.split(__file__)[0]
-    if not testPath:
-        testPath = '.'
-    filename = "data/TKS_NO_20.MCV"
+def test_read_mcv_magcrv(mcv_data_dir):
+    filename = "TKS_NO_20.MCV"
     reader = femagtools.mcv.Reader()
-    reader.readMcv('{0}/{1}'.format(testPath, filename))
+    reader.readMcv(mcv_data_dir / filename)
     r = reader.get_results()
     assert r['desc'] == u'PowerCore\xae NO 20 ;ThyssenKrupp Steel Eur'
     assert r['fillfac'] == pytest.approx(0.92, 1e-6)
@@ -54,13 +56,10 @@ def test_read_mcv_magcrv():
     assert r['curve'][0]['bi'][0] == 0.0
     assert r['curve'][0]['bi'][-1] == pytest.approx(1.836, 1e-3)
 
-def test_read_write_mcv_with_losses():
-    testPath = os.path.split(__file__)[0]
-    if not testPath:
-        testPath = '.'
-    filename = "data/TKM270-50A-LOSS.MCV"
+def test_read_write_mcv_with_losses(mcv_data_dir):
+    filename = "TKM270-50A-LOSS.MCV"
     reader = femagtools.mcv.Reader()
-    reader.readMcv('{0}/{1}'.format(testPath, filename))
+    reader.readMcv(mcv_data_dir / filename)
     r = reader.get_results()
     assert r['name'] == u'TKM270-50A-LOSS'
     assert len(r['curve'][0]['bi']) == 35
@@ -72,9 +71,9 @@ def test_read_write_mcv_with_losses():
     assert r['losses']['pfe'][8][18] == pytest.approx(3097.6, 0.1)
 
     # test mcv writer
-    filename_out = "data/TKS_LOSS.MCV"
+    filename_out = "TKS_LOSS.MCV"
     writer = femagtools.mcv.Writer(r)
-    writeMcvFile = '{0}/{1}'.format(testPath, filename_out)
+    writeMcvFile = mcv_data_dir / filename_out
     writer.writeMcv(writeMcvFile)
     # TEST
     reader2 = femagtools.mcv.Reader()
@@ -92,6 +91,13 @@ def test_read_write_mcv_with_losses():
                                    reader2.losses['f'], 5)
     np.testing.assert_almost_equal(reader.losses['B'],
                                    reader2.losses['B'], 5)
+
+    writer.bertotti = {'ch': 0.02196930496538005,
+                      'cw': 9.739048407022554e-05,
+                       'ce': 0.00047834510925596726,
+                       'ch_freq': 2, 'b_coeff':0}
+    writer.writeMcv(mcv_data_dir / "TKS_LOSS2.MCV", feloss='bertotti')
+
 
 def test_extrapol():
     mcv = {'name':"M222",

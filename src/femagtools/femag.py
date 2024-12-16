@@ -716,12 +716,16 @@ class FemagTask(threading.Thread):
 
 
 class SubscriberTask(threading.Thread):
+    ylabel_postfix = 65
     def __init__(self, port, host, notify, header=b''):
         threading.Thread.__init__(self)
         context = zmq.Context.instance()
         self.subscriber = context.socket(zmq.SUB)
         self.port = port
         self.header = header
+        self.ylabel = chr(SubscriberTask.ylabel_postfix)
+        if header:
+            SubscriberTask.ylabel_postfix += 1
         if not host:
             host = 'localhost'
         self.subscriber.connect(f'tcp://{host}:{port}')
@@ -744,6 +748,7 @@ class SubscriberTask(threading.Thread):
         socket.connect(self.controller_url)
         socket.send(b"quit")
         socket.close()
+        SubscriberTask.ylabel_postfix = 65
 
     def run(self):
         self.logger.info("subscriber is ready, port: {self.port}")
@@ -758,7 +763,8 @@ class SubscriberTask(threading.Thread):
                     # header xyplot (add ylabel)
                     if response[0] == self.header and self.header == b'xyplot':
                         d = json.loads(response[1].decode(), strict=False)
-                        d['ylabel'] = str(self.port)
+                        d['ylabel'] = f"{d.get('ylabel')}_{self.ylabel}" \
+                            if d.get('ylabel') else self.ylabel
                         response[1] = json.dumps(d).encode()
 
                     self.notify([s.decode('latin1') for s in response])

@@ -22,6 +22,9 @@ m.fc_mult_move_type =  1.0 --  Type of move path in air gap
 m.fc_force_points   =  0.0 --    number move points in air gap
 m.loss_funct    = ${model.get('loss_funct', 0)}     -- loss functon 0: own 1: ext
 m.loss_fact     = ${model.get('loss_fact', 1)}   -- loss multiplication factor
+% if model.get('calc_fe_loss', 0):
+m.calc_fe_loss    =  ${model['calc_fe_loss']}
+% endif
 
 % if model.get('vtu_movie', 0):
 m.movie_type = 'vtu'

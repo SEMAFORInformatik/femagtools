@@ -103,7 +103,7 @@ class ProgressLogger(threading.Thread):
                             ', '.join(summary))
                 if self.notify:
                     numTot = len(self.dirs)
-                    numOf = f'{summary.count('100.0%')} of {numTot}'
+                    numOf = f"{summary.count('100.0%')} of {numTot}"
                     percent = sum([float(i[:-1]) for i in summary]) / numTot
                     self.notify(["progress_logger",
                                  f"{numTot}:{numOf}:{percent}:{' '.join(summary)}"])

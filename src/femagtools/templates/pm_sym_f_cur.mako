@@ -23,6 +23,9 @@ m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'
 % if model.get('vtu_movie', 0):
 m.movie_type = 'vtu'
 %endif
+% if model.get('calc_fe_loss'):
+m.calc_fe_loss    =  ${'%d' % model['calc_fe_loss']}
+% endif
 % if  model.get('loss_funct',0):
 m.loss_funct      =    ${model.get('loss_funct')}
 % endif

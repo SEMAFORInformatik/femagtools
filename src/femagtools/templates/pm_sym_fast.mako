@@ -7,6 +7,9 @@ set_sim_data("explicit_mode", ${model.get('explicit_mode',0)})
 % if model.get('wind_temp',0):
 set_dev_data("cond_temp", ${model.get('wind_temp')}, ${model.get('wind_temp')})
 % endif
+% if model.get('calc_fe_loss', 0):
+m.calc_fe_loss    =  ${model['calc_fe_loss']}
+% endif
 m.move_action     =    ${model.get('move_action', 0)}
 % if  model.get('lfe',0):
 m.arm_length      =    ${model.get('lfe')*1e3}

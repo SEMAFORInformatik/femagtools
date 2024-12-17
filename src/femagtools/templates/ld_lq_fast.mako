@@ -21,6 +21,9 @@ m.num_cur_steps   =    ${model['num_cur_steps']}
 m.nu_beta_steps   =    ${model['num_beta_steps']}
 m.beta_max        =    ${model['beta_max']}
 m.beta_min        =    ${model['beta_min']}
+% if model.get('calc_fe_loss', 0):
+m.calc_fe_loss    =  ${model['calc_fe_loss']}
+% endif
 % if  model.get('loss_funct',0):
 m.loss_funct      =    ${model.get('loss_funct')}
 % endif

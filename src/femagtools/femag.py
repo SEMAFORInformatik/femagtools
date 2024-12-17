@@ -187,6 +187,11 @@ class BaseFemag(object):
             list of extracted mc names (:obj:`list`)
         """
         dest = dir if dir else self.workdir
+        if isinstance(feloss, (int, float)):
+            try:
+                feloss = {1: 'jordan', 11: 'bertotti'}[int(feloss)]
+            except KeyError:
+                feloss = ''
         return [self.magnetizingCurves.writefile(m[0], dest,
                                                  fillfac=m[1],
                                                  recsin=recsin,
@@ -214,9 +219,10 @@ class BaseFemag(object):
         self.model = femagtools.model.MachineModel(machine)
         self.modelname = self.model.name
         recsin = ''
+        feloss = ''
         if simulation:
             recsin = simulation.get('recsin', '')
-            feloss = simulation.get('feloss', '')
+            feloss = simulation.get('calc_fe_loss', '')
         self.copy_magnetizing_curves(self.model, recsin=recsin, feloss=feloss)
         try:
             if 'wdgdef' in self.model.winding:
@@ -1196,6 +1202,11 @@ class ZmqFemag(BaseFemag):
         dest = dir if dir else self.workdir
         mc_names = [m for m in model.set_magcurves(
             self.magnetizingCurves, self.magnets)]
+        if isinstance(feloss, (int, float)):
+            try:
+                feloss = {1: 'jordan', 11: 'bertotti'}[int(feloss)]
+            except KeyError:
+                feloss = ''
         for m in mc_names:
             f = self.magnetizingCurves.writefile(m[0], dest,
                                                  fillfac=m[1],

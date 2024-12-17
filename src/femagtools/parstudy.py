@@ -263,6 +263,10 @@ class ParameterStudy(object):
                         p, int(np.ceil(len(par_range)/popsize)),
                         np.shape(f))
             job.cleanup()
+            try:
+                feloss = fea.calc_fe_loss
+            except AttributeError:
+                feloss = ''
             for k, x in enumerate(population):
                 task = job.add_task(self.result_func)
                 for fn in extra_files:
@@ -285,7 +289,8 @@ class ParameterStudy(object):
                     for mc in self.femag.copy_magnetizing_curves(
                             model,
                             dir=task.directory,
-                            recsin=fea.recsin):
+                            recsin=fea.recsin,
+                            feloss=feloss):
                         task.add_file(mc)
                     set_magnet_properties(model, fea, self.femag.magnets)
                     task.add_file(

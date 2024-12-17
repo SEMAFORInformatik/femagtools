@@ -494,6 +494,7 @@ class Writer(Mcv):
             if feloss.lower() == 'bertotti':
                 for k in self.bertotti:
                     setattr(self, transl[k], self.bertotti[k])
+                del self.losses
             else:
                 for k in self.jordan:
                     setattr(self, transl[k], self.jordan[k])
@@ -622,7 +623,8 @@ class Writer(Mcv):
             return
 
         try:
-            nfreq = len([1 for x in self.losses['f'] if x > 0])
+            freq = [x for x in self.losses['f'] if x > 0]
+            nfreq = len(freq)
             nind = len(self.losses['B'])
             if nind < 1 or nfreq < 1:
                 return
@@ -655,6 +657,7 @@ class Writer(Mcv):
             self.writeBlock([nfreq, nind])
             self.writeBlock([float(b) for b in B] + [0.0]*(M_LOSS_INDUCT - nind))
 
+            nrec = 0
             for f, p in zip(self.losses['f'], pfe):
                 if f > 0:
                     y = np.array(p)
@@ -674,7 +677,8 @@ class Writer(Mcv):
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - len(pl)))
                     self.writeBlock(float(f))
-            for m in range(M_LOSS_FREQ - len(pfe)):
+                    nrec += 1
+            for m in range(M_LOSS_FREQ - nrec):
                 self.writeBlock([0.0]*M_LOSS_INDUCT)
                 self.writeBlock(0.0)
 
@@ -697,7 +701,8 @@ class Writer(Mcv):
         else:
             binary = False
             self.fp = filename.open(mode="w")
-        logger.info("Write File %s, binary format", filename)
+        logger.info("Write File %s, binary format (feloss '%s')",
+                    filename, feloss)
 
         self.writeBinaryFile(fillfac, recsin, feloss)
         self.fp.close()

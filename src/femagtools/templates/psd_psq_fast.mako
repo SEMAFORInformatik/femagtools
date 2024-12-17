@@ -24,6 +24,9 @@ m.delta_iq        =    ${model['delta_iq']}/m.num_par_wdgs
 % if model.get('load_ex_cur',0):
 m.load_ex_cur     =    ${model['load_ex_cur']}
 %endif
+% if model.get('calc_fe_loss', 0):
+m.calc_fe_loss    =  ${model['calc_fe_loss']}
+% endif
 % if  model.get('loss_funct',0):
 m.loss_funct      =    ${model.get('loss_funct')}
 % endif

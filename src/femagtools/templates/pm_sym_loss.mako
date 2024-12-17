@@ -20,6 +20,9 @@ m.winding_temp    =    ${model.get('wind_temp')}
 m.current         =    1.0
 m.ntibfilename    =    model..'.ntib'
 m.period_frac     =    ${model.get('period_frac', 1)}
+% if model.get('calc_fe_loss', 0):
+m.calc_fe_loss    =  ${model['calc_fe_loss']}
+% endif
 % if  model.get('loss_funct',0):
 m.loss_funct      =    ${model.get('loss_funct')}
 % endif

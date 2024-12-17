@@ -652,14 +652,17 @@ class AFPM:
         }
         machine['pole_width'] = np.pi * machine['inner_diam']/machine['poles']
         machine['lfe'] = machine['outer_diam'] - machine['inner_diam']
-
+        simulation['skew_displ'] = (simulation.get('skew_angle', 0)/180 * np.pi
+                                    * machine['inner_diam'])
         nlresults = {}
-        if (simulation['calculationMode'] != 'cogg_calc' and
-            'poc' not in simulation):
+        if (simulation['calculationMode'] != 'cogg_calc'
+            and 'poc' not in simulation):
             nlcalc = dict(
                 calculationMode="cogg_calc",
                 magn_temp=simulation.get('magn_temp', 20),
                 num_move_steps=60,
+                skew_linear=0,
+                skew_steps=0,
                 poc=poc.Poc(machine['pole_width']),
                 speed=0)
             logging.info("Noload simulation")
@@ -675,13 +678,13 @@ class AFPM:
                 parameters={
                     'phi_voltage_winding': current_angles})
             logger.info("Current angles: %s", current_angles)
-        elif (simulation['calculationMode'] == 'cogg_calc' and
-            'poc' not in simulation):
+        elif (simulation['calculationMode'] == 'cogg_calc'
+            and 'poc' not in simulation):
             simulation['poc'] = poc.Poc(machine['pole_width'])
 
         lresults = self.parstudy(
             parvardef,
-            {k: machine[k] for k in machine if k!= 'afm_rotor'},
+            {k: machine[k] for k in machine if k != 'afm_rotor'},
             simulation, engine)  # Note: imcomplete machine prevents rebuild
 
         results = process(lfe, pole_width, machine, lresults['f'])

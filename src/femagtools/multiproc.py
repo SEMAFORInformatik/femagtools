@@ -102,8 +102,11 @@ class ProgressLogger(threading.Thread):
                             ', '.join(labels),
                             ', '.join(summary))
                 if self.notify:
+                    numTot = len(self.dirs)
+                    numOf = f'{summary.count('100.0%')} of {numTot}'
+                    percent = sum([float(i[:-1]) for i in summary]) / numTot
                     self.notify(["progress_logger",
-                                 f"{len(self.dirs)}:{', '.join(summary)}"])
+                                 f"{numTot}:{numOf}:{percent}:{' '.join(summary)}"])
             else:
                 logger.info('collecting FE losses ...')
                 return
@@ -175,7 +178,9 @@ class Engine:
     def __init__(self, **kwargs):
         self.process_count = kwargs.get('process_count', None)
         self.notify = kwargs.get('notify', None)
-        self.port = kwargs.get('port', 0)
+        # cogg_calc mode, subscribe xyplot
+        self.calc_mode = kwargs.get('calc_mode')
+        self.port = kwargs.get('port', 0) if self.calc_mode == 'cogg_calc' else 0
         cmd = kwargs.get('cmd', '')
         if cmd:
             self.cmd = [cmd]

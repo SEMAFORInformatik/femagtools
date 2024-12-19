@@ -39,7 +39,7 @@ def iqd_tmech_umax(m, u1, with_mtpa, progress, speed_torque, iq, id, iex):
     finally:
         progress.close()
 
-def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa):
+def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa, publish=0):
     """calculate iqd for sm and pm using multiproc
     """
     progress_readers = []
@@ -79,6 +79,14 @@ def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa):
                 progress_readers.remove(r)
             else:
                 if i % len(progress_readers) == 0:
+                    if publish:
+                        numTot = len(collected_msg)
+                        numOf = f"{collected_msg.count('100.0%')} of {numTot}"
+                        workdone = sum([float(i[:-1])
+                                        for i in collected_msg]) / numTot
+                        publish(('progress_logger',
+                                 f"{numTot}:{numOf}:{workdone}:"))
+                        # {' '.join(collected_msg)}"))
                     logger.info("Losses/Eff Map: %s",
                                 ', '.join(collected_msg))
                     collected_msg = []
@@ -197,7 +205,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
       with_mtpa -- (optional) use mtpa if True (default), disables mtpv if False
       with_tmech -- (optional) use friction and windage losses (default)
       num_proc -- (optional) number of parallel processes (default 0)
-      progress  -- (optional) custom function for progress logging
+      progress  -- (optional) custom function for progress logging (publishing)
       with_torque_corr -- (optional) T is corrected if out of range (default False)
 
     Returns:
@@ -250,41 +258,42 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     logger.info("total speed,torque samples %d", ntmesh.shape[1])
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
         if num_proc > 1:
-            iqd = iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa)
+            iqd = iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa,
+                                       publish=progress)
         else:
             class ProgressLogger:
-                def __init__(self, nsamples):
+                def __init__(self, nsamples, publish):
                     self.n = 0
+                    self.publish = publish
                     self.nsamples = nsamples
                     self.num_iv = round(nsamples/15)
                 def __call__(self, iqd):
                     self.n += 1
                     if self.n % self.num_iv == 0:
-                        logger.info("Losses/Eff Map: %d%%",
-                                    round(100*self.n/self.nsamples))
-            if progress is None:
-                progress = ProgressLogger(ntmesh.shape[1])
-            else:
-                try:
-                    progress.nsamples=ntmesh.shape[1]
-                    progress(0)  # To check conformity
-                    progress.n = 0
-                except:
-                    logger.warning("Invalid ProgressLogger given to efficiency_losses_map, using default one!")
-                    progress = ProgressLogger(ntmesh.shape[1])
+                        workdone=round(100*self.n/self.nsamples)
+                        if self.publish:
+                            self.publish(
+                                ('progress_logger',
+                                 f"{self.n}:{self.n} of {self.nsamples}:{workdone}"))
+                        logger.info("Losses/Eff Map: %d%%", workdone)
+
+            progress_logger = ProgressLogger(ntmesh.shape[1], progress)
+            progress_logger.nsamples = ntmesh.shape[1]
+            progress_logger(0)  # To check conformity
+            progress_logger.n = 0
             if with_tmech:
                 iqd = np.array([
                     m.iqd_tmech_umax(
                         nt[1],
                         2*np.pi*nt[0]*m.p,
-                        u1, log=progress, with_mtpa=with_mtpa)[:-1]
+                        u1, log=progress_logger, with_mtpa=with_mtpa)[:-1]
                     for nt in ntmesh.T]).T
             else:
                 iqd = np.array([
                     m.iqd_torque_umax(
                         nt[1],
                         2*np.pi*nt[0]*m.p,
-                        u1, log=progress, with_mtpa=with_mtpa)[:-1]
+                        u1, log=progress_logger, with_mtpa=with_mtpa)[:-1]
                     for nt in ntmesh.T]).T
 
         beta, i1 = betai1(iqd[0], iqd[1])

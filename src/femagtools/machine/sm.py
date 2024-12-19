@@ -434,9 +434,9 @@ class SynchronousMachine(object):
     def iqd_tmech(self, torque, n, disp=False, maxiter=500):
         """return currents for shaft torque with minimal losses"""
         if torque > 0:
-            startvals = self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
+            startvals = self.bounds[0][1], 0, self.bounds[-1][1]
         else:
-            startvals = -self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
+            startvals = -self.bounds[0][1]/2, 0, self.bounds[-1][1]
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -463,9 +463,9 @@ class SynchronousMachine(object):
     def iqd_torque(self, torque, disp=False, maxiter=500):
         """return currents for torque with minimal losses"""
         if torque > 0:
-            startvals = self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
+            startvals = self.bounds[0][1]/2, 0, self.bounds[-1][1]
         else:
-            startvals = -self.bounds[0][1]/2, 0, sum(self.bounds[-1])/2
+            startvals = -self.bounds[0][1]/2, 0, self.bounds[-1][1]
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -483,14 +483,14 @@ class SynchronousMachine(object):
             #options={'disp': disp, 'maxiter': maxiter})
             if res['success']:
                 return res.x
-            logger.warning("%s: torque=%f %f, io=%s",
-                           res['message'], torque, self.torque_iqd(*startvals),
-                           startvals)
+        logger.warning("%s: torque=%f %f, io=%s",
+                       res['message'], torque, self.torque_iqd(*startvals),
+                       startvals)
         raise ValueError(res['message'])
 
     def mtpa(self, i1max):
         """return iq, id, iex currents and maximum torque per current """
-        T0 = self.torque_iqd(np.sqrt(2)*i1max/2, 0, self.bounds[-1][1]/2)
+        T0 = self.torque_iqd(np.sqrt(2)*i1max, 0, self.bounds[-1][1])
         def i1tq(tq):
             return abs(i1max) - np.linalg.norm(self.iqd_torque(tq)[:2])/np.sqrt(2)
         with warnings.catch_warnings():
@@ -501,7 +501,7 @@ class SynchronousMachine(object):
 
     def mtpa_tmech(self, i1max, n):
         """return iq, id, iex currents and maximum torque per current """
-        T0 = self.torque_iqd(np.sqrt(2)*i1max/2, 0, self.bounds[-1][0])/2
+        T0 = self.torque_iqd(np.sqrt(2)*i1max, 0, self.bounds[-1][1])
         def i1tq(tq):
             return i1max - np.linalg.norm(self.iqd_tmech(tq, n)[:2])/np.sqrt(2)
         tq = so.fsolve(i1tq, T0)[0]
@@ -517,14 +517,11 @@ class SynchronousMachine(object):
             if log:
                 log(iqde)
             return (*iqde, torque)
-        beta, i1 = betai1(iqde[0], iqde[1])
-        iex = iqde[2]
+        #beta, i1 = betai1(iqde[0], iqde[1])
+        #iex = iqde[2]
 
-        def ubeta(b):
-            return np.sqrt(2)*u1max - np.linalg.norm(
-                self.uqd(w1, *iqd(b, i1), iex))
-        beta = -np.pi/4 if torque>0 else -3*np.pi/4
-        io = *iqd(beta, i1), iex
+        #beta = 0 if torque>0 else np.pi
+        io = iqde[0], 0, iqde[2] #*iqd(beta, i1), iex
 
         #    logger.debug("--- torque %g io %s", torque, io)
         with warnings.catch_warnings():
@@ -540,17 +537,18 @@ class SynchronousMachine(object):
                 bounds=self.bounds,
                 constraints=[
                     {'type': 'eq',
-                     'fun': lambda iqd: self.tmech_iqd(*iqd, n) - torque},
+                     'fun': lambda iqd: torque - self.tmech_iqd(*iqd, n)},
                     {'type': 'eq',
-                     'fun': lambda iqd: np.linalg.norm(
-                         self.uqd(w1, *iqd)) - u1max*np.sqrt(2)}])
+                     'fun': lambda iqd: u1max*np.sqrt(2)
+                       - np.linalg.norm(self.uqd(w1, *iqd))}])
             #if res['success']:
-        if log:
-            log(res.x)
-        return *res.x, self.tmech_iqd(*res.x, n)
-    #logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
-    #               res['message'], w1, torque, u1max, io)
-    #raise ValueError(res['message'])
+            if log:
+                log(res.x)
+            return *res.x, self.tmech_iqd(*res.x, n)
+        #logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
+        #               res['message'], w1, torque, u1max, io)
+        #raise ValueError(res['message'])
+        #return [float('nan')]*4
 
     def iqd_torque_umax(self, torque, w1, u1max,
                         disp=False, maxiter=500, log=0, **kwargs):
@@ -579,16 +577,15 @@ class SynchronousMachine(object):
                     {'type': 'eq',
                      'fun': lambda iqd: self.torque_iqd(*iqd) - torque},
                     {'type': 'eq',
-                     'fun': lambda iqd: np.linalg.norm(
-                         self.uqd(w1, *iqd)) - u1max*np.sqrt(2)}])
-            if res['success']:
-
-                if log:
-                    log(res.x)
-                return *res.x, self.torque_iqd(*res.x)
-            logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
-                           res['message'], w1, torque, u1max, io)
-        raise ValueError(res['message'])
+                     'fun': lambda iqd: u1max*np.sqrt(2) - np.linalg.norm(
+                         self.uqd(w1, *iqd))}])
+            #if res['success']:
+            if log:
+                log(res.x)
+            return *res.x, self.torque_iqd(*res.x)
+            #logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
+            #               res['message'], w1, torque, u1max, io)
+            #raise ValueError(res['message'])
 
     def w1_imax_umax(self, i1max, u1max):
         """return frequency w1 and shaft torque at voltage u1max and current i1max
@@ -672,9 +669,10 @@ class SynchronousMachine(object):
 
         wmtab = []
         dw = 0
-        wmMax = 3.5*wmType
+        wmMax = 5*wmType
         if n > 0:
             wmMax = min(wmMax, 2*np.pi*n)
+
         if wmType > wmMax:
             wmrange = sorted([0, wmMax])
             wmtab = np.linspace(0, wmMax, nsamples).tolist()

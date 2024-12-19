@@ -81,9 +81,11 @@ def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa, publish=0):
                 if i % len(progress_readers) == 0:
                     if publish:
                         numTot = len(collected_msg)
-                        numOf = f"{collected_msg.count('100.0%')} of {numTot}"
+                        numOf = f"{num_proc-numTot} of {num_proc}"
                         workdone = sum([float(i[:-1])
                                         for i in collected_msg]) / numTot
+                        logger.debug("numTot %d numOf %s workdone %s, %s",
+                                     numTot, numOf, workdone, collected_msg)
                         publish(('progress_logger',
                                  f"{numTot}:{numOf}:{workdone}:"))
                         # {' '.join(collected_msg)}"))

@@ -91,7 +91,8 @@ class ProgressLogger(threading.Thread):
         protfiles = [ProtFile(d, self.num_cur_steps)
                      for d in self.dirs]
         while self.running:
-            time.sleep(self.timestep)
+            if self.timestep > 0:
+                time.sleep(self.timestep)
             logmsg = [p.update() for p in protfiles]
             summary = [l  # f'<{i}> {l}'
                        for i, l in enumerate(logmsg)
@@ -237,7 +238,7 @@ class Engine:
                           for t in self.job.tasks]
         self.pool.close()
         if self.port:
-            [s.stop() for s in  self.subscriber]
+            [s.stop() for s in self.subscriber]
             self.subscriber = None
 
         if (self.progress_timestep and

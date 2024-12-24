@@ -693,7 +693,8 @@ class AFPM:
 
         lresults = self.parstudy(
             parvardef,
-            {k: machine[k] for k in machine if k != 'magnet'},
+            {k: machine[k]
+             for k in machine if k != 'magnet'} if nlresults else machine,
             simulation, engine)  # Note: imcomplete machine prevents rebuild
 
         results = process(lfe, pole_width, machine, lresults['f'])

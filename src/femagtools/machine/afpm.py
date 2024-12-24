@@ -183,12 +183,12 @@ def parident(workdir, engine, temp, machine,
     parvardef = {
         "decision_vars": [
             #            {"values": sorted(2*temp), "name": "magn_temp"},
-            {"steps": num_beta_steps, "bounds": [beta_min, 0], "name": "angl_i_up"},
+            {"steps": num_beta_steps, "bounds": [beta_min, 0],
+             "name": "angl_i_up"},
             {"steps": num_cur_steps,
              "bounds": [i1_max/num_cur_steps, i1_max], "name": "current"}
         ]
     }
-
 
     ldq = []
     for magtemp in temp:
@@ -408,6 +408,13 @@ def process(lfe, pole_width, machine, bch):
                    for k in bch[0]['flux']}
         emf = [_integrate(radius, rotpos[0], np.array(voltage[k]))
                for k in voltage]
+
+        fluxxy = {k: [scale_factor * np.array(flx[:-1])/l
+                      for l, flx in zip(lfe, [r['flux'][k][0]['flux_k']
+                                              for r in bch])]
+                  for k in bch[0]['flux']}
+        flux = [_integrate(radius, rotpos[0], np.array(fluxxy[k]))
+                for k in fluxxy]
     else:
         r = radius[0]
         torque = [r*scale_factor*fx
@@ -416,6 +423,7 @@ def process(lfe, pole_width, machine, bch):
                        for ux in bch[0]['flux'][k][0]['voltage_dpsi'][:-1]]
                    for k in bch[0]['flux']}
         emf = [voltage[k][:n] for k in voltage]
+        flux = [fluxxy[k][:n] for k in fluxxy]
 
     pos = (rotpos[0]/np.pi*180)
     emffft = utils.fft(pos, emf[0])
@@ -478,6 +486,7 @@ def process(lfe, pole_width, machine, bch):
         'weights': weights.tolist(),
         'pos': pos.tolist(), 'r1': r1,
         'torque': torque,
+        'flux_k': flux,
         'emf': emf,
         'emf_amp': emffft['a'], 'emf_angle': emffft['alfa0'],
         'freq': freq,
@@ -684,7 +693,7 @@ class AFPM:
 
         lresults = self.parstudy(
             parvardef,
-            {k: machine[k] for k in machine if k != 'afm_rotor'},
+            {k: machine[k] for k in machine if k != 'magnet'},
             simulation, engine)  # Note: imcomplete machine prevents rebuild
 
         results = process(lfe, pole_width, machine, lresults['f'])

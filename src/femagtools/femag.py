@@ -438,12 +438,15 @@ class BaseFemag(object):
         """
         Read the modelname from the Femag Log file
         """
-        with open(os.path.join(self.workdir, 'FEMAG-FSL.log')) as f:
-            for l in f:
-                if l.startswith('New model') or l.startswith('Load model'):
-                    return l.split('"')[1]
+        try:
+            with open(os.path.join(self.workdir, 'FEMAG-FSL.log')) as f:
+                for l in f:
+                    if l.startswith('New model') or l.startswith('Load model'):
+                        return l.split('"')[1]
+        except FileNotFoundError:
+            pass
 
-        raise ValueError(f"Model not found in {self.workdir}/'FEMAG-FSL.log'")
+        return list(pathlib.Path(self.workdir).glob('*.PROT'))[0].stem
 
     def readResult(self, simulation, bch=None):
         if simulation:
@@ -1175,6 +1178,34 @@ class ZmqFemag(BaseFemag):
         except json.decoder.JSONDecodeError:
             logger.warning(response[0])
         return [s.decode('latin1') for s in response]
+
+    def airgap_flux_density(self, pmod):
+        # try to read bag.dat
+        agr = self.getfile("bag.dat")
+        status = json.loads(agr[0])['status']
+        if status == 'ok':
+            datfile = os.path.join(self.workdir, 'bag.dat')
+            with open(datfile, 'wb') as bagfile:
+                bagfile.write(agr[1])
+            agi = ag.read(datfile, pmod)
+        else:
+            import numpy as np
+            # try to read model file (TODO download with getfile)
+            nc = self.read_nc()
+            ag_elmnts = nc.airgap_center_elements
+            scf = 360/nc.scale_factor()/ag_elmnts[-1].center[0]
+            pos = np.array([e.center[0]*scf for e in ag_elmnts])
+            bxy = np.array([e.flux_density() for e in ag_elmnts]).T
+            if np.max(bxy[0]) > np.max(bxy[1]):
+                agi = ag.fft(pos, bxy[0], pmod)
+            else:
+                agi = ag.fft(pos, bxy[1], pmod)
+        return dict(Bamp=agi['Bamp'],
+                    phi0=agi['phi0'],
+                    angle=agi['pos'],
+                    angle_fft=agi['pos'],
+                    B=agi['B'],
+                    B_fft=agi['B_fft'])
 
     def interrupt(self):
         """send push message to control port to stop current calculation"""

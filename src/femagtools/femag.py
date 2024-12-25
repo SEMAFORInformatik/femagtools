@@ -1193,7 +1193,7 @@ class ZmqFemag(BaseFemag):
             # try to read model file (TODO download with getfile)
             nc = self.read_nc()
             ag_elmnts = nc.airgap_center_elements
-            logger.info("Ag elements %d scale_factor %f",
+            logger.info("Airgap elements %d scale_factor %f",
                         len(ag_elmnts), nc.scale_factor())
             scf = 360/nc.scale_factor()/ag_elmnts[-1].center[0]
             pos = np.array([e.center[0]*scf for e in ag_elmnts])

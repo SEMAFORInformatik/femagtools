@@ -662,17 +662,17 @@ class Writer(Mcv):
                 if f > 0:
                     y = np.array(p)
                     losses = [float(x) for x in y[y != np.array(None)]]
-                    if len(losses) == nind:
-                        pl = p
+                    nloss = len(losses)
+                    if nloss == nind:
+                        pl = list(p)
                     else:
-                        n = len(losses)
                         cw, alfa, beta = lc.fitsteinmetz(
-                            f, B[:n], losses, Bo, fo)
+                            f, B[:nloss], losses, Bo, fo)
                         pl = losses + [lc.pfe_steinmetz(
                             f, b, cw, alfa, beta,
                             self.losses['fo'],
                             self.losses['Bo'])
-                                       for b in B[n:]]
+                                       for b in B[nloss:]]
                     logger.debug("%s", pl)
                     self.writeBlock(pl +
                                     [0.0]*(M_LOSS_INDUCT - len(pl)))

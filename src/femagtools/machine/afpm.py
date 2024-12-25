@@ -678,7 +678,7 @@ class AFPM:
             nlresults = self.parstudy(parvardef,
                                       machine, nlcalc, engine)
             if nlresults['status'].count('C') != len(nlresults['status']):
-                raise ValueError('Noload simulation failed %s', nlresults['status'])
+                raise ValueError(f'Noload simulation failed {nlresults["status"]}')
             nlresults.update(process(lfe, pole_width, machine, nlresults['f']))
 
             current_angles = nlresults['f'][0]['current_angles']
@@ -692,10 +692,10 @@ class AFPM:
             simulation['poc'] = poc.Poc(machine['pole_width'])
 
         lresults = self.parstudy(
-            parvardef,
-            {k: machine[k]
-             for k in machine if k != 'magnet'} if nlresults else machine,
-            simulation, engine)  # Note: imcomplete machine prevents rebuild
+            parvardef, machine, simulation, engine)
+        if lresults['status'].count('C') != len(lresults['status']):
+            raise ValueError(
+                f'{simulation["calculationMode"]} failed {lresults["status"]}')
 
         results = process(lfe, pole_width, machine, lresults['f'])
         if nlresults:

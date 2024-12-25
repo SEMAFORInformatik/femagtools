@@ -556,7 +556,7 @@ class Builder:
         if 'fsl_rotor' in conv:
             self.fsl_rotor = True
             th_props = ['']
-            logger.info(model['magnet'])
+            logger.debug(model['magnet'])
             if hasattr(model, 'magnet'):
                 if model['magnet'].get('thcond', 0):
                     th_props = [f'rotor_density = {model["magnet"]["density"]}',
@@ -730,7 +730,7 @@ class Builder:
         custom_fefunc = ['']
         if pfefunc:
             sim['loss_funct'] = 1 # 3?
-            if pfefunc == 'bertotti' or 'modified_steinmetz':
+            if pfefunc in ('bertotti', 'modified_steinmetz'):
                 custom_fefunc = self.__render(sim['PVFE_FSL'], pfefunc)
             else:
                 custom_fefunc = pfefunc.split('\n')

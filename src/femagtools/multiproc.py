@@ -80,34 +80,34 @@ class ProtFile:
 class ProgressLogger(threading.Thread):
     def __init__(self, dirs, num_cur_steps, timestep, notify):
         threading.Thread.__init__(self)
-        self.dirs = dirs
-        self.num_cur_steps = num_cur_steps
+        self.protfiles = [ProtFile(d, num_cur_steps)
+                          for d in dirs]
+        self.numTot = len(dirs)
         self.running = False
         self.timestep = timestep
         self.notify = notify
 
     def run(self):
         self.running = True
-        protfiles = [ProtFile(d, self.num_cur_steps)
-                     for d in self.dirs]
         while self.running:
             if self.timestep > 0:
                 time.sleep(self.timestep)
-            logmsg = [p.update() for p in protfiles]
+            logmsg = [p.update() for p in self.protfiles]
             summary = [l  # f'<{i}> {l}'
                        for i, l in enumerate(logmsg)
                        if l]
             if summary:
-                labels = set([p.name for p in protfiles])
+                labels = set([p.name for p in self.protfiles])
                 logger.info('%s: %s',
                             ', '.join(labels),
                             ', '.join(summary))
                 if self.notify:
-                    numTot = len(self.dirs)
-                    numOf = f"{summary.count('100.0%')} of {numTot}"
-                    percent = sum([float(i[:-1]) for i in summary]) / numTot
-                    self.notify(["progress_logger",
-                                 f"{numTot}:{numOf}:{percent}:{' '.join(summary)}"])
+                    numOf = f"{summary.count('100.0%')} of {self.numTot}"
+                    percent = sum([float(i[:-1])
+                                   for i in summary]) / self.numTot
+                    self.notify(
+                        ["progress_logger",
+                         f"{self.numTot}:{numOf}:{percent}:{' '.join(summary)}"])
             else:
                 logger.info('collecting FE losses ...')
                 return
@@ -173,7 +173,7 @@ class Engine:
         cmd: the program (executable image) to be run
             (femag dc is used if None)
         process_count: number of processes (cpu_count() if None)
-        progress_timestep: time step in seconds for progress log messages if > 0)
+        timestep: time step in seconds for progress log messages if > 0)
     """
 
     def __init__(self, **kwargs):
@@ -189,7 +189,10 @@ class Engine:
                 self.cmd.append('-m')
 
         self.progressLogger = 0
-        self.progress_timestep = kwargs.get('timestep', 5)
+        self.progress_timestep = kwargs.get('timestep', -1)
+        self.subscriber = None
+        self.job = None
+        self.tasks = []
 
     def create_job(self, workdir):
         """Create a FEMAG :py:class:`Job`
@@ -241,7 +244,7 @@ class Engine:
             [s.stop() for s in self.subscriber]
             self.subscriber = None
 
-        if (self.progress_timestep and
+        if (self.progress_timestep > 0 and
                 self.job.num_cur_steps):
             self.progressLogger = ProgressLogger(
                 [t.directory for t in self.job.tasks],

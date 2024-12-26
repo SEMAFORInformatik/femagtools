@@ -35,15 +35,19 @@ def num_agnodes(Q, p, pw, ag):
     """
     num_nodes = np.arange(6, 120, 6)
     i = np.argmin(np.abs(pw/num_nodes - ag/2))
-    if p*num_nodes[i-1] % Q:
+    nag = num_nodes[i-1]
+    if p*nag % Q:
         lcm = np.lcm(Q, 2*p)//p
-        nmin, nmax = num_nodes[0]//lcm, num_nodes[-1]//lcm
-        nmin = max(1, nmin)
+        nmin, nmax = 1, num_nodes[-1]//lcm
         num_nodes = np.array(
             [i*lcm for i in range(nmin, nmax) if i*lcm % 6 == 0])
         i = np.argmin(np.abs(pw/num_nodes - ag/2))
-        # nodedist 0.5, 2, 4, 6
-    return num_nodes[i-1]
+        if i > 0:
+            nag = num_nodes[i-1]
+        else:
+            nag = num_nodes[i]
+        # TODO nodedist 0.5, 2, 4, 6
+    return nag
 
 def _integrate(radius, pos, val):
     interp = RegularGridInterpolator((radius, pos), val)
@@ -163,7 +167,6 @@ def parident(workdir, engine, temp, machine,
         for pw in pole_width:
             machine['num_agnodes'] = num_agnodes(Q1, p//2, pw,
                                                  machine['airgap'])
-
     nlparvardef = {
         "decision_vars": [
             {"values": pole_width,

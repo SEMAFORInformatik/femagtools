@@ -815,8 +815,9 @@ class Isa7(object):
                             airgap_positions.append(axy[0][0])
                         self.airgap_center_elements.append(se.elements)
 
-            if len(self.airgap_center_elements) == 1:
-                self.airgap_center_elements = self.airgap_center_elements[0]
+            if self.airgap_center_elements:
+                # TODO check airgap center
+                self.airgap_center_elements = self.airgap_center_elements[-1]
                 if horiz:
                     airgap_positions.append(np.min(nxy[:, 1]))
                 else:

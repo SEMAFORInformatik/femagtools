@@ -227,6 +227,12 @@ class Engine:
                     if t.errmsg:
                         logger.error(t.errmsg)
             status.append(t.status)
+        self.stopThreads()
+        return status
+
+    def stopThreads(self):
+        """ stop all running treads
+        """
         if self.progressLogger:
             self.progressLogger.stop()
         if self.port:
@@ -234,12 +240,12 @@ class Engine:
             SubscriberTask.clear()
             self.subscriber = None
 
-        return status
-
     def terminate(self):
+        """ terminate all
+        """
         logger.info("terminate Engine")
-        if self.progressLogger:
-            self.progressLogger.stop()
+        self.stopThreads()
+
         # terminate pool
         try:
             self.pool.terminate()

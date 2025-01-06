@@ -97,6 +97,7 @@ class SubscriberTask(threading.Thread):
             self.host = 'localhost'
         if not self.header:
             self.header = [b'']
+        self.running = True
 
         # timer function
         if not SubscriberTask.notify_timerfunc:
@@ -131,6 +132,7 @@ class SubscriberTask(threading.Thread):
         socket.connect(self.controller_url)
         socket.send(b"quit")
         socket.close()
+        self.running = False
 
     def clear():
         SubscriberTask.ylabel_index = 1
@@ -164,7 +166,7 @@ class SubscriberTask(threading.Thread):
 
     def run(self):
         self.logger.debug("subscriber is ready, port: %s", {self.port})
-        while True:
+        while self.running:
             socks = dict(self.poller.poll())
             if socks.get(self.subscriber) == zmq.POLLIN:
                 try:

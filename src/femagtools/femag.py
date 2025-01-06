@@ -27,6 +27,7 @@ import femagtools.fsl
 import femagtools.config
 import femagtools.ecloss
 import femagtools.forcedens
+import femagtools.zmq
 
 from femagtools import ntib
 
@@ -727,73 +728,6 @@ class FemagTask(threading.Thread):
         self.returncode = self.proc.wait()
 
 
-class SubscriberTask(threading.Thread):
-    ylabel_postfix = 65
-    def __init__(self, port, host, notify, header=b''):
-        threading.Thread.__init__(self)
-        context = zmq.Context.instance()
-        self.subscriber = context.socket(zmq.SUB)
-        self.port = port
-        self.header = header
-        self.ylabel = chr(SubscriberTask.ylabel_postfix)
-        if header:
-            SubscriberTask.ylabel_postfix += 1
-        if not host:
-            host = 'localhost'
-        self.subscriber.connect(f'tcp://{host}:{port}')
-        self.subscriber.setsockopt(zmq.SUBSCRIBE, header)
-        self.controller = zmq.Context.instance().socket(zmq.PULL)
-        self.controller_url = 'inproc://publisher'
-        try:
-            self.controller.bind(self.controller_url)
-        except zmq.error.ZMQError:
-            pass # ignore
-
-        self.poller = zmq.Poller()
-        self.poller.register(self.subscriber, zmq.POLLIN)
-        self.poller.register(self.controller, zmq.POLLIN)
-        self.logger = logger
-        self.notify = notify
-
-    def stop(self):
-        socket = zmq.Context.instance().socket(zmq.PUSH)
-        socket.connect(self.controller_url)
-        socket.send(b"quit")
-        socket.close()
-        SubscriberTask.ylabel_postfix = 65
-
-    def run(self):
-        self.logger.info("subscriber is ready, port: %s", {self.port})
-        while True:
-            socks = dict(self.poller.poll())
-            if socks.get(self.subscriber) == zmq.POLLIN:
-                try:
-                    response = self.subscriber.recv_multipart()
-                    # Sometimes femag send messages with only len = 1. These messages must be ignored
-                    if len(response) < 2:
-                        continue
-                    # header xyplot (add ylabel)
-                    if response[0] == self.header and self.header == b'xyplot':
-                        d = json.loads(response[1].decode(), strict=False)
-                        d['ylabel'] = f"{d.get('ylabel')}_{self.ylabel}" \
-                            if d.get('ylabel') else self.ylabel
-                        response[1] = json.dumps(d).encode()
-
-                    self.notify([s.decode('latin1') for s in response])
-
-                except Exception:
-                    self.logger.error(
-                        "error in subscription message processing", exc_info=True)
-
-            if socks.get(self.controller) == zmq.POLLIN:
-                req = self.controller.recv()
-                self.logger.info("subscriber %s", req)
-                break
-        self.subscriber.close()
-        self.controller.close()
-        self.logger.debug("subscriber stopped")
-
-
 class ZmqFemag(BaseFemag):
     """Invoke and control execution of FEMAG with ZeroMQ
 
@@ -868,8 +802,8 @@ class ZmqFemag(BaseFemag):
         """attaches a notify function"""
         logger.info("Subscribe on '%s' port %d", self.femaghost, self.port+1)
         if self.subscriber is None:
-            self.subscriber = SubscriberTask(
-                self.port+1, self.femaghost, notify)
+            self.subscriber = femagtools.zmq.SubscriberTask(
+                port=self.port+1, host=self.femaghost, notify=notify)
             self.subscriber.start()
         else:
             # reattach?

@@ -12,7 +12,8 @@ import pathlib
 import logging
 from .job import Job
 import femagtools.config as cfg
-from femagtools.femag import SubscriberTask
+import femagtools.zmq
+from femagtools.zmq import SubscriberTask
 try:
     from subprocess import DEVNULL
 except ImportError:
@@ -20,67 +21,13 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-numpat = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
-
 class LicenseError(Exception):
     pass
-
-class ProtFile:
-    def __init__(self, dirname, num_cur_steps):
-        self.size = 0
-        self.looplen = 0
-        self.cur_steps = [1, num_cur_steps]
-        self.n = 0
-        self.num_loops = 0
-        self.dirname = dirname
-        self.name = 'samples'
-
-    def percent(self):
-        if self.looplen > 0:
-            return min(100 * self.n / self.looplen, 100)
-        return 0
-
-    def update(self):
-        p = list(pathlib.Path(self.dirname).glob('*.PROT'))
-        if p:
-            buf = ''
-            if self.size < p[0].stat().st_size:
-                with p[0].open() as fp:
-                    fp.seek(self.size)
-                    buf = fp.read()
-            return self.append(buf)
-        return ''
-
-    def append(self, buf):
-        self.size += len(buf)
-        for line in [l.strip() for l in buf.split('\n') if l]:
-            if line.startswith('Loop'):
-                self.n = 0
-                try:
-                    cur_steps = self.cur_steps[self.num_loops]
-                except IndexError:
-                    cur_steps = 1
-                x0, x1, dx, nbeta = [float(f)
-                                     for f in re.findall(numpat, line)][:4]
-                move_steps = round((x1-x0)/dx+1)
-                beta_steps = int(nbeta)
-                self.looplen = cur_steps*beta_steps*move_steps
-                self.num_loops += 1
-            elif (line.startswith('Cur') or
-                  line.startswith('Id')):
-                self.n += 1
-            elif line.startswith('Number movesteps Fe-Losses'):
-                return f'{self.percent():3.1f}%' # 100%
-            elif line.startswith('begin'):
-                self.name = line.split()[1].strip()
-
-        return f'{self.percent():3.1f}%'  # {self.n}/{self.looplen}'
-
 
 class ProgressLogger(threading.Thread):
     def __init__(self, dirs, num_cur_steps, timestep, notify):
         threading.Thread.__init__(self)
-        self.protfiles = [ProtFile(d, num_cur_steps)
+        self.protfiles = [femagtools.zmq.ProtFile(d, num_cur_steps)
                           for d in dirs]
         self.numTot = len(dirs)
         self.running = False
@@ -181,7 +128,8 @@ class Engine:
         self.notify = kwargs.get('notify', None)
         # cogg_calc mode, subscribe xyplot
         self.calc_mode = kwargs.get('calc_mode')
-        self.port = kwargs.get('port', 0) if self.calc_mode == 'cogg_calc' else 0
+        self.port = kwargs.get('port', 0)
+        self.curve_label = kwargs.get('curve_label')
         cmd = kwargs.get('cmd', '')
         if cmd:
             self.cmd = [cmd]
@@ -228,8 +176,17 @@ class Engine:
 
         self.pool = multiprocessing.Pool(self.process_count)
         if self.port:
-            self.subscriber = [SubscriberTask(self.port + i * 5, '127.0.0.1',
-                                              self.notify, b'xyplot')
+            header = [b'progress']
+            if self.calc_mode == 'cogg_calc':
+                header +=[b'xyplot']
+            self.subscriber = [SubscriberTask(port=self.port + i * 5,
+                                              host='127.0.0.1',
+                                              notify=self.notify,
+                                              header=header,
+                                              curve_label=self.curve_label,
+                                              num_cur_steps=self.job.num_cur_steps,
+                                              timestep=self.progress_timestep
+                                              )
                                for i, t in enumerate(self.job.tasks)]
             [s.start() for s in self.subscriber]
             self.tasks = [self.pool.apply_async(
@@ -240,12 +197,10 @@ class Engine:
                 run_femag, args=(t.cmd, t.directory, t.fsl_file, 0))
                           for t in self.job.tasks]
         self.pool.close()
-        if self.port:
-            [s.stop() for s in self.subscriber]
-            self.subscriber = None
 
-        if (self.progress_timestep > 0 and
-                self.job.num_cur_steps):
+        # only works on linux
+        if (self.progress_timestep and not self.port and
+            self.job.num_cur_steps):
             self.progressLogger = ProgressLogger(
                 [t.directory for t in self.job.tasks],
                 num_cur_steps=self.job.num_cur_steps,
@@ -274,6 +229,11 @@ class Engine:
             status.append(t.status)
         if self.progressLogger:
             self.progressLogger.stop()
+        if self.port:
+            [s.stop() for s in  self.subscriber]
+            SubscriberTask.clear()
+            self.subscriber = None
+
         return status
 
     def terminate(self):

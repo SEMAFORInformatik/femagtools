@@ -164,10 +164,9 @@ def parident(workdir, engine, temp, machine,
     linspeed = [speed*p*pw for pw in pole_width]
 
     if "num_agnodes" not in machine:
-        nag = [num_agnodes(Q1, p//2, pw, machine['airgap'])
-               for pw in pole_width]
-        machine['num_agnodes'] = nag[len(nag)//2]
-
+        for pw in pole_width:
+            machine['num_agnodes'] = num_agnodes(Q1, p//2, pw,
+                                                 machine['airgap'])
     nlparvardef = {
         "decision_vars": [
             {"values": pole_width,
@@ -650,11 +649,10 @@ class AFPM:
         if "num_agnodes" not in machine:
             Q1 = machine['stator']['num_slots']
             p = machine['poles']
-            nag = [num_agnodes(Q1, p//2, pw, machine['airgap'])
-                   for pw in pole_width]
-            machine['num_agnodes'] = nag[len(nag)//2]
+            for pw in pole_width:
+                machine['num_agnodes'] = num_agnodes(Q1, p//2, pw,
+                                                     machine['airgap'])
             logger.info("Num agnodes/pole %d", machine['num_agnodes'])
-
         parvardef = {
             "decision_vars": [
                 {"values": pole_width,

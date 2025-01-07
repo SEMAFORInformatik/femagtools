@@ -174,7 +174,10 @@ class Engine:
                 t.cmd = [cfg.get_executable(
                     t.stateofproblem)] + args
 
-        self.pool = multiprocessing.Pool(self.process_count)
+        num_proc = self.process_count
+        if not num_proc and multiprocessing.cpu_count() > 1:
+            num_proc = min(multiprocessing.cpu_count()-1, len(self.job.tasks))
+        self.pool = multiprocessing.Pool(num_proc)
         if self.port:
             header = [b'progress']
             if self.calc_mode == 'cogg_calc':
@@ -228,6 +231,7 @@ class Engine:
                         logger.error(t.errmsg)
             status.append(t.status)
         self.stopThreads()
+        self.pool = None # garbage collector deletes threads
         return status
 
     def stopThreads(self):
@@ -235,8 +239,8 @@ class Engine:
         """
         if self.progressLogger:
             self.progressLogger.stop()
-        if self.port:
-            [s.stop() for s in  self.subscriber]
+        if self.port and self.subscriber:
+            [s.stop() for s in self.subscriber]
             SubscriberTask.clear()
             self.subscriber = None
 
@@ -248,7 +252,8 @@ class Engine:
 
         # terminate pool
         try:
-            self.pool.terminate()
-            self.pool.close()
+            if self.pool:
+                self.pool.terminate()
+                self.pool = None # garbage collector deletes threads
         except AttributeError as e:
             logger.warn("%s", e)

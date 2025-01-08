@@ -30,7 +30,7 @@ m.calc_fe_loss    =  ${'%d' % model['calc_fe_loss']}
 m.loss_funct      =    ${model.get('loss_funct')}
 % endif
 -- Excitation current
-m.nloa_ex_cur   = ${model.get('nload_ex_cur', 0)} -- No Load Exciting current
+m.nloa_ex_cur   = ${model.get('noload_ex_cur', 0)} -- No Load Exciting current
 m.load_ex_cur   = ${model.get('load_ex_cur', 0)} -- Load Exciting current
 m.wdgkeyex      =  0 -- automatic winding selection
 

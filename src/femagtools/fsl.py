@@ -750,6 +750,9 @@ class Builder:
             revert_displ = self.create_displ_stator_rotor(
                 sim['eccentricity'])
 
+        if sim.get('calculationMode') == 'pm_sym_f_cur':
+            if 'nload_ex_cur' in sim.keys():  # convert obsolete key
+                sim['noload_ex_cur'] = sim.pop('nload_ex_cur')
         felosses = custom_fefunc + self.create_fe_losses(sim)
         fslcalc = (displ_stator_rotor
                    + self.__render(sim, sim.get('calculationMode'))

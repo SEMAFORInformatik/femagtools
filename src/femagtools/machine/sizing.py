@@ -628,8 +628,9 @@ def get_sm_rotor_dimensions(A, psi1, lfe, Da2, par):
     mue0 = 4*np.pi*1e-7
 
     wf = wp - wc
-    anr = par['airgap']*par['Ba']/mue0/par['J']/par['kqr']
-
+    NI = par['airgap']*par['Ba']/mue0
+    anr = NI/par['J']/par['kqr']
+    r['NI'] = NI
     a = np.tan(alphap/2)/2
     b = (wp/2 - wc + np.tan(alphap/2)*(Da2/2 - hp))/2
     hc = min(max(4*anr/(wc+wp), 0.75*hfmax), hfmax)

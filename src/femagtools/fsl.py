@@ -556,7 +556,6 @@ class Builder:
         if 'fsl_rotor' in conv:
             self.fsl_rotor = True
             th_props = ['']
-            logger.debug(model['magnet'])
             if hasattr(model, 'magnet'):
                 if model['magnet'].get('thcond', 0):
                     th_props = [f'rotor_density = {model["magnet"]["density"]}',

@@ -434,7 +434,7 @@ class SynchronousMachine(object):
     def iqd_tmech(self, torque, n, disp=False, maxiter=500):
         """return currents for shaft torque with minimal losses"""
         if torque > 0:
-            startvals = self.bounds[0][1], 0, self.bounds[-1][1]
+            startvals = self.bounds[0][1]/2, 0, self.bounds[-1][1]
         else:
             startvals = -self.bounds[0][1]/2, 0, self.bounds[-1][1]
 

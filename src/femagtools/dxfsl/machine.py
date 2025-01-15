@@ -833,11 +833,11 @@ class Machine(object):
             if dist_start > dist_end:
                 machine.mirror_all_areas(self.startangle)
                 machine.rotate_to(angle)
-                machine.geom.create_list_of_areas(delete=True)
                 machine.startangle -= angle
             else:
                 machine.mirror_all_areas(self.endangle)
                 machine.endangle += angle
+            machine.geom.create_list_of_areas(delete=True)
             machine.set_alfa_and_corners()
             machine.part = machine.part_of_circle()
             machine.geom.set_subregion_parameters(self.startangle,

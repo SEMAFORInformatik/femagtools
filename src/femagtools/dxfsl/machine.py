@@ -135,6 +135,16 @@ class Machine(object):
         self.geom.is_outer = True
         self.geom.is_inner = False
 
+    def set_attributes(self,
+                       kind="",
+                       inner=False,
+                       outer=False):
+        self.set_kind(kind)
+        if inner:
+            self.set_inner()
+        if outer:
+            self.set_outer()
+
     def clear_cut_lines(self):
         self.geom.clear_cut_lines()
         if self.mirror_geom is not None:

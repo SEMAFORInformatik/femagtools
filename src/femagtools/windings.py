@@ -416,6 +416,13 @@ class Winding(object):
              [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
         # complete if not  basic winding:
         Qb = self.Q//num_basic_windings(self.Q, self.p, self.l)
+
+        if not np.asarray(upper).size or not np.asarray(lower).size:
+            layers = 1
+        if layers == 1 and z[1]:
+            z = ([[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)],
+                 [[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)])
+
         if max([abs(n) for m in z[0] for n in m]) < Qb:
             return [[k + [-n+Qb//2 if n < 0 else -(n+Qb//2) for n in k]
                      for k in m] for m in z]

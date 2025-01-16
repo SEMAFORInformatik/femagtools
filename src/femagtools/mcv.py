@@ -241,20 +241,17 @@ def approx(db2, curve, ctype):
         bi2.append(bk12)
 
     if ctype in (DEMCRV, MAG_AC_CRV):
-        try:
-            dhdbn = 0
-            k = len(bi2)-1
+        dhdbn = 0
+        k = len(bi2)-1
+        if k < len(curve['bi']):
             if curve['bi'][k] - curve['bi'][k-1] > 0:
-                dhdbn = ((curve['hi'][k] - curve['h'][k-1],KK)
+                dhdbn = ((curve['hi'][k] - curve['h'][k-1])
                          /(curve['bi'][k] - curve['bi'][k-1]))
-                a.append(MUE0*dhdbn)
-                b.append(MUE0*curve['hi'][k] - dhdbn*curve['bi'][k])
-            else:
-                a.append(1.0)
-                b.append(MUE0*curve['hi'][-1]-curve['bi'][-1])
-        except IndexError:
-            logger.warning("curve %s", curve)
-            pass
+            a.append(MUE0*dhdbn)
+            b.append(MUE0*curve['hi'][k] - dhdbn*curve['bi'][k])
+    else:
+        a.append(1.0)
+        b.append(MUE0*curve['hi'][-1]-curve['bi'][-1])
     return dict(nuer=nuer, a=a, b=b, bi2=bi2)
 
 

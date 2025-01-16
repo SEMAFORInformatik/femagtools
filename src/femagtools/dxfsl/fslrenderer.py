@@ -26,28 +26,18 @@ def agndst(da1, da2, Q, p, nodedist=1):
     """
     r = (da1 + da2)/4
     ag = abs(da1 - da2)/6
-    num_nodes = [30, 48, 60, 96, 120, 144, 180, 240, 288, 336, 360,
-                 432, 480]
-    dagset = [2*np.pi/p/i for i in num_nodes]
-    i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
-    if p*num_nodes[i-1] % Q:
-        lcm = np.lcm(Q, p)//p
-        nmin, nmax = num_nodes[0]//lcm, num_nodes[-1]//lcm
-        num_nodes = [i*lcm for i in range(nmin, nmax) if i*lcm%6==0]
-        dagset = [2*np.pi/p/i for i in num_nodes]
-        i = max(np.argmin(np.abs(np.array(dagset) - np.arctan2(ag, r))), 1)
-        # nodedist 0.5, 2, 4, 6
-    nd = min(round(nodedist), i)
-    try:
-        logger.info("Num nodes/p %d Num nodes/slot %g nodedist %g",
-                    num_nodes[i-1], p*num_nodes[i-1]/Q, nodedist)
-        if nodedist > 1:
-            return dagset[i-nd]*r
-        if nodedist < 1 or i == 0:
-            return dagset[i]*r
-    except IndexError:
-        pass
-    return dagset[i-1]*r
+    lcm = np.lcm(Q, p)//p
+    taup = 2*np.pi*r/p
+    nmin, nmax = max(1, 18//lcm), 480//lcm
+    num_nodes = [i*lcm for i in range(nmin, nmax)
+                 if i*lcm % 6 == 0 and i*lcm*p//Q % 2 == 0]
+    dagset = np.array([taup/i for i in num_nodes])
+    i = np.argmin(np.abs(dagset - ag*nodedist))
+    if i > 0 and dagset[i]*nodedist < ag:
+        i -= 1
+    logger.info("%d Num nodes/p %d Num nodes/slot %g nodedist %g",
+                i, num_nodes[i], p*num_nodes[i]/Q, nodedist)
+    return dagset[i]
 
 
 class FslRenderer(object):

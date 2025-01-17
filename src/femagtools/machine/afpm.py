@@ -11,7 +11,7 @@ from .. import model
 from .. import utils
 from .. import windings
 from .. import femag
-from scipy.interpolate import RegularGridInterpolator, interp1d, RectBivariateSpline
+from scipy.interpolate import RegularGridInterpolator, RectBivariateSpline
 from scipy.integrate import quad
 import copy
 
@@ -58,7 +58,7 @@ def _integrate(radius, pos, val):
 
 
 def _integrate1d(radius, val):
-    interp = interp1d(radius, val)
+    interp = np.interp(radius, val)
     def func(x):
         return interp((x))
     return quad(func, radius[0], radius[-1])[0]

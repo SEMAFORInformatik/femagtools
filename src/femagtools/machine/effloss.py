@@ -166,9 +166,9 @@ def _generate_mesh(n, T, nb, Tb, npoints):
         nmax = max(n)
         tmin, tmax = 0, max(T)
         tnum = npoints[1]
-    tip = ip.interp1d(n, T)
+    tip = np.interp(n, T)
     if nb and Tb:
-        tbip = ip.interp1d(nb, Tb)
+        tbip = np.interp(nb, Tb)
     else:
         def tbip(x): return 0
 

@@ -12,7 +12,7 @@ import pathlib
 import struct
 import math
 import numpy as np
-import scipy.interpolate as ip
+from scipy.interpolate import make_interp_spline
 from six import string_types
 import femagtools.losscoeffs as lc
 
@@ -99,7 +99,7 @@ def norm_pfe(B, pfe):
                 b = list(b)
                 b[-1] = Bv[n]
                 n += 1
-        pfunc = ip.interp1d(b, pfe[i], kind='cubic')
+        pfunc = make_interp_spline(b, pfe[i], kind='cubic')
         m.append([float(pfunc(x))
                   for x in Bv[:n]] + [None]*(len(Bv)-n))
     return Bv.tolist(), m
@@ -168,7 +168,7 @@ def recalc_bsin(curve):
         if bi[0] > 0:
             bi.insert(0, 0)
             hi.insert(0, 0)
-        bh = ip.interp1d(bi, hi,
+        bh = make_interp_spline(bi, hi,
                          kind='cubic', assume_sorted=True)
         for bx in c['bi'][2:]:
             bt = bx*np.sin(2*np.pi/4/ndel*x)
@@ -196,7 +196,7 @@ def recalc_hsin(curve):
         if hi[0] > 0:
             hi.insert(0, 0)
             bi.insert(0, 0)
-        hb = ip.interp1d(hi, bi,
+        hb = make_interp_spline(hi, bi,
                          kind='cubic', assume_sorted=True)
         for hx in c['hi'][2:]:
             ht = hx*np.sin(2*np.pi/4/ndel*x)

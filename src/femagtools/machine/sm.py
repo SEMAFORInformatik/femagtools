@@ -6,7 +6,7 @@ import warnings
 import pathlib
 import numpy as np
 import scipy.optimize as so
-import scipy.interpolate as ip
+from scipy.interpolate as ip
 from .utils import skin_resistance, wdg_resistance, betai1, iqd, KTH, create_wdg
 from .. import parstudy, windings
 import femagtools.bch
@@ -233,7 +233,7 @@ def _linsampl(exc, excl, a):
     b, i = a.shape[1:]
     for x in range(b):
         for y in range(i):
-            zl = ip.interp1d(exc, a[:, x, y], kind='linear')
+            zl = np.interp(exc, a[:, x, y])
             z.append(zl(excl))
     return np.array(z).T.reshape(len(excl), b, i)
 

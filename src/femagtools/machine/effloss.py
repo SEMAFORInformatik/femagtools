@@ -166,9 +166,9 @@ def _generate_mesh(n, T, nb, Tb, npoints):
         nmax = max(n)
         tmin, tmax = 0, max(T)
         tnum = npoints[1]
-    tip = np.interp(n, T)
+    tip = ip.make_interp_spline(n, T, k=1)
     if nb and Tb:
-        tbip = np.interp(nb, Tb)
+        tbip = ip.make_interp_spline(nb, Tb, k=1)
     else:
         def tbip(x): return 0
 

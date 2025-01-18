@@ -99,7 +99,7 @@ def norm_pfe(B, pfe):
                 b = list(b)
                 b[-1] = Bv[n]
                 n += 1
-        pfunc = make_interp_spline(b, pfe[i], kind='cubic')
+        pfunc = make_interp_spline(b, pfe[i])
         m.append([float(pfunc(x))
                   for x in Bv[:n]] + [None]*(len(Bv)-n))
     return Bv.tolist(), m

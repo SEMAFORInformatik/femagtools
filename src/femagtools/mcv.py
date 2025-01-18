@@ -168,8 +168,7 @@ def recalc_bsin(curve):
         if bi[0] > 0:
             bi.insert(0, 0)
             hi.insert(0, 0)
-        bh = make_interp_spline(bi, hi,
-                         kind='cubic', assume_sorted=True)
+        bh = make_interp_spline(bi, hi)
         for bx in c['bi'][2:]:
             bt = bx*np.sin(2*np.pi/4/ndel*x)
             nue = np.sum(bh(bt)/bt)/ndel
@@ -196,8 +195,7 @@ def recalc_hsin(curve):
         if hi[0] > 0:
             hi.insert(0, 0)
             bi.insert(0, 0)
-        hb = make_interp_spline(hi, bi,
-                         kind='cubic', assume_sorted=True)
+        hb = make_interp_spline(hi, bi)
         for hx in c['hi'][2:]:
             ht = hx*np.sin(2*np.pi/4/ndel*x)
             bt = hb(ht)*np.sin(2*np.pi/4/ndel*x)

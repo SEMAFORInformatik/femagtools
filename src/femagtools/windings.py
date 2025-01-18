@@ -179,10 +179,10 @@ class Winding(object):
             nue = n
         else:
             nue = self.kw_order(n)
-        #if q1 == q2:  # integral slot winding
-        #    q = self.Q/2/self.m/self.p
-        #    nuep = nue/self.p
-        #    return np.sin(nuep*np.pi/2/self.m)/q/np.sin(nuep*np.pi/2/self.m/q)
+        if q1 == q2:  # integral slot winding
+            q = self.Q/2/self.m/self.p
+            nuep = nue/self.p
+            return np.sin(nuep*np.pi/2/self.m)/q/np.sin(nuep*np.pi/2/self.m/q)
         k = 2 if self.l == 1 else 1
         a = nue*k*np.pi/self.Q*Yk
         t = self.Q//Qb

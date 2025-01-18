@@ -917,23 +917,25 @@ class Machine(object):
                                             first_thirdangle,
                                             second_thirdangle)
         machine_mirror_1.clear_cut_lines()
-
         machine_mirror_1.repair_hull()
         machine_mirror_1.set_alfa_and_corners()
+        if machine_mirror_1.geom.number_of_edges() < 2:  # very bad
+            logger.debug("end get_third_symmetry_mirror: no remaining elements")
+            return None
         if not machine_mirror_1.check_symmetry_graph(0.001, 0.05):
             logger.debug("end get_third_symmetry_mirror: no mirror first third")
             return None
 
         if plt:
             plt.render_elements(machine_mirror_1.geom, Shape,
-                                title="Part",
+                                title="Part 1",
                                 show=True,
                                 with_corners=False,
                                 with_nodes=False,
                                 neighbors=True)
 
             plt.render_elements(machine_mirror_1.mirror_geom, Shape,
-                                title="Counterpart",
+                                title="Counterpart 1",
                                 show=True,
                                 with_corners=False,
                                 with_nodes=False,
@@ -945,9 +947,27 @@ class Machine(object):
         machine_mirror_2.clear_cut_lines()
         machine_mirror_2.repair_hull()
         machine_mirror_2.set_alfa_and_corners()
+        if machine_mirror_2.geom.number_of_edges() < 2:  # very bad
+            logger.debug("end get_third_symmetry_mirror: no remaining elements")
+            return None
         if not machine_mirror_2.check_symmetry_graph(0.001, 0.05):
             logger.debug("end get_third_symmetry_mirror: no mirror second third")
             return None
+
+        if plt:
+            plt.render_elements(machine_mirror_2.geom, Shape,
+                                title="Part 2",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True)
+
+            plt.render_elements(machine_mirror_2.mirror_geom, Shape,
+                                title="Counterpart 2",
+                                show=True,
+                                with_corners=False,
+                                with_nodes=False,
+                                neighbors=True)
 
         machine_mirror_1.previous_machine = self
         logger.debug("end get_third_symmetry_mirror: ok")
@@ -1002,6 +1022,9 @@ class Machine(object):
                                 with_nodes=False,
                                 neighbors=True)
 
+        if machine_mirror.geom.number_of_edges() < 2:  # very bad
+            logger.debug("end get_symmetry_mirror: no remaining elements")
+            return None
         if machine_mirror.check_symmetry_graph(0.001, 0.05):
             machine_mirror.previous_machine = self
             machine_mirror.rotate_to(0.0)

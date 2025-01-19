@@ -120,7 +120,15 @@ class Symmetry(object):
         areas.sort(reverse=True)
         return areas
 
+    def get_equal_areas(self, areas):
+        return
+
     def build_results(self, areas):
+        logger.debug("begin of build_results with %s areas", len(areas))
+        [logger.debug("#%s: alpha=%s, min=%s, max=%s",
+                      a.get_id(), alpha, a.min_angle, a.max_angle) for
+         alpha, dist, h, mid, a in areas]
+
         a0_alpha, a0_min_dist, a0_height, a0_mid_angle, a0 = areas[0]
         equal_areas = [(a0_mid_angle, a0)]
         check_rslt = []
@@ -164,6 +172,7 @@ class Symmetry(object):
         rslt['area'] = a0
         rslt['areasize'] = areasize
         check_rslt.append((areasize, rslt))
+        logger.debug("end of build_results")
         return check_rslt
 
     def get_winding_symmetry(self, inside=False):
@@ -246,7 +255,6 @@ class Symmetry(object):
 
         check_rslt = self.build_results(areas)
         logger.debug("%s results available", len(check_rslt))
-        [logger.debug("Result: %s", rslt) for rslt in check_rslt]
 
         parts, start_delta = self.get_symmetry_parts(check_rslt)
         if parts < 2:
@@ -743,31 +751,33 @@ class Symmetry(object):
         for size, n, rslt in check_rslt:
             areas = rslt['areas']
             slices = rslt['slices']
+            if slices is None:
+                continue
+
             size = rslt['areasize']
             angle_corr = rslt.get('delta_corr', 0.0)
 
             if rslt.get('halfslice', 0) == 1:
                 halfslice.append(rslt)
 
-            if slices is not None:
-                if slices > 0:
-                    max_size = max(max_size, size)
-                    max_areas = max(max_areas, areas)
-                    max_slices = max(max_slices, slices)
-                    missing_middles += rslt.get('missing_middles', [])
-                    area = rslt['area']
-                    if not (np.isclose(area.min_dist,
-                                       self.geom.min_radius,
-                                       rtol=1e-4, atol=1e-3) and \
-                            np.isclose(area.max_dist,
-                                       self.geom.max_radius,
-                                       rtol=1e-4, atol=1e-3)):
-                        if rslt.get('delta_corr', 0.0) == 0.0:
-                            without_angle_corr += areas * size
-                        else:
-                            with_angle_corr += areas * size
+            if slices > 0:
+                max_size = max(max_size, size)
+                max_areas = max(max_areas, areas)
+                max_slices = max(max_slices, slices)
+                missing_middles += rslt.get('missing_middles', [])
+                area = rslt['area']
+                if not (np.isclose(area.min_dist,
+                                   self.geom.min_radius,
+                                   rtol=1e-4, atol=1e-3) and \
+                        np.isclose(area.max_dist,
+                                   self.geom.max_radius,
+                                   rtol=1e-4, atol=1e-3)):
+                    if rslt.get('delta_corr', 0.0) == 0.0:
+                        without_angle_corr += areas * size
                     else:
-                        maybe_angle_korr += areas * size
+                        with_angle_corr += areas * size
+                else:
+                    maybe_angle_korr += areas * size
         logger.debug("max size: %s,  max areas: %s", max_size, max_areas)
 
         logger.debug("Angle-Corrections: %s Yes,  %s No",

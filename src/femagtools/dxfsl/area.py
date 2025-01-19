@@ -641,7 +641,10 @@ class Area(object):
     def get_alpha(self, center):
         if self.center_is_inside(center):
             return np.pi*2.0
-        return alpha_angle(self.min_angle, self.max_angle)
+        return alpha_angle(self.min_angle,
+                           self.max_angle,
+                           rtol=0.0,
+                           atol=0.0)
 
     def get_mid_angle(self, center):
         if self.center_is_inside(center):

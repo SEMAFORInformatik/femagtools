@@ -645,9 +645,13 @@ class Machine(object):
         parts = symmetry.find_symmetry()  # temp solution
         logger.debug(">>> Symmetry parts = %s <<<", parts)
 
-        if parts > 1:
-            found = True
-        else:
+        if parts == 1:
+            # no slices, but ok
+            return False
+
+        found = (parts > 1)
+
+        if not found:
             found = self.geom.find_symmetry(self.radius,
                                             self.startangle,
                                             self.endangle,

@@ -76,8 +76,8 @@ def alpha_triangle(a, b, c):
     return rslt
 
 
-def alpha_angle(startangle, endangle):
-    if less_equal(endangle, startangle):
+def alpha_angle(startangle, endangle, rtol=1e-3, atol=1e-8):
+    if less_equal(endangle, startangle, rtol=rtol, atol=atol):
         endangle += 2.0*np.pi
     angle = endangle - startangle
     if less_equal(angle, 2.0*np.pi):

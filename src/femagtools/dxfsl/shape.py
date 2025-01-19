@@ -467,6 +467,10 @@ class Circle(Shape):
         r0 = np.linalg.norm(self.center)
         return max(abs(r-r0-self.radius), abs(r-r0+self.radius))
 
+    def length(self):
+        """returns length of this circle"""
+        return self.radius*2*np.pi
+
     def overlapping_shape(self, e, rtol=1e-03, atol=1e-03):
         if not (isinstance(e, Arc) or isinstance(e, Circle)):
             # end overlapping_shape: Circle (not Arc or Circle)

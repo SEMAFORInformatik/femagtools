@@ -665,6 +665,9 @@ class Symmetry(object):
             m1 = m2
             d1 = d2
 
+        if not mid_list:
+            return None
+
         logger.debug("New Mids: %s", mid_list)
         delta = positive_angle(mid_list[0] * 2)
         delta_list = [delta]

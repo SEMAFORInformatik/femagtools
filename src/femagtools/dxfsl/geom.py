@@ -2256,45 +2256,120 @@ class Geometry(object):
             return center[0]
         return None
 
-    def get_center_arcs(self):
+    def is_same_center(self, center_lst, center, rtol, atol):
+        for c in center_lst:
+            if points_are_close(c['center'], center['center'], rtol, atol):
+                radius = center['radius'][0]
+                if not radius in c['radius']:
+                    c['radius'].append(radius)
+                c['count'] = c['count'] + 1
+                return True
+        return False
+
+    def get_center_with_x(self, center_lst, x):
+        c_list = [c for c in center_lst
+                  if np.isclose(c['center'][0], x, rtol=self.rtol, atol=self.atol)]
+        if not c_list:
+            return None
+        cy_list = [(c['center'][1], c) for c in c_list]
+        cy_list.sort()
+        y, c = cy_list[0]
+        return c
+
+    def get_center_with_y(self, center_lst, y):
+        c_list = [c for c in center_lst
+                  if np.isclose(c['center'][1], y, rtol=self.rtol, atol=self.atol)]
+        if not c_list:
+            return None
+        cy_list = [(c['center'][0], c) for c in c_list]
+        cy_list.sort()
+        [logger.info("y=%s, c=%s", y, c) for y, c in cy_list]
+        y, c = cy_list[0]
+        return c
+
+    def get_center_arcs(self, mm):
         logger.debug("begin of get_center_arcs")
         center_list = []
+        x_min, x_max, y_min, y_max = mm
+
+        def center_is_inside(c):
+            tol = 0.1
+            x, y = c
+            if x-tol > x_min and \
+               x+tol < x_max and \
+               y-tol > y_min and \
+               y+tol < y_max:
+                return True
+            return False
+
         circles = [e for e in self.elements() if is_Circle(e)]
         logger.debug(" -- %s Circles", len(circles))
 
         for e in circles:
             center = (round(e.center[0], 3), round(e.center[1], 3))
-            radius = round(e.radius, 1)
-            center_list.append(([1], center, [radius]))
+            entry = {'center': center,
+                     'radius': [round(e.radius, 1)],
+                     'phi': e.get_angle_of_arc(),
+                     'dist': e.length(),
+                     'inside': center_is_inside(center),
+                     'count': 1}
+            center_list.append(entry)
 
         arcs = [e for e in self.elements() if is_Arc(e)]
         logger.debug(" -- %s Arcs", len(arcs))
 
         for e in arcs:
             center = (round(e.center[0], 3), round(e.center[1], 3))
-            radius = round(e.radius, 1)
-            c = self.get_same_center(center_list, center, self.rtol, self.atol)
-            if c is None:
-                center_list.append(([1], center, [radius]))
-            else:
-                c[0][0] += 1
-                if radius not in c[2]:
-                    c[2].append(radius)
+            entry = {'center': center,
+                     'radius': [round(e.radius, 1)],
+                     'phi': e.get_angle_of_arc(),
+                     'dist': e.length(),
+                     'inside': center_is_inside(center),
+                     'count': 1}
+            if not self.is_same_center(center_list, entry, self.rtol, self.atol):
+                center_list.append(entry)
 
         center = None
-        arc_list = [[len(c[2]), c[0][0], c[1]] for c in center_list]
+        arc_list = [[c['count'], len(c['radius']), c['phi'], n, c]
+                    for n, c in enumerate(center_list)]
         arc_list.sort(reverse=True)
 
-        if arc_list:
-            c1 = arc_list[0]
-            center = c1[2]
-            if len(arc_list) > 1:
-                c2 = arc_list[1]
-                if not c1[0] > c2[0]:
-                    center = None
+        logger.debug("x min/max = %s/%s", x_min, x_max)
+        logger.debug("y min/max = %s/%s", y_min, y_max)
 
-        logger.debug("end of get_center_arcs: -> %s", center)
-        return center
+        [logger.debug("Arc %s", arc) for arc in arc_list]
+        if not arc_list:
+            logger.debug("end of get_center_arcs: no arcs")
+            return None
+
+        cnt, cr1, p, n, c1 = arc_list[0]
+        logger.debug("First Entry: %s", c1)
+        center = c1['center']
+        if len(arc_list) > 1:
+            cnt, cr2, p, n, c2 = arc_list[1]
+            logger.debug("Second Entry: %s", c2)
+            if not cr1 > cr2:
+                center = None
+
+        if center:
+            logger.debug("end of get_center_arcs: -> %s", center)
+            return center
+
+        c_entry = self.get_center_with_x(center_list, x_min)
+        if c_entry:
+            center = c_entry['center']
+            if center[1] < y_min:
+                logger.debug("end of get_center_arcs: x -> %s", center)
+                return center
+        c_entry = self.get_center_with_y(center_list, y_min)
+        if c_entry:
+            center = c_entry['center']
+            if center[0] < x_min:
+                logger.debug("end of get_center_arcs: y -> %s", center)
+                return center
+
+        logger.debug("end of get_center_arcs: no center found")
+        return None
 
     def get_center_dim(self, mm):
         return (round(mm[0], 4), round(mm[2], 4))
@@ -2305,7 +2380,9 @@ class Geometry(object):
             return None
 
         center = None
-        center_arcs = self.get_center_arcs()
+        # Zuerst suchen wir anhand der Circle- und Arc-Segmente nach einem
+        # möglichen Center-Punkt.
+        center_arcs = self.get_center_arcs(mm)
 
         if center_arcs:
             center = center_arcs

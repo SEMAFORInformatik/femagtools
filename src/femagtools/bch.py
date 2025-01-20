@@ -307,7 +307,7 @@ class Reader:
                 self.torque_fft = [
                     {'order': order.tolist(),
                      'torque': tq.tolist()}]
-        except (KeyError, IndexError):
+        except (KeyError, IndexError, ValueError):
             pass
 
         # check number of phases

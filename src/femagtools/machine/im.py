@@ -35,6 +35,9 @@ def log_interp1d(x, y, kind='cubic'):
     logy = np.log10(yy)
     lin_interp = ip.interp1d(logx, logy, kind=kind, fill_value="extrapolate")
     def log_interp(zz): return np.power(10.0, lin_interp(np.log10(zz)))
+    # TODO check replace interp1d
+    #lin_interp = ip.make_interp_spline(logx, logy, bc_type='not-a-knot')
+    #def log_interp(zz): return np.power(10.0, lin_interp(np.log10(zz), nu=1))
     return log_interp
 
 
@@ -792,15 +795,10 @@ def parident(workdir, engine, f1, u1, wdgcon,
     tend = time.time()
     logger.info("Elapsed time %d s Status %s",
                 (tend-tstart), status)
+    if any([x != 'C' for x in status]):
+        raise ValueError("AC simulation failed")
     # collect results
-    results = []
-    errors = []
-    for t in job.tasks:
-        if t.status == 'C':
-            results.append(t.get_results())
-        else:
-            logger.warning("Status %s", t.status)
-            results.append({})
+    results = [t.get_results() for t in job.tasks]
 
     i1_0 = results[0]['i1_0'].tolist()
     psi1_0 = results[0]['psi1_0'].tolist()

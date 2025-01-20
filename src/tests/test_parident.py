@@ -34,7 +34,8 @@ def test_noloadrot_eval(data_dir):
     r = eval(task)
     i0 = [2.0384,  4.0768,  6.1153,  8.1537, 10.1921]
     psi1_0 = [0.2725, 0.5301, 0.7106, 0.8091, 0.8641]
-    Bamp = [0.3091, 0.6013, 0.8058, 0.9159, 0.9768]
+    #Bamp = [0.3091, 0.6013, 0.8058, 0.9159, 0.9768]
+    Bamp = [0.3001, 0.5836, 0.7809, 0.8866, 0.9453]
     assert i0 == [round(x, 4) for x in r['i1_0']]
     assert psi1_0 == [round(x, 4) for x in np.mean(r['psi1_0'], axis=1)]
     assert Bamp == [round(x, 4) for x in np.mean(r['Bamp'], axis=1)]

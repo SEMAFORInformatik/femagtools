@@ -309,12 +309,12 @@ class Reader:
                      'torque': tq.tolist()}]
         except (KeyError, IndexError):
             pass
-        
+
         # check number of phases
-        try: 
+        try:
             if 'm' not in self.machine:
                 self.machine['m'] = len(self.current_angles)
-        except: 
+        except:
             pass
 
         return self
@@ -1439,17 +1439,21 @@ class Reader:
                                 'psid', 'psiq', 'torque')
                 except:
                     pass
-        if self.dqPar['psim']:
+        if self.dqPar.get('psim', 0):
             self.dqPar.pop('up', None)
         else:
+            up = np.array(self.dqPar.pop('up', None))
             self.dqPar.pop('psim', None)
+
         try:
             w1 = np.pi*self.dqPar['speed']*self.dqPar['npoles']
             r1 = self.machine.get('r1', 0.0)
             beta = np.array(self.dqPar['beta'])/180*np.pi
             iq = np.cos(beta)*self.dqPar['i1']
             id = np.sin(beta)*self.dqPar['i1']
-            up = w1*np.array(self.dqPar['psim'])
+            if 'psim' in self.dqPar:
+                up = w1*np.array(self.dqPar['psim'])
+
             ld = np.array(self.dqPar['ld'])
             lq = np.array(self.dqPar['lq'])
             uq = r1*iq + up + id*w1*ld

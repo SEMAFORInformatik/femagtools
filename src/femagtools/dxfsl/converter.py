@@ -10,20 +10,22 @@ from femagtools.dxfsl.shape import Shape
 from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
 from femagtools.dxfsl.plotrenderer import PlotRenderer
 from femagtools.dxfsl.concat import Concatenation
-from femagtools.dxfsl.functions import Timer, middle_angle
+from femagtools.dxfsl.functions import Timer, SimpleProcess, middle_angle
 from femagtools.dxfsl.journal import Journal, getJournal
 from femagtools.dxfsl.area import TYPE_WINDINGS
+from femagtools.dxfsl.areabuilder import disable_logging, enable_logging
 import logging
 import logging.config
 import numpy as np
 import sys
+import multiprocessing
 
 logger = logging.getLogger(__name__)
 journal = None
 
 
 def plot_geom(doit, plt, geom, title="Plot", areas=True):
-    if not doit:
+    if not doit or not plt:
         return
 
     logger.info("Prepare Plot %s", title)
@@ -42,9 +44,121 @@ def plot_geom(doit, plt, geom, title="Plot", areas=True):
                         fill_areas=areas)
 
 
+class SymSearchProcess(SimpleProcess):
+    def __init__(self,
+                 name=None,
+                 queue=None,
+                 machine=None,
+                 plt=None,  # plotter
+                 kind="",
+                 mindist=0.01,
+                 symtol=0.0,
+                 sympart=0,
+                 is_inner=False,
+                 is_outer=False,
+                 show_plots=True,
+                 debug_mode=False,
+                 rows=1,
+                 cols=1,
+                 num=1,
+                 no_processing=False):
+        SimpleProcess.__init__(self,
+                               name=name,
+                               no_processing=no_processing)
+        self.queue = queue
+        self.mach_in = machine
+        self.mach_out = None
+        self.plt = plt
+        self.kind = kind
+        self.mindist = mindist
+        self.symtol = symtol
+        self.sympart = sympart
+        self.is_inner = is_inner
+        self.is_outer = is_outer
+        self.show_plots = show_plots
+        self.debug_mode = debug_mode
+        self.rows = rows
+        self.cols = cols
+        self.num = num
+        pass
+
+    def run(self):
+        if not self.without_processing():
+            logger.info("Process is running")
+            self.plt = None
+            self.show_plots = False
+        else:
+            logger.info("without multiprocessing")
+
+        try:
+            self.mach_out = symmetry_search(
+                self.mach_in,
+                plt=self.plt,
+                kind=self.kind,
+                mindist=self.mindist,
+                symtol=self.symtol,
+                sympart=self.sympart,
+                is_inner=self.is_inner,
+                is_outer=self.is_outer,
+                show_plots=self.show_plots,
+                debug_mode=self.debug_mode,
+                rows=self.rows,
+                cols=self.cols,
+                num=self.num)
+        except Exception as e:
+            logger.warning("Exception in symmetry_search: %s", e)
+        if not self.mach_out:
+            logger.error("NO MACHINE AFTER PROCESS")
+        self.queue.put(self.mach_out)
+        if not self.without_processing():
+            logger.info("Process is finished")
+
+
+class BuildInnerProcess(SimpleProcess):
+    def __init__(self,
+                 name=None,
+                 queue=None,
+                 machine=None,
+                 mindist=0.01,
+                 plt=None,  # plotter
+                 EESM=False,
+                 no_processing=False):
+        SimpleProcess.__init__(self,
+                               name=name,
+                               no_processing=no_processing)
+        self.queue = queue
+        self.mach_in = machine
+        self.mach_out = None
+        self.plt = plt
+        self.mindist = mindist
+        self.EESM = EESM
+        pass
+
+    def run(self):
+        if not self.without_processing():
+            logger.info("Process is running")
+            self.plt = None
+        else:
+            logger.info("without multiprocessing")
+
+        try:
+            self.mach_out = build_inner_machine(
+                self.mach_in,
+                mindist=self.mindist,
+                plt=self.plt,
+                EESM=self.EESM)
+        except Exception as e:
+            logger.warning("Exception in symmetry_search: %s", e)
+
+        self.queue.put(self.mach_out)
+        if not self.without_processing():
+            logger.info("Process is finished")
+
+
 def symmetry_search(machine,
-                    plt,  # plotter
-                    kind,
+                    plt=None,  # plotter
+                    kind="single",
+                    mindist=0.01,
                     symtol=0.0,
                     sympart=0,
                     is_inner=False,
@@ -56,11 +170,13 @@ def symmetry_search(machine,
                     num=1):
     logger.info("*** Begin symmetry search for %s ***", kind)
 
-    if is_inner:
-        machine.set_inner()
-    elif is_outer:
-        machine.set_outer()
+    def return_machine(machine, kind):
+        machine.set_attributes(kind=kind, inner=is_inner, outer=is_outer)
+        machine.check_and_correct_geom(kind)
+        machine.delete_tiny_elements(mindist)
+        return machine
 
+    machine.set_attributes(kind=kind, inner=is_inner, outer=is_outer)
     machine.clear_cut_lines()
     if show_plots and debug_mode:
         plt.render_elements(machine.geom, Shape,
@@ -71,9 +187,8 @@ def symmetry_search(machine,
             logger.error("force symmetry failed")
             sys.exit(1)
         machine_ok = machine.get_forced_symmetry(sympart)
-        machine_ok.set_kind(kind)
         logger.info("*** End of symmetry search for %s ***", kind)
-        return machine_ok
+        return return_machine(machine_ok, kind)
 
     plot_geom(False,  # for developer
               plt, machine.geom,
@@ -92,9 +207,8 @@ def symmetry_search(machine,
                                 rows=rows, cols=cols, num=num, show=False)
         machine_slice = machine.get_symmetry_slice()
         if machine_slice is None:
-            machine.kind = kind
             logger.info(" - no slice extracted ?!?")
-            return machine
+            return return_machine(machine, kind)
 
         plot_geom(False,  # for developer
                   plt, machine_slice.geom,
@@ -104,13 +218,11 @@ def symmetry_search(machine,
         machine_mirror = machine_slice.get_symmetry_mirror(no_third=True)
 
         if machine_mirror is not None:
-            machine_mirror.set_kind(kind)
             logger.info("*** End of symmetry search for %s (symmetry and mirror) ***", kind)
-            return machine_mirror
+            return return_machine(machine_mirror, kind)
 
-        machine_slice.set_kind(kind)
         logger.info("*** End of symmetry search for %s (symmetry) ***", kind)
-        return machine_slice
+        return return_machine(machine_slice, kind)
 
     # --- no symmetry slice found ---
     logger.info(" - {}: no symmetry axis found".format(kind))
@@ -129,6 +241,10 @@ def symmetry_search(machine,
         machine.rotate_to(0.0)
         machine.set_alfa_and_corners()
 
+    plot_geom(False,  # for developer
+              plt, machine.geom,
+              title="Before Mirror ({})".format(kind))
+
     machine_mirror = machine.get_symmetry_mirror()
     machine_slice = machine
     machine_slice.set_alfa_and_corners()
@@ -146,6 +262,9 @@ def symmetry_search(machine,
         while machine_next_mirror is not None:
             logger.info(" - another mirror found")
             machine_mirror = machine_next_mirror
+            plot_geom(False,  # for developer
+                      plt, machine_mirror.geom,
+                      title="Next Mirror ({})".format(kind))
             machine_next_mirror = machine_mirror.get_symmetry_mirror()
 
         machine_ok = machine_mirror
@@ -155,10 +274,8 @@ def symmetry_search(machine,
         machine_ok.rotate_to(0.0)
         machine_ok.set_alfa_and_corners()
 
-    machine_ok.set_kind(kind)
-
     logger.info("*** End of symmetry search for %s ***", kind)
-    return machine_ok
+    return return_machine(machine_ok, kind)
 
 
 def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
@@ -313,6 +430,58 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
     return machine_temp
 
 
+def build_inner_machine(machine,
+                        mindist=0.01,
+                        plt=None,
+                        EESM=False):
+    logger.info("Begin of build_inner_machine")
+    machine.search_subregions(EESM)
+
+    if machine.geom.is_rotor():  # Inner mirrored rotor
+        machine = build_machine_rotor(machine,
+                                      True,  # is inner
+                                      mindist,
+                                      plt,
+                                      EESM=EESM)
+
+    if machine.geom.is_stator() or machine.has_windings():
+        machine = build_machine_stator(machine,
+                                       True,
+                                       mindist,
+                                       plt,
+                                       EESM=EESM)
+
+    machine.search_critical_elements(mindist)
+    logger.info("End of build_inner_machine")
+    return machine
+
+
+def build_outer_machine(machine,
+                        mindist=0.01,
+                        plt=None,
+                        EESM=False):
+    logger.info("Begin of build_outer_machine")
+    machine.search_subregions(EESM)
+
+    if machine.geom.is_rotor():  # Outer mirrored rotor
+        machine = build_machine_rotor(machine,
+                                      False,  # is outer
+                                      mindist,
+                                      plt,
+                                      EESM=EESM)
+
+    if machine.geom.is_stator() or machine.has_windings():
+        machine = build_machine_stator(machine,
+                                       False,
+                                       mindist,
+                                       plt,
+                                       EESM=EESM)
+
+    machine.search_critical_elements(mindist)
+    logger.info("End of build_outer_machine")
+    return machine
+
+
 def convert(dxfile,
             EESM=False,
             rtol=1e-04,
@@ -340,7 +509,8 @@ def convert(dxfile,
             write_id=False,
             full_model=False,
             debug_mode=False,
-            write_journal=False):
+            write_journal=False,
+            no_processing=False):
     global journal
     layers = ()
     conv = {}
@@ -361,6 +531,7 @@ def convert(dxfile,
                     basename,
                     __version__)
     timer = Timer(start_it=True)
+    start_timer = Timer(start_it=True)
 
     journal = getJournal(name='converter_journal', aktiv=write_journal)
     journal.get_journal(input_file.name)
@@ -391,6 +562,8 @@ def convert(dxfile,
 
     if write_fsl_single:
         write_fsl = True
+    if small_plots:
+        show_plots = False
 
     try:
         if input_file.suffix in ['.fem', '.FEM']:
@@ -438,8 +611,6 @@ def convert(dxfile,
     logger.info("total elements %s", len(basegeom.g.edges()))
 
     p = PlotRenderer()
-    if small_plots:
-        show_plots = False
 
     if view_only:
         logger.info("View only")
@@ -466,6 +637,7 @@ def convert(dxfile,
 
     if not (machine_base.part > 0):
         # machine shape is unclear
+        logger.warn("machine shape is unclear")
         machine_base.set_center(0.0, 0.0)
         machine_base.set_radius(9999999)
 
@@ -556,72 +728,63 @@ def convert(dxfile,
                                                  connect=True)
                     machine_outer.set_outer()
 
+        start_timer.stop("-- first part in %0.4f seconds --", info=True)
+        process_timer = Timer(start_it=True)
         # inner part
-        machine_inner = symmetry_search(machine_inner,
-                                        p,  # plot
-                                        inner_name,
-                                        is_inner=True,
-                                        symtol=symtol,
-                                        show_plots=show_plots,
-                                        rows=3,  # rows
-                                        cols=2,  # columns
-                                        num=3)   # start num
-        machine_inner.set_inner()
-        machine_inner.check_and_correct_geom("Inner")
-        machine_inner.delete_tiny_elements(mindist)
+        inner_queue = multiprocessing.Queue()
+        inner_proc = SymSearchProcess(name="Inner",  # for logger
+                                      queue=inner_queue,
+                                      machine=machine_inner,
+                                      plt=None,  # plot
+                                      kind=inner_name,
+                                      is_inner=True,
+                                      mindist=mindist,
+                                      symtol=symtol,
+                                      show_plots=show_plots,
+                                      rows=3,  # rows
+                                      cols=2,  # columns
+                                      num=3,   # start num
+                                      no_processing=no_processing)
+        inner_proc.start_task()
 
         # outer part
         machine_outer = symmetry_search(machine_outer,
-                                        p,  # plot
-                                        outer_name,
+                                        plt=p,  # plot
+                                        kind=outer_name,
                                         is_outer=True,
+                                        mindist=mindist,
                                         symtol=symtol,
                                         show_plots=show_plots,
                                         rows=3,  # rows
                                         cols=2,  # columns
                                         num=4)   # start num
-        machine_outer.check_and_correct_geom("Outer")
-        machine_outer.delete_tiny_elements(mindist)
+
+        machine_inner = inner_queue.get()
+        inner_proc.wait()
+        process_timer.stop("-- symmetry search in %0.4f seconds --", info=True)
 
         machine_inner.sync_with_counterpart(machine_outer)
 
-        machine_inner.search_subregions(EESM)
-        machine_outer.search_subregions(EESM)
+        final_timer = Timer(start_it=True)
+        inner_queue = multiprocessing.Queue()
+        inner_proc = BuildInnerProcess(name="Inner",  # for logger
+                                       queue=inner_queue,
+                                       machine=machine_inner,
+                                       mindist=mindist,
+                                       plt=p,
+                                       EESM=EESM,
+                                       no_processing=no_processing)
+        inner_proc.start_task()
 
-        # Inner mirrored rotor
-        if machine_inner.geom.is_rotor():
-            machine_inner = build_machine_rotor(machine_inner,
-                                                True,  # is inner
-                                                mindist,
-                                                p,
-                                                EESM=EESM)
+        machine_outer = build_outer_machine(machine_outer,
+                                            mindist,
+                                            p,
+                                            EESM=EESM)
+        machine_inner = inner_queue.get()
+        inner_proc.wait()
+        final_timer.stop("-- final part in %0.4f seconds --", info=True)
 
-        # Outer mirrored rotor
-        if machine_outer.geom.is_rotor():
-            machine_outer = build_machine_rotor(machine_outer,
-                                                False,  # is outer
-                                                mindist,
-                                                p,
-                                                EESM=EESM)
-
-        if machine_inner.geom.is_stator() or machine_inner.has_windings():
-            machine_inner = build_machine_stator(machine_inner,
-                                                 True,
-                                                 mindist,
-                                                 p,
-                                                 EESM=EESM)
-
-        if machine_outer.geom.is_stator() or machine_outer.has_windings():
-            machine_outer = build_machine_stator(machine_outer,
-                                                 False,
-                                                 mindist,
-                                                 p,
-                                                 EESM=EESM)
         machine_inner.sync_with_counterpart(machine_outer)
-
-        machine_inner.search_critical_elements(mindist)
-        machine_outer.search_critical_elements(mindist)
-
         logger.info("***** END of work: %s *****", basename)
 
         if machine_inner.geom.is_rotor():
@@ -776,10 +939,11 @@ def convert(dxfile,
                 outer = True
 
         machine = symmetry_search(machine,
-                                  p,  # plot
-                                  name,
+                                  plt=p,  # plot
+                                  kind=name,
                                   is_inner=inner,
                                   is_outer=outer,
+                                  mindist=mindist,
                                   symtol=symtol,
                                   sympart=sympart,
                                   show_plots=show_plots,

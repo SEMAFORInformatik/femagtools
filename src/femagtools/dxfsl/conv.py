@@ -18,8 +18,18 @@ logger = logging.getLogger(__name__)
 def main():
     argparser = argparse.ArgumentParser(
         description='Process DXF file and create a plot or FSL file.')
+    super_help = "--Help" in sys.argv
+    if super_help:
+        sys.argv.append("--help")
+
     argparser.add_argument('dxfile',
                            help='name of DXF file')
+    argparser.add_argument('--Help',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 "show this extended help message and exit"),
+                           dest='Help',
+                           action="store_true",
+                           default=False)
     argparser.add_argument('--PMSM',
                            help='Permanent Magnet Synchronous Motor',
                            dest='PMSM',
@@ -47,47 +57,56 @@ def main():
                            dest='stator',
                            default='')
     argparser.add_argument('--sympart',
-                           help='forced symmetry part',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'forced symmetry part'),
                            dest='sym_part',
                            type=int,
                            default=0)
     argparser.add_argument('-a', '--airgap',
-                           help='correct airgap',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'correct airgap'),
                            dest='airgap',
                            type=float,
                            default=0.0)
     argparser.add_argument('--airgap2',
-                           help='correct airgap',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'correct airgap'),
                            dest='airgap2',
                            type=float,
                            default=0.0)
     argparser.add_argument('-t', '--symtol',
-                           help='absolut tolerance to find symmetry axis',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'absolut tolerance to find symmetry axis'),
                            dest='sym_tolerance',
                            type=float,
                            default=0.001)
     argparser.add_argument('--mindist',
-                           help='minimal distance of spline control-points',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'minimal distance of spline control-points'),
                            dest='mindist',
                            type=float,
                            default=0.01)
     argparser.add_argument('--rtol',
-                           help='relative tolerance (pickdist)',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'relative tolerance (pickdist)'),
                            dest='rtol',
                            type=float,
                            default=1e-04)
     argparser.add_argument('--atol',
-                           help='absolut tolerance (pickdist)',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'absolut tolerance (pickdist)'),
                            dest='atol',
                            type=float,
                            default=1e-03)
     argparser.add_argument('--da',
-                           help='distance airgap',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'distance airgap'),
                            dest='da',
                            type=float,
                            default=0.0)
     argparser.add_argument('--dy',
-                           help='distance yoke',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'distance yoke'),
                            dest='dy',
                            type=float,
                            default=0.0)
@@ -104,11 +123,13 @@ def main():
                            dest='small_plots',
                            action="store_true")
     argparser.add_argument('--areas',
-                           help='show all areas',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'show all areas with single plots'),
                            dest='show_areas',
                            action="store_true")
     argparser.add_argument('--id',
-                           help='write id of areas',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'write id of areas into the plot'),
                            dest='write_id',
                            action="store_true")
     argparser.add_argument('-f', '--fsl',
@@ -116,7 +137,8 @@ def main():
                            dest='write_fsl',
                            action="store_true")
     argparser.add_argument('--fsl_single',
-                           help='create separate fsl for rotor and stator',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'create separate fsl for rotor and stator'),
                            dest='write_fsl_single',
                            action="store_true")
     argparser.add_argument('-v', '--view',
@@ -124,11 +146,13 @@ def main():
                            dest='view',
                            action="store_true")
     argparser.add_argument('-k', '--korr',
-                           help='show a view with korrections',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'show a view with korrections'),
                            dest='view_korr',
                            action="store_true")
     argparser.add_argument('--png',
-                           help='write png-file only',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'write plot in png-file only'),
                            dest='write_png',
                            action="store_true")
     argparser.add_argument('-d', '--debug',
@@ -139,8 +163,9 @@ def main():
                            help='print information in logfile and set --debug',
                            dest='debug',
                            action="store_true")
-    argparser.add_argument('-j',
-                           help='print information in journal file',
+    argparser.add_argument('--journal',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'print information in journal file'),
                            dest='journal',
                            action="store_true")
     argparser.add_argument('--version',
@@ -155,6 +180,12 @@ def main():
                            help='create full model (fsl only)',
                            dest='full_model',
                            action="store_true")
+    argparser.add_argument('--no_processing',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 "omit multiprocessing"),
+                           dest='no_processing',
+                           action="store_true",
+                           default=False)
 
     args = argparser.parse_args()
 
@@ -251,7 +282,8 @@ def main():
                   write_id=args.write_id,
                   debug_mode=args.debugger,
                   full_model=args.full_model,
-                  write_journal=args.journal)
+                  write_journal=args.journal,
+                  no_processing=args.no_processing)
     keys = ('tot_num_slot', 'num_sl_gen', 'num_poles', 'nodedist',
             'dy1', 'da1', 'da2', 'dy2', 'agndst', 'name')
     logger.info("%s", {k: res[k] for k in keys if k in res})

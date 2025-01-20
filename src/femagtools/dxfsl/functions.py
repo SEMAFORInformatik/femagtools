@@ -12,6 +12,7 @@ import logging
 import numpy as np
 import copy
 import time
+import multiprocessing
 
 logger = logging.getLogger('femagtools.functions')
 
@@ -480,3 +481,24 @@ class Timer(object):
             else:
                 logger.debug(fmt, sec)
         return sec
+
+
+class SimpleProcess(multiprocessing.Process):
+    def __init__(self, name=None, no_processing=False):
+        super(SimpleProcess, self).__init__()
+        self._no_processing = no_processing
+        self.name = name
+
+    def without_processing(self):
+        return self._no_processing
+
+    def wait(self):
+        if not self._no_processing:
+            logger.debug("%s Waiting for Process", self.name)
+            self.join()
+
+    def start_task(self):
+        if self._no_processing:
+            self.run()
+            return
+        self.start()

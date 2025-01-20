@@ -723,6 +723,41 @@ class Symmetry(object):
         logger.debug("end check_first_last_difference => %s", n1 + 1)
         return n1 + 1
 
+    def concatenate_results(self, check_rslt):
+        if len(check_rslt) < 2:
+            return check_rslt
+        #   ----------
+        def get_slices(rslt):
+            if rslt['slices'] is None:
+                return 0
+            if rslt.get('startdelta', 0.0) != 0.0:
+                return 0
+            if rslt.get('halfslice', None) is not None:
+                return 0
+            return rslt['slices']
+        #   ------
+        new_rslt = []
+        size1, n1, rslt1 = check_rslt[0]
+        slices1 = get_slices(rslt1)
+        for size2, n2, rslt2 in check_rslt[1:]:
+            slices2 = get_slices(rslt2)
+            if slices1 > 0 and \
+               slices1 == slices2 and \
+               np.isclose(size1, size2, rtol=1e-01, atol=1e-01) and \
+               (rslt1.get('delta_corr', 0.0) == 0.0 or \
+                rslt2.get('delta_corr', 0.0) == 0.0):
+                # concatenate
+                rslt1['slices'] = None
+                rslt2['delta_corr'] = 0.0
+                rslt2['areas'] = rslt2['areas'] + rslt1['areas']
+                logger.debug("concatenate results(size %s)", size1)
+            else:
+                new_rslt.append((size1, n1, rslt1))
+            slices1, size1, n1, rslt1 = (slices2, size2, n2, rslt2)
+
+        new_rslt.append((size1, n1, rslt1))
+        return new_rslt
+
     def get_symmetry_parts(self, check_rslt):
         max_size = 0
         max_areas = 0
@@ -731,10 +766,11 @@ class Symmetry(object):
         self.delta_angle_corr = None
         unsure_sym = False
 
-        check_rslt = [(size, n, rslt) for n, (size, rslt) in enumerate(check_rslt)]
+        check_rslt = [(size, n, rslt) for n, (size, rslt) in enumerate(check_rslt)
+                      if rslt['slices'] is not None]
         check_rslt.sort(reverse=True)
-        for size, n, rslt in check_rslt:
-            logger.debug("Result: %s, %s", size, rslt)
+        check_rslt = self.concatenate_results(check_rslt)
+        [logger.debug("Result #%s: %s, %s", n, size, rslt) for size, n, rslt in check_rslt]
 
         rtol = 1e-3
         atol = 1e-2
@@ -778,15 +814,19 @@ class Symmetry(object):
                         with_angle_corr += areas * size
                 else:
                     maybe_angle_korr += areas * size
-        logger.debug("max size: %s,  max areas: %s", max_size, max_areas)
 
-        logger.debug("Angle-Corrections: %s Yes,  %s No",
-                     with_angle_corr, without_angle_corr)
+        logger.debug("max size: %s,  max areas: %s", max_size, max_areas)
+        logger.debug("Angle-Corrections: %s Yes,  %s No, %s Maybe",
+                     with_angle_corr,
+                     without_angle_corr,
+                     maybe_angle_korr)
+
         if np.isclose(with_angle_corr, without_angle_corr):
             with_angle_corr = (maybe_angle_korr > 0)
         else:
             with_angle_corr = (with_angle_corr > without_angle_corr)
 
+        #   -------------------------
         def get_halfslice_counterpart(rslt):
             if rslt.get('halfslice', 0) != 2:
                 return None
@@ -801,7 +841,7 @@ class Symmetry(object):
                    np.isclose(alpha1, alpha2, rtol=rtol, atol=atol):
                     return half
             return None
-
+        #   -----------
         if halfslice:
             logger.debug("%s halfslice [1] found", len(halfslice))
 

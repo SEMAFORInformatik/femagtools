@@ -187,7 +187,7 @@ def parident(workdir, engine, machine,
 
     if simulation['calculationMode'] == 'ld_lq_fast':
         dqpars = dict(m=3, p=b['machine']['p'],
-                      r1=r1,
+                      r1=float(r1),
                       r2=machine['rotor'].get('resistance', 1),
                       rotor_mass=rotor_mass, kfric_b=1,
                       ldq=[dict(

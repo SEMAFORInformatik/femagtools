@@ -14,6 +14,7 @@ from .. import femag
 from scipy.interpolate import make_interp_spline, RegularGridInterpolator, RectBivariateSpline
 from scipy.integrate import quad
 import copy
+from matplotlib.colors import to_rgb
 
 logger = logging.getLogger(__name__)
 
@@ -596,6 +597,278 @@ def _get_copper_losses(scale_factor, bch):
         return scale_factor*cu_losses
     except KeyError:
         return 0  # noload calc has no winding losses
+
+
+def _set_plot_attributes(ax):
+    ax.set_aspect('equal')
+    for loc, spine in ax.spines.items():
+        spine.set_color('none')  # don't draw spine
+    ax.yaxis.set_ticks([])
+    ax.xaxis.set_ticks([])
+
+
+def _get_colors(colors, delta):
+    if delta == 0.0:
+        return colors
+    new_colors = []
+    for col in colors:
+        rgb = to_rgb(col)
+        r, g, b = rgb
+        col = (max(0.0, min(r+delta, 1.0)),
+               max(0.0, min(g+delta, 1.0)),
+               max(0.0, min(b+delta, 1.0)))
+        new_colors.append(col)
+    return new_colors
+
+
+def _draw_vertical_magnets(ax,
+                           poles,
+                           xr, yr,
+                           Rr,
+                           xoff, yoff,
+                           delta=0.0):
+    color = ['green', 'red']
+    color = _get_colors(color, delta)
+    for i in range(poles):
+        ax.fill(xr+xoff, yr+yoff,
+                facecolor=color[i%2], edgecolor=color[i%2])
+        xr, yr = np.dot(Rr, [xr, yr])
+    return
+
+
+def _draw_vertical_slots(ax,
+                         Q,
+                         r,
+                         alpha,
+                         xoff, yoff,
+                         delta=0.0):
+    color = ['skyblue', 'blue']
+    color = _get_colors(color, delta)
+    taus = 2*np.pi/Q
+    for n in range(Q):
+        beta = np.array([[n*taus+alpha[0], (n+1)*taus-alpha[0]],
+                         [(n+1)*taus-alpha[1], n*taus+alpha[1]]])
+        ax.fill(np.hstack((r * np.cos(beta[0, 0]),
+                           (r[::-1] * np.cos(beta[0, 1]))))+xoff,
+                np.hstack((r * np.sin(beta[0, 0]),
+                           (r[::-1] * np.sin(beta[0, 1]))))+yoff,
+                facecolor=color[0], edgecolor=color[0])
+
+
+def vertical_plot(machine, ax):
+    """plots afpm stator and rotor (vertical section)
+    Args:
+      dy1, dy1: float outer, inner diameter
+      rel_magn_width: float rel magnet width 0..1
+      Q: number of stator slots
+      poles: number of poles
+      slot_width: width of stator slot
+    """
+    logger.debug("begin of vertical_plot()")
+
+    model_type = machine['afmtype'][0:4]
+    dy1 = machine['outer_diam']*1e3
+    dy2 = machine['inner_diam']*1e3
+    rel_magn_width = machine['magnet']['afm_rotor']['rel_magn_width']
+    Q = machine['stator']['num_slots']
+    slot_width = machine['stator']['afm_stator']['slot_width']*1e3
+    poles = machine['poles']
+
+    # prepare Magnets
+    theta = np.linspace(np.pi/poles*(1-rel_magn_width),
+                        np.pi/poles*(1+rel_magn_width),
+                        10)
+    xr = np.concatenate((dy1/2 * np.cos(theta), dy2/2 * np.cos(theta[::-1])))
+    yr = np.concatenate((dy1/2 * np.sin(theta), dy2/2 * np.sin(theta[::-1])))
+    rtheta = 2*np.pi/poles
+    Rr = np.array([
+        [np.cos(rtheta), -np.sin(rtheta)],
+        [np.sin(rtheta),  np.cos(rtheta)]
+    ])
+
+    # prepare Slots
+    taus = 2*np.pi/Q
+    r = np.array([dy2/2, dy1/2])
+    alpha = np.arctan2(slot_width/2, r)
+
+    yoff = 0.0
+    xoff = 0.0
+    y_shift = -2
+    x_shift = dy1-dy2
+    ma_delta = 0.0  # color
+    sl_delta = 0.0  # color
+
+    # Draw
+    if model_type in ("S1R2"):  # 2 rotor
+        _draw_vertical_magnets(ax, poles, xr, yr, Rr, xoff, yoff, delta=-0.1)
+        yoff += y_shift
+        xoff += x_shift
+
+    if model_type in ("S2R1"):  # 2 stator
+        sl_delta = -0.1
+
+    _draw_vertical_slots(ax, Q, r, alpha, xoff, yoff, delta=sl_delta)
+    yoff += y_shift
+    xoff += x_shift
+
+    if model_type in ("S1R2"):  # 2 rotor
+        ma_delta = 0.1
+
+    _draw_vertical_magnets(ax, poles, xr, yr, Rr, xoff, yoff, delta=ma_delta)
+    yoff += y_shift
+    xoff += x_shift
+
+    if model_type in ("S2R1"):  # 2 stator
+        sl_delta = 0.0
+        _draw_vertical_slots(ax, Q, r, alpha, xoff, yoff, delta=sl_delta)
+
+    _set_plot_attributes(ax)
+    logger.debug("end of vertical_plot()")
+
+
+IRON_NO = 0
+IRON_UP = 1
+IRON_DOWN = 2
+
+def _draw_horizontal_magnets(ax,
+                             poles,
+                             magn_height,
+                             magn_width,
+                             yoke_height,
+                             Q,
+                             g,
+                             taus,
+                             dy2,
+                             yoff=0.0,
+                             iron=IRON_NO
+                             ):
+    color = ['green', 'red']
+    xy = (0, Q//g*taus, Q//g*taus, 0)
+
+    if iron == IRON_UP:
+        yy = (yoff-yoke_height,
+              yoff-yoke_height,
+              yoff,
+              yoff)
+        yoff -= yoke_height
+        ax.fill(xy, yy, color='skyblue')
+
+    taum = dy2*np.pi/poles
+    ym = np.array([yoff-magn_height,
+                   yoff-magn_height,
+                   yoff,
+                   yoff])
+    yoff -= magn_height
+
+    for n in range(poles//g):
+        xl = taum*n + taum*(1 - magn_width)
+        xr = taum*(n + 1) - taum*(1 - magn_width)
+        xm = (xl, xr, xr, xl)
+        ax.fill(xm, ym, color=color[n%2])
+
+    if iron == IRON_DOWN:
+        yy = (yoff-yoke_height,
+              yoff-yoke_height,
+              yoff,
+              yoff)
+        yoff -= yoke_height
+        ax.fill(xy, yy, color='skyblue')
+    return yoff
+
+
+TOOTH_UP = 0
+TOOTH_DOWN = 1
+TOOTH_ONLY = 2
+
+
+def _draw_horizontal_slots(ax,
+                           slot_height, slot_width, yoke_height,
+                           Q, g, taus,
+                           yoff=0.0,
+                           tooth=TOOTH_DOWN):
+    if not tooth == TOOTH_ONLY:
+        xx = (0, Q//g*taus, Q//g*taus, 0)
+        if tooth == TOOTH_DOWN:
+            yy = (yoff-yoke_height,
+                  yoff-yoke_height,
+                  yoff,
+                  yoff)
+        else:
+            yy = (yoff-slot_height,
+                  yoff-slot_height,
+                  yoff-slot_height-yoke_height,
+                  yoff-slot_height-yoke_height)
+        ax.fill(xx, yy, color='skyblue')
+
+    yt = (yoff-slot_height-yoke_height,
+          yoff-slot_height-yoke_height,
+          yoff, yoff)
+    for n in range(Q//g):
+        xt = np.array((n*taus, n*taus+(taus-slot_width)/2,
+                      n*taus+(taus-slot_width)/2, n*taus))
+        ax.fill(xt, yt, color='skyblue')
+        xt += slot_width + (taus-slot_width)/2
+        ax.fill(xt, yt, color='skyblue')
+    return yoff - slot_height - yoke_height
+
+
+def horizontal_plot(machine, ax):
+    logger.debug("begin of horizontal_plot()")
+
+    model_type = machine['afmtype'][0:4]
+    dy1 = machine['outer_diam']*1e3
+    dy2 = machine['inner_diam']*1e3
+    rel_magn_width = machine['magnet']['afm_rotor']['rel_magn_width']
+    magn_height = machine['magnet']['afm_rotor']['magn_height']*1e3
+    magn_yoke_height = machine['magnet']['afm_rotor']['yoke_height']*1e3
+
+    Q = machine['stator']['num_slots']
+    slot_width = machine['stator']['afm_stator']['slot_width']*1e3
+    poles = machine['poles']
+    m = 3
+    slot_height = machine['stator']['afm_stator']['slot_height']*1e3
+    yoke_height = machine['stator']['afm_stator']['yoke_height']*1e3
+    ag = machine['airgap']*1e3
+
+    g = np.gcd(Q, m*poles)//m
+    taus = dy2*np.pi/Q
+
+    yoff = 0.0
+    if model_type in ('S1R2'):  # 2 rotor
+        yoff = _draw_horizontal_magnets(ax, poles,
+                                        magn_height, rel_magn_width,
+                                        magn_yoke_height,
+                                        Q, g, taus, dy2,
+                                        yoff=yoff,
+                                        iron=IRON_UP)
+        yoff -= ag
+
+    tooth = TOOTH_ONLY if model_type in ('S1R2') else TOOTH_DOWN
+    yoff = _draw_horizontal_slots(ax,
+                                  slot_height, slot_width, yoke_height,
+                                  Q, g, taus,
+                                  yoff=yoff,
+                                  tooth=tooth)
+    yoff -= ag
+
+    iron = IRON_DOWN if model_type in ('S1R1', 'S1R2') else IRON_NO
+    yoff = _draw_horizontal_magnets(ax, poles,
+                                    magn_height, rel_magn_width,
+                                    magn_yoke_height,
+                                    Q, g, taus, dy2,
+                                    yoff=yoff,
+                                    iron=iron)
+    yoff -= ag
+
+    if model_type in ('S2R1'):  # 2 rotor
+        yoff = _draw_horizontal_slots(ax,
+                                      slot_height, slot_width, yoke_height,
+                                      Q, g, taus,
+                                      yoff=yoff,
+                                      tooth=TOOTH_UP)
+
+    _set_plot_attributes(ax)
+    logger.debug("end of horizontal_plot()")
 
 
 class AFPM:

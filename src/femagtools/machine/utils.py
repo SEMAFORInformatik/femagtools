@@ -366,7 +366,8 @@ def dqparident(workdir, engine, temp, machine,
     num_beta_steps: number of current steps (default 7 per quadrant)
     speed: rotor speed in 1/s (default 160/p)
     i1_max: maximum current in A rms (default approx 3*i1nom)
-    period_frac: fraction of rotating angle (default 6)
+    period_frac: (int) fraction of rotating angle (default 6)
+    dqtype: (str) type of identification: 'ldq' (default), 'psidq'
     cmd: femag executable
     """
     import pathlib

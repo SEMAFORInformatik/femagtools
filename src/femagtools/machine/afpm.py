@@ -827,6 +827,8 @@ def horizontal_plot(machine, ax):
     poles = machine['poles']
     m = 3
     slot_height = machine['stator']['afm_stator']['slot_height']*1e3
+    if model_type in ('S2R1', 'S2R1_all'):
+        slot_height /= 2
     yoke_height = machine['stator']['afm_stator']['yoke_height']*1e3
     ag = machine['airgap']*1e3
 
@@ -834,7 +836,7 @@ def horizontal_plot(machine, ax):
     taus = dy2*np.pi/Q
 
     yoff = 0.0
-    if model_type in ('S1R2'):  # 2 rotor
+    if model_type in ('S1R2', 'S1R2_all'):  # 2 rotor
         yoff = _draw_horizontal_magnets(ax, poles,
                                         magn_height, rel_magn_width,
                                         magn_yoke_height,
@@ -843,7 +845,7 @@ def horizontal_plot(machine, ax):
                                         iron=IRON_UP)
         yoff -= ag
 
-    tooth = TOOTH_ONLY if model_type in ('S1R2') else TOOTH_DOWN
+    tooth = TOOTH_ONLY if model_type in ('S1R2', 'S1R2_all') else TOOTH_DOWN
     yoff = _draw_horizontal_slots(ax,
                                   slot_height, slot_width, yoke_height,
                                   Q, g, taus,
@@ -851,7 +853,7 @@ def horizontal_plot(machine, ax):
                                   tooth=tooth)
     yoff -= ag
 
-    iron = IRON_DOWN if model_type in ('S1R1', 'S1R2') else IRON_NO
+    iron = IRON_DOWN if model_type in ('S1R1', 'S1R2', 'S1R2_all') else IRON_NO
     yoff = _draw_horizontal_magnets(ax, poles,
                                     magn_height, rel_magn_width,
                                     magn_yoke_height,
@@ -860,7 +862,7 @@ def horizontal_plot(machine, ax):
                                     iron=iron)
     yoff -= ag
 
-    if model_type in ('S2R1'):  # 2 rotor
+    if model_type in ('S2R1', 'S2R1_all'):  # 2 rotor
         yoff = _draw_horizontal_slots(ax,
                                       slot_height, slot_width, yoke_height,
                                       Q, g, taus,

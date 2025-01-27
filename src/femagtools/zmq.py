@@ -147,7 +147,6 @@ class SubscriberTask(threading.Thread):
     def send_notify():
         logger.debug(f"Send loop: {SubscriberTask.notify_send_loop}")
         while SubscriberTask.notify_send_loop:
-            logger.debug(f"Send data: {SubscriberTask.notify_send_header}")
             if 'progress_logger' in SubscriberTask.notify_send_header:
                 # collect data from different threads
                 SubscriberTask.notify_send_header.remove('progress_logger')

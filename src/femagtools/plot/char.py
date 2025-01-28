@@ -333,10 +333,14 @@ def _plot_contour(speed, torque, z, ax, title='', levels=[],
     clippath = Path(_get_nT_boundary(x, y))
     patch = PathPatch(clippath, facecolor='none')
     ax.add_patch(patch)
-    for c in cont.collections:
-        c.set_clip_path(patch)
-    for c in contf.collections:
-        c.set_clip_path(patch)
+    try:
+        for c in cont.collections:
+            c.set_clip_path(patch)
+        for c in contf.collections:
+            c.set_clip_path(patch)
+    except AttributeError:  # matplotlib >= 3.10
+        cont.set_clip_path(patch)
+        contf.set_clip_path(patch)
 
     if xscale > 1:
         def format_fn(tick_val, tick_pos):
@@ -367,9 +371,16 @@ def efficiency_map(rmap, ax=0, title='', clabel=True,
 
 
 def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True,
-               cmap='YlOrRd', cbar=False):
+               cmap='YlOrRd', cbar=False, key='losses'):
+    """
+    plot losses map
+    Args:
+    rmap: (dict) result of efficiency_losses_map
+    key: (str) type of losses: 'plfe1', 'plfe2', 'plmag', 'plcu1', 'plcu2', 'plfric', 'losses';
+    """
+
     if ax == 0:
         fig, ax = plt.subplots(figsize=(12, 12))
-    return _plot_contour(rmap['n'], rmap['T'], np.asarray(rmap['losses'])/1e3, ax,
-                        title=title, levels=14, clabel=clabel,
-                        cmap=cmap, cbar=cbar)
+    return _plot_contour(rmap['n'], rmap['T'], np.asarray(rmap[key])/1e3, ax,
+                         title=title, levels=14, clabel=clabel,
+                         cmap=cmap, cbar=cbar)

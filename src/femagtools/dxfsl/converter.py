@@ -21,7 +21,6 @@ import sys
 import multiprocessing
 
 logger = logging.getLogger(__name__)
-journal = None
 
 
 def plot_geom(doit, plt, geom, title="Plot", areas=True):
@@ -279,7 +278,6 @@ def symmetry_search(machine,
 
 
 def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
-    global journal
     logger.debug("Begin of build_machine_rotor")
 
     if machine.has_windings():
@@ -350,14 +348,12 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
               title="Final Rotor")
 
     t = timer.stop("-- rotor created in %0.4f seconds --")
-    journal.put('time_rotor_created', t)
 
     logger.debug("End of build_machine_rotor")
     return machine_temp
 
 
 def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False):
-    global journal
     logger.debug("Begin of build_machine_stator")
     timer = Timer(start_it=True)
 
@@ -424,7 +420,6 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
               title="Final Stator")
 
     t = timer.stop("-- stator created in %0.4f seconds --")
-    journal.put('time_stator_created', t)
 
     logger.debug("End of build_machine_stator")
     return machine_temp

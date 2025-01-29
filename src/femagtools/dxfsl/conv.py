@@ -180,12 +180,6 @@ def main():
                            help='create full model (fsl only)',
                            dest='full_model',
                            action="store_true")
-    argparser.add_argument('--no_processing',
-                           help=(argparse.SUPPRESS if not super_help else
-                                 "omit multiprocessing"),
-                           dest='no_processing',
-                           action="store_true",
-                           default=False)
 
     args = argparser.parse_args()
 
@@ -282,8 +276,7 @@ def main():
                   write_id=args.write_id,
                   debug_mode=args.debugger,
                   full_model=args.full_model,
-                  write_journal=args.journal,
-                  no_processing=args.no_processing)
+                  write_journal=args.journal)
     keys = ('tot_num_slot', 'num_sl_gen', 'num_poles', 'nodedist',
             'dy1', 'da1', 'da2', 'dy2', 'agndst', 'name')
     logger.info("%s", {k: res[k] for k in keys if k in res})

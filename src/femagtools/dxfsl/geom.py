@@ -4528,6 +4528,50 @@ class Geometry(object):
                 add_element(e)
         self.area_list += area_list
 
+    def areas_minmax_list(self, area_list):
+        if not area_list:
+            return []
+
+        dist_list = []
+        for n, a in enumerate(area_list):
+            dist_list.append((a.min_dist, a.max_dist, n))
+        dist_list.sort()
+
+        minmax_list = []
+        d1_this, d2_this, n = dist_list [0]
+        for d1_next, d2_next, n in dist_list[1:]:
+            if d1_next > d2_this:
+                minmax_list.append((d1_this, d2_this))
+                d1_this = d1_next
+                d2_this = d2_next
+            else:
+                d2_this = max(d2_this, d2_next)
+        minmax_list.append((d1_this, d2_this))
+        return minmax_list
+
+    def magnets_minmax_list(self):
+        magnets = [a for a in self.list_of_areas()
+                   if a.is_magnet()]
+        return self.areas_minmax_list(magnets)
+
+    def windings_minmax_list(self):
+        windings = [a for a in self.list_of_areas()
+                    if a.is_winding()]
+        return self.areas_minmax_list(windings)
+
+    def shaft_minmax(self):
+        shafts = [a for a in self.list_of_areas()
+                  if a.is_shaft()]
+        if not shafts:
+            return (0.0, 0.0)
+
+        dmin = shafts[0].min_dist
+        dmax = shafts[0].max_dist
+        for s in shafts[1:]:
+            dmin = min(dmin, s.min_dist)
+            dmax = max(dmax, s.max_dist)
+        return (dmin, dmax)
+
     def check_airgap_connecting_nodes(self, geom, startangle, endangle):
         logger.info("check_airgap_connecting_nodes")
 

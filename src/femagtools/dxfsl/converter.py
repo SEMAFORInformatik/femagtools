@@ -10,7 +10,7 @@ from femagtools.dxfsl.shape import Shape
 from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
 from femagtools.dxfsl.plotrenderer import PlotRenderer
 from femagtools.dxfsl.concat import Concatenation
-from femagtools.dxfsl.functions import Timer, SimpleProcess, middle_angle
+from femagtools.dxfsl.functions import Timer, middle_angle
 from femagtools.dxfsl.journal import Journal, getJournal
 from femagtools.dxfsl.area import TYPE_WINDINGS
 from femagtools.dxfsl.areabuilder import disable_logging, enable_logging
@@ -18,7 +18,8 @@ import logging
 import logging.config
 import numpy as np
 import sys
-import multiprocessing
+import matplotlib.pyplot as plt
+import matplotlib.patches as pch
 
 logger = logging.getLogger(__name__)
 
@@ -41,117 +42,6 @@ def plot_geom(doit, plt, geom, title="Plot", areas=True):
                         write_id=areas,
                         with_legend=False,
                         fill_areas=areas)
-
-
-class SymSearchProcess(SimpleProcess):
-    def __init__(self,
-                 name=None,
-                 queue=None,
-                 machine=None,
-                 plt=None,  # plotter
-                 kind="",
-                 mindist=0.01,
-                 symtol=0.0,
-                 sympart=0,
-                 is_inner=False,
-                 is_outer=False,
-                 show_plots=True,
-                 debug_mode=False,
-                 rows=1,
-                 cols=1,
-                 num=1,
-                 no_processing=False):
-        SimpleProcess.__init__(self,
-                               name=name,
-                               no_processing=no_processing)
-        self.queue = queue
-        self.mach_in = machine
-        self.mach_out = None
-        self.plt = plt
-        self.kind = kind
-        self.mindist = mindist
-        self.symtol = symtol
-        self.sympart = sympart
-        self.is_inner = is_inner
-        self.is_outer = is_outer
-        self.show_plots = show_plots
-        self.debug_mode = debug_mode
-        self.rows = rows
-        self.cols = cols
-        self.num = num
-        pass
-
-    def run(self):
-        if not self.without_processing():
-            logger.info("Process is running")
-            self.plt = None
-            self.show_plots = False
-        else:
-            logger.info("without multiprocessing")
-
-        try:
-            self.mach_out = symmetry_search(
-                self.mach_in,
-                plt=self.plt,
-                kind=self.kind,
-                mindist=self.mindist,
-                symtol=self.symtol,
-                sympart=self.sympart,
-                is_inner=self.is_inner,
-                is_outer=self.is_outer,
-                show_plots=self.show_plots,
-                debug_mode=self.debug_mode,
-                rows=self.rows,
-                cols=self.cols,
-                num=self.num)
-        except Exception as e:
-            logger.warning("Exception in symmetry_search: %s", e)
-        if not self.mach_out:
-            logger.error("NO MACHINE AFTER PROCESS")
-        self.queue.put(self.mach_out)
-        if not self.without_processing():
-            logger.info("Process is finished")
-
-
-class BuildInnerProcess(SimpleProcess):
-    def __init__(self,
-                 name=None,
-                 queue=None,
-                 machine=None,
-                 mindist=0.01,
-                 plt=None,  # plotter
-                 EESM=False,
-                 no_processing=False):
-        SimpleProcess.__init__(self,
-                               name=name,
-                               no_processing=no_processing)
-        self.queue = queue
-        self.mach_in = machine
-        self.mach_out = None
-        self.plt = plt
-        self.mindist = mindist
-        self.EESM = EESM
-        pass
-
-    def run(self):
-        if not self.without_processing():
-            logger.info("Process is running")
-            self.plt = None
-        else:
-            logger.info("without multiprocessing")
-
-        try:
-            self.mach_out = build_inner_machine(
-                self.mach_in,
-                mindist=self.mindist,
-                plt=self.plt,
-                EESM=self.EESM)
-        except Exception as e:
-            logger.warning("Exception in symmetry_search: %s", e)
-
-        self.queue.put(self.mach_out)
-        if not self.without_processing():
-            logger.info("Process is finished")
 
 
 def symmetry_search(machine,
@@ -348,6 +238,7 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
               title="Final Rotor")
 
     t = timer.stop("-- rotor created in %0.4f seconds --")
+    journal.put('time_rotor_created', t)
 
     logger.debug("End of build_machine_rotor")
     return machine_temp
@@ -420,6 +311,7 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
               title="Final Stator")
 
     t = timer.stop("-- stator created in %0.4f seconds --")
+    journal.put('time_stator_created', t)
 
     logger.debug("End of build_machine_stator")
     return machine_temp
@@ -504,8 +396,7 @@ def convert(dxfile,
             write_id=False,
             full_model=False,
             debug_mode=False,
-            write_journal=False,
-            no_processing=False):
+            write_journal=False):
     global journal
     layers = ()
     conv = {}
@@ -724,23 +615,19 @@ def convert(dxfile,
                     machine_outer.set_outer()
 
         start_timer.stop("-- first part in %0.4f seconds --", info=True)
+
         process_timer = Timer(start_it=True)
         # inner part
-        inner_queue = multiprocessing.Queue()
-        inner_proc = SymSearchProcess(name="Inner",  # for logger
-                                      queue=inner_queue,
-                                      machine=machine_inner,
-                                      plt=None,  # plot
-                                      kind=inner_name,
-                                      is_inner=True,
-                                      mindist=mindist,
-                                      symtol=symtol,
-                                      show_plots=show_plots,
-                                      rows=3,  # rows
-                                      cols=2,  # columns
-                                      num=3,   # start num
-                                      no_processing=no_processing)
-        inner_proc.start_task()
+        machine_inner = symmetry_search(machine=machine_inner,
+                                        plt=p,  # plot
+                                        kind=inner_name,
+                                        is_inner=True,
+                                        mindist=mindist,
+                                        symtol=symtol,
+                                        show_plots=show_plots,
+                                        rows=3,  # rows
+                                        cols=2,  # columns
+                                        num=3)   # start num
 
         # outer part
         machine_outer = symmetry_search(machine_outer,
@@ -754,29 +641,20 @@ def convert(dxfile,
                                         cols=2,  # columns
                                         num=4)   # start num
 
-        machine_inner = inner_queue.get()
-        inner_proc.wait()
         process_timer.stop("-- symmetry search in %0.4f seconds --", info=True)
 
         machine_inner.sync_with_counterpart(machine_outer)
 
         final_timer = Timer(start_it=True)
-        inner_queue = multiprocessing.Queue()
-        inner_proc = BuildInnerProcess(name="Inner",  # for logger
-                                       queue=inner_queue,
-                                       machine=machine_inner,
-                                       mindist=mindist,
-                                       plt=p,
-                                       EESM=EESM,
-                                       no_processing=no_processing)
-        inner_proc.start_task()
+        machine_inner = build_inner_machine(machine_inner,
+                                            mindist=mindist,
+                                            plt=p,
+                                            EESM=EESM)
 
         machine_outer = build_outer_machine(machine_outer,
                                             mindist,
                                             p,
                                             EESM=EESM)
-        machine_inner = inner_queue.get()
-        inner_proc.wait()
         final_timer.stop("-- final part in %0.4f seconds --", info=True)
 
         machine_inner.sync_with_counterpart(machine_outer)
@@ -1080,6 +958,36 @@ def convert(dxfile,
     return conv
 
 
+def _create_rotor_parameters(machine):
+    rotor = {
+        'min_radius': machine.geom.min_radius,
+        'max_radius': machine.geom.max_radius,
+        'mags': machine.geom.magnets_minmax_list()
+    }
+    shaft_min, shaft_max = machine.geom.shaft_minmax()
+    if shaft_max > 0.0:
+        rotor['shaft_min'] = shaft_min
+        rotor['shaft_max'] = shaft_max
+    if shaft_max > rotor['min_radius']:
+        rotor['min_radius'] = shaft_max
+    return rotor
+
+
+def _create_stator_parameters(machine):
+    stator = {
+        'min_radius': machine.geom.min_radius,
+        'max_radius': machine.geom.max_radius,
+        'wnds': machine.geom.windings_minmax_list()
+    }
+    shaft_min, shaft_max = machine.geom.shaft_minmax()
+    if shaft_max > 0.0:
+        stator['shaft_min'] = shaft_min
+        stator['shaft_max'] = shaft_max
+    if shaft_max > stator['min_radius']:
+        stator['min_radius'] = shaft_max
+    return stator
+
+
 def create_femag_parameters(m_inner, m_outer, nodedist=1):
     if not (m_inner and m_outer):
         logger.warning("inner %s outer %s", m_inner, m_outer)
@@ -1122,6 +1030,13 @@ def create_femag_parameters(m_inner, m_outer, nodedist=1):
     params['alfa_slot'] = alfa_slot
     params['alfa_pole'] = alfa_pole
 
+    if m_inner.geom.is_rotor():
+        params['rotor'] = _create_rotor_parameters(m_inner)
+        params['stator'] = _create_stator_parameters(m_outer)
+    else:
+        params['rotor'] = _create_rotor_parameters(m_outer)
+        params['stator'] = _create_stator_parameters(m_inner)
+
     if num_slots == 0 or num_poles == 0:
         if num_slots == 0:
             logger.warning("No slots found")
@@ -1149,6 +1064,8 @@ def create_femag_parameters_stator(motor, position):
         params['dy1'] = 2*motor.geom.max_radius
         params['da1'] = 2*motor.geom.min_radius
     params['slot_area'] = motor.slot_area()
+    params['stator'] = _create_stator_parameters(motor)
+    params['machine'] = motor
     return params
 
 
@@ -1163,4 +1080,108 @@ def create_femag_parameters_rotor(motor, position):
         params['dy1'] = 2*motor.geom.max_radius
         params['da1'] = 2*motor.geom.min_radius
     params['slot_area'] = motor.slot_area()
+    params['rotor'] = _create_rotor_parameters(motor)
+    params['machine'] = motor
     return params
+
+
+def _draw_horizontal_shaft(ax, inner,
+                           motor_length):
+    if not inner.get('shaft_max', 0.0) > 0.0:
+        shaft_min = 0.0
+        shaft_max = inner['min_radius']
+    else:
+        shaft_min = inner['shaft_min']
+        shaft_max = inner['shaft_max']
+    xx = (0.0, motor_length, motor_length, 0.0)
+    yy = (-shaft_max, -shaft_max, shaft_max, shaft_max)
+    ax.fill(xx, yy, color='grey')
+    shaft_max = shaft_max / 3
+    shaft_length = motor_length * 1.2
+    axis_length = shaft_length - motor_length
+    xx = (-axis_length,
+          shaft_length,
+          shaft_length,
+          -axis_length)
+    yy = (-shaft_max, -shaft_max, shaft_max, shaft_max)
+    ax.fill(xx, yy, color='grey')
+
+
+def _draw_horizontal_rotor(ax, param):
+    rotor = param.get('rotor', None)
+    if not rotor:
+        return
+    ymin = rotor['min_radius']
+    ymax = rotor['max_radius']
+    mags = rotor.get('mags', [])
+    motor_length = param.get('length', param['dy1'])
+
+    xx = (0.0, motor_length, motor_length, 0.0)
+    yy = (ymin, ymin, ymax, ymax)
+    ax.fill(xx, yy, color='skyblue')
+    yy = (-ymin, -ymin, -ymax, -ymax)
+    ax.fill(xx, yy, color='skyblue')
+
+    for y1, y2 in mags:
+        ym = (y1, y1, y2, y2)
+        ax.fill(xx, ym, color='red')
+        ym = (-y1, -y1, -y2, -y2)
+        ax.fill(xx, ym, color='red')
+
+    if not param.get('external_rotor', False):
+        _draw_horizontal_shaft(ax, rotor, motor_length)
+
+
+def _draw_horizontal_stator(ax, param):
+    stator = param.get('stator', None)
+    if not stator:
+        return
+    ymin = stator['min_radius']
+    ymax = stator['max_radius']
+    wnds = stator.get('wnds', [])
+    motor_length = param.get('length', param['dy1'])
+
+    xx = (0.0, motor_length, motor_length, 0.0)
+    yy = (ymin, ymin, ymax, ymax)
+    ax.fill(xx, yy, color='skyblue')
+    yy = (-ymin, -ymin, -ymax, -ymax)
+    ax.fill(xx, yy, color='skyblue')
+
+    for y1, y2 in wnds:
+        ym = (y1, y1, y2, y2)
+        r = (y2 - y1) / 2
+        ax.fill(xx, ym, color='green')
+        c = (xx[0], y2 - r)
+        ax.add_patch(pch.Circle(c, r, fill=True, color='green'))
+        c = (xx[1], y2 - r)
+        ax.add_patch(pch.Circle(c, r, fill=True, color='green'))
+
+        ym = (-y1, -y1, -y2, -y2)
+        ax.fill(xx, ym, color='green')
+        c = (xx[0], -y2 + r)
+        ax.add_patch(pch.Circle(c, r, fill=True, color='green'))
+        c = (xx[1], -y2 + r)
+        ax.add_patch(pch.Circle(c, r, fill=True, color='green'))
+
+    if param.get('external_rotor', False):
+        _draw_horizontal_shaft(ax, rotor, motor_length)
+
+
+def draw_horizontal(ax, params):
+    _draw_horizontal_rotor(ax, params)
+    _draw_horizontal_stator(ax, params)
+
+
+def draw_motor(params):
+    fig, axs = plt.subplots(ncols=2, figsize=(10,7))
+
+    params['length'] = params['dy1'] * 0.8
+    draw_horizontal(axs[1], params)
+
+    fig.tight_layout()
+    for ax in axs:
+        ax.set_aspect('equal')
+        for loc, spine in ax.spines.items():
+            spine.set_color('none')  # don't draw spine
+        ax.yaxis.set_ticks([])
+        ax.xaxis.set_ticks([])

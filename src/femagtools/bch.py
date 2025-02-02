@@ -618,8 +618,8 @@ class Reader:
 
     def __read_peak_winding_currents(self, content):
         self.scData['peakWindingCurrents'] = [float(x)
-                                              for x in re.findall(r'[-0-9.]+',
-                                                                  ''.join(content))]
+                                              for x in self._numPattern.findall(
+                                                      ''.join(content))]
 
     def __read_general_machine_data(self, content):
         mcfiles = []
@@ -1770,6 +1770,9 @@ class Reader:
 
     def __getattr__(self, k):
         return self.__dict__[k]
+
+    def asdict(self):
+        return {k[0]: k[1] for k in self.items()}
 
     def items(self):
         return [(k, self.get(k)) for k in ('version',

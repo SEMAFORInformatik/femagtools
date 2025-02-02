@@ -22,6 +22,26 @@ except ImportError:   # ModuleNotFoundError:
 logger = logging.getLogger("femagtools.plot.bch")
 
 
+def find_peaks_and_valleys(t, y):
+    """ return peaks and valleys of y with maximum amplitude
+    """
+    peaks = (np.diff(np.sign(np.diff(y))) < 0).nonzero()[0] + 1
+    if len(peaks > 0):
+        ip = np.argmax(y[peaks])
+        pv = {'yp': y[peaks][ip], 'tp': t[peaks][ip]}
+    else:
+        pv = {'yp': [], 'tp': []}
+    valleys = (np.diff(np.sign(np.diff(y))) > 0).nonzero()[0] + 1
+    if len(valleys > 0):
+        iv = np.argmin(y[valleys])
+        pv.update({'yv': y[valleys][iv], 'tv': t[valleys][iv]})
+    else:
+        pv.update({'yv': [], 'tv': []})
+    pv.update({'peaks': y[peaks], 'valleys': y[valleys],
+               'tpeaks': t[peaks], 'tvalleys': t[valleys]})
+    return pv
+
+
 def _create_3d_axis():
     """creates a subplot with 3d projection if one does not already exist"""
     from matplotlib.projections import get_projection_class
@@ -511,30 +531,62 @@ def transientsc(bch, title=''):
     ax.grid(True)
     istat = np.array([bch.scData[i]
                       for i in ('ia', 'ib', 'ic')])
+    pv = [find_peaks_and_valleys(
+        np.array(bch.scData['time']), i1)
+          for i1 in istat]
+    try:
+        ipvmax = np.argmax(
+            [y['yp'] if np.abs(y['yp']) > np.abs(y['yv']) else y['yv']
+             for y in pv])
+        imax = pv[ipvmax]['yp'] if np.abs(pv[ipvmax]['yp']) > np.abs(pv[ipvmax]['yv']) else pv[ipvmax]['yv']
+    except KeyError:
+        pass
     if np.max(istat) > 4000:
         istat *= 1e-3
+        imax *= 1e-3
         ax.set_title('Currents / kA')
     else:
         ax.set_title('Currents / A')
 
     for i, iph in zip(('ia', 'ib', 'ic'), istat):
         ax.plot(bch.scData['time'], iph, label=i)
+    try:
+        ax.plot([pv[ipvmax]['tp']], [imax], '.')
+        ax.annotate(f'Imax = {imax:.1f}',
+                    xy=(pv[ipvmax]['tp'], imax),
+                    xytext=(pv[ipvmax]['tp']+0.01, imax))
+    except NameError:
+        pass
     ax.set_xlabel('Time / s')
     ax.legend()
 
     row = 2
     plt.subplot(rows, cols, row)
     ax = plt.gca()
-    scale = 1
+    pv = find_peaks_and_valleys(
+        np.array(bch.scData['time']), np.array(bch.scData['torque']))
+    try:
+        tqmax = pv['yp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['yv']
+        tp = pv['tp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['tv']
+    except KeyError:
+        pass
     torque = np.array(bch.scData['torque'])
     if np.max(torque) > 4000:
         torque *= 1e-3
+        tqmax *= 1e-3
         ax.set_title('Torque / kNm')
     else:
         ax.set_title('Torque / Nm')
 
     ax.grid(True)
     ax.plot(bch.scData['time'], torque)
+    try:
+        ax.plot([tp], [tqmax], '.')
+        ax.annotate(f'Tmax = {tqmax:.1f}',
+                    xy=(tp, tqmax),
+                    xytext=(tp+0.01, tqmax))
+    except NameError:
+        pass
     ax.set_xlabel('Time / s')
 
     fig.tight_layout(h_pad=2)
@@ -560,8 +612,10 @@ def transientsc_demag(demag, magnet=0, title='', ax=0):
             label='H Max {:4.2f} kA/m'.format(max(hmax)))
     ax.plot(pos, havg,
             label='H Avg {:4.2f} kA/m'.format(max(havg)))
-    ax.plot([pos[0], pos[-1]], hclim, color='C3', linestyle='dashed',
-            label='Hc {:4.2f} kA/m'.format(hclim[0]))
+    if len(hclim) > 1:
+        ax.plot([pos[0], pos[-1]], hclim, color='C3', linestyle='dashed',
+                label='Hc {:4.2f} kA/m'.format(hclim[0]))
+
     ax.set_xlabel('Rotor Position / °')
     ax.grid(True)
     if magnet:

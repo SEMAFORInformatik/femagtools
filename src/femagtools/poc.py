@@ -122,6 +122,7 @@ class Poc:
             import re
             for i in range(func_steps-1):
                 l = re.split(';|\t|,| ', pocfile.readline().strip())
+                l = [i for i in l if i]  # remove empty items
                 if len(l) > 2:
                     self.harmonic_id.append(int(l[0]))
                     self.func_current.append(float(l[1]))

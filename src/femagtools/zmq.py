@@ -145,7 +145,7 @@ class SubscriberTask(threading.Thread):
         SubscriberTask.percent_list = []
 
     def send_notify():
-        logger.debug(f"Send loop: {SubscriberTask.notify_send_loop}")
+        logger.debug(f"Send loop: {SubscriberTask.notify_send_loop}, timestep: {SubscriberTask.timestep}")
         while SubscriberTask.notify_send_loop:
             if 'progress_logger' in SubscriberTask.notify_send_header:
                 # collect data from different threads
@@ -196,7 +196,7 @@ class SubscriberTask(threading.Thread):
                             SubscriberTask.notify_send_header.add('xyplot')
                         continue
 
-                    if response[0] in self.header or b'' in self.header:
+                    if response[0] not in self.header:
                         self.notify([s.decode('latin1') for s in response])
 
                 except Exception:

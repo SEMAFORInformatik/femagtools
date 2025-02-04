@@ -802,8 +802,10 @@ class ZmqFemag(BaseFemag):
         """attaches a notify function"""
         logger.info("Subscribe on '%s' port %d", self.femaghost, self.port+1)
         if self.subscriber is None:
+            # progress/xyplot at a configured timestep published
+            header = [b'progress', b'xyplot']
             self.subscriber = femagtools.zmq.SubscriberTask(
-                port=self.port+1, host=self.femaghost, notify=notify)
+                port=self.port+1, host=self.femaghost, notify=notify, header=header)
             self.subscriber.start()
         else:
             # reattach?
@@ -1087,7 +1089,7 @@ class ZmqFemag(BaseFemag):
         response = self.send_request(
             ['CONTROL', f'getfile = {filename}'], timeout=1000)
         return [response[0].decode('latin1'),
-                response[1] if len(response) else b'']
+                response[1] if len(response) > 1 else b'']
 
     def exportsvg(self, fslcmds, timeout=10000):
         """get svg format from fsl commands (if any graphic created)

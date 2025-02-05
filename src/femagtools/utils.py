@@ -49,7 +49,9 @@ def fft(pos, y, pmod=0):
         nmax = min(9*npoles, N//2)
 
     alfa0 = np.angle(Y[i])
+    alfa = np.angle(Y[:nmax])
 
     return {'a': a, 'a0': a0, 'T0': T0, 'alfa0': alfa0,
+            'alfa': alfa,
             'nue': (2*np.abs(Y[:nmax])/N).tolist(),
             'yi': yx.tolist()}

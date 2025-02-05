@@ -56,7 +56,8 @@ class ProgressLogger(threading.Thread):
                         ["progress_logger",
                          f"{self.numTot}:{numOf}:{percent}:{' '.join(summary)}"])
             else:
-                logger.info('collecting FE losses ...')
+                # TODO: log message might be misleading
+                logger.debug('collecting FE losses ...')
                 return
 
     def stop(self):

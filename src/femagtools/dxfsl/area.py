@@ -435,6 +435,9 @@ class Area(object):
             self.type == TYPE_WINDINGS or \
             self.type == TYPE_FD_WINDINGS
 
+    def is_field_winding(self):
+        return self.type == TYPE_FD_WINDINGS
+
     def is_magnet(self):
         return self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT
 

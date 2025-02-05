@@ -4559,6 +4559,11 @@ class Geometry(object):
                     if a.is_winding()]
         return self.areas_minmax_list(windings)
 
+    def fd_windings_minmax_list(self):
+        windings = [a for a in self.list_of_areas()
+                    if a.is_field_winding()]
+        return self.areas_minmax_list(windings)
+
     def shaft_minmax(self):
         shafts = [a for a in self.list_of_areas()
                   if a.is_shaft()]

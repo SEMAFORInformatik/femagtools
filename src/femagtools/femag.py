@@ -803,7 +803,7 @@ class ZmqFemag(BaseFemag):
         logger.info("Subscribe on '%s' port %d", self.femaghost, self.port+1)
         if self.subscriber is None:
             # progress/xyplot at a configured timestep published
-            header = [b'progress', b'xyplot']
+            header = [b'progress', b'xyplot', b'license']
             self.subscriber = femagtools.zmq.SubscriberTask(
                 port=self.port+1, host=self.femaghost, notify=notify, header=header)
             self.subscriber.start()

@@ -80,6 +80,9 @@ class SubscriberTask(threading.Thread):
     notify = None
     notify_send_header = set()
     notify_send_data = dict()
+    # progress, xydata and this entries of this list
+    # will send only only once per timestep
+    simple_data = ['license']
 
     def __init__(self, **kwargs):
         threading.Thread.__init__(self)
@@ -92,7 +95,8 @@ class SubscriberTask(threading.Thread):
         self.header = kwargs.get('header')
         self.num_cur_steps = kwargs.get('num_cur_steps', None)
         SubscriberTask.curve_label = kwargs.get('curve_label', '')
-        SubscriberTask.timestep = kwargs.get('timestep', 1)
+        SubscriberTask.timestep = kwargs.get('timestep', 2)
+
         if not self.host:
             self.host = 'localhost'
         if not self.header:
@@ -153,12 +157,19 @@ class SubscriberTask(threading.Thread):
                 numTot = len(SubscriberTask.percent_list)
                 d = json.loads(SubscriberTask.notify_send_data.get('progress_logger')[1])
                 d['percent'] = sum(SubscriberTask.percent_list) / numTot
-                d['subtitle'] = f"{SubscriberTask.percent_list.count(100)} of {numTot}"
+                d['subtitle'] = f"{SubscriberTask.percent_list.count(100)} of {numTot}" if numTot > 1 else ''
                 SubscriberTask.notify(['progress_logger', json.dumps(d)])
             if 'xyplot' in SubscriberTask.notify_send_header:
                 SubscriberTask.notify([s.decode('latin1')
                                        for s in SubscriberTask.notify_send_data.get('xyplot')])
                 SubscriberTask.notify_send_header.remove('xyplot')
+
+            # simple
+            for sdata in SubscriberTask.simple_data:
+                if sdata in SubscriberTask.notify_send_header:
+                    SubscriberTask.notify([s.decode('latin1')
+                                           for s in SubscriberTask.notify_send_data.get(sdata)])
+                    SubscriberTask.notify_send_header.remove(sdata)
 
             time.sleep(abs(SubscriberTask.timestep))
         logger.debug(f"Send Finished loop: {SubscriberTask.notify_send_loop}")
@@ -195,6 +206,13 @@ class SubscriberTask(threading.Thread):
                             SubscriberTask.notify_send_data['xyplot'] = response
                             SubscriberTask.notify_send_header.add('xyplot')
                         continue
+
+                    # simple
+                    for sdata in SubscriberTask.simple_data:
+                        if response[0] == sdata.encode() and sdata.encode() in self.header:
+                            SubscriberTask.notify_send_header.add(sdata)
+                            SubscriberTask.notify_send_data[sdata] = response
+                            continue
 
                     if response[0] not in self.header:
                         self.notify([s.decode('latin1') for s in response])

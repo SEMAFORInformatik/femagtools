@@ -646,13 +646,20 @@ def _draw_vertical_slots(ax,
     color = _get_colors(color, delta)
     taus = 2*np.pi/Q
     for n in range(Q):
-        beta = np.array([[n*taus+alpha[0], (n+1)*taus-alpha[0]],
-                         [(n+1)*taus-alpha[1], n*taus+alpha[1]]])
-        ax.fill(np.hstack((r * np.cos(beta[0, 0]),
-                           (r[::-1] * np.cos(beta[0, 1]))))+xoff,
-                np.hstack((r * np.sin(beta[0, 0]),
-                           (r[::-1] * np.sin(beta[0, 1]))))+yoff,
-                facecolor=color[0], edgecolor=color[0])
+        beta0 = np.linspace(n*taus, n*taus + taus/2-alpha[0], 5)
+        beta1 = np.linspace(n*taus, n*taus + taus/2-alpha[1], 5)
+        xr = np.concatenate((
+            r[0]*np.cos(beta0), r[1]*np.cos(beta1[::-1])))+xoff
+        yr = np.concatenate((
+            r[0]*np.sin(beta0), r[1]*np.sin(beta1[::-1])))+yoff
+        ax.fill(xr, yr, color=color[0])
+        beta0 = np.linspace(n*taus + taus/2+alpha[0], (n+1)*taus, 5)
+        beta1 = np.linspace(n*taus + taus/2+alpha[1], (n+1)*taus, 5)
+        xr = np.concatenate((
+            r[0]*np.cos(beta0), r[1]*np.cos(beta1[::-1])))
+        yr = np.concatenate((
+            r[0]*np.sin(beta0), r[1]*np.sin(beta1[::-1])))
+        ax.fill(xr, yr, color=color[0])
 
 
 def vertical_plot(machine, ax):

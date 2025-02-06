@@ -75,6 +75,7 @@ class Poc:
         if self.pole_pitch:
             content.append("{0}".format(self.pole_pitch))
         if self.pocType in ['fun', 'har', 'hsp']:
+            self.data_check()
             func_steps = len(self.func_current)
             content += [f"{self.pocType}", f"{func_steps}"]
             if (self.pocType == 'fun' and
@@ -130,6 +131,7 @@ class Poc:
                 else:
                     self.func_current.append(float(l[0]))
                     self.func_phi.append(float(l[1]))
+            self.data_check()
         else:
             self.shape_current=self.pocType
             self.pocType='Function'
@@ -139,6 +141,13 @@ class Poc:
             self.num_skew_steps=int(pocfile.readline())
         except ValueError:
             pass
+
+    def data_check( self ):
+        """simple phi data increasing check"""
+        import numpy as np
+        if (not np.all(np.diff(self.func_phi) > 0)
+            and np.all(np.diff(self.func_current) > 0)):
+            self.func_phi, self.func_current = self.func_current, self.func_phi
 
     def getProps( self ):
         keys=['key_winding',

@@ -1158,6 +1158,7 @@ class ZmqFemag(BaseFemag):
         logger.info("Interrupt %s", self.femaghost)
         ctrl.send_string('interrupt')
         ctrl.close()
+        femagtools.zmq.SubscriberTask.clear()
 
     def copy_winding_file(self, name, wdg):
         wdg.write(name, self.workdir)

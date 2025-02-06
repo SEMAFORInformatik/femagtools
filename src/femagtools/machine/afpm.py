@@ -152,7 +152,17 @@ def parident(workdir, engine, temp, machine,
         machine[wdgk].get('num_par_wdgs', 1))
 
     p = machine['poles']
-    num_slices = kwargs.get('num_slices', 3)
+    if np.isscalar(machine['magnet']['afm_rotor']['rel_magn_width']):
+        num_slices = kwargs.get('num_slices', 3)
+        rmagw = num_slices*[machine['magnet']['afm_rotor']['rel_magn_width']]
+    else:
+        rmagw = machine['magnet']['afm_rotor']['rel_magn_width']
+        if len(rmagw) == 1:
+            num_slice = kwargs.get('num_slices', 3)
+            rmagw = num_slices*list(rmagw)
+        else:
+            num_slices = len(rmagw)
+
     lfe = get_arm_lengths(machine['outer_diam'],
                           machine['inner_diam'],
                           num_slices)
@@ -172,6 +182,8 @@ def parident(workdir, engine, temp, machine,
         "decision_vars": [
             {"values": pole_width,
              "name": "pole_width"},
+            {"values": rmagw,
+             "name": "magnet.afm_rotor.rel_magn_width"},
             {"values": lfe,
              "name": "lfe"},
             {"values": linspeed, "name": "speed"}
@@ -216,9 +228,11 @@ def parident(workdir, engine, temp, machine,
         else:
             nlresults = {"x": [], "f": []}
             i = 0
-            for pw, le, sp in zip(pole_width, lfe, linspeed):
+
+            for pw, le, sp, rmw in zip(pole_width, lfe, linspeed, rmagw):
                 nlmachine = {k: machine[k] for k in machine}
                 nlmachine['pole_width'] = pw
+                nlmachine['magnet']['afm_rotor']['rel_magn_width'] = rmw
                 nlmachine['lfe'] = le
                 nlcalc.update({"speed": sp})
                 nlsubdir = f'{workdir}/{i}'
@@ -237,10 +251,11 @@ def parident(workdir, engine, temp, machine,
         current_angles = nlresults['f'][0]['current_angles']
         results = []
         i = 0
-        for l, pw in zip(lfe, pole_width):
+        for l, pw, rmw in zip(lfe, pole_width, rmagw):
             mpart = {k: machine[k] for k in machine if k != 'afm_rotor'}
             mpart['pole_width'] = pw
             mpart['lfe'] = l
+            mpart['magnet']['afm_rotor']['rel_magn_width'] = rmw
             subdir = f"{workdir}/{i}"
 
             simulation = dict(
@@ -427,6 +442,9 @@ def process(lfe, pole_width, machine, bch):
                        for ux in bch[0]['flux'][k][0]['voltage_dpsi'][:-1]]
                    for k in bch[0]['flux']}
         emf = [voltage[k][:n] for k in voltage]
+        fluxxy = {k: [scale_factor * np.array(flx)
+                      for flx in bch[0]['flux'][k][0]['flux_k']]
+                  for k in bch[0]['flux']}
         flux = [fluxxy[k][:n] for k in fluxxy]
 
     pos = (rotpos[0]/np.pi*180)
@@ -676,7 +694,7 @@ def vertical_plot(machine, ax):
     model_type = machine['afmtype'][0:4]
     dy1 = machine['outer_diam']*1e3
     dy2 = machine['inner_diam']*1e3
-    rel_magn_width = machine['magnet']['afm_rotor']['rel_magn_width']
+    rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
     Q = machine['stator']['num_slots']
     slot_width = machine['stator']['afm_stator']['slot_width']*1e3
     poles = machine['poles']
@@ -825,7 +843,7 @@ def horizontal_plot(machine, ax):
     model_type = machine['afmtype'][0:4]
     dy1 = machine['outer_diam']*1e3
     dy2 = machine['inner_diam']*1e3
-    rel_magn_width = machine['magnet']['afm_rotor']['rel_magn_width']
+    rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
     magn_height = machine['magnet']['afm_rotor']['magn_height']*1e3
     magn_yoke_height = machine['magnet']['afm_rotor']['yoke_height']*1e3
 
@@ -918,6 +936,14 @@ class AFPM:
         except KeyError:
             raise ValueError("missing key afmtype")
 
+        if np.isscalar(machine['magnet']['afm_rotor']['rel_magn_width']):
+            rmagw = num_slices*[machine['magnet']['afm_rotor']['rel_magn_width']]
+        else:
+            rmagw = machine['magnet']['afm_rotor']['rel_magn_width']
+            if len(rmagw) == 1:
+                rmagw = num_slices*list(rmagw)
+            elif num_slices != len(rmagw):
+                num_slices = len(rmagw)
         lfe = get_arm_lengths(machine['outer_diam'],
                               machine['inner_diam'],
                               num_slices)
@@ -941,11 +967,17 @@ class AFPM:
                  "name": "pole_width"},
                 {"values": lfe,
                  "name": "lfe"},
+                {"values": rmagw,
+                 "name": "magnet.afm_rotor.rel_magn_width"},
                 {"values": linspeed, "name": "speed"}
             ]
         }
+
         machine['pole_width'] = np.pi * machine['inner_diam']/machine['poles']
         machine['lfe'] = machine['outer_diam'] - machine['inner_diam']
+        machine['magnet']['afm_rotor']['rel_magn_width'] = max(
+            machine['magnet']['afm_rotor']['rel_magn_width'])
+
         simulation['skew_displ'] = (simulation.get('skew_angle', 0)/180 * np.pi
                                     * machine['inner_diam'])
         nlresults = {}

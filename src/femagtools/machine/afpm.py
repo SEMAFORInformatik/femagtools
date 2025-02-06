@@ -158,7 +158,7 @@ def parident(workdir, engine, temp, machine,
     else:
         rmagw = machine['magnet']['afm_rotor']['rel_magn_width']
         if len(rmagw) == 1:
-            num_slice = kwargs.get('num_slices', 3)
+            num_slices = kwargs.get('num_slices', 3)
             rmagw = num_slices*list(rmagw)
         else:
             num_slices = len(rmagw)

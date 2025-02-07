@@ -70,7 +70,7 @@ def _draw_stator(ax, da1, dy1, lfe):
                 edgecolor='black',
                 linewidth=0)
 
-def draw_machine(machine, ax):
+def machine(machine, ax):
     dy2 = machine['inner_diam']*1e3
     dy1 = machine['outer_diam']*1e3
     da1 = machine['bore_diam']*1e3
@@ -88,10 +88,7 @@ def draw_machine(machine, ax):
 
 
 if __name__ == '__main__':
-    pp = 4
-    machine = {
-        "name": "ALPINE-2V",
-        "poles": 2*pp,
+    machine1 = {
         "outer_diam": 0.2442,
         "bore_diam": 0.179,
         "inner_diam": 0.06,
@@ -99,5 +96,5 @@ if __name__ == '__main__':
         "lfe": 0.083,
     }
     fig, ax = plt.subplots()
-    draw_machine(machine, ax)
+    machine(machine1, ax)
     plt.show()

@@ -15,6 +15,7 @@ from scipy.interpolate import make_interp_spline, RegularGridInterpolator, RectB
 from scipy.integrate import quad
 import copy
 from matplotlib.colors import to_rgb
+from multiprocessing import Pool
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,8 @@ def _integrate(radius, pos, val):
     interp = RegularGridInterpolator((radius, pos), val)
     def func(x, y):
         return interp((x, y))
-    return [quad(func, radius[0], radius[-1], args=(p,))[0]
+    return [quad(func, radius[0], radius[-1],
+                  args=(p,), limit=200)[0]
             for p in pos]
 
 
@@ -62,7 +64,7 @@ def _integrate1d(radius, val):
     interp = make_interp_spline(radius, val, k=1)
     def func(x):
         return interp((x))
-    return quad(func, radius[0], radius[-1])[0]
+    return quad(func, radius[0], radius[-1], limit=100)[0]
 
 def ld_interpol(i1, beta, v):
     '''interpolate Ld at beta angle 0°, -180°'''
@@ -311,12 +313,23 @@ def parident(workdir, engine, temp, machine,
             i += 1
 
         postp = []
-        for results in [process(lfe, pole_width, machine, bch)
-                        for bch in zip(*[r['f'] for r in results])]:
-            torque = np.mean(results.pop('torque'))
-            results['torque'] = torque
-            results.update(_psidq_ldq(results, nlresults))
-            postp.append(results)
+        if kwargs.get('use_multiprocessing', True):
+            with Pool() as p:
+                for r in p.starmap(process,
+                                   [(lfe, pole_width, machine, bch)
+                                    for bch in zip(*[r['f']
+                                                     for r in results])]):
+                    torque = np.mean(r.pop('torque'))
+                    r['torque'] = torque
+                    r.update(_psidq_ldq(r, nlresults))
+                    postp.append(r)
+        else:
+            for r in [process(lfe, pole_width, machine, bch)
+                      for bch in zip(*[r['f'] for r in results])]:
+                torque = np.mean(r.pop('torque'))
+                r['torque'] = torque
+                r.update(_psidq_ldq(r, nlresults))
+                postp.append(r)
 
         r1 = postp[0]['r1']
         i1 = [r['i1'] for r in postp][::num_beta_steps]
@@ -411,6 +424,7 @@ def process(lfe, pole_width, machine, bch):
     n = len(rotpos[0])
     currents = [bch[0]['flux'][k][0]['current_k'][:n]
                 for k in bch[0]['flux']]
+
     if len(pole_width) > 1:
         # check homogenity:
         if np.diff([len(d) for d in displ]).any():
@@ -503,7 +517,6 @@ def process(lfe, pole_width, machine, bch):
     except KeyError as exc:
         #logger.warning("missing key %s", exc)
         pass
-
     return {
         'weights': weights.tolist(),
         'pos': pos.tolist(), 'r1': r1,

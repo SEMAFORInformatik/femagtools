@@ -687,9 +687,9 @@ def _draw_vertical_slots(ax,
         beta0 = np.linspace(n*taus + taus/2+alpha[0], (n+1)*taus, 5)
         beta1 = np.linspace(n*taus + taus/2+alpha[1], (n+1)*taus, 5)
         xr = np.concatenate((
-            r[0]*np.cos(beta0), r[1]*np.cos(beta1[::-1])))
+            r[0]*np.cos(beta0), r[1]*np.cos(beta1[::-1])))+xoff
         yr = np.concatenate((
-            r[0]*np.sin(beta0), r[1]*np.sin(beta1[::-1])))
+            r[0]*np.sin(beta0), r[1]*np.sin(beta1[::-1])))+yoff
         ax.fill(xr, yr, color=color[0])
 
 
@@ -707,7 +707,10 @@ def vertical_plot(machine, ax):
     model_type = machine['afmtype'][0:4]
     dy1 = machine['outer_diam']*1e3
     dy2 = machine['inner_diam']*1e3
-    rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
+    try:
+        rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
+    except TypeError:
+        rel_magn_width = machine['magnet']['afm_rotor']['rel_magn_width']
     Q = machine['stator']['num_slots']
     slot_width = machine['stator']['afm_stator']['slot_width']*1e3
     poles = machine['poles']
@@ -856,7 +859,10 @@ def horizontal_plot(machine, ax):
     model_type = machine['afmtype'][0:4]
     dy1 = machine['outer_diam']*1e3
     dy2 = machine['inner_diam']*1e3
-    rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
+    try:
+        rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
+    except TypeError:
+        rel_magn_width = machine['magnet']['afm_rotor']['rel_magn_width']
     magn_height = machine['magnet']['afm_rotor']['magn_height']*1e3
     magn_yoke_height = machine['magnet']['afm_rotor']['yoke_height']*1e3
 
@@ -988,8 +994,11 @@ class AFPM:
 
         machine['pole_width'] = np.pi * machine['inner_diam']/machine['poles']
         machine['lfe'] = machine['outer_diam'] - machine['inner_diam']
-        machine['magnet']['afm_rotor']['rel_magn_width'] = max(
-            machine['magnet']['afm_rotor']['rel_magn_width'])
+        try:
+            machine['magnet']['afm_rotor']['rel_magn_width'] = max(
+                machine['magnet']['afm_rotor']['rel_magn_width'])
+        except TypeError:
+            pass
 
         simulation['skew_displ'] = (simulation.get('skew_angle', 0)/180 * np.pi
                                     * machine['inner_diam'])

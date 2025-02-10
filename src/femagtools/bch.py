@@ -1610,6 +1610,11 @@ class Reader:
                         losses['staza'] = floatnan(rec[0])
                         losses['stajo'] = floatnan(rec[1])
                         losses['total'] += losses['staza']+losses['stajo']
+
+                    elif content[i+1].split() == ['Iron', '----']:
+                        losses['rotfe'] = sum([floatnan(x) for x in rec])
+                        losses['total'] += losses['rotfe']    
+                        
                     else:
                         losses['rotfe'] = floatnan(rec[1])
                         losses['total'] += losses['rotfe']

@@ -539,11 +539,13 @@ def transientsc(bch, title=''):
             [y['yp'] if np.abs(y['yp']) > np.abs(y['yv']) else y['yv']
              for y in pv])
         imax = pv[ipvmax]['yp'] if np.abs(pv[ipvmax]['yp']) > np.abs(pv[ipvmax]['yv']) else pv[ipvmax]['yv']
+        iac = [pv[0]['tpeaks'][-1], pv[0]['peaks'][-1]]
     except KeyError:
         pass
     if np.max(istat) > 4000:
         istat *= 1e-3
         imax *= 1e-3
+        iac[1] *= 1e-3
         ax.set_title('Currents / kA')
     else:
         ax.set_title('Currents / A')
@@ -552,9 +554,13 @@ def transientsc(bch, title=''):
         ax.plot(bch.scData['time'], iph, label=i)
     try:
         ax.plot([pv[ipvmax]['tp']], [imax], '.')
+        ax.plot([iac[0]], [iac[1]], '.')
         ax.annotate(f'Imax = {imax:.1f}',
                     xy=(pv[ipvmax]['tp'], imax),
                     xytext=(pv[ipvmax]['tp']+0.01, imax))
+        ax.annotate(f'I = {iac[1]:.1f}',
+                    xy=iac,
+                    xytext=(iac[0]+0.01, iac[1]))
     except NameError:
         pass
     ax.set_xlabel('Time / s')
@@ -568,12 +574,14 @@ def transientsc(bch, title=''):
     try:
         tqmax = pv['yp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['yv']
         tp = pv['tp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['tv']
+        tc = [pv['tpeaks'][-1], pv['peaks'][-1]]
     except KeyError:
         pass
     torque = np.array(bch.scData['torque'])
     if np.max(torque) > 4000:
         torque *= 1e-3
         tqmax *= 1e-3
+        tc[1] *= 1e-3
         ax.set_title('Torque / kNm')
     else:
         ax.set_title('Torque / Nm')
@@ -582,9 +590,13 @@ def transientsc(bch, title=''):
     ax.plot(bch.scData['time'], torque)
     try:
         ax.plot([tp], [tqmax], '.')
+        ax.plot([tc[0]], [tc[1]], '.')
         ax.annotate(f'Tmax = {tqmax:.1f}',
                     xy=(tp, tqmax),
                     xytext=(tp+0.01, tqmax))
+        ax.annotate(f'T = {tc[1]:.1f}',
+                    xy=tc,
+                    xytext=(tc[0], 0.9*tc[1]))
     except NameError:
         pass
     ax.set_xlabel('Time / s')

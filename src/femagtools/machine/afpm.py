@@ -15,6 +15,7 @@ from scipy.interpolate import make_interp_spline, RegularGridInterpolator, RectB
 from scipy.integrate import quad
 import copy
 from matplotlib.colors import to_rgb
+from multiprocessing import Pool
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,8 @@ def _integrate(radius, pos, val):
     interp = RegularGridInterpolator((radius, pos), val)
     def func(x, y):
         return interp((x, y))
-    return [quad(func, radius[0], radius[-1], args=(p,))[0]
+    return [quad(func, radius[0], radius[-1],
+                  args=(p,), limit=200)[0]
             for p in pos]
 
 
@@ -62,7 +64,7 @@ def _integrate1d(radius, val):
     interp = make_interp_spline(radius, val, k=1)
     def func(x):
         return interp((x))
-    return quad(func, radius[0], radius[-1])[0]
+    return quad(func, radius[0], radius[-1], limit=100)[0]
 
 def ld_interpol(i1, beta, v):
     '''interpolate Ld at beta angle 0°, -180°'''
@@ -311,12 +313,23 @@ def parident(workdir, engine, temp, machine,
             i += 1
 
         postp = []
-        for results in [process(lfe, pole_width, machine, bch)
-                        for bch in zip(*[r['f'] for r in results])]:
-            torque = np.mean(results.pop('torque'))
-            results['torque'] = torque
-            results.update(_psidq_ldq(results, nlresults))
-            postp.append(results)
+        if kwargs.get('use_multiprocessing', True):
+            with Pool() as p:
+                for r in p.starmap(process,
+                                   [(lfe, pole_width, machine, bch)
+                                    for bch in zip(*[r['f']
+                                                     for r in results])]):
+                    torque = np.mean(r.pop('torque'))
+                    r['torque'] = torque
+                    r.update(_psidq_ldq(r, nlresults))
+                    postp.append(r)
+        else:
+            for r in [process(lfe, pole_width, machine, bch)
+                      for bch in zip(*[r['f'] for r in results])]:
+                torque = np.mean(r.pop('torque'))
+                r['torque'] = torque
+                r.update(_psidq_ldq(r, nlresults))
+                postp.append(r)
 
         r1 = postp[0]['r1']
         i1 = [r['i1'] for r in postp][::num_beta_steps]
@@ -411,6 +424,7 @@ def process(lfe, pole_width, machine, bch):
     n = len(rotpos[0])
     currents = [bch[0]['flux'][k][0]['current_k'][:n]
                 for k in bch[0]['flux']]
+
     if len(pole_width) > 1:
         # check homogenity:
         if np.diff([len(d) for d in displ]).any():
@@ -503,7 +517,6 @@ def process(lfe, pole_width, machine, bch):
     except KeyError as exc:
         #logger.warning("missing key %s", exc)
         pass
-
     return {
         'weights': weights.tolist(),
         'pos': pos.tolist(), 'r1': r1,
@@ -674,9 +687,9 @@ def _draw_vertical_slots(ax,
         beta0 = np.linspace(n*taus + taus/2+alpha[0], (n+1)*taus, 5)
         beta1 = np.linspace(n*taus + taus/2+alpha[1], (n+1)*taus, 5)
         xr = np.concatenate((
-            r[0]*np.cos(beta0), r[1]*np.cos(beta1[::-1])))
+            r[0]*np.cos(beta0), r[1]*np.cos(beta1[::-1])))+xoff
         yr = np.concatenate((
-            r[0]*np.sin(beta0), r[1]*np.sin(beta1[::-1])))
+            r[0]*np.sin(beta0), r[1]*np.sin(beta1[::-1])))+yoff
         ax.fill(xr, yr, color=color[0])
 
 
@@ -694,7 +707,10 @@ def vertical_plot(machine, ax):
     model_type = machine['afmtype'][0:4]
     dy1 = machine['outer_diam']*1e3
     dy2 = machine['inner_diam']*1e3
-    rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
+    try:
+        rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
+    except TypeError:
+        rel_magn_width = machine['magnet']['afm_rotor']['rel_magn_width']
     Q = machine['stator']['num_slots']
     slot_width = machine['stator']['afm_stator']['slot_width']*1e3
     poles = machine['poles']
@@ -843,7 +859,10 @@ def horizontal_plot(machine, ax):
     model_type = machine['afmtype'][0:4]
     dy1 = machine['outer_diam']*1e3
     dy2 = machine['inner_diam']*1e3
-    rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
+    try:
+        rel_magn_width = max(machine['magnet']['afm_rotor']['rel_magn_width'])
+    except TypeError:
+        rel_magn_width = machine['magnet']['afm_rotor']['rel_magn_width']
     magn_height = machine['magnet']['afm_rotor']['magn_height']*1e3
     magn_yoke_height = machine['magnet']['afm_rotor']['yoke_height']*1e3
 
@@ -975,8 +994,11 @@ class AFPM:
 
         machine['pole_width'] = np.pi * machine['inner_diam']/machine['poles']
         machine['lfe'] = machine['outer_diam'] - machine['inner_diam']
-        machine['magnet']['afm_rotor']['rel_magn_width'] = max(
-            machine['magnet']['afm_rotor']['rel_magn_width'])
+        try:
+            machine['magnet']['afm_rotor']['rel_magn_width'] = max(
+                machine['magnet']['afm_rotor']['rel_magn_width'])
+        except TypeError:
+            pass
 
         simulation['skew_displ'] = (simulation.get('skew_angle', 0)/180 * np.pi
                                     * machine['inner_diam'])

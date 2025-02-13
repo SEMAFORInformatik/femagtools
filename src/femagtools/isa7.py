@@ -1418,6 +1418,13 @@ class Element(BaseEntity):
         """return True if the element has lamination properties"""
         return self.reluc != (1.0, 1.0) and self.mag == (0.0, 0.0)
 
+    def remanence(self, temperature=20):
+        """return remanence Brx, Bry at element
+        Arguments:
+          temperature: (float) temperature in °C"""
+        br_temp_corr = 1. + self.br_temp_coef*(temperature - 20.)
+        return self.mag[0]*br_temp_corr, self.mag[1]*br_temp_corr
+
     def demagnetization(self, temperature=20):
         """return demagnetization Hx, Hy of this element"""
         return self.demag_b(self.flux_density(cosys='polar'), temperature)
@@ -1429,9 +1436,9 @@ class Element(BaseEntity):
             # assume polar coordinates of b
             pos = np.arctan2(self.center[1], self.center[0])
             #pos = 0  # cartesian
-            br_temp_corr = 1. + self.br_temp_coef*(temperature - 20.)
-            magn = np.sqrt(self.mag[0]**2 + self.mag[1]**2)*br_temp_corr
-            alfa = np.arctan2(self.mag[1], self.mag[0]) - pos
+            mag = self.remanence(temperature)
+            magn = np.sqrt(mag[0]**2 + mag[1]**2)
+            alfa = np.arctan2(mag[1], mag[0]) - pos
             b1, b2 = b
             bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
             reluc = abs(self.reluc[0]) / (4*np.pi*1e-7 * 1000)

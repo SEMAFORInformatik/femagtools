@@ -130,6 +130,19 @@ def demag(isa, cmap=DEFAULT_CMAP, ax=0):
     logger.info("Max demagnetization %f", np.max(demag))
 
 
+def remanence(isa, cmap=DEFAULT_CMAP, ax=0):
+    """plot remanence of NC/I7/ISA7 model
+    Args:
+      isa: Isa7/NC object
+    """
+    emag = [e for e in isa.elements if e.is_magnet()]
+    rem = np.linalg.norm([e.remanence(isa.MAGN_TEMPERATURE)
+                          for e in emag], axis=1)
+    _contour(ax, f'Remanence at {isa.MAGN_TEMPERATURE} °C (min {np.min(rem):.1f} T)',
+             emag, rem, 'T', cmap, isa)
+    logger.info("Min remanence %f", np.min(rem))
+
+
 def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, cmap=DEFAULT_CMAP, ax=0):
     """plot demag of NC/I7/ISA7 model at rotor position
     Args:

@@ -1512,6 +1512,43 @@ class SuperElement(BaseEntity):
         """return area of this superelement"""
         return sum([e.area for e in self.elements])
 
+    def get_rect_geom(self):
+        """return rectangle parameters of superelement:
+        x0, y0: center coordinates
+        w, h: width and height
+        alpha: angle of main axis"""
+        bxy = np.array([n.xy for b in self.nodechains
+                        for n in b.nodes[:-1]])
+        # center
+        cxy = np.mean(bxy, axis=0)
+        # corner points: calculate angles
+        b = np.vstack((bxy[-1], bxy, bxy[0]))
+        a = np.arctan2(b[1:, 1]-b[:-1, 1],
+                       b[1:, 0]- b[:-1, 0])
+        peaks = np.where(np.abs(np.diff(a)) > 1)[0]
+        c = bxy[peaks]
+        # width and height
+        dxy = np.linalg.norm(np.vstack(
+            (bxy[:-1, :] - bxy[1:, :],
+             bxy[-1, :] - bxy[0, :])), axis=1)
+        dc = (np.sum(dxy[peaks[0]:peaks[1]]),
+              np.sum(dxy[peaks[1]:peaks[2]]),
+              np.sum(dxy[peaks[2]:peaks[3]]),
+              np.sum(np.hstack(
+                  (dxy[peaks[3]:], dxy[:peaks[0]]))))
+        w = np.mean(np.sort(dc)[-2:])
+        area = self.area()
+        h = area/w
+        # angle of main axis
+        i = np.argmax(dc)
+        c = np.vstack((c, c[0]))
+        alpha = np.arctan2(c[i+1, 1]-c[i, 1], c[i+1, 0]-c[i, 0])
+        if alpha < 0:
+            alpha += np.pi
+        return {'wm': w, 'hm': h, 'x0': cxy[0], 'y0': cxy[1],
+                'area': area, 'alpha': alpha}
+
+
 class SubRegion(BaseEntity):
     def __init__(self, key, sr_type, color, name, nturns, curdir, wb_key,
                  superelements, nodechains):

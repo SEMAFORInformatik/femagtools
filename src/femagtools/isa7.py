@@ -1545,7 +1545,7 @@ class SuperElement(BaseEntity):
         alpha = np.arctan2(c[i+1, 1]-c[i, 1], c[i+1, 0]-c[i, 0])
         if alpha < 0:
             alpha += np.pi
-        return {'wm': w, 'hm': h, 'x0': cxy[0], 'y0': cxy[1],
+        return {'w': w, 'h': h, 'x0': cxy[0], 'y0': cxy[1],
                 'area': area, 'alpha': alpha}
 
 

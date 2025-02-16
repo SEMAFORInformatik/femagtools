@@ -227,7 +227,7 @@ class Builder:
             #  obsolete
             th_props = [' ']
             try:
-                logger.info(model.magnet)
+                logger.debug(model.magnet)
                 th_props = [f'rotor_density = {model["magnet"]["density"]}',
                             f'rotor_thcond = {model["magnet"]["thcond"]}',
                             f'rotor_thcap = {model["magnet"]["thcap"]}'

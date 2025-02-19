@@ -23,6 +23,9 @@ def pfe_steinmetz(f, B, cw, fw, fb, fo, Bo):
 def pfe_modified_steinmetz(f, B, ch, cw, alpha, beta, fo, Bo):
     return ch*(f/fo)*(B/Bo)**(alpha + B*beta) + cw*(f/fo)**2*(B/Bo)**2
 
+def wbert(f, b, ch, cw, cx):
+    return (ch + cw*f)*b**2 + cx*f**0.5*b**1.5
+
 def fitsteinmetz(f, B, losses, Bo, fo, alpha0=1.0):
     """fit coeffs of
     losses(f,B)=cw*(f/fo)**alfa*(B/Bo)**beta
@@ -140,9 +143,6 @@ def fit_bertotti(f, B, losses):
         j = len(y)
         if j > 2:
             v.append(np.array((f[i0:j+i0], bb, y)).T.tolist())
-
-    def wbert(f, b, ch, cw, cx):
-        return (ch + cw*f)*b**2 + cx*f**0.5*b**1.5
 
     z = np.array([b for a in v for b in a]).T
     fbx = z[0:2]

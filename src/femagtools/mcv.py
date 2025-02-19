@@ -298,6 +298,8 @@ class Mcv(object):
         # {'ch': 0, 'cw': 0, 'ch_freq':0, 'cw_freq':0}
         self.bertotti = {}
         # {'ch': 0, 'cw': 0, 'ce':0, 'ch_freq':0, 'cw_freq':0}
+        self.modsteinmetz = {}
+        # {'ch': 0, 'cw': 0, 'ch_freq': 1, 'b_beta_coeff': 0, 'cw_freq': 2, 'b_coeff': 2}
         self.MC1_FE_SPEZ_WEIGTH = 7.65
         self.MC1_FE_SAT_MAGNETIZATION = 2.15
 
@@ -489,14 +491,21 @@ class Writer(Mcv):
         feloss: (str) iron loss method (bertotti, jordan)
         """
         curve = self._prepare(fillfac, recsin)
+        write_losses = True
         try:
             if feloss.lower() == 'bertotti':
                 for k in self.bertotti:
                     setattr(self, transl[k], self.bertotti[k])
-                del self.losses
-            else:
+                write_losses = False
+            elif feloss.lower() == 'jordan':
                 for k in self.jordan:
                     setattr(self, transl[k], self.jordan[k])
+                write_losses = False
+            #elif feloss.lower() == 'modified_steinmetz':
+            #    for k in self.modsteinmetz:
+            #        setattr(self, transl[k], self.modsteinmetz[k])
+            #    write_losses = False
+
         except AttributeError as e:
             logger.warning("%s", e)
             pass
@@ -578,7 +587,7 @@ class Writer(Mcv):
                 self.writeBlock([self.mc1_angle[K], self.mc1_db2[K]])
 
         try:
-            if not (self.mc1_ch_factor or self.mc1_cw_factor) and self.losses:
+            if not (self.mc1_ch_factor or self.mc1_cw_factor) and self.losses and write_losses:
                 # fit loss parameters
                 pfe = self.losses['pfe']
                 f = self.losses['f']
@@ -611,12 +620,24 @@ class Writer(Mcv):
                          float(self.mc1_fe_spez_weigth),
                          float(self.mc1_fe_sat_magnetization)])
 
+        logger.info("fo = %f, Bo = %f, ch = %f, cw = %f, ch_freq = %f, cw_freq = %f, b_coeff = %f, spez_weight = %f, Fe_sat_mag = %f",
+                         float(self.mc1_base_frequency),
+                         float(self.mc1_base_induction),
+                         float(self.mc1_ch_factor),
+                         float(self.mc1_cw_factor),
+                         float(self.mc1_ch_freq_factor),
+                         float(self.mc1_cw_freq_factor),
+                         float(self.mc1_induction_factor),
+                         float(self.mc1_fe_spez_weigth),
+                         float(self.mc1_fe_sat_magnetization))
+
         if not hasattr(self, 'losses') or not self.losses:
             # new variables: ce factor for bertotti losses
             # b_beta_coeff for modified steinmetz
             try:
                 self.writeBlock([float(self.mc1_ce_factor),
                                  float(self.mc1_induction_beta_factor)])
+                logger.info("ce = %f, b_beta_coeff = %f", float(self.mc1_ce_factor), float(self.mc1_induction_beta_factor))
             except:
                 pass
             return
@@ -677,13 +698,18 @@ class Writer(Mcv):
                                     [0.0]*(M_LOSS_INDUCT - len(pl)))
                     self.writeBlock(float(f))
                     nrec += 1
-            for m in range(M_LOSS_FREQ - nrec):
-                self.writeBlock([0.0]*M_LOSS_INDUCT)
-                self.writeBlock(0.0)
+
+            if write_losses:
+                for m in range(M_LOSS_FREQ - nrec):
+                    self.writeBlock([0.0]*M_LOSS_INDUCT)
+                    self.writeBlock(0.0)
 
             self.writeBlock([self.losses['cw'], self.losses['cw_freq'],
                              self.losses['b_coeff'], self.losses['fo'],
                              self.losses['Bo']])
+            logger.info("losses_cw = %f, losses_cw_freq = %f, losses_b_coeff = %f, losses_fo = %f, losses_Bo = %f",
+                             self.losses['cw'], self.losses['cw_freq'],
+                             self.losses['b_coeff'], self.losses['fo'], self.losses['Bo'])
             self.writeBlock([1])
             logger.info('Losses n freq %d n ind %d', nfreq, nind)
         except Exception as e:
@@ -1173,6 +1199,119 @@ class MagnetizingCurve(object):
             losses['beta'] = beta
             losses['Bo'] = self.mcv[m]['Bo']
             losses['fo'] = self.mcv[m]['fo']
+
+
+class MCVconvert:
+    def __init__(self, bhdata):
+        self.steinmetz = dict(cw=0, cw_freq=0, b_coeff=0)
+        self.jordan = dict(ch=0, ch_freq=0, cw=0, cw_freq=0, b_coeff=0)
+        self.bertotti = dict(ch=0, cw=0, ce=0)
+        self.modsteinmetz = dict(ch=0, cw=0, ch_freq=1, b_beta_coeff=0, cw_freq=2, b_coeff=2)
+        self.losscalc = None
+
+        B = []
+        f = [50.0, 100.0, 200.0, 400.0, 1000.0, 2000.0]
+        pfe = []
+        jordan = False
+        bertotti = False
+        modified_steinmetz = False
+        flag = False
+
+        if "losses" in bhdata:
+            # test if any nan in data
+            for i in ("B", "f"):
+                if np.any(np.isnan(bhdata["losses"][i])) or \
+                np.any(np.isnan(bhdata["losses"][i])):
+                    flag = True
+            for i in bhdata["losses"]['pfe']:
+                if np.any(np.isnan(i)):
+                    flag = True
+
+        if 'losses' not in bhdata or flag:
+            # check steinmetz or jordan
+            bhdata.update({"losses": {"pfe": [], "f":[], "B": []}})
+            B = bhdata["curve"][-1]["bi"]
+            if "ch" in bhdata:
+
+                if bhdata['ce'] > 1e-15:
+                    bertotti = True
+
+                if bhdata["ch"] > 1e-15 and bhdata['ce'] < 1e-15:
+                    jordan = True
+
+                #if (conditions for modified steinmetz):
+                #   modified_steinmetz = True
+
+            if jordan: # jordan
+                self.losscalc = 'jordan'
+                logger.info("calculating based on jordan...")
+                for i in f:
+                    pfe.append(lc.pfe_jordan(i, np.array(B), bhdata['ch'], bhdata['ch_freq'], bhdata['cw'],
+                                          bhdata['cw_freq'], bhdata['b_coeff'], bhdata['fo'], bhdata['Bo']))
+
+            elif bertotti: # bertotti
+                self.losscalc = 'bertotti'
+                logger.info("calculating based on bertotti")
+                for i in f:
+                    pfe.append(lc.wbert(i, np.array(B), bhdata['ch'], bhdata['cw'], bhdata['ce']))
+
+            elif modified_steinmetz:
+                self.losscalc = 'modified_steinmetz'
+                logger.info("calculating based on modified steinmetz...")
+                for i in f:
+                    pfe.append([0])
+                    # add after modified steinmetz method is included in losscoeffs.py
+
+            else: # steinmetz
+                self.losscalc = 'steinmetz'
+                logger.info("calculating based on steinmetz...")
+                for i in f:
+                    pfe.append(lc.pfe_steinmetz(i, np.array(B), bhdata['cw'],
+                                            bhdata['cw_freq'], bhdata['b_coeff'], bhdata['fo'], bhdata['Bo']))
+            bhdata['losses']['pfe'] = pfe
+            bhdata['losses']['B'] = B
+            bhdata['losses']['f'] = f
+
+        idx = 0
+        for i, j in enumerate(bhdata['losses']['f']):
+            if j == 0:
+                idx = i
+                break
+        idx = idx - 1
+        z = lc.fitsteinmetz(bhdata['losses']['f'][0:idx],
+                                     bhdata['losses']['B'],
+                                     bhdata['losses']['pfe'][0:idx],
+                                     bhdata['Bo'],
+                                     bhdata['fo'])
+
+        for i, j in enumerate(self.steinmetz):
+            self.steinmetz[j] = z[i]
+
+        z = lc.fitjordan(bhdata['losses']['f'][0:idx],
+                    bhdata['losses']['B'],
+                    bhdata['losses']['pfe'][0:idx],
+                    bhdata['Bo'],
+                    bhdata['fo'])
+
+        for i, j in enumerate(self.jordan):
+            self.jordan[j] = z[i]
+
+        z = lc.fit_bertotti(bhdata['losses']['f'][0:idx],
+                        bhdata['losses']['B'],
+                        bhdata['losses']['pfe'][0:idx])
+
+        for i, j in enumerate(self.bertotti):
+            self.bertotti[j] = z[i]
+        self.bertotti.update({"Bo": 1, "fo": 1, "alpha": 2.0, "ch_freq": 1.0, "cw_freq": 2.0, "b_coeff": 2.0})
+
+        # preparation for modified steinmetz
+        #z = lc.fit_modifiedsteinmetz()
+        #
+        #for i,j in enumerate(self.modsteinmetz):
+        #    self.modsteinmetz[j] = z[i]
+        #self.modsteinmetz.update({keys to update -> fo, Bo...})
+
+        bhdata['losses']['pfe'] = np.transpose(bhdata['losses']['pfe']).tolist() #len(B) rows and len(f) columns
 
 
 def read(filename):

@@ -361,7 +361,7 @@ class Mcv(object):
         for k in wtrans:
             if wtrans[k] in data.keys():
                 self.__setattr__(k, data[wtrans[k]])
-        for k in ('bertotti', 'jordan', 'steinmetz', 'modified_steinmetz'): # added modified steinmetz here?
+        for k in ('bertotti', 'jordan', 'steinmetz', 'modified_steinmetz'):
             if k in data:
                 self.__setattr__(k, data[k])
         self.curve = data['curve']
@@ -605,13 +605,11 @@ class Writer(Mcv):
                     cw, beta, gamma = lc.fitsteinmetz(f, B, losses, Bo, fo)
                     self.mc1_ch_factor = 0
                     self.mc1_ch_freq_factor = 0
-
                 self.mc1_cw_factor = cw
                 self.mc1_cw_freq_factor = beta
                 self.mc1_induction_factor = gamma
         except AttributeError:
             pass
-
         self.writeBlock([float(self.mc1_base_frequency),
                          float(self.mc1_base_induction),
                          float(self.mc1_ch_factor),
@@ -622,7 +620,7 @@ class Writer(Mcv):
                          float(self.mc1_fe_spez_weigth),
                          float(self.mc1_fe_sat_magnetization)])
 
-        logger.info("fo = %f, Bo = %f, ch = %f, cw = %f, ch_freq = %f, cw_freq = %f, b_coeff = %f, spez_weight = %f, Fe_sat_mag = %f",
+        logger.debug("fo = %f, Bo = %f, ch = %f, cw = %f, ch_freq = %f, cw_freq = %f, b_coeff = %f, spez_weight = %f, Fe_sat_mag = %f",
                          float(self.mc1_base_frequency),
                          float(self.mc1_base_induction),
                          float(self.mc1_ch_factor),
@@ -639,7 +637,7 @@ class Writer(Mcv):
             try:
                 self.writeBlock([float(self.mc1_ce_factor),
                                  float(self.mc1_induction_beta_factor)])
-                logger.info("ce = %f, b_beta_coeff = %f", float(self.mc1_ce_factor), float(self.mc1_induction_beta_factor))
+                logger.debug("ce = %f, b_beta_coeff = %f", float(self.mc1_ce_factor), float(self.mc1_induction_beta_factor))
             except:
                 pass
             return
@@ -709,7 +707,7 @@ class Writer(Mcv):
             self.writeBlock([self.losses['cw'], self.losses['cw_freq'],
                              self.losses['b_coeff'], self.losses['fo'],
                              self.losses['Bo']])
-            logger.info("losses_cw = %f, losses_cw_freq = %f, losses_b_coeff = %f, losses_fo = %f, losses_Bo = %f",
+            logger.debug("losses_cw = %f, losses_cw_freq = %f, losses_b_coeff = %f, losses_fo = %f, losses_Bo = %f",
                              self.losses['cw'], self.losses['cw_freq'],
                              self.losses['b_coeff'], self.losses['fo'], self.losses['Bo'])
             self.writeBlock([1])
@@ -1241,8 +1239,9 @@ class LossCoeffCalculator:
                     if bhdata["ch"] > 1e-15 and bhdata['ce'] < 1e-15:
                         jordan = True
 
-                    #if (conditions for modified steinmetz):
-                    #   modified_steinmetz = True
+                if "b_beta_coeff" in bhdata:
+                    if bhdata['b_beta_coeff'] > 1e-15:
+                       modified_steinmetz = True
                 else:
                     if bhdata["ch"] > 1e-15:
                         jordan = True
@@ -1264,8 +1263,7 @@ class LossCoeffCalculator:
                 self.losscalc = 'modified_steinmetz'
                 logger.info("Calculating based on modified Steinmetz...")
                 for i in f:
-                    pfe.append([0])
-                    # add after modified steinmetz method is included in losscoeffs.py
+                    pfe.append(lc.pfe_modified_steinmetz(i, np.array(B), bhdata['ch'], bhdata['cw'], bhdata['b_coeff'], bhdata['b_beta_coeff'], bhdata['fo'], bhdata['Bo']))
 
             else:
                 self.losscalc = 'steinmetz'
@@ -1311,12 +1309,14 @@ class LossCoeffCalculator:
             self.bertotti[j] = z[i]
         self.bertotti.update({"Bo": 1, "fo": 1, "alpha": 2.0, "ch_freq": 1.0, "cw_freq": 2.0, "b_coeff": 2.0})
 
-        # preparation for modified steinmetz
-        #z = lc.fit_modifiedsteinmetz()
-        #
-        #for i,j in enumerate(self.modsteinmetz):
-        #    self.modsteinmetz[j] = z[i]
-        #self.modsteinmetz.update({"ch": 0, "cw": 0, "ch_freq": 1, "b_beta_coeff": 0, "cw_freq": 2, "b_coeff": 1, "Bo": 1, "fo": 1}) # modify after fitting is operational
+        z = lc.fit_modified_steinmetz(bhdata['losses']['f'][0:idx],
+                                     bhdata['losses']['B'],
+                                     bhdata['losses']['pfe'][0:idx],
+                                     bhdata['Bo'],
+                                     bhdata['fo'])
+
+        for i,j in enumerate(self.modsteinmetz):
+            self.modsteinmetz[j] = z[i]
 
         bhdata['losses']['pfe'] = np.transpose(bhdata['losses']['pfe']).tolist() #len(B) rows and len(f) columns
 

@@ -92,6 +92,17 @@ def test_areas(pm):
     assert a[1]['slots'] == 0
     assert a[1]['magnets'] == pytest.approx(0.000345, abs=1e-5)
 
+def test_geom(pm):
+    mag_spels = pm.magnet_super_elements()
+    assert len(mag_spels) == 5
+    g = mag_spels[0].get_rect_geom()
+    assert g['w'] == pytest.approx(0.0112, abs=1e-4)
+    assert g['h'] == pytest.approx(0.00308, abs=1e-5)
+    assert g['x0'] == pytest.approx(0.02317, abs=1e-5)
+    assert g['y0'] == pytest.approx(0.007528, abs=1e-5)
+    assert g['area'] == pytest.approx(3.45e-05, abs=1e-6)
+    assert g['alpha'] == pytest.approx(1.885, abs=1e-3)
+
 def test_calc_iron_loss(pm):
     import numpy as np
     def pfe(Bxnu, Bynu, fnu, losscoeffs):

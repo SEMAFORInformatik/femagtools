@@ -1057,10 +1057,11 @@ class Reader:
         e.g. : idList[-450, -350, -250, -150, -50, 0]
                idList[-500, -400, -300, -200, -100, 0, 0]
         '''
-        diff = np.floor(np.abs(np.diff(idList)))
-        if idList[-1] == 0 and len(idList) > 2 and \
-           diff[-1] == 0:
+        if list(idList).count(0) > 1: # femag writes duplicate id==0 values
             idList = idList[:-1]
+        diff = np.floor(np.abs(np.diff(idList)))
+        if n := np.trim_zeros(np.diff(diff)).size:
+            idList = idList[:-n]
         return idList
 
     def __read_psidq(self, content):
@@ -1085,8 +1086,7 @@ class Reader:
             ncols = ncols-1
 
         id = np.reshape(m[0], (-1, ncols)).T[0]
-        if id[0] >= 0:
-            id = self.__removeTrailingZero(id)
+        id = self.__removeTrailingZero(id)
         nrows = len(id)
         if nrows > 1 and id[nrows-1] < id[nrows-2]:
             nrows = nrows-1
@@ -1121,8 +1121,7 @@ class Reader:
             ncols = ncols-1
 
         id = np.reshape(m[0], (-1, ncols)).T[0]
-        if id[0] >= 0:
-            id = self.__removeTrailingZero(id)
+        id = self.__removeTrailingZero(id)
         nrows = len(id)
         if nrows > 1 and id[nrows-1] < id[nrows-2]:
             nrows = nrows-1

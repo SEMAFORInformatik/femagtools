@@ -20,8 +20,8 @@ def pfe_jordan(f, B, ch, fh, cw, fw, fb, fo, Bo):
 def pfe_steinmetz(f, B, cw, fw, fb, fo, Bo):
     return cw*(f/fo)**fw * (B/Bo)**fb
 
-def pfe_modified_steinmetz(f, B, ch, cw, alpha, beta, fo, Bo):
-    return ch*(f/fo)*(B/Bo)**(alpha + B*beta) + cw*(f/fo)**2*(B/Bo)**2
+def wbert(f, b, ch, cw, cx):
+    return (ch + cw*f)*b**2 + cx*f**0.5*b**1.5
 
 def fitsteinmetz(f, B, losses, Bo, fo, alpha0=1.0):
     """fit coeffs of
@@ -58,30 +58,6 @@ def fitsteinmetz(f, B, losses, Bo, fo, alpha0=1.0):
             fbx, y, (1.0, 1.0, 2.0))
     return fitp
 
-def fit_modified_steinmetz(f, B, losses, Bo, fo):
-    """fit coeffs of modifeld steinmetz
-    losses(f,B)=ch*(f/fo)*(B/Bo)**(alpha + B*beta) + cw*(f/fo)**2*(B/Bo)**2
-    returns (ch, cw, alpha, beta)
-    """
-    pfe = losses
-    z = []
-    for i, fx in enumerate(f):
-        if fx:
-            if isinstance(B[0], float):
-                z += [(fx, bx, y)
-                      for bx, y in zip(B, pfe[i])
-                      if y]
-            else:
-                z += [(fx, bx, y)
-                      for bx, y in zip(B[i], pfe[i])
-                      if y]
-
-    fbx = np.array(z).T[0:2]
-    y = np.array(z).T[2]
-    fitp, cov = so.curve_fit(lambda x, ch, cw, alpha, beta: pfe_modified_steinmetz(
-        x[0], x[1], ch, cw, alpha, beta, fo, Bo),
-        fbx, y, (1.0, 1.0, 1.0, 1.0))
-    return fitp
 
 def fitjordan(f, B, losses, Bo, fo):
     """fit coeffs of
@@ -140,9 +116,6 @@ def fit_bertotti(f, B, losses):
         j = len(y)
         if j > 2:
             v.append(np.array((f[i0:j+i0], bb, y)).T.tolist())
-
-    def wbert(f, b, ch, cw, cx):
-        return (ch + cw*f)*b**2 + cx*f**0.5*b**1.5
 
     z = np.array([b for a in v for b in a]).T
     fbx = z[0:2]

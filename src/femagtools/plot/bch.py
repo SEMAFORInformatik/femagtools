@@ -535,17 +535,21 @@ def transientsc(bch, title=''):
         np.array(bch.scData['time']), i1)
           for i1 in istat]
     try:
+
         ipvmax = np.argmax(
             [y['yp'] if np.abs(y['yp']) > np.abs(y['yv']) else y['yv']
-             for y in pv])
+             for y in pv if y['yp']])
         imax = pv[ipvmax]['yp'] if np.abs(pv[ipvmax]['yp']) > np.abs(pv[ipvmax]['yv']) else pv[ipvmax]['yv']
-        iac = [pv[0]['tpeaks'][-1], pv[0]['peaks'][-1]]
+        iac = [pv[ipvmax]['tpeaks'][-1], pv[ipvmax]['peaks'][-1]]
     except KeyError:
         pass
     if np.max(istat) > 4000:
         istat *= 1e-3
-        imax *= 1e-3
-        iac[1] *= 1e-3
+        try:
+            imax *= 1e-3
+            iac[1] *= 1e-3
+        except NameError:
+            pass
         ax.set_title('Currents / kA')
     else:
         ax.set_title('Currents / A')
@@ -575,13 +579,16 @@ def transientsc(bch, title=''):
         tqmax = pv['yp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['yv']
         tp = pv['tp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['tv']
         tc = [pv['tpeaks'][-1], pv['peaks'][-1]]
-    except KeyError:
+    except (KeyError, ValueError):
         pass
     torque = np.array(bch.scData['torque'])
     if np.max(torque) > 4000:
         torque *= 1e-3
-        tqmax *= 1e-3
-        tc[1] *= 1e-3
+        try:
+            tqmax *= 1e-3
+            tc[1] *= 1e-3
+        except NameError:
+            pass
         ax.set_title('Torque / kNm')
     else:
         ax.set_title('Torque / Nm')

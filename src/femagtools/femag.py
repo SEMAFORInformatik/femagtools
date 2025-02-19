@@ -61,43 +61,6 @@ def handle_process_output(filedes, outfile, log):
                         pass
 
 
-def get_shortCircuit_parameters(bch, nload):
-    try:
-        if nload < 0:
-            nload = 0
-        if nload > 2:
-            nload = 2
-        if nload > 0:
-            dqld = bch.dqPar['ld']
-            dqlq = bch.dqPar['lq']
-            dqpsim = bch.dqPar['psim']
-            if len(dqld) <= nload or len(dqlq) <= nload or len(dqpsim) <= nload:
-                ld = dqld[-1]/bch.armatureLength
-                lq = dqlq[-1]/bch.armatureLength
-                psim = dqpsim[-1]/bch.armatureLength
-            else:
-                ld = dqld[nload-1]/bch.armatureLength
-                lq = dqlq[nload-1]/bch.armatureLength
-                psim = dqpsim[nload-1]/bch.armatureLength
-        else:
-            ld = bch.machine['ld']/bch.armatureLength
-            lq = bch.machine['lq']/bch.armatureLength
-            psim = bch.machine['psim']/bch.armatureLength
-        return dict(
-            r1=bch.machine['r1'],
-            ld=ld,
-            lq=lq,
-            psim=psim,
-            num_pol_pair=bch.machine['p'],
-            fc_radius=bch.machine['fc_radius'],
-            lfe=bch.armatureLength/1e3,
-            pocfilename=bch.machine['pocfile'],
-            num_par_wdgs=bch.machine.get('num_par_wdgs', 0),
-            calculationMode='shortcircuit')
-    except (KeyError, AttributeError, IndexError):
-        raise FemagError("missing pm/Rel-Sim results")
-
-
 def set_magnet_properties(model, simulation, magnets):
     """set temperature adapted magnet properties"""
     if not hasattr(model, 'magnet'):
@@ -449,7 +412,7 @@ class BaseFemag(object):
 
         return list(pathlib.Path(self.workdir).glob('*.PROT'))[0].stem
 
-    def readResult(self, simulation, bch=None):
+    def readResult(self, machine, simulation, bch=None):
         if simulation:
             if simulation['calculationMode'] == "fieldcalc":
                 nc = self.read_nc()
@@ -495,38 +458,11 @@ class BaseFemag(object):
             if simulation['calculationMode'] == 'pm_sym_fast' or \
                 simulation['calculationMode'] == 'torq_calc':
                 if simulation.get('shortCircuit', False):
-                    logger.info("short circuit simulation")
-                    simulation.update(
-                        get_shortCircuit_parameters(bch,
-                                                    simulation.get('initial', 2)))
-
-                    builder = femagtools.fsl.Builder(self.templatedirs)
+                    from .shortcircuit import shortcircuit
                     set_magnet_properties(self.model, simulation, self.magnets)
-                    fslcmds = (builder.open_model(self.model) +
-                               builder.create_shortcircuit(simulation))
-                    fslfile = 'shortcicuit.fsl'
-                    with open(os.path.join(self.workdir, fslfile), 'w') as f:
-                        f.write('\n'.join(fslcmds))
-                    self.run(fslfile) #, options?
-                    bchfile = self.get_bch_file(self.modelname)
-                    if bchfile:
-                        bchsc = femagtools.bch.Reader()
-                        logger.info("Read BCH {}".format(bchfile))
-                        with io.open(bchfile, encoding='latin1',
-                                     errors='ignore') as f:
-                            bchsc.read(f)
-                    bch.scData = bchsc.scData
-                    for w in bch.flux:
-                        try:
-                            bch.flux[w] += bchsc.flux[w]
-                            bch.flux_fft[w] += bchsc.flux_fft[w]
-                        except (KeyError, IndexError):
-                            logging.debug(
-                                "No additional flux data in sc simulation")
-                            break
-
-                    bch.torque += bchsc.torque
-                    bch.demag += bchsc.demag
+                    bch.scData = shortcircuit(self, machine, bch, simulation)
+                    #bch.torque += bchsc.torque
+                    #bch.demag += bchsc.demag
 
             if 'airgap_induc' in simulation:
                 try:
@@ -699,8 +635,9 @@ class Femag(BaseFemag):
             setattr(self, "dy2", machine['stator']['dy2'])
         except:
             pass
+
         if simulation:
-            return self.readResult(simulation)
+            return self.readResult(machine, simulation)
 
         return {'status': 'ok', 'message': self.modelname,
                 'model': self.model.props()}

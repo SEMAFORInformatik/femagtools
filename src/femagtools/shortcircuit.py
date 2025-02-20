@@ -42,7 +42,7 @@ def get_shortCircuit_parameters(bch, nload):
             fc_radius=bch.machine['fc_radius'],
             lfe=bch.armatureLength/1e3,
             pocfilename=bch.machine['pocfile'],
-            num_par_wdgs=bch.machine.get('num_par_wdgs', 0),
+            num_par_wdgs=bch.machine.get('num_par_wdgs', 1),
             calculationMode='shortcircuit')
     except (KeyError, AttributeError, IndexError):
         raise ValueError("missing pm/Rel-Sim results")
@@ -68,36 +68,47 @@ def find_peaks_and_valleys(t, y):
     return pv
 
 def shortcircuit(femag, machine, bch, simulation):
-    calcmode = simulation['calculationMode']
+    calcmode = simulation.get('calculationMode', '')
     simulation.update(
         get_shortCircuit_parameters(bch,
                                     simulation.get('initial', 2)))
+    if 'speed' not in simulation:
+        simulation['speed'] = bch.dqPar['speed']
     if simulation.get('sc_type', 3) == 3:
         logger.info("3phase short circuit simulation")
         builder = femagtools.fsl.Builder(femag.templatedirs)
         fslcmds = (builder.open_model(femag.model) +
                    builder.create_shortcircuit(simulation))
-        fslfile = 'shortcicuit.fsl'
+        fslfile = 'shortcircuit.fsl'
         (pathlib.Path(femag.workdir)/fslfile).write_text(
             '\n'.join(fslcmds),
             encoding='latin1', errors='ignore')
         femag.run(fslfile)  # options?
         # must reset calculationMode
-        simulation['calculationMode'] = calcmode
+        if calcmode:
+            simulation['calculationMode'] = calcmode
+        else:
+            del simulation['calculationMode']
         bchfile = femag.get_bch_file(femag.modelname)
         if bchfile:
             bchsc = femagtools.bch.Reader()
             logger.info("Read BCH %s",bchfile)
             bchsc.read(pathlib.Path(bchfile).read_text(
                 encoding='latin1', errors='ignore'))
+            bchsc.scData['demag'] = bchsc.demag
             return bchsc.scData
 
     if simulation.get('sc_type', 3) == 2:
         if 'i1max' not in simulation:
-            # a wild guess
-            simulation['i1max'] = 4*bch.machine['i1']
-        logger.info("2phase short circuit simulation")
-        return shortcircuit_2phase(femag, machine, simulation)
+            # just a wild guess
+            simulation['i1max'] = 4.5*bch.machine['i1']
+        sim_demagn = simulation.get('sim_demagn',0)
+        simulation['sim_demagn'] = 0
+        logger.info("2phase short circuit simulation i1max = %.0f",
+                    simulation['i1max'])
+        scdata = shortcircuit_2phase(femag, machine, simulation)
+        simulation['sim_demagn'] = sim_demagn
+        return scdata
     #for w in bch.flux:
     #    try:
     #        bch.flux[w] += bchsc.flux[w]
@@ -125,7 +136,7 @@ def result_func(task):
 def shortcircuit_2phase(femag, machine, simulation, engine=0):
     i1max = simulation['i1max']
     i1vec = np.linspace(-i1max, i1max, 9)
-    num_par_wdgs = machine['winding']['num_par_wdgs']
+    num_par_wdgs = machine['winding'].get('num_par_wdgs', 1)
     flux_sim = {
         'calculationMode': 'flux-torq-rem-rot',
         'curvec': [],
@@ -244,7 +255,7 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
             (-dpsiadi(y[1],y[0]) - dpsibdi(y[1],-y[0]) -2*l1s)),
                 wm]
     tmin = simulation.get('tstart', 0)
-    tmax = simulation['simultime']
+    tmax = simulation.get('simultime', 0.1)
     nsamples = simulation.get('nsamples', 250)
     t = np.linspace(tmin, tmax, nsamples)
 

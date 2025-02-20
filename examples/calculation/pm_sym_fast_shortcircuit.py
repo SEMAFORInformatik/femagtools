@@ -1,6 +1,7 @@
 import femagtools
-import femagtools.plot
+import femagtools.plot.bch
 import femagtools.machine
+import femagtools.shortcircuit
 import logging
 import matplotlib.pyplot as plt
 import os
@@ -83,18 +84,18 @@ pmRelSim = dict(
     magn_temp=60.0,
     current=76.43,
     period_frac=6,
-    speed=50.0,
-    shortCircuit=True,
+    speed=50.0)
+
+r = femag(machine, pmRelSim)
+scsim = dict(
     l_end_winding=0,
     l_external=0,
     sc_type=3,
     initial=2,
     allow_demagn=0,
     sim_demagn=1)
-
-r = femag(machine,
-          pmRelSim)
-
+sc3 = femagtools.shortcircuit.shortcircuit(
+    femag, machine, r, scsim)
 print('Torque [Nm] = {}'.format(r.machine['torque']))
 print('''
 Short Circuit    Current         Torque
@@ -102,12 +103,34 @@ Short Circuit    Current         Torque
  Stationary ikd {0:8.1f} A  tkd {1:8.1f} Nm
 
   peak winding currents {4}
-'''.format(r.scData['ikd'],
-           r.scData['tkd'],
-           r.scData['iks'],
-           r.scData['tks'],
-           r.scData['peakWindingCurrents']))
-print('Demag {}'.format(r.demag[-1]))
+'''.format(sc3['ikd'],
+           sc3['tkd'],
+           sc3['iks'],
+           sc3['tks'],
+           sc3['peakWindingCurrents']))
+print(f'Demag {sc3["demag"]}')
+fig, axs = plt.subplots(nrows=4, figsize=(10, 10))
+femagtools.plot.bch.transientsc_currents(sc3, ax=axs[0])
+femagtools.plot.bch.transientsc_torque(sc3, ax=axs[1])
 
-femagtools.plot.transientsc(r)
+scsim['sc_type'] = 2
+sc2 = femagtools.shortcircuit.shortcircuit(
+    femag, machine, r, scsim)
+
+print('''
+Short Circuit    Current         Torque
+ Peak       iks {2:8.1f} A  tks {3:8.1f} Nm
+ Stationary ikd {0:8.1f} A  tkd {1:8.1f} Nm
+
+  peak winding currents {4}
+'''.format(sc2['ikd'],
+           sc2['tkd'],
+           sc2['iks'],
+           sc2['tks'],
+           sc2['peakWindingCurrents']))
+#print('Demag {}'.format(r.demag[-1]))
+
+femagtools.plot.bch.transientsc_currents(sc2, ax=axs[2])
+femagtools.plot.bch.transientsc_torque(sc2, ax=axs[3])
+fig.tight_layout()
 plt.show()

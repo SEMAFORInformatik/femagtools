@@ -514,28 +514,15 @@ def cogging(bch, title=''):
     if title:
         fig.subplots_adjust(top=0.92)
 
-
-def transientsc(bch, title=''):
-    """creates a transient short circuit plot"""
-    cols = 1
-    rows = 2
-    htitle = 1.5 if title else 0
-    fig, ax = plt.subplots(nrows=rows, ncols=cols,
-                           figsize=(10, 3*rows + htitle))
-    if title:
-        fig.suptitle(title, fontsize=16)
-
-    row = 1
-    plt.subplot(rows, cols, row)
-    ax = plt.gca()
+def transientsc_currents(scData, ax=0):
+    """plot transient shortcircuit currents vs time"""
     ax.grid(True)
-    istat = np.array([bch.scData[i]
+    istat = np.array([scData[i]
                       for i in ('ia', 'ib', 'ic')])
     pv = [find_peaks_and_valleys(
-        np.array(bch.scData['time']), i1)
+        np.array(scData['time']), i1)
           for i1 in istat]
     try:
-
         ipvmax = np.argmax(
             [y['yp'] if np.abs(y['yp']) > np.abs(y['yv']) else y['yv']
              for y in pv if y['yp']])
@@ -555,7 +542,7 @@ def transientsc(bch, title=''):
         ax.set_title('Currents / A')
 
     for i, iph in zip(('ia', 'ib', 'ic'), istat):
-        ax.plot(bch.scData['time'], iph, label=i)
+        ax.plot(scData['time'], iph, label=i)
     try:
         ax.plot([pv[ipvmax]['tp']], [imax], '.')
         ax.plot([iac[0]], [iac[1]], '.')
@@ -570,18 +557,18 @@ def transientsc(bch, title=''):
     ax.set_xlabel('Time / s')
     ax.legend()
 
-    row = 2
-    plt.subplot(rows, cols, row)
-    ax = plt.gca()
+
+def transientsc_torque(scData, ax=0):
+    """plot transient shortcircuit torque vs time"""
     pv = find_peaks_and_valleys(
-        np.array(bch.scData['time']), np.array(bch.scData['torque']))
+        np.array(scData['time']), np.array(scData['torque']))
     try:
         tqmax = pv['yp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['yv']
         tp = pv['tp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['tv']
         tc = [pv['tpeaks'][-1], pv['peaks'][-1]]
     except (KeyError, ValueError):
         pass
-    torque = np.array(bch.scData['torque'])
+    torque = np.array(scData['torque'])
     if np.max(torque) > 4000:
         torque *= 1e-3
         try:
@@ -594,7 +581,7 @@ def transientsc(bch, title=''):
         ax.set_title('Torque / Nm')
 
     ax.grid(True)
-    ax.plot(bch.scData['time'], torque)
+    ax.plot(scData['time'], torque)
     try:
         ax.plot([tp], [tqmax], '.')
         ax.plot([tc[0]], [tc[1]], '.')
@@ -608,6 +595,22 @@ def transientsc(bch, title=''):
         pass
     ax.set_xlabel('Time / s')
 
+def transientsc(bch, title=''):
+    """creates a transient short circuit plot"""
+    if all([k in bch for k in ('ia', 'ib', 'ic', 'time')]):
+        scData = bch
+    else:
+        scData = bch.scData
+    cols = 1
+    rows = 2
+    htitle = 1.5 if title else 0
+    fig, axs = plt.subplots(nrows=rows, ncols=cols,
+                            figsize=(10, 3*rows + htitle))
+    if title:
+        fig.suptitle(title, fontsize=16)
+
+    transientsc_currents(scData, axs[0])
+    transientsc_torque(scData, axs[1])
     fig.tight_layout(h_pad=2)
     if title:
         fig.subplots_adjust(top=0.92)

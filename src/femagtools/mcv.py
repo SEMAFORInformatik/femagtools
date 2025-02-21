@@ -630,16 +630,15 @@ class Writer(Mcv):
                          float(self.mc1_fe_spez_weigth),
                          float(self.mc1_fe_sat_magnetization)])
 
-        logger.info("fo = %f, Bo = %f, ch = %f, cw = %f, ch_freq = %f, cw_freq = %f, b_coeff = %f, spez_weight = %f, Fe_sat_mag = %f",
-                         float(self.mc1_base_frequency),
-                         float(self.mc1_base_induction),
-                         float(self.mc1_ch_factor),
-                         float(self.mc1_cw_factor),
-                         float(self.mc1_ch_freq_factor),
-                         float(self.mc1_cw_freq_factor),
-                         float(self.mc1_induction_factor),
-                         float(self.mc1_fe_spez_weigth),
-                         float(self.mc1_fe_sat_magnetization))
+        logger.info(f"fo = {float(self.mc1_base_frequency)}")
+        logger.info(f"Bo = {float(self.mc1_base_induction)}")
+        logger.info(f"ch = {float(self.mc1_ch_factor)}")
+        logger.info(f"cw = {float(self.mc1_cw_factor)}")
+        logger.info(f"ch_freq = {float(self.mc1_ch_freq_factor)}")
+        logger.info(f"cw_freq = {float(self.mc1_cw_freq_factor)}")
+        logger.info(f"b_coeff = {float(self.mc1_induction_factor)}")
+        logger.info(f"fr_spez_weight = {float(self.mc1_fe_spez_weigth)}")
+        logger.info(f"fe_sat_magnetization = {float(self.mc1_fe_sat_magnetization)}")
 
         if not hasattr(self, 'losses') or not self.losses:
             # new variables: ce factor for bertotti losses
@@ -647,7 +646,8 @@ class Writer(Mcv):
             try:
                 self.writeBlock([float(self.mc1_ce_factor),
                                  float(self.mc1_induction_beta_factor)])
-                logger.info("ce = %f, b_beta_coeff = %f", float(self.mc1_ce_factor), float(self.mc1_induction_beta_factor))
+                logger.info(f"ce = {float(self.mc1_ce_factor)}")
+                logger.info(f"b_beta_coeff = {float(self.mc1_induction_beta_factor)}")
             except:
                 pass
             return

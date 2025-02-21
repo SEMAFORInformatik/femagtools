@@ -376,8 +376,15 @@ class Mcv(object):
         # assume jordan iron loss parameters
         for k in self.jordan:
             self.jordan[k] = getattr(self, transl[k])
+        # set loss coeffs when existing
+        try:                 
+            for k in ('bertotti', 'jordan', 'steinmetz'):
+                if k in data:
+                    self.__setattr__(k, data[k])
+        except: 
+            pass
         return
-
+         
     def rtrimValueList(self, vlist):
         """cut list at first 0"""
         le = len(vlist)
@@ -501,11 +508,14 @@ class Writer(Mcv):
                 for k in self.jordan:
                     setattr(self, transl[k], self.jordan[k])
                 write_losses = False
-            #elif feloss.lower() == 'modified_steinmetz':
-            #    for k in self.modsteinmetz:
-            #        setattr(self, transl[k], self.modsteinmetz[k])
-            #    write_losses = False
-
+            elif feloss.lower() == 'steinmetz':
+                for k in self.steinmetz:
+                    setattr(self, transl[k], self.steinmetz[k])
+                write_losses = False
+            elif feloss.lower() == 'modified_steinmetz':
+                for k in self.modsteinmetz:
+                    setattr(self, transl[k], self.modsteinmetz[k])
+                write_losses = False
         except AttributeError as e:
             logger.warning("%s", e)
             pass

@@ -109,13 +109,14 @@ Short Circuit    Current         Torque
            sc3['tks'],
            sc3['peakWindingCurrents']))
 print(f'Demag {sc3["demag"]}')
-fig, axs = plt.subplots(nrows=4, figsize=(10, 10))
-femagtools.plot.bch.transientsc_currents(sc3, ax=axs[0])
-femagtools.plot.bch.transientsc_torque(sc3, ax=axs[1])
-
+fig, axs = plt.subplots(nrows=4, figsize=(10, 12), sharex=True)
+femagtools.plot.bch.transientsc_currents(sc3, ax=axs[0], set_xlabel=False)
+femagtools.plot.bch.transientsc_torque(sc3, ax=axs[1], set_xlabel=False)
+from femagtools.multiproc import Engine
+engine = Engine()
 scsim['sc_type'] = 2
 sc2 = femagtools.shortcircuit.shortcircuit(
-    femag, machine, r, scsim)
+    femag, machine, r, scsim, engine)
 
 print('''
 Short Circuit    Current         Torque
@@ -130,7 +131,7 @@ Short Circuit    Current         Torque
            sc2['peakWindingCurrents']))
 #print('Demag {}'.format(r.demag[-1]))
 
-femagtools.plot.bch.transientsc_currents(sc2, ax=axs[2])
+femagtools.plot.bch.transientsc_currents(sc2, ax=axs[2],set_xlabel=False)
 femagtools.plot.bch.transientsc_torque(sc2, ax=axs[3])
 fig.tight_layout()
 plt.show()

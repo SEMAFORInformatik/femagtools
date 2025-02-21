@@ -9,7 +9,6 @@ import femagtools.parstudy
 
 logger = logging.getLogger('shortcircuit')
 
-
 def get_shortCircuit_parameters(bch, nload):
     """extracts shortciruit parameters from bch"""
     try:
@@ -67,7 +66,7 @@ def find_peaks_and_valleys(t, y):
                'tpeaks': t[peaks], 'tvalleys': t[valleys]})
     return pv
 
-def shortcircuit(femag, machine, bch, simulation):
+def shortcircuit(femag, machine, bch, simulation, engine=0):
     calcmode = simulation.get('calculationMode', '')
     simulation.update(
         get_shortCircuit_parameters(bch,
@@ -101,12 +100,12 @@ def shortcircuit(femag, machine, bch, simulation):
     if simulation.get('sc_type', 3) == 2:
         if 'i1max' not in simulation:
             # just a wild guess
-            simulation['i1max'] = 4.5*bch.machine['i1']
-        sim_demagn = simulation.get('sim_demagn',0)
+            simulation['i1max'] = 4*bch.machine['i1']
+        sim_demagn = simulation.get('sim_demagn', 0)
         simulation['sim_demagn'] = 0
         logger.info("2phase short circuit simulation i1max = %.0f",
                     simulation['i1max'])
-        scdata = shortcircuit_2phase(femag, machine, simulation)
+        scdata = shortcircuit_2phase(femag, machine, simulation, engine)
         simulation['sim_demagn'] = sim_demagn
         return scdata
     #for w in bch.flux:
@@ -135,7 +134,9 @@ def result_func(task):
 
 def shortcircuit_2phase(femag, machine, simulation, engine=0):
     i1max = simulation['i1max']
-    i1vec = np.linspace(-i1max, i1max, 9)
+    num_cur_steps = 4
+    i1 = np.linspace(0, i1max, num_cur_steps)
+    i1vec = np.concat((-i1[::-1], i1[1:]))
     num_par_wdgs = machine['winding'].get('num_par_wdgs', 1)
     flux_sim = {
         'calculationMode': 'flux-torq-rem-rot',
@@ -178,10 +179,10 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
         torq = np.array(results['torq'])
         psire = np.array(results['psire'])
 
-    #with open('results.json', 'w') as fp:
-    #    json.dump({'ire': ire.tolist(), 'pos': pos.tolist(),
-    #               'torq': torq.tolist(), 'psire': psire.tolist()}, fp)
-    logger.info("steps %d currents %d", len(pos), ire.shape[0])
+    with open('results.json', 'w') as fp:
+        json.dump({'ire': ire.tolist(), 'pos': pos.tolist(),
+                   'torq': torq.tolist(), 'psire': psire.tolist()}, fp)
+    logger.info("move steps %d currents %s", len(pos), ire[:,0])
 
     Ai = [femagtools.utils.fft(pos, psire[:, k, 0])['a']
           for k in range(np.shape(psire)[1])]
@@ -256,7 +257,7 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
                 wm]
     tmin = simulation.get('tstart', 0)
     tmax = simulation.get('simultime', 0.1)
-    nsamples = simulation.get('nsamples', 250)
+    nsamples = simulation.get('nsamples', 400)
     t = np.linspace(tmin, tmax, nsamples)
 
     def func(x):

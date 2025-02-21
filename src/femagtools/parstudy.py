@@ -6,6 +6,7 @@ import scipy as sc
 import logging
 import glob
 import os
+import re
 import time
 import shutil
 import functools
@@ -172,7 +173,8 @@ class ParameterStudy(object):
         else:
             workdir = pathlib.Path(self.femag.workdir)
         for d in workdir.glob('[0-9]*'):
-            shutil.rmtree(d)
+            if re.search(r'^\d+$', d.name):
+                shutil.rmtree(d)
 
         extra_result_files = []
         if simulation.get('airgap_induc', False):

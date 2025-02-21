@@ -8,6 +8,7 @@ function gcd(a, b)
 	return b==0 and a or gcd(b,a%b)
 end
 
+%if model.get('sim_demagn', 0):
 function dmg(ek, Br, alfam, murm, Bd, Bq, Hd, Hq, alfahm, Hk)
    if Hd < Hk then
       muem = murm*4*math.pi*1e-7
@@ -19,6 +20,7 @@ function dmg(ek, Br, alfam, murm, Bd, Bq, Hd, Hq, alfahm, Hk)
    end
    return Br, alfam, 1
 end
+%endif
 
 function calc_flux_torq(phi, curvec)
   psivec={}

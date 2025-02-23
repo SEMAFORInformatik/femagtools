@@ -514,9 +514,46 @@ def cogging(bch, title=''):
     if title:
         fig.subplots_adjust(top=0.92)
 
-def transientsc_currents(scData, ax=0, set_xlabel=True):
+
+def demagnetization(demag, ax=0):
+    """plot rel. remanence vs. current"""
+    if ax == 0:
+        ax = plt.gca()
+    scale = 1
+    unit = 'A'
+    if np.max(demag['i1']) > 25e3:
+        scale = 1e-3
+        unit = 'kA'
+    i1 = [scale*x for x in demag['i1']]
+    ax.plot(i1, demag['rr'], 'o', color='C0')
+    ax.plot(i1, demag['rr'], color='C0')
+    rrmin = 0.6
+    if demag.get('i1c', 0):
+        Icrit = scale*demag['i1c']
+        Hk = demag['Hk']
+        Tmag = demag['Tmag']
+        di = 0.05*np.max(i1)
+        rrmin = min(0.6, np.min(demag['rr']))
+        ax.plot([Icrit, Icrit], [rrmin, 1], 'k--')
+        ax.annotate(
+            f'Icrit = {Icrit:.1f}{unit}\nHk = {Hk:.1f} kA/m\nTmag={Tmag:.1f} °C',
+            xy=(Icrit, rrmin),
+            xytext=(Icrit-di, rrmin+0.1*(1-rrmin)), ha='right',
+            bbox={'facecolor': 'white',
+                  'edgecolor': 'white'})
+    ax.set_ylim([rrmin, 1.01])
+    ax.set_ylabel('Rel. Remanence')
+    ax.set_xlabel(f'Phase Current / {unit}')
+    ax.grid()
+
+
+def transientsc_currents(scData, ax=0, title='', set_xlabel=True):
     """plot transient shortcircuit currents vs time"""
+    if ax == 0:
+        ax = plt.gca()
     ax.grid(True)
+    if title:
+        ax.set_title(title)
     istat = np.array([scData[i]
                       for i in ('ia', 'ib', 'ic')])
     pv = [find_peaks_and_valleys(
@@ -537,9 +574,9 @@ def transientsc_currents(scData, ax=0, set_xlabel=True):
             iac[1] *= 1e-3
         except NameError:
             pass
-        ax.set_title('Currents / kA')
+        ax.set_ylabel('Currents / kA')
     else:
-        ax.set_title('Currents / A')
+        ax.set_ylabel('Currents / A')
 
     for i, iph in zip(('ia', 'ib', 'ic'), istat):
         ax.plot(scData['time'], iph, label=i)
@@ -562,8 +599,12 @@ def transientsc_currents(scData, ax=0, set_xlabel=True):
     ax.legend()
 
 
-def transientsc_torque(scData, ax=0, set_xlabel=True):
+def transientsc_torque(scData, ax=0, title='', set_xlabel=True):
     """plot transient shortcircuit torque vs time"""
+    if ax == 0:
+        ax = plt.gca()
+    if title:
+        ax.set_title(title)
     pv = find_peaks_and_valleys(
         np.array(scData['time']), np.array(scData['torque']))
     try:
@@ -580,9 +621,9 @@ def transientsc_torque(scData, ax=0, set_xlabel=True):
             tc[1] *= 1e-3
         except NameError:
             pass
-        ax.set_title('Torque / kNm')
+        ax.set_ylabel('Torque / kNm')
     else:
-        ax.set_title('Torque / Nm')
+        ax.set_ylabel('Torque / Nm')
 
     ax.grid(True)
     ax.plot(scData['time'], torque)
@@ -632,24 +673,35 @@ def transientsc_demag(demag, magnet=0, title='', ax=0):
     """
     if ax == 0:
         ax = plt.gca()
-    pos = [d['displ'] for d in demag if 'displ' in d]
-    hmax = [-d['H_max'] for d in demag if 'H_max' in d]
-    havg = [-d['H_av'] for d in demag if 'H_av' in d]
-    hclim = [-d['lim_hc'] for d in demag if 'lim_hc' in d]*2
-
+    if type(d) == list:
+        pos = [d['displ'] for d in demag if 'displ' in d]
+        hmax = [-d['H_max'] for d in demag if 'H_max' in d]
+        havg = [-d['H_av'] for d in demag if 'H_av' in d]
+        hclim = [-d['lim_hc'] for d in demag if 'lim_hc' in d][0]
+    else:
+        pos = demag['displ']
+        hmax = demag['H_max']
+        havg = demag['H_av']
+        hclim = demag['Hk']
     ax.set_title('Transient Short Circuit Demagnetization [kA/m]')
     ax.plot(pos, hmax,
             label='H Max {:4.2f} kA/m'.format(max(hmax)))
     ax.plot(pos, havg,
             label='H Avg {:4.2f} kA/m'.format(max(havg)))
     if len(hclim) > 1:
-        ax.plot([pos[0], pos[-1]], hclim, color='C3', linestyle='dashed',
-                label='Hc {:4.2f} kA/m'.format(hclim[0]))
-
+        ax.plot([pos[0], pos[-1]], [hclim,hclim], color='C3',
+                linestyle='dashed',
+                label='Hc {:4.2f} kA/m'.format(hclim))
+    if 'Tmag' in demag:
+        Tmag = demag['Tmag']
+    elif magnet:
+        Tmag = magnet['Tmag']
+    else:
+        Tmag = ''
     ax.set_xlabel('Rotor Position / °')
     ax.grid(True)
-    if magnet:
-        ax.legend(title=f"Magnet Temperature {magnet['Tmag']}°C")
+    if Tmag:
+        ax.legend(title=f"Magnet Temperature {Tmag}°C")
     else:
         ax.legend()
 

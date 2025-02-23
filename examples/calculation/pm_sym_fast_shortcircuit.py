@@ -110,8 +110,11 @@ Short Circuit    Current         Torque
            sc3['peakWindingCurrents']))
 print(f'Demag {sc3["demag"]}')
 fig, axs = plt.subplots(nrows=4, figsize=(10, 12), sharex=True)
-femagtools.plot.bch.transientsc_currents(sc3, ax=axs[0], set_xlabel=False)
-femagtools.plot.bch.transientsc_torque(sc3, ax=axs[1], set_xlabel=False)
+femagtools.plot.bch.transientsc_currents(sc3, ax=axs[0],
+                                         title='3 phase fault',
+                                         set_xlabel=False)
+femagtools.plot.bch.transientsc_torque(sc3, ax=axs[1],
+                                       set_xlabel=False)
 from femagtools.multiproc import Engine
 engine = Engine()
 scsim['sc_type'] = 2
@@ -129,9 +132,17 @@ Short Circuit    Current         Torque
            sc2['iks'],
            sc2['tks'],
            sc2['peakWindingCurrents']))
-#print('Demag {}'.format(r.demag[-1]))
+print('Demag {}'.format(sc2['demag']))
 
-femagtools.plot.bch.transientsc_currents(sc2, ax=axs[2],set_xlabel=False)
+femagtools.plot.bch.transientsc_currents(sc2, ax=axs[2],
+                                         title='2 phase fault',
+                                         set_xlabel=False)
 femagtools.plot.bch.transientsc_torque(sc2, ax=axs[3])
 fig.tight_layout()
-plt.show()
+fig.savefig('shortcircuits.pdf')
+
+fig, axs = plt.subplots(nrows=2)
+femagtools.plot.bch.demagnetization(sc3['demag'], ax=axs[0])
+femagtools.plot.bch.demagnetization(sc2['demag'], ax=axs[1])
+fig.tight_layout()
+fig.savefig('demagnetization.pdf')

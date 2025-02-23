@@ -9,6 +9,18 @@ import femagtools.parstudy
 
 logger = logging.getLogger('shortcircuit')
 
+def _parstudy_list(femag, result_func):
+    workdir = femag.workdir
+    magnetMat = femag.magnets
+    magnetizingCurves = femag.magnetizingCurves
+    condMat = femag.condMat
+    templatedirs = femag.templatedirs
+    cmd = femag.cmd
+    return femagtools.parstudy.List(
+        workdir, condMat=condMat, magnets=magnetMat,
+        magnetizingCurves=magnetizingCurves,
+        cmd=cmd, result_func=result_func)
+
 def get_shortCircuit_parameters(bch, nload):
     """extracts shortciruit parameters from bch"""
     try:
@@ -36,6 +48,8 @@ def get_shortCircuit_parameters(bch, nload):
             r1=bch.machine['r1'],
             ld=ld,
             lq=lq,
+            Hk=bch.magnet['demag_hx'],
+            Tmag=bch.magnet['Tmag'],
             psim=psim,
             num_pol_pair=bch.machine['p'],
             fc_radius=bch.machine['fc_radius'],
@@ -67,6 +81,7 @@ def find_peaks_and_valleys(t, y):
     return pv
 
 def shortcircuit(femag, machine, bch, simulation, engine=0):
+    scdata = {}
     calcmode = simulation.get('calculationMode', '')
     simulation.update(
         get_shortCircuit_parameters(bch,
@@ -83,46 +98,55 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             '\n'.join(fslcmds),
             encoding='latin1', errors='ignore')
         femag.run(fslfile)  # options?
-        # must reset calculationMode
-        if calcmode:
-            simulation['calculationMode'] = calcmode
-        else:
-            del simulation['calculationMode']
         bchfile = femag.get_bch_file(femag.modelname)
         if bchfile:
             bchsc = femagtools.bch.Reader()
-            logger.info("Read BCH %s",bchfile)
+            logger.info("Read BCH %s", bchfile)
             bchsc.read(pathlib.Path(bchfile).read_text(
                 encoding='latin1', errors='ignore'))
             bchsc.scData['demag'] = bchsc.demag
-            return bchsc.scData
+            if simulation.get('sim_demagn', 0):
+                d = {'displ': [d['displ']
+                               for d in bchsc.demag if 'displ' in d],
+                     'H_max': [d['H_max']
+                               for d in bchsc.demag if 'H_max' in d],
+                     'H_av': [d['H_av']
+                              for d in bchsc.demag if 'H_av' in d]}
+                simulation['i1max'] = bchsc.scData['iks']
+                bchsc.scData['demag'] = demag(
+                    femag, machine, simulation, engine)
+                bchsc.scData['demag'].update(d)
+            scdata = bchsc.scData
+            #for w in bch.flux:
+            #    try:
+            #        bch.flux[w] += bchsc.flux[w]
+            #        bch.flux_fft[w] += bchsc.flux_fft[w]
+            #    except (KeyError, IndexError):
+            #        logging.debug(
+            #            "No additional flux data in sc simulation")
+            #        break
 
     if simulation.get('sc_type', 3) == 2:
         if 'i1max' not in simulation:
             # just a wild guess
-            simulation['i1max'] = 4*bch.machine['i1']
-        sim_demagn = simulation.get('sim_demagn', 0)
-        simulation['sim_demagn'] = 0
+            simulation['i1max'] = 4.5*bch.machine['i1']
         logger.info("2phase short circuit simulation i1max = %.0f",
                     simulation['i1max'])
         scdata = shortcircuit_2phase(femag, machine, simulation, engine)
-        simulation['sim_demagn'] = sim_demagn
-        return scdata
-    #for w in bch.flux:
-    #    try:
-    #        bch.flux[w] += bchsc.flux[w]
-    #        bch.flux_fft[w] += bchsc.flux_fft[w]
-    #    except (KeyError, IndexError):
-    #        logging.debug(
-    #            "No additional flux data in sc simulation")
-    #        break
-    logger.warning("Empty shortcircuit results for type %d",
-                   simulation.get('sc_type', 'unknown'))
-    return {}
 
-def result_func(task):
+    else:
+        logger.warning("Empty shortcircuit results for type %d",
+                       simulation.get('sc_type', 'unknown'))
+    # must reset calcmode
+    if calcmode:
+        simulation['calculationMode'] = calcmode
+    else:
+        del simulation['calculationMode']
+    return scdata
+
+def sc_result_func(task):
     basedir = pathlib.Path(task.directory)
-    psitorq = np.loadtxt(basedir/'psi-torq-rem-rot.dat')
+    psitorq = np.loadtxt(basedir/'psi-torq-rot.dat')
     pos = np.unique(psitorq[:, 0])
     ncurs = psitorq[:, 0].shape[0]//pos.shape[0]
     ire = psitorq[:ncurs, 1:4]
@@ -139,22 +163,13 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     i1vec = np.concat((-i1[::-1], i1[1:]))
     num_par_wdgs = machine['winding'].get('num_par_wdgs', 1)
     flux_sim = {
-        'calculationMode': 'flux-torq-rem-rot',
+        'calculationMode': 'psi-torq-rot',
+        'i1max': i1max,
         'curvec': [],
         'num_par_wdgs': num_par_wdgs}
 
     if engine:
-        workdir = femag.workdir
-        magnetMat = femag.magnets
-        magnetizingCurves = femag.magnetizingCurves
-        condMat = femag.condMat
-        templatedirs = femag.templatedirs
-        cmd = femag.cmd
-        parstudy = femagtools.parstudy.List(
-            workdir, condMat=condMat, magnets=magnetMat,
-            magnetizingCurves=magnetizingCurves,
-            cmd=cmd, result_func=result_func)
-
+        parstudy = _parstudy_list(femag, sc_result_func)
         parvardef = {
             "decision_vars": [
                 {"values": i1vec, "name": "curvec"}]
@@ -173,15 +188,15 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
         class Task:
             def __init__(self, workdir):
                 self.directory = workdir
-        results = result_func(Task(femag.workdir))
+        results = sc_result_func(Task(femag.workdir))
         ire = np.array(results['ire'])
         pos = np.array(results['pos'])
         torq = np.array(results['torq'])
         psire = np.array(results['psire'])
 
-    with open('results.json', 'w') as fp:
-        json.dump({'ire': ire.tolist(), 'pos': pos.tolist(),
-                   'torq': torq.tolist(), 'psire': psire.tolist()}, fp)
+    #with open('results.json', 'w') as fp:
+    #    json.dump({'ire': ire.tolist(), 'pos': pos.tolist(),
+    #               'torq': torq.tolist(), 'psire': psire.tolist()}, fp)
     logger.info("move steps %d currents %s", len(pos), ire[:,0])
 
     Ai = [femagtools.utils.fft(pos, psire[:, k, 0])['a']
@@ -303,4 +318,61 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     }
     scData['peakWindingCurrents'] = [scData['iks'],
                                      -scData['iks'], 0]
+    if simulation.get('sim_demagn', 0):
+        scData['demag'] = demag(femag, machine, simulation, engine)
     return scData
+
+def dm_result_func(task):
+    basedir = pathlib.Path(task.directory)
+    i1rr = []
+    for f in sorted(basedir.glob('psi-torq-rem-rot-*.dat')):
+        ptr = np.loadtxt(f)
+        i1rr.append((np.max(ptr.T[1:4]), np.min(ptr.T[-1])))
+    return i1rr
+
+def demag(femag, machine, simulation, engine=0):
+    """demag simulation using psi-torq-rem-rot"""
+    logger.info("Demagnetization processing")
+    i1max = simulation['i1max']
+    i1min = simulation.get('i1min', i1max/4)
+    num_steps = 7
+    b = (i1min-i1max)/np.log(i1min/i1max)
+    a = i1max/b
+    i1tab = [b*(a+np.log(x))
+             for x in np.linspace(i1min/i1max, 1,
+                                  num_steps)]
+
+    if simulation.get('sc_type', 3) == 3:
+        curvec = [[-a/2, a, -a/2] for a in i1tab]
+    else:
+        curvec = [[a, -a, 0] for a in i1tab]
+    simulation.update({
+        'calculationMode': 'psi-torq-rem-rot',
+        'curvec': curvec})
+    if engine:
+        parstudy = _parstudy_list(femag, dm_result_func)
+        parvardef = {
+            "decision_vars": [
+                {"values": curvec, "name": "curvec"}]
+        }
+        results = parstudy(parvardef, machine, simulation, engine)
+        i1rr = np.vstack(
+            ((0, 1),
+             np.array(results['f']).reshape((-1, 2))))
+    else:
+        class Task:
+            def __init__(self, workdir):
+                self.directory = workdir
+        _ = femag(machine, simulation)
+        i1rr = np.vstack(
+            [(0, 1), dm_result_func(Task(femag.workdir))])
+    i1, rr = np.array(i1rr).T
+    dmag = {'Hk': simulation['Hk'],
+            'Tmag': simulation['Tmag'],
+            'i1': i1.tolist(),
+            'rr': rr.tolist()}
+    # critical current
+    if np.min(rr) < 0.99:
+        k = np.where(rr < 0.99)[0][0]
+        dmag['i1c'] = i1[k]
+    return dmag

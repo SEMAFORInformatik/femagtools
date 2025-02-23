@@ -1,6 +1,10 @@
 # Changelog
 
 	This document lists the major changes in femagtools. Please clone this project to follow bug fixes and minor enhancements.
+## Release 1.8.7
+	- shortcircuit: simulation for 2, 3 phase and demagnetization (rel. remanence)
+    - new lossmodel: nodified steinmetz
+
 ## Release 1.7.7
 	- dxfsl: new machine type EESM
 

@@ -598,7 +598,8 @@ class Writer(Mcv):
                 self.writeBlock([self.mc1_angle[K], self.mc1_db2[K]])
 
         try:
-            if not (self.mc1_ch_factor or self.mc1_cw_factor) and self.losses and write_losses:
+            if (not (self.mc1_ch_factor or self.mc1_cw_factor)
+                and self.losses and write_losses):
                 # fit loss parameters
                 pfe = self.losses['pfe']
                 f = self.losses['f']
@@ -631,15 +632,16 @@ class Writer(Mcv):
                          float(self.mc1_fe_spez_weigth),
                          float(self.mc1_fe_sat_magnetization)])
 
-        logger.info(f"fo = {float(self.mc1_base_frequency)}")
-        logger.info(f"Bo = {float(self.mc1_base_induction)}")
-        logger.info(f"ch = {float(self.mc1_ch_factor)}")
-        logger.info(f"cw = {float(self.mc1_cw_factor)}")
-        logger.info(f"ch_freq = {float(self.mc1_ch_freq_factor)}")
-        logger.info(f"cw_freq = {float(self.mc1_cw_freq_factor)}")
-        logger.info(f"b_coeff = {float(self.mc1_induction_factor)}")
-        logger.info(f"fr_spez_weight = {float(self.mc1_fe_spez_weigth)}")
-        logger.info(f"fe_sat_magnetization = {float(self.mc1_fe_sat_magnetization)}")
+        logger.info("MCV coeffs %s",
+                    {"fo": float(self.mc1_base_frequency),
+                     "Bo": float(self.mc1_base_induction),
+                     "ch": float(self.mc1_ch_factor),
+                     "cw": float(self.mc1_cw_factor),
+                     "ch_freq": float(self.mc1_ch_freq_factor),
+                     "cw_freq": float(self.mc1_cw_freq_factor),
+                     "b_coeff": float(self.mc1_induction_factor),
+                     "fr_spez_weight": float(self.mc1_fe_spez_weigth),
+                     "fe_sat_magnetization": float(self.mc1_fe_sat_magnetization)})
 
         if not hasattr(self, 'losses') or not self.losses:
             # new variables: ce factor for bertotti losses
@@ -711,6 +713,8 @@ class Writer(Mcv):
                     nrec += 1
 
             if write_losses:
+                logger.info("Append empty blocks %d x %d",
+                            M_LOSS_FREQ - nrec, M_LOSS_INDUCT)
                 for m in range(M_LOSS_FREQ - nrec):
                     self.writeBlock([0.0]*M_LOSS_INDUCT)
                     self.writeBlock(0.0)
@@ -718,9 +722,13 @@ class Writer(Mcv):
             self.writeBlock([self.losses['cw'], self.losses['cw_freq'],
                              self.losses['b_coeff'], self.losses['fo'],
                              self.losses['Bo']])
-            logger.info("losses_cw = %f, losses_cw_freq = %f, losses_b_coeff = %f, losses_fo = %f, losses_Bo = %f",
-                             self.losses['cw'], self.losses['cw_freq'],
-                             self.losses['b_coeff'], self.losses['fo'], self.losses['Bo'])
+            logger.info("loss coeff %s",
+                        {"cw": float(self.losses['cw']),
+                         "cw_freq": float(self.losses['cw_freq']),
+                         "b_coeff": float(self.losses['b_coeff']),
+                         "fo": float(self.losses['fo']),
+                         "Bo": float(self.losses['Bo'])})
+
             self.writeBlock([1])
             logger.info('Losses n freq %d n ind %d', nfreq, nind)
         except Exception as e:
@@ -1150,7 +1158,7 @@ class MagnetizingCurve(object):
                                 repls.items(), name)
 
     def writefile(self, name, directory='.',
-                  fillfac=None, recsin='', feloss='jordan'):
+                  fillfac=None, recsin='', feloss=''):
         """find magnetic curve by name or id and write binary file
         Arguments:
           name: key of mcv dict (name or id)

@@ -1514,7 +1514,7 @@ class SuperElement(BaseEntity):
 
     def get_rect_geom(self):
         """return rectangle parameters of superelement:
-        x0, y0: center coordinates
+        cxy: center coordinates
         w, h: width and height
         alpha: angle of main axis"""
         bxy = np.array([n.xy for b in self.nodechains
@@ -1523,13 +1523,14 @@ class SuperElement(BaseEntity):
         cxy = np.mean(bxy, axis=0)
         # corner points: calculate angles
         b = np.vstack((bxy[-1], bxy, bxy[0]))
-        a = np.arctan2(b[1:, 1]-b[:-1, 1],
-                       b[1:, 0]- b[:-1, 0])
-        peaks = np.where(np.abs(np.diff(a)) > 1)[0]
+        db = np.diff(b, axis=0)
+        a = np.arctan2(db[:, 1], db[:, 0])
+        da = np.abs(np.diff(a))
+        peaks = np.where((da < 6) & (da > 1))[0]
         c = bxy[peaks]
-        # width and height
+        # width and height (distances between corners)
         dxy = np.linalg.norm(np.vstack(
-            (bxy[:-1, :] - bxy[1:, :],
+            (np.diff(bxy, axis=0),
              bxy[-1, :] - bxy[0, :])), axis=1)
         dc = (np.sum(dxy[peaks[0]:peaks[1]]),
               np.sum(dxy[peaks[1]:peaks[2]]),
@@ -1545,7 +1546,7 @@ class SuperElement(BaseEntity):
         alpha = np.arctan2(c[i+1, 1]-c[i, 1], c[i+1, 0]-c[i, 0])
         if alpha < 0:
             alpha += np.pi
-        return {'w': w, 'h': h, 'x0': cxy[0], 'y0': cxy[1],
+        return {'w': w, 'h': h, 'cxy': cxy,
                 'area': area, 'alpha': alpha}
 
 

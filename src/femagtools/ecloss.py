@@ -53,10 +53,10 @@ def fft(s, fs):
     freq = np.array([i*fs/l for i in range(ll)])
 
     return fd(dict(cmplx_amp=mag,
-                    amp=amp,
-                    freq=freq,
-                    phase=np.angle(mag[0:ll]),
-                    order=freq/freq[idx_max]))
+                   amp=amp,
+                   freq=freq,
+                   phase=np.angle(mag[0:ll]),
+                   order=freq/freq[idx_max]))
 
 def dfac(x):
     return 6/(x)**3*(sinh(x)-sin(x))/ \
@@ -76,7 +76,7 @@ def nptns(x, x1, nx):
 
 def ngrid(wm, hm, elxy):
     '''calculate number of grid points for the interpolation'''
-    be = np.sqrt(wm*hm/elxy['excp'].shape[0])
+    be = np.sqrt(wm*hm/elxy['ecp'].shape[0])
     nx = np.around(wm/be) + 1
     ny = np.around(hm/be) + 1
 
@@ -91,13 +91,15 @@ def ngrid(wm, hm, elxy):
 
 def binterp(x, y, xq, yq, b):
     '''interpolate flux density with Rbf interpolator'''
-    f = RBFInterpolator(np.array([[i, j] for i, j in zip(x, y)]), b)
-    inp = f(np.array([[i, j] for i, j in zip(xq, yq)]))
+    f = RBFInterpolator(np.vstack((x, y)).T, b)
+    inp = f(np.vstack((xq, yq)).T)
     return inp.reshape(len(np.unique(yq)), len(np.unique(xq)), -1)
 
 def binterp_ialh2(x, y, xq, yq, b):
     '''interpolate flux density with Rbf interpolator'''
-    f = RBFInterpolator(np.array([[i, j] for i, j in zip(x, y)]), b, kernel='thin_plate_spline')
+    yy = np.vstack((x, y)).T
+    logger.debug("shape y %s b %s", yy.shape, np.shape(b))
+    f = RBFInterpolator(yy, b, kernel='thin_plate_spline')
     inp = f(np.array([[i, j] for i, j in zip(xq, yq)]))
     return inp.reshape(len(np.unique(xq)), -1)
 
@@ -113,7 +115,7 @@ def Segmentation(wm, hm, lm, elxy, nsegx, nsegy, nsegz):
              x,y coordinates of each element's centerpoint in local reference frame, for entire magnet - xx, yy
     '''
     # Default nx,ny,nz without considering the segmentation
-    be = np.sqrt(wm*hm/elxy['excp'].shape[0])  #square elements
+    be = np.sqrt(wm*hm/elxy['ecp'].shape[1])  #square elements
     nx_new = int(np.around(wm/be))
     ny_new = int(np.around(hm/be))
     nz_new = int(np.around(lm/be))
@@ -126,8 +128,8 @@ def Segmentation(wm, hm, lm, elxy, nsegx, nsegy, nsegz):
 
     wms = wm/nsegx
     hms = hm/nsegy
-    x0 = 0 # offset for excpl
-    y0 = 0 # offset for eycpl
+    x0 = 0 # offset for ecpl
+    y0 = 0 # offset for ecpl
 
     segxcpl = np.linspace(wms/2/nx_new, wms - wms/nx_new/2, nx_new) + x0 # x center points of wanted elements distribution, local ref frame, 1st segment
     segycpl = np.linspace(hms/2/ny_new, hms - hms/ny_new/2, ny_new) + y0 # y center points of wanted elements distribution, local ref frame, 1st segment
@@ -187,7 +189,6 @@ class MagnLoss(Amela):
             self.lm = 0
 
         self.segz = kwargs.get('segz', [0])
-        self.is_meter = False
         # Determine the number of segments in z direction
         for i in range(len(self.segz)):
             if self.segz[i] > 0:
@@ -204,78 +205,65 @@ class MagnLoss(Amela):
 
     def periodicity_id(self, b):
         '''identify the periodicity of a given signal'''
-        bx = b['bxl']
-        by = b['byl']
-        idx = bx.shape[1]
+        bxy = np.array(b['bxyl'])
+        npos = bxy.shape[2]
         if self.symmetry:
-            ll = bx.shape[0]
+            nels = bxy.shape[1]
             ff = []
 
-            for i in range(idx):
-                r = idx//(i + 1)
+            for i in range(npos):
+                r = npos//(i + 1)
 
                 if r > 1:
-                    f = 0
-
-                    for j in range(r-1):
-                        f += np.sum(np.abs(bx[:, 0:(i+1)] - bx[:, (j+1)*(i+1)-1:(j+2)*(i+1)-1]))/((i+1)*ll)
-                        f += np.sum(np.abs(by[:, 0:(i+1)] - by[:, (j+1)*(i+1)-1:(j+2)*(i+1)-1]))/((i+1)*ll)
-
-                    ff.append(f/(r-1))
-
+                    ff.append(np.sum([np.sum(
+                        np.abs(bxy[:, :, :(i+1)]
+                               - bxy[:, :, (j+1)*(i+1)-1:(j+2)*(i+1)-1]),
+                        axis=1) / ((i+1)*nels)
+                                      for j in range(r-1)])/(r-1))
             minf = np.amin(ff)
             i = np.argmin(ff)
-            bxymax = np.amax([np.amax(np.abs(bx)), np.amax(np.abs(by))])
+            bxymax = np.amax(np.abs(bxy))
+            logger.debug("ll %d idx %d minf %f i %d bxymax %d",
+                        nels, npos, minf, i, bxymax)
 
             if minf < bxymax * 1e-4:
                 ishift = i
-                num_period = (idx - 1) // ishift
+                num_period = (npos - 1) // ishift
 
                 for j in range(num_period - 1):
-                    bx[:, 0:i+1] += bx[:, i+j*ishift:(i+1)+(j+1)*ishift]
-                    by[:, 0:i+1] += by[:, i+j*ishift:(i+1)+(j+1)*ishift]
+                    bxy[:, :, 0:i+1] += bxy[:, :, i+j*ishift:(i+1)+(j+1)*ishift]
 
-                bx[:, 0:i + 1] /= num_period
-                by[:, 0:i + 1] /= num_period
-                idx = i + 1
+                bxy[:, :, 0:i + 1] /= num_period
+                npos = i + 1
             else:
-                ff = []
-
-                for i in range(idx - 1, 0, -1):
-                    f1 = np.sum(np.abs(bx[:, 0] - bx[:, i]))/ll + np.sum(np.abs(by[:, 0] - by[:, i]))/ll
-                    ff.append(f1)
-
+                ff = [np.sum(np.abs(bxy[:, :, 0] - bxy[:, :, i]))/nels
+                      for i in range(npos - 1, 0, -1)]
                 minf = np.amin(ff)
                 i = np.argmin(ff)
-                idx = idx - i
+                npos = npos - i
 
-        bx_fft = fft(b['bxf'][0:idx-1], (idx-1)/self.tgrid)
-        by_fft = fft(b['byf'][0:idx-1], (idx-1)/self.tgrid)
+        bx_fft = fft(b['bxyf'][0], (npos-1)/self.tgrid)
+        by_fft = fft(b['bxyf'][1], (npos-1)/self.tgrid)
 
         if self.symmetry:
             bxy_amp = bx_fft.amp + by_fft.amp
-            tmp_period = np.array([(idx-1)/i for i in range((idx-1)//2 + 1) if i > 0])
-            idx_nonzero = np.argwhere(tmp_period > 0.1*np.amax(bxy_amp)).squeeze()
-            period = tmp_period[idx_nonzero]
+            tmp_period = np.array([(npos-1)/i
+                                   for i in range((npos-1)//2 + 1) if i > 0])
+            npos_nonzero = np.argwhere(tmp_period > 0.1*np.amax(bxy_amp)).squeeze()
+            period = tmp_period[npos_nonzero]
 
             if np.sum(np.around([period[0]%i for i in period])) == 0:
-                idx = int(np.ceil(np.amax(period))+1)
-                if idx > bx.shape[1]:
-                    idx = bx.shape[1]
+                npos = min(int(np.ceil(np.amax(period))+1), bxy.shape[2])
 
-        self.tgrid = 60/self.speed*(self.theta[idx-1] - self.theta[0])/360
+        self.tgrid = 60/self.speed*(self.theta[npos-1] - self.theta[0])/360
 
-        return [idx, bx_fft, by_fft]
+        return [npos, bx_fft, by_fft]
 
     def consider_bx(self, wm, hm, bx_fft, by_fft):
         '''check if a caculation is necessary for the x direction'''
         fft_freq = bx_fft.freq
         fft_freq[fft_freq==0] = 0.5e-2
 
-        if not self.is_meter:
-            self.ls *= 1e-3
-            self.lm *= 1e-3
-            self.is_meter = True
         # skin depth
         delta = self.skin_depth(fft_freq)
 
@@ -355,7 +343,7 @@ class MagnLoss(Amela):
             c_ef_n0 = 32/pi**5/eta/dfac(xi)*6
             sum_r = 0.0
             sum_i = 0.0
-            n = np.array([i for i in range(100)])
+            n = np.linspace(100)
             lambda_n = (2*n + 1)*pi
             beta_n = np.sqrt(lambda_n ** 2 + 2j*xi**2)
             beta_nr = np.real(beta_n)
@@ -424,12 +412,10 @@ class MagnLoss(Amela):
             ialh_loss = 0
             loss_detail = []
             for i in k:
-                logger.info(f'magnet width and height: {i["wm"]:.2f}mm {i["hm"]:.2f}mm')
+                logger.info('magnet width and height: %.2f mm %.2f mm',
+                            i["wm"]*1e3, i["hm"]*1e3)
                 [nt, bx_fft, by_fft] = self.periodicity_id(i['bl'])
                 [nx, ny] = ngrid(i['wm'], i['hm'], i['elcp'])
-                keyset = ('wm', 'hm')
-                for j in keyset:
-                    i[j]*=1e-3
                 self.consider_bx(i['wm'], i['hm'], bx_fft, by_fft)
                 bfft = self.bpm_fft(nx, ny, nt, i['elcp'], i['bl'])
                 loss = self.loss(*bfft, i['wm'], i['hm'])
@@ -483,7 +469,7 @@ class MagnLoss(Amela):
                 for m in range (int(ny/2)):
                     symmetry = 4 if (m > 0) & (n > 0) else 2 # symmetry factor 4 due to double symmetry utilization.
 
-                    for k in range (0,1000,2): # loop is symmetrical on one side
+                    for k in range (0, 1000, 2): # loop is symmetrical on one side
                         complex_xnmkf = sx_ampl[n,m,f]*2/(np.pi*(k+1))*epsilon_z_x/epsilon_z_y*(m*np.pi*wm/hm)/(2j *epsilon**2 + (n*np.pi)**2 + (m*np.pi*wm/hm)**2 + ry*((k+1)*np.pi*wm/lm)**2)
                         complex_ynmkf = sy_ampl[n,m,f]*2/(np.pi*(k+1)) *n*np.pi/(2j *epsilon**2 + (n*np.pi)**2 + (m*np.pi*wm/hm)**2 + rx*((k+1)*np.pi*wm/lm)**2)
                         real_x_nmkf = np.real(complex_xnmkf)
@@ -636,25 +622,27 @@ class MagnLoss(Amela):
         '''
         nx_tot = int(nx*nsegx)
         ny_tot = int(ny*nsegy)
-
-        Bxl_ac = np.zeros((np.asarray(bxy['bxl']).shape))
+        bxyl = np.asarray(bxy['bxyl'])
+        Bxl_ac = np.zeros((bxyl[0].shape))
         Byl_ac = np.zeros_like(Bxl_ac)
 
         # Remove the DC component of the original bxl, byl
         for ii in range(Bxl_ac.shape[0]):
-            Bxl_ac[ii,:] = bxy['bxl'][ii,:] - np.mean(bxy['bxl'][ii,:])
+            Bxl_ac[ii,:] = bxyl[0, ii, :] - np.mean(bxyl[0,ii,:])
         for ii in range(Byl_ac.shape[0]):
-            Byl_ac[ii,:] = bxy['byl'][ii,:] - np.mean(bxy['byl'][ii,:])
-
+            Byl_ac[ii,:] = bxyl[1,ii,:] - np.mean(bxyl[1,ii,:])
         xx_ = excpl_new.ravel()
         yy_ = eycpl_new.ravel()
         bx_3d_ac = np.zeros((nx_tot,ny_tot,nt))
         by_3d_ac = np.zeros_like(bx_3d_ac)
 
+        ecpl = elxy['ecpl']
         # Interpolation to the new resolution -> [nx*nsegx, ny*nsegy, nt]
-        by_3d_ac = binterp_ialh2(elxy['excpl'], elxy['eycpl'], xx_, yy_, Byl_ac[:, 0:nt])
+        by_3d_ac = binterp_ialh2(ecpl[0], ecpl[1],
+                                 xx_, yy_, Byl_ac[:, 0:nt])
         if self.is_x:
-            bx_3d_ac = binterp_ialh2(elxy['excpl'], elxy['eycpl'], xx_, yy_, Bxl_ac[:, 0:nt])
+            bx_3d_ac = binterp_ialh2(ecpl[0], ecpl[1],
+                                     xx_, yy_, Bxl_ac[:, 0:nt])
         bx_3d_ac = bx_3d_ac.reshape(nx_tot,ny_tot,nt)
         by_3d_ac = by_3d_ac.reshape(nx_tot,ny_tot,nt)
 
@@ -725,8 +713,10 @@ class MagnLoss(Amela):
         for ii in range(nsegx):
             for jj in range(nsegy):    # nsegy is always = 1
                 for kk in range(nsegz):
-                    Plossx, Plossy = self.ialh2(sx_abs[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:], sy_abs[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:],
-                                                sx_phase[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:], sy_phase[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:],
+                    Plossx, Plossy = self.ialh2(sx_abs[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:],
+                                                sy_abs[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:],
+                                                sx_phase[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:],
+                                                sy_phase[2*ii*nx:2*(ii+1)*nx, 2*jj*ny:2*(jj+1)*ny,:],
                                                 freq_range, wm/nsegx, hm/nsegy, lm/nsegz, delta_eff)
                     pec[ii,jj,kk] = (Plossx + Plossy)
 
@@ -740,8 +730,8 @@ class MagnLoss(Amela):
         Returns: all_load_cases: list of losses for all load cases
         '''
 
-        nsegx = max(1,nsegx)    #  1 = no segmentation
-        nsegz = max(1,nsegz)    #  1 = no segmentation
+        nsegx = max(1, nsegx)    #  1 = no segmentation
+        nsegz = max(1, nsegz)    #  1 = no segmentation
         nsegy = 1               # y segmentation not supported, nsegy is always = 1
 
         delta_eff = 0
@@ -751,22 +741,28 @@ class MagnLoss(Amela):
             ialh_loss = 0
             loss_detail = []
             for i in k:                 # loop for each superelement in a case
-                logger.info(f'magnet width and height: {i["wm"]:.2f}mm {i["hm"]:.2f}mm')
-                logger.info(f'number of magnet segments: x: {nsegx:.0f} y: {nsegy:.0f} z: {nsegz:.0f}')
-                (nt, bx_fft, by_fft) = self.periodicity_id(i['bl'])             # finds the time periodic part of the simulation
-                (nx, ny, nz, excpl_new, eycpl_new) = Segmentation(i['wm'], i['hm'], i['lm'], i['elcp'], nsegx, nsegy, nsegz)
-                # conversion from mm to m for wm,hm,lm
-                wm = i['wm']/1000
-                hm = i['hm']/1000
-                lm = i['lm']/1000
+                logger.info('magnet width and height: %.2f mm %.2f mm',
+                            i["wm"]*1e3, i["hm"]*1e3)
+                logger.info('number of magnet segments: x: %.0f y: %.0f z: %.0f',
+                            nsegx, nsegy, nsegz)
+                (nt, bx_fft, by_fft) = self.periodicity_id(i['bl'])  # finds the time periodic part of the simulation
+                (nx, ny, nz, excpl_new, eycpl_new) = Segmentation(
+                    i['wm'], i['hm'], i['lm'], i['elcp'],
+                    nsegx, nsegy, nsegz)
+
+                wm = i['wm']
+                hm = i['hm']
+                lm = i['lm']
                 self.consider_bx(wm, hm, bx_fft, by_fft)
-                (sx_abs, sy_abs, sx_phase, sy_phase, freq_range) = self.Process_B_data(nx, ny, nsegx, nsegy, nt, i['elcp'], i['bl'], excpl_new, eycpl_new)
-                loss = self.loss_ialh2(sx_abs, sy_abs, sx_phase, sy_phase, freq_range, nx, ny, wm, hm, lm, nsegx, nsegy, nsegz, delta_eff) * self.numpoles
+                (sx_abs, sy_abs, sx_phase, sy_phase, freq_range) = self.Process_B_data(
+                    nx, ny, nsegx, nsegy, nt, i['elcp'], i['bl'], excpl_new, eycpl_new)
+                loss = self.loss_ialh2(sx_abs, sy_abs, sx_phase, sy_phase, freq_range,
+                                       nx, ny, wm, hm, lm, nsegx, nsegy, nsegz, delta_eff) * self.numpoles
                 ialh_loss += loss
-                logger.info(f'Loadcase {i["loadcase"]}, Superelement {i["spel_key"]}, Total losses =  {loss:.3f} W')
+                logger.info('Loadcase %d, Superelement %s, Total losses =  %.3f W',
+                            i["loadcase"], i["spel_key"], loss)
                 loss_detail.append([i['spel_key'], loss/self.numpoles])
             self.th_loss.append(loss_detail)
             all_load_cases.append(ialh_loss)
 
         return all_load_cases
-

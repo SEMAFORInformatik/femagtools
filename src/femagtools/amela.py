@@ -243,7 +243,7 @@ class Amela():
 
         r = get_magnet_data(nc, indx)
         # export to json
-        self.export_json(r)
+        #self.export_json(r)
         # run amela
         calc_method = 'IALH' if ialh else '3DI'
         cmd = self.cmd + ['--calc', calc_method, self.magn['name'] + '/']

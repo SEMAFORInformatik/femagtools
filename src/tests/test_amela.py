@@ -10,7 +10,6 @@ def read_json():
     return json.loads(
         (Path(__file__).parent/"data/pm_data/pm_data_se38.json").read_text())
 
-@pytest.mark.skip(reason="json export need to be fixed")
 def test_amela():
     al = amela.Amela(workdir='src/tests/data',
                      magnet_data=dict(name='pm_data'))

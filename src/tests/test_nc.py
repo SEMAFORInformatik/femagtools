@@ -98,8 +98,7 @@ def test_geom(pm):
     g = mag_spels[0].get_rect_geom()
     assert g['w'] == pytest.approx(0.0112, abs=1e-4)
     assert g['h'] == pytest.approx(0.00308, abs=1e-5)
-    assert g['x0'] == pytest.approx(0.02317, abs=1e-5)
-    assert g['y0'] == pytest.approx(0.007528, abs=1e-5)
+    assert g['cxy'] == pytest.approx((0.02317, 0.007528), abs=1e-5)
     assert g['area'] == pytest.approx(3.45e-05, abs=1e-6)
     assert g['alpha'] == pytest.approx(1.885, abs=1e-3)
 

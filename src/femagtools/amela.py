@@ -122,19 +122,6 @@ def get_magnet_data(nc, ibeta=None) -> list:
                   spel_key=se.key)
         pd.update(pos)
 
-        for i, nk in enumerate([n.key for e in se.elements
-                               for n in e.vertices]):
-            pd['nodes'][str(nk)] = dict(
-                key=nk,
-                x=float(nc.nodes[nk-1].x),
-                y=float(nc.nodes[nk-1].y),
-                Az=float(nc.nodes[nk-1].vpot[0]))
-
-        for i, ek in enumerate([e.key for e in se.elements]):
-            pd['elements'][str(ek)] = dict(
-                key=ek,
-                cp=ecp[i],
-                Bxy=np.array(bxy)[i, :, :].tolist())
         pm_data.append(pd)
 
     if len(mag_spels) / nc.poles_sim > 1:
@@ -199,6 +186,7 @@ class Amela():
           pm_data: list of magnet data
 
         '''
+        return
         pm_dir = self.amela_dir / self.magn['name']
         pm_dir.mkdir(exist_ok=True)
         for i in pm_data:
@@ -244,7 +232,16 @@ class Amela():
         '''
         # get magnet data
         nc_name = self.workdir / self.magn['name']
-        r = get_magnet_data(femagtools.nc.read(nc_name))
+        nc = femagtools.nc.read(nc_name)
+        num_cases = nc.el_fe_induction_1.shape[3] - 1
+        if 'loadcase' in self.magn:
+            indx = self.magn['loadcase'] - 1
+        else:
+            indx = num_cases
+        if indx == 3:
+            indx = num_cases  # avoid error
+
+        r = get_magnet_data(nc, indx)
         # export to json
         self.export_json(r)
         # run amela

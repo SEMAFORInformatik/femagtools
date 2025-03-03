@@ -606,8 +606,8 @@ class MagnLoss(Amela):
 
         for ii in range (nx):       # Inverse Fourier-Transformation
             for jj in range (ny):
-                sx = np.fft.irfftn(complbx[ii,jj,:], [nt - 1])
-                sy = np.fft.irfftn(complby[ii,jj,:], [nt - 1])
+                sx = np.fft.irfftn(complbx[ii,jj,:], s=[nt - 1], axes=[0])
+                sy = np.fft.irfftn(complby[ii,jj,:], s=[nt - 1], axes=[0])
                 sx = np.append(sx, sx[0])
                 sy = np.append(sy, sy[0])
                 sx_pm_3D[ii,jj,:] = sx

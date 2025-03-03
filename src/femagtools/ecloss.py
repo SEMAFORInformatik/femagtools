@@ -162,10 +162,17 @@ class MagnLoss(Amela):
     def __init__(self, workdir, modelname, ibeta, **kwargs):
         super().__init__(workdir, magnet_data=dict(name=modelname))
         self.pm = self.get_magnet_data_all(ibeta)
-        self.theta = self.pm[-1][-1]['phi'] # rotor pos
         self.speed = kwargs.get('speed', self.pm[-1][-1]['speed'])
-        self.tgrid = 60/self.speed*(self.theta[-1] - self.theta[0])/360
-        self.lt = len(self.theta)
+        logger.info("Speed %f", self.speed)
+        try: # move action rotation
+            self.theta = self.pm[-1][-1]['phi'] # rotor pos
+            self.lt = len(self.theta)
+            self.tgrid = 60/self.speed*(self.theta[-1]-self.theta[0])/360
+        except: # move action linear
+            self.displ = self.pm[-1][-1]['displ'] # rotor pos
+            self.lt = len(self.displ)
+            self.tgrid = (self.displ[-1]-self.displ[0])/self.speed
+
         self.ls = self.pm[-1][-1]['ls']
         self.th_loss = []
         try:
@@ -255,7 +262,10 @@ class MagnLoss(Amela):
             if np.sum(np.around([period[0]%i for i in period])) == 0:
                 npos = min(int(np.ceil(np.amax(period))+1), bxy.shape[2])
 
-        self.tgrid = 60/self.speed*(self.theta[npos-1] - self.theta[0])/360
+        try:
+            self.tgrid = 60/self.speed*(self.theta[npos-1] - self.theta[0])/360
+        except AttributeError:
+            self.tgrid = (self.displ[npos-1] - self.displ[0])/self.speed
 
         return [npos, bx_fft, by_fft]
 
@@ -386,14 +396,16 @@ class MagnLoss(Amela):
                             if self.is_x and nu[ix] < 2:
                                 with warnings.catch_warnings():
                                     warnings.simplefilter('ignore')
-                                    px_se[iy,ix,c] = self.calc_pvpm(bx_fft[iy,ix,c], max(c/self.tgrid, 1e-6),
-                                                                    mu[iy], hm, wm/self.segx[jj], 0)
+                                    px_se[iy,ix,c] = self.calc_pvpm(
+                                        bx_fft[iy,ix,c], max(c/self.tgrid, 1e-6),
+                                        mu[iy], hm, wm/self.segx[jj], 0)
 
                             if mu[iy] < 2:
                                 with warnings.catch_warnings():
                                     warnings.simplefilter('ignore')
-                                    py_se[iy,ix,c] = self.calc_pvpm(by_fft[iy,ix,c], max(c/self.tgrid, 1e-6),
-                                                                    nu[ix], wm/self.segx[jj], hm, 0)
+                                    py_se[iy,ix,c] = self.calc_pvpm(
+                                        by_fft[iy,ix,c], max(c/self.tgrid, 1e-6),
+                                        nu[ix], wm/self.segx[jj], hm, 0)
                 py_sum = np.sum(py_se)
                 px_sum = np.sum(px_se)
                 pec[jj,kk] = (py_sum + px_sum)*(self.ls/self.lm)*self.numpoles*self.segx[jj]

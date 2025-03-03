@@ -192,21 +192,23 @@ class Reader(object):
                  for k in ('sr_key', 'nxt_sr_pntr')]
         except:
             pass
-        try:
-            grp = ds.groups['machine']
+
+        grp = ds.groups['machine']
+        if 'speed' in grp.variables:
             self.speed = float(grp.variables['speed'].getValue().data)
+        if 'fc_radius' in grp.variables:
             self.FC_RADIUS = float(grp.variables['fc_radius'].getValue().data)
-            self.pole_pairs = int(grp.variables['pole_pairs'].getValue().data)
+        self.delta_node_angle = float(  # rad
+            grp.variables['delta_node_angle'].getValue().data)
+        self.arm_length = float(grp.variables['arm_length'].getValue().data)
+        for attr in ('pole_pairs', 'poles_sim', 'coil_span',
+                     'state_of_problem', 'move_action'):
+            if attr in grp.variables:
+                setattr(self, attr, int(grp.variables[attr].getValue().data))
+        if 'num_layers' in grp.variables:
             self.layers = int(grp.variables['num_layers'].getValue().data)
-            self.coil_span = int(grp.variables['coil_span'].getValue().data)
-            self.delta_node_angle = float(  # rad
-                grp.variables['delta_node_angle'].getValue().data)
-            self.poles_sim = int(grp.variables['poles_sim'].getValue().data)
+        if 'num_slots' in grp.variables:
             self.slots = int(grp.variables['num_slots'].getValue().data)
-            self.arm_length = float(grp.variables['arm_length'].getValue().data)
-            self.state_of_problem = int(grp.variables['state_of_problem'].getValue().data)
-        except:
-            pass
 
         if hasattr(self, 'state_of_problem'):
             if self.state_of_problem == 5:

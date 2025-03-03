@@ -56,6 +56,9 @@ def get_magnet_data(nc, ibeta=None) -> list:
 
     '''
     mag_spels = nc.magnet_super_elements()
+    if len(mag_spels) / nc.poles_sim == 1:
+        mag_spels = [mag_spels[0]]
+
     # prepare data for ialh method
     # conductivity and permeability of the magnets
     cond = 0
@@ -85,11 +88,14 @@ def get_magnet_data(nc, ibeta=None) -> list:
         # reset num.poles
         poles = 1
     else:
-        rpm = nc.speed
         ag_sim = nc.pos_el_fe_induction[-1] - nc.pos_el_fe_induction[0]
-        pos = dict(phi=(nc.pos_el_fe_induction*180/np.pi).tolist(),
-                   speed=rpm,
-                   t=float(60/rpm*ag_sim/360))  # TODO
+        if nc.move_action == 0:
+            phi = nc.pos_el_fe_induction*180/np.pi
+            pos = dict(phi=phi,
+                       speed=nc.speed)
+        else:
+            pos = dict(displ=nc.pos_el_fe_induction,
+                       speed=nc.speed)
     # prep dictionary for the loss calculation
     pm_data = []
     for i, se in enumerate(mag_spels):
@@ -123,11 +129,7 @@ def get_magnet_data(nc, ibeta=None) -> list:
         pd.update(pos)
 
         pm_data.append(pd)
-
-    if len(mag_spels) / nc.poles_sim > 1:
-        return pm_data
-    else:
-        return [pm_data[0]]
+    return pm_data
 
 class Amela():
     '''Run Amela Calculation

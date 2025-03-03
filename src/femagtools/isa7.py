@@ -72,6 +72,11 @@ class ElType(Enum):
     SquareRectangle = 4
 """Types of elements"""
 
+class MoveType(Enum):
+    Rotate = 0
+    Linear = 1
+"""Types of rotor movement"""
+
 class Reader(object):
     """
     Open and Read I7/ISA7 file
@@ -328,6 +333,7 @@ class Reader(object):
          HI, num_move_ar, self.ANGL_I_UP,
          num_par_wdgs, cur_control) = self.next_block("f")[:8]
         self.NUM_PAR_WDGS = int(num_par_wdgs)
+        self.move_action = move_action  # rotate 0, linear 1
         self.arm_length = arm_length  # unit is m
         self.skip_block(2)
         self.skip_block(30 * 30)
@@ -752,13 +758,14 @@ class Isa7(object):
         self.element_pos = np.array([e.center
                                      for e in self.elements])
 
-        for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim',
+        for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim', 'move_action',
                   'layers', 'coil_span', 'delta_node_angle', 'speed',
                   'MAGN_TEMPERATURE', 'BR_TEMP_COEF',
                   'MA_SPEZ_WEIGHT', 'CU_SPEZ_WEIGHT'):
-            v = getattr(reader, a, '')
-            if v:
-                setattr(self, a, v)
+            try:
+                setattr(self, a, getattr(reader, a))
+            except AttributeError:
+                pass
         if getattr(reader, 'pole_pairs', 0):
             self.num_poles = 2*self.pole_pairs
         if getattr(reader, 'slots', 0):
@@ -771,7 +778,7 @@ class Isa7(object):
 
         self.airgap_inner_elements = [] # used for rotate
         self.airgap_outer_elements = []
-        if hasattr(self, 'FC_RADIUS'):  # Note: cosys r/phi only
+        if getattr(self, 'FC_RADIUS', 0) > 0:  # Note: cosys r/phi only
             # TODO: handle multiple airgaps
             airgap_center_elements = []
             for n in self.nodes:

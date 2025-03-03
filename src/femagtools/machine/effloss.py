@@ -327,11 +327,19 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
         plcu2 = m.iqd_plcu2(*iqd)
         tfric = m.tfric
+        try:
+            plcu1_dc = m.iqd_plcu1(iqd[0], iqd[1], 
+                                np.array([0.0 for i in f1])).tolist()
+            plcu1_ac = [i-j for i, j in zip(plcu1.tolist(), plcu1_dc)]
+        except:
+            plcu1_dc, plcu1_ac = [], []
     elif isinstance(m, SynchronousMachine):
         plfe1 = m.kpfe*m.iqd_plfe1(*iqd, f1)
         plfe2 = m.kpfe*m.iqd_plfe2(*iqd, f1)
         plmag = np.zeros_like(plfe2)
         plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
+        plcu1_dc = [] # reserved for winding (dc, ac) losses
+        plcu1_ac = []
         plcu2 = m.iqd_plcu2(*iqd)
         tfric = m.tfric
         logger.info("Iex %f %f",
@@ -342,6 +350,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plmag = np.zeros(ntmesh.shape[1])
         plcu1 = np.array(r['plcu1'])
         plcu2 = np.array(r['plcu2'])
+        plcu1_dc = [] # reserved for winding (dc, ac) losses
+        plcu1_ac = []
         iqd = np.zeros(ntmesh.shape)
         u1 = np.array(r['u1'])
         i1 = np.array(r['i1'])
@@ -387,4 +397,6 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plcu1=plcu1.tolist(),
         plcu2=plcu2.tolist(),
         plfric=plfric.tolist(),
-        losses=ploss.tolist())
+        losses=ploss.tolist(), 
+        plcu1_dc=plcu1_dc, 
+        plcu1_ac=plcu1_ac)

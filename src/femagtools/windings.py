@@ -46,6 +46,39 @@ def q1q2yk(Q, p, m, l=1):
     Yk = (n*qbb + 1)//pb
     return q1, q2, Yk, Qb
 
+def end_wdg_length_round_wires(layers, Rp, Rb, r_wire, h, coil_span, Q, bore_diam, slot_h1, slot_height):
+    '''return length of a single winding head for 1 coil turn.
+    Multiply by 2 to get length for both winding heads'''
+    if layers == 2:
+        R_inner_lyr = bore_diam/2 + slot_h1 + slot_height/4
+        R_outer_lyr = bore_diam/2 + slot_h1 + 3*slot_height/4
+    elif layers == 1:
+        R_inner_lyr = bore_diam/2 + slot_h1 + slot_height/2
+        R_outer_lyr = bore_diam/2 + slot_h1 + slot_height/2
+    else:
+        raise ValueError("Round wire windings can only have 1 or 2 layers")
+
+    if Rb < 2*r_wire:
+        Rb = 2*r_wire
+    if Rp < R_outer_lyr + 2*(Rb + r_wire):
+        Rp = R_outer_lyr + 2*(Rb + r_wire) + 1e-5
+    if h < 2*(Rb + r_wire):
+        h = 2*(Rb + r_wire) + 0.002
+
+    l = np.pi*coil_span/Q * (Rp + R_inner_lyr)
+    z = Rp - R_outer_lyr - 2*(Rb + r_wire)
+    l_ew = 2*h + l + z + (Rb + r_wire)*(np.pi - 2)
+    return l_ew, h, Rp, Rb
+
+def end_wdg_inductance_round_wires(l_ew, p, q, m, y, taup, w1, layers, num_par_wdgs, slot_height):
+    '''returns end winding leakage inductance per phase per end winding side (DE or NDE)'''
+    mue0 = 4*np.pi*1e-7
+    if layers == 2:
+        lambda_ew = 0.34*q*(1 - 2*y*taup/(np.pi*l_ew*m*q))
+    if layers == 1:
+        lambda_ew = q*(0.67 - 0.43*(taup + slot_height*np.pi/(2*p))/l_ew)
+    inductance_ew = mue0*2/(p*q)*(w1/num_par_wdgs)**2*l_ew*lambda_ew
+    return inductance_ew
 
 class Winding(object):
     # TODO: raise ValueError "Unbalanced winding" if Q % (m * gcd(Q, p)) != 0

@@ -83,6 +83,6 @@ def test_process(bch):
     assert pytest.approx(r['r1'], abs=1e-3) == 0.03159
     assert pytest.approx(np.mean(r['torque']), abs=0.1) == 17.5
     assert pytest.approx(
-        sum([r['plfe'][k] for k in r['plfe']]), abs=0.1) == 50.1
-    assert pytest.approx(np.mean(r['plmag']), abs=0.1) == 119.7
+        sum([r['plfe'][k] for k in r['plfe']]), abs=0.01) == 6.264
+    assert pytest.approx(np.mean(r['plmag']), abs=0.01) == 14.96
     assert pytest.approx(np.mean(r['plcu']), abs=0.1) == 925.6

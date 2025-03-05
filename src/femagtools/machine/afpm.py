@@ -11,6 +11,11 @@ from .. import model
 from .. import utils
 from .. import windings
 from .. import femag
+from .. import amela
+from .. import ecloss
+from .. import nc
+from .. import bch
+
 from scipy.interpolate import make_interp_spline, RegularGridInterpolator, RectBivariateSpline
 from scipy.integrate import quad
 import copy
@@ -26,6 +31,38 @@ AFM_TYPES = (
     "S2R1",      # 2 stator, 1 rotor, 1 half simulated
     "S2R1_all"   # 2 stator, 1 rotor, all simulated
 )
+
+
+def jsonify(v):
+    vtype = type(v)
+    if vtype == np.float32:
+        return float(v)
+    if vtype == np.ndarray:
+        return v.tolist()
+    if vtype == dict:
+        for k in v:
+            v[k] = jsonify(v[k])
+    return v
+
+
+def get_magdata(task):
+    basedir = Path(task.directory)
+    bchfile_list = sorted(basedir.glob(
+        '*_[0-9][0-9][0-9].B*CH'))
+    if bchfile_list:
+        result = bch.Reader()
+        with open(bchfile_list[-1]) as f:
+            logger.debug("Reading %s",
+                         bchfile_list[-1])
+            result.read(f)
+    # logger.info("%s %s", result.version, result.type),
+    fnc = list(basedir.glob('*.nc'))[0]
+    ncmod = nc.read(fnc)
+    result.losses[0]['magnet_data'] = [jsonify(pm)
+                                       for pm in amela.get_magnet_data(
+                                               ncmod, ibeta=0)]
+    return result
+
 
 def num_agnodes(Q, p, pw, ag):
     """return total number of nodes in airgap per pole
@@ -51,6 +88,7 @@ def num_agnodes(Q, p, pw, ag):
         # TODO nodedist 0.5, 2, 4, 6
     return nag
 
+
 def _integrate(radius, pos, val):
     interp = RegularGridInterpolator((radius, pos), val)
     def func(x, y):
@@ -65,6 +103,7 @@ def _integrate1d(radius, val):
     def func(x):
         return interp((x))
     return quad(func, radius[0], radius[-1], limit=100)[0]
+
 
 def ld_interpol(i1, beta, v):
     '''interpolate Ld at beta angle 0°, -180°'''
@@ -86,8 +125,9 @@ def ld_interpol(i1, beta, v):
         bp = beta[0:-1] + \
             [[dbeta for i in range(len(np.unique(i1)))]]
 
-    return RectBivariateSpline(np.unique(bp), np.unique(cur), \
-         np.array(v)).ev(*[betad, i1]).tolist()
+    return RectBivariateSpline(np.unique(bp), np.unique(cur),
+                               np.array(v)).ev(*[betad, i1]).tolist()
+
 
 def lq_interpol(i1, beta, v):
     '''interpolate Lq at beta -90°'''
@@ -110,6 +150,7 @@ def lq_interpol(i1, beta, v):
     cur = copy.deepcopy(cp)
     return RectBivariateSpline(np.unique(bp), np.unique(cur), \
          np.array(v)).ev(*[betad, i1]).tolist()
+
 
 def parident(workdir, engine, temp, machine,
              magnetizingCurves, magnetMat=[], condMat=[],
@@ -242,9 +283,10 @@ def parident(workdir, engine, temp, machine,
                 if nlworkdir.exists():
                     shutil.rmtree(nlworkdir)
                 nlworkdir.mkdir(exist_ok=True)
-                noloadsim = femag.Femag(nlworkdir, condMat=condMat, magnets=magnetMat,
-                                        magnetizingCurves=magnetizingCurves,
-                                        cmd=kwargs.get('cmd', None))
+                noloadsim = femag.Femag(
+                    nlworkdir, condMat=condMat, magnets=magnetMat,
+                    magnetizingCurves=magnetizingCurves,
+                    cmd=kwargs.get('cmd', None))
                 r = noloadsim(nlmachine, nlcalc)
                 nlresults['f'].append({k: v for k, v in r.items()})
                 i = i + 1
@@ -278,9 +320,10 @@ def parident(workdir, engine, temp, machine,
 
             if kwargs.get('use_multiprocessing', True):
                 gpstudy = parstudy.Grid(
-                                    subdir, condMat=condMat, magnets=magnetMat,
-                                    magnetizingCurves=magnetizingCurves,
-                                    cmd=kwargs.get('cmd', None))
+                    subdir, condMat=condMat, magnets=magnetMat,
+                    magnetizingCurves=magnetizingCurves,
+                    cmd=kwargs.get('cmd', None),
+                    result_func=get_magdata)
                 lresults = gpstudy(parvardef, mpart, simulation, engine)
 
             else:
@@ -299,9 +342,10 @@ def parident(workdir, engine, temp, machine,
                         if lworkdir.exists():
                             shutil.rmtree(lworkdir)
                         lworkdir.mkdir(exist_ok=True)
-                        loadsim = femag.Femag(lworkdir, condMat=condMat, magnets=magnetMat,
-                                            magnetizingCurves=magnetizingCurves,
-                                            cmd=kwargs.get('cmd', None))
+                        loadsim = femag.Femag(
+                            lworkdir, condMat=condMat, magnets=magnetMat,
+                            magnetizingCurves=magnetizingCurves,
+                            cmd=kwargs.get('cmd', None))
                         r = loadsim(mpart, simulation)
                         lresults['f'].append({k: v for k, v in r.items()})
 
@@ -464,8 +508,9 @@ def process(lfe, pole_width, machine, bch):
     pos = (rotpos[0]/np.pi*180)
     emffft = utils.fft(pos, emf[0])
 
+    scale_factor = 1 if model_type == 'S1R1' else 2
     styoke = {}
-    stteeth = {'hyst':0, 'eddy':0}
+    stteeth = {'hyst': 0, 'eddy': 0}
     rotor = {}
     for k in ('hyst', 'eddy'):
         if len(pole_width) > 1:
@@ -481,13 +526,20 @@ def process(lfe, pole_width, machine, bch):
             rotor[k] = scale_factor*sum(
                 bch[0]['losses'][0]['rotor']['----'][k])
 
-    if 'magnetH' in bch[0]['losses'][0]:
+    if 'magnet_data' in bch[0]['losses'][0]:
         k = 'magnetH'
+        nsegx = machine['magnet'].get('num_segments', 1)
+        for b in bch:
+            pm = b['losses'][0]['magnet_data']
+            magloss = ecloss.MagnLoss(magnet_data=[pm])
+            ml = magloss.calc_losses_ialh2(nsegx=nsegx)
+            b['losses'][0][k] = ml[0]
     else:
         k = 'magnetJ'
     if len(pole_width) > 1:
         maglosses = _integrate1d(radius, scale_factor*np.array(
-            [b['losses'][0][k]/l for l, b in zip(lfe, bch)]))
+            [b['losses'][0][k]/lz
+             for lz, b in zip(lfe, bch)]))
     else:
         maglosses = scale_factor*bch[0]['losses'][0][k]
 
@@ -1030,6 +1082,7 @@ class AFPM:
             and 'poc' not in simulation):
             simulation['poc'] = poc.Poc(machine['pole_width'])
 
+        self.parstudy.result_func = get_magdata
         lresults = self.parstudy(
             parvardef, machine, simulation, engine)
         if lresults['status'].count('C') != len(lresults['status']):

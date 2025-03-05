@@ -34,6 +34,7 @@ def tf(b1, b2, alpha):
     else:
         return T(alpha).dot(((b1), (b2)))
 
+
 def transform_flux_density(alpha, bxy):
     '''transform the magnet flux density to local coordinate system'''
     b = tf(b1=bxy[:, 0, :], b2=bxy[:, 1, :], alpha=alpha)
@@ -43,6 +44,7 @@ def transform_flux_density(alpha, bxy):
     byf = np.mean(b[1].T - np.mean(b[1], axis=1).T, axis=1)
     return {'bxyl': np.asarray(b),
             'bxyf': np.array([bxf, byf])}
+
 
 def get_magnet_data(nc, ibeta=None) -> list:
     '''Extract magnet data from nc file
@@ -151,7 +153,8 @@ class Amela():
              nseglen=0)
     '''
 
-    def __init__(self, workdir: str, magnet_data: dict, amela_dir=None):
+    def __init__(self, workdir: str, magnet_data: dict,
+                 amela_dir=None):
 
         self.magn = magnet_data
         self.workdir = pathlib.Path(workdir)

@@ -11,7 +11,6 @@ from .. import model
 from .. import utils
 from .. import windings
 from .. import femag
-from .. import amela
 from .. import ecloss
 from .. import nc
 from .. import bch
@@ -70,8 +69,8 @@ def get_magdata(task):
     ibeta = len(result.linearForce)-1
     ncmod = nc.read(fnc)
     result.losses[0]['magnet_data'] = [jsonify(pm)
-                                       for pm in amela.get_magnet_data(
-                                               ncmod, ibeta=ibeta)]
+                                       for pm in ncmod.get_magnet_data(
+                                               ibeta=ibeta)]
     return result
 
 

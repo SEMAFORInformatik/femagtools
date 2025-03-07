@@ -32,6 +32,17 @@ AFM_TYPES = (
     "S2R1_all"   # 2 stator, 1 rotor, all simulated
 )
 
+def stator_template_name(machine):
+    for k in machine['stator']:
+        if type(machine['stator'][k]) == dict:
+            return k
+    return ''
+
+def magnet_template_name(machine):
+    for k in machine['magnet']:
+        if type(machine['magnet'][k]) == dict:
+            return k
+    return ''
 
 def jsonify(v):
     vtype = type(v)
@@ -55,12 +66,12 @@ def get_magdata(task):
             logger.debug("Reading %s",
                          bchfile_list[-1])
             result.read(f)
-    # logger.info("%s %s", result.version, result.type),
     fnc = list(basedir.glob('*.nc'))[0]
+    ibeta = len(result.linearForce)-1
     ncmod = nc.read(fnc)
     result.losses[0]['magnet_data'] = [jsonify(pm)
                                        for pm in amela.get_magnet_data(
-                                               ncmod, ibeta=0)]
+                                               ncmod, ibeta=ibeta)]
     return result
 
 
@@ -183,7 +194,7 @@ def parident(workdir, engine, temp, machine,
 
     di = machine['inner_diam']
     Q1 = machine['stator']['num_slots']
-    slotmodel = 'afm_stator'
+    slotmodel = stator_template_name(machine)
     hs = machine['stator'][slotmodel]['slot_height']
     wdgk = 'windings' if 'windings' in machine else 'winding'
     N = machine[wdgk]['num_wires']
@@ -195,11 +206,12 @@ def parident(workdir, engine, temp, machine,
         machine[wdgk].get('num_par_wdgs', 1))
 
     p = machine['poles']
-    if np.isscalar(machine['magnet']['afm_rotor']['rel_magn_width']):
+    slotmodel = magnet_template_name(machine)
+    if np.isscalar(machine['magnet'][slotmodel]['rel_magn_width']):
         num_slices = kwargs.get('num_slices', 3)
-        rmagw = num_slices*[machine['magnet']['afm_rotor']['rel_magn_width']]
+        rmagw = num_slices*[machine['magnet'][slotmodel]['rel_magn_width']]
     else:
-        rmagw = machine['magnet']['afm_rotor']['rel_magn_width']
+        rmagw = machine['magnet'][slotmodel]['rel_magn_width']
         if len(rmagw) == 1:
             num_slices = kwargs.get('num_slices', 3)
             rmagw = num_slices*list(rmagw)
@@ -226,7 +238,7 @@ def parident(workdir, engine, temp, machine,
             {"values": pole_width,
              "name": "pole_width"},
             {"values": rmagw,
-             "name": "magnet.afm_rotor.rel_magn_width"},
+             "name": f"magnet.{slotmodel}.rel_magn_width"},
             {"values": lfe,
              "name": "lfe"},
             {"values": linspeed, "name": "speed"}
@@ -275,7 +287,7 @@ def parident(workdir, engine, temp, machine,
             for pw, le, sp, rmw in zip(pole_width, lfe, linspeed, rmagw):
                 nlmachine = {k: machine[k] for k in machine}
                 nlmachine['pole_width'] = pw
-                nlmachine['magnet']['afm_rotor']['rel_magn_width'] = rmw
+                nlmachine['magnet'][slotmodel]['rel_magn_width'] = rmw
                 nlmachine['lfe'] = le
                 nlcalc.update({"speed": sp})
                 nlsubdir = f'{workdir}/{i}'
@@ -296,10 +308,10 @@ def parident(workdir, engine, temp, machine,
         results = []
         i = 0
         for l, pw, rmw in zip(lfe, pole_width, rmagw):
-            mpart = {k: machine[k] for k in machine if k != 'afm_rotor'}
+            mpart = {k: machine[k] for k in machine if k != slotmodel}
             mpart['pole_width'] = pw
             mpart['lfe'] = l
-            mpart['magnet']['afm_rotor']['rel_magn_width'] = rmw
+            mpart['magnet'][slotmodel]['rel_magn_width'] = rmw
             subdir = f"{workdir}/{i}"
 
             simulation = dict(
@@ -307,8 +319,8 @@ def parident(workdir, engine, temp, machine,
                 wind_temp=20.0,
                 magn_temp=magtemp,
                 angl_i_up=0.0,
-                magn_height=machine['magnet']['afm_rotor']['magn_height'],
-                yoke_height=machine['magnet']['afm_rotor'].get(
+                magn_height=machine['magnet'][slotmodel]['magn_height'],
+                yoke_height=machine['magnet'][slotmodel].get(
                     'yoke_height', 0),
                 current=1,
                 poc=poc.Poc(999,
@@ -460,8 +472,8 @@ def process(lfe, pole_width, machine, bch):
     slots_gen = mmod.stator['num_slots_gen']
     scale_factor = _get_scale_factor(model_type, num_slots, slots_gen)
     endpos = [2*pw*1e3 for pw in pole_width]
-    displ = [[d for d in r['linearForce'][0]['displ']
-              if d < e*(1+1/len(r['linearForce'][0]['displ']))]
+    displ = [[d for d in r['linearForce'][-1]['displ']
+              if d < e*(1+1/len(r['linearForce'][-1]['displ']))]
              for e, r in zip(endpos, bch)]
     radius = [pw*machine['poles']/2/np.pi for pw in pole_width]
     rotpos = [np.array(d)/r/1000 for r, d in zip(radius, displ)]
@@ -474,20 +486,20 @@ def process(lfe, pole_width, machine, bch):
         if np.diff([len(d) for d in displ]).any():
             raise ValueError(
                 f"inhomogenous number of steps: {[len(d) for d in displ]}")
-        lfx = [r['linearForce'][0]['force_x'] for r in bch]
+        lfx = [r['linearForce'][-1]['force_x'] for r in bch]
         torque = _integrate(radius, rotpos[0], np.array(
             [r*scale_factor*np.array(fx[:-1])/l
              for l, r, fx in zip(lfe, radius, lfx)]))
 
         voltage = {k: [scale_factor * np.array(ux[:-1])/l
-                       for l, ux in zip(lfe, [r['flux'][k][0]['voltage_dpsi']
+                       for l, ux in zip(lfe, [r['flux'][k][-1]['voltage_dpsi']
                                               for r in bch])]
                    for k in bch[0]['flux']}
         emf = [_integrate(radius, rotpos[0], np.array(voltage[k]))
                for k in voltage]
 
         fluxxy = {k: [scale_factor * np.array(flx[:-1])/l
-                      for l, flx in zip(lfe, [r['flux'][k][0]['flux_k']
+                      for l, flx in zip(lfe, [r['flux'][k][-1]['flux_k']
                                               for r in bch])]
                   for k in bch[0]['flux']}
         flux = [_integrate(radius, rotpos[0], np.array(fluxxy[k]))
@@ -495,13 +507,13 @@ def process(lfe, pole_width, machine, bch):
     else:
         r = radius[0]
         torque = [r*scale_factor*fx
-                  for fx in bch[0]['linearForce'][0]['force_x'][:-1]]
+                  for fx in bch[0]['linearForce'][-1]['force_x'][:-1]]
         voltage = {k: [scale_factor * ux
-                       for ux in bch[0]['flux'][k][0]['voltage_dpsi'][:-1]]
+                       for ux in bch[0]['flux'][k][-1]['voltage_dpsi'][:-1]]
                    for k in bch[0]['flux']}
         emf = [voltage[k][:n] for k in voltage]
         fluxxy = {k: [scale_factor * np.array(flx)
-                      for flx in bch[0]['flux'][k][0]['flux_k']]
+                      for flx in bch[0]['flux'][k][-1]['flux_k']]
                   for k in bch[0]['flux']}
         flux = [fluxxy[k][:n] for k in fluxxy]
 
@@ -515,45 +527,47 @@ def process(lfe, pole_width, machine, bch):
     for k in ('hyst', 'eddy'):
         if len(pole_width) > 1:
             styoke[k] = _integrate1d(radius, scale_factor*np.array(
-                [sum(b['losses'][0]['stator']['stfe'][k])/l
+                [sum(b['losses'][-1]['stator']['stfe'][k])/l
                  for l, b in zip(lfe, bch)]))
             rotor[k] = _integrate1d(radius, scale_factor*np.array(
-                [sum(b['losses'][0]['rotor']['----'][k])/l
+                [sum(b['losses'][-1]['rotor']['----'][k])/l
                  for l, b in zip(lfe, bch)]))
         else:
             styoke[k] = scale_factor*sum(
-                bch[0]['losses'][0]['stator']['stfe'][k])
+                bch[0]['losses'][-1]['stator']['stfe'][k])
             rotor[k] = scale_factor*sum(
-                bch[0]['losses'][0]['rotor']['----'][k])
+                bch[0]['losses'][-1]['rotor']['----'][k])
 
     if 'magnet_data' in bch[0]['losses'][0]:
         k = 'magnetH'
         nsegx = machine['magnet'].get('num_segments', 1)
-        for b in bch:
+        if type(nsegx) == int:
+            nsegx = [nsegx]*len(bch)
+        for nx, b in zip(nsegx, bch):
             pm = b['losses'][0]['magnet_data']
             magloss = ecloss.MagnLoss(magnet_data=[pm])
-            ml = magloss.calc_losses_ialh2(nsegx=nsegx)
-            b['losses'][0][k] = ml[0]
+            ml = magloss.calc_losses_ialh2(nsegx=nx)
+            b['losses'][-1][k] = ml[0]
     else:
         k = 'magnetJ'
     if len(pole_width) > 1:
         maglosses = _integrate1d(radius, scale_factor*np.array(
-            [b['losses'][0][k]/lz
+            [b['losses'][-1][k]/lz
              for lz, b in zip(lfe, bch)]))
     else:
-        maglosses = scale_factor*bch[0]['losses'][0][k]
+        maglosses = scale_factor*bch[0]['losses'][-1][k]
 
-    freq = bch[0]['losses'][0]['stator']['stfe']['freq'][0]
+    freq = bch[0]['losses'][-1]['stator']['stfe']['freq'][0]
 
     wdg = windings.Winding(
         dict(Q=mmod.stator['num_slots'],
              p=mmod.poles//2,
              m=mmod.winding['num_phases'],
              l=mmod.winding['num_layers']))
-
+    slotmodel = stator_template_name(machine)
     cufill = mmod.winding.get('cufilfact', 0.4)
-    aw = (mmod.stator['afm_stator']['slot_width']*
-              mmod.stator['afm_stator']['slot_height']*
+    aw = (mmod.stator[slotmodel]['slot_width']*
+              mmod.stator[slotmodel]['slot_height']*
               cufill/mmod.winding['num_wires']/mmod.winding['num_layers'])
     r1 = wdg_resistance(wdg, mmod.winding['num_wires'],
                         mmod.winding['num_par_wdgs'],
@@ -1006,11 +1020,11 @@ class AFPM:
                 raise ValueError(f"invalid afm type {machine['afmtype']}")
         except KeyError:
             raise ValueError("missing key afmtype")
-
-        if np.isscalar(machine['magnet']['afm_rotor']['rel_magn_width']):
-            rmagw = num_slices*[machine['magnet']['afm_rotor']['rel_magn_width']]
+        slotmodel = magnet_template_name(machine)
+        if np.isscalar(machine['magnet'][slotmodel]['rel_magn_width']):
+            rmagw = num_slices*[machine['magnet'][slotmodel]['rel_magn_width']]
         else:
-            rmagw = machine['magnet']['afm_rotor']['rel_magn_width']
+            rmagw = machine['magnet'][slotmodel]['rel_magn_width']
             if len(rmagw) == 1:
                 rmagw = num_slices*list(rmagw)
             elif num_slices != len(rmagw):
@@ -1039,7 +1053,7 @@ class AFPM:
                 {"values": lfe,
                  "name": "lfe"},
                 {"values": rmagw,
-                 "name": "magnet.afm_rotor.rel_magn_width"},
+                 "name": f"magnet.{slotmodel}.rel_magn_width"},
                 {"values": linspeed, "name": "speed"}
             ]
         }
@@ -1047,15 +1061,15 @@ class AFPM:
         machine['pole_width'] = np.pi * machine['inner_diam']/machine['poles']
         machine['lfe'] = machine['outer_diam'] - machine['inner_diam']
         try:
-            machine['magnet']['afm_rotor']['rel_magn_width'] = max(
-                machine['magnet']['afm_rotor']['rel_magn_width'])
+            machine['magnet'][slotmodel]['rel_magn_width'] = max(
+                machine['magnet'][slotmodel]['rel_magn_width'])
         except TypeError:
             pass
 
         simulation['skew_displ'] = (simulation.get('skew_angle', 0)/180 * np.pi
                                     * machine['inner_diam'])
         nlresults = {}
-        if (simulation['calculationMode'] != 'cogg_calc'
+        if (simulation['calculationMode'] == 'torq_calc'
             and 'poc' not in simulation):
             nlcalc = dict(
                 calculationMode="cogg_calc",
@@ -1078,11 +1092,13 @@ class AFPM:
                 parameters={
                     'phi_voltage_winding': current_angles})
             logger.info("Current angles: %s", current_angles)
-        elif (simulation['calculationMode'] == 'cogg_calc'
-            and 'poc' not in simulation):
+            simulation['calc_noload'] = 0
+
+        if 'poc' not in simulation:
             simulation['poc'] = poc.Poc(machine['pole_width'])
 
         self.parstudy.result_func = get_magdata
+        logger.info("Simulation %s", simulation['calculationMode'])
         lresults = self.parstudy(
             parvardef, machine, simulation, engine)
         if lresults['status'].count('C') != len(lresults['status']):

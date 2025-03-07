@@ -5,7 +5,6 @@ __author__ = 'Max Hullmann, Dapu Zhang, Ivan Solc'
 
 import logging
 import warnings
-from .amela import get_magnet_data
 import numpy as np
 from numpy import sinh, sin, cosh, cos, pi
 from scipy.interpolate import RBFInterpolator
@@ -158,14 +157,14 @@ class MagnLoss:
     ----------
     nc: (object) nc/isa7
     ibeta: load cases [0, 1, 2]
-    magnet_data: array of pm data (see amela get_magnet_data)
+    magnet_data: array of pm data (see nc/isa7 get_magnet_data)
     '''
     def __init__(self, **kwargs):
         #super().__init__(workdir, magnet_data=dict(name=modelname))
         if 'nc' in kwargs:
             ibeta = kwargs.get('ibeta', [0])
             nc = kwargs['nc']
-            self.pm = [get_magnet_data(nc, ibeta=i) for i in ibeta]
+            self.pm = [nc.get_magnet_data(ibeta=i) for i in ibeta]
         elif 'magnet_data' in kwargs:
             self.pm = kwargs['magnet_data']
         self.speed = kwargs.get('speed', self.pm[-1][-1]['speed'])
@@ -606,8 +605,8 @@ class MagnLoss:
                     break
 
             filt = np.ones((nf))
-            for ii in range(ilim,nf):
-                filt[ii] = (feclim/freq[ii])
+            for ii in range(ilim, nf):
+                filt[ii] = feclim/freq[ii]
         for ii in range(nx):       # Derivation in frequency domain
             for jj in range(ny):
                 complbx[ii,jj,:] = -complbx[ii,jj,:]*freq*filt*np.pi*2j

@@ -238,18 +238,18 @@ class Reader(object):
         except KeyError:
             pass
 
-        try:
+        if 'el_induction' in ds.groups:
             grp = ds.groups['el_induction']
             (self.pos_el_fe_induction,
              self.el_fe_induction_1,
              self.el_fe_induction_2,
-             self.eddy_cu_vpot) = [grp.variables[k][:]
+             self.eddy_cu_vpot) = [grp.variables[k][:] if k in grp.variables else []
                                    for k in ('position',
                                              'fe_induction_1',
                                              'fe_induction_2',
                                              'eddy_cu_vpot')]
             logger.debug('el_fe_induction %d', len(self.pos_el_fe_induction))
-        except KeyError:
+        else:
             self.pos_el_fe_induction = []
             self.el_fe_induction_1 = []
             self.el_fe_induction_2 = []

@@ -758,7 +758,9 @@ class Builder:
         felosses = custom_fefunc + self.create_fe_losses(sim)
         fslcalc = (displ_stator_rotor
                    + self.__render(sim, sim.get('calculationMode'))
-                   + airgap_induc + revert_displ)
+                   + airgap_induc + revert_displ
+                   + ['save_model("cont")'])
+
         '''
         if pfefunc:
             sim['loss_funct'] = pfefunc
@@ -771,8 +773,7 @@ class Builder:
                                           'psd_psq_fast'):
             return felosses + fslcalc
 
-        return (felosses + fslcalc +
-                self.__render(sim, 'plots'))
+        return felosses + fslcalc + self.__render(sim, 'plots')
 
     def create_shortcircuit(self, model):
         return self.__render(model, 'shortcircuit')
@@ -835,8 +836,7 @@ class Builder:
         fslmodel = self.create_model(model, magnets, condMat)
         logger.info("create simulation '%s'", sim['calculationMode'])
 
-        return (fslmodel + self.create_analysis(sim) +
-                ['save_model("close")'])
+        return fslmodel + self.create_analysis(sim)
 
     def create_detailed_wire(self, params, templ):
         return self.__render(params, templ)

@@ -211,11 +211,7 @@ def parident(workdir, engine, temp, machine,
         rmagw = num_slices*[machine['magnet'][slotmodel]['rel_magn_width']]
     else:
         rmagw = machine['magnet'][slotmodel]['rel_magn_width']
-        if len(rmagw) == 1:
-            num_slices = kwargs.get('num_slices', 3)
-            rmagw = num_slices*list(rmagw)
-        else:
-            num_slices = len(rmagw)
+        num_slices = len(rmagw)
 
     logger.info("num_slices %d rmagw %s", num_slices, rmagw)
     lfe = get_arm_lengths(machine['outer_diam'],

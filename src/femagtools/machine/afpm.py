@@ -217,6 +217,7 @@ def parident(workdir, engine, temp, machine,
         else:
             num_slices = len(rmagw)
 
+    logger.info("num_slices %d rmagw %s", num_slices, rmagw)
     lfe = get_arm_lengths(machine['outer_diam'],
                           machine['inner_diam'],
                           num_slices)
@@ -1020,14 +1021,14 @@ class AFPM:
         except KeyError:
             raise ValueError("missing key afmtype")
         slotmodel = magnet_template_name(machine)
+        logger.info("num_slices %d rmagw %s", num_slices,
+                    machine['magnet'][slotmodel]['rel_magn_width'])
         if np.isscalar(machine['magnet'][slotmodel]['rel_magn_width']):
             rmagw = num_slices*[machine['magnet'][slotmodel]['rel_magn_width']]
         else:
             rmagw = machine['magnet'][slotmodel]['rel_magn_width']
-            if len(rmagw) == 1:
-                rmagw = num_slices*list(rmagw)
-            elif num_slices != len(rmagw):
-                num_slices = len(rmagw)
+            num_slices = len(rmagw)
+
         lfe = get_arm_lengths(machine['outer_diam'],
                               machine['inner_diam'],
                               num_slices)

@@ -426,7 +426,7 @@ def parident(workdir, engine, temp, machine,
         losses.update({'speed': speed,
                        'hf': postp[0]['lossPar']['hf'],
                        'ef': postp[0]['lossPar']['ef'],
-                       'magnet':np.flip(
+                       'magnet': np.flip(
                            np.reshape([r['plmag'] for r in postp],
                                       (-1, num_beta_steps)),
                            axis=1).T.tolist()})

@@ -22,37 +22,6 @@ def end_wdg_leak_ind_hairpin_wires(): #TODO
     return L_ew
 
 
-#def slot_leakage_inductance_round_wires(p, q, w1, num_par_wdgs, layers):
-#    '''returns slot leakage inductance per phase'''
-#    mue0 = 4*np.pi*1e-7
-#    if layers == 1:
-#        lambda_slot = 0 # tbc
-#    if layers == 2:
-#        t1 = b2/bs
-#        t2 = b1/b2
-#        t12 = b1/b2
-#        kt1 = (4*t1**2 - t1**4 - 4*np.log(t1) -3)/(4*(1 - t1)*(1 - t1**2)**2) if t1 != 1 else 0
-#        kt2 = (4*t2**2 - t2**4 - 4*np.log(t2) - 3)/(4*(1 - t2)*(1 - t2**2)**2) if t2 != 1 else 0
-#        kt12 = (t12**2 - 2*np.log(t12) - 1)/(2*(1 - t12)*(1 - t12**2)) if t12 != 1 else 0
-#        const = 0.1424 + 0.5*np.arcsin(np.sqrt(1 - (bo/b1)**2)) + ho/bo
-#        lambda_t = h2/b2*kt2 + const
-#        lambda_b = h3/bs*kt1 + h2/(b2-b1)*np.log(b2/b1) + const if b2 != b1 else h3/bs*kt1 + const
-#        lambda_tb = h2/b2*kt12 +  const
-#        lambda_slot = lambda_t + lambda_b + lambda_tb
-#    L_slot = mue0*2/(p*q)*(w1/num_par_wdgs)**2*lambda_slot
-#    return L_slot
-
-
-def slot_leak_ind_fea(): #TODO
-    '''returns slot and tooth tip leakage inductance'''
-    # make a single slot model with detailed windings
-    # run current through windings
-    # L_slot = flux / current
-    # scale to get values per phase
-    L_slot = 0
-    return L_slot
-
-
 def harm_leak_ind(E_fft, order_fft, freq, Ia): # needs to be validated
     '''returns harmonic leakage inductance per phase'''
     L_harm = []

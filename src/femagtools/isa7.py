@@ -1294,13 +1294,12 @@ class Isa7(object):
         scale_factor = poles/poles_sim
         return scale_factor
 
-    def get_magnet_data(self, ibeta=0, icur=0) -> list:
+    def get_magnet_data(self, ibeta=None, icur=0) -> list:
         '''Extract magnet data from nc file
 
         Args:
             nc: nc object
-            icur, ibeta: load case
-
+            ibeta: loadcase (default: None)
         Returns:
           pm_data: list of magnet data
         '''
@@ -1350,12 +1349,6 @@ class Isa7(object):
             ecp = [e.center for e in se.elements]
             geometry = se.get_rect_geom()
 
-            bxy = []
-            for e in se.elements:
-                theta = np.arctan2(float(e.center[1]),
-                                   float(e.center[0]))
-                fd = self.flux_density(e, icur, ibeta)
-                bxy.append(Trot(-theta).dot((fd['bx'], fd['by'])))
             #= np.moveaxis(bxy, 1, 0)
             pd = dict(name='pm_data_se' + str(se.key),
                       hm=geometry['h'],
@@ -1367,16 +1360,28 @@ class Isa7(object):
                       mur=mur,
                       loadcase=ibeta,
                       numpoles=poles,
-                      bl=transform_flux_density(geometry['alpha'],
-                                                np.array(bxy)),
                       elcp=transform_coord(geometry, ecp),
                       area=se.area(),
                       spel_key=se.key)
+            if ibeta != None:
+                pd.update({'bl': self.get_magnet_flux_density(se, icur, ibeta)})
             pd.update(pos)
 
             pm_data.append(pd)
         return pm_data
 
+    def get_magnet_flux_density(self, se, icur, ibeta) -> list:
+        """returns the flux density Bx, By of all elements
+        of this super element transformed to the main axis (alpha)
+        Note: get_rect_geom must be called previously.
+        """
+        bxy = []
+        for e in se.elements:
+            theta = np.arctan2(float(e.center[1]),
+                               float(e.center[0]))
+            fd = self.flux_density(e, icur, ibeta)
+            bxy.append(Trot(-theta).dot((fd['bx'], fd['by'])))
+        return transform_flux_density(se.alpha, np.array(bxy))
 
 class Point(object):
     def __init__(self, x, y):
@@ -1662,12 +1667,11 @@ class SuperElement(BaseEntity):
         # angle of main axis
         i = np.argmax(dc)
         c = np.vstack((c, c[0]))
-        alpha = np.arctan2(c[i+1, 1]-c[i, 1], c[i+1, 0]-c[i, 0])
-        if alpha < 0:
-            alpha += np.pi
+        self.alpha = np.arctan2(c[i+1, 1]-c[i, 1], c[i+1, 0]-c[i, 0])
+        #if alpha < 0:
+        #    alpha += np.pi
         return {'w': w, 'h': h, 'cxy': cxy,
-                'area': area, 'alpha': alpha}
-
+                'area': area, 'alpha': self.alpha}
 
 class SubRegion(BaseEntity):
     def __init__(self, key, sr_type, color, name, nturns, curdir, wb_key,

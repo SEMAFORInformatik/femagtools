@@ -56,6 +56,10 @@ def jsonify(v):
 
 
 def get_magdata(task):
+    """result func used in parstudy
+    extracts the magnet data from the NC/ISA7 for
+    subsequent magnet loss calc
+    """
     basedir = Path(task.directory)
     bchfile_list = sorted(basedir.glob(
         '*_[0-9][0-9][0-9].B*CH'))

@@ -135,7 +135,7 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
         scdata = shortcircuit_2phase(femag, machine, simulation, engine)
 
     else:
-        logger.warning("Empty shortcircuit results for type %d",
+        logger.warning("Empty shortcircuit results for type %s",
                        simulation.get('sc_type', 'unknown'))
     # must reset calcmode
     if calcmode:

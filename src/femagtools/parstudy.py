@@ -179,8 +179,11 @@ class ParameterStudy(object):
         extra_result_files = []
         if simulation.get('airgap_induc', False):
             extra_result_files.append('bag.dat')
-        simulation['arm_length'] = model.lfe
-        simulation['lfe'] = model.lfe
+        try:
+            simulation['arm_length'] = model.lfe
+            simulation['lfe'] = model.lfe
+        except AttributeError:
+            pass
         simulation['move_action'] = model.move_action
         simulation['phi_start'] = 0.0
         try:
@@ -206,11 +209,11 @@ class ParameterStudy(object):
                     except:
                         pass
             for k in ('num_slots', 'num_slots_gen'):
-                if k not in machine['stator']:
-                    try:
-                        machine['stator'][k] = model.stator[k]
-                    except:
-                        pass
+                try:
+                    if k not in machine['stator']:
+                            machine['stator'][k] = model.stator[k]
+                except KeyError:
+                    pass
         job = engine.create_job(self.femag.workdir)
         if self.femag.cmd:
             engine.cmd = [self.femag.cmd]

@@ -765,18 +765,15 @@ class Builder:
         if pfefunc:
             sim['loss_funct'] = pfefunc
         '''
+        if sim.get('plots'):
+            plots = self.__render(sim, 'plots')
+        else:
+            plots = []
 
-        if sim.get('calculationMode') in ('cogg_calc',
-                                          'ld_lq_fast',
-                                          'pm_sym_loss',
-                                          'torq_calc',
-                                          'psd_psq_fast'):
-            return felosses + fslcalc
-
-        return felosses + fslcalc + self.__render(sim, 'plots')
+        return felosses + fslcalc + plots
 
     def create_shortcircuit(self, model):
-        return self.__render(model, 'shortcircuit')
+        return self.__render(model, 'shortcircuit') + self.__render(model, 'plots')
 
     def create_airgap_induc(self):
         return self.__render(dict(), 'airgapinduc')

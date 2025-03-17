@@ -222,10 +222,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         m = create_from_eecpars(xtemp, eecpars)
     else:  # must be an instance of Machine
         m = eecpars
-    if isinstance(T, list):
-        r = {'T': T, 'n': n}
-        rb = {'T': [], 'n': []}
-    else:  # calculate speed,torque characteristics
+    if np.isscalar(T):  # calculate speed,torque characteristics
         nmax = n
         nsamples = npoints[0]
         rb = {}
@@ -249,15 +246,33 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                                    with_mtpv=with_mtpv, with_mtpa=with_mtpa,
                                    with_pmconst=with_pmconst, with_tmech=with_tmech,
                                    **kwargs)  # braking mode
-
-    if kwargs.get('mesh_func', 0):
-        ntmesh = kwargs['mesh_func'](r['n_type'], r['n'], r['T'],
+        if kwargs.get('mesh_func', 0):
+            ntmesh = kwargs['mesh_func'](r['n_type'], r['n'], r['T'],
+                                    rb['n'], rb['T'], npoints)
+        else:
+            ntmesh = _generate_mesh(r['n'], r['T'],
                                     rb['n'], rb['T'], npoints)
     else:
-        ntmesh = _generate_mesh(r['n'], r['T'],
-                                rb['n'], rb['T'], npoints)
+        nt = []
+        iq, id = m.iqd_torque(T[-1])
+        i1max = betai1(iq, id)[1]
+        logger.info("%s %s", n, T)
+        for nx in n:
+            w1 = 2*np.pi*nx*m.p
+            iq, id, tq =  m.iqd_imax_umax(i1max, w1, u1, T[-1],
+                                          with_tmech=with_tmech,
+                                          with_mtpa=with_mtpa)
+            if np.isclose(tq, T[-1]):
+                tq = T[-1]
+            for Tx in T:
+                if Tx <= tq:
+                    nt.append((nx, Tx))
+        if not nt:
+            raise ValueError("Speed, Torque Mesh is empty")
+        nsamples = len(n)
+        ntmesh = np.array(nt).T
 
-    logger.info("total speed,torque samples %d", ntmesh.shape[1])
+    logger.info("total speed,torque samples %s", ntmesh.shape)
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
         if num_proc > 1:
             iqd = iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa,
@@ -328,7 +343,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plcu2 = m.iqd_plcu2(*iqd)
         tfric = m.tfric
         try:
-            plcu1_dc = m.iqd_plcu1(iqd[0], iqd[1], 
+            plcu1_dc = m.iqd_plcu1(iqd[0], iqd[1],
                                 np.array([0.0 for i in f1])).tolist()
             plcu1_ac = [i-j for i, j in zip(plcu1.tolist(), plcu1_dc)]
         except:
@@ -397,6 +412,6 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plcu1=plcu1.tolist(),
         plcu2=plcu2.tolist(),
         plfric=plfric.tolist(),
-        losses=ploss.tolist(), 
-        plcu1_dc=plcu1_dc, 
+        losses=ploss.tolist(),
+        plcu1_dc=plcu1_dc,
         plcu1_ac=plcu1_ac)

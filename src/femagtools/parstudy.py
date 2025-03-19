@@ -190,7 +190,10 @@ class ParameterStudy(object):
             simulation['range_phi'] = 720/model.get('poles')
         except AttributeError: #  if dxf or pure fsl model
             simulation['range_phi'] = 0.0
-        simulation.update(model.winding)
+        try:
+            simulation.update(model.winding)
+        except AttributeError:
+            pass
         fea = femagtools.model.FeaModel(simulation)
 
         prob = femagtools.moproblem.FemagMoProblem(decision_vars,
@@ -229,7 +232,10 @@ class ParameterStudy(object):
             fea.poc.pole_pitch = 2*360/model.get('poles')
             fea.pocfilename = fea.poc.filename()
         if not hasattr(fea, 'pocfilename'):
-            fea.pocfilename = f"{model.name}_{model.get('poles')}p.poc"
+            try:
+                fea.pocfilename = f"{model.name}_{model.get('poles')}p.poc"
+            except AttributeError:
+                logger.warning("Missing number of poles")
         elapsedTime = 0
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:

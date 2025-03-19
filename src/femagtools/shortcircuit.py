@@ -164,13 +164,13 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     num_cur_steps = 4
     i1 = np.linspace(0, i1max, num_cur_steps)
     i1vec = np.concat((-i1[::-1], i1[1:]))
-    num_par_wdgs = machine['winding'].get('num_par_wdgs', 1)
     flux_sim = {
         'calculationMode': 'psi-torq-rot',
         'i1max': i1max,
         'curvec': [],
         'magntemp': simulation['magn_temp'],
-        'num_par_wdgs': num_par_wdgs}
+        'fc_radius': simulation['fc_radius'],
+        'num_par_wdgs': simulation['num_par_wdgs']}
 
     if engine:
         parstudy = _parstudy_list(femag, sc_result_func)

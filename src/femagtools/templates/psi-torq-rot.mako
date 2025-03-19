@@ -71,6 +71,11 @@ dphi = 360//gcd(Q1, p)/nrot
 print(string.format(" rotation steps: %d  current steps: %d\n", nrot, #curvec))
 
 phi = 0
+%if model.get('fc_radius', 0):
+if m.fc_radius == nil then
+  m.fc_radius = ${model['fc_radius']*1e3}
+end
+%endif
 -- initialize rotate
 rotate({
     airgap = m.fc_radius,    -- air gap radius

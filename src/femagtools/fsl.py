@@ -765,7 +765,7 @@ class Builder:
         if pfefunc:
             sim['loss_funct'] = pfefunc
         '''
-        if sim.get('plots'):
+        if sim.get('plots') and sim.get('calculationMode', '') != 'psi-torq-rem':
             plots = self.__render(sim, 'plots')
         else:
             plots = []

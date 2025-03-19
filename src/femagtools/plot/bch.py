@@ -527,20 +527,36 @@ def demagnetization(demag, ax=0):
     i1 = [scale*x for x in demag['i1']]
     ax.plot(i1, demag['rr'], 'o', color='C0')
     ax.plot(i1, demag['rr'], color='C0')
-    rrmin = 0.6
+    rrmin = min(0.6, np.min(demag['rr']))
+
+    Imax = scale*abs(demag['i1max'])
+    demaglabels = [f'Imax  = {Imax:.1f} {unit}']
     if demag.get('i1c', 0):
         Icrit = scale*demag['i1c']
-        Hk = demag['Hk']
-        Tmag = demag['Tmag']
-        di = 0.05*np.max(i1)
-        rrmin = min(0.6, np.min(demag['rr']))
-        ax.plot([Icrit, Icrit], [rrmin, 1], 'k--')
-        ax.annotate(
-            f'Icrit = {Icrit:.1f}{unit}\nHk = {Hk:.1f} kA/m\nTmag={Tmag:.1f} °C',
-            xy=(Icrit, rrmin),
-            xytext=(Icrit-di, rrmin+0.1*(1-rrmin)), ha='right',
+        ax.plot([Icrit, Icrit], [rrmin, 1], 'r:')
+        ax.text(Icrit, rrmin+0.15, 'Icrit', fontfamily='monospace',
+                rotation=90, size='large', ha='right', va='bottom')
+        demaglabels.append(f'Icrit = {Icrit:.1f} {unit}')
+
+    ax.plot([Imax, Imax], [rrmin, 1], 'g:')
+    ax.text(Imax, rrmin+0.05, 'Imax', fontfamily='monospace',
+                rotation=90, size='large', ha='right', va='bottom')
+
+    Hk = demag['Hk']
+    Tmag = demag['Tmag']
+    demaglabels += [f'Hk    = {Hk:.1f} kA/m',
+                    f'Tmag  = {Tmag:.1f} °C']
+
+    ax.text(0, rrmin+0.05,
+            '\n'.join(demaglabels),
+                fontfamily='monospace',
+            ha='left', va='bottom', size='large',
             bbox={'facecolor': 'white',
                   'edgecolor': 'white'})
+
+    #ax.annotate('Imax', xy=(Imax, demag['rr_i1max']), ha='center', va='bottom',
+    #               xytext=(Imax, demag['rr_i1max']-0.1), rotation=90,
+    #        arrowprops=dict(facecolor='green', edgecolor='green', shrink=0.05))
     ax.set_ylim([rrmin, 1.01])
     ax.set_ylabel('Rel. Remanence')
     ax.set_xlabel(f'Phase Current / {unit}')

@@ -7,6 +7,8 @@
 -- creates file psi-torq-rot.dat in current directory with columns:
 --  displ curr1 curr2 curr3 psi1 psi2 psi3 torq
 --
+<%include file="magnet-data.mako"/>
+
 function gcd(a, b)
 	return b==0 and a or gcd(b,a%b)
 end

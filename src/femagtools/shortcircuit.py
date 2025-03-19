@@ -106,16 +106,19 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
                 encoding='latin1', errors='ignore'))
             bchsc.scData['demag'] = bchsc.demag
             if simulation.get('sim_demagn', 0):
-                d = {'displ': [d['displ']
+                dd = {'displ': [d['displ']
                                for d in bchsc.demag if 'displ' in d],
                      'H_max': [d['H_max']
                                for d in bchsc.demag if 'H_max' in d],
                      'H_av': [d['H_av']
                               for d in bchsc.demag if 'H_av' in d]}
-                simulation['i1max'] = bchsc.scData['iks']
+                i1max = bchsc.scData['iks']
+                if dd['displ']:
+                    phi = dd['displ'][0]/180*np.pi
                 bchsc.scData['demag'] = demag(
-                    femag, machine, simulation, engine)
-                bchsc.scData['demag'].update(d)
+                    femag, machine, simulation,
+                    i1max, phi, engine)
+                bchsc.scData['demag'].update(dd)
             scdata = bchsc.scData
             #for w in bch.flux:
             #    try:
@@ -129,7 +132,7 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
     if simulation.get('sc_type', 3) == 2:
         if 'i1max' not in simulation:
             # just a wild guess
-            simulation['i1max'] = 4.5*bch.machine['i1']
+            simulation['i1max'] = 5*bch.machine['i1']
         logger.info("2phase short circuit simulation i1max = %.0f",
                     simulation['i1max'])
         scdata = shortcircuit_2phase(femag, machine, simulation, engine)
@@ -166,6 +169,7 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
         'calculationMode': 'psi-torq-rot',
         'i1max': i1max,
         'curvec': [],
+        'magntemp': simulation['magn_temp'],
         'num_par_wdgs': num_par_wdgs}
 
     if engine:
@@ -304,6 +308,11 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     logger.info("Torque %.1f %.1f %.1f (dphi %.4f)",
                 tp[1], tv[1], tc[1], dphi)
 
+    # rotor position at maximum current:
+    trot = min(iav[0], iap[0])
+    phi = wm*trot + phi0
+    logger.info("phi %.1f")
+
     scData = {
         'ia': ia.tolist(),
         'ib': (-ia).tolist(),
@@ -316,63 +325,52 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
         'iks': iap[1] if iap[1] > abs(iav[1]) else iav[1],
         'tks': tp[1] if tp[1] > abs(tv[1]) else tv[1]
     }
-    scData['peakWindingCurrents'] = [scData['iks'],
-                                     -scData['iks'], 0]
+    scData['peakWindingCurrents'] = [float(scData['iks']),
+                                     -float(scData['iks']), 0]
     if simulation.get('sim_demagn', 0):
-        scData['demag'] = demag(femag, machine, simulation, engine)
+        i1max = iap[1] if iap[1] > abs(iav[1]) else iav[1]
+        scData['demag'] = demag(femag, machine, simulation,
+                                i1max, phi, engine)
     return scData
 
-def dm_result_func(task):
-    basedir = pathlib.Path(task.directory)
-    i1rr = []
-    for f in sorted(basedir.glob('psi-torq-rem-rot-*.dat')):
-        ptr = np.loadtxt(f)
-        i1rr.append((np.max(ptr.T[1:4]), np.min(ptr.T[-1])))
-    return i1rr
-
-def demag(femag, machine, simulation, engine=0):
+def demag(femag, machine, simulation, i1max, phi, engine=0):
     """demag simulation using psi-torq-rem-rot"""
     logger.info("Demagnetization processing")
-    i1max = simulation['i1max']
-    i1min = simulation.get('i1min', i1max/4)
+    i1min = simulation.get('i1min', abs(i1max/3))
     num_steps = 7
-    b = (i1min-i1max)/np.log(i1min/i1max)
-    a = i1max/b
-    i1tab = [b*(a+np.log(x))
-             for x in np.linspace(i1min/i1max, 1,
-                                  num_steps)]
+    b = (i1min-abs(i1max))/np.log(i1min/abs(i1max))
+    a = abs(i1max)/b
+    xtab = np.linspace(i1min/abs(i1max),
+                       1+2*(1-i1min/abs(i1max))/(num_steps-1), num_steps+2)
+    i1tab = b*(a+np.log(xtab))
 
     if simulation.get('sc_type', 3) == 3:
         curvec = [[-a/2, a, -a/2] for a in i1tab]
     else:
-        curvec = [[a, -a, 0] for a in i1tab]
+        if i1max > 0:
+            curvec = [[a, -a, 0] for a in i1tab]
+        else:
+            curvec = [[-a, a, 0] for a in i1tab]
     simulation.update({
-        'calculationMode': 'psi-torq-rem-rot',
+        'calculationMode': 'psi-torq-rem',
+        'phi': phi,
+        'magntemp': simulation['Tmag'],
         'curvec': curvec})
-    if engine:
-        parstudy = _parstudy_list(femag, dm_result_func)
-        parvardef = {
-            "decision_vars": [
-                {"values": curvec, "name": "curvec"}]
-        }
-        results = parstudy(parvardef, machine, simulation, engine)
-        i1rr = np.vstack(
-            ((0, 1),
-             np.array(results['f']).reshape((-1, 2))))
-    else:
-        class Task:
-            def __init__(self, workdir):
-                self.directory = workdir
-        _ = femag(machine, simulation)
-        i1rr = np.vstack(
-            [(0, 1), dm_result_func(Task(femag.workdir))])
-    i1, rr = np.array(i1rr).T
+    _ = femag(machine, simulation)
+
+    ptr = np.loadtxt(femag.workdir / "psi-torq-rem.dat")
+    i1 = np.concat(([0], np.max(ptr[:,1:4], axis=1)))
+    rr = np.concat(([1], ptr[:,-1]))
     dmag = {'Hk': simulation['Hk'],
             'Tmag': simulation['Tmag'],
             'i1': i1.tolist(),
+            'i1max': float(np.abs(i1max)),
             'rr': rr.tolist()}
     # critical current
     if np.min(rr) < 0.99:
-        k = np.where(rr < 0.99)[0][0]
-        dmag['i1c'] = i1[k]
+        k = np.where(np.diff(dmag['rr'])<-1e-3)[0][0]+1
+        dmag['i1c'] = float(i1[k])
+        if abs(i1max) < i1[-1]:
+            rrf = make_interp_spline(i1, rr)
+            dmag['rr_i1max'] = float(rrf(abs(i1max)))
     return dmag

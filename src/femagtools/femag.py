@@ -475,9 +475,8 @@ class BaseFemag(object):
             if simulation.get('magnet_loss', False):
                 logger.info('Evaluating magnet losses...')
                 ops = range(len(bch.torque))
-                ncf = pathlib.Path(self.workdir) / self.modelname
                 m = femagtools.ecloss.MagnLoss(
-                    nc=femagtools.nc.read(ncf), ibeta=ops)
+                    nc=self.read_nc(), ibeta=ops)
                 try:
                     # change from ialh to ialh2: since v1.8.1
                     magn_losses = m.calc_losses_ialh2()

@@ -559,7 +559,7 @@ def demagnetization(demag, ax=0):
     #        arrowprops=dict(facecolor='green', edgecolor='green', shrink=0.05))
     ax.set_ylim([rrmin, 1.01])
     ax.set_ylabel('Rel. Remanence')
-    ax.set_xlabel(f'Phase Current / {unit}')
+    ax.set_xlabel(f'Phase Current / {unit} (peak)')
     ax.grid()
 
 

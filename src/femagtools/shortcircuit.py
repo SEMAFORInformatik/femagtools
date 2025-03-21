@@ -112,12 +112,18 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
                                for d in bchsc.demag if 'H_max' in d],
                      'H_av': [d['H_av']
                               for d in bchsc.demag if 'H_av' in d]}
-                i1max = bchsc.scData['iks']
+                x1 = bchsc.demag[0]['current_1']
+                x2 = bchsc.demag[0]['current_2']
+                def func(phi):
+                    return x2*np.cos(phi) - x1*np.cos(phi-2*np.pi/3)
+                phi=so.fsolve(func, 0)[0]
+                i1max = x1/np.cos(phi)
+
                 if dd['displ']:
-                    phi = dd['displ'][0]/180*np.pi
+                    phirot = dd['displ'][0]/180*np.pi
                 bchsc.scData['demag'] = demag(
                     femag, machine, simulation,
-                    i1max, phi, engine)
+                    i1max, phirot, phi, engine)
                 bchsc.scData['demag'].update(dd)
             scdata = bchsc.scData
             #for w in bch.flux:
@@ -310,7 +316,7 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
 
     # rotor position at maximum current:
     trot = min(iav[0], iap[0])
-    phi = wm*trot + phi0
+    phirot = wm*trot + phi0
     logger.info("phi %.1f")
 
     scData = {
@@ -330,10 +336,10 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     if simulation.get('sim_demagn', 0):
         i1max = iap[1] if iap[1] > abs(iav[1]) else iav[1]
         scData['demag'] = demag(femag, machine, simulation,
-                                i1max, phi, engine)
+                                i1max, phirot, 0, engine)
     return scData
 
-def demag(femag, machine, simulation, i1max, phi, engine=0):
+def demag(femag, machine, simulation, i1max, phirot, phi, engine=0):
     """demag simulation using psi-torq-rem-rot"""
     logger.info("Demagnetization processing")
     i1min = simulation.get('i1min', abs(i1max/3))
@@ -345,7 +351,8 @@ def demag(femag, machine, simulation, i1max, phi, engine=0):
     i1tab = b*(a+np.log(xtab))
 
     if simulation.get('sc_type', 3) == 3:
-        curvec = [[-a/2, a, -a/2] for a in i1tab]
+        curvec = [[a*np.cos(phi), a*np.cos(phi-2*np.pi/3),
+                   a*np.cos(phi+2*np.pi/3)] for a in i1tab]
     else:
         if i1max > 0:
             curvec = [[a, -a, 0] for a in i1tab]

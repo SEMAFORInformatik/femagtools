@@ -119,8 +119,7 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
                 phi=so.fsolve(func, 0)[0]
                 i1max = x1/np.cos(phi)
 
-                if dd['displ']:
-                    phirot = dd['displ'][0]/180*np.pi
+                phirot = dd['displ'][0]/180*np.pi
                 bchsc.scData['demag'] = demag(
                     femag, machine, simulation,
                     i1max, phirot, phi, engine)
@@ -360,7 +359,7 @@ def demag(femag, machine, simulation, i1max, phirot, phi, engine=0):
             curvec = [[-a, a, 0] for a in i1tab]
     simulation.update({
         'calculationMode': 'psi-torq-rem',
-        'phi': phi,
+        'phi': phirot,
         'magntemp': simulation['Tmag'],
         'curvec': curvec})
     _ = femag(machine, simulation)

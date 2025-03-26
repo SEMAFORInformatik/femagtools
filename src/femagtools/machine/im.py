@@ -119,6 +119,7 @@ class InductionMachine(Component):
         if 'u1type' in parameters:
             self.u1ref = self.u1type
         if hasattr(self, 'f1ref'):
+            #self.wref = 2*np.pi*self.f1ref[0]
             self.wref = 2*np.pi*self.f1ref
             if hasattr(self, 'u1ref'):
                 self.psiref = self.u1ref/self.wref
@@ -603,7 +604,6 @@ class InductionMachine(Component):
                 r['eta'] += (pmech[i:]/(p1[i:])).tolist()
             else:
                 r['eta'] += (p1[i:]/pmech[i:]).tolist()
-
         return r
 
 
@@ -660,7 +660,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
                                       num_steps)]
     else:
         i1tab = np.linspace(i1min, i1max, num_steps).tolist()
-
+        
     m = copy.deepcopy(machine)
     Q2 = m['rotor']['num_slots']
     noloadsim = dict(
@@ -668,7 +668,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
         curvec=i1tab,
         num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
         Q2=Q2)
-
+    
     da1 = m['bore_diam']
     ag = m['airgap']
     # do not create airgap nodechains automatically
@@ -722,7 +722,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
             rotorbar['rotor'][k]['num_slots_gen'] = 1
             rotorbar['rotor'][k]['zeroangle'] = 90-180/Q2
             break
-
+      
     loadsim = dict(  # not used
         calculationMode="asyn_motor",
         bar_len=bar_len,
@@ -740,7 +740,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     task = job.add_task(_eval_noloadrot(pmod), extra_result_files)
     logger.debug("Task %s noload workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
-    # create model
+    # create model 
     for mc in parstudy.femag.copy_magnetizing_curves(
             model,
             dir=task.directory):
@@ -754,6 +754,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     # ec simulation
     barmodel = femagtools.model.MachineModel(rotorbar)
+    barmodel_new = barmodel
+    barmodel_new['stator']['ecSimulation']=1
     extra_result_files = ['bar.dat']
     r = (da1-ag)/2
     task = job.add_task(_eval_ecsim())
@@ -767,7 +769,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
         task.add_file(mc)
     task.add_file(
         'femag.fsl',
-        builder.create_model(barmodel,
+        builder.create_model(barmodel_new,
                              condMat=parstudy.femag.condMat) +
         builder.create_analysis(ecsim) +
         ['save_model("close")'])
@@ -796,6 +798,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     logger.info("Elapsed time %d s Status %s",
                 (tend-tstart), status)
     if any([x != 'C' for x in status]):
+        logger.error("AC simulation failed with statuses: %s", status)
         raise ValueError("AC simulation failed")
     # collect results
     results = [t.get_results() for t in job.tasks]

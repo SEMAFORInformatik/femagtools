@@ -38,7 +38,6 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
         opts['rotor_mass'] = rlfe*eecpars['rotor_mass']
     except KeyError:
         pass
-
     if 'ldq' in eecpars or 'psidq' in eecpars:  # this is a PM (or EESM)
         try:
             dqpars = eecpars['ldq']
@@ -114,9 +113,42 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     pars['psi'] = [psi*rwdg*rlfe for psi in pars['psi']]
     pars['tcu1'] = temp[0]
     pars['tcu2'] = temp[1]
+
     pars.update(opts)
     return InductionMachine(pars)
+    
 
+def create_from_eecpars_im(temp, eecpars, lfe=1, wdg=1):
+    rlfe = lfe
+    rwdg = wdg
+
+    eecpars_new=eecpars['opResults']
+    opts = {k: eecpars_new[k] for k in ('zeta1', 'gam', 'kh', 'kpfe',
+                                    'kfric_b', 'kpmag') if k in eecpars_new}
+
+    pars = copy.deepcopy(eecpars_new)
+
+    pars['r1'] = rlfe*rwdg**2*pars.get('r1', 0)
+    pars['lsigma1'] = rlfe*pars['lsigma1']
+    pars['lsigma2'] = rlfe*pars['lsigma2']
+    pars['psiref'] = rwdg*rlfe*pars['psiref']
+    pars['u1ref'] = rwdg*rlfe*pars['u1ref']
+    pars['r2'] = rlfe*pars['r2']
+    pars['fec'] = rlfe*pars['fec']
+    pars['fee'] = rlfe*pars['fee']
+    pars['im'] = [im/rwdg for im in pars['im']]
+    pars['psi'] = [psi*rwdg*rlfe for psi in pars['psi']]
+    pars['tcu1'] = temp[0]
+    pars['tcu2'] = temp[1]
+    pars['nmax'] = eecpars['op']['nmax']
+    pars['umax'] = eecpars['op']['umax']
+    #pars['u1'] = eecpars['genDesign']['u1']
+    pars['Tmax'] = eecpars['op']['Tmax']
+    pars['p'] = eecpars['genDesign']['p']
+    pars['m'] = eecpars['genDesign']['m']
+
+    pars.update(opts)
+    return InductionMachine(pars)
 
 def create(bch, r1, ls, lfe=1, wdg=1):
     """create PmRelMachine from BCH

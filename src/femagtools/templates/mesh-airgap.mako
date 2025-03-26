@@ -19,6 +19,7 @@ if not airgap_created then
     end
     x1, y1 = pr2c(r1, alfa)
     n = math.floor(m.fc_radius*alfa/agndst + 1.5)
+    n = n/10 -- Otherwise stacking mesh error TODO find a better formula
     nc_circle_m(r1, 0, x1, y1, 0.0, 0.0, n)
     if(m.npols_gen == m.num_poles) then
        nc_circle_m(x1, y1, r1, 0, 0.0, 0.0, n)

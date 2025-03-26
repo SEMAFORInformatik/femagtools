@@ -106,9 +106,13 @@ rotate({
 })
 
 file_psi = io.open("psi-rot-mag.dat","w")
+value={}
+temp={}
 for n=1,nrot+1 do
 
   pos, bag = calc_field(phi, curvec, file_psi)
+  value[n]=#pos
+  temp[n]=pos
   bags[n] = bag
   phi = n*dphi
   rotate({angle=phi, mode="absolute"})
@@ -116,12 +120,36 @@ end
 rotate({mode = "reset"})  -- restore the initial state (discard any changes)
 file_psi:close()
 
+-- add otherwise nil value in bags[n][i][k]
+for i=1, #value-1 do
+  if value[i]<value[i+1] then
+    num_pos=value[i]
+  end
+end 
+-- end
+
+--for i=1, #curvec do
+--  bagfile = string.format("noloadbag-%d.dat", i)
+--  file_bag = io.open(bagfile,"w")
+--  for k = 1, num_pos do --#pos do -- add otherwise nil value in bags[n][i][k]
+--     file_bag:write(string.format("%g ", pos[k]))
+--     for n=1, nrot+1 do
+--      file_bag:write(string.format("%g ",
+--         bags[n][i][k]))  -- Br, rotpos, cur, pos
+--     end
+--     file_bag:write("\n")
+--  end
+--  file_bag:close()
+--end
+
+-- add otherwise nil value in bags[n][i][k]
 for i=1, #curvec do
   bagfile = string.format("noloadbag-%d.dat", i)
   file_bag = io.open(bagfile,"w")
-  for k = 1, #pos do
-     file_bag:write(string.format("%g ", pos[k]))
-     for n=1, nrot+1 do
+  for n=1, nrot+1 do
+     for k = 1, value[n] do --#pos do 
+      pos=temp[n]
+      file_bag:write(string.format("%g ", pos[k]))
       file_bag:write(string.format("%g ",
          bags[n][i][k]))  -- Br, rotpos, cur, pos
      end

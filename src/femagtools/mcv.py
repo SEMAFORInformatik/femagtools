@@ -649,8 +649,8 @@ class Writer(Mcv):
             try:
                 self.writeBlock([float(self.mc1_ce_factor),
                                  float(self.mc1_induction_beta_factor)])
-                logger.info(f"ce = {float(self.mc1_ce_factor)}")
-                logger.info(f"b_beta_coeff = {float(self.mc1_induction_beta_factor)}")
+                #logger.info(f"ce = {float(self.mc1_ce_factor)}")
+                #logger.info(f"b_beta_coeff = {float(self.mc1_induction_beta_factor)}")
             except:
                 pass
             return

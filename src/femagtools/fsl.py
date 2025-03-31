@@ -287,12 +287,20 @@ class Builder:
             if 'dxf' in rotmodel:
                 return mcv + ['ndt(agndst)'] + rotmodel['dxf']['fsl']
             templ = 'rot_hsm'
+        if templ == 'rotorKs2':
+            if 'dxf' in rotmodel:
+                return mcv + ['ndt(agndst)'] + rotmodel['dxf']['fsl']
+            templ = 'rotorKs2'
         rotmodel.update(model.rotor[templ])
         return mcv + culosses + self.render_rotor(rotmodel, templ)
 
     def create_rotor_winding(self, model):
+        if 'ecSimulation' in model.stator:
+            return self.render_rotor(model.rotor, 'rotor_winding_ks2_ecSimulation')
         if hasattr(model, 'rotor') and model.rotortype() == 'EESM':
             return self.render_rotor(model.rotor, 'rotor_winding')
+        if hasattr(model, 'rotor') and model.rotortype() == 'rotorKs2':
+            return self.render_rotor(model.rotor, 'rotor_winding_ks2')
         return []
 
     def prepare_magnet(self, model):
@@ -506,8 +514,11 @@ class Builder:
         params['nodedist'] = fmt.get('nodedist', 1)
         params['full_model'] = fmt.get('full_model', False)
         params['EESM'] = fmt.get('type', 'PMSM') == 'EESM'
+        params['rotorKs2'] = fmt.get('type', 'PMSM') == 'rotorKs2'
         if params['EESM']:
             model.rotor['EESM'] = {}
+        if params['rotorKs2']:
+            model.rotor['rotorKs2'] = {}
         conv = convert(fname, **params)
 
         model.set_value('poles', conv.get('num_poles'))
@@ -549,6 +560,8 @@ class Builder:
             model.stator['dxf'] = dict(fsl=conv['fsl_stator'] + th_props)
         if not (hasattr(model, 'magnet') or hasattr(model, 'rotor')):
             if params['EESM']:
+                setattr(model, 'rotor', {})
+            elif params['rotorKs2']:
                 setattr(model, 'rotor', {})
             else:
                 setattr(model, 'magnet', {})
@@ -659,14 +672,20 @@ class Builder:
                         self.mesh_airgap(model) +
                         self.create_connect_models(model) +
                         self.create_rotor_winding(model))
-            if 'statorRing' in model.stator:
+            if 'statorRing' in model.stator and 'ecSimulation' not in model.stator:
                 return (self.create_new_model(model) +
                         self.create_cu_losses(windings, condMat, ignore_material) +
                         self.create_fe_losses(model) +
                         rotor +
                         self.create_stator_model(model) +
                         self.create_rotor_winding(model))
-
+            if 'ecSimulation' in model.stator:
+                return (self.create_new_model(model) +
+                        self.create_cu_losses(windings, condMat, ignore_material) +
+                        self.create_fe_losses(model) +
+                        rotor +
+                        self.create_stator_model(model) +
+                        self.create_rotor_winding(model))
             return (self.create_new_model(model) +
                     self.create_cu_losses(windings, condMat, ignore_material) +
                     self.create_fe_losses(model) +
@@ -758,24 +777,28 @@ class Builder:
         felosses = custom_fefunc + self.create_fe_losses(sim)
         fslcalc = (displ_stator_rotor
                    + self.__render(sim, sim.get('calculationMode'))
-                   + airgap_induc + revert_displ)
+                   + airgap_induc + revert_displ
+                   + ['save_model("cont")'])
+
         '''
         if pfefunc:
             sim['loss_funct'] = pfefunc
         '''
+        if sim.get('plots') and sim.get('calculationMode', '') != 'psi-torq-rem':
+            plots = self.__render(sim, 'plots')
+        else:
+            plots = []
 
         if sim.get('calculationMode') in ('cogg_calc',
                                           'ld_lq_fast',
                                           'pm_sym_loss',
                                           'torq_calc',
                                           'psd_psq_fast'):
-            return felosses + fslcalc
-
-        return (felosses + fslcalc +
-                self.__render(sim, 'plots'))
+            return felosses + fslcalc + self.__render(sim, 'plots')
+        return felosses + fslcalc + plots
 
     def create_shortcircuit(self, model):
-        return self.__render(model, 'shortcircuit')
+        return self.__render(model, 'shortcircuit') + self.__render(model, 'plots')
 
     def create_airgap_induc(self):
         return self.__render(dict(), 'airgapinduc')
@@ -835,8 +858,7 @@ class Builder:
         fslmodel = self.create_model(model, magnets, condMat)
         logger.info("create simulation '%s'", sim['calculationMode'])
 
-        return (fslmodel + self.create_analysis(sim) +
-                ['save_model("close")'])
+        return fslmodel + self.create_analysis(sim)
 
     def create_detailed_wire(self, params, templ):
         return self.__render(params, templ)
@@ -861,7 +883,6 @@ class Builder:
                 self.fsl_stator = True
             if magnet:
                 self.fsl_rotor = True
-
         return template.render_unicode(model=model).split('\n')
 
     def render_template(self, content_template, parameters):

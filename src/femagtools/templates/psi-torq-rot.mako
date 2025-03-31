@@ -7,6 +7,8 @@
 -- creates file psi-torq-rot.dat in current directory with columns:
 --  displ curr1 curr2 curr3 psi1 psi2 psi3 torq
 --
+<%include file="magnet-data.mako"/>
+
 function gcd(a, b)
 	return b==0 and a or gcd(b,a%b)
 end
@@ -69,6 +71,11 @@ dphi = 360//gcd(Q1, p)/nrot
 print(string.format(" rotation steps: %d  current steps: %d\n", nrot, #curvec))
 
 phi = 0
+%if model.get('fc_radius', 0):
+if m.fc_radius == nil then
+  m.fc_radius = ${model['fc_radius']*1e3}
+end
+%endif
 -- initialize rotate
 rotate({
     airgap = m.fc_radius,    -- air gap radius

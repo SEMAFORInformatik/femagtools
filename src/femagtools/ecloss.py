@@ -5,7 +5,6 @@ __author__ = 'Max Hullmann, Dapu Zhang, Ivan Solc'
 
 import logging
 import warnings
-from .amela import Amela
 import numpy as np
 from numpy import sinh, sin, cosh, cos, pi
 from scipy.interpolate import RBFInterpolator
@@ -21,6 +20,7 @@ class FrequencyDomain:
         self.freq = s['freq']
         self.phase = s['phase']
         self.order = s['order']
+
 
 def fd(s):
     f = FrequencyDomain(s)
@@ -115,7 +115,7 @@ def Segmentation(wm, hm, lm, elxy, nsegx, nsegy, nsegz):
              x,y coordinates of each element's centerpoint in local reference frame, for entire magnet - xx, yy
     '''
     # Default nx,ny,nz without considering the segmentation
-    be = np.sqrt(wm*hm/elxy['ecp'].shape[1])  #square elements
+    be = np.sqrt(wm*hm/np.shape(elxy['ecp'])[1])  #square elements
     nx_new = int(np.around(wm/be))
     ny_new = int(np.around(hm/be))
     nz_new = int(np.around(lm/be))
@@ -151,20 +151,25 @@ def Segmentation(wm, hm, lm, elxy, nsegx, nsegy, nsegz):
 
     return nx_new, ny_new, nz_new, xx, yy
 
-class MagnLoss(Amela):
+class MagnLoss:
     '''Calculate Magnet Losses with IALH Methode
     Parameters
     ----------
-    workdir: working directory
-    modelname: name of the femag model (*.nc)
+    nc: (object) nc/isa7
     ibeta: load cases [0, 1, 2]
+    magnet_data: array of pm data (see nc/isa7 get_magnet_data)
     '''
-    def __init__(self, workdir, modelname, ibeta, **kwargs):
-        super().__init__(workdir, magnet_data=dict(name=modelname))
-        self.pm = self.get_magnet_data_all(ibeta)
+    def __init__(self, **kwargs):
+        #super().__init__(workdir, magnet_data=dict(name=modelname))
+        if 'nc' in kwargs:
+            ibeta = kwargs.get('ibeta', [0])
+            nc = kwargs['nc']
+            self.pm = [nc.get_magnet_data(ibeta=i) for i in ibeta]
+        elif 'magnet_data' in kwargs:
+            self.pm = kwargs['magnet_data']
         self.speed = kwargs.get('speed', self.pm[-1][-1]['speed'])
         logger.info("Speed %f", self.speed)
-        try: # move action rotation
+        try:  # move action rotation
             self.theta = self.pm[-1][-1]['phi'] # rotor pos
             self.lt = len(self.theta)
             self.tgrid = 60/self.speed*(self.theta[-1]-self.theta[0])/360
@@ -266,7 +271,10 @@ class MagnLoss(Amela):
             self.tgrid = 60/self.speed*(self.theta[npos-1] - self.theta[0])/360
         except AttributeError:
             self.tgrid = (self.displ[npos-1] - self.displ[0])/self.speed
-
+        logger.debug("Tgrid %f npos %d bx %f by %f xfreq %s yfreq %s",
+                     self.tgrid, npos-1,
+                     np.max(bx_fft.amp), np.max(by_fft.amp),
+                     bx_fft.freq, by_fft.freq)
         return [npos, bx_fft, by_fft]
 
     def consider_bx(self, wm, hm, bx_fft, by_fft):
@@ -294,9 +302,9 @@ class MagnLoss(Amela):
             krfy = dfac(wm/delta)
             py = ampf(by_fft, krfy)*wm**3*hm
 
-        if px/py > 0.005:
-            self.is_x = True
-        return ' '
+        if py > 0:
+            if px/py > 0.005:
+                self.is_x = True
 
     def bpm_fft(self, nx, ny, nt, elxy, bxy):
         '''interpolate the flux density'''
@@ -424,8 +432,8 @@ class MagnLoss(Amela):
             ialh_loss = 0
             loss_detail = []
             for i in k:
-                logger.info('magnet width and height: %.2f mm %.2f mm',
-                            i["wm"]*1e3, i["hm"]*1e3)
+                logger.info('magnet geom / mm: w %.2f h %.2f l %.2f',
+                            i["wm"]*1e3, i["hm"]*1e3, i["lm"]*1e3)
                 [nt, bx_fft, by_fft] = self.periodicity_id(i['bl'])
                 [nx, ny] = ngrid(i['wm'], i['hm'], i['elcp'])
                 self.consider_bx(i['wm'], i['hm'], bx_fft, by_fft)
@@ -597,8 +605,8 @@ class MagnLoss(Amela):
                     break
 
             filt = np.ones((nf))
-            for ii in range(ilim,nf):
-                filt[ii] = (feclim/freq[ii])
+            for ii in range(ilim, nf):
+                filt[ii] = feclim/freq[ii]
         for ii in range(nx):       # Derivation in frequency domain
             for jj in range(ny):
                 complbx[ii,jj,:] = -complbx[ii,jj,:]*freq*filt*np.pi*2j
@@ -753,10 +761,10 @@ class MagnLoss(Amela):
             ialh_loss = 0
             loss_detail = []
             for i in k:                 # loop for each superelement in a case
-                logger.info('magnet width and height: %.2f mm %.2f mm',
-                            i["wm"]*1e3, i["hm"]*1e3)
-                logger.info('number of magnet segments: x: %.0f y: %.0f z: %.0f',
-                            nsegx, nsegy, nsegz)
+                logger.info('magnet geom / mm: w %.2f h %.2f l %.2f segments %s',
+                            i["wm"]*1e3, i["hm"]*1e3, i["lm"]*1e3,
+                            (nsegx, nsegy, nsegz))
+
                 (nt, bx_fft, by_fft) = self.periodicity_id(i['bl'])  # finds the time periodic part of the simulation
                 (nx, ny, nz, excpl_new, eycpl_new) = Segmentation(
                     i['wm'], i['hm'], i['lm'], i['elcp'],

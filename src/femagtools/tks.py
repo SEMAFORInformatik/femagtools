@@ -227,7 +227,7 @@ if __name__ == "__main__":
                                  #                                 (tks.losses['cw'],
                                  #                                  tks.losses['cw_freq'],
                                  #                                  tks.losses['b_coeff']),
-                                 title=filename, log=False)
+                                 title=filename, log=True)
         pl.show()
 
     mcv = tks.getValues()

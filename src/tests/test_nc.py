@@ -100,7 +100,7 @@ def test_geom(pm):
     assert g['h'] == pytest.approx(0.00308, abs=1e-5)
     assert g['cxy'] == pytest.approx((0.02317, 0.007528), abs=1e-5)
     assert g['area'] == pytest.approx(3.45e-05, abs=1e-6)
-    assert g['alpha'] == pytest.approx(1.885, abs=1e-3)
+    assert g['alpha'] == pytest.approx(-1.2566371, abs=1e-3)
 
 def test_calc_iron_loss(pm):
     import numpy as np

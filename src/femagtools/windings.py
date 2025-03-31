@@ -46,6 +46,89 @@ def q1q2yk(Q, p, m, l=1):
     Yk = (n*qbb + 1)//pb
     return q1, q2, Yk, Qb
 
+def end_wdg_length_round_wires(layers, Rp, Rb, r_wire, h, coil_span, Q, bore_diam, slot_h1, slot_height):
+    '''return length of a single winding head for 1 coil turn.
+    Multiply by 2 to get length for both winding heads'''
+    if layers == 2:
+        R_inner_lyr = bore_diam/2 + slot_h1 + slot_height/4
+        R_outer_lyr = bore_diam/2 + slot_h1 + 3*slot_height/4
+    elif layers == 1:
+        R_inner_lyr = bore_diam/2 + slot_h1 + slot_height/2
+        R_outer_lyr = bore_diam/2 + slot_h1 + slot_height/2
+    else:
+        raise ValueError("Round wire windings can only have 1 or 2 layers")
+
+    if Rb < 2*r_wire:
+        Rb = 2*r_wire
+    if Rp < R_outer_lyr + 2*(Rb + r_wire):
+        Rp = R_outer_lyr + 2*(Rb + r_wire) + 1e-5
+    if h < 2*(Rb + r_wire):
+        h = 2*(Rb + r_wire) + 0.002
+
+    l = np.pi*coil_span/Q * (Rp + R_inner_lyr)
+    z = Rp - R_outer_lyr - 2*(Rb + r_wire)
+    l_ew = 2*h + l + z + (Rb + r_wire)*(np.pi - 2)
+    return l_ew, h, Rp, Rb
+
+def end_wdg_hairpin_check(alpha, h, dmin, l_h, wire_w, tooth_wmin, h_conn):
+    alpha = alpha*np.pi/180     # ensure alpha is in radians
+    dmin_new = 0
+    alpha_new = 0
+    h_new = 0
+
+    if dmin < 0.0015:
+        dmin = 0.0015
+    if h_conn < 0.005:
+        h_conn = 0.005
+
+    if alpha == 0 and h == 0: # end wdg parameters not set
+        alpha_new = np.arcsin((dmin + wire_w)/(tooth_wmin + wire_w))
+        h_new = np.tan(alpha_new)*l_h/2
+
+    elif h > 0: # imposed end wdg height
+        alpha_new = np.arctan(h/l_h)
+        dmin_new = np.sin(alpha_new)*(tooth_wmin + wire_w) - wire_w
+        if dmin_new < dmin: # imposed end wdg height is not feasible - calculate min end wdg parameters
+            dmin_new = dmin
+            alpha_new = np.arcsin((dmin_new + wire_w)/(tooth_wmin + wire_w))
+            h_new = np.tan(alpha_new)*l_h/2
+
+    elif alpha > 0: # imposed end wdg angle
+        dmin_new = np.sin(alpha)*(tooth_wmin + wire_w) - wire_w
+        if dmin_new < dmin: # imposed end wdg angle is not feasible - calculate min end wdg parameters
+            dmin_new = dmin
+            alpha_new = np.arcsin((dmin_new + wire_w)/(tooth_wmin + wire_w))
+            h_new = np.tan(alpha_new)*l_h/2
+
+    if dmin_new > dmin:
+        dmin = dmin_new
+    if alpha_new > alpha:
+        alpha = alpha_new
+    if h_new > h:
+        h = h_new
+
+    return h, alpha, dmin, h_conn
+
+def end_wdg_length_hairpins(wire_h, wire_w, wire_th, wire_gap,
+                                 layers, coil_pitch, Q, bore_diam, slot_w, slot_h,
+                                 h_bent=0, h_welded=0, h_conn=0.005, alpha_bent=0, alpha_welded=0, dmin=0.0015): # needs to be validated
+    '''return end wdg length of single pin for bent and welded side, average end wdg length,
+     bent and welded side end wdg heights, bending angles and min distances between pins'''
+
+    R_avg = bore_diam/2 + wire_th + layers/2*(wire_h + wire_gap) + wire_h/2
+    l_h = R_avg*coil_pitch/Q*2*np.pi
+    tooth_wmin = (bore_diam + 2*wire_th)*np.pi/Q - slot_w
+
+    h_bent, alpha_bent, dmin, h_conn = end_wdg_hairpin_check(alpha_bent, h_bent, dmin, l_h, wire_w, tooth_wmin, h_conn)
+    h_welded = h_welded - h_conn if h_welded - h_conn > 0 else 0
+    h_welded, alpha_welded, dmin, h_conn = end_wdg_hairpin_check(alpha_welded, h_welded, dmin, l_h, wire_w, tooth_wmin, h_conn)
+
+    l_bent = 2*(0.003 + wire_w/2*alpha_bent + wire_w*(np.pi/2 - alpha_bent) + np.sqrt((l_h/2)**2 + h_bent**2))
+    l_welded = 2*(0.003 + wire_w/2*alpha_bent + wire_w*(np.pi/2 - alpha_bent) + np.sqrt((l_h/2)**2 + h_welded**2)) + h_conn
+    l_ew = (l_bent + l_welded)/2
+    h_welded = h_welded + h_conn
+    return l_bent, l_welded, l_ew, h_bent, h_welded, h_conn, alpha_bent*180/np.pi, alpha_welded*180/np.pi, dmin
+
 
 class Winding(object):
     # TODO: raise ValueError "Unbalanced winding" if Q % (m * gcd(Q, p)) != 0

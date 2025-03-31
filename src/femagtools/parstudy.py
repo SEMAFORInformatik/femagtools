@@ -179,15 +179,21 @@ class ParameterStudy(object):
         extra_result_files = []
         if simulation.get('airgap_induc', False):
             extra_result_files.append('bag.dat')
-        simulation['arm_length'] = model.lfe
-        simulation['lfe'] = model.lfe
+        try:
+            simulation['arm_length'] = model.lfe
+            simulation['lfe'] = model.lfe
+        except AttributeError:
+            pass
         simulation['move_action'] = model.move_action
         simulation['phi_start'] = 0.0
         try:
             simulation['range_phi'] = 720/model.get('poles')
         except AttributeError: #  if dxf or pure fsl model
             simulation['range_phi'] = 0.0
-        simulation.update(model.winding)
+        try:
+            simulation.update(model.winding)
+        except AttributeError:
+            pass
         fea = femagtools.model.FeaModel(simulation)
 
         prob = femagtools.moproblem.FemagMoProblem(decision_vars,
@@ -206,11 +212,11 @@ class ParameterStudy(object):
                     except:
                         pass
             for k in ('num_slots', 'num_slots_gen'):
-                if k not in machine['stator']:
-                    try:
-                        machine['stator'][k] = model.stator[k]
-                    except:
-                        pass
+                try:
+                    if k not in machine['stator']:
+                            machine['stator'][k] = model.stator[k]
+                except KeyError:
+                    pass
         job = engine.create_job(self.femag.workdir)
         if self.femag.cmd:
             engine.cmd = [self.femag.cmd]
@@ -226,7 +232,10 @@ class ParameterStudy(object):
             fea.poc.pole_pitch = 2*360/model.get('poles')
             fea.pocfilename = fea.poc.filename()
         if not hasattr(fea, 'pocfilename'):
-            fea.pocfilename = f"{model.name}_{model.get('poles')}p.poc"
+            try:
+                fea.pocfilename = f"{model.name}_{model.get('poles')}p.poc"
+            except AttributeError:
+                logger.warning("Missing number of poles")
         elapsedTime = 0
         self.bchmapper_data = []  # clear bch data
         # split x value (par_range) array in handy chunks:

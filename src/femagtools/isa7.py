@@ -13,6 +13,37 @@ import numpy as np
 logger = logging.getLogger('femagtools.isa7')
 
 
+def Trot(alpha):
+    return np.array([[np.cos(alpha), np.sin(alpha)],
+                     [-np.sin(alpha), np.cos(alpha)]])
+
+def transform_coord(geometry, xy):
+    '''transform from global coord to local coord'''
+    ecpl = Trot(geometry['alpha']).dot((xy-geometry['cxy']).T).T
+    return dict(ecpl=(ecpl + (geometry['w']/2,
+                              geometry['h']/2)).T,
+                ecp=np.asarray(xy).T)
+
+
+def transform_flux_density(alpha, bxy):
+    '''transform the magnet flux density to local coordinate system'''
+    def tf(b1, b2, alpha):
+        if b1.ndim > 1:
+            r = Trot(alpha).dot(((b1.ravel()), (b2.ravel())))
+            return [r[0, :].reshape(*b1.shape),
+                    r[1, :].reshape(*b1.shape)]
+        else:
+            return Trot(alpha).dot(((b1), (b2)))
+
+    b = tf(b1=bxy[:, 0, :], b2=bxy[:, 1, :], alpha=alpha)
+
+    # remove DC component
+    bxf = np.mean(b[0].T - np.mean(b[0], axis=1).T, axis=1)
+    byf = np.mean(b[1].T - np.mean(b[1], axis=1).T, axis=1)
+    return {'bxyl': np.asarray(b),
+            'bxyf': np.array([bxf, byf])}
+
+
 def jordanpfe(Bxnu, Bynu, fnu, losscoeffs, axr):
     """example of custom core loss calculation
     Args:
@@ -1258,13 +1289,99 @@ class Isa7(object):
         try:
             poles_sim = self.poles_sim
         except:
-
             poles_sim = poles
 
         scale_factor = poles/poles_sim
-
         return scale_factor
 
+    def get_magnet_data(self, ibeta=None, icur=0) -> list:
+        '''Extract magnet data from nc file
+
+        Args:
+            nc: nc object
+            ibeta: loadcase (default: None)
+        Returns:
+          pm_data: list of magnet data
+        '''
+        mag_spels = self.magnet_super_elements()
+        if len(mag_spels) / self.poles_sim == 1:
+            mag_spels = [mag_spels[0]]
+
+        # prepare data for ialh method
+        # conductivity and permeability of the magnets
+        cond = 0
+        mur = 0
+        # read boundary nodes
+        for se in mag_spels:
+            cond = se.conduc
+            if cond <= 0:
+                cond = 625000
+                logging.warning('Magnet conductivity  <= 0, using 625000 S/m')
+            mur = np.abs(1/se.elements[0].reluc[0])
+            logging.debug('Magnet: mur=%s, conductivity=%s', mur, cond)
+
+        # stationary case, no rotation
+        poles = 0
+        try:
+            poles = self.num_poles
+        except AttributeError:
+            pass
+
+        if poles == 0:  # no rotation
+            freq = self.speed
+            time_vec = np.linspace(0, 1/freq, len(self.pos_el_fe_induction))
+            pos = dict(time=time_vec.tolist(),
+                       freq=freq,
+                       t=float(1/freq))
+            # reset num.poles
+            poles = 1
+        else:
+            if self.move_action == 0:
+                phi = self.pos_el_fe_induction*180/np.pi
+                pos = dict(phi=phi,
+                           speed=self.speed)
+            else:
+                pos = dict(displ=self.pos_el_fe_induction,
+                           speed=self.speed)
+        # prep dictionary for the loss calculation
+        pm_data = []
+        for i, se in enumerate(mag_spels):
+            ecp = [e.center for e in se.elements]
+            geometry = se.get_rect_geom()
+
+            #= np.moveaxis(bxy, 1, 0)
+            pd = dict(name='pm_data_se' + str(se.key),
+                      hm=geometry['h'],
+                      wm=geometry['w'],
+                      lm=self.arm_length,
+                      alpha=geometry['alpha'],
+                      ls=self.arm_length,
+                      sigma=cond,
+                      mur=mur,
+                      loadcase=ibeta,
+                      numpoles=poles,
+                      elcp=transform_coord(geometry, ecp),
+                      area=se.area(),
+                      spel_key=se.key)
+            if ibeta != None:
+                pd.update({'bl': self.get_magnet_flux_density(se, icur, ibeta)})
+            pd.update(pos)
+
+            pm_data.append(pd)
+        return pm_data
+
+    def get_magnet_flux_density(self, se, icur, ibeta) -> list:
+        """returns the flux density Bx, By of all elements
+        of this super element transformed to the main axis (alpha)
+        Note: get_rect_geom must be called previously.
+        """
+        bxy = []
+        for e in se.elements:
+            theta = np.arctan2(float(e.center[1]),
+                               float(e.center[0]))
+            fd = self.flux_density(e, icur, ibeta)
+            bxy.append(Trot(-theta).dot((fd['bx'], fd['by'])))
+        return transform_flux_density(se.alpha, np.array(bxy))
 
 class Point(object):
     def __init__(self, x, y):
@@ -1550,12 +1667,11 @@ class SuperElement(BaseEntity):
         # angle of main axis
         i = np.argmax(dc)
         c = np.vstack((c, c[0]))
-        alpha = np.arctan2(c[i+1, 1]-c[i, 1], c[i+1, 0]-c[i, 0])
-        if alpha < 0:
-            alpha += np.pi
+        self.alpha = np.arctan2(c[i+1, 1]-c[i, 1], c[i+1, 0]-c[i, 0])
+        #if alpha < 0:
+        #    alpha += np.pi
         return {'w': w, 'h': h, 'cxy': cxy,
-                'area': area, 'alpha': alpha}
-
+                'area': area, 'alpha': self.alpha}
 
 class SubRegion(BaseEntity):
     def __init__(self, key, sr_type, color, name, nturns, curdir, wb_key,

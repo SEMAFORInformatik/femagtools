@@ -1,4 +1,3 @@
--- Plots
 % for p in model.get('plots', []):
 % if not isinstance(p, str):
 % if p[0] == 'field_lines':

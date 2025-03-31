@@ -669,10 +669,12 @@ class SynchronousMachine(object):
 
         wmtab = []
         dw = 0
+        wmMax = 2*np.pi*n 
+        '''
         wmMax = 5*wmType
         if n > 0:
             wmMax = min(wmMax, 2*np.pi*n)
-
+        ''' 
         if wmType > wmMax:
             wmrange = sorted([0, wmMax])
             wmtab = np.linspace(0, wmMax, nsamples).tolist()

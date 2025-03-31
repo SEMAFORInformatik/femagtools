@@ -65,8 +65,8 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
             logger.warning(
                 "single temperature DQ parameters: unable to fit temperature %s", temp)
 
-        psid = rwdg*rlfe*dqp['psid']
-        psiq = rwdg*rlfe*dqp['psiq']
+        psid = rwdg*rlfe*np.array(dqp['psid'])
+        psiq = rwdg*rlfe*np.array(dqp['psiq'])
         losses = __scale_losses(dqp['losses'], rlfe)
         losses['ef'] = dqpars[-1]['losses'].get('ef', [2.0, 2.0])
         losses['hf'] = dqpars[-1]['losses'].get('hf', [1.0, 1.0])

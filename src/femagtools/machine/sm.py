@@ -82,9 +82,9 @@ def parident(workdir, engine, machine,
         """excur = np.logspace(np.log(ifmin), np.log(ifmax),
                             kwargs.get("num_exc_steps", 6),
                             base=np.exp(1)).tolist()"""
-        
+        # create a data grid always contains ifnom
         excur = np.logspace(np.log(ifmin), np.log(ifnom),
-                            kwargs.get("num_exc_steps", 6),
+                            kwargs.get("num_exc_steps", 6) - 2,
                             base=np.exp(1), endpoint=False).tolist()
         excur.extend([ifnom, ifmax])
     else:

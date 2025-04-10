@@ -79,9 +79,14 @@ def parident(workdir, engine, machine,
     exc_logspace = True
     ifmin, ifmax = ifnom/4, 1.4*ifnom
     if exc_logspace:
-        excur = np.logspace(np.log(ifmin), np.log(ifmax),
+        """excur = np.logspace(np.log(ifmin), np.log(ifmax),
                             kwargs.get("num_exc_steps", 6),
-                            base=np.exp(1)).tolist()
+                            base=np.exp(1)).tolist()"""
+        
+        excur = np.logspace(np.log(ifmin), np.log(ifnom),
+                            kwargs.get("num_exc_steps", 6),
+                            base=np.exp(1), endpoint=False).tolist()
+        excur.extend([ifnom, ifmax])
     else:
         excur = np.linspace(ifmin, ifmax,
                             kwargs.get("num_exc_steps", 6))
@@ -795,9 +800,10 @@ class SynchronousMachinePsidq(SynchronousMachine):
         self.psiqf = ip.RegularGridInterpolator(
             (exc, iqx, idx), psiq,
             method='cubic', bounds_error=False, fill_value=None)
+        # excitation currents bounds should respect ifnom
         self.bounds = [(min(iq), max(iq)),
                        (min(id), 0),
-                       (iexc[0], iexc[-1])]
+                       (iexc[0], iexc[-2])]
         # iron losses
         idname = 'psidq'
         keys = [k for k in self.plexp.keys() if k in eecpars[idname][0]['losses']]
@@ -911,9 +917,10 @@ class SynchronousMachineLdq(SynchronousMachine):
             method='cubic'
             , bounds_error=False, fill_value=None)
         i1max = np.sqrt(2)*(max(i1))
+        # excitation currents bounds should respect ifnom
         self.bounds = [(np.cos(min(beta))*i1max, i1max),
                        (-i1max, 0),
-                       (iexc[0], iexc[-1])]
+                       (iexc[0], iexc[-2])]
 
         # iron losses
         idname = 'ldq'

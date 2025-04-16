@@ -189,6 +189,9 @@ class SubscriberTask(threading.Thread):
                         SubscriberTask.notify_send_header.add('progress_logger')
                         response[0] = b'progress_logger'
                         SubscriberTask.notify_send_data['progress_logger'] = response
+                        while self.protId >= len(SubscriberTask.percent_list):
+                            # keep old progressbar working
+                            SubscriberTask.percent_list.append(0)
                         SubscriberTask.percent_list[self.protId] = json.loads(response[1].decode()).get('percent')
                         continue
 
@@ -223,7 +226,7 @@ class SubscriberTask(threading.Thread):
 
             if socks.get(self.controller) == zmq.POLLIN:
                 req = self.controller.recv()
-                self.logger.info("subscriber %s", req)
+                self.logger.debug("subscriber %s", req)
                 break
         self.subscriber.close()
         self.controller.close()

@@ -549,7 +549,10 @@ class SynchronousMachine(object):
             #if res['success']:
             if log:
                 log(res.x)
-            return *res.x, self.tmech_iqd(*res.x, n)
+            if res["success"]:
+                return *res.x, self.tmech_iqd(*res.x, n)
+            else: 
+                raise ValueError(res['message'])
         #logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
         #               res['message'], w1, torque, u1max, io)
         #raise ValueError(res['message'])
@@ -803,7 +806,7 @@ class SynchronousMachinePsidq(SynchronousMachine):
         # excitation currents bounds should respect ifnom
         self.bounds = [(min(iq), max(iq)),
                        (min(id), 0),
-                       (iexc[0], iexc[-2])]
+                       (iexc[0], iexc[-1])]
         # iron losses
         idname = 'psidq'
         keys = [k for k in self.plexp.keys() if k in eecpars[idname][0]['losses']]
@@ -920,7 +923,7 @@ class SynchronousMachineLdq(SynchronousMachine):
         # excitation currents bounds should respect ifnom
         self.bounds = [(np.cos(min(beta))*i1max, i1max),
                        (-i1max, 0),
-                       (iexc[0], iexc[-2])]
+                       (iexc[0], iexc[-1])]
 
         # iron losses
         idname = 'ldq'

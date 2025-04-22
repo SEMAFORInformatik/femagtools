@@ -254,14 +254,22 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                                     rb['n'], rb['T'], npoints)
     else:
         nt = []
-        iq, id = m.iqd_torque(T[-1])
+        if isinstance(m, (SynchronousMachineLdq, SynchronousMachinePsidq)):
+            iq, id, iex = m.iqd_torque(T[-1])
+        else:
+            iq, id = m.iqd_torque(T[-1])
+
         i1max = betai1(iq, id)[1]
         logger.info("%s %s", n, T)
         for nx in n:
             w1 = 2*np.pi*nx*m.p
-            iq, id, tq =  m.iqd_imax_umax(i1max, w1, u1, T[-1],
-                                          with_tmech=with_tmech,
-                                          with_mtpa=with_mtpa)
+            if isinstance(m, (SynchronousMachineLdq, SynchronousMachinePsidq)):
+                iq, id, iex, tq = m.iqd_tmech_umax(
+                        T[-1], w1, u1)
+            else:
+                iq, id, tq =  m.iqd_imax_umax(i1max, w1, u1, T[-1],
+                                            with_tmech=with_tmech,
+                                            with_mtpa=with_mtpa)
             if np.isclose(tq, T[-1]):
                 tq = T[-1]
             for Tx in T:

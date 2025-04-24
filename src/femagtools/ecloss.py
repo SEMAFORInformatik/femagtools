@@ -784,6 +784,8 @@ class MagnLoss:
                     nx, ny, nsegx, nsegy, nt, i['elcp'], i['bl'], excpl_new, eycpl_new)
                 loss = self.loss_ialh2(sx_abs, sy_abs, sx_phase, sy_phase, freq_range,
                                        nx, ny, wm, hm, lm, nsegx, nsegy, nsegz, delta_eff) * self.numpoles
+                if np.isnan(loss):
+                    loss = 0
                 ialh_loss += loss
                 logger.info('Loadcase %d, Superelement %s, Total losses =  %.3f W',
                             i["loadcase"], i["spel_key"], loss)

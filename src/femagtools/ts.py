@@ -171,7 +171,7 @@ class Losses(object):
                 self.el_induc_idx = 0
         except:
             pass 
-         
+
         # read iron losses coefficients from user input/nc files
         self.iron_loss_coefficients = kwargs.get("iron_loss_coefficients", 
                                                  self.nc_model.iron_loss_coefficients)
@@ -613,7 +613,7 @@ class Losses(object):
                 bx_vec_0 = self.vtu_data.get_data_vector('b', el.key)[0]
             except:
                 # read flux density from nc file: remove last point
-                bx_vec_0 = self.nc_model.el_fe_induction_1[el.key-1, :, -1, -1][0:-1]
+                bx_vec_0 = self.nc_model.el_fe_induction_1[el.key-1, :, -1, self.el_induc_idx][0:-1]
 
             if not self.times.equidistant:
                 bx_vec = np.interp(self.times.vector_equi,
@@ -633,7 +633,7 @@ class Losses(object):
                 by_vec_0 = self.vtu_data.get_data_vector('b', el.key)[1]
             except: 
                 # read flux density from nc file: remove last point
-                by_vec_0 = self.nc_model.el_fe_induction_2[el.key-1, :, -1, -1][0:-1]
+                by_vec_0 = self.nc_model.el_fe_induction_2[el.key-1, :, -1, self.el_induc_idx][0:-1]
 
             if not self.times.equidistant:
                 by_vec = np.interp(self.times.vector_equi,

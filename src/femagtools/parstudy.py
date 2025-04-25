@@ -140,7 +140,8 @@ class ParameterStudy(object):
 
     def __call__(self, opt, machine, simulation,
                  engine, bchMapper=None,
-                 extra_files=[], num_samples=0):
+                 extra_files=[], num_samples=0,
+                 data_model_created=False):
         """calculate objective vars for all decision vars
         Args:
           opt: variation parameter dict (decision_vars, objective_vars)
@@ -150,6 +151,8 @@ class ParameterStudy(object):
           bchMapper: bch result transformation function
           extra_files: list of additional input file names to be copied
           num_samples: number of samples (ingored with Grid sampling)
+          data_model_created: model and complete data structur
+                              was already created before calling this function
         """
 
         self.stop = False  # make sure the calculation will start. thomas.maier/OSWALD
@@ -174,7 +177,8 @@ class ParameterStudy(object):
             workdir = pathlib.Path(self.femag.workdir)
         for d in workdir.glob('[0-9]*'):
             if re.search(r'^\d+$', d.name):
-                shutil.rmtree(d)
+                if not data_model_created:
+                    shutil.rmtree(d)
 
         extra_result_files = []
         if simulation.get('airgap_induc', False):
@@ -198,8 +202,7 @@ class ParameterStudy(object):
 
         prob = femagtools.moproblem.FemagMoProblem(decision_vars,
                                                    objective_vars)
-
-        if immutable_model:
+        if not data_model_created and immutable_model:
             modelfiles = self.setup_model(builder, model, recsin=fea.recsin,
                                           feloss=simulation.get('feloss', ''))
             logger.info("Files %s", modelfiles+extra_files)
@@ -282,7 +285,7 @@ class ParameterStudy(object):
                 task = job.add_task(self.result_func)
                 for fn in extra_files:
                     task.add_file(fn)
-                if immutable_model:
+                if not data_model_created and immutable_model:
                     prob.prepare(x, [fea, self.femag.magnets])
                     for m in modelfiles:
                         task.add_file(m)
@@ -297,18 +300,21 @@ class ParameterStudy(object):
                 else:
                     prob.prepare(x, [model, fea, self.femag.magnets])
                     logger.info("prepare %s", x)
-                    for mc in self.femag.copy_magnetizing_curves(
-                            model,
-                            dir=task.directory,
-                            recsin=fea.recsin,
-                            feloss=feloss):
-                        task.add_file(mc)
-                    set_magnet_properties(model, fea, self.femag.magnets)
+                    if not data_model_created:
+                        for mc in self.femag.copy_magnetizing_curves(
+                                model,
+                                dir=task.directory,
+                                recsin=fea.recsin,
+                                feloss=feloss):
+                            task.add_file(mc)
+                        set_magnet_properties(model, fea, self.femag.magnets)
                     task.add_file(
                         'femag.fsl',
-                        builder.create_model(model, self.femag.magnets) +
+                        builder.create_model(model, self.femag.magnets) if not data_model_created else [] +
                         builder.create_analysis(fea) +
-                        ['save_model("close")'])
+                        ['save_model("close")'],
+                        append=data_model_created  # model already created, append fsl
+                    )
 
                 if hasattr(fea, 'poc'):
                     task.add_file(fea.pocfilename,

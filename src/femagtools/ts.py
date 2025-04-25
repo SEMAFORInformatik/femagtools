@@ -164,8 +164,14 @@ class Losses(object):
         except:
             self.vtu_data = None
         self.nc_model = femagtools.nc.read(modelname)
-        # Read iron losses coefficients
- 
+        try:
+            self.el_induc_idx = -1 
+            if np.allclose(self.nc_model.el_fe_induction_1[:, :, 0, -1], 0.0): 
+                # torq calc
+                self.el_induc_idx = 0
+        except:
+            pass 
+         
         # read iron losses coefficients from user input/nc files
         self.iron_loss_coefficients = kwargs.get("iron_loss_coefficients", 
                                                  self.nc_model.iron_loss_coefficients)

@@ -42,8 +42,8 @@ def parident(workdir, engine, machine,
 
         optional arguments:
         num_cur_steps: number of current steps (default 5)
-        num_beta_steps: number of current steps (default 13)
-        num_exc_steps: number of excitation current (default 7)
+        num_beta_steps: number of beta steps (default 13)
+        num_exc_steps: number of excitation current (default 6)
         speed: rotor speed in 1/s (default 160/p)
         i1_max: maximum current in A rms (default approx 3*i1nom)
         beta_min: minimal current angle (default -180°)
@@ -445,10 +445,6 @@ class SynchronousMachine(object):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            def sqrtculoss(iqde):
-                pcu = self.culoss(iqde)
-                return pcu
-
             res = so.minimize(
                 self.culoss, startvals, method='SLSQP',  # trust-constr
                 bounds=self.bounds,
@@ -474,10 +470,6 @@ class SynchronousMachine(object):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            def sqrtculoss(iqde):
-                pcu = self.culoss(iqde)
-                #logger.info("iqde %s --> pcu %f", iqde, pcu)
-                return pcu
             res = so.minimize(
                 self.culoss, startvals, method='SLSQP',  # trust-constr
                 bounds=self.bounds,
@@ -516,47 +508,41 @@ class SynchronousMachine(object):
     def iqd_tmech_umax(self, torque, w1, u1max, log=0, **kwargs):
         """return currents and shaft torque at stator frequency and
          with minimal losses at max voltage"""
+            raise
         iqde = self.iqd_tmech(torque, w1/2/np.pi/self.p)
         if np.linalg.norm(
-                self.uqd(w1, *iqde)) <= u1max*np.sqrt(2):
+            self.uqd(w1, *iqde)) <= u1max*np.sqrt(2):
             if log:
                 log(iqde)
             return (*iqde, torque)
-        #beta, i1 = betai1(iqde[0], iqde[1])
-        #iex = iqde[2]
-
-        #beta = 0 if torque>0 else np.pi
-        io = iqde[0], 0, iqde[2] #*iqd(beta, i1), iex
+        beta, i1 = betai1(iqde[0], iqde[1])
+        iex = iqde[2]
+        def ubeta(b):
+            return np.sqrt(2)*u1max - np.linalg.norm(
+                         self.uqd(w1, *iqd(b, i1), iex))
+        beta = -np.pi/4 if torque>0 else -3*np.pi/4
+        io = *iqd(beta, i1), iex
 
         #    logger.debug("--- torque %g io %s", torque, io)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            n = w1/2/np.pi/self.p
-            def sqrtculoss(iqde):
-                pcu = self.culoss(iqde)
-                #logger.info("iqde %s pcu %g", iqde, pcu)
-                return pcu
+        n = w1/2/np.pi/self.p
+        res = so.minimize(
+            self.culoss, io, method='SLSQP',  # trust-constr
+            bounds=self.bounds,
+            constraints=[
+                {'type': 'eq',
+                 'fun': lambda iqd: self.tmech_iqd(*iqd, n) - torque},
+                {'type': 'eq',
+                 'fun': lambda iqd: np.linalg.norm(
+                     self.uqd(w1, *iqd)) - u1max*np.sqrt(2)}])
 
-            res = so.minimize(
-                self.culoss, io, method='SLSQP',  # trust-constr
-                bounds=self.bounds,
-                constraints=[
-                    {'type': 'eq',
-                     'fun': lambda iqd: torque - self.tmech_iqd(*iqd, n)},
-                    {'type': 'eq',
-                     'fun': lambda iqd: u1max*np.sqrt(2)
-                       - np.linalg.norm(self.uqd(w1, *iqd))}])
-            #if res['success']:
-            if log:
-                log(res.x)
-            if res["success"]:
-                return *res.x, self.tmech_iqd(*res.x, n)
-            else: 
-                raise ValueError(res['message'])
-        #logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
-        #               res['message'], w1, torque, u1max, io)
-        #raise ValueError(res['message'])
-        #return [float('nan')]*4
+        if log:
+            log(res.x)
+        if res["success"]:
+            return *res.x, self.tmech_iqd(*res.x, n)
+
+        logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
+                       res['message'], w1, torque, u1max, io)
+        raise ValueError(res['message'])
 
     def iqd_torque_umax(self, torque, w1, u1max,
                         disp=False, maxiter=500, log=0, **kwargs):
@@ -567,33 +553,31 @@ class SynchronousMachine(object):
                 if log:
                     log(iqde)
                 return (*iqde, torque)
-        io = iqde[0], 0, iqde[2]
-        #    logger.debug("--- torque %g io %s", torque, io)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            def sqrtculoss(iqde):
-                pcu = self.culoss(iqde)
-                #logger.info("iqde %s pcu %g", iqde, pcu)
-                return pcu
-
-            res = so.minimize(
-                self.culoss, io, method='SLSQP',  # trust-constr
-                bounds=self.bounds,
-                #options={'disp': disp, 'maxiter': maxiter},
-                #            jac=gradient_respecting_bounds(self.bounds, self.culoss),
-                constraints=[
-                    {'type': 'eq',
-                     'fun': lambda iqd: self.torque_iqd(*iqd) - torque},
-                    {'type': 'eq',
-                     'fun': lambda iqd: u1max*np.sqrt(2) - np.linalg.norm(
-                         self.uqd(w1, *iqd))}])
-            #if res['success']:
-            if log:
-                log(res.x)
+        beta, i1 = betai1(iqde[0], iqde[1])
+        iex = iqde[2]
+        def ubeta(b):
+            return np.sqrt(2)*u1max - np.linalg.norm(
+                         self.uqd(w1, *iqd(b, i1), iex))
+        beta = -np.pi/4 if torque>0 else -3*np.pi/4
+        io = *iqd(beta, i1), iex
+        res = so.minimize(
+            self.culoss, io, method='SLSQP',  # trust-constr
+            bounds=self.bounds,
+            #options={'disp': disp, 'maxiter': maxiter},
+            #            jac=gradient_respecting_bounds(self.bounds, self.culoss),
+            constraints=[
+                {'type': 'eq',
+                 'fun': lambda iqd: self.torque_iqd(*iqd) - torque},
+                {'type': 'eq',
+                 'fun': lambda iqd: u1max*np.sqrt(2) - np.linalg.norm(
+                     self.uqd(w1, *iqd))}])
+        if log:
+            log(res.x)
+        if res['success']:
             return *res.x, self.torque_iqd(*res.x)
-            #logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
-            #               res['message'], w1, torque, u1max, io)
-            #raise ValueError(res['message'])
+        logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
+                       res['message'], w1, torque, u1max, io)
+        raise ValueError(res['message'])
 
     def w1_imax_umax(self, i1max, u1max):
         """return frequency w1 and shaft torque at voltage u1max and current i1max
@@ -677,12 +661,12 @@ class SynchronousMachine(object):
 
         wmtab = []
         dw = 0
-        wmMax = 2*np.pi*n 
+        wmMax = 2*np.pi*n
         '''
         wmMax = 5*wmType
         if n > 0:
             wmMax = min(wmMax, 2*np.pi*n)
-        ''' 
+        '''
         if wmType > wmMax:
             wmrange = sorted([0, wmMax])
             wmtab = np.linspace(0, wmMax, nsamples).tolist()

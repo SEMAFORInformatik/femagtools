@@ -508,7 +508,6 @@ class SynchronousMachine(object):
     def iqd_tmech_umax(self, torque, w1, u1max, log=0, **kwargs):
         """return currents and shaft torque at stator frequency and
          with minimal losses at max voltage"""
-            raise
         iqde = self.iqd_tmech(torque, w1/2/np.pi/self.p)
         if np.linalg.norm(
             self.uqd(w1, *iqde)) <= u1max*np.sqrt(2):

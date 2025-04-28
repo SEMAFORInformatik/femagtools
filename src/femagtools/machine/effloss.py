@@ -196,7 +196,7 @@ def _generate_mesh(n, T, nb, Tb, npoints):
 
 def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                           with_mtpv=True, with_mtpa=True, with_pmconst=True,
-                          with_tmech=False, driving_only=False,
+                          with_tmech=True, driving_only=False,
                           num_proc=0, progress=None, **kwargs) -> dict:
     """return speed, torque efficiency and losses
 

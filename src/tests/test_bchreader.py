@@ -92,7 +92,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.dqPar['i1'][1], 49.992, 3)
         self.assertAlmostEqual(bch.dqPar['ld'][0], 9.9e-3, 6)
         self.assertAlmostEqual(bch.dqPar['ld'][0], 9.9e-3, 6)
-        self.assertAlmostEqual(bch.dqPar['u1'][1], 325.23, 2)
+        self.assertAlmostEqual(bch.dqPar['u1'][1], 358.10, 2)
         self.assertAlmostEqual(bch.dqPar['torque'][0], 65.3, 1)
 
         self.assertAlmostEqual(bch.machine['i1'], 50.0)
@@ -163,7 +163,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.dqPar['i1'][1], 49.992, 3)
         self.assertAlmostEqual(bch.dqPar['ld'][0], 0.86688e-3, 6)
         self.assertAlmostEqual(bch.dqPar['ld'][0], 0.86688e-3, 6)
-        self.assertAlmostEqual(bch.dqPar['u1'][1], 2375.53, 2)
+        self.assertAlmostEqual(bch.dqPar['u1'][1], 2394.0, 2)
         self.assertAlmostEqual(bch.dqPar['torque'][0], 1137.92, 1)
 
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order_el'],

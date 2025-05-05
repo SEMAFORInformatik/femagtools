@@ -1380,12 +1380,13 @@ class Reader:
                 emfft = [fft(pos, f['voltage_dpsi']) for f in self.flux['1']]
                 gamma = [emfft[0]['alfa0'] - e['alfa0'] for e in emfft[1:]]
                 emf = np.array([e['a']/np.sqrt(2) for e in emfft[1:]])
-                uq, ud = r1*iq - np.cos(gamma)*emf, r1*id + np.sin(gamma)*emf
+                uq, ud = r1*iq + np.cos(gamma)*emf, r1*id + np.sin(gamma)*emf
+                logger.info("Uq %s Ud %s Iq %s Id %s", uq, ud, iq, id)
                 #uq, ud = (r1*iq + self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
                 #          r1*id - iq*w1*self.dqPar['lq'][0])
                 self.dqPar['u1'] = np.sqrt(uq**2 + ud**2).tolist()
                 #self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
-                self.dqPar['gamma'] = (180+np.arctan2(ud, uq)*180/np.pi).tolist()
+                self.dqPar['gamma'] = (-np.arctan2(ud, uq)*180/np.pi).tolist()
 
                 self.dqPar['psim0'] = lfe*self.dqPar['psim0']
                 self.dqPar['phi'] = [self.dqPar['beta'][0] +
@@ -1401,7 +1402,7 @@ class Reader:
             try:
                 self.dqPar['psid'] = np.cos(gamma)*emf/w1
                 self.dqPar['psiq'] = -np.sin(gamma)*emf/w1
-            except (KeyError, UnboundLocalError):
+            except UnboundLocalError:
                 try:
                     self.dqPar['psid'] = [self.dqPar['psim'][0]]
                     self.dqPar['psiq'] = [self.dqPar['lq'][0] *

@@ -1381,11 +1381,7 @@ class Reader:
                 gamma = [emfft[0]['alfa0'] - e['alfa0'] for e in emfft[1:]]
                 emf = np.array([e['a']/np.sqrt(2) for e in emfft[1:]])
                 uq, ud = r1*iq + np.cos(gamma)*emf, r1*id + np.sin(gamma)*emf
-                logger.info("Uq %s Ud %s Iq %s Id %s", uq, ud, iq, id)
-                #uq, ud = (r1*iq + self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
-                #          r1*id - iq*w1*self.dqPar['lq'][0])
                 self.dqPar['u1'] = np.sqrt(uq**2 + ud**2).tolist()
-                #self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
                 self.dqPar['gamma'] = (-np.arctan2(ud, uq)*180/np.pi).tolist()
 
                 self.dqPar['psim0'] = lfe*self.dqPar['psim0']

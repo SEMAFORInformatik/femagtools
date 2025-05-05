@@ -7,6 +7,7 @@ import numpy as np
 import re
 import logging
 import logging.config
+from .utils import fft
 
 logger = logging.getLogger('femagtools.bch')
 
@@ -1375,10 +1376,17 @@ class Reader:
             try:
                 w1 = np.pi*self.dqPar['speed']*self.dqPar['npoles']
                 r1 = self.machine.get('r1', 0.0)
-                uq, ud = (r1*iq + self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
-                          r1*id - iq*w1*self.dqPar['lq'][0])
-                self.dqPar['u1'] = [np.sqrt(uq**2 + ud**2)]
-                self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
+                pos = self.flux['1'][0]['displ']
+                emfft = [fft(pos, f['voltage_dpsi']) for f in self.flux['1']]
+                gamma = [emfft[0]['alfa0'] - e['alfa0'] for e in emfft[1:]]
+                emf = np.array([e['a']/np.sqrt(2) for e in emfft[1:]])
+                uq, ud = r1*iq - np.cos(gamma)*emf, r1*id + np.sin(gamma)*emf
+                #uq, ud = (r1*iq + self.dqPar['up'] + id*w1*self.dqPar['ld'][0],
+                #          r1*id - iq*w1*self.dqPar['lq'][0])
+                self.dqPar['u1'] = np.sqrt(uq**2 + ud**2).tolist()
+                #self.dqPar['gamma'] = [-np.arctan2(ud, uq)*180/np.pi]
+                self.dqPar['gamma'] = (180+np.arctan2(ud, uq)*180/np.pi).tolist()
+
                 self.dqPar['psim0'] = lfe*self.dqPar['psim0']
                 self.dqPar['phi'] = [self.dqPar['beta'][0] +
                                      self.dqPar['gamma'][0]]
@@ -1386,16 +1394,20 @@ class Reader:
                                         for phi in self.dqPar['phi']]
                 self.dqPar['i1'].insert(0, 0)
                 self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
+
             except KeyError:
                 pass
 
-            # if next section is absent
             try:
-                self.dqPar['psid'] = [self.dqPar['psim'][0]]
-                self.dqPar['psiq'] = [self.dqPar['lq'][0] *
-                                      self.dqPar['i1'][-1]]
-            except KeyError:
-                pass
+                self.dqPar['psid'] = np.cos(gamma)*emf/w1
+                self.dqPar['psiq'] = -np.sin(gamma)*emf/w1
+            except (KeyError, UnboundLocalError):
+                try:
+                    self.dqPar['psid'] = [self.dqPar['psim'][0]]
+                    self.dqPar['psiq'] = [self.dqPar['lq'][0] *
+                                          self.dqPar['i1'][-1]]
+                except KeyError:
+                    pass
             return  # end of first section
 
         # second DQ-Parameter section
@@ -1612,8 +1624,8 @@ class Reader:
 
                     elif content[i+1].split() == ['Iron', '----']:
                         losses['rotfe'] = sum([floatnan(x) for x in rec])
-                        losses['total'] += losses['rotfe']    
-                        
+                        losses['total'] += losses['rotfe']
+
                     else:
                         losses['rotfe'] = floatnan(rec[1])
                         losses['total'] += losses['rotfe']

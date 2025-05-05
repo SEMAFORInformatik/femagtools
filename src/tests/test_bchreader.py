@@ -92,7 +92,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.dqPar['i1'][1], 49.992, 3)
         self.assertAlmostEqual(bch.dqPar['ld'][0], 9.9e-3, 6)
         self.assertAlmostEqual(bch.dqPar['ld'][0], 9.9e-3, 6)
-        self.assertAlmostEqual(bch.dqPar['u1'][1], 358.38, 2)
+        self.assertAlmostEqual(bch.dqPar['u1'][1], 325.23, 2)
         self.assertAlmostEqual(bch.dqPar['torque'][0], 65.3, 1)
 
         self.assertAlmostEqual(bch.machine['i1'], 50.0)
@@ -163,7 +163,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertAlmostEqual(bch.dqPar['i1'][1], 49.992, 3)
         self.assertAlmostEqual(bch.dqPar['ld'][0], 0.86688e-3, 6)
         self.assertAlmostEqual(bch.dqPar['ld'][0], 0.86688e-3, 6)
-        self.assertAlmostEqual(bch.dqPar['u1'][1], 2409.142, 2)
+        self.assertAlmostEqual(bch.dqPar['u1'][1], 2375.53, 2)
         self.assertAlmostEqual(bch.dqPar['torque'][0], 1137.92, 1)
 
         np.testing.assert_almost_equal(bch.losses[-1]['fft']['stajo']['order_el'],
@@ -317,8 +317,8 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(bch.psidq['losses']['styoke_excess'][0],  [2.235, 2.235, 2.839])
         self.assertEqual(bch.psidq['losses']['stteeth_excess'][0],  [6.58, 6.576, 7.176])
         self.assertEqual(bch.psidq['losses']['rotor_excess'][0],  [0.0, 0.0, 0.0])
-    
-    def test_read_pm_sym_outer_rotor(self): 
+
+    def test_read_pm_sym_outer_rotor(self):
         bch = self.read_bch('pm_sym_fast_outer_rotor.BATCH')
         self.assertEqual(bch.losses[-1]['staza'],  54.219)
         self.assertEqual(bch.losses[-1]['stajo'],  8.853)
@@ -330,7 +330,7 @@ class BchReaderTest(unittest.TestCase):
         self.assertEqual(list(bch.losses[-1]['fft']['stajo']['order_mech']),  [4, 12, 20, 28, 36])
         self.assertEqual(list(bch.losses[-1]['fft']['stajo']['eddy']),  [7.845, 0.64, 0.311, 0.044, 0.011])
 
-    def test_read_ldlq_outer_rotor(self): 
+    def test_read_ldlq_outer_rotor(self):
         bch = self.read_bch('ldlq_outer_rotor.BATCH')
         self.assertEqual(bch.ldq['losses']['styoke_eddy'][0],  [63.32, 39.69, 42.85, 65.62])
         self.assertEqual(bch.ldq['losses']['styoke_hyst'][0],  [0.0, 0.0, 0.0, 0.0])

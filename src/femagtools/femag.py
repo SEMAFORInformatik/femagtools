@@ -485,6 +485,8 @@ class BaseFemag(object):
 
                 if len(ops) != len(bch.losses):
                     magn_losses.insert(0, magn_losses[0])
+                
+                magn_losses = [float(i) for i in magn_losses]
                 try:
                     for i in range(len(bch.losses)):
                         bch.losses[i].update({"magnetH": magn_losses[i]})

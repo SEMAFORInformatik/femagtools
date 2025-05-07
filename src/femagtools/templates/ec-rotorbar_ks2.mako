@@ -6,8 +6,8 @@ muer = 1
 rel = 100
 cur = {1, 0}
 sigma1, sigma2 = get_dev_data( "cond_conduct" )
-rotorbar = def_new_bar(xb,yb, "green", "U", cur[1],cur[2], "wi",
---rotorbar = def_new_bar(xcoil,ycoil, "green", "U", cur[1],cur[2], "wi", -- xcoil and ycoil defined in rotor_winding_ks2.mako
+--rotorbar = def_new_bar(xb,yb, "green", "U", cur[1],cur[2], "wi",
+rotorbar = def_new_bar(xcoil,ycoil, "green", "U", cur[1],cur[2], "wi", -- xcoil and ycoil defined in rotor_winding_ks2.mako
                        sigma2, muer, rel, "polar", 0, 0)
 Abar = get_sreg_data("area",rotorbar)
 

@@ -2,11 +2,11 @@
 
 slot_div_angle = 360/m.tot_num_slot
 
-if m.xcoil_1 ~= nil and m.ycoil_1 ~= nil then 
+if m.xcoil_1 ~= nil and m.ycoil_1 ~= nil then
   rcoil, phi_coil = c2pd(m.xcoil_1, m.ycoil_1)
 else
   rcoil, phi_coil = da1/2 + m.slot_height/2, slot_div_angle/2
-end 
+end
 
 -- delete existing mesh in the slot
 for i = 1, m.num_sl_gen do
@@ -173,11 +173,11 @@ for i = 1, #winding do
     slot_nr = winding[i][2]
     layer = winding[i][3]
     direction = winding[i][4]
-    if direction < 0 then 
+    if direction < 0 then
       dir = 'wo'
     else
       dir = 'wi'
-    end 
+    end
     if i == 1 then
           if slot_nr <= m.num_sl_gen then
               wkey = def_new_wdg(wire_xy[slot_nr][layer].x, wire_xy[slot_nr][layer].y, cols[winding[i][1]], "Phase"..winding[i][1], 1, 0, 0, dir)
@@ -188,7 +188,7 @@ for i = 1, #winding do
               if slot_nr <= m.num_sl_gen then
                   add_to_wdg (wire_xy[slot_nr][layer].x, wire_xy[slot_nr][layer].y, "wsamekey", dir, "wser")
               end
-            
+
           else
               if slot_nr <= m.num_sl_gen then
                   wkey = def_new_wdg(wire_xy[slot_nr][layer].x, wire_xy[slot_nr][layer].y, cols[winding[i][1]], "Phase"..winding[i][1], 1, 0, 0, dir)
@@ -198,3 +198,5 @@ for i = 1, #winding do
    end
 end
 m.num_par_wdgs = ${model.get('num_par_wdgs', 1)}
+
+pre_models("gen_pocfile")

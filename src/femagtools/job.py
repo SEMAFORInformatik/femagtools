@@ -76,12 +76,14 @@ class Task(object):
     def set_stateofproblem(self, stateofproblem):
         self.stateofproblem = stateofproblem
 
-    def add_file(self, fname, content=None):
+    def add_file(self, fname, content=None, append=False):
         """adds a file required by this task
 
         Args:
             fname: file name
-            content: list of str written to file if not None"""
+            content: list of str written to file if not None
+            append: append file mode if true
+        """
         base = os.path.basename(fname)
         self.transfer_files.append(fname)
         if os.path.splitext(base)[-1] == '.fsl':
@@ -94,7 +96,8 @@ class Task(object):
             return
 
         # this file has to be created
-        with open(os.path.join(self.directory, base), 'w') as f:
+        fmode = 'a' if append else 'w'
+        with open(os.path.join(self.directory, base), fmode) as f:
             f.writelines('\n'.join(content))
 
     def get_results(self):

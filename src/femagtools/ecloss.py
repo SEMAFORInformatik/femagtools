@@ -263,10 +263,11 @@ class MagnLoss:
                                    for i in range((npos-1)//2 + 1) if i > 0])
             npos_nonzero = np.argwhere(tmp_period > 0.1*np.amax(bxy_amp)).squeeze()
             period = tmp_period[npos_nonzero]
-
             if np.sum(np.around([period[0]%i for i in period])) == 0:
-                npos = min(int(np.ceil(np.amax(period))+1), bxy.shape[2])
-
+                try:
+                    npos = min(int(np.ceil(np.amax(period))+1), bxy.shape[2])
+                except:
+                    pass
         try:
             self.tgrid = 60/self.speed*(self.theta[npos-1] - self.theta[0])/360
         except AttributeError:
@@ -765,7 +766,12 @@ class MagnLoss:
                             i["wm"]*1e3, i["hm"]*1e3, i["lm"]*1e3,
                             (nsegx, nsegy, nsegz))
 
-                (nt, bx_fft, by_fft) = self.periodicity_id(i['bl'])  # finds the time periodic part of the simulation
+                (nt, bx_fft, by_fft) = self.periodicity_id(i['bl'])
+                if self.tgrid == 0:
+                    logger.warning(f"Time series couldn't be identified. Cannot calculate losses \
+                                   for loadcase {i['loadcase']}, superelement {i['spel_key']}")
+                    all_load_cases.append(0)
+                    continue
                 (nx, ny, nz, excpl_new, eycpl_new) = Segmentation(
                     i['wm'], i['hm'], i['lm'], i['elcp'],
                     nsegx, nsegy, nsegz)
@@ -778,6 +784,8 @@ class MagnLoss:
                     nx, ny, nsegx, nsegy, nt, i['elcp'], i['bl'], excpl_new, eycpl_new)
                 loss = self.loss_ialh2(sx_abs, sy_abs, sx_phase, sy_phase, freq_range,
                                        nx, ny, wm, hm, lm, nsegx, nsegy, nsegz, delta_eff) * self.numpoles
+                if np.isnan(loss):
+                    loss = 0
                 ialh_loss += loss
                 logger.info('Loadcase %d, Superelement %s, Total losses =  %.3f W',
                             i["loadcase"], i["spel_key"], loss)

@@ -64,8 +64,8 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
             logger.warning(
                 "single temperature DQ parameters: unable to fit temperature %s", temp)
 
-        psid = rwdg*rlfe*dqp['psid']
-        psiq = rwdg*rlfe*dqp['psiq']
+        psid = rwdg*rlfe*np.array(dqp['psid'])
+        psiq = rwdg*rlfe*np.array(dqp['psiq'])
         losses = __scale_losses(dqp['losses'], rlfe)
         losses['ef'] = dqpars[-1]['losses'].get('ef', [2.0, 2.0])
         losses['hf'] = dqpars[-1]['losses'].get('hf', [1.0, 1.0])
@@ -81,7 +81,7 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
                 losses=losses,
                 id=np.array(dqp['id'])/rwdg,
                 iq=np.array(dqp['iq'])/rwdg,
-                tcu1=temp[0],
+                tcu1=temp[0], tmag=temp[1],
                 **opts)
         else:
             beta = dqp['beta']
@@ -95,7 +95,7 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
                 losses=losses,
                 beta=beta,
                 i1=i1,
-                tcu1=temp[0],
+                tcu1=temp[0], tmag=temp[1],
                 **opts)
         return machine
 
@@ -116,7 +116,7 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
 
     pars.update(opts)
     return InductionMachine(pars)
-    
+
 
 def create_from_eecpars_im(temp, eecpars, lfe=1, wdg=1):
     rlfe = lfe
@@ -179,7 +179,8 @@ def create(bch, r1, ls, lfe=1, wdg=1):
             if 'ex_current' in bch.machine:
                 raise ValueError("not yet implemented for EESM")
             machine = PmRelMachinePsidq(m, p, psid, psiq, r1*rlfe*rwdg**2,
-                                        id, iq, ls*rwdg**2, losses=losses)
+                                        id, iq, ls*rwdg**2, losses=losses,
+                                        tmag=bch.magnet.get('Tmag', 20))
             try:
                 machine.rotor_mass = rlfe*np.sum(bch.weights[1])
             except (IndexError, AttributeError):
@@ -204,7 +205,8 @@ def create(bch, r1, ls, lfe=1, wdg=1):
             machine = PmRelMachineLdq(m, p, psid=psid, psiq=psiq,
                                       r1=r1*rlfe*rwdg**2,
                                       i1=i1, beta=beta, ls=ls*rwdg**2,
-                                      losses=losses)
+                                      losses=losses,
+                                      tmag=bch.magnet.get('Tmag', 20))
             try:
                 machine.rotor_mass = rlfe*np.sum(bch.weights[1])
             except (IndexError, AttributeError):

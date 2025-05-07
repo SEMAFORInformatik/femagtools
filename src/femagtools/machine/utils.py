@@ -11,6 +11,12 @@ from .. import parstudy, windings
 
 logger = logging.getLogger(__name__)
 
+loss_models = {
+    "modified steinmetz": 10, 
+    "bertotti": 11,
+    "jordan": 1,
+    "steinmetz": 1
+}
 
 def K(d):
     """space phasor transformation matrix
@@ -369,6 +375,7 @@ def dqparident(workdir, engine, temp, machine,
     period_frac: (int) fraction of rotating angle (default 6)
     dqtype: (str) type of identification: 'ldq' (default), 'psidq'
     cmd: femag executable
+    feloss: jordan, steinmetz, modified steinmetz, bertotti
     """
     import pathlib
 
@@ -482,6 +489,10 @@ def dqparident(workdir, engine, temp, machine,
             delta_iq=delta,
             speed=kwargs.get('speed', defspeed),
             period_frac=period_frac)
+
+    if kwargs.get("feloss", 0): 
+        simulation["feloss"] = kwargs["feloss"]
+        machine["calc_fe_loss"] = loss_models[kwargs["feloss"].lower()]
 
     # TODO: cleanup()  # remove previously created files in workdir
     # start calculation

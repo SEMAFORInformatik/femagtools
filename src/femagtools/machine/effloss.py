@@ -10,7 +10,7 @@ from . import create_from_eecpars
 logger = logging.getLogger("femagtools.effloss")
 
 
-def iqd_tmech_umax(m, u1, with_mtpa, progress, speed_torque, iq, id, iex):
+def iqd_tmech_umax(m, u1, with_mtpa, with_tmech, progress, speed_torque, iq, id, iex):
     """calculate iq, id for each load (n, T) from speed_torque at voltage u1
 
         Args:
@@ -25,9 +25,14 @@ def iqd_tmech_umax(m, u1, with_mtpa, progress, speed_torque, iq, id, iex):
     num_iv = round(nsamples/7)
     try:
         for i, nT in enumerate(speed_torque):
-            iqde = m.iqd_tmech_umax(
-                nT[1], 2*np.pi*nT[0]*m.p,
-                u1, with_mtpa=with_mtpa)[:-1]
+            if with_tmech:
+                iqde = m.iqd_tmech_umax(
+                    nT[1], 2*np.pi*nT[0]*m.p,
+                    u1, with_mtpa=with_mtpa)[:-1]
+            else:
+                iqde = m.iqd_torque_umax(
+                    nT[1], 2*np.pi*nT[0]*m.p,
+                    u1, with_mtpa=with_mtpa)[:-1]
             iq[i] = iqde[0]
             id[i] = iqde[1]
             if len(iqde) > 2:
@@ -39,7 +44,8 @@ def iqd_tmech_umax(m, u1, with_mtpa, progress, speed_torque, iq, id, iex):
     finally:
         progress.close()
 
-def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa, publish=0):
+def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa, with_tmech,
+                         publish=0):
     """calculate iqd for sm and pm using multiproc
     """
     progress_readers = []
@@ -59,7 +65,7 @@ def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa, publish=0):
             iex.append(multiprocessing.Array('d', chunksize))
             iexk = iex[k]
         p = multiprocessing.Process(target=iqd_tmech_umax,
-                                    args=(m, u1, with_mtpa,
+                                    args=(m, u1, with_mtpa, with_tmech,
                                           prog_writer,
                                           ntmesh.T[i:i+chunksize],
                                           iq[k], id[k], iexk))
@@ -254,14 +260,26 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                                     rb['n'], rb['T'], npoints)
     else:
         nt = []
-        iq, id = m.iqd_torque(T[-1])
+        if isinstance(m, (SynchronousMachineLdq, SynchronousMachinePsidq)):
+            iq, id, iex = m.iqd_torque(T[-1])
+        else:
+            iq, id = m.iqd_torque(T[-1])
+
         i1max = betai1(iq, id)[1]
         logger.info("%s %s", n, T)
         for nx in n:
             w1 = 2*np.pi*nx*m.p
-            iq, id, tq =  m.iqd_imax_umax(i1max, w1, u1, T[-1],
-                                          with_tmech=with_tmech,
-                                          with_mtpa=with_mtpa)
+            if isinstance(m, (SynchronousMachineLdq, SynchronousMachinePsidq)):
+                if with_tmech:
+                    iq, id, iex, tq = m.iqd_tmech_umax(
+                        T[-1], w1, u1)
+                else:
+                    iq, id, iex, tq = m.iqd_torque_umax(
+                        T[-1], w1, u1)
+            else:
+                iq, id, tq =  m.iqd_imax_umax(i1max, w1, u1, T[-1],
+                                            with_tmech=with_tmech,
+                                            with_mtpa=with_mtpa)
             if np.isclose(tq, T[-1]):
                 tq = T[-1]
             for Tx in T:
@@ -276,7 +294,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
         if num_proc > 1:
             iqd = iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa,
-                                       publish=progress)
+                                       with_tmech, publish=progress)
+
         else:
             class ProgressLogger:
                 def __init__(self, nsamples, publish):
@@ -353,8 +372,13 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plfe2 = m.kpfe*m.iqd_plfe2(*iqd, f1)
         plmag = np.zeros_like(plfe2)
         plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
-        plcu1_dc = [] # reserved for winding (dc, ac) losses
-        plcu1_ac = []
+        try:
+            plcu1_dc = m.iqd_plcu1(iqd[0], iqd[1],
+                                np.array([0.0 for i in f1])).tolist()
+            plcu1_ac = [i-j for i, j in zip(plcu1.tolist(), plcu1_dc)]
+        except:
+            plcu1_dc, plcu1_ac = [], []
+
         plcu2 = m.iqd_plcu2(*iqd)
         tfric = m.tfric
         logger.info("Iex %f %f",

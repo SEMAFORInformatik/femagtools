@@ -149,7 +149,7 @@ class TimeRange(object):
 
 
 class Losses(object):
-    def __init__(self, modelname, dirname):
+    def __init__(self, modelname, dirname, **kwargs):
         '''Loss calculation for FEMAG-TS simulations
         Parameters
         ----------
@@ -158,10 +158,23 @@ class Losses(object):
         ncmodel : object
 
         '''
-        self.vtu_data = vtu.read(dirname)
+        try:
+            # when vtu files are present
+            self.vtu_data = vtu.read(dirname)
+        except:
+            self.vtu_data = None
         self.nc_model = femagtools.nc.read(modelname)
-        # Read iron losses coefficients
-        self.iron_loss_coefficients = self.nc_model.iron_loss_coefficients
+        try:
+            self.el_induc_idx = -1 
+            if np.allclose(self.nc_model.el_fe_induction_1[:, :, 0, -1], 0.0): 
+                # torq calc
+                self.el_induc_idx = 0
+        except:
+            pass 
+
+        # read iron losses coefficients from user input/nc files
+        self.iron_loss_coefficients = kwargs.get("iron_loss_coefficients", 
+                                                 self.nc_model.iron_loss_coefficients)
         for c in self.iron_loss_coefficients:
             if c['cw_freq_exp'] == c['cw_ind_exp']:
                 c['kw'] = losscoeff_frequency_to_time(
@@ -172,6 +185,8 @@ class Losses(object):
                 warnings.warn(
                     'Waterfall method not possible, specify parameter kw')
                 kw = 0.0
+        self.iron_lossdens_el = []
+
 
     def ohm_lossenergy_el(self, el, supel):
         '''Ohmic loss energy of an element
@@ -594,7 +609,12 @@ class Losses(object):
             sw = self.iron_loss_coefficients[ldi]['spec_weight']*1000
             ff = self.iron_loss_coefficients[ldi]['fillfactor']
 
-            bx_vec_0 = self.vtu_data.get_data_vector('b', el.key)[0]
+            try:
+                bx_vec_0 = self.vtu_data.get_data_vector('b', el.key)[0]
+            except:
+                # read flux density from nc file: remove last point
+                bx_vec_0 = self.nc_model.el_fe_induction_1[el.key-1, :, -1, self.el_induc_idx][0:-1]
+
             if not self.times.equidistant:
                 bx_vec = np.interp(self.times.vector_equi,
                                    self.times.vector, bx_vec_0,
@@ -609,7 +629,12 @@ class Losses(object):
             bx_spec[0] = bx_spec[0]/2
             bx_phi = np.arctan2(spx.imag, spx.real)
 
-            by_vec_0 = self.vtu_data.get_data_vector('b', el.key)[1]
+            try:
+                by_vec_0 = self.vtu_data.get_data_vector('b', el.key)[1]
+            except: 
+                # read flux density from nc file: remove last point
+                by_vec_0 = self.nc_model.el_fe_induction_2[el.key-1, :, -1, self.el_induc_idx][0:-1]
+
             if not self.times.equidistant:
                 by_vec = np.interp(self.times.vector_equi,
                                    self.times.vector, by_vec_0,
@@ -710,6 +735,9 @@ class Losses(object):
                 (se.elements[0].mag[0] == 0.0 and se.elements[0].mag[1] == 0.0):
             for el in se.elements:
                 ellosses = self.iron_losses_fft_el(el, se)
+                self.iron_lossdens_el.append(dict(key=el.key, 
+                                                  area=el.area,
+                                                  losses=ellosses))
                 sehystlosses = sehystlosses + \
                     ellosses['hysteresis'] * scale_factor
                 seeddylosses = seeddylosses + \
@@ -791,7 +819,10 @@ class Losses(object):
             self.vtu_data.set_time_window(start, end)
 
         data_list = ['b']
-        self.vtu_data.read_data(data_list)
+        try:
+            self.vtu_data.read_data(data_list)
+        except:
+            pass 
         self.times = TimeRange(self.vtu_data, self.nc_model)
 
         losseslist = []

@@ -1396,8 +1396,8 @@ class Reader:
                 pass
 
             try:
-                self.dqPar['psid'] = np.cos(gamma)*emf/w1
-                self.dqPar['psiq'] = -np.sin(gamma)*emf/w1
+                self.dqPar['psid'] = list(np.cos(gamma)*emf/w1)
+                self.dqPar['psiq'] = list(-np.sin(gamma)*emf/w1)
             except UnboundLocalError:
                 try:
                     self.dqPar['psid'] = [self.dqPar['psim'][0]]

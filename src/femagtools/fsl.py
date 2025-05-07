@@ -757,6 +757,11 @@ class Builder:
                         if sim.get('airgap_induc', 0) else [])
         displ_stator_rotor = self.create_displ_stator_rotor(
             sim.get('eccentricity', {}))
+        # sliding band 
+        sliding_band = []
+        if sim.get("sliding", 0): 
+            sliding_band = [f'save_model("cont")', 
+                            f'enable_sliding()']
         revert_displ = []
         if displ_stator_rotor:
             sim['eval_force'] = 1
@@ -776,6 +781,7 @@ class Builder:
                     sim.noload_ex_cur = sim.get('nload_ex_cur')
         felosses = custom_fefunc + self.create_fe_losses(sim)
         fslcalc = (displ_stator_rotor
+                   + sliding_band
                    + self.__render(sim, sim.get('calculationMode'))
                    + airgap_induc + revert_displ
                    + ['save_model("cont")'])

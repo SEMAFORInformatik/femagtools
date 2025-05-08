@@ -381,7 +381,7 @@ def get_stator_dimensions(par, slots=[]):
         Da2 = Da1-2*airgap
     r = dict(
         lfe=round(lfe, 3),
-        Dy1=round(Dy1, 3), 
+        Dy1=round(Dy1, 3),
         Da1=round(Da1, 4),
         Da2=round(Da2, 4),
         ans=round(ans, 6),
@@ -574,8 +574,6 @@ def get_im_rotor_dimensions(A, Da2, psi1, lfe, par, rtype='rotorKs2'):
     Q2 = r['num_slots']
     r1 = wr/2-slotwidth
     r2 = (Da2/2-hr-hs1)*np.tan(alfar)
-    logger.info("Dy2 %f Da2 %f hys %f hr %f",
-                r['Dy2']*1e3, Da2*1e3, hyr*1e3, hr*1e3)
     if rtype == 'statorRotor3':
         r['statorRotor3'] = dict(
             slot_width=slotwidth,
@@ -987,12 +985,13 @@ def eesm(pnom: float, speed: float, p: int, **kwargs) -> dict:
     r['name'] = f"EESM-{r['poles']}"
     return r
 
+
 if __name__ == "__main__":
     # sizing example with SPM
     pnom = 10e3  # shaft power in W
     speed = 4400/60  # speed in 1/s
     p = 4  # number of pole pairs
-    udc = 600  # DC voltage in V 
+    udc = 600  # DC voltage in V
 
     r = spm(pnom, speed, p, udc=udc)
 

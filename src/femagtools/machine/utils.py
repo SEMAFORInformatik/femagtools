@@ -12,7 +12,7 @@ from .. import parstudy, windings
 logger = logging.getLogger(__name__)
 
 loss_models = {
-    "modified steinmetz": 10, 
+    "modified steinmetz": 10,
     "bertotti": 11,
     "jordan": 1,
     "steinmetz": 1
@@ -490,7 +490,7 @@ def dqparident(workdir, engine, temp, machine,
             speed=kwargs.get('speed', defspeed),
             period_frac=period_frac)
 
-    if kwargs.get("feloss", 0): 
+    if kwargs.get("feloss", 0):
         simulation["feloss"] = kwargs["feloss"]
         machine["calc_fe_loss"] = loss_models[kwargs["feloss"].lower()]
 
@@ -512,10 +512,18 @@ def dqparident(workdir, engine, temp, machine,
     except:
         logger.warning("No end winding leakage")
 
-    try:
-        rotor_mass = sum(results['f'][-1]['weights'][-1])
-    except KeyError:
-        rotor_mass = 0  # need femag classic > rel-9.3.x-48-gca42bbd0
+    #try:
+    #    rotor_mass = sum(results['f'][-1]['weights'][-1])
+    #except KeyError:
+    rotor_mass = 0  # need femag classic > rel-9.3.x-48-gca42bbd0
+
+    if rotor_mass == 0:
+        try:
+            nc = next(engine.read_nc())  # take the first nc
+            rotor_mass = float(sum(nc.get_mass()[1].values()))
+            logger.info("rotor mass from nc-file: %.1f kg", rotor_mass)
+        except StopIteration:
+            logger.warning("Could not read nc-file. Setting rotor_mass = 0!")
 
     dq = []
     if dqtype == 'ldq':

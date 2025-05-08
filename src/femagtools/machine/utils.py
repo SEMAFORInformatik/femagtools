@@ -515,7 +515,7 @@ def dqparident(workdir, engine, temp, machine,
     try:
         rotor_mass = sum(results['f'][-1]['weights'][-1])
     except KeyError:
-    rotor_mass = 0  # need femag classic > rel-9.3.x-48-gca42bbd0
+        rotor_mass = 0  # need femag classic > rel-9.3.x-48-gca42bbd0
 
     if rotor_mass == 0:
         try:

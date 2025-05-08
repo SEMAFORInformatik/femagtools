@@ -397,18 +397,19 @@ def dqparident(workdir, engine, temp, machine,
     else:
         fcu = 0.42
 
-    try: # calc basic dimensions if not fsl or dxf model
-        from ..model import MachineModel
-        wdg = create_wdg(machine)
-        Q1 = wdg.Q
-        model = MachineModel(machine)
-        Jmax = 30e6  # max current density in A/m2
-        Acu = fcu*model.slot_area()  # approx. copper area of one slot
-        i1_max = round(g*Acu/wdg.l/N*Jmax/10)*10
-    except KeyError:
-        if kwargs.get('i1_max', 0) == 0:
-            raise ValueError('i1_max missing')
+    if kwargs.get('i1_max', 0):
         i1_max = kwargs['i1_max']
+    else:
+        try: # calc basic dimensions if not fsl or dxf model
+            from ..model import MachineModel
+            wdg = create_wdg(machine)
+            Q1 = wdg.Q
+            model = MachineModel(machine)
+            Jmax = 30e6  # max current density in A/m2
+            Acu = fcu*model.slot_area()  # approx. copper area of one slot
+            i1_max = round(g*Acu/wdg.l/N*Jmax/10)*10
+        except KeyError:
+                raise ValueError('i1_max missing')
 
     # winding resistance
     try:

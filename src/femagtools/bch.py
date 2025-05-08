@@ -115,6 +115,22 @@ def losses_mapping_external_rotor(losses):
         pass
     return d
 
+def _convert(obj): 
+    """make dict jsonizable"""
+    if isinstance(obj, dict):
+        return {k: _convert(v) for k, v in obj.items()}
+    elif isinstance(obj, (np.float32, np.float64)):
+        return float(obj)
+    elif isinstance(obj, list): 
+        return [_convert(k) for k in obj]
+    elif isinstance(obj, tuple): 
+        return tuple(_convert(k) for k in obj)
+    elif isinstance(obj, np.ndarray): 
+        return obj.tolist()
+    elif isinstance(obj, (np.int32, np.int64)): 
+        return int(obj)
+    else: 
+        return obj
 
 def _readSections(f):
     """return list of bch sections
@@ -1396,8 +1412,8 @@ class Reader:
                 pass
 
             try:
-                self.dqPar['psid'] = np.cos(gamma)*emf/w1
-                self.dqPar['psiq'] = -np.sin(gamma)*emf/w1
+                self.dqPar['psid'] = list(np.cos(gamma)*emf/w1)
+                self.dqPar['psiq'] = list(-np.sin(gamma)*emf/w1)
             except UnboundLocalError:
                 try:
                     self.dqPar['psid'] = [self.dqPar['psim'][0]]
@@ -1405,6 +1421,8 @@ class Reader:
                                           self.dqPar['i1'][-1]]
                 except KeyError:
                     pass
+
+            self.dqPar = _convert(self.dqPar)
             return  # end of first section
 
         # second DQ-Parameter section
@@ -1476,6 +1494,7 @@ class Reader:
             self.dqPar['u1'].insert(0, self.dqPar.get('up0', 0))
         except:
             pass
+        self.dqPar = _convert(self.dqPar)
 
     def __read_weights(self, content):
         #              Stator-Iron      - Conductors      - Magnets

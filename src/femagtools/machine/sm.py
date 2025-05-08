@@ -7,7 +7,7 @@ import pathlib
 import numpy as np
 import scipy.optimize as so
 import scipy.interpolate as ip
-from .utils import skin_resistance, wdg_resistance, betai1, iqd, KTH, create_wdg
+from .utils import skin_resistance, wdg_resistance, betai1, iqd, KTH, create_wdg, loss_models
 from .. import parstudy, windings
 import femagtools.bch
 
@@ -50,6 +50,7 @@ def parident(workdir, engine, machine,
         beta_max: maximal current angle (default 0°)
         num_move_steps: number of move steps
         cmd: femag command (default None, platform executable)
+        feloss: jordan, steinmetz, modified steinmetz, bertotti
         """
     cmd = kwargs.get('cmd', None)
 
@@ -125,6 +126,9 @@ def parident(workdir, engine, machine,
         period_frac=kwargs.get('period_frac', 6),
         speed=kwargs.get('speed', 50))
 
+    if kwargs.get("feloss", 0): 
+        simulation["feloss"] = kwargs["feloss"]
+        machine["calc_fe_loss"] = loss_models[kwargs["feloss"].lower()]
     ###self.cleanup()  # remove previously created files in workdir
     results = parvar(parvardef, machine, simulation, engine)
     b = results['f'][-1]

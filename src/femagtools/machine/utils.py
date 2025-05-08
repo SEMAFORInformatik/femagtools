@@ -11,6 +11,12 @@ from .. import parstudy, windings
 
 logger = logging.getLogger(__name__)
 
+loss_models = {
+    "modified steinmetz": 10,
+    "bertotti": 11,
+    "jordan": 1,
+    "steinmetz": 1
+}
 
 def K(d):
     """space phasor transformation matrix
@@ -369,6 +375,7 @@ def dqparident(workdir, engine, temp, machine,
     period_frac: (int) fraction of rotating angle (default 6)
     dqtype: (str) type of identification: 'ldq' (default), 'psidq'
     cmd: femag executable
+    feloss: jordan, steinmetz, modified steinmetz, bertotti
     """
     import pathlib
 
@@ -483,6 +490,10 @@ def dqparident(workdir, engine, temp, machine,
             speed=kwargs.get('speed', defspeed),
             period_frac=period_frac)
 
+    if kwargs.get("feloss", 0):
+        simulation["feloss"] = kwargs["feloss"]
+        machine["calc_fe_loss"] = loss_models[kwargs["feloss"].lower()]
+
     # TODO: cleanup()  # remove previously created files in workdir
     # start calculation
     results = parvar(parvardef, machine, simulation, engine)
@@ -505,6 +516,14 @@ def dqparident(workdir, engine, temp, machine,
         rotor_mass = sum(results['f'][-1]['weights'][-1])
     except KeyError:
         rotor_mass = 0  # need femag classic > rel-9.3.x-48-gca42bbd0
+
+    if rotor_mass == 0:
+        try:
+            nc = next(engine.read_nc())  # take the first nc
+            rotor_mass = float(sum(nc.get_mass()[1].values()))
+            logger.info("rotor mass from nc-file: %.1f kg", rotor_mass)
+        except StopIteration:
+            logger.warning("Could not read nc-file. Setting rotor_mass = 0!")
 
     dq = []
     if dqtype == 'ldq':

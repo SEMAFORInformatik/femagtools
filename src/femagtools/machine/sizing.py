@@ -546,9 +546,10 @@ def get_interior_magnet_dimensions(I1, N, kw, psi1, lfe, Da2, par):
             iron_shape=Da2/2))
 
 
-def get_im_rotor_dimensions(A, Da2, psi1, lfe, par, rtype='rotorKs2'):
+def get_im_rotor_dimensions(A, Da2, psi1, lfe, par, rtype='statorRotor3'):
     r = dict()
     r['Da2'] = Da2
+    r['rotorfilfact']=0.95
     if 'Q2' not in par:
         r['num_slots'] = _rotor_slots(par['Q1'], par['p'])[0]
     else:
@@ -568,15 +569,41 @@ def get_im_rotor_dimensions(A, Da2, psi1, lfe, par, rtype='rotorKs2'):
     taup = np.pi * Da2/(2*par['p'])
     hyr = psi1/2/lfe*par['By']
     r['Dy2'] = round(Da2 - 2*hr - 2*hyr, 4)
-    logger.info("Dy2 %f Da2 %f hys %f hr %f",
-                r['Dy2']*1e3, Da2*1e3, hyr*1e3, hr*1e3)
     slotwidth = 1e-3
     Q2 = r['num_slots']
     r1 = wr/2-slotwidth
     r2 = (Da2/2-hr-hs1)*np.tan(alfar)
     logger.info("Dy2 %f Da2 %f hys %f hr %f",
                 r['Dy2']*1e3, Da2*1e3, hyr*1e3, hr*1e3)
-    if rtype == 'statorRotor3':
+
+    # End-ring calculation
+    Ir_total_estimated = A * np.pi * Da2 / (2 * par['p'])
+    Ibar_eff = Ir_total_estimated / r['num_slots']
+
+    if r['num_slots'] > 0:
+        sin_term = np.sin(np.pi / r['num_slots'])
+        if sin_term != 0:
+             Iring_max_eff = Ibar_eff / (2 * sin_term)
+        else:
+             Iring_max_eff = 0
+    else:
+        Iring_max_eff = 0
+    if 'Jring' not in par:
+        par['Jring'] = par.get('J', 4e6)
+
+    Jring = par['Jring']
+
+    if 'kfilling_ring' not in par:
+        par['kfilling_ring'] = 1.0
+
+    kfilling_ring = par['kfilling_ring']
+
+    if Jring * kfilling_ring > 0:
+        Aring = Iring_max_eff / (Jring * kfilling_ring)
+    else:
+        Aring = 0
+
+    """if rtype == 'statorRotor3':
         r['statorRotor3'] = dict(
             slot_width=slotwidth,
             tooth_width=round(wt, 4),
@@ -587,6 +614,18 @@ def get_im_rotor_dimensions(A, Da2, psi1, lfe, par, rtype='rotorKs2'):
             slot_r1=round(r1, 4),
             slot_r2=round(r2),
             wedge_width1=0,
+            wedge_width2=0,
+            middle_line=0)
+        r['statorRotor3'] = dict(
+            slot_width=1e-3,
+            tooth_width=0,
+            slot_height=0.0157,
+            slot_top_sh=0,
+            slot_h1=0.5e-3,
+            slot_h2=2.2e-3,
+            slot_r1=2.2e-3,
+            slot_r2=1e-3,
+            wedge_width1=1e-3,
             wedge_width2=0,
             middle_line=0)
     elif rtype == 'rotorAsyn':
@@ -612,8 +651,52 @@ def get_im_rotor_dimensions(A, Da2, psi1, lfe, par, rtype='rotorKs2'):
             slot_h2=0,
             slot_r1=1e-3,  # r1,
             slot_r2=1e-3,  # r2,
+            middle_line=0)"""
+        
+    all_rotor_types = {}
+
+    all_rotor_types['statorRotor3'] = dict(
+            slot_width=slotwidth,
+            tooth_width=round(wt, 4),
+            slot_height=round(hr+r2, 4),
+            slot_top_sh=1.0,
+            slot_h1=round(hs1, 4),
+            slot_h2=round(hs1+r1, 4),
+            slot_r1=round(r1, 4),
+            slot_r2=round(r2),
+            wedge_width1=0,
+            wedge_width2=0,
             middle_line=0)
 
+    all_rotor_types['rotorAsyn'] = dict(
+        slot_bs2=0.1e-3,
+        slot_hs2=0.5e-3,
+        slot_b32=0.0,
+        slot_h32=0.0,
+        slot_b42=0.0,
+        slot_h42=0.0,
+        slot_b52=round(wr, 4),
+        slot_b62=3e-3,
+        slot_h52=2.5e-3,
+        slot_h62=round(hr, 4),
+        slot_h72=2e-3
+    )
+
+    all_rotor_types['rotorKs2'] = dict(
+        slot_angle=round(2 * alfar * 180 / np.pi, 2),
+        slot_height=round(hr + r1 + r2, 4),
+        slot_topwidth=round(wr, 4),
+        slot_width=slotwidth,
+        slot_h1=hs1,
+        slot_h2=0,
+        slot_r1=1e-3,  # r1,
+        slot_r2=1e-3,   # r2,
+        middle_line=0
+    )
+
+
+    r.update(all_rotor_types)
+    r['Aring'] = Aring
     return r
 
 
@@ -949,7 +1032,7 @@ def im(pnom: float, speed: float, p: int, **kwargs) -> dict:
         slots = []
     r = get_stator_dimensions(par, slots=slots)
     # rotor parameters
-    rtype = kwargs.get('rtype', 'rotorKs2')
+    rtype = kwargs.get('rtype', 'statorRotor3')
     r['rotor'] = get_im_rotor_dimensions(
         par['cos_phi']*r['A'], r['Da2'], r['psi1'], r['lfe'],
         par, rtype=rtype)

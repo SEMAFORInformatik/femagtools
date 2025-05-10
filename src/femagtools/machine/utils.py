@@ -398,8 +398,10 @@ def dqparident(workdir, engine, temp, machine,
     else:
         fcu = 0.42
 
-    wdg = create_wdg(machine)
-    Q1 = wdg.Q
+    try:
+        wdg = create_wdg(machine)
+    except KeyError:
+        pass
     model = MachineModel(machine)
     if kwargs.get('i1_max', 0):
         i1_max = kwargs['i1_max']
@@ -422,6 +424,7 @@ def dqparident(workdir, engine, temp, machine,
         elif ('wire_width' in machine[wdgk]) and ('wire_height' in machine[wdgk]):
             aw = machine[wdgk]['wire_width']*machine[wdgk]['wire_height']
         else:  # wire diameter from slot area
+            Q1 = wdg.Q
             aw = 0.75 * fcu * np.pi*da1*hs/Q1/wdg.l/N
         r1 = float(wdg_resistance(wdg, N, g, aw, da1, hs, lfe))
     except (NameError, KeyError) as ex:

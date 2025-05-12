@@ -436,25 +436,38 @@ class Builder:
         return self.__render(windings, 'cu_losses')
 
     def create_fe_losses(self, model):
-        for part in ('stator', 'rotor', 'commutator', 'magnet'):
+        fe_losses = []
+        fe_losses_items = (
+            'ffactor', 'cw', 'ch', 'hyscoef',
+            'edycof', 'indcof', 'fillfact',
+            'fillfac', 'basfreq', 'basind',
+            'ffactor')
+
+        part = 'stator'
+        if model.get(part, 0):
+            submod = model.get(part)
+            if any([submod.get(k, 0) for k in fe_losses_items]):
+                if submod.get('fillfac', 0):
+                    submod['fillfact'] = submod['fillfac']
+                fe_losses += self.__render(submod, 'FE-losses')
+                fe_losses.append('pre_models("FE-Losses-1")')
+
+        for part in ('rotor', 'commutator', 'magnet'):
             if model.get(part, 0):
                 submod = model.get(part)
-                if any(submod.get(k, 0) for k in (
-                        'ffactor', 'cw', 'ch', 'hyscoef',
-                        'edycof', 'indcof', 'fillfact',
-                        'fillfac','basfreq', 'basind',
-                        'ffactor')):
+                if any([submod.get(k, 0) for k in fe_losses_items]):
                     if submod.get('fillfac', 0):
                         submod['fillfact'] = submod['fillfac']
-                    return self.__render(submod, 'FE-losses')
-        return []
+                    fe_losses += self.__render(submod, 'FE-losses')
+                    fe_losses.append('pre_models("FE-Losses-2")')
+        return fe_losses
 
     def create_gen_winding(self, model):
         try:
             model.winding['wire'].update(
                 {"num_layers": model.winding["num_layers"]})
             genwdg = self.__render(model.winding,
-                                    'gen_' + model.winding['wire'].get('name'))
+                                   'gen_' + model.winding['wire'].get('name'))
         except:
             genwdg = self.__render(model, 'gen_winding')
 
@@ -738,10 +751,10 @@ class Builder:
                         if sim.get('airgap_induc', 0) else [])
         displ_stator_rotor = self.create_displ_stator_rotor(
             sim.get('eccentricity', {}))
-        # sliding band 
+        # sliding band
         sliding_band = []
-        if sim.get("sliding", 0): 
-            sliding_band = [f'save_model("cont")', 
+        if sim.get("sliding", 0):
+            sliding_band = [f'save_model("cont")',
                             f'enable_sliding()']
         revert_displ = []
         if displ_stator_rotor:

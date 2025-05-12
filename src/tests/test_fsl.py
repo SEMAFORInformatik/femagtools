@@ -304,12 +304,12 @@ class FslBuilderTest(unittest.TestCase):
         self.m['stator']['ffactor'] = 1.1
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_fe_losses(model)
-        self.assertEqual(len(fsl), 21)
+        self.assertEqual(len(fsl), 19)
         ffact = [float(f.split('=')[1])
                  for f in fsl if f.startswith('m.ffactor')][0]
         self.assertEqual(ffact, self.m['stator']['ffactor'])
         feloss = [f.split('"')[1]
-                  for f in fsl if f.find('pre_models') > 0][0]
+                  for f in fsl if f.find('pre_models') >= 0][0]
         self.assertEqual(feloss, 'FE-Losses-1')
 
     def test_run_models(self):

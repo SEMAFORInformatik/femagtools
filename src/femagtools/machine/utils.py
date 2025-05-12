@@ -8,11 +8,12 @@ import numpy.linalg as la
 import scipy.interpolate as ip
 import logging
 from .. import parstudy, windings
+from ..model import MachineModel
 
 logger = logging.getLogger(__name__)
 
 loss_models = {
-    "modified steinmetz": 10, 
+    "modified steinmetz": 10,
     "bertotti": 11,
     "jordan": 1,
     "steinmetz": 1
@@ -397,21 +398,25 @@ def dqparident(workdir, engine, temp, machine,
     else:
         fcu = 0.42
 
-    try: # calc basic dimensions if not fsl or dxf model
-        from ..model import MachineModel
+    try:
         wdg = create_wdg(machine)
-        Q1 = wdg.Q
-        model = MachineModel(machine)
-        Jmax = 30e6  # max current density in A/m2
-        Acu = fcu*model.slot_area()  # approx. copper area of one slot
-        i1_max = round(g*Acu/wdg.l/N*Jmax/10)*10
     except KeyError:
-        if kwargs.get('i1_max', 0) == 0:
-            raise ValueError('i1_max missing')
+        pass
+    model = MachineModel(machine)
+    if kwargs.get('i1_max', 0):
         i1_max = kwargs['i1_max']
+    else:
+        try: # calc basic dimensions if not fsl or dxf model
+            Jmax = 30e6  # max current density in A/m2
+            Acu = fcu*model.slot_area()  # approx. copper area of one slot
+            i1_max = round(g*Acu/wdg.l/N*Jmax/10)*10
+        except KeyError:
+            raise ValueError('i1_max missing')
 
     # winding resistance
     try:
+        da1 = machine['bore_diam']
+        hs = model.slot_height()
         if 'wire_gauge' in machine[wdgk]:
             aw = machine[wdgk]['wire_gauge']
         elif 'dia_wire' in machine[wdgk]:
@@ -419,10 +424,10 @@ def dqparident(workdir, engine, temp, machine,
         elif ('wire_width' in machine[wdgk]) and ('wire_height' in machine[wdgk]):
             aw = machine[wdgk]['wire_width']*machine[wdgk]['wire_height']
         else:  # wire diameter from slot area
-            da1 = machine['bore_diam']
+            Q1 = wdg.Q
             aw = 0.75 * fcu * np.pi*da1*hs/Q1/wdg.l/N
-        r1 = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
-    except (NameError, KeyError):
+        r1 = float(wdg_resistance(wdg, N, g, aw, da1, hs, lfe))
+    except (NameError, KeyError) as ex:
         r1 = 0  # cannot calc winding resistance
 
     n = len(temp)
@@ -490,7 +495,7 @@ def dqparident(workdir, engine, temp, machine,
             speed=kwargs.get('speed', defspeed),
             period_frac=period_frac)
 
-    if kwargs.get("feloss", 0): 
+    if kwargs.get("feloss", 0):
         simulation["feloss"] = kwargs["feloss"]
         machine["calc_fe_loss"] = loss_models[kwargs["feloss"].lower()]
 
@@ -501,7 +506,6 @@ def dqparident(workdir, engine, temp, machine,
     if 'poles' not in machine:  # dxf model?
         machine['poles'] = 2*results['f'][0]['machine']['p']
         da1 = 2*results['f'][0]['machine']['fc_radius']
-        wdg = create_wdg(machine)
     if 'bore_diam' in machine:
         da1 = machine['bore_diam']
     ls1 = 0
@@ -516,6 +520,14 @@ def dqparident(workdir, engine, temp, machine,
         rotor_mass = sum(results['f'][-1]['weights'][-1])
     except KeyError:
         rotor_mass = 0  # need femag classic > rel-9.3.x-48-gca42bbd0
+
+    if rotor_mass == 0:
+        try:
+            nc = parvar.femag.read_nc()
+            rotor_mass = float(sum(nc.get_mass()[1].values()))
+            logger.info("rotor mass from nc-file: %.1f kg", rotor_mass)
+        except StopIteration:
+            logger.warning("Could not read nc-file. Setting rotor_mass = 0!")
 
     dq = []
     if dqtype == 'ldq':
@@ -596,7 +608,7 @@ def dqparident(workdir, engine, temp, machine,
             # diameter of wires
             aw = fcu*asl/Q1/nlayers/N
             hs = asl/(np.pi*da1/3)
-            dqpars['r1'] = wdg_resistance(wdg, N, g, aw, da1, hs, lfe)
+            dqpars['r1'] = float(wdg_resistance(wdg, N, g, aw, da1, hs, lfe))
 
     if 'current_angles' in results['f'][0]:
         dqpars['current_angles'] = results['f'][0]['current_angles']

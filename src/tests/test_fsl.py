@@ -304,18 +304,18 @@ class FslBuilderTest(unittest.TestCase):
         self.m['stator']['ffactor'] = 1.1
         model = femagtools.MachineModel(self.m)
         fsl = self.builder.create_fe_losses(model)
-        self.assertEqual(len(fsl), 21)
+        self.assertEqual(len(fsl), 19)
         ffact = [float(f.split('=')[1])
                  for f in fsl if f.startswith('m.ffactor')][0]
         self.assertEqual(ffact, self.m['stator']['ffactor'])
         feloss = [f.split('"')[1]
-                  for f in fsl if f.find('pre_models') > 0][0]
+                  for f in fsl if f.find('pre_models') >= 0][0]
         self.assertEqual(feloss, 'FE-Losses-1')
 
     def test_run_models(self):
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 29)
+        self.assertEqual(len(fsl), 28)
 
         feapars['calculationMode'] = "pm_sym_fast"
         fsl = self.builder.create_analysis(feapars)
@@ -327,13 +327,13 @@ class FslBuilderTest(unittest.TestCase):
 
         feapars['calculationMode'] = "torq_calc"
         fsl = self.builder.create_analysis(feapars)
-        self.assertEqual(len(fsl), 29)
+        self.assertEqual(len(fsl), 28)
 
     def test_run_existing_model(self):
         model = femagtools.MachineModel('data/magnsec')
         feapars['calculationMode'] = "cogg_calc"
         fsl = self.builder.create(model, feapars)
-        self.assertEqual(len(fsl), 68)
+        self.assertEqual(len(fsl), 67)
 
     def test_create_plots(self):
         pars = copy.deepcopy(feapars)

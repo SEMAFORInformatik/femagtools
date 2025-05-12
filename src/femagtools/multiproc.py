@@ -235,6 +235,12 @@ class Engine:
         self.pool = None # garbage collector deletes threads
         return status
 
+    def read_nc(self):
+        """return a generator object of nc list"""
+        for t in self.job.tasks:
+            yield t.read_nc()
+        return None
+
     def stopThreads(self):
         """ stop all running treads
         """

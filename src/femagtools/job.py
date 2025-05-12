@@ -146,6 +146,15 @@ class Task(object):
         result = dict(error=msg)
         return result
 
+    def read_nc(self):
+        "read most recent NC file and return result"
+        basedir = pathlib.Path(self.directory)
+        ncfiles = sorted(basedir.glob('*.nc'))
+        if not ncfiles:
+            return None
+        import femagtools.nc
+        return femagtools.nc.read(ncfiles[-1])
+
     def readErrorMessage(self, html=True):
         errstr = ""
         if html:

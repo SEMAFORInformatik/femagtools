@@ -262,6 +262,9 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         nt = []
         if isinstance(m, (SynchronousMachineLdq, SynchronousMachinePsidq)):
             iq, id, iex = m.iqd_torque(T[-1])
+            i1max = betai1(iq, id)[1]
+            w1type, tmax = m.w1_imax_umax(i1max, u1) 
+            pmax = tmax*w1type/m.p
         else:
             iq, id = m.iqd_torque(T[-1])
 
@@ -270,12 +273,9 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         for nx in n:
             w1 = 2*np.pi*nx*m.p
             if isinstance(m, (SynchronousMachineLdq, SynchronousMachinePsidq)):
-                if with_tmech:
-                    iq, id, iex, tq = m.iqd_tmech_umax(
-                        T[-1], w1, u1)
-                else:
-                    iq, id, iex, tq = m.iqd_torque_umax(
-                        T[-1], w1, u1)
+                tq = T[-1]
+                if tq*w1/m.p > pmax: 
+                    tq = pmax/w1*m.p
             else:
                 iq, id, tq =  m.iqd_imax_umax(i1max, w1, u1, T[-1],
                                             with_tmech=with_tmech,
@@ -289,7 +289,6 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             raise ValueError("Speed, Torque Mesh is empty")
         nsamples = len(n)
         ntmesh = np.array(nt).T
-
     logger.info("total speed,torque samples %s", ntmesh.shape)
     if isinstance(m, (PmRelMachine, SynchronousMachine)):
         if num_proc > 1:

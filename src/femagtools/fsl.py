@@ -690,7 +690,6 @@ class Builder:
                     self.create_connect_models(model) +
                     self.create_rotor_winding(model)) + \
                     self.create_thermal_properties(model)
-
         return (self.open_model(model) +
                 self.create_fe_losses(model) +
                 self.create_magnet(model, magnetMat))

@@ -90,6 +90,7 @@ end
 if nrot == nil then
   nrot = nodes
 end
+nrot=1 -- otherwise too long and only 1 is needed to have results
 curvec = {${','.join([str(x) for x in model['curvec']])}} -- A rms
 
 print("\nNo load flux simulation (DC) with rotation\n")

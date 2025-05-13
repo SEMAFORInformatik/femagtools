@@ -101,7 +101,7 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
         return machine
 
     # must be an induction machine (TODO: check scaling)
-    pars = copy.deepcopy(eecpars)
+    pars = copy.deepcopy(eecpars['opResults'])
     pars['r1'] = rlfe*rwdg**2*pars.get('r1', 0)
     pars['lsigma1'] = rlfe*pars['lsigma1']
     pars['lsigma2'] = rlfe*pars['lsigma2']
@@ -114,8 +114,14 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     pars['psi'] = [psi*rwdg*rlfe for psi in pars['psi']]
     pars['tcu1'] = temp[0]
     pars['tcu2'] = temp[1]
+    pars['nmax'] = eecpars['op']['nmax']
+    pars['umax'] = eecpars['op']['umax']
+    pars['Tmax'] = eecpars['op']['Tmax']
+    pars['p'] = eecpars['genDesign']['p']
+    pars['m'] = eecpars['genDesign']['m']
     pars.update(opts)
     return InductionMachine(pars)
+
 
 def create(bch, r1, ls, lfe=1, wdg=1):
     """create PmRelMachine from BCH

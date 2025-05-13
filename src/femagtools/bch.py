@@ -115,21 +115,21 @@ def losses_mapping_external_rotor(losses):
         pass
     return d
 
-def _convert(obj): 
+def _convert(obj):
     """make dict jsonizable"""
     if isinstance(obj, dict):
         return {k: _convert(v) for k, v in obj.items()}
     elif isinstance(obj, (np.float32, np.float64)):
         return float(obj)
-    elif isinstance(obj, list): 
+    elif isinstance(obj, list):
         return [_convert(k) for k in obj]
-    elif isinstance(obj, tuple): 
+    elif isinstance(obj, tuple):
         return tuple(_convert(k) for k in obj)
-    elif isinstance(obj, np.ndarray): 
+    elif isinstance(obj, np.ndarray):
         return obj.tolist()
-    elif isinstance(obj, (np.int32, np.int64)): 
+    elif isinstance(obj, (np.int32, np.int64)):
         return int(obj)
-    else: 
+    else:
         return obj
 
 def _readSections(f):
@@ -1074,11 +1074,14 @@ class Reader:
         e.g. : idList[-450, -350, -250, -150, -50, 0]
                idList[-500, -400, -300, -200, -100, 0, 0]
         '''
-        if list(idList).count(0) > 1: # femag writes duplicate id==0 values
+        if list(idList).count(0) > 1:  # femag may write duplicate id==0 values
             idList = idList[:-1]
         diff = np.floor(np.abs(np.diff(idList)))
-        if n := np.trim_zeros(np.diff(diff)).size:
-            idList = idList[:-n]
+        maxdiff = np.max(diff)
+        # also remove samples that are close
+        if n := np.trim_zeros(np.diff(
+                np.round(diff/maxdiff, 2))).size:
+            return idList[:-n]
         return idList
 
     def __read_psidq(self, content):
@@ -1864,6 +1867,9 @@ def read(filename):
 
 if __name__ == "__main__":
     import json
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s')
+
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     else:

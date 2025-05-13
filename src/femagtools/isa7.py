@@ -1035,16 +1035,28 @@ class Isa7(object):
     def get_mass(self):
         """ return mass (in kg) of material conductors, iron, magnets
         """
+        masse_rotor_yoke = 0
+        section_rotor_yoke = 0
         try:
             return self.mass
         except AttributeError:
             self.mass = [{'iron': 0, 'conductors': 0, 'magnets': 0},
                          {'iron': 0, 'conductors': 0, 'magnets': 0}]
         scf = self.scale_factor()
+        for se in self.subregions:
+            if se.name == 'Bar':
+                r = 1 # as rotor bar is inside
+                spw = self.CU_SPEZ_WEIGHT*1e3
+                l = 1 #self.PS_LENGTH_CU[r]*1e-2
+                slf = 1 #self.PS_FILFACTOR_CU[r]
+                self.mass[r]['conductors'] += scf*se.area()*self.arm_length*spw*l*slf
         for se in self.superelements:
+            winding_detected=0
+            lamination_detected=0
             r = 0 if se.outside else 1
             if se.subregion:
                 if se.subregion.winding:
+                    winding_detected=1
                     spw = self.CU_SPEZ_WEIGHT*1e3
                     l = self.PS_LENGTH_CU[r]*1e-2
                     slf = self.PS_FILFACTOR_CU[r]
@@ -1052,6 +1064,7 @@ class Isa7(object):
                     continue
 
             if se.mcvtype or se.elements[0].is_lamination():
+                lamination_detected=1
                 try:
                     spw = self.iron_loss_coefficients[se.mcvtype-1][
                         'spec_weight']*1e3  # kg/m³
@@ -1062,6 +1075,9 @@ class Isa7(object):
                     fillfact = 1
                     #logger.warning('missing iron losscoeffs using defaults')
                 m = scf*self.arm_length*se.area()*spw*fillfact
+                if r == 1:
+                    masse_rotor_yoke += m
+                    section_rotor_yoke += se.area()
                 self.mass[r]['iron'] += m
             else:
                 try:

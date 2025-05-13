@@ -52,7 +52,7 @@ nc_circle_m(xw2, yw2, x8, y8, 0,0,0)
 nc_circle_m(x4, y4, xw3, yw3, 0,0,0)
 nc_circle_m(xw4, yw4, x7, y7, 0,0,0)
 
-x, y = (x7+x5)/2, (y4+y6)/2
+x, y = (x4+x7)/2, (y4+y5)/2
 create_mesh_se(x, y)
 
 def_new_sreg(x, y, 'StZa', 'skyblue')

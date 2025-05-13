@@ -119,7 +119,6 @@ class InductionMachine(Component):
         if 'u1type' in parameters:
             self.u1ref = self.u1type
         if hasattr(self, 'f1ref'):
-            #self.wref = 2*np.pi*self.f1ref[0]
             self.wref = 2*np.pi*self.f1ref
             if hasattr(self, 'u1ref'):
                 self.psiref = self.u1ref/self.wref
@@ -522,9 +521,10 @@ class InductionMachine(Component):
             wmrange = sorted([0, wmType, wmPullout, wmMax])
         elif wmMax < wmType:
             wmrange = sorted([0, wmMax])
+        elif wmType<0 or wmPullout<0 or wmMax<0:
+            wmrange = sorted([1, abs(min(wmMax,wmType, wmPullout)), abs(max(wmMax,wmType, wmPullout))])
         else:
             wmrange = sorted([0, wmType, wmMax])
-
         logger.info("Speed range %s", wmrange)
         wmlin = []
         dw = 0
@@ -604,6 +604,7 @@ class InductionMachine(Component):
                 r['eta'] += (pmech[i:]/(p1[i:])).tolist()
             else:
                 r['eta'] += (p1[i:]/pmech[i:]).tolist()
+
         return r
 
 
@@ -660,7 +661,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
                                       num_steps)]
     else:
         i1tab = np.linspace(i1min, i1max, num_steps).tolist()
-        
+
     m = copy.deepcopy(machine)
     Q2 = m['rotor']['num_slots']
     noloadsim = dict(
@@ -668,7 +669,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
         curvec=i1tab,
         num_par_wdgs=machine[wdgk].get('num_par_wdgs', 1),
         Q2=Q2)
-    
+
     da1 = m['bore_diam']
     ag = m['airgap']
     # do not create airgap nodechains automatically
@@ -679,11 +680,11 @@ def parident(workdir, engine, f1, u1, wdgcon,
         m[wdgk].pop('resistance')
     except KeyError:
         pass
-
+    
     parstudy = femagtools.parstudy.ParameterStudy(
         workdir, condMat=condMat,
         magnetizingCurves=magnetizingCurves, cmd=cmd)
-
+    
     builder = femagtools.fsl.Builder(kwargs.get('templatedirs', []))
     model = femagtools.model.MachineModel(m)
     # modelfiles = parstudy.setup_model(builder, model)
@@ -722,7 +723,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
             rotorbar['rotor'][k]['num_slots_gen'] = 1
             rotorbar['rotor'][k]['zeroangle'] = 90-180/Q2
             break
-      
+
     loadsim = dict(  # not used
         calculationMode="asyn_motor",
         bar_len=bar_len,
@@ -740,7 +741,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     task = job.add_task(_eval_noloadrot(pmod), extra_result_files)
     logger.debug("Task %s noload workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
-    # create model 
+    # create model
     for mc in parstudy.femag.copy_magnetizing_curves(
             model,
             dir=task.directory):
@@ -754,11 +755,10 @@ def parident(workdir, engine, f1, u1, wdgcon,
 
     # ec simulation
     barmodel = femagtools.model.MachineModel(rotorbar)
-    barmodel_new = barmodel
-    barmodel_new['stator']['ecSimulation']=1
     extra_result_files = ['bar.dat']
     r = (da1-ag)/2
-    task = job.add_task(_eval_ecsim())
+    #task = job.add_task(_eval_ecsim())
+    task = job.add_task(_eval_ecsim(), extra_result_files)
     logger.debug("Task %s rotobar workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
     task.set_stateofproblem('mag_dynamic')
@@ -769,7 +769,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
         task.add_file(mc)
     task.add_file(
         'femag.fsl',
-        builder.create_model(barmodel_new,
+        builder.create_model(barmodel,
                              condMat=parstudy.femag.condMat) +
         builder.create_analysis(ecsim) +
         ['save_model("close")'])
@@ -795,10 +795,9 @@ def parident(workdir, engine, f1, u1, wdgcon,
     logger.info('Started %s', status)
     status = engine.join()
     tend = time.time()
-    logger.info("Elapsed time %d s Status %s",
+    logger.info("Elapssed time %d s Status %s",
                 (tend-tstart), status)
     if any([x != 'C' for x in status]):
-        logger.error("AC simulation failed with statuses: %s", status)
         raise ValueError("AC simulation failed")
     # collect results
     results = [t.get_results() for t in job.tasks]
@@ -821,16 +820,17 @@ def parident(workdir, engine, f1, u1, wdgcon,
     u1ref = u1ph
     psiref = u1ref/w1
 
-    # def inoload(x, iml, ims, mexp):
-    #    """return noload current"""
-    #    return iml*x/psiref + ims*(x/psiref)**mexp
-    # fitp, cov = so.curve_fit(inoload, psihtab, i10tab, (1, 1, 1))
-    # iml, ims, mexp = fitp
-    # logger.info("iml, ims, mexp %g, %g, %g",
-    #            iml, ims, mexp)
-    # i1tab.insert(0, 0)
-    # psi1_0.insert(0, 0)
-    # i1_0.insert(0, 0)
+  # def inoload(x, iml, ims, mexp):
+  #    """return noload current"""
+  #    return iml*x/psiref + ims*(x/psiref)**mexp
+  # fitp, cov = so.curve_fit(inoload, psihtab, i10tab, (1, 1, 1))
+  # iml, ims, mexp = fitp
+  # logger.info("iml, ims, mexp %g, %g, %g",
+  #            iml, ims, mexp)
+  # i1tab.insert(0, 0)
+  # psi1_0.insert(0, 0)
+  # i1_0.insert(0, 0)
+
     logger.info("psi1_0 %s", np.mean(psi1_0, axis=1))
     logger.info("psih %s", psih)
     logger.debug("psi1_0-psih %s", np.mean(psi1_0, axis=1)-psih)
@@ -851,7 +851,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
             hs = machine['stator'][slotmodel].get('slot_height',
                                                   0.33*(machine['outer_diam']-da1))
         n = machine[wdgk]['num_wires']
-        if 'dia_wire' in machine[wdgk]:
+        if 'dia_wire' in machine[wdgk] and machine[wdgk].get('dia_wire', 1e-3) !=0:
             aw = np.pi*machine[wdgk].get('dia_wire', 1e-3)**2/4
         else:  # wire diameter from slot area
             aw = 0.75 * \
@@ -878,6 +878,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     #                             kind='quadratic')(imref))
     psihref = float(log_interp1d(i1tab, psih)(imref))
     psi1ref = float(psi1(imref))
+  
 
     lh = psihref/imref
     L1 = psi1ref/imref
@@ -908,8 +909,37 @@ def parident(workdir, engine, f1, u1, wdgcon,
     # r2 = results[1]['r2']
     # ls2 = results[1]['ls2']
     pfe = results[2]['pfe1'][0]
+
+    end_ring_section = machine['rotor']['Aring']
+    bore_diam = machine['bore_diam']
+    for key, value in machine['rotor'].items():
+        if isinstance(value, dict) and 'slot_height' in value:
+            slot_height_rotor = value['slot_height']
+            break
+    if slot_height_rotor is not None:
+        rayon = (bore_diam / 2) - slot_height_rotor/2
+        end_ring_length = 2 * np.pi * rayon
+    else:
+        end_ring_length = 0
+
+    end_ring_volume = end_ring_section*end_ring_length
+
+    for material_info in condMat:
+        if material_info.get('name') == machine.get('rotor', {}).get('material'):
+            spmaweight_rotor = material_info.get('spmaweight')
+            break
+        else:
+            spmaweight_rotor = 0
+    end_ring_mass = end_ring_volume * spmaweight_rotor*1e3
+
     rotor_mass = sum([results[2].get('conweight', 0),
                       results[2].get('lamweight', 0)])
+    logger.info('Conductor mass in rotor = %s',results[2].get('conweight', 0))
+    logger.info('Lamination mass in rotor = %s',results[2].get('lamweight', 0))
+    logger.info('Rotor mass without end-ring = %s',rotor_mass)
+    rotor_mass += 2*end_ring_mass
+    logger.info('One end-ring mass = %s',end_ring_mass)
+    logger.info('Total rotor mass = %s',rotor_mass)
 
     n = machine[wdgk]['num_wires']
     g = loadsim['num_par_wdgs']
@@ -977,12 +1007,13 @@ class _eval_noloadrot():
         i0 = np.linalg.norm(
             femagtools.machine.T(0).dot(ire.T),
             axis=0)/np.sqrt(2)
+        
 
         psi0 = np.array([np.linalg.norm(
             femagtools.machine.T(0).dot(psire[:, k, :].T),
             axis=0)/np.sqrt(2)
             for k in range(ncurs)])
-
+        
         # matrix (i x j x k) of curr, rotor pos, angle
         Bamp = [[femagtools.airgap.fft(bags[:, 0], b, self.pmod)['Bamp']
                  for b in bags.T[1:]]

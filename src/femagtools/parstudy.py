@@ -310,7 +310,7 @@ class ParameterStudy(object):
                         set_magnet_properties(model, fea, self.femag.magnets)
                     task.add_file(
                         'femag.fsl',
-                        builder.create_model(model, self.femag.magnets) if not data_model_created else [] +
+                        (builder.create_model(model, self.femag.magnets) if not data_model_created else []) +
                         builder.create_analysis(fea) +
                         ['save_model("close")'],
                         append=data_model_created  # model already created, append fsl

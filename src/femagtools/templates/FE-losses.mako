@@ -15,6 +15,3 @@ m.poison          =      ${model.get('poison', 0.3)}
 m.dampfact        =      ${model.get('dampfact', 0.0)}
 m.thcond          =      ${model.get('thcond', 30.0)}
 m.thcap           =      ${model.get('thcap', 480.0)}
-
- pre_models("FE-Losses-1")
- pre_models("FE-Losses-2")

@@ -10,7 +10,10 @@ def fft(pos, y, pmod=0):
       pmod: number of poles in model (ignored if 0)
     """
     model_angle = pos[-1] - pos[0]
-    ntiles = int(round(360/model_angle))
+    if 360/model_angle < 1:
+        ntiles=1
+    else:
+        ntiles = int(round(360/model_angle))
 
     if pmod:
         negative_periodic = pmod % 2
@@ -50,6 +53,7 @@ def fft(pos, y, pmod=0):
 
     alfa0 = np.angle(Y[i])
     alfa = np.angle(Y[:nmax])
+
 
     return {'a': a, 'a0': a0, 'T0': T0, 'alfa0': alfa0,
             'alfa': alfa,

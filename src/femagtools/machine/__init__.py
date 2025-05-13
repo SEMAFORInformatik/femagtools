@@ -117,7 +117,6 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     pars.update(opts)
     return InductionMachine(pars)
 
-
 def create(bch, r1, ls, lfe=1, wdg=1):
     """create PmRelMachine from BCH
 

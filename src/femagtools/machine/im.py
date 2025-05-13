@@ -761,6 +761,8 @@ def parident(workdir, engine, f1, u1, wdgcon,
     task = job.add_task(_eval_ecsim(), extra_result_files)
     logger.debug("Task %s rotobar workdir %s result files %s",
                  task.id, task.directory, task.extra_result_files)
+    logger.info("Task %s rotobar workdir %s result files %s",
+                 task.id, task.directory, task.extra_result_files)
     task.set_stateofproblem('mag_dynamic')
     for mc in parstudy.femag.copy_magnetizing_curves(
             barmodel,

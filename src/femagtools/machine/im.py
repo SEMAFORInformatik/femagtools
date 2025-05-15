@@ -910,7 +910,7 @@ def parident(workdir, engine, f1, u1, wdgcon,
     # ls2 = results[1]['ls2']
     pfe = results[2]['pfe1'][0]
 
-    end_ring_section = machine['rotor']['Aring']
+    end_ring_section = machine['rotor'].get('Aring', 0)
     bore_diam = machine['bore_diam']
     for key, value in machine['rotor'].items():
         if isinstance(value, dict) and 'slot_height' in value:

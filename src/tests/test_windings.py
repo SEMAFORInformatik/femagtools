@@ -163,3 +163,14 @@ def test_zoneplan():
     w = femagtools.windings.Winding(
         {'Q': 60, 'p': 32, 'm': 3, 'l': 1})
     assert [1, -2, 3, -4, 5, -6, -17, 18, -19, 20] == w.zoneplan()[0][0]
+
+def test_zoneplan_6phase():
+    w = femagtools.windings.Winding(
+        {'Q': 24, 'p': 11, 'm': 6, 'l': 1})
+    assert [
+        [1, -2, -13, 14],
+        [-11, 12, 23, -24],
+        [-9, 10, 21, -22],
+        [-7, 8, 19, -20],
+        [-5, 6, 17, -18],
+        [-3, 4, 15, -16]] == w.zoneplan()[0]

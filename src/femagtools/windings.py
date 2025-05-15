@@ -12,6 +12,12 @@
  Number of coils per phase: c = Q * l/2/m
  Number of parallel circuits (coil groups): g
  Number of turns per phase: w1 = Q * n * l/2/m/g
+
+Refs:
+odd number of phases
+ doi:10.1007/s00502-021-00873-6
+even number of phases
+ doi:10.1049/iet-epa.2020.0553
 """
 import numpy as np
 import femagtools.bch
@@ -131,8 +137,6 @@ def end_wdg_length_hairpins(wire_h, wire_w, wire_th, wire_gap,
 
 
 class Winding(object):
-    # TODO: raise ValueError "Unbalanced winding" if Q % (m * gcd(Q, p)) != 0
-
     def __init__(self, arg):
         """create winding either from bch winding section or winding dict()
 
@@ -199,15 +203,29 @@ class Winding(object):
             coilwidth = self.yd
 
         self.yd = coilwidth
+        if self.m % 2:  # odd number of phases
+            q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
+            j = 2 if layers == 1 else 1
+            k1 = [(q1 + q2)*i for i in range(self.m)]
+            k2 = (q1*(self.m+1) + q2*(self.m-1))//2
+            pos = [[(j*Yk*(k + n)) % Qb
+                    for n in range(q1)] for k in k1]
+            neg = [[j*Yk*(k + n + k2) % Qb
+                    for n in range(q2)] for k in k1]
+        else:  # even number of phases
+            if np.mod(self.Q, 4/self.l*self.m*np.gcd(self.Q, self.p)):
+                raise ValueError(
+                    f"Unbalanced winding: Q={self.Q}, p={self.p}, m={self.m}")
+            t = np.gcd(self.Q, self.p)
+            Qb = self.Q//t
+            seq = np.array([i for j in range(Qb)
+                            for i in range(Qb) if (j*self.p//t - i) % Qb == 0])
+            if self.l == 1:
+                seq = seq[::2]
+            seq = np.array(seq).reshape((-1, 6))
+            pos = seq[::2].T
+            neg = seq[1::2].T
 
-        q1, q2, Yk, Qb = q1q2yk(self.Q, self.p, self.m, self.l)
-        j = 2 if layers == 1 else 1
-        k1 = [(q1 + q2)*i for i in range(self.m)]
-        k2 = (q1*(self.m+1) + q2*(self.m-1))//2
-        pos = [[(j*Yk*(k + n)) % Qb
-                for n in range(q1)] for k in k1]
-        neg = [[j*Yk*(k + n + k2) % Qb
-                for n in range(q2)] for k in k1]
         if self.l > 1:
             slots = [sorted([(k, 1, 1)
                              for k in p] + [(k, -1, 1)
@@ -495,16 +513,16 @@ class Winding(object):
                 if not is_upper(r, s*taus - (x-taus/2))]
                 for key in self.windings]
 
-        z = ([[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
-             [[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
+        z = ([[int(d*s) for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)],
+             [[int(d*s) for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)])
         # complete if not  basic winding:
         Qb = self.Q//num_basic_windings(self.Q, self.p, self.l)
 
         if not np.asarray(upper).size or not np.asarray(lower).size:
             layers = 1
         if layers == 1 and z[1]:
-            z = ([[d*s for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)],
-                 [[d*s for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)])
+            z = ([[int(d*s) for s, d in zip(l, ld)] for l, ld in zip(lower, ldirs)],
+                 [[int(d*s) for s, d in zip(u, ud)] for u, ud in zip(upper, udirs)])
 
         if max([abs(n) for m in z[0] for n in m]) < Qb:
             return [[k + [-n+Qb//2 if n < 0 else -(n+Qb//2) for n in k]

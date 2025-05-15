@@ -370,7 +370,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plfe1 = m.kpfe*m.iqd_plfe1(*iqd, f1)
         plfe2 = m.kpfe*m.iqd_plfe2(*iqd, f1)
         plmag = np.zeros_like(plfe2)
-        plcu1 = m.iqd_plcu1(iqd[0], iqd[1], 2*np.pi*f1)
+        plcu1 = m.iqd_plcu1(iqd[0], iqd[1], f1)
         try:
             plcu1_dc = m.iqd_plcu1(iqd[0], iqd[1],
                                 np.array([0.0 for i in f1])).tolist()

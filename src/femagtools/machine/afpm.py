@@ -213,6 +213,9 @@ def parident(workdir, engine, temp, machine,
     if np.isscalar(machine['magnet'][slotmodel]['rel_magn_width']):
         num_slices = kwargs.get('num_slices', 3)
         rmagw = num_slices*[machine['magnet'][slotmodel]['rel_magn_width']]
+    elif len(machine['magnet'][slotmodel]['rel_magn_width']) == 1: 
+            num_slices = kwargs.get('num_slices', 3)
+            rmagw = num_slices*machine['magnet'][slotmodel]['rel_magn_width']
     else:
         rmagw = machine['magnet'][slotmodel]['rel_magn_width']
         num_slices = len(rmagw)
@@ -543,13 +546,18 @@ def process(lfe, pole_width, machine, bch):
         nsegx = machine['magnet'].get('num_segments', 1)
         if type(nsegx) == int:
             nsegx = [nsegx]*len(bch)
+        elif len(nsegx) == 1 and len(nsegx) < len(bch): 
+            nsegx = nsegx*len(bch)
+        else: 
+            pass 
         for nx, b in zip(nsegx, bch):
             pm = b['losses'][0]['magnet_data']
             magloss = ecloss.MagnLoss(magnet_data=[pm])
             ml = magloss.calc_losses_ialh2(nsegx=nx)
-            b['losses'][-1][k] = ml[0]
+            b["losses"][-1].update({k: ml[0]})
     else:
         k = 'magnetJ'
+
     if len(pole_width) > 1:
         maglosses = _integrate1d(radius, scale_factor*np.array(
             [b['losses'][-1][k]/lz
@@ -1025,7 +1033,9 @@ class AFPM:
                     machine['magnet'][slotmodel]['rel_magn_width'])
         if np.isscalar(machine['magnet'][slotmodel]['rel_magn_width']):
             rmagw = num_slices*[machine['magnet'][slotmodel]['rel_magn_width']]
-        else:
+        elif len(machine['magnet'][slotmodel]['rel_magn_width']) == 1: 
+                rmagw = num_slices*machine['magnet'][slotmodel]['rel_magn_width']
+        else: 
             rmagw = machine['magnet'][slotmodel]['rel_magn_width']
             num_slices = len(rmagw)
 

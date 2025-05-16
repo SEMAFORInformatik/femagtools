@@ -7,6 +7,7 @@
 """
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
 
 
 def currdist(wdg, title='', k='all', phi=0, ax=0):
@@ -87,7 +88,7 @@ def zoneplan(wdg, write_title=True, max_slots=0, ax=0):
     upper, lower = wdg.zoneplan()
     Qb = len([n for l in upper for n in l])
     if max_slots:
-        Qb = max_slots
+        Qb = min(max_slots, Qb)
     from femagtools.windings import coil_color
     h = 0.5
     w = 1
@@ -171,7 +172,7 @@ def winding_factors(wdg, n=8, ax=0):
         pass
 
 
-def winding(wdg, ax=0):
+def winding(wdg, max_slots=0, ax=0):
     """plot coils of windings wdg"""
     from matplotlib.patches import Rectangle
     from matplotlib.lines import Line2D
@@ -186,12 +187,16 @@ def winding(wdg, ax=0):
     if ax == 0:
         ax = plt.gca()
     z = wdg.zoneplan()
+    z0 = z[0] if len(z[0]) >= len(z[1]) else z[1]
+    Qb = sum([len(l) for l in z0])
+    if max_slots:
+        Qb = min(max_slots, Qb)
     xoff = 0
     if z[-1]:
         xoff = 0.75
     yd = dslot*wdg.yd
     mh = 2*coil_height/yd
-    slots = sorted([abs(n) for m in z[0] for n in m])
+    slots = sorted([abs(n) for m in z[0] for n in m])[:Qb]
     smax = slots[-1]*dslot
     for n in slots:  # draw slots and lamination
         x = n*dslot
@@ -204,6 +209,15 @@ def winding(wdg, ax=0):
                 backgroundcolor="white",
                 bbox=dict(boxstyle='circle,pad=0', fc="white", lw=0))
 
+    # colors in slots
+    csl = [['']*(Qb+1), ['']*(Qb+1)]
+    for i, layer in enumerate(z):
+        for m, mslots in enumerate(layer):
+            for k in mslots:
+                if abs(k) > Qb:
+                    continue
+                csl[i][abs(k)-1] = coil_color[m]
+
     nl = 2 if z[1] else 1
     line_thickness = [0.6, 1.2]
     for i, layer in enumerate(z):
@@ -213,8 +227,9 @@ def winding(wdg, ax=0):
         d = 1
         for m, mslots in enumerate(layer):
             for k in mslots:
+                if abs(k) > Qb:
+                    continue
                 x = abs(k) * dslot + b
-                kcoil = (abs(k)-1)//wdg.yd
                 xpoints = []
                 ypoints = []
                 if nl == 2:
@@ -224,6 +239,12 @@ def winding(wdg, ax=0):
                         d = 1 if i == 1 else 0
                 else:
                     d = 0 if k > 0 else 1
+                    if abs(k) > 1:
+                        if csl[0][abs(k)-2] == coil_color[m]:
+                            d = 1
+                            csl[0][abs(k)-1] = ''
+                        else:
+                            d = 0
 
                 if direction[d] == 'right':
                     # first layer, positive dir or neg. dir and 2-layers:

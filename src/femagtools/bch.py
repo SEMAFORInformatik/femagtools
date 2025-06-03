@@ -421,7 +421,7 @@ class Reader:
             self.windings[w[0]]['R'].append(w[3]/1e3)
             self.windings[w[0]]['PHI'].append(w[4])
         # check if external rotor
-        if hasattr(self, "machine"): 
+        if hasattr(self, "machine"):
             if "fc_radius" in self.machine:
                 if np.mean(self.windings[1]["R"]) < self.machine["fc_radius"]:
                     self.external_rotor = True
@@ -1427,6 +1427,17 @@ class Reader:
                 except KeyError:
                     pass
 
+            try:
+                if self.dqPar['lq'][0] == 0 and self.dqPar['ld'][0] == 0 \
+                    and self.dqPar['psiq'][0] != 0 and any(self.dqPar['i1']) != 0:
+                    self.dqPar['lq'] = [self.dqPar['psiq'][0] / (np.cos(self.dqPar['beta'][0])*self.dqPar['i1'][1])]
+                    if self.dqPar['beta'][0] == 0:
+                        self.dqPar['ld'] = self.dqPar['lq']
+                    else:
+                        self.dqPar['ld'] = [(self.dqPar['psim'][0] - self.dqPar['psid'][0])/abs(np.sin(self.dqPar['beta'][0])*self.dqPar['i1'][1])]
+            except KeyError:
+                pass
+
             self.dqPar = _convert(self.dqPar)
             return  # end of first section
 
@@ -1477,6 +1488,9 @@ class Reader:
             self.dqPar.pop('psim', None)
 
         try:
+            for ii in range(len(self.dqPar['i1'])):
+                if abs(self.dqPar['i1'][ii]/self.machine['i1']) < 0.98:
+                    self.dqPar['i1'][ii] = self.machine['i1']
             w1 = np.pi*self.dqPar['speed']*self.dqPar['npoles']
             r1 = self.machine.get('r1', 0.0)
             beta = np.array(self.dqPar['beta'])/180*np.pi
@@ -1485,8 +1499,17 @@ class Reader:
             if 'psim' in self.dqPar:
                 up = w1*np.array(self.dqPar['psim'])
 
-            ld = np.array(self.dqPar['ld'])
-            lq = np.array(self.dqPar['lq'])
+            if any(self.dqPar['lq']) == 0:
+                lq = np.array(self.dqPar['psiq']) / iq
+                self.dqPar['lq'] = lq.tolist()
+            else:
+                lq = np.array(self.dqPar['lq'])
+            if any(self.dqPar['ld']) == 0:
+                ld = (np.array(self.dqPar['psim']) - np.array(self.dqPar['psid'])) / np.abs(id)
+                ld[0] = lq[0] if id[0] == 0 else ld[0]
+                self.dqPar['ld'] = ld.tolist()
+            else:
+                ld = np.array(self.dqPar['ld'])
             uq = r1*iq + up + id*w1*ld
             ud = r1*id - iq*w1*lq
             self.dqPar['up'] = up.tolist()

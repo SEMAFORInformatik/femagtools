@@ -326,3 +326,13 @@ def temperature_distribution(isa, ax=0, cmap='plasma'):
             ctr = ctr + 1
         temp.append(tmp/ctr)
     _contour(ax, 'Temperature in K', elements, temp, '', cmap)
+
+def punchdist(isa, cmap=DEFAULT_CMAP, ax=0):
+    """plot punching border distances of NC/I7/ISA7 model
+    Args:
+      isa: Isa7/NC object
+    """
+    elam = [e for e in isa.elements if e.is_lamination()]
+    pdist = np.array([e.punchdist() for e in elam])*1e3
+    _contour(ax, 'Punching Border Distances / mm)',
+             elam, pdist, 'mm', cmap, isa)

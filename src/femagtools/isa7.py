@@ -1051,12 +1051,9 @@ class Isa7(object):
                 slf = 1 #self.PS_FILFACTOR_CU[r]
                 self.mass[r]['conductors'] += scf*se.area()*self.arm_length*spw*l*slf
         for se in self.superelements:
-            winding_detected=0
-            lamination_detected=0
             r = 0 if se.outside else 1
             if se.subregion:
                 if se.subregion.winding:
-                    winding_detected=1
                     spw = self.CU_SPEZ_WEIGHT*1e3
                     l = self.PS_LENGTH_CU[r]*1e-2
                     slf = self.PS_FILFACTOR_CU[r]
@@ -1064,7 +1061,6 @@ class Isa7(object):
                     continue
 
             if se.mcvtype or se.elements[0].is_lamination():
-                lamination_detected=1
                 try:
                     spw = self.iron_loss_coefficients[se.mcvtype-1][
                         'spec_weight']*1e3  # kg/m³
@@ -1495,7 +1491,8 @@ class Element(BaseEntity):
             [v.xy for v in vertices], axis=0)/len(vertices)
 
     def flux_density(self, cosys='cartes'):
-        """return flux density components of this element converted to cosys: cartes, cylind, polar"""
+        """return flux density components of this element converted
+        to cosys: cartes, cylind, polar"""
         ev = self.vertices
         b1, b2 = 0, 0
         if self.el_type == ElType.LinearTriangle:
@@ -1621,6 +1618,17 @@ class Element(BaseEntity):
         """return temperature of this element"""
         return sum([v.vpot[1] for v in self.vertices])/len(self.vertices)
 
+    def punchdist(self):
+        """return dist to punching border"""
+        try:
+            if self.is_lamination():
+                return np.min(np.linalg.norm(
+                    self.superelement.subregion.border()-self.center,
+                              axis=1))
+        except AttributeError:
+            pass
+        return np.nan
+
 
 class SuperElement(BaseEntity):
     def __init__(self, key, sr_key, elements, nodechains, color,
@@ -1704,6 +1712,7 @@ class SubRegion(BaseEntity):
         for se in superelements:
             se.subregion = self
         self.nodechains = nodechains
+        self._border = []
 
     def elements(self):
         """return elements of this subregion"""
@@ -1716,6 +1725,21 @@ class SubRegion(BaseEntity):
         """return area of this subregion"""
         return sum([e.area for e in self.elements()])
 
+    def border(self):
+        """return xy coordinates of border nodes"""
+        if len(self._border) == 0:
+            vertices = {}
+            for n in [v for e in self.elements()
+                      for v in e.vertices]:
+                if n.key in vertices:
+                    vertices[n.key] += 1
+                else:
+                    vertices[n.key] = 1
+
+            self._border = np.array(
+                [n.xy for nc in self.nodechains for n in nc.nodes
+                 if vertices.get(n.key, 0) in (1, 2, 3)])
+        return self._border
 
 class Winding(BaseEntity):
     def __init__(self, key, name, subregions, num_turns, cur_re, cur_im,

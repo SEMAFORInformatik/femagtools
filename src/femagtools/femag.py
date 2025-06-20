@@ -153,7 +153,7 @@ class BaseFemag(object):
         dest = dir if dir else self.workdir
         if isinstance(feloss, (int, float)):
             try:
-                feloss = {1: 'jordan', 11: 'bertotti'}[int(feloss)]
+                feloss = {1: 'jordan', 2: "steinmetz", 10:"modified steinmetz", 11: 'bertotti'}[int(feloss)]
             except KeyError:
                 feloss = ''
         return [self.magnetizingCurves.writefile(m[0], dest,
@@ -188,6 +188,11 @@ class BaseFemag(object):
             recsin = simulation.get('recsin', '')
             feloss = simulation.get('calc_fe_loss', '')
         self.copy_magnetizing_curves(self.model, recsin=recsin, feloss=feloss)
+
+        if feloss and \
+            int(feloss) in (1, 2):
+            simulation["calc_fe_loss"] = 1
+
         try:
             if 'wdgdef' in self.model.winding:
                 self.model.winding['wdgfile'] = self.create_wdg_def(

@@ -420,6 +420,11 @@ class Reader:
             self.windings[w[0]]['N'].append(w[2])
             self.windings[w[0]]['R'].append(w[3]/1e3)
             self.windings[w[0]]['PHI'].append(w[4])
+        # check if external rotor
+        if hasattr(self, "machine"): 
+            if "fc_radius" in self.machine:
+                if np.mean(self.windings[1]["R"]) < self.machine["fc_radius"]:
+                    self.external_rotor = True
 
     def __read_winding_factors(self, content):
         "read winding factors section"
@@ -1202,10 +1207,7 @@ class Reader:
         m = []
         subregs = [name.split()[-1]
                    for name in content[2].split('\t') if name][2:]
-        # outer rotor motor
-        if 'Iron' in subregs and \
-            'Rotor' in subregs:
-            self.external_rotor = True
+
         logger.info("Stator Subregions: %s", subregs)
         speed = float(content[0].split()[-1])/60.
         logger.info('losses for speed %f', speed)

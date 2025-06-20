@@ -82,7 +82,7 @@ def mmf_fft(f, title='', mmfmin=1e-2, ax=0):
         pass
 
 
-def zoneplan(wdg, write_title=True, max_slots=0, ax=0):
+def zoneplan(wdg, write_title=True, ax=0, max_slots=0):
     """plot zone plan of winding wdg"""
     from matplotlib.patches import Rectangle
     upper, lower = wdg.zoneplan()
@@ -172,7 +172,7 @@ def winding_factors(wdg, n=8, ax=0):
         pass
 
 
-def winding(wdg, max_slots=0, ax=0):
+def winding(wdg, ax=0, max_slots=0):
     """plot coils of windings wdg"""
     from matplotlib.patches import Rectangle
     from matplotlib.lines import Line2D

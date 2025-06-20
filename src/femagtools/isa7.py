@@ -1730,7 +1730,7 @@ class SubRegion(BaseEntity):
         if len(self._border) == 0:
             vertices = {}
             for n in [v for e in self.elements()
-                      for v in e.vertices]:
+                      for v in e.vertices if v.pernod==0]:
                 if n.key in vertices:
                     vertices[n.key] += 1
                 else:

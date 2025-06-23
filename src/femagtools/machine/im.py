@@ -957,12 +957,15 @@ def parident(workdir, engine, f1, u1, wdgcon,
         wmat = machine[wdgk]['material']
         impars['kth1'] = parstudy.femag.condMat.find(wmat)['tempcoef']
     except KeyError:
-        logger.warning('Missing winding material id')
+        logger.warning('Missing winding material id for stator')
+        for mat in condMat:
+            if mat['name'] == 'Cu': #as Copper is used as default (cf r1 and wdg_resistance)
+                impars['kth1'] = mat['tempcoef']
     try:
         bmat = machine['rotor']['material']
         impars['kth2'] = parstudy.femag.condMat.find(bmat)['tempcoef']
     except KeyError:
-        logger.warning('Missing winding material id')
+        logger.warning('Missing winding material id for rotor')
 
     return impars
 

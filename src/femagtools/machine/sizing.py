@@ -657,17 +657,18 @@ def get_im_rotor_dimensions(A, Da2, psi1, lfe, par, rtype='statorRotor3'):
     all_rotor_types = {}
 
     all_rotor_types['statorRotor3'] = dict(
-            slot_width=slotwidth,
-            tooth_width=round(wt, 4),
-            slot_height=round(hr+r2, 4),
-            slot_top_sh=1.0,
-            slot_h1=round(hs1, 4),
-            slot_h2=round(hs1+r1, 4),
-            slot_r1=round(r1, 4),
-            slot_r2=round(r2),
-            wedge_width1=0,
-            wedge_width2=0,
-            middle_line=0)
+        slot_width=1e-3,
+        tooth_width=0,
+        slot_height=0.0157,
+        slot_top_sh=0,
+        slot_h1=0.5e-3,
+        slot_h2=2.2e-3,
+        slot_r1=2.2e-3,
+        slot_r2=1e-3,
+        wedge_width1=1e-3,
+        wedge_width2=0,
+        middle_line=0
+    )
 
     all_rotor_types['rotorAsyn'] = dict(
         slot_bs2=0.1e-3,

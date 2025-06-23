@@ -376,7 +376,7 @@ def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True,
     plot losses map
     Args:
     rmap: (dict) result of efficiency_losses_map
-    key: (str) type of losses: 'plfe1', 'plfe2', 'plmag', 'plcu1', 'plcu2', 'plfric', 'losses';
+    key: (str) type of losses: 'losses', 'plfe1', 'plfe2', 'plmag', 'plcu1', 'plcu1_dc', 'plcu1_ac', 'plcu2', 'plfric';
     """
 
     if ax == 0:

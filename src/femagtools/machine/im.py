@@ -485,77 +485,81 @@ class InductionMachine(Component):
         """
         with_tmech = kwargs.get('with_tmech', True)
 
-        wmType = self.wmfweak(u1max, self.psiref, T, with_tmech)
-        pmmax = wmType*T
-        wmPullout = so.fsolve(
-            lambda wx: (kpo*self.pullouttorque(self.p *
-                        wx, u1max) - abs(pmmax/wx)),
-            wmType)[0]
-        wmtab0 = np.linspace(wmType, 3*wmPullout)
-        for wm, tq in zip(wmtab0, [pmmax/wx for wx in wmtab0]):
-            logger.debug("u1 %g psi %g tq %g wm %g",
-                         u1max, self.psiref, tq, wm)
-            try:
-                w1 = self.w1(u1max, self.psiref, tq, wm, with_tmech)
-            except ValueError:
-                wmPullout = wm
-                break
-        wmMax = max(1.5*wmPullout, 3*abs(pmmax/T))
-        if n:
-            wmMax = 2*np.pi*n
-        if wmMax > wmPullout:
-            wmtab0 = np.linspace(wmPullout, wmMax)
-            for wm, tq in zip(wmtab0, [pmmax/wx**2
-                                       for wx in wmtab0]):
+        if np.isscalar(T):
+            wmType = self.wmfweak(u1max, self.psiref, T, with_tmech)
+            logger.info(wmType)
+            pmmax = wmType*T
+            wmPullout = so.fsolve(
+                lambda wx: (kpo*self.pullouttorque(self.p *
+                            wx, u1max) - abs(pmmax/wx)),
+                wmType)[0]
+            wmtab0 = np.linspace(wmType, 3*wmPullout)
+            for wm, tq in zip(wmtab0, [pmmax/wx for wx in wmtab0]):
                 logger.debug("u1 %g psi %g tq %g wm %g",
-                             u1max, self.psiref, tq, wm)
+                            u1max, self.psiref, tq, wm)
                 try:
                     w1 = self.w1(u1max, self.psiref, tq, wm, with_tmech)
                 except ValueError:
-                    wmMax = wm
+                    wmPullout = wm
                     break
+            wmMax = max(1.5*wmPullout, 3*abs(pmmax/T))
+            if n:
+                wmMax = 2*np.pi*n
+            if wmMax > wmPullout:
+                wmtab0 = np.linspace(wmPullout, wmMax)
+                for wm, tq in zip(wmtab0, [pmmax/wx**2
+                                        for wx in wmtab0]):
+                    logger.debug("u1 %g psi %g tq %g wm %g",
+                                u1max, self.psiref, tq, wm)
+                    try:
+                        w1 = self.w1(u1max, self.psiref, tq, wm, with_tmech)
+                    except ValueError:
+                        wmMax = wm
+                        break
 
-        logger.info("wmtype %f wpo %f wmmax %f", wmType, wmPullout, wmMax)
+            logger.info("wmtype %f wpo %f wmmax %f", wmType, wmPullout, wmMax)
 
-        if wmType < wmPullout < wmMax:
-            wmrange = sorted([0, wmType, wmPullout, wmMax])
-        elif wmMax < wmType:
-            wmrange = sorted([0, wmMax])
-        elif wmType<0 or wmPullout<0 or wmMax<0:
-            wmrange = sorted([1, abs(min(wmMax,wmType, wmPullout)), abs(max(wmMax,wmType, wmPullout))])
-        else:
-            wmrange = sorted([0, wmType, wmMax])
-        logger.info("Speed range %s", wmrange)
-        wmlin = []
-        dw = 0
-        for i, nx in enumerate([round(nsamples*(w1-w0)/wmMax)
-                                for w1, w0 in zip(wmrange[1:],
-                                                  wmrange)]):
-            if nx == 1:
-                nx = 2
-            if nx > 0:
-                lw = np.linspace(wmrange[i]+dw, wmrange[i+1], nx)
-                dw = lw[-1] - lw[-2]
-                wmlin.append(lw)
-        if len(wmlin) > 1:
-            wmtab = np.concatenate(wmlin)
-        else:
-            wmtab = wmlin[1:]
+            if wmType < wmPullout < wmMax:
+                wmrange = sorted([0, wmType, wmPullout, wmMax])
+            elif wmMax < wmType:
+                wmrange = sorted([0, wmMax])
+            elif wmType<0 or wmPullout<0 or wmMax<0:
+                wmrange = sorted([1, abs(min(wmMax,wmType, wmPullout)), abs(max(wmMax,wmType, wmPullout))])
+            else:
+                wmrange = sorted([0, wmType, wmMax])
+            logger.info("Speed range %s", wmrange)
+            wmlin = []
+            dw = 0
+            for i, nx in enumerate([round(nsamples*(w1-w0)/wmMax)
+                                    for w1, w0 in zip(wmrange[1:],
+                                                    wmrange)]):
+                if nx == 1:
+                    nx = 2
+                if nx > 0:
+                    lw = np.linspace(wmrange[i]+dw, wmrange[i+1], nx)
+                    dw = lw[-1] - lw[-2]
+                    wmlin.append(lw)
+            if len(wmlin) > 1:
+                wmtab = np.concatenate(wmlin)
+            else:
+                wmtab = wmlin[1:]
 
-        def tload2(wm):
-            if wm < wmType and wm < wmPullout:
-                return T
-            if wm < wmPullout:
+            def tload2(wm):
+                if wm < wmType and wm < wmPullout:
+                    return T
+                if wm < wmPullout:
+                    if pmmax < 0:
+                        return max(T, pmmax/wm)
+                    return min(T, pmmax/wm)
                 if pmmax < 0:
-                    return max(T, pmmax/wm)
-                return min(T, pmmax/wm)
-            if pmmax < 0:
-                return max(wmPullout*pmmax/wm**2, T)
-            return min(wmPullout*pmmax/wm**2, T)
+                    return max(wmPullout*pmmax/wm**2, T)
+                return min(wmPullout*pmmax/wm**2, T)
 
+            T = [tload2(wx) for wx in wmtab]
+        else:
+            wmtab = n
         r = dict(u1=[], i1=[], T=[], cosphi=[], n=[], s=[], sk=[],
-                 plfe1=[], plcu1=[], plcu2=[], f1=[])
-        T = [tload2(wx) for wx in wmtab]
+                    plfe1=[], plcu1=[], plcu2=[], f1=[])
         tfric = self.tfric
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -582,7 +586,8 @@ class InductionMachine(Component):
                 r['s'].append(float((w1 - self.p * wm) / w1))
                 r['sk'].append(self.sk(w1, np.abs(u1)/w1))
                 # add n_type to result dict
-                r['n_type'] = wmType/2/np.pi
+                if np.isscalar(T):
+                    r['n_type'] = wmType/2/np.pi
                 #            except ValueError as ex:
                 #                break
         r['plfw'] = [self.pfric(n) for n in r['n']]

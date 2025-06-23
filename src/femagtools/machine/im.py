@@ -868,9 +868,11 @@ def parident(workdir, engine, f1, u1, wdgcon,
         # TODO: sigma = 58e6
         # if 'material' in machine[wdgk]:
         #    sigma = condMat[machine[wdgk]]['elconduct']
+        if 'material' in m['windings']:
+            sigma = m['windings']['cuconduct']
         g = loadsim['num_par_wdgs']
         r1 = wdg_resistance(
-            wdg, n, g, aw, da1, hs, lfe)
+            wdg, n, g, aw, da1, hs, lfe, sigma=sigma)
 
     # psi1 = ip.interp1d(i1_0, np.mean(psi1_0, axis=1),
     #                    kind='quadratic')

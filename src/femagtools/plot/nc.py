@@ -332,7 +332,6 @@ def punchdist(isa, cmap=DEFAULT_CMAP, ax=0):
     Args:
       isa: Isa7/NC object
     """
-    elam = [e for e in isa.elements if e.is_lamination()]
-    pdist = np.array([e.punchdist() for e in elam])*1e3
+    elam, pdist = isa.punchdist()
     _contour(ax, 'Punching Border Distances / mm)',
-             elam, pdist, 'mm', cmap, isa)
+             elam, pdist*1e3, 'mm', cmap, isa)

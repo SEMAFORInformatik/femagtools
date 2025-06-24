@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from femagtools import nc
 from femagtools import isa7
@@ -165,3 +166,19 @@ def test_windings(disp_stat):
 def test_magnet_super_elements(disp_stat):
     sekeys = [se.key for se in disp_stat.magnet_super_elements()]
     assert sekeys == [98, 101, 74, 77, 80, 83, 86, 89, 92, 95]
+
+
+def test_punchdist(pm):
+    expected_shape = ((1008, 2), (520, 2))
+    for i, name in enumerate(pm.get_iron_subregions()):
+        sr = pm.get_subregion(name)
+        bnxy, bkeys = sr.nonper_border_nodes()
+        assert expected_shape[i] == np.shape(bnxy)
+        assert expected_shape[i][0] == 2*len(bkeys)
+
+    bnxy = pm.lamination_border()
+    assert (764, 2) == np.shape(bnxy)
+    elam, pdist = pm.punchdist()
+    assert 6714 == len(elam)
+    assert (6714, ) == np.shape(pdist)
+    assert pytest.approx(0.0041973, abs(1e-3)) == np.max(pdist)

@@ -921,7 +921,7 @@ class Isa7(object):
                 else:
                     flx_fac = 1
             el_fe_ind = [np.array(reader.el_fe_induction_1).T/flx_fac,
-                        np.array(reader.el_fe_induction_2).T/flx_fac]
+                         np.array(reader.el_fe_induction_2).T/flx_fac]
             eddy_cu_vpot = np.array(reader.eddy_cu_vpot).T/1000
             if len(el_fe_ind[0].shape) == 4:
                 pdim = self.pos_el_fe_induction.shape[0]
@@ -1092,7 +1092,8 @@ class Isa7(object):
 
         """
         return [sr.name for sr in self.subregions
-                if sr.superelements[0].mcvtype or sr.superelements[0].elements[0].is_lamination()]
+                if (sr.superelements[0].mcvtype or
+                    sr.superelements[0].elements[0].is_lamination())]
 
     def _axis_ratio(self, apos, br, bt):
         from .utils import fft
@@ -1395,6 +1396,23 @@ class Isa7(object):
             bxy.append(Trot(-theta).dot((fd['bx'], fd['by'])))
         return transform_flux_density(se.alpha, np.array(bxy))
 
+    def lamination_border(self):
+        """return xy coordinates of lamination border nodes"""
+        bnodes = []
+        for sr in self.get_iron_subregions():
+            #bnodes += self.get_subregion(sr).border_node_keys()
+            bnodes += self.get_subregion(sr).nonper_border_nodes()[1]
+        keys, unique_counts = np.unique(bnodes, return_counts=True)
+
+        return np.array([self.nodes[k-1].xy
+                         for k, c in zip(keys, unique_counts) if c == 1])
+
+    def punchdist(self):
+        """ return lamination elements with punching border distance"""
+        elam = [e for e in self.elements if e.is_lamination()]
+        bnodes = self.lamination_border()
+        return elam, np.array([e.punchdist(bnodes) for e in elam])
+
 class Point(object):
     def __init__(self, x, y):
         self.x = x
@@ -1618,12 +1636,11 @@ class Element(BaseEntity):
         """return temperature of this element"""
         return sum([v.vpot[1] for v in self.vertices])/len(self.vertices)
 
-    def punchdist(self):
+    def punchdist(self, bnodes):
         """return dist to punching border"""
         try:
             if self.is_lamination():
-                return np.min(np.linalg.norm(
-                    self.superelement.subregion.border()-self.center,
+                return np.min(np.linalg.norm(bnodes-self.center,
                               axis=1))
         except AttributeError:
             pass
@@ -1725,21 +1742,12 @@ class SubRegion(BaseEntity):
         """return area of this subregion"""
         return sum([e.area for e in self.elements()])
 
-    def border(self):
-        """return xy coordinates of border nodes"""
-        if len(self._border) == 0:
-            vertices = {}
-            for n in [v for e in self.elements()
-                      for v in e.vertices if v.pernod==0]:
-                if n.key in vertices:
-                    vertices[n.key] += 1
-                else:
-                    vertices[n.key] = 1
-
-            self._border = np.array(
-                [n.xy for nc in self.nodechains for n in nc.nodes
-                 if vertices.get(n.key, 0) in (1, 2, 3)])
-        return self._border
+    def nonper_border_nodes(self):
+        """return border nodes with non-periodic boundary condition"""
+        return (np.array([n.xy for nc in self.nodechains
+                          for n in nc.nodes if n.pernod == 0]),
+                set([n.key for nc in self.nodechains
+                     for n in nc.nodes if n.pernod == 0]))
 
 class Winding(BaseEntity):
     def __init__(self, key, name, subregions, num_turns, cur_re, cur_im,

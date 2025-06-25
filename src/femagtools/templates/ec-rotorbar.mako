@@ -2,6 +2,10 @@
 --
 -- set rotor bar
 xb, yb = 0, da2/2 - m.slot_height/2 - m.slot_h1
+x1, y1 = pr2c(da2/2-m.slot_h1-m.slot_height/2, zeroangle)
+x10, y10 = pr2c(da2/2-m.slot_h1-m.slot_height/2, zeroangle + 2*math.pi/Q2)
+xb=(x1+x10)/2
+yb=(y1+y10)/2
 muer = 1
 rel = 100
 cur = {1, 0}

@@ -339,7 +339,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
     else:
         f1 = []
         u1max = u1
-        r = dict(u1=[], i1=[], plfe1=[], plcu1=[], plcu2=[])
+        r = dict(u1=[], i1=[], plfe1=[], plcu1=[], plcu2=[], plcu1_dc=[], plcu1_ac=[])
         for nx, tq in ntmesh.T:
             wm = 2*np.pi*nx
             w1 = m.w1(u1max, m.psiref, tq, wm)
@@ -352,7 +352,9 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             i2 = m.i2(w1, m.psi, wm)
             r['plcu1'].append(m.m*np.abs(i1)**2*m.rstat(w1))
             r['plcu2'].append(m.m*np.abs(i2)**2*m.rrot(w1-m.p*wm))
-
+            plcu_dc = m.m*np.abs(i1)**2*m.rstat(0)
+            r['plcu1_dc'].append(plcu_dc)
+            r['plcu1_ac'].append(m.m*np.abs(i1)**2*m.rstat(w1)-plcu_dc)
     if isinstance(m, PmRelMachine):
         plfe1 = m.kpfe*m.iqd_plfe1(*iqd, f1)
         plfe2 = m.kpfe*m.iqd_plfe2(iqd[0], iqd[1], f1)
@@ -388,11 +390,13 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         plmag = np.zeros(ntmesh.shape[1])
         plcu1 = np.array(r['plcu1'])
         plcu2 = np.array(r['plcu2'])
-        plcu1_dc = [] # reserved for winding (dc, ac) losses
-        plcu1_ac = []
+        plcu1_dc = r['plcu1_dc'] # [] # reserved for winding (dc, ac) losses
+        plcu1_ac = r['plcu1_ac'] #[]
         iqd = np.zeros(ntmesh.shape)
         u1 = np.array(r['u1'])
         i1 = np.array(r['i1'])
+
+
         try:
             if isinstance(eecpars, dict):
                 tfric = eecpars['kfric_b']*eecpars['rotor_mass']*30e-3/np.pi
@@ -401,6 +405,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         except KeyError:
             tfric = 0
 
+    if 'rotor_mass' in eecpars: # to get the user setted value (possible in IM)
+        tfric=eecpars['tfric']
     plfric = 2*np.pi*ntmesh[0]*tfric
     if not with_tmech:
         ntmesh[1] -= tfric

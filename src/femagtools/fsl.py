@@ -23,6 +23,15 @@ def cosys(model):
         return 'cosys("polar")'
     return 'cosys("cartes")'
 
+class MaterialCollection:
+    def __init__(self, materials):
+        self.materials = materials
+
+    def find(self, name):
+        for mat in self.materials:
+            if mat['name'] == name:
+                return mat
+        return None
 
 class Builder:
     def __init__(self, templatedirs=[]):

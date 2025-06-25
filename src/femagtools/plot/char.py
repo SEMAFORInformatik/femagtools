@@ -306,11 +306,18 @@ def _plot_contour(speed, torque, z, ax, title='', levels=[],
     if not levels:
         if max(z) <= 1:
             if max(z) > 0.96:
-                levels = [0.5, 0.75, 0.8, 0.84,
-                          0.89, 0.92, 0.94, 0.96, 0.97]
+                #levels = [0.5, 0.75, 0.8, 0.84,
+                          #0.89, 0.92, 0.94, 0.96, 0.97]
+                levels = np.linspace(min(z),max(z),9)
+                levels = np.round(levels, 2)
+                levels = list(levels)
+
             else:
-                levels = [0.25, 0.5, 0.75, 0.8, 0.84,
-                          0.88, 0.9, 0.92, 0.94, 0.96]
+                #levels = [0.25, 0.5, 0.75, 0.8, 0.84,
+                         #0.88, 0.9, 0.92, 0.94, 0.96]
+                levels = np.linspace(min(z),max(z),9)
+                levels = np.round(levels, 2)
+                levels = list(levels)
 
             if max(z) > levels[-1]:
                 levels.append(np.ceil(max(z)*100)/100)
@@ -376,7 +383,7 @@ def losses_map(rmap, ax=0, title='Losses Map / kW', clabel=True,
     plot losses map
     Args:
     rmap: (dict) result of efficiency_losses_map
-    key: (str) type of losses: 'plfe1', 'plfe2', 'plmag', 'plcu1', 'plcu2', 'plfric', 'losses';
+    key: (str) type of losses: 'losses', 'plfe1', 'plfe2', 'plmag', 'plcu1', 'plcu1_dc', 'plcu1_ac', 'plcu2', 'plfric';
     """
 
     if ax == 0:

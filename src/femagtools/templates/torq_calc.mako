@@ -67,6 +67,11 @@ m.nu_move_steps   =    ${model.get('num_move_steps', 49)}
 m.num_par_wdgs    =    ${model.get('num_par_wdgs',1)}
 
 m.current         =    ${model.get('current')}*math.sqrt(2.0)/m.num_par_wdgs
+if m.current < 1e-5
+then
+  m.current      =    1e-5*math.sqrt(2.0)
+end
+
 m.angl_i_up       =    ${model.get('angl_i_up', 0)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'

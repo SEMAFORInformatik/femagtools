@@ -71,7 +71,6 @@ if m.current < 1e-5
 then
   m.current      =    1e-5*math.sqrt(2.0)
 end
-
 m.angl_i_up       =    ${model.get('angl_i_up', 0)}
 
 m.pocfilename    = '${model.get('pocfilename', 'sin.poc')}'

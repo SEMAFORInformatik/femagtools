@@ -97,7 +97,6 @@ class Task(object):
 
         # this file has to be created
         fmode = 'a' if append else 'w'
-        print(f'TTTask::add_file: {os.path.join(self.directory, base)} mode: {fmode}')
         with open(os.path.join(self.directory, base), fmode) as f:
             f.writelines('\n'.join(content))
 

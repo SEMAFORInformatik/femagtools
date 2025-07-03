@@ -198,7 +198,9 @@ class InductionMachine(Component):
 
     def lstat(self, w):
         """stator leakage inductance"""
-        return self.lsigma1
+        # we add end-winding inductance here
+        le_value = getattr(self, 'le', 0)
+        return self.lsigma1 + le_value
 
     def rrot(self, w):
         """rotor resistance"""

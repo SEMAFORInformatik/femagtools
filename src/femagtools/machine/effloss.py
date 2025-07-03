@@ -404,9 +404,9 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                 tfric = m.tfric
         except KeyError:
             tfric = 0
-
-    if 'rotor_mass' in eecpars: # to get the user setted value (possible in IM)
-        tfric=eecpars['tfric']
+    if isinstance(eecpars, dict):
+        if 'rotor_mass' in eecpars: # to get the user setted value (possible in IM)
+            tfric=eecpars['tfric']
     plfric = 2*np.pi*ntmesh[0]*tfric
     if not with_tmech:
         ntmesh[1] -= tfric

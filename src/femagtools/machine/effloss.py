@@ -400,7 +400,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         try:
             if isinstance(eecpars, dict):
                 tfric = eecpars['kfric_b']*eecpars['rotor_mass']*30e-3/np.pi
-                if 'rotor_mass' in eecpars: # to get the user setted value (possible in IM)
+                if 'tfric' in eecpars: # to get the user setted value (possible in IM)
                     tfric=eecpars['tfric']
             else:
                 tfric = m.tfric

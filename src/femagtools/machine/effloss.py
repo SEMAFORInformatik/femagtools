@@ -79,7 +79,11 @@ def iqd_tmech_umax_multi(num_proc, ntmesh, m, u1, with_mtpa, with_tmech,
     while progress_readers:
         for r in multiprocessing.connection.wait(progress_readers):
             try:
-                collected_msg.append(r.recv())
+                #collected_msg.append(r.recv())
+                ret = r.recv()
+                if isinstance(ret, Exception):
+                    raise ret
+                collected_msg.append(ret)
                 i += 1
             except EOFError:
                 progress_readers.remove(r)
@@ -263,7 +267,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         if isinstance(m, (SynchronousMachineLdq, SynchronousMachinePsidq)):
             iq, id, iex = m.iqd_torque(T[-1])
             i1max = betai1(iq, id)[1]
-            w1type, tmax = m.w1_imax_umax(i1max, u1) 
+            w1type, tmax = m.w1_imax_umax(i1max, u1)
             pmax = tmax*w1type/m.p
         else:
             iq, id = m.iqd_torque(T[-1])
@@ -274,7 +278,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             w1 = 2*np.pi*nx*m.p
             if isinstance(m, (SynchronousMachineLdq, SynchronousMachinePsidq)):
                 tq = T[-1]
-                if tq*w1/m.p > pmax: 
+                if tq*w1/m.p > pmax:
                     tq = pmax/w1*m.p
             else:
                 iq, id, tq =  m.iqd_imax_umax(i1max, w1, u1, T[-1],

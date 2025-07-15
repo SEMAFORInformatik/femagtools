@@ -271,6 +271,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             pmax = tmax*w1type/m.p
         else:
             iq, id = m.iqd_torque(T[-1])
+            w1type, tmax = m.w1_imax_umax(betai1(iq, id)[1], u1)
 
         i1max = betai1(iq, id)[1]
         logger.info("%s %s", n, T)
@@ -281,9 +282,12 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                 if tq*w1/m.p > pmax:
                     tq = pmax/w1*m.p
             else:
-                iq, id, tq =  m.iqd_imax_umax(i1max, w1, u1, T[-1],
-                                            with_tmech=with_tmech,
-                                            with_mtpa=with_mtpa)
+                if w1 <= w1type:
+                    tq = tmax
+                else:
+                    iq, id, tq =  m.iqd_imax_umax(i1max, w1, u1, T[-1],
+                                                with_tmech=with_tmech,
+                                                with_mtpa=with_mtpa)
             if np.isclose(tq, T[-1]):
                 tq = T[-1]
             for Tx in T:

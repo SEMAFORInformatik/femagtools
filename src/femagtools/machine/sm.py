@@ -793,7 +793,7 @@ class SynchronousMachinePsidq(SynchronousMachine):
         # excitation currents bounds should respect ifnom
         self.bounds = [(min(iq), max(iq)),
                        (min(id), 0),
-                       (iexc[0], iexc[-1])]
+                       (iexc[0], iexc[-2])]
         # iron losses
         idname = 'psidq'
         keys = [k for k in self.plexp.keys() if k in eecpars[idname][0]['losses']]
@@ -910,7 +910,7 @@ class SynchronousMachineLdq(SynchronousMachine):
         # excitation currents bounds should respect ifnom
         self.bounds = [(np.cos(min(beta))*i1max, i1max),
                        (-i1max, 0),
-                       (iexc[0], iexc[-1])]
+                       (iexc[0], iexc[-2])]
 
         # iron losses
         idname = 'ldq'

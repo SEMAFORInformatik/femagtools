@@ -287,7 +287,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             if np.isclose(tq, T[-1]):
                 tq = T[-1]
             for Tx in T:
-                if Tx <= tq:
+                if np.abs(Tx) <= tq:
                     nt.append((nx, Tx))
         if not nt:
             raise ValueError("Speed, Torque Mesh is empty")

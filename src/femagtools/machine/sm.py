@@ -543,10 +543,20 @@ class SynchronousMachine(object):
             return *res.x, self.tmech_iqd(*res.x, n)
         else: 
             # didn't converge, fullfill voltage and torque demand
+            """
             res = so.minimize(
                 lambda cur: (self.tmech_iqd(*cur, n) - torque)**2 + 
                  (np.linalg.norm(self.uqd(w1, *cur)) - u1max*np.sqrt(2))**2, io, method='SLSQP', 
                 bounds=self.bounds,
+            )
+            """
+            res = so.minimize(
+                lambda cur: (self.tmech_iqd(*cur, n) - torque)**2, io, method='SLSQP', 
+                bounds=self.bounds,
+                constraints=[
+                {'type': 'eq',
+                 'fun': lambda iqd: np.linalg.norm(
+                     self.uqd(w1, *iqd)) - u1max*np.sqrt(2)}]
             )
             return *res.x, self.tmech_iqd(*res.x, n)
 

@@ -341,7 +341,6 @@ class SynchronousMachine(object):
                 'stteeth_excess':1.5,
                 'rotor_excess': 1.5})
 
-
     def pfric(self, n):
         """friction and windage losses"""
         return 2*np.pi*n*self.tfric
@@ -542,10 +541,18 @@ class SynchronousMachine(object):
             log(res.x)
         if res["success"]:
             return *res.x, self.tmech_iqd(*res.x, n)
+        else: 
+            # didn't converge, fullfill voltage and torque demand
+            res = so.minimize(
+                lambda cur: (self.tmech_iqd(*cur, n) - torque)**2 + 
+                 (np.linalg.norm(self.uqd(w1, *cur)) - u1max*np.sqrt(2))**2, io, method='SLSQP', 
+                bounds=self.bounds,
+            )
+            return *res.x, self.tmech_iqd(*res.x, n)
 
-        logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
-                       res['message'], w1, torque, u1max, io)
-        raise ValueError(res['message'])
+        # logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
+        #                res['message'], w1, torque, u1max, io)
+        # raise ValueError(res['message'])
 
     def iqd_torque_umax(self, torque, w1, u1max,
                         disp=False, maxiter=500, log=0, **kwargs):
@@ -622,6 +629,7 @@ class SynchronousMachine(object):
         """
         if kwargs.get('i1max', 0):
             w1type, T = self.w1_imax_umax(kwargs['i1max'], u1max)
+
         try:
             iq, id, iex = self.iqd_torque(T)
         except ValueError:
@@ -826,7 +834,10 @@ class SynchronousMachinePsidq(SynchronousMachine):
                 'styoke_eddy', 'stteeth_eddy',
                 'rotor_hyst', 'rotor_eddy')}
 
-
+    def set_max_iex(self, iexc):
+        self.bounds[-1] = (self.bounds[-1][0], iexc) 
+        self.exc_max = iexc
+        
     def psi(self, iq, id, iex):
         """return psid, psiq of currents iq, id"""
         try:
@@ -947,6 +958,10 @@ class SynchronousMachineLdq(SynchronousMachine):
                 'styoke_eddy', 'stteeth_eddy',
                 'rotor_hyst', 'rotor_eddy')}
             pass
+    
+    def set_max_iex(self, iexc):
+        self.bounds[-1] = (self.bounds[-1][0], iexc) 
+        self.exc_max = iexc
 
     def psi(self, iq, id, iex):
         """return psid, psiq of currents iq, id"""

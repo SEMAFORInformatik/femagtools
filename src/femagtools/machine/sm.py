@@ -543,13 +543,6 @@ class SynchronousMachine(object):
             return *res.x, self.tmech_iqd(*res.x, n)
         else: 
             # didn't converge, fullfill voltage and torque demand
-            """
-            res = so.minimize(
-                lambda cur: (self.tmech_iqd(*cur, n) - torque)**2 + 
-                 (np.linalg.norm(self.uqd(w1, *cur)) - u1max*np.sqrt(2))**2, io, method='SLSQP', 
-                bounds=self.bounds,
-            )
-            """
             res = so.minimize(
                 lambda cur: (self.tmech_iqd(*cur, n) - torque)**2, io, method='SLSQP', 
                 bounds=self.bounds,
@@ -558,7 +551,15 @@ class SynchronousMachine(object):
                  'fun': lambda iqd: np.linalg.norm(
                      self.uqd(w1, *iqd)) - u1max*np.sqrt(2)}]
             )
-            return *res.x, self.tmech_iqd(*res.x, n)
+            if res["success"]:
+                return *res.x, self.tmech_iqd(*res.x, n)
+            else:
+                res = so.minimize(
+                    lambda cur: (self.tmech_iqd(*cur, n) - torque)**2 + 
+                    (np.linalg.norm(self.uqd(w1, *cur)) - u1max*np.sqrt(2))**2, io, method='SLSQP', 
+                    bounds=self.bounds,
+                )
+                return *res.x, self.tmech_iqd(*res.x, n)
 
         # logger.warning("%s: w1=%f torque=%f, u1max=%f, io=%s",
         #                res['message'], w1, torque, u1max, io)
@@ -707,13 +708,17 @@ class SynchronousMachine(object):
         r['n_type'] = wmType/2/np.pi
         for wm, tq in zip(wmtab, [tload(wx) for wx in wmtab]):
             w1 = wm*self.p
-            if with_tmech:
-                iq, id, iex, tqx = self.iqd_tmech_umax(
-                        tq, w1, u1max)
-            else:
-                iq, id, iex, tqx = self.iqd_torque_umax(
-                        tq, w1, u1max)
-                tqx -= self.tfric
+            if wm > wmType:
+                if with_tmech:
+                    iq, id, iex, tqx = self.iqd_tmech_umax(
+                            tq, w1, u1max)
+                else:
+                    iq, id, iex, tqx = self.iqd_torque_umax(
+                            tq, w1, u1max)
+                    tqx -= self.tfric
+            else: 
+                tqx = Tf
+
             uq, ud = self.uqd(w1, iq, id, iex)
             u1 = np.linalg.norm((uq, ud))/np.sqrt(2)
             f1 = w1/2/np.pi

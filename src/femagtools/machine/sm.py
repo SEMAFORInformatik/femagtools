@@ -731,7 +731,7 @@ class SynchronousMachine(object):
                 beta -= 2*np.pi
             i1 = np.linalg.norm((id, iq), axis=0)/np.sqrt(2.0)
             r['i1'].append(i1)
-            r['beta'].append(beta/180*np.pi)
+            r['beta'].append(beta/np.pi*180)
             gamma = np.arctan2(ud, uq)
             r['cosphi'].append(np.cos(gamma - beta))
             r['plfe1'].append(self.iqd_plfe1(iq, id, iex, f1))

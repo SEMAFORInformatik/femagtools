@@ -458,6 +458,13 @@ class SynchronousMachine(object):
             #options={'disp': disp, 'maxiter': maxiter})
             if res['success']:
                 return res.x
+            else: 
+                res = so.minimize(
+                    lambda cur: (self.tmech_iqd(*cur, n) - torque)**2, res.x, method='SLSQP', 
+                    bounds=self.bounds,
+                )
+                if res['success']:
+                    return res.x
 
         logger.warning("%s: torque=%f %f, io=%s",
                        res['message'], torque, self.tmech_iqd(*startvals, n),

@@ -4188,28 +4188,11 @@ class Geometry(object):
                         return True
         return False
 
-    def _line_inside_magnets(self, p1, p2):
-        for area in self.list_of_areas():
-            if area.is_magnet():
-                if area.is_point_inside(p1):
-                    if area.is_point_inside(p2):
-                        return True
-        return False
-
-    def _line_inside_air(self, p1, p2):
-        for area in self.list_of_areas():
-            if area.is_air():
-                if area.is_point_inside(p1):
-                    if area.is_point_inside(p2):
-                        return True
-        return False
-
     def _line_inside_not_iron(self, p1, p2):
         for area in self.list_of_areas():
             if area.is_shaft() or area.is_air() or area.is_magnet():
-                if area.is_point_inside(p1):
-                    if area.is_point_inside(p2):
-                        return True
+                if area.is_line_inside(p1, p2):
+                    return True
         return False
 
     def inside_area_list(self, p):

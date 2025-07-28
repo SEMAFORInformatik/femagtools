@@ -202,6 +202,15 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
                   title="Rotor Magnet Slice after Rebuild")
 
     rebuild = False
+    if machine_temp.magnets_missing(EESM):
+        mag = machine_temp.looking_for_one_possible_magnet()
+        if mag:
+            if machine.is_mirrored():
+                if machine_temp.create_mirror_lines_outside_magnets():
+                    machine_temp.rebuild_subregions(EESM, single=single)
+                    machine_temp.geom.force_area_as_magnet(mag)
+            return machine_temp
+
     if machine_temp.has_magnets_in_the_middle():
         logger.debug("Magnets cut")
         rebuild = machine_temp.create_mirror_lines_outside_magnets()

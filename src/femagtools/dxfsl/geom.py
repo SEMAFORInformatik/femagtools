@@ -2612,6 +2612,7 @@ class Geometry(object):
             areas_inside = [a for a in self.area_list
                             if area.is_inside(a, self)]
             if not areas_inside:
+                area.areas_inside = {}
                 continue
 
             areas_notouch = {a.identifier(): a for a in areas_inside
@@ -3747,6 +3748,30 @@ class Geometry(object):
                     a.set_type(AREA.TYPE_AIR)  # air
 
         logger.debug("end of search_unknown_subregions")
+
+    def possible_magnet_in_the_middle(self, midangle):
+        self.set_areas_inside_for_all_areas()
+        mags = []
+        for n, a in enumerate(self.list_of_areas()):
+            if a.areas_inside:
+                continue
+            a_midangle = a.get_mid_angle(self.center)
+            if np.isclose(midangle, a_midangle, atol=1e-2, rtol=1e-2):
+                s = a.area_size()
+                mags.append([s, n, a])
+
+        if not mags:
+            return False
+        mags.sort(reverse=True)
+        s, n, a = mags[0]
+        a.set_type(AREA.TYPE_MAGNET_RECT)
+        return a
+
+    def force_area_as_magnet(self, area):
+        for a in self.list_of_areas():
+            if a.is_equal(area, 1e-2):
+                a.set_type(AREA.TYPE_MAGNET_RECT)
+                return
 
     def magnets_in_the_middle(self, midangle):
         mag_areas = [a for a in self.list_of_areas()

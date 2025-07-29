@@ -270,7 +270,7 @@ class FslRenderer(object):
         for area in geom.list_of_areas():
             if area.number_of_elements() > 1:
                 p = area.get_point_inside(geom)
-                if p:
+                if p and area.type > 0:
                     self.content.append("x0, y0 = {}, {}".format(p[0], p[1]))
                     # self.content.append("point(x0, y0, red, 4)")  # for debugging
                     self.content.append("create_mesh_se(x0, y0)")
@@ -324,7 +324,7 @@ class FslRenderer(object):
                         self.content.append(
                             'x0_shaft, y0_shaft = x0, y0')
 
-                self.content.append("\n")
+        self.content.append("create_mesh(x0, y0)\n")
 
         txt = ["if x0_iron_yoke > 0.0 then",
                "  if mcvkey_yoke ~= 'dummy' then",

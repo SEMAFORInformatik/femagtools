@@ -2612,6 +2612,7 @@ class Geometry(object):
             areas_inside = [a for a in self.area_list
                             if area.is_inside(a, self)]
             if not areas_inside:
+                area.areas_inside = {}
                 continue
 
             areas_notouch = {a.identifier(): a for a in areas_inside
@@ -3748,6 +3749,41 @@ class Geometry(object):
 
         logger.debug("end of search_unknown_subregions")
 
+    def possible_magnet_in_the_middle(self, midangle):
+        self.set_areas_inside_for_all_areas()
+        mags = []
+        for n, a in enumerate(self.list_of_areas()):
+            if a.areas_inside:
+                continue
+            if a.close_to_startangle or a.close_to_endangle:
+                continue
+            if np.isclose(a.min_dist, self.min_radius):
+                continue
+            if np.isclose(a.max_dist, self.max_radius):
+                continue
+
+            a_midangle = a.get_mid_angle(self.center)
+            if np.isclose(midangle, a_midangle, atol=1e-2, rtol=1e-2):
+                s = a.area_size()
+                mags.append([s, n, a])
+
+        if not mags:
+            return False
+        mags.sort(reverse=True)
+        s, n, a = mags[0]
+        a.set_type(AREA.TYPE_MAGNET_AIRGAP)
+        a.phi = midangle
+        a.mag_width = (a.max_dist - a.min_dist) * 0.9
+        return a
+
+    def force_area_as_magnet(self, area):
+        for a in self.list_of_areas():
+            if a.is_equal(area, 1e-2):
+                a.set_type(area.type)
+                a.phi = area.phi
+                a.mag_width = area.mag_width
+                return
+
     def magnets_in_the_middle(self, midangle):
         mag_areas = [a for a in self.list_of_areas()
                      if a.is_magnet()]
@@ -4188,28 +4224,11 @@ class Geometry(object):
                         return True
         return False
 
-    def _line_inside_magnets(self, p1, p2):
-        for area in self.list_of_areas():
-            if area.is_magnet():
-                if area.is_point_inside(p1):
-                    if area.is_point_inside(p2):
-                        return True
-        return False
-
-    def _line_inside_air(self, p1, p2):
-        for area in self.list_of_areas():
-            if area.is_air():
-                if area.is_point_inside(p1):
-                    if area.is_point_inside(p2):
-                        return True
-        return False
-
     def _line_inside_not_iron(self, p1, p2):
         for area in self.list_of_areas():
             if area.is_shaft() or area.is_air() or area.is_magnet():
-                if area.is_point_inside(p1):
-                    if area.is_point_inside(p2):
-                        return True
+                if area.is_line_inside(p1, p2):
+                    return True
         return False
 
     def inside_area_list(self, p):

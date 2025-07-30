@@ -202,6 +202,18 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
                   title="Rotor Magnet Slice after Rebuild")
 
     rebuild = False
+    if machine_temp.magnets_missing(EESM):
+        mag = machine_temp.looking_for_one_possible_magnet()
+        if mag:
+            if machine.is_mirrored():
+                rebuild = machine_temp.create_mirror_lines_outside_magnets()
+                if machine_temp.create_auxiliary_lines():
+                    rebuild = True
+                if rebuild:
+                    machine_temp.rebuild_subregions(EESM, single=single)
+                    machine_temp.geom.force_area_as_magnet(mag)
+            return machine_temp
+
     if machine_temp.has_magnets_in_the_middle():
         logger.debug("Magnets cut")
         rebuild = machine_temp.create_mirror_lines_outside_magnets()
@@ -432,10 +444,10 @@ def convert(dxfile,
             return dict(error='unknown location {}'.format(part[1]))
     else:
         if da:
-            logger.warn("distance airgap (da) ignored")
+            logger.warning("distance airgap (da) ignored")
             da = 0.0
         if dy:
-            logger.warn("distance yoke (dy) ignored")
+            logger.warning("distance yoke (dy) ignored")
             dy = 0.0
 
     split_ini = split
@@ -1064,7 +1076,7 @@ def create_femag_parameters_stator(motor, position):
         params['da1'] = 2*motor.geom.min_radius
     params['slot_area'] = motor.slot_area()
     params['stator'] = _create_stator_parameters(motor)
-    params['machine'] = motor
+    #params['machine'] = motor
     return params
 
 
@@ -1080,5 +1092,5 @@ def create_femag_parameters_rotor(motor, position):
         params['da1'] = 2*motor.geom.min_radius
     params['slot_area'] = motor.slot_area()
     params['rotor'] = _create_rotor_parameters(motor)
-    params['machine'] = motor
+    #params['machine'] = motor
     return params

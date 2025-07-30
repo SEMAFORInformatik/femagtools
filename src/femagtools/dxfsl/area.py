@@ -958,6 +958,23 @@ class Area(object):
             return False
         return True
 
+    def is_line_inside(self, p1, p2):
+        if self.is_point_inside(p1):
+            if self.is_point_inside(p2):
+                logger.debug("Border: Type of area %s is %s",
+                             self.identifier(), self.type)
+                return True
+            if self.the_point_is_inside_area(p2):
+                logger.debug("Inside: Type of area %s is %s",
+                             self.identifier(), self.type)
+                return True
+        elif self.is_point_inside(p2):
+            if self.the_point_is_inside_area(p1):
+                logger.debug("Inside: Type of area %s is %s",
+                             self.identifier(), self.type)
+                return True
+        return False
+
     def get_best_point_inside(self, geom):
         px1 = self.min_x - 5
         px2 = self.max_x + 5

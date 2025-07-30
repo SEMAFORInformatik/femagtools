@@ -1259,6 +1259,11 @@ class Machine(object):
     def has_magnets(self):
         return self.geom.has_magnets
 
+    def magnets_missing(self, EESM):
+        if EESM:
+            return False
+        return not self.has_magnets()
+
     def delete_tiny_elements(self, mindist):
         return self.geom.delete_tiny_elements(mindist)
 
@@ -1319,6 +1324,11 @@ class Machine(object):
         midangle = middle_angle(self.startangle,
                                 self.endangle)
         return self.geom.magnets_in_the_middle(midangle)
+
+    def looking_for_one_possible_magnet(self):
+        midangle = middle_angle(self.startangle,
+                                self.endangle)
+        return self.geom.possible_magnet_in_the_middle(midangle)
 
     def create_mirror_lines_outside_windings(self):
         logger.debug("create_mirror_lines_outside_windings")

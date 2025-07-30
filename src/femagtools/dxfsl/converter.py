@@ -444,10 +444,10 @@ def convert(dxfile,
             return dict(error='unknown location {}'.format(part[1]))
     else:
         if da:
-            logger.warn("distance airgap (da) ignored")
+            logger.warning("distance airgap (da) ignored")
             da = 0.0
         if dy:
-            logger.warn("distance yoke (dy) ignored")
+            logger.warning("distance yoke (dy) ignored")
             dy = 0.0
 
     split_ini = split
@@ -1076,7 +1076,7 @@ def create_femag_parameters_stator(motor, position):
         params['da1'] = 2*motor.geom.min_radius
     params['slot_area'] = motor.slot_area()
     params['stator'] = _create_stator_parameters(motor)
-    params['machine'] = motor
+    #params['machine'] = motor
     return params
 
 
@@ -1092,5 +1092,5 @@ def create_femag_parameters_rotor(motor, position):
         params['da1'] = 2*motor.geom.min_radius
     params['slot_area'] = motor.slot_area()
     params['rotor'] = _create_rotor_parameters(motor)
-    params['machine'] = motor
+    #params['machine'] = motor
     return params

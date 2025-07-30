@@ -3755,6 +3755,13 @@ class Geometry(object):
         for n, a in enumerate(self.list_of_areas()):
             if a.areas_inside:
                 continue
+            if a.close_to_startangle or a.close_to_endangle:
+                continue
+            if np.isclose(a.min_dist, self.min_radius):
+                continue
+            if np.isclose(a.max_dist, self.max_radius):
+                continue
+
             a_midangle = a.get_mid_angle(self.center)
             if np.isclose(midangle, a_midangle, atol=1e-2, rtol=1e-2):
                 s = a.area_size()
@@ -3764,13 +3771,17 @@ class Geometry(object):
             return False
         mags.sort(reverse=True)
         s, n, a = mags[0]
-        a.set_type(AREA.TYPE_MAGNET_RECT)
+        a.set_type(AREA.TYPE_MAGNET_AIRGAP)
+        a.phi = midangle
+        a.mag_width = (a.max_dist - a.min_dist) * 0.9
         return a
 
     def force_area_as_magnet(self, area):
         for a in self.list_of_areas():
             if a.is_equal(area, 1e-2):
-                a.set_type(AREA.TYPE_MAGNET_RECT)
+                a.set_type(area.type)
+                a.phi = area.phi
+                a.mag_width = area.mag_width
                 return
 
     def magnets_in_the_middle(self, midangle):

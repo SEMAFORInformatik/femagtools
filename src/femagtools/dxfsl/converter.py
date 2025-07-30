@@ -206,7 +206,10 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
         mag = machine_temp.looking_for_one_possible_magnet()
         if mag:
             if machine.is_mirrored():
-                if machine_temp.create_mirror_lines_outside_magnets():
+                rebuild = machine_temp.create_mirror_lines_outside_magnets()
+                if machine_temp.create_auxiliary_lines():
+                    rebuild = True
+                if rebuild:
                     machine_temp.rebuild_subregions(EESM, single=single)
                     machine_temp.geom.force_area_as_magnet(mag)
             return machine_temp

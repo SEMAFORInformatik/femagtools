@@ -552,12 +552,17 @@ class Area(object):
         return (self.close_to_startangle and self.close_to_endangle)
 
     def is_in_touch_with_area(self, geom, a):
+        if self.is_one_circle_element():
+            return False
+        if a.is_one_circle_element():
+            return False
+
         n1 = self.area[0].n1
         n2 = a.area[0].n2
         try:
             return nx.has_path(geom.g, n1, n2)
-        except nx.NetworkXError:
-            logger.warning("has_path() failed")
+        except nx.NetworkXError as e:
+            logger.warning("has_path() failed: %s", e)
             return False
 
     def has_connection(self, geom, a, ndec):
@@ -1188,6 +1193,11 @@ class Area(object):
             except Exception:
                 continue
         return r
+
+    def is_one_circle_element(self):
+        if len(self.area) == 1:
+            return is_Circle(self.area[0])
+        return False
 
     def is_circle(self):
         e = self.area[0]

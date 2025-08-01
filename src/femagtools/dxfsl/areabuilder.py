@@ -915,9 +915,13 @@ class AreaBuilder(object):
         max_x = 0
         area = None
         for a in area_list:
+            if a.is_one_circle_element():
+                continue
             if a.max_x > max_x:
                 max_x = a.max_x
                 area = a
+        if area is None:
+            return False
 
         x0, y0 = -9999.0, 0.0
         for x, y in area.list_of_nodes():

@@ -93,6 +93,7 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
         builder = femagtools.fsl.Builder(femag.templatedirs)
         fslcmds = (builder.open_model(femag.model) +
                    builder.create_shortcircuit(simulation))
+#                   ['save_model("cont")'])
         fslfile = 'shortcircuit.fsl'
         (pathlib.Path(femag.workdir)/fslfile).write_text(
             '\n'.join(fslcmds),
@@ -193,7 +194,7 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     else:
         simulation.update(flux_sim)
         simulation['curvec'] = i1vec.tolist()
-        results = femag(machine, simulation)
+        results = femag(machine, simulation, fslfile='2ph_shortcircuit.fsl')
         class Task:
             def __init__(self, workdir):
                 self.directory = workdir
@@ -362,7 +363,11 @@ def demag(femag, machine, simulation, i1max, phirot, phi, engine=0):
         'phi': phirot,
         'magntemp': simulation['Tmag'],
         'curvec': curvec})
-    _ = femag(machine, simulation)
+    try:
+        del simulation['airgap_induc']
+    except KeyError:
+        pass
+    _ = femag(machine, simulation, fslfile='demag.fsl')
 
     ptr = np.loadtxt(femag.workdir / "psi-torq-rem.dat")
     i1 = np.concat(([0], np.max(ptr[:,1:4], axis=1)))

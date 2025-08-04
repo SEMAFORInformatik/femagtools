@@ -24,7 +24,11 @@ def fft(pos: list, b: list, pmod=0) -> dict:
     Bamp = r['a']
     alfa0 = r['alfa0']
     T0 = r['T0']
-    npoles = 2*round(360/T0)
+    try:
+        npoles = 2*round(360/T0)
+    except ZeroDivisionError:
+        npoles=0
+        pass
     logger.info("flux density: %s poles B amp %f ",
                 npoles, r['a'])
     return dict(Bamp=Bamp, npoles=npoles,

@@ -24,6 +24,8 @@ def fft(pos, y, pmod=0):
         nypos = ~ypos
         nzc = len(((ypos[:-1] & nypos[1:])
                    | (nypos[:-1] & ypos[1:])).nonzero()[0])
+        if np.isclose(y[0], 0, atol=1e-2):
+            nzc += 1
         negative_periodic = nzc == 0 or nzc % 2 == 1
 
     if negative_periodic:
@@ -36,13 +38,13 @@ def fft(pos, y, pmod=0):
 
     N = len(yx)
     # compute DFT from induction (eliminate DC offset)
-    a0 = np.mean(yx)
+    a0 = float(np.mean(yx))
     Y = np.fft.fft(yx-a0)
 
     # find the peak (amplitude of base harmonic)
     i = np.argmax(np.abs(Y[:N//2]))
 
-    a = 2*np.abs(Y[i])/N
+    a = float(2*np.abs(Y[i])/N)
     freq = np.fft.fftfreq(N, d=360/N)
     nmax = min(18*ntiles, N//2)
     T0 = 0
@@ -51,9 +53,8 @@ def fft(pos, y, pmod=0):
         npoles = 2*int(360/T0)
         nmax = min(9*npoles, N//2)
 
-    alfa0 = np.angle(Y[i])
+    alfa0 = float(np.angle(Y[i]))
     alfa = np.angle(Y[:nmax])
-
 
     return {'a': a, 'a0': a0, 'T0': T0, 'alfa0': alfa0,
             'alfa': alfa,

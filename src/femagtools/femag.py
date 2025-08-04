@@ -79,6 +79,7 @@ def set_magnet_properties(model, simulation, magnets):
         magn_temp = simulation.magn_temp
     if 'material' not in model.magnet:
         return
+
     try:
         material = model.magnet['material']
         magnetMat = magnets.find(material)
@@ -95,18 +96,23 @@ def set_magnet_properties(model, simulation, magnets):
                 tempcoefmuer = (tempcoefbr-tempcoefhc)/(1+tempcoefhc*(magn_temp-20))
             if 'temcoefmuer' in magnetMat:
                 tempcoefmuer = magnetMat['temcoefmuer']
-            hcj = magnetMat.get('HcJ', 0)
-            if hcj:
-                model.hc_min = -hcj * (1+tempcoefhc*(magn_temp-20))
+            if not hasattr(model, 'hc_min'):
+                for k in 'Hk', 'HcJ':
+                    if k in magnetMat:
+                        hcmin = magnetMat.get(k)
+                        model.hc_min = hcmin * (1+tempcoefhc*(magn_temp-20))
+                        break
+            if hasattr(model, 'hc_min'):
+                logger.info("hc_min %f", model.hc_min)
             model.magnet['temp_prop']['relperm'] = \
                 (1+tempcoefmuer*(magn_temp-20))*relperm
             if tempcoefbr:
                 model.magnet['temp_prop']['temcoefbr'] = tempcoefbr
             if tempcoefhc:
                 model.magnet['temp_prop']['temcoefhc'] = tempcoefhc
-
     except AttributeError:
         pass
+
 
 class BaseFemag(object):
     def __init__(self, workdir, cmd, magnetizingCurves, magnets, condMat,
@@ -460,14 +466,6 @@ class BaseFemag(object):
 
             if not bch:
                 bch = self.read_bch(self.modelname)
-            if simulation['calculationMode'] == 'pm_sym_fast' or \
-                simulation['calculationMode'] == 'torq_calc':
-                if simulation.get('shortCircuit', False):
-                    from .shortcircuit import shortcircuit
-                    set_magnet_properties(self.model, simulation, self.magnets)
-                    bch.scData = shortcircuit(self, machine, bch, simulation)
-                    #bch.torque += bchsc.torque
-                    #bch.demag += bchsc.demag
 
             if 'airgap_induc' in simulation:
                 try:
@@ -476,6 +474,19 @@ class BaseFemag(object):
                     pmod = 0
                 bch.airgap = ag.read(os.path.join(self.workdir, 'bag.dat'),
                                      pmod=pmod)
+
+            if simulation['calculationMode'] == 'pm_sym_fast' or \
+                simulation['calculationMode'] == 'torq_calc':
+                if simulation.get('shortCircuit', False):
+                    from .shortcircuit import shortcircuit
+                    set_magnet_properties(self.model, simulation, self.magnets)
+                    bch.scData = shortcircuit(self,
+                                              {'name': self.model.name,
+                                               'poles': self.model.poles,
+                                               'hc_min': self.model.get('hc_min', 0)},
+                                               bch, simulation)
+                    #bch.torque += bchsc.torque
+                    #bch.demag += bchsc.demag
 
             if simulation.get('magnet_loss', False):
                 logger.info('Evaluating magnet losses...')
@@ -490,7 +501,7 @@ class BaseFemag(object):
 
                 if len(ops) != len(bch.losses):
                     magn_losses.insert(0, magn_losses[0])
-                
+
                 magn_losses = [float(i) for i in magn_losses]
                 try:
                     for i in range(len(bch.losses)):
@@ -600,10 +611,9 @@ class Femag(BaseFemag):
                 os.remove(f)
 
     def __call__(self, machine, simulation={},
-                 options=['-b'], fsl_args=[]):
+                 options=['-b'], fsl_args=[], fslfile='femag.fsl'):
         """setup fsl file, run calculation and return
         BCH, ASM, TS or LOS results if any."""
-        fslfile = 'femag.fsl'
         with open(os.path.join(self.workdir, fslfile), 'w') as f:
             f.write('\n'.join(self.create_fsl(machine,
                                               simulation)))

@@ -515,10 +515,12 @@ def cogging(bch, title=''):
         fig.subplots_adjust(top=0.92)
 
 
-def demagnetization(demag, ax=0):
+def demagnetization(demag, title='', ax=0):
     """plot rel. remanence vs. current"""
     if ax == 0:
         ax = plt.gca()
+    if title:
+        ax.set_title(title)
     scale = 1
     unit = 'A'
     if np.max(demag['i1']) > 25e3:

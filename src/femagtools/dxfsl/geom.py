@@ -401,11 +401,11 @@ class Geometry(object):
                    for n in self.g.nodes()}
         nx.relabel_nodes(self.g, mapping, copy=False)
 
-    def rotate_nodes(self, alpha, nodes):
+    def get_rotated_nodes(self, alpha, nodes):
         T = np.array(((np.cos(alpha), -np.sin(alpha)),
                       (np.sin(alpha), np.cos(alpha))))
-        rotnodes = np.dot(T, np.asarray(nodes).T).T.tolist()
-        return rotnodes
+        nodes = [T.dot(np.array((n[0], n[1]))).tolist() for n in nodes]
+        return nodes
 
     def rotate(self, alpha):
         """rotates all objects by angle alpha"""
@@ -3765,16 +3765,39 @@ class Geometry(object):
             a_midangle = a.get_mid_angle(self.center)
             if np.isclose(midangle, a_midangle, atol=1e-2, rtol=1e-2):
                 s = a.area_size()
-                mags.append([s, n, a])
+                mags.append([s, n, a, a_midangle])
 
         if not mags:
-            return False
+            return None
+
         mags.sort(reverse=True)
-        s, n, a = mags[0]
-        a.set_type(AREA.TYPE_MAGNET_AIRGAP)
-        a.phi = midangle
-        a.mag_width = (a.max_dist - a.min_dist) * 0.9
-        return a
+        to_angle = np.pi / 2
+        for s, n, a, mid in mags:
+            angle = to_angle - mid
+            nodelist = a.list_of_nodes()
+            nodes = self.get_rotated_nodes(angle, nodelist)
+            p1 = self.center
+            p2 = point(self.center, self.max_radius + 10, mid)
+            line = Line(Element(start=p1, end=p2))
+            nodelist = a.get_intersect_points(line)
+            mid_nodes = self.get_rotated_nodes(angle, nodelist)
+            if self.is_possible_magnet(nodes, mid_nodes):
+                a.set_type(AREA.TYPE_MAGNET_AIRGAP)
+                a.phi = mid
+                a.mag_width = (a.max_dist - a.min_dist) * 0.9
+                return a
+        return None
+
+    def is_possible_magnet(self, all_nodes, mid_nodes):
+        all_nodes.sort()
+        mid_nodes.sort()
+
+        min_y = mid_nodes[0][1]
+        max_y = mid_nodes[-1][1]
+        for n in all_nodes:
+            if n[1] > max_y:
+                return False
+        return True
 
     def force_area_as_magnet(self, area):
         for a in self.list_of_areas():

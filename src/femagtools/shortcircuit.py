@@ -141,6 +141,8 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             simulation['i1max'] = 5*bch.machine['i1']
         logger.info("2phase short circuit simulation i1max = %.0f",
                     simulation['i1max'])
+        if 'magn_temp' not in simulation:
+            simulation['magn_temp'] = bch.magnet.get('Tmag', 20)
         scdata = shortcircuit_2phase(femag, machine, simulation, engine)
 
     else:
@@ -369,7 +371,7 @@ def demag(femag, machine, simulation, i1max, phirot, phi, engine=0):
         pass
     _ = femag(machine, simulation, fslfile='demag.fsl')
 
-    ptr = np.loadtxt(femag.workdir / "psi-torq-rem.dat")
+    ptr = np.loadtxt(pathlib.Path(femag.workdir) / "psi-torq-rem.dat")
     i1 = np.concat(([0], np.max(ptr[:,1:4], axis=1)))
     rr = np.concat(([1], ptr[:,-1]))
     dmag = {'Hk': simulation['Hk'],

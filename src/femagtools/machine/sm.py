@@ -14,7 +14,7 @@ import femagtools.bch
 EPS = 1e-13
 
 eecdefaults = {
-    'zeta1': 0.3,
+    'zeta1': 0.0,
     'zeta2': 0,
     'gam': 0.7,
     'kh': 2,
@@ -413,8 +413,8 @@ class SynchronousMachine(object):
     def uqd(self, w1, iq, id, iex):
         """return uq, ud of frequency w1 and d-q current"""
         psid, psiq = self.psi(iq, id, iex)
-        r1 = self.rstat(w1)
-        return r1*iq + w1*psid, r1*id - w1*psiq
+        # r1 = self.rstat(w1)
+        return self.r1*iq + w1*(self.ls*id + psid), self.r1*id - w1*(self.ls*iq + psiq)
 
     def plcu1(self, iqde, w1):
         r1 = self.rstat(w1)

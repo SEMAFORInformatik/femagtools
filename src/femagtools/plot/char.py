@@ -304,23 +304,14 @@ def _plot_contour(speed, torque, z, ax, title='', levels=[],
     y, yscale = _normalize10(y, **kwargs)
 
     if not levels:
+        levels = [0.5, 0.7, 0.8]
         if max(z) <= 1:
-            if max(z) > 0.96:
-                #levels = [0.5, 0.75, 0.8, 0.84,
-                          #0.89, 0.92, 0.94, 0.96, 0.97]
-                levels = np.linspace(min(z),max(z),9)
-                levels = np.round(levels, 2)
-                levels = list(levels)
-
-            else:
-                #levels = [0.25, 0.5, 0.75, 0.8, 0.84,
-                         #0.88, 0.9, 0.92, 0.94, 0.96]
-                levels = np.linspace(min(z),max(z),9)
-                levels = np.round(levels, 2)
-                levels = list(levels)
-
-            if max(z) > levels[-1]:
-                levels.append(np.ceil(max(z)*100)/100)
+            a = np.array(z)
+            zmin = [x for x in np.linspace(0.1, 1, 19)
+                    if np.shape(a)[0]/50 > np.shape(a[a<x])[0]][-1]
+            zmax = np.ceil(100*np.max(z))/100
+            levels += [zmax - x for x in
+                       [0.07, 0.05, 0.03, 0.02, 0.01, 0]]
         else:
             levels = 14
     #

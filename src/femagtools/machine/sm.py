@@ -126,7 +126,7 @@ def parident(workdir, engine, machine,
         period_frac=kwargs.get('period_frac', 6),
         speed=kwargs.get('speed', 50))
 
-    if kwargs.get("feloss", 0): 
+    if kwargs.get("feloss", 0):
         simulation["feloss"] = kwargs["feloss"]
         machine["calc_fe_loss"] = loss_models[kwargs["feloss"].lower()]
     ###self.cleanup()  # remove previously created files in workdir
@@ -458,9 +458,9 @@ class SynchronousMachine(object):
             #options={'disp': disp, 'maxiter': maxiter})
             if res['success']:
                 return res.x
-            else: 
+            else:
                 res = so.minimize(
-                    lambda cur: (self.tmech_iqd(*cur, n) - torque)**2, res.x, method='SLSQP', 
+                    lambda cur: (self.tmech_iqd(*cur, n) - torque)**2, res.x, method='SLSQP',
                     bounds=self.bounds,
                 )
                 if res['success']:
@@ -548,10 +548,10 @@ class SynchronousMachine(object):
             log(res.x)
         if res["success"]:
             return *res.x, self.tmech_iqd(*res.x, n)
-        else: 
+        else:
             # didn't converge, fullfill voltage and torque demand
             res = so.minimize(
-                lambda cur: (self.tmech_iqd(*cur, n) - torque)**2, io, method='SLSQP', 
+                lambda cur: (self.tmech_iqd(*cur, n) - torque)**2, io, method='SLSQP',
                 bounds=self.bounds,
                 constraints=[
                 {'type': 'eq',
@@ -562,8 +562,8 @@ class SynchronousMachine(object):
                 return *res.x, self.tmech_iqd(*res.x, n)
             else:
                 res = so.minimize(
-                    lambda cur: (self.tmech_iqd(*cur, n) - torque)**2 + 
-                    (np.linalg.norm(self.uqd(w1, *cur)) - u1max*np.sqrt(2))**2, io, method='SLSQP', 
+                    lambda cur: (self.tmech_iqd(*cur, n) - torque)**2 +
+                    (np.linalg.norm(self.uqd(w1, *cur)) - u1max*np.sqrt(2))**2, io, method='SLSQP',
                     bounds=self.bounds,
                 )
                 return *res.x, self.tmech_iqd(*res.x, n)
@@ -680,7 +680,7 @@ class SynchronousMachine(object):
             Tf = T
             w1type = self.w1_umax(u1max, iq, id, iex)
         logger.debug("w1type %f", w1type)
-        wmType = w1type/self.p
+        wmType = float(w1type/self.p)
         pmax = Tf*wmType
 
         def tload(wm):
@@ -723,7 +723,7 @@ class SynchronousMachine(object):
                     iq, id, iex, tqx = self.iqd_torque_umax(
                             tq, w1, u1max)
                     tqx -= self.tfric
-            else: 
+            else:
                 tqx = Tf
 
             uq, ud = self.uqd(w1, iq, id, iex)
@@ -857,9 +857,9 @@ class SynchronousMachinePsidq(SynchronousMachine):
                 'rotor_hyst', 'rotor_eddy')}
 
     def set_max_iex(self, iexc):
-        self.bounds[-1] = (self.bounds[-1][0], iexc) 
+        self.bounds[-1] = (self.bounds[-1][0], iexc)
         self.exc_max = iexc
-        
+
     def psi(self, iq, id, iex):
         """return psid, psiq of currents iq, id"""
         try:
@@ -980,9 +980,9 @@ class SynchronousMachineLdq(SynchronousMachine):
                 'styoke_eddy', 'stteeth_eddy',
                 'rotor_hyst', 'rotor_eddy')}
             pass
-    
+
     def set_max_iex(self, iexc):
-        self.bounds[-1] = (self.bounds[-1][0], iexc) 
+        self.bounds[-1] = (self.bounds[-1][0], iexc)
         self.exc_max = iexc
 
     def psi(self, iq, id, iex):

@@ -431,7 +431,7 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
             e = pm / p1
         else:
             e = p1 / pm
-        eta.append(e)
+        eta.append(float(e))
 
     return dict(
         iq=iqd[0].tolist(),

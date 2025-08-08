@@ -1904,6 +1904,15 @@ class Geometry(object):
             self.area_list = []
         return nodes_deleted > 0
 
+    def delete_needless_elements(self, radius):
+        self.area_list = []
+        for e in self.elements():
+            if greater(distance(self.center, e.p1), radius):
+                self.remove_edge(e)
+            elif greater(distance(self.center, e.p2), radius):
+                self.remove_edge(e)
+        self.delete_all_appendices()
+
     def render_areagroups(self, renderer):
         if not self.areagroup_list:
             return
@@ -2036,11 +2045,49 @@ class Geometry(object):
                 return c
         return None
 
+    def check_hull_radius(self, center, radius, hull_points):
+        logger.debug("check_hull_radius")
+        min_r = radius
+        max_r = radius
+        for p in hull_points:
+            d = round(distance(center, p), 2)
+            min_r = min(min_r, d)
+            max_r = max(max_r, d)
+
+        if min_r > radius * 0.8:
+            # radius is ok, adjust hill line
+            return True, max_r > radius
+
+        return False, False
+
     def get_machine_part(self, mm):
         logger.debug("*** Begin of get_machine_part() ***")
 
         h_points = [h for h in convex_hull(self.virtual_nodes())]
-        center = self.get_center(h_points, mm)
+        center, radius = self.get_center_arcs(mm)
+        if center and radius:
+            center_left = round(center[0] - mm[0], 4)
+            center_right = round(mm[1] - center[0], 4)
+            center_down = round(center[1] - mm[2], 4)
+            center_up = round(mm[3] - center[1], 4)
+            min_r = min(center_left, center_right, center_up, center_down)
+            max_r = max(center_left, center_right, center_up, center_down)
+            is_full = min_r > max_r / 2
+
+            ok, adjust_hull = self.check_hull_radius(center, radius, h_points)
+            if is_full and ok:
+                self.set_center([round(center[0], 8), round(center[1], 8)])
+                self.area_list = []
+                machine = Machine(self,
+                                  radius=radius,
+                                  startangle=0.0,
+                                  endangle=0.0)
+                if adjust_hull:
+                    machine.adjust_outer_hull(radius)
+                return machine
+
+        center = self.get_center(center, h_points, mm)
+
         logger.debug(" - Center is %s", center)
 
         min_radius = 99999
@@ -2259,9 +2306,14 @@ class Geometry(object):
     def is_same_center(self, center_lst, center, rtol, atol):
         for c in center_lst:
             if points_are_close(c['center'], center['center'], rtol, atol):
-                radius = center['radius'][0]
-                if not radius in c['radius']:
-                    c['radius'].append(radius)
+                new_radius, new_phi = center['radiuslist'][0]
+                c_radiuslist = [r for r, p in c['radiuslist']]
+                try:
+                    i = c_radiuslist.index(new_radius)
+                    c_radius, c_phi = c['radiuslist'][i]
+                    c['radiuslist'][i][1] = c_phi + new_phi
+                except:
+                    c['radiuslist'].append([new_radius, new_phi])
                 c['count'] = c['count'] + 1
                 return True
         return False
@@ -2283,7 +2335,6 @@ class Geometry(object):
             return None
         cy_list = [(c['center'][0], c) for c in c_list]
         cy_list.sort()
-        [logger.info("y=%s, c=%s", y, c) for y, c in cy_list]
         y, c = cy_list[0]
         return c
 
@@ -2302,14 +2353,23 @@ class Geometry(object):
                 return True
             return False
 
+        def get_best_radius(radiuslist):
+            radiuslist.sort(reverse=True)
+            r1, phi1 = radiuslist[0]
+            for r2, phi2 in radiuslist[1:]:
+                if phi2 > phi1:
+                    return r2
+                break
+            return r1
+
         circles = [e for e in self.elements() if is_Circle(e)]
         logger.debug(" -- %s Circles", len(circles))
 
         for e in circles:
             center = (round(e.center[0], 3), round(e.center[1], 3))
+            angle = e.get_angle_of_arc()
             entry = {'center': center,
-                     'radius': [round(e.radius, 1)],
-                     'phi': e.get_angle_of_arc(),
+                     'radiuslist':  [[round(e.radius, 1), angle]],
                      'dist': e.length(),
                      'inside': center_is_inside(center),
                      'count': 1}
@@ -2320,9 +2380,9 @@ class Geometry(object):
 
         for e in arcs:
             center = (round(e.center[0], 3), round(e.center[1], 3))
+            angle = e.get_angle_of_arc()
             entry = {'center': center,
-                     'radius': [round(e.radius, 1)],
-                     'phi': e.get_angle_of_arc(),
+                     'radiuslist': [[round(e.radius, 1), angle]],
                      'dist': e.length(),
                      'inside': center_is_inside(center),
                      'count': 1}
@@ -2330,7 +2390,7 @@ class Geometry(object):
                 center_list.append(entry)
 
         center = None
-        arc_list = [[c['count'], len(c['radius']), c['phi'], n, c]
+        arc_list = [[c['count'], len(c['radiuslist']), n, c]
                     for n, c in enumerate(center_list)]
         arc_list.sort(reverse=True)
 
@@ -2340,63 +2400,63 @@ class Geometry(object):
         [logger.debug("Arc %s", arc) for arc in arc_list]
         if not arc_list:
             logger.debug("end of get_center_arcs: no arcs")
-            return None
+            return None, 0
 
-        cnt, cr1, p, n, c1 = arc_list[0]
+        cnt, cr1, n, c1 = arc_list[0]
         logger.debug("First Entry: %s", c1)
         center = c1['center']
+        radius = get_best_radius(c1['radiuslist'])
         if len(arc_list) > 1:
-            cnt, cr2, p, n, c2 = arc_list[1]
+            cnt, cr2, n, c2 = arc_list[1]
             logger.debug("Second Entry: %s", c2)
             if not cr1 > cr2:
                 center = None
 
         if center:
-            logger.debug("end of get_center_arcs: -> %s", center)
-            return center
+            logger.debug("end of get_center_arcs: c=%s, r=%s", center, radius)
+            return center, radius
 
         c_entry = self.get_center_with_x(center_list, x_min)
         if c_entry:
             center = c_entry['center']
             if center[1] < y_min:
-                logger.debug("end of get_center_arcs: x -> %s", center)
-                return center
+                logger.debug("end of get_center_arcs (x): c=%s", center)
+                return center, 0
+
         c_entry = self.get_center_with_y(center_list, y_min)
         if c_entry:
             center = c_entry['center']
             if center[0] < x_min:
-                logger.debug("end of get_center_arcs: y -> %s", center)
-                return center
+                logger.debug("end of get_center_arcs (y): c=%s", center)
+                return center, 0
 
         logger.debug("end of get_center_arcs: no center found")
-        return None
+        return None, 0
 
     def get_center_dim(self, mm):
         return (round(mm[0], 4), round(mm[2], 4))
 
-    def get_center(self, points, mm):
-        logger.debug("Begin of get_center(%s points)", len(points))
-        if len(points) < 3:
+    def get_center(self, center_arcs, hull_points, mm):
+        logger.debug("Begin of get_center(%s hull-points)", len(hull_points))
+        if len(hull_points) < 3:
             return None
 
         center = None
         # Zuerst suchen wir anhand der Circle- und Arc-Segmente nach einem
         # möglichen Center-Punkt.
-        center_arcs = self.get_center_arcs(mm)
-
         if center_arcs:
             center = center_arcs
         else:
             # Wir finden keine Arc-Objekte, welche uns einen Hinweis auf den
             # Center geben können. Wir versuchen in der Verzweiflung mit
             # center_hull oder x(min) und y(min)
-            center_hull = self.get_center_hull(points)
+            center_hull = self.get_center_hull(_hull_points)
             if center_hull:
                 center = center_hull
             else:
                 center = self.get_center_dim(mm)
 
-        center_xaxis = self.get_center_xaxis(points)
+        center_xaxis = self.get_center_xaxis(hull_points)
         y = center_xaxis[1]
         if y is not None:
             if np.isclose(y, center[1], atol=0.3):
@@ -3827,16 +3887,20 @@ class Geometry(object):
         return False
 
     def looking_for_corners(self):
-        if self.is_inner:
-            logger.debug("looking_for_corners: inner")
-            start_cp = self.start_corners[-1]
-            end_cp = self.end_corners[-1]
-        else:
-            logger.debug("looking_for_corners: outer")
-            start_cp = self.start_corners[0]
-            end_cp = self.end_corners[0]
-        logger.debug("looking_for_corners: start=%s, end=%s",
-                     start_cp, end_cp)
+        try:
+            if self.is_inner:
+                logger.debug("looking_for_corners: inner")
+                start_cp = self.start_corners[-1]
+                end_cp = self.end_corners[-1]
+            else:
+                logger.debug("looking_for_corners: outer")
+                start_cp = self.start_corners[0]
+                end_cp = self.end_corners[0]
+            logger.debug("looking_for_corners: start=%s, end=%s",
+                         start_cp, end_cp)
+        except IndexError:
+            return
+
         for area in self.list_of_areas():
             area.mark_airgap_corners(start_cp, end_cp)
         return
@@ -4664,3 +4728,8 @@ class Geometry(object):
 
         with io.open(name, 'w', encoding='utf-8') as f:
             f.write('\n'.join(content))
+
+    def adjust_outer_hull(self, new_radius):
+        c = Circle(Element(center=self.center, radius=new_radius))
+        self.add_element(c, 1e-3, 1e-3)
+        self.delete_needless_elements(new_radius)

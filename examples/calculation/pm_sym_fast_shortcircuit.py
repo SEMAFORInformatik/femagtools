@@ -38,24 +38,19 @@ machine = dict(
 
     magnet=dict(
         mcvkey_yoke='M330-50A',
-        magnetIronV=dict(
-            magn_width=18e-3,
-            magn_height=6.48e-3,
-            magn_angle=145,
+        magnetSector=dict(
+            magn_height=6e-3,
+            magn_width_pct=0.8,
+            condshaft_r=0.092,
             magn_num=1,
-            gap_ma_iron=0.2e-3,
-            air_triangle=1e-3,
-            iron_height=2.61e-3,
-            iron_hs=0.1e-3,
-            shaft_rad=55.32e-3,
-            iron_shape=80.2e-3,
-            air_space_h=5.5e-3,
-            iron_bfe=3e-3,
-            magn_di_ra=6e-3,
-            corner_r=0,
-            air_sp_ori=1,
-            magn_ori=1,
-            condshaft_r=55.32e-3)
+            magn_rfe=0,
+            magn_len=1,
+            magn_ori=2,
+            magn_type=1,
+            magn_shape=0,
+            bridge_height=0,
+            bridge_width=0
+        )
     ),
 
     winding=dict(
@@ -91,11 +86,12 @@ scsim = dict(
     l_end_winding=0,
     l_external=0,
     sc_type=3,
-    initial=2,
+    initial=0,
     allow_demagn=0,
     sim_demagn=1)
 sc3 = femagtools.shortcircuit.shortcircuit(
-    femag, machine, r, scsim)
+    femag, {'name': machine['name'],
+            'poles': machine['poles']}, r, scsim)
 print('Torque [Nm] = {}'.format(r.machine['torque']))
 print('''
 Short Circuit    Current         Torque
@@ -119,7 +115,8 @@ from femagtools.multiproc import Engine
 engine = Engine()
 scsim['sc_type'] = 2
 sc2 = femagtools.shortcircuit.shortcircuit(
-    femag, machine, r, scsim, engine)
+    femag, {'name': machine['name'],
+            'poles': machine['poles']}, r, scsim, engine)
 
 print('''
 Short Circuit    Current         Torque
@@ -142,7 +139,7 @@ fig.tight_layout()
 fig.savefig('shortcircuits.pdf')
 
 fig, axs = plt.subplots(nrows=2)
-femagtools.plot.bch.demagnetization(sc3['demag'], ax=axs[0])
-femagtools.plot.bch.demagnetization(sc2['demag'], ax=axs[1])
+femagtools.plot.bch.demagnetization(sc3['demag'], title='3 Phase SC', ax=axs[0])
+femagtools.plot.bch.demagnetization(sc2['demag'], title='2 Phase SC', ax=axs[1])
 fig.tight_layout()
 fig.savefig('demagnetization.pdf')

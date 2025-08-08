@@ -168,6 +168,10 @@ def symmetry_search(machine,
 def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
     logger.debug("Begin of build_machine_rotor")
 
+    if machine.part == 1:
+        logger.error("Full machine rotor without symmetrylines")
+        sys.exit(1)
+
     if machine.has_windings():
         logger.debug("do nothing here with windings in rotor")
         logger.debug("End of build_machine_rotor")
@@ -257,6 +261,10 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
 def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False):
     logger.debug("Begin of build_machine_stator")
     timer = Timer(start_it=True)
+
+    if machine.part == 1:
+        logger.error("Full stator without symmetrylines")
+        sys.exit(1)
 
     if not machine.geom.is_stator():
         logger.debug("Rotor with windings")
@@ -520,13 +528,13 @@ def convert(dxfile,
               p, basegeom,
               title="Before finding Machine")
 
-    machine_base = basegeom.get_machine()
     if show_plots:
         p.render_elements(basegeom, Shape,
                           title=input_file.name,
                           with_hull=False,
                           rows=3, cols=2, num=1, show=debug_mode)
 
+    machine_base = basegeom.get_machine()
     if not machine_base.is_a_machine():
         logger.warn("it's Not a Machine")
         return dict(error='machine not detected')

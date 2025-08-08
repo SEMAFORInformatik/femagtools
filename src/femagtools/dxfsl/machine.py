@@ -1471,3 +1471,6 @@ class Machine(object):
         self.geom.check_airgap_connecting_nodes(m_outer.geom,
                                                 self.startangle,
                                                 self.endangle)
+
+    def adjust_outer_hull(self, new_radius):
+        self.geom.adjust_outer_hull(new_radius)

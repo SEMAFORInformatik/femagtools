@@ -48,6 +48,7 @@ class Symmetry(object):
         self.atol = atol
         self.full = False
         self.ag_radius = 0.0
+        self.height = geom.max_radius - geom.min_radius
         if np.isclose(self.startangle, self.endangle):
             self.alpha = 2.0*np.pi
             self.full = True
@@ -119,9 +120,6 @@ class Symmetry(object):
             areas.append(self.area_list_entry(a))
         areas.sort(reverse=True)
         return areas
-
-    def get_equal_areas(self, areas):
-        return
 
     def build_results(self, areas):
         logger.debug("begin of build_results with %s areas", len(areas))
@@ -286,13 +284,22 @@ class Symmetry(object):
         logger.debug("Geometry: Alpha=%s,  Center=%s", self.alpha, self.geom.center)
         mid_angle, a = area_list[0]
         result['height'] = a.height
+        result['min_dist'] = a.min_dist
+        result['max_dist'] = a.max_dist
         result['alpha'] = a.get_alpha(self.geom.center)
         if self.geom.is_inner:
             result['airgap'] = np.isclose(a.max_dist, self.ag_radius)
         else:
             result['airgap'] = np.isclose(a.min_dist, self.ag_radius)
+            upper_quarter = self.geom.min_radius + self.height * 0.75
+            upper_half = self.geom.min_radius + self.height * 0.5
+            if a.max_dist > upper_quarter:
+                if a.min_dist > upper_half:
+                    result['upper_quarter'] = True
         if len(area_list) == 1:  # one area
-            return self.check_one_area(mid_angle, a, result, rtol=rtol, atol=atol)
+            rslt = self.check_one_area(mid_angle, a, result, rtol=rtol, atol=atol)
+            logger.debug("end of check_delta")
+            return rslt
 
         self.delta_check_count += 1
         area_list.sort()
@@ -353,6 +360,7 @@ class Symmetry(object):
             logger.debug("end of check_delta: BAD DELTA %s, (expected %s)",
                          delta_angle, geom_alpha)
             result['slices'] = 0
+            logger.debug("end of check_delta: very bad")
             return result  # very bad
 
         deltas = self.create_deltas(delta_list, rtol=rtol, atol=atol)
@@ -928,11 +936,14 @@ class Symmetry(object):
                     slices = None
 
             if slices == 1:
+                if rslt.get('upper_quarter', False):
+                    slices = None
+
+            if slices == 1:
                 # symmetry killer
                 if areas < max(2, max_areas / 6):
                     if size < max_size * 0.05:
                         slices = None  # ignore tiny areas
-
 
             parts_possible = self.calc_parts(parts_possible, slices)
 

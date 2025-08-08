@@ -51,6 +51,8 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
             smpars = copy.deepcopy(eecpars)
             smpars['tcu1'] = temp[0]
             smpars['tcu2'] = temp[1]
+            # external inductances 
+            opts["ls"] = eecpars.get('ls1', 0)*rwdg**2
             if 'ldq' in smpars:
                 machine = SynchronousMachineLdq(smpars, lfe=rlfe, wdg=rwdg, **opts)
             else:

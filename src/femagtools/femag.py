@@ -421,7 +421,8 @@ class BaseFemag(object):
         except FileNotFoundError:
             pass
 
-        return list(pathlib.Path(self.workdir).glob('*.PROT'))[0].stem
+        return sorted(pathlib.Path(self.workdir).glob('*.PROT'),
+                      key=lambda x: x.stat().st_mtime, reverse=True)[0].stem
 
     def readResult(self, machine, simulation, bch=None):
         if simulation:

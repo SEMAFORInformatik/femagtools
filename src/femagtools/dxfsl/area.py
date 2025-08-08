@@ -1858,7 +1858,7 @@ class Area(object):
                 return 0.0
             return np.pi * e.radius**2
 
-        nodes = [n for n in self.list_of_nodes()]
+        nodes = [n for n in self.virtual_nodes(parts=4)]
         return area_size(nodes)
 
     def set_surface(self, mirrored):

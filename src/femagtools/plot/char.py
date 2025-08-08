@@ -307,8 +307,6 @@ def _plot_contour(speed, torque, z, ax, title='', levels=[],
         levels = [0.5, 0.7, 0.8]
         if max(z) <= 1:
             a = np.array(z)
-            zmin = [x for x in np.linspace(0.1, 1, 19)
-                    if np.shape(a)[0]/50 > np.shape(a[a<x])[0]][-1]
             zmax = np.ceil(100*np.max(z))/100
             levels += [zmax - x for x in
                        [0.07, 0.05, 0.03, 0.02, 0.01, 0]]

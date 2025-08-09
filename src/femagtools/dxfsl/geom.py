@@ -3828,6 +3828,7 @@ class Geometry(object):
                 mags.append([s, n, a, a_midangle])
 
         if not mags:
+            logger.debug("possible_magnet_in_the_middle: No Areas for Magnets")
             return None
 
         mags.sort(reverse=True)
@@ -3846,17 +3847,21 @@ class Geometry(object):
                 a.phi = mid
                 a.mag_width = (a.max_dist - a.min_dist) * 0.9
                 return a
+
+        logger.debug("possible_magnet_in_the_middle: No Magnets")
         return None
 
     def is_possible_magnet(self, all_nodes, mid_nodes):
-        all_nodes.sort()
-        mid_nodes.sort()
+        all_y = [n[1] for n in all_nodes]
+        all_y.sort()
+        mid_y = [n[1] for n in mid_nodes]
+        mid_y.sort()
 
-        min_y = mid_nodes[0][1]
-        max_y = mid_nodes[-1][1]
-        for n in all_nodes:
-            if n[1] > max_y:
-                return False
+        logger.debug("is_possible_magnet: mid y min/max = %s/%s", mid_y[0], mid_y[-1])
+        logger.debug("is_possible_magnet: all y min/max = %s/%s", all_y[0], all_y[-1])
+
+        if all_y[0] > mid_y[-1]:
+            return False
         return True
 
     def force_area_as_magnet(self, area):

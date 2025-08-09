@@ -168,7 +168,7 @@ def test_char_ldd_fieldweakening():
     assert r['beta'][0] == pytest.approx(-30.0, rel=1e-1)
     assert r['cosphi'][0] == pytest.approx(0.729, rel=1e-1)
 
-##@pytest.mark.skip(reason="fixit: returns currently 0")
+@pytest.mark.skip(reason="fixit: returns currently nan")
 def test_i1beta_char():
     m = dict(
         p=4,

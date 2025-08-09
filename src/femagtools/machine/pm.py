@@ -182,6 +182,8 @@ class PmRelMachine(object):
             return (0, 0)
         if np.isscalar(iqd0):
             i0 = self.io
+            if torque<0:
+                i0[0] = -i0[0]
         else:
             i0 = iqd0
         if with_mtpa:
@@ -193,10 +195,14 @@ class PmRelMachine(object):
             if res.success:
                 #raise ValueError(f'Torque {torque}, io {i0}: {res.message}')
                 return res.x
+            # should not happen
             def func(i1):
                 return torque - self.mtpa(i1)[2]
+#            with warnings.catch_warnings():
+#                warnings.simplefilter("error")
             i1 = so.fsolve(func, res.x[0])[0]
             return self.mtpa(i1)[:2]
+
         def func(iq):
             return torque - self.torque_iqd(iq, 0)
         return so.fsolve(func, 0)[0]
@@ -642,9 +648,10 @@ class PmRelMachine(object):
             if abs(du) > 0.1:
                 logger.debug('oops? iqd_imax_umax one more torque reduction')
                 if with_tmech:
-                    iq, id = self.iqd_tmech_umax(torque, w1, u1max)[:2]
+                    iq, id = self.iqd_tmech(torque, w1/2/np.pi/self.p,
+                                            iq, id)[:2]
                 else:
-                    iq, id = self.iqd_torque_umax(torque, w1, u1max)[:2]
+                    iq, id = self.iqd_torque(torque)[:2]
         if with_mtpv:
             try:
                 if with_tmech:
@@ -814,7 +821,7 @@ class PmRelMachine(object):
         if (abs(i1max) >= i1
             and round(u1max, 1) >= round(np.linalg.norm(
                 self.uqd(w1max, iq, id)/np.sqrt(2)), 1)):
-            return [w1type/2/np.pi/self.p, speedmax]
+            return [float(w1type/2/np.pi/self.p), float(speedmax)]
         wl, wu = [w1type, min(4*w1type, w1max)]
         if with_mtpv:
             kmax = 6
@@ -873,7 +880,7 @@ class PmRelMachine(object):
         self.check_extrapolation = True
         w1max = min(w1max, np.floor(self.w1_umax(
             u1max, *iqd(-np.pi/2, abs(i1max)))))
-        return [w/2/np.pi/self.p for w in (w1type, w1max)]  # ['MTPA']
+        return [float(w/2/np.pi/self.p) for w in (w1type, w1max)]  # ['MTPA']
 
 
     def operating_point(self, T, n, u1max, with_mtpa=True):
@@ -1105,9 +1112,11 @@ class PmRelMachine(object):
                             else:
                                 if with_tmech:
                                     iq, id, tq = self.mtpv_tmech(w1, u1max,
+                                                                 iqd0=(iq, id),
                                                                  maxtorque=T > 0)
                                 else:
                                     iq, id, tq = self.mtpv(w1, u1max,
+                                                           iqd0=(iq, id),
                                                            maxtorque=T > 0)
                             if (T > 0 and tq > 0) or (T < 0 and tq < 0):
                                 r['id'].append(id)

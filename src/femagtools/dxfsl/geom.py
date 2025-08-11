@@ -1142,20 +1142,30 @@ class Geometry(object):
                              rtol=self.rtol,
                              atol=self.atol)
 
-    def get_corner_nodes(self, center, angle):
-        rtol = 1e-4
-        atol = 1e-4
-
+    def get_corner_nodes(self, center, angle, rtol=1e-4, atol=1e-4):
         center_added, corners = self.get_corner_list(center, angle, rtol, atol)
         if len(corners) < 2:
             return ()  # not enough corners
         return (corners[0].point(), corners[len(corners)-1].point())
 
-    def set_start_corners(self, center, angle):
-        self.start_corners = self.get_corner_nodes(center, angle)
+    def set_start_corners(self, center, angle, rtol=1e-4, atol=1e-4):
+        self.start_corners = self.get_corner_nodes(center, angle, rtol=rtol, atol=atol)
 
-    def set_end_corners(self, center, angle):
-        self.end_corners = self.get_corner_nodes(center, angle)
+    def set_end_corners(self, center, angle, rtol=1e-4, atol=1e-4):
+        self.end_corners = self.get_corner_nodes(center, angle, rtol=rtol, atol=atol)
+
+    def set_virtual_start_end_corners(self):
+        assert(not self.start_corners)
+        assert(not self.end_corners)
+
+        dist_list = [(distance(self.center, n), n) for n in self.nodes()]
+        dist_list.sort()
+        d1, c1 = dist_list[0]
+        d2, c2 = dist_list[-1]
+        corners = (c1, c2)
+        self.start_corners = corners
+        self.end_corners = corners
+        return
 
     def get_angle(self, alpha1, alpha2):
         if np.isclose(alpha1, alpha2, 0.001, 0.001):
@@ -4411,6 +4421,40 @@ class Geometry(object):
     def create_inner_corner_areas(self, startangle, endangle):
         builder = AreaBuilder(geom=self)
         return builder.create_inner_corner_auxiliary_areas(startangle, endangle)
+
+    def analyse_airgap_line(self, inner):
+        if inner:  # TODO
+            return
+
+        logger.info("CORNERS: start: %s,  end: %s", self.start_corners, self.end_corners)
+        areas = self.list_of_areas()
+        builder = AreaBuilder(geom=self)
+        ag_nodes, ag_el = builder.get_outer_airgap_line()
+        if not ag_nodes:
+            logger.warning("NO AIRGAP NODES")
+            return
+
+        distlist = [distance(self.center, n) for n in ag_nodes]
+        min_dist = min(distlist)
+        max_dist = max(distlist)
+        logger.debug("Airgap min/max from center: %s/%s", min_dist, max_dist)
+        for a in areas:
+            logger.debug("%s: min/max from center: %s/%s", a.identifier(), a.min_dist, a.max_dist)
+            logger.debug("%s: min/max x: %s/%s,  y:  %s/%s",
+                         a.identifier(),
+                         a.min_x, a.max_x,
+                         a.min_y, a.max_y)
+            if less_equal(a.min_x, -min_dist) and greater_equal(a.max_x, min_dist) and \
+               less_equal(a.min_y, -min_dist) and greater_equal(a.max_y, min_dist):
+                logger.debug("%s: around center", a.identifier())
+                continue
+            if np.isclose(a.min_dist, min_dist, rtol=1e-3, atol=1e-2):
+                continue
+            if less_equal(a.max_dist, max_dist, rtol=1e-3, atol=1e-2):
+                return
+
+        if builder.close_outer_winding_areas():
+            self.create_list_of_areas(delete=True)
 
     def close_outer_winding_areas(self):
         logger.debug("begin close_outer_winding_areas(%s areas)",

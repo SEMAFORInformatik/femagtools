@@ -580,10 +580,8 @@ class Machine(object):
         return self.geom.create_auxiliary_lines(self.startangle, self.endangle)
 
     def set_alfa_and_corners(self):
-        self.geom.start_corners = self.geom.get_corner_nodes(self.center,
-                                                             self.startangle)
-        self.geom.end_corners = self.geom.get_corner_nodes(self.center,
-                                                           self.endangle)
+        self.geom.set_start_corners(self.center, self.startangle)
+        self.geom.set_end_corners(self.center, self.endangle)
         self.geom.alfa = alpha_angle(self.startangle, self.endangle)
 
         if self.mirror_geom is not None:
@@ -638,6 +636,17 @@ class Machine(object):
         logger.debug("begin of find_symmetry")
         if self.radius <= 0.0:
             return False
+
+        if is_outer:
+            self.geom.set_subregion_parameters(self.startangle, self.endangle)
+            if self.part > 1:
+                self.geom.set_start_corners(self.center, self.startangle, rtol=1e-3, atol=1e-2)
+                self.geom.set_end_corners(self.center, self.endangle, rtol=1e-3, atol=1e-2)
+            else:
+                self.geom.set_virtual_start_end_corners()
+
+            self.geom.looking_for_corners()
+            self.geom.analyse_airgap_line(is_inner)
 
         symmetry = Symmetry(geom=self.geom,
                             startangle=self.startangle,
@@ -1353,10 +1362,11 @@ class Machine(object):
         pts = self.geom.split_and_get_intersect_points(line, aktion=False)
         pts.sort()
 
+        arcs_created = False
         p_critical = self.geom.critical_touch_point(pts)
         if p_critical:
             d_critical = distance(self.center, p_critical)
-            logger.info("Critical Point: %s, len=%s", p_critical, d_critical)
+            logger.debug("Critical Point: %s, len=%s", p_critical, d_critical)
             sep_radius = self.get_iron_separator(radius_list)
             logger.debug("Iron Separator found: %s", sep_radius)
             if sep_radius > 0.0 and sep_radius < d_critical:
@@ -1367,7 +1377,14 @@ class Machine(object):
                     if r[1] < d_critical:
                         if self.create_arc(r[1]):
                             radius = r[1]
+                            arcs_created = True
                         break
+
+        if arcs_created:
+            self.geom.create_list_of_areas(delete=True)
+            self.geom.search_subregions(self.startangle,
+                                        self.endangle,
+                                        False)
 
         # install line
         line = Line(
@@ -1376,11 +1393,9 @@ class Machine(object):
 
         pts = self.geom.split_and_get_intersect_points(line)
         pts.sort()
-
         if self.geom.create_lines_outside_windings(pts):
-            self.geom.area_list = []
             logger.debug("create subregions again")
-            self.geom.create_list_of_areas()
+            self.geom.create_list_of_areas(delete=True)
             self.geom.search_subregions(self.startangle,
                                         self.endangle,
                                         False)

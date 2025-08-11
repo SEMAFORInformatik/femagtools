@@ -475,6 +475,19 @@ class Area(object):
 
         self.alpha = round(alpha_angle(self.min_angle, self.max_angle), 3)
 
+    def set_close_to_start_end_angles(self, startangle, endangle):
+        logger.debug("set_close_to_start_end_angles(%s, %s)",startangle, endangle)
+        logger.debug(">> %s: min/max = %s/%s", self.identifier(), self.min_angle, self.max_angle)
+        if np.isclose(startangle, endangle):  # full
+            self.close_to_startangle = True
+            self.close_to_endangle = True
+            return
+
+        self.close_to_startangle = np.isclose(self.min_angle, startangle,
+                                              1e-04, 1e-04)
+        self.close_to_endangle = np.isclose(self.max_angle, endangle,
+                                            1e-04, 1e-04)
+
     def center_is_inside(self, center):
         if less(self.min_x, center[0], rtol=1e-03, atol=1e-04) and \
            greater(self.max_x, center[0], rtol=1e-03, atol=1e-04) and \
@@ -1446,11 +1459,7 @@ class Area(object):
             opposite_radius = max_radius
 
         airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
-
-        self.close_to_startangle = np.isclose(self.min_angle, startangle,
-                                              1e-04, 1e-04)
-        self.close_to_endangle = np.isclose(self.max_angle, endangle,
-                                            1e-04, 1e-04)
+        self.set_close_to_start_end_angles(startangle, endangle)
         self.surface = self.area_size()
 
     def mark_stator_subregions(self,
@@ -1481,10 +1490,7 @@ class Area(object):
             opposite_radius = r_out
             airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
 
-        self.close_to_startangle = np.isclose(self.min_angle, 0.0,
-                                              1e-04, 1e-04)
-        self.close_to_endangle = np.isclose(self.max_angle, alpha,
-                                            1e-04, 1e-04)
+        self.set_close_to_start_end_angles(0.0, alpha)
         self.surface = self.area_size()
 
         logger.debug("\n***** mark_stator_subregions [{}] *****"
@@ -1634,10 +1640,7 @@ class Area(object):
             opposite_radius = r_out
             airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
 
-        self.close_to_startangle = np.isclose(self.min_angle, startangle,
-                                              1e-04, 1e-04)
-        self.close_to_endangle = np.isclose(self.max_angle, endangle,
-                                            1e-04, 1e-04)
+        self.set_close_to_start_end_angles(startangle, endangle)
 
         logger.debug("\n***** mark_EESM_rotor_subregions [{}] *****"
                      .format(self.id))
@@ -1707,10 +1710,7 @@ class Area(object):
             opposite_radius = r_out
             airgap_toleranz = (self.max_dist - self.min_dist) / 50.0  # 2%
 
-        self.close_to_startangle = np.isclose(self.min_angle, startangle,
-                                              1e-04, 1e-04)
-        self.close_to_endangle = np.isclose(self.max_angle, endangle,
-                                            1e-04, 1e-04)
+        self.set_close_to_start_end_angles(startangle, endangle)
 
         logger.debug("\n***** mark_PMSM_rotor_subregions [{}] *****"
                      .format(self.id))
@@ -1815,8 +1815,7 @@ class Area(object):
             logger.debug(">>> air is a circle")
             return self.type
 
-        self.close_to_startangle = np.isclose(self.min_angle, 0.0)
-        self.close_to_endangle = np.isclose(self.max_angle, alpha)
+        self.set_close_to_start_end_angles(self, 0.0, alpha)
 
         if self.is_magnet_rectangle():
             self.type = TYPE_MAGNET_RECT  # magnet embedded

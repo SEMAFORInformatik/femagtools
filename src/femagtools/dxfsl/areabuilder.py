@@ -730,31 +730,12 @@ class AreaBuilder(object):
         logger.debug("end of create_inner_corner_auxiliary_areas")
         return created
 
-    def get_airgap_line(self, start_node, end_node, area):
+    def get_airgap_line(self, n1, n2, end_node):
         logger.debug("get_airgap_line")
 
         self.set_edge_attributes()
 
-        nodes = [n for n in area.list_of_nodes()]
-        if not nodes:
-            logger.debug("end of get_airgap_line: no nodes found")
-            return [], []
-
-        n1 = nodes[0]
-        if points_are_close(start_node, n1):
-            n2 = nodes[-1]
-        else:
-            n2 = n1
-            for n1 in nodes[1:]:
-                if points_are_close(start_node, n1):
-                    break
-                n2 = n1
-
-        if not points_are_close(start_node, n1):
-            logger.debug("end of get_airgap_line: not close to start-node")
-            return [], []
-
-        logger.debug("START EDGE FOUND: %s - %s", n1, n2)
+        logger.debug("START EDGE IS: %s - %s", n1, n2)
         nodes = [n1, n2]
         info = self.get_edge_info(n1, n2)
         elements = [info.element]
@@ -768,7 +749,7 @@ class AreaBuilder(object):
             nodes.append(n2)
             elements.append(info.element)
 
-        logger.debug("end of get_airgap_line #%s", len(nodes))
+        logger.debug("end of get_airgap_line: %s nodes", len(nodes))
         return nodes, elements
 
     def get_inner_airgap_line(self):
@@ -776,20 +757,14 @@ class AreaBuilder(object):
         assert(self.geom.is_inner)
         assert(self.geom.area_list)
 
-        area = [a for a in self.geom.area_list if a.close_to_ag_endcorner]
-        if len(area) != 1:
-            logger.debug("end of get_inner_airgap_line: %s areas found", len(area))
-            return [], []
-
         start_node = self.geom.end_corners[-1]
-        logger.debug("START NODE %s", start_node)
         end_node = self.geom.start_corners[-1]
-        logger.debug("END NODE %s", end_node)
-
-        return self.get_airgap_line(start_node, end_node, area[0])
+        next_node = self.get_right_neighbor(start_node)
+        logger.debug("NODES start=%s, next=%s, end=%s", start_node, next_node, end_node)
+        return self.get_airgap_line(start_node, next_node, end_node)
 
     def close_outer_winding_areas(self):
-        logger.debug("close_outer_winding_areas")
+        logger.debug("begin close_outer_winding_areas")
 
         airgap_line, airgap_el = self.get_outer_airgap_line()
         logger.debug("Outer Airgap with %s Nodes", len(airgap_line))
@@ -830,24 +805,49 @@ class AreaBuilder(object):
             dist_prev = dist
             alpha_prev = alpha
 
+        logger.debug("end close_outer_winding_areas: lines=%s", lines_created)
         return lines_created > 0
+
+    def get_left_neighbor(self, start_node):
+        nbrs = self.geom.get_neighbors(start_node)
+        start_alpha = normalise_angle(alpha_line(start_node, self.geom.center))
+        next_angle = 0.0
+        next_node = None
+        for n in nbrs:
+            alpha = normalise_angle(alpha_line(start_node, n))
+            angle = alpha_angle(start_alpha, alpha)
+            if angle > next_angle:
+                next_angle = angle
+                next_node = n
+
+        logger.debug("Left neighbor is %s", next_node)
+        return next_node
+
+    def get_right_neighbor(self, start_node):
+        nbrs = self.geom.get_neighbors(start_node)
+        start_alpha = normalise_angle(alpha_line(start_node, self.geom.center))
+        next_angle = 99
+        next_node = None
+        for n in nbrs:
+            alpha = normalise_angle(alpha_line(start_node, n))
+            angle = alpha_angle(start_alpha, alpha)
+            if angle < next_angle:
+                next_angle = angle
+                next_node = n
+
+        logger.debug("Right neighbor is %s", next_node)
+        return next_node
 
     def get_outer_airgap_line(self):
         logger.debug("begin of get_outer_airgap_line")
         assert(self.geom.is_outer)
         assert(self.geom.area_list)
 
-        area = [a for a in self.geom.area_list if a.close_to_ag_startcorner]
-        if len(area) != 1:
-            logger.debug("end of get_outer_airgap_line: %s areas found", len(area))
-            return [], []
-
         start_node = self.geom.start_corners[0]
-        logger.debug("START NODE %s", start_node)
         end_node = self.geom.end_corners[0]
-        logger.debug("END NODE %s", end_node)
-
-        return self.get_airgap_line(start_node, end_node, area[0])
+        next_node = self.get_left_neighbor(start_node)
+        logger.debug("NODES start=%s, next=%s, end=%s", start_node, next_node, end_node)
+        return self.get_airgap_line(start_node, next_node, end_node)
 
     def create_one_area_group(self, areas):
         logger.debug("begin of create_one_area_group")

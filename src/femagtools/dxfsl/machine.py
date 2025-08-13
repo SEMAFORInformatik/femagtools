@@ -646,7 +646,12 @@ class Machine(object):
                 self.geom.set_virtual_start_end_corners()
 
             self.geom.looking_for_corners()
-            self.geom.analyse_airgap_line(is_inner)
+            create_areas = self.geom.analyse_airgap_line(is_inner)
+            if self.geom.adjust_outer_hull_for_symmetry():
+                create_areas = True
+
+            if create_areas:
+                self.geom.create_list_of_areas(delete=True)
 
         symmetry = Symmetry(geom=self.geom,
                             startangle=self.startangle,
@@ -1486,6 +1491,3 @@ class Machine(object):
         self.geom.check_airgap_connecting_nodes(m_outer.geom,
                                                 self.startangle,
                                                 self.endangle)
-
-    def adjust_outer_hull(self, new_radius):
-        self.geom.adjust_outer_hull(new_radius)

@@ -1596,7 +1596,10 @@ class Area(object):
             logger.debug("***** air #3")
 
         if self.close_to_startangle or self.close_to_endangle:
-            f = self.surface / stator_size
+            if stator_size > 0.0:
+                f = self.surface / stator_size
+            else:
+                f = 0.0
             if f < 0.02:  # area_size less then 2 percent of stator size
                 # Luftloch
                 self.type = TYPE_AIR  # air

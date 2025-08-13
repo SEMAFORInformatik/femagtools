@@ -935,6 +935,10 @@ class Symmetry(object):
                     logger.debug("Symmetry-Destroyer destroyed")
                     slices = None
 
+            if rslt.get('upper_quarter', False):
+                if size < max_size / 20:
+                    slices = None
+
             if slices == 1:
                 if rslt.get('upper_quarter', False):
                     slices = None

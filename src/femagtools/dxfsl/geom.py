@@ -35,7 +35,7 @@ from .functions import middle_angle, positive_angle
 from .functions import normalise_angle, is_same_angle
 from .functions import part_of_circle, gcd
 from .functions import point_on_arc, points_on_line, nodes_are_equal
-from .functions import area_size
+from .functions import area_size, get_angle_of_arc
 import io
 import time
 
@@ -2092,8 +2092,6 @@ class Geometry(object):
                                   radius=radius,
                                   startangle=0.0,
                                   endangle=0.0)
-                if adjust_hull:
-                    machine.adjust_outer_hull(radius)
                 return machine
 
         center = self.get_center(center, h_points, mm)
@@ -4424,15 +4422,14 @@ class Geometry(object):
 
     def analyse_airgap_line(self, inner):
         if inner:  # TODO
-            return
+            return False
 
-        logger.info("CORNERS: start: %s,  end: %s", self.start_corners, self.end_corners)
         areas = self.list_of_areas()
         builder = AreaBuilder(geom=self)
         ag_nodes, ag_el = builder.get_outer_airgap_line()
         if not ag_nodes:
-            logger.warning("NO AIRGAP NODES")
-            return
+            logger.warning("Fatal: No nodes found")
+            return False
 
         distlist = [distance(self.center, n) for n in ag_nodes]
         min_dist = min(distlist)
@@ -4451,10 +4448,45 @@ class Geometry(object):
             if np.isclose(a.min_dist, min_dist, rtol=1e-3, atol=1e-2):
                 continue
             if less_equal(a.max_dist, max_dist, rtol=1e-3, atol=1e-2):
-                return
+                return False
 
-        if builder.close_outer_winding_areas():
-            self.create_list_of_areas(delete=True)
+        return builder.close_outer_winding_areas()
+
+    def adjust_outer_hull_for_symmetry(self):
+        logger.debug("adjust_outer_hull_for_symmetry()")
+        areas = self.list_of_areas()
+        builder = AreaBuilder(geom=self)
+        op_nodes, op_el = builder.get_outer_opposite_airgap_line()
+        if not op_nodes:
+            logger.warning("Fatal: No nodes found")
+            return False
+
+        radiuslist = {}
+        n1 = op_nodes[0]
+        d1 = distance(self.center, n1)
+        a1 = alpha_line(self.center, n1)
+        for n2 in op_nodes[1:]:
+            d2 = distance(self.center, n2)
+            a2 = alpha_line(self.center, n2)
+            if np.isclose(d1, d2, rtol=1e-3, atol=1e-2):
+                r = round((d1 + d2) / 2, 1)
+                alpha = get_angle_of_arc(a2, a1)
+                radius_alpha = radiuslist.get(r, 0.0) + alpha
+                radiuslist[r] = radius_alpha
+
+            n1 = n2
+            d1 = d2
+            a1 = a2
+
+        rlist = [(radiuslist[r], r) for r in radiuslist]
+        if len(rlist) < 2:
+            return False
+
+        rlist.sort(reverse=True)
+        alpha, best_radius = rlist[0]
+        logger.debug("Best Outer Radius is %s", best_radius)
+        self.adjust_outer_hull(best_radius)
+        return True
 
     def close_outer_winding_areas(self):
         logger.debug("begin close_outer_winding_areas(%s areas)",
@@ -4782,3 +4814,4 @@ class Geometry(object):
         c = Circle(Element(center=self.center, radius=new_radius))
         self.add_element(c, 1e-3, 1e-3)
         self.delete_needless_elements(new_radius)
+        self.max_radius = new_radius

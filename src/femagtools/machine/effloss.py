@@ -252,6 +252,8 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
                 rb['n'] = None
                 rb['T'] = None
         if 'n' not in rb:
+            if kwargs.get('i1max', 0):
+                kwargs['i1max'] = -kwargs['i1max']
             rb = m.characteristics(-T, max(r['n']), u1, nsamples=nsamples,
                                    with_mtpv=with_mtpv, with_mtpa=with_mtpa,
                                    with_pmconst=with_pmconst, with_tmech=with_tmech,

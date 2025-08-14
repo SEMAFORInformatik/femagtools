@@ -1921,6 +1921,10 @@ class Geometry(object):
                 self.remove_edge(e)
             elif greater(distance(self.center, e.p2), radius):
                 self.remove_edge(e)
+            elif is_Arc(e):
+                p = e.center_of_connection()
+                if greater(distance(self.center, p), radius):
+                    self.remove_edge(e)
         self.delete_all_appendices()
 
     def render_areagroups(self, renderer):
@@ -4479,11 +4483,10 @@ class Geometry(object):
             a1 = a2
 
         rlist = [(radiuslist[r], r) for r in radiuslist]
-        if len(rlist) < 2:
-            return False
-
         rlist.sort(reverse=True)
         alpha, best_radius = rlist[0]
+        if np.isclose(best_radius, self.max_radius, rtol=1e-3, atol=1e-2):
+            return False
         logger.debug("Best Outer Radius is %s", best_radius)
         self.adjust_outer_hull(best_radius)
         return True

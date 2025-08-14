@@ -226,7 +226,7 @@ class PmRelMachine(object):
             else:
                 i0 = (iq0, 0)
             logger.debug("initial guess i0 %f -> %s tx %f torque %f",
-                        self.io[0], i0, tx, torque)
+                         self.io[0], i0, tx, torque)
         else:
             i0 = iqd0
 
@@ -243,44 +243,11 @@ class PmRelMachine(object):
                 # make new initial guess:
                 tx = self.tmech_iqd(*i0, n)
                 logger.debug("k %d new guess i0 %s tx %f torque %f",
-                            k, i0, tx, torque)
+                             k, i0, tx, torque)
                 i0=(min(0.9*self.i1range[1]/np.sqrt(2), torque/tx*i0[0]), 0)
                 k += 1
             raise ValueError(
                 f'Torque {torque} speed {n} {i0} {res.message}')
-        def tqiq(iq):
-            return torque - self.tmech_iqd(float(iq), 0, n)
-        iq = so.fsolve(tqiq, (i0[0],))[0]
-        return iq, 0, self.tmech_iqd(iq, 0, n)
-
-    def iqd_tmech0(self, torque, n, iqd0=0, with_mtpa=True):
-        """return minimum d-q-current for shaft torque"""
-        if np.abs(torque) < 1e-2:
-            return (0, 0)
-        if np.isscalar(iqd0):
-            i0 = self.io
-        else:
-            i0 = iqd0
-
-        if with_mtpa:
-            res = so.minimize(
-                lambda iqd: la.norm(iqd), i0, method='SLSQP',
-                constraints=({'type': 'eq',
-                              'fun': lambda iqd:
-                              self.tmech_iqd(*iqd, n) - torque}))
-            if res.success:
-                return res.x
-
-            #logger.warning("n: %s, torque %s: %s %s",
-            #                   60*n, torque, res.message, i0)
-            # try a different approach:
-            #raise ValueError(
-            #    f'Torque {torque:.1f} speed {60*n:.1f} {res.message}')
-            def func(i1):
-                return torque - self.mtpa_tmech(i1, n)[2]
-            i1 = so.fsolve(func, res.x[0])[0]
-            return self.mtpa_tmech(i1, n)[:2]
-
         def tqiq(iq):
             return torque - self.tmech_iqd(float(iq), 0, n)
         iq = so.fsolve(tqiq, (i0[0],))[0]
@@ -356,12 +323,12 @@ class PmRelMachine(object):
             sign = -1 if i1max > 0 else 1
             res = so.minimize(
                 lambda n: sign*self.tmech_iqd(iq, id, n),
-                    n0,
-                    constraints={
-                        'type': 'eq',
-                        'fun': lambda n:
-                        np.sqrt(2)*u1max - np.linalg.norm(
-                            self.uqd(2*np.pi*n*self.p, iq, id))})
+                n0,
+                constraints={
+                    'type': 'eq',
+                    'fun': lambda n:
+                    np.sqrt(2)*u1max - np.linalg.norm(
+                        self.uqd(2*np.pi*n*self.p, iq, id))})
             return 2*np.pi*res.x[0]*self.p, self.tmech_iqd(iq, id, res.x[0])
 
         return so.fsolve(lambda x: np.linalg.norm(
@@ -459,22 +426,26 @@ class PmRelMachine(object):
             i1 = self.i1_tmech(torque, 0, n)
             i0 = iqd(0, i1)
 
+        logger.debug("i0 %s", i0)
         if np.linalg.norm(self.uqd(w1, *i0))/np.sqrt(2) > u1max:
             beta, i1 = betai1(*i0)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                i0 = iqd(so.fsolve(lambda b: u1max - np.linalg.norm(
-                    self.uqd(w1, *iqd(b, i1)))/np.sqrt(2),
-                                   beta)[0], i1)
+                bx, _, ier, msg = so.fsolve(lambda b: u1max - np.linalg.norm(
+                    self.uqd(w1, *iqd(b, i1)))/np.sqrt(2), beta,
+                                          full_output=True)
+                i0 = iqd(bx[0], i1)
+                logger.debug("i0 %s ier %d %s", i0, ier, msg)
 
-            res = so.minimize(lambda iqd: np.linalg.norm(iqd), i0, method='SLSQP',
-                          constraints=(
-                              {'type': 'eq',
-                               'fun': lambda iqd:
-                               self.tmech_iqd(*iqd, n) - torque},
-                              {'type': 'ineq',
-                               'fun': lambda iqd:
-                               np.sqrt(2)*u1max - la.norm(self.uqd(w1, *iqd))}))
+            res = so.minimize(
+                lambda iqd: np.linalg.norm(iqd), i0, method='SLSQP',
+                constraints=(
+                    {'type': 'eq',
+                     'fun': lambda iqd:
+                     self.tmech_iqd(*iqd, n) - torque},
+                    {'type': 'ineq',
+                     'fun': lambda iqd:
+                     np.sqrt(2)*u1max - la.norm(self.uqd(w1, *iqd))}))
             iq, id = res.x
         else:
             iq, id = i0
@@ -593,18 +564,19 @@ class PmRelMachine(object):
             log((iq, id, tq))
         return iq, id, tq
 
-    def iqd_imax_umax(self, i1max, w1, u1max, torque, with_mtpv=True, with_tmech=True, with_mtpa=True):
+    def iqd_imax_umax(self, i1max, w1, u1max, torque, with_mtpv=True,
+                      with_tmech=True, with_mtpa=True):
         """return d-q current and shaft torque at stator frequency and max voltage
         and max current (for motor operation if maxtorque else generator operation)"""
         if torque > 0:
-            sign=-1
+            sign = -1
             # -pi/2 --> 0
             b0, b1 = max(-np.pi/2, self.betarange[0]), 0
             if max(self.betarange) < b1:
                 raise ValueError(
                     f"invalid betarange for maxtorque>0: {self.betarange}")
         else:
-            sign=1
+            sign = 1
             # -pi/2 --> -pi
             b0, b1 = -np.pi/2, max(-np.pi, self.betarange[0])
             if min(self.betarange) > b0:
@@ -614,6 +586,7 @@ class PmRelMachine(object):
             iq, id, _ = self.mtpa(i1max)
         else:
             iq, id = iqd(0, i1max)
+
         deps = 1e-6
         kmax = 100
 
@@ -628,8 +601,10 @@ class PmRelMachine(object):
             else:
                 iq, id, tq = self.iqd_torque_umax(torque, w1, u1max)
             if not with_mtpv:
+                logging.debug("not mtpv iq %f id %f tq %f",
+                             iq, id, tq)
                 return iq, id, tq
-            beta, i1 = betai1(iq, id)
+            #beta, i1 = betai1(iq, id)
         else:
             for k in range(kmax):
                 bx = b0 + (b1-b0)/2
@@ -648,10 +623,9 @@ class PmRelMachine(object):
             if abs(du) > 0.1:
                 logger.debug('oops? iqd_imax_umax one more torque reduction')
                 if with_tmech:
-                    iq, id = self.iqd_tmech(torque, w1/2/np.pi/self.p,
-                                            iq, id)[:2]
+                    iq, id, tq = self.iqd_tmech_umax(torque, w1, u1max)
                 else:
-                    iq, id = self.iqd_torque(torque)[:2]
+                    iq, id, tq = self.iqd_torque_umax(torque, w1, u1max)
         if with_mtpv:
             try:
                 if with_tmech:
@@ -663,9 +637,26 @@ class PmRelMachine(object):
                     iq, id, tq = self.mtpv(w1, u1max, iqd0=(iq, id),
                                            maxtorque=torque>0,
                                            i1max=i1max)
+                logging.debug("mtpv iq %f id %f tq %f",
+                              iq, id, tq)
                 return iq, id, tq
             except ValueError as e:
-                logger.debug(e)
+                n = w1/2/np.pi/self.p
+                logger.debug(" i1max %f iq %f id %f", i1max, iq, id)
+                #
+                res = so.minimize(
+                    lambda iqd: sign*self.tmech_iqd(*iqd, n),
+                    (iq, id),
+                    constraints=[{
+                        'type': 'eq',
+                        'fun': lambda iqd:
+                        np.sqrt(2)*u1max - np.linalg.norm(
+                            self.uqd(w1, *iqd))}])
+                logger.debug(" n %f i1max %f %f iq %f id %f tq %f",
+                            60*n, i1max, np.linalg.norm(res.x)/np.sqrt(2),
+                            iq, id, sign*res.fun)
+                if res['success'] and abs(i1max*np.sqrt(2)) >= np.linalg.norm(res.x):
+                    return *res.x, sign*res.fun
 
         if with_tmech:
             tq = self.tmech_iqd(iq, id, w1/2/np.pi/self.p)
@@ -730,6 +721,8 @@ class PmRelMachine(object):
         else:
             i0 = iqd0
         n = w1/2/np.pi/self.p
+        logger.debug("w1 %f u1 %f iqd0 %s maxtorque %s %f",
+                    w1, u1, iqd0, maxtorque, i1max)
         constraints=[{'type': 'eq',
                      'fun': lambda iqd:
                      np.sqrt(2)*u1 - la.norm(
@@ -741,6 +734,7 @@ class PmRelMachine(object):
         res = so.minimize(lambda iqd: sign*self.tmech_iqd(*iqd, n), i0,
                           method='SLSQP',
                           constraints=constraints)
+        logger.debug("iq %f id %f w1 %f success %s", res.x[0], res.x[1], w1, res['success'])
         if res['success']:
             return res.x[0], res.x[1], sign*res.fun
         #logger.warning("w1=%.1f u1=%.1f maxtorque=%s %s: %s", w1, u1, maxtorque, res.x, res.message)
@@ -842,6 +836,7 @@ class PmRelMachine(object):
                                                 T, with_mtpa=with_mtpa,
                                                 with_mtpv=False)[:2]
                 i1 = betai1(iq, id)[1]
+                logger.debug("iq %f id %f i1 %f", iq, id, i1)
                 try:
                     if with_tmech:
                         def voltw1(wx):
@@ -858,7 +853,7 @@ class PmRelMachine(object):
                     if ier == 1: #in (1, 4, 5):
                         if abs(w[0]) <= wx:
                             self.check_extrapolation = True
-                            return [w/2/np.pi/self.p
+                            return [float(w/2/np.pi/self.p)
                                     for w in (w1type, w[0], w1max)]  # ['MTPA', 'MTPV']
                         if w[0] > wu:
                             wl += (wu-wl)/4
@@ -997,8 +992,8 @@ class PmRelMachine(object):
         if kwargs.get('i1max', 0):
             i1max = kwargs['i1max']
             w1, Tf = self.w1_imax_umax(i1max, u1max,
-                                      with_mtpa=with_mtpa,
-                                      with_tmech=with_tmech)
+                                       with_mtpa=with_mtpa,
+                                       with_tmech=with_tmech)
             if with_mtpa:
                 iq, id, T = self.mtpa(i1max)
             else:
@@ -1033,7 +1028,8 @@ class PmRelMachine(object):
                     iq, id = iqd(0, i1max)
 
                 if with_tmech:
-                    w1, Tf = self.w1_imax_umax(i1max, u1max, with_mtpa=with_mtpa,
+                    w1, Tf = self.w1_imax_umax(i1max, u1max,
+                                               with_mtpa=with_mtpa,
                                                with_tmech=with_tmech)
                 else:
                     iq, id = self.iqd_torque(T)
@@ -1107,7 +1103,6 @@ class PmRelMachine(object):
                                     iq, id, tq = self.iqd_imax_umax(
                                         i1max, w1, u1max,
                                         tq, with_tmech=with_tmech,
-                                        with_mtpv=with_mtpv,
                                         with_mtpa=with_mtpa)
                             else:
                                 if with_tmech:
@@ -1124,8 +1119,8 @@ class PmRelMachine(object):
                                 r['n'].append(nn)
                                 r['T'].append(tq)
                             else:
-                                logger.warning("fieldweakening: n %g T %g tq %g i1max %g w1 %g u1 %g",
-                                               nn*60, T, tq, i1max, w1, u1max)
+                                logger.debug("fieldweakening: n %g T %g tq %g i1max %g w1 %g u1 %g",
+                                             nn*60, T, tq, i1max, w1, u1max)
                     except ValueError as e:
                         nmax = r['n'][-1]
                         logger.warning("%s: adjusted nmax %f T %f", e, nmax, r['T'][-1])

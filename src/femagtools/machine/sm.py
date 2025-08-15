@@ -22,7 +22,7 @@ eecdefaults = {
     'tcu2': 20,
     'rotor_mass': 0,
     'kfric_b': 1,
-    'kpfe': 1 # iron loss factor
+    'kpfe': 1 # common iron loss factor
 }
 
 logger = logging.getLogger('sm')
@@ -387,8 +387,13 @@ class SynchronousMachine(object):
             and friction windage losses"""
         if n > 1e-3:
             f1 = self.p*n
-            plfe = self.kpfe * (self.iqd_plfe1(iq, id, iex, f1)
-                                + self.iqd_plfe2(iq, id, iex, f1))
+            plfe1 = self.kpfe * self.iqd_plfe1(iq, id, iex, f1)
+            plfe2 = self.kpfe * self.iqd_plfe2(iq, id, iex, f1)
+            if hasattr(self, 'kpfe_s'):
+                plfe1 = self.kpfe_s * self.iqd_plfe1(iq, id, iex, f1)
+            if hasattr(self, 'kpfe_r'):
+                plfe2 = self.kpfe_r * self.iqd_plfe2(iq, id, iex, f1)
+            plfe = plfe1 + plfe2
             return (plfe + self.pfric(n))/(2*np.pi*n)
         return 0
 

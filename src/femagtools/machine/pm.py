@@ -97,7 +97,7 @@ class PmRelMachine(object):
         self.zeta1 = 0.2
         self.gam = 0.7
         self.kh = 2
-        self.kpfe = 1 # iron loss factor
+        self.kpfe = 1 # common iron loss factor
         self.kpmag = 1 # magnet loss factor
         self.kfric_b = 1
         self.rotor_mass = 0
@@ -258,7 +258,13 @@ class PmRelMachine(object):
         and friction windage losses"""
         if n > 1e-3:
             f1 = self.p*n
-            plfe = self.kpfe * (self.iqd_plfe1(iq, id, f1) + self.iqd_plfe2(iq, id, f1))
+            plfe1 = self.kpfe * self.iqd_plfe1(iq, id, f1)
+            plfe2 = self.kpfe * self.iqd_plfe2(iq, id, f1)
+            if hasattr(self, 'kpfe_s'):
+                plfe1 = self.kpfe_s * self.iqd_plfe1(iq, id, f1)
+            if hasattr(self, 'kpfe_r'):
+                plfe2 = self.kpfe_r * self.iqd_plfe2(iq, id, f1)
+            plfe = plfe1 + plfe2
             pmag = self.kpmag * self.iqd_plmag(iq, id, f1)
             return (plfe + pmag + self.pfric(n))/(2*np.pi*n)
         return 0
@@ -927,10 +933,10 @@ class PmRelMachine(object):
         plfe1 = self.iqd_plfe1(iq, id, f1)
         plfe2 = self.iqd_plfe2(iq, id, f1)
         plmag = self.iqd_plmag(iq, id, f1)
-        plfe = plfe1 + plfe2 + plmag
+        plfe = plfe1 + plfe2
         plfric = self.pfric(n)
         plcu = self.betai1_plcu(i1, 2 * np.pi * f1)
-        pltotal = plfe + plcu + plfric
+        pltotal = plfe + plcu + plfric + plmag
         p1 = pmech + pltotal
         if np.abs(pmech) < 1e-12:
             eta = 0  # power to low for eta calculation
@@ -1153,11 +1159,15 @@ class PmRelMachine(object):
         f1 = np.array(r['n'])*self.p
         plfe1 = self.kpfe*self.iqd_plfe1(np.array(r['iq']), np.array(r['id']), f1)
         plfe2 = self.kpfe*self.iqd_plfe2(np.array(r['iq']), np.array(r['id']), f1)
+        if hasattr(self, 'kpfe_s'):
+            plfe1 = self.kpfe_s*self.iqd_plfe1(np.array(r['iq']), np.array(r['id']), f1)
+        if hasattr(self, 'kpfe_r'):
+            plfe2 = self.kpfe_r*self.iqd_plfe2(np.array(r['iq']), np.array(r['id']), f1)
         plmag = self.kpmag*self.iqd_plmag(np.array(r['iq']), np.array(r['id']), f1)
-        plfe = plfe1 + plfe2 + plmag
+        plfe = plfe1 + plfe2
         plcu = self.betai1_plcu(np.array(r['i1']), 2*np.pi*f1)
         plfw = self.pfric(2*np.pi*f1)
-        pltotal = plfe + plcu + plfw
+        pltotal = plfe + plcu + plfw + plmag
         r['pmech'] = pmech.tolist()
         r['plfe'] = plfe.tolist()
         r['plcu'] = plcu.tolist()

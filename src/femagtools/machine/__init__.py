@@ -32,7 +32,7 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
     PM, EESM or IM"""
     rlfe = lfe
     rwdg = wdg
-    opts = {k: eecpars[k] for k in ('zeta1', 'gam', 'kh', 'kpfe',
+    opts = {k: eecpars[k] for k in ('zeta1', 'gam', 'kh', 'kpfe', 'kpfe_s', 'kpfe_r',
                                     'kfric_b', 'kpmag') if k in eecpars}
     try:
         opts['rotor_mass'] = rlfe*eecpars['rotor_mass']
@@ -51,7 +51,7 @@ def create_from_eecpars(temp, eecpars, lfe=1, wdg=1):
             smpars = copy.deepcopy(eecpars)
             smpars['tcu1'] = temp[0]
             smpars['tcu2'] = temp[1]
-            # external inductances 
+            # external inductances
             opts["ls"] = eecpars.get('ls1', 0)*rwdg**2
             if 'ldq' in smpars:
                 machine = SynchronousMachineLdq(smpars, lfe=rlfe, wdg=rwdg, **opts)

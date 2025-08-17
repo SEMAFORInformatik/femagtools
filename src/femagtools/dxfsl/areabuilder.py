@@ -16,7 +16,7 @@ from femagtools.dxfsl.area import Area, TYPE_AIR
 from femagtools.dxfsl.functions import points_are_close, nodes_are_equal, distance
 from femagtools.dxfsl.functions import normalise_angle, positive_angle, point
 from femagtools.dxfsl.functions import alpha_line, alpha_points, alpha_angle
-from femagtools.dxfsl.functions import less, is_same_angle
+from femagtools.dxfsl.functions import less, greater, is_same_angle
 from femagtools.dxfsl.functions import Timer
 from femagtools.dxfsl.journal import getJournal
 import io
@@ -778,7 +778,7 @@ class AreaBuilder(object):
         assert(self.geom.area_list)
         return self.get_lower_border_line()
 
-    def close_outer_winding_areas(self):
+    def close_outer_winding_areas(self, color='red'):
         logger.debug("begin close_outer_winding_areas")
 
         airgap_line, airgap_el = self.get_outer_airgap_line()
@@ -795,13 +795,13 @@ class AreaBuilder(object):
         dist_prev = distance(self.geom.center, n_prev)
         alpha_prev = alpha_line(self.geom.center, n_prev)
         alpha_start = alpha_prev
-
         lines_created = 0
         for n in airgap_line[1:]:
             dist = distance(self.geom.center, n)
             alpha = alpha_line(self.geom.center, n)
             if not n1:
-                if dist > dist_prev and alpha < alpha_prev:
+                if greater(dist, dist_prev, rtol=1e-3, atol=1e-3) and \
+                   less(alpha, alpha_prev, rtol=1e-3, atol=1e-3):
                     n1 = n_prev
                     dist_n1 = dist_prev
             else:
@@ -810,7 +810,7 @@ class AreaBuilder(object):
                     if e_prev.intersect_line(line):
                         logger.debug("___LINE NOT POSSIBLE___")
                     else:
-                        self.geom.add_line(n1, n, color='red')
+                        self.geom.add_line(n1, n, color=color)
                         lines_created += 1
                     n1 = None
                     dist_n1 = 0.0

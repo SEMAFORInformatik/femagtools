@@ -135,7 +135,7 @@ class EdgeInfo(object):
         self.angle = positive_angle(alpha_angle(start_angle, self.n1_angle_ingoing()))
         logger.debug("set_direction_angle: angle is %s", self.angle)
 
-        if is_same_angle(0.0, self.angle, atol=0.008):  # 1/2 degree
+        if is_same_angle(0.0, self.angle, atol=0.015):  # 1/2 degree
             # reverse direction
             logger.debug("set_direction_angle: reverse direction( nearly 180 degrees)")
 
@@ -218,7 +218,7 @@ class EdgeInfo(object):
         myself_angle = self.angle
         other_angle = nbr_edge.angle
 
-        if is_same_angle(0.0, myself_angle):
+        if is_same_angle(0.0, myself_angle, atol=0.015):
             # 360 or 0 degrees => turn 180 degrees
             logger.debug("-- ATTENTION: myself %s turns nearly 180 degrees", self.classname())
             logger.debug("   the angle is %s", myself_angle)
@@ -261,7 +261,7 @@ class EdgeInfo(object):
                         logger.debug("#4: end of myself_direction_lefthand: ==> %s", left)
                         return left
 
-        if is_same_angle(0.0, other_angle, atol=0.008):  # 1/2 degree
+        if is_same_angle(0.0, other_angle, atol=0.015):  # 1/2 degree
             # 360 or 0 degrees => turn 180 degrees
             logger.debug("-- ATTENTION: other %s turns nearly 180 degrees", nbr_edge.classname())
             logger.debug("   the angle is %s", other_angle)
@@ -288,7 +288,7 @@ class EdgeInfo(object):
 
         logger.debug("-- angles: myself = %s,  other = %s",
                      myself_angle, other_angle)
-        if not is_same_angle(myself_angle, other_angle, atol=0.008):  # 1/2 degree
+        if not is_same_angle(myself_angle, other_angle, atol=0.015):  # 1/2 degree
             logger.debug("-- angles are different")
             left = myself_angle > other_angle
             log_lefthand(left, self, nbr_edge)

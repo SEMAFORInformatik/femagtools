@@ -16,7 +16,7 @@ from femagtools.dxfsl.area import Area, TYPE_AIR
 from femagtools.dxfsl.functions import points_are_close, nodes_are_equal, distance
 from femagtools.dxfsl.functions import normalise_angle, positive_angle, point
 from femagtools.dxfsl.functions import alpha_line, alpha_points, alpha_angle
-from femagtools.dxfsl.functions import less, greater, is_same_angle
+from femagtools.dxfsl.functions import less, less_equal, greater, is_same_angle
 from femagtools.dxfsl.functions import Timer
 from femagtools.dxfsl.journal import getJournal
 import io
@@ -787,6 +787,15 @@ class AreaBuilder(object):
         if len(airgap_line) < 5:
             return False
 
+        distlist = [distance(self.geom.center, n) for n in airgap_line]
+        min_dist = min(distlist)
+        max_dist = max(distlist)
+        geom_height = self.geom.max_radius - self.geom.min_radius
+        line_height = max_dist - min_dist
+        if line_height < geom_height * 0.2:
+            return 0
+
+        logger.debug("NODES: %s TO %s", airgap_line[0], airgap_line[-1])
         n1 = None
         dist_n1 = 0.0
 
@@ -796,16 +805,23 @@ class AreaBuilder(object):
         alpha_prev = alpha_line(self.geom.center, n_prev)
         alpha_start = alpha_prev
         lines_created = 0
+        dist_ag = self.geom.min_radius
+        logger.debug("MIN RADIUS DIST: %s",dist_ag)
         for n in airgap_line[1:]:
             dist = distance(self.geom.center, n)
             alpha = alpha_line(self.geom.center, n)
+            logger.debug("Node %s, dist=%s, alpha=%s", n, dist, alpha)
             if not n1:
-                if greater(dist, dist_prev, rtol=1e-3, atol=1e-3) and \
-                   less(alpha, alpha_prev, rtol=1e-3, atol=1e-3):
-                    n1 = n_prev
-                    dist_n1 = dist_prev
+                logger.debug("Previous, dist=%s, alpha=%s", dist_prev, alpha_prev)
+                if greater(dist_prev, dist_ag, rtol=1e-3, atol=1e-3):
+                    if greater(dist, dist_prev, rtol=1e-3, atol=1e-3) and \
+                       less(alpha, alpha_prev, rtol=1e-4, atol=1e-5):
+                        n1 = n_prev
+                        dist_n1 = dist_prev
+                        logger.debug("NODE1: %s  (%s)", n1, dist_n1)
             else:
-                if np.isclose(dist_n1, dist, rtol=1e-3, atol=1e-3):
+                if less_equal(dist, dist_n1, rtol=1e-3, atol=1e-2):
+                    logger.debug("NODE2: %s  (%s)", n, dist)
                     line = Line(Element(start=n1, end=n))
                     if e_prev.intersect_line(line):
                         logger.debug("___LINE NOT POSSIBLE___")

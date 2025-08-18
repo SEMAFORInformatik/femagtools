@@ -1359,28 +1359,31 @@ class Isa7(object):
         # prep dictionary for the loss calculation
         pm_data = []
         for i, se in enumerate(mag_spels):
-            ecp = [e.center for e in se.elements]
-            geometry = se.get_rect_geom()
+            try:
+                ecp = [e.center for e in se.elements]
+                geometry = se.get_rect_geom()
 
-            #= np.moveaxis(bxy, 1, 0)
-            pd = dict(name='pm_data_se' + str(se.key),
-                      hm=geometry['h'],
-                      wm=geometry['w'],
-                      lm=self.arm_length,
-                      alpha=geometry['alpha'],
-                      ls=self.arm_length,
-                      sigma=cond,
-                      mur=mur,
-                      loadcase=ibeta,
-                      numpoles=poles,
-                      elcp=transform_coord(geometry, ecp),
-                      area=se.area(),
-                      spel_key=se.key)
-            if ibeta != None:
-                pd.update({'bl': self.get_magnet_flux_density(se, icur, ibeta)})
-            pd.update(pos)
+                #= np.moveaxis(bxy, 1, 0)
+                pd = dict(name='pm_data_se' + str(se.key),
+                          hm=geometry['h'],
+                          wm=geometry['w'],
+                          lm=self.arm_length,
+                          alpha=geometry['alpha'],
+                          ls=self.arm_length,
+                          sigma=cond,
+                          mur=mur,
+                          loadcase=ibeta,
+                          numpoles=poles,
+                          elcp=transform_coord(geometry, ecp),
+                          area=se.area(),
+                          spel_key=se.key)
+                if ibeta != None:
+                    pd.update({'bl': self.get_magnet_flux_density(se, icur, ibeta)})
+                pd.update(pos)
 
-            pm_data.append(pd)
+                pm_data.append(pd)
+            except IndexError as e:
+                logger.warning("se %d magnet geometry ignored: %s", i, e)
         return pm_data
 
     def get_magnet_flux_density(self, se, icur, ibeta) -> list:

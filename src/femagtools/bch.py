@@ -918,7 +918,7 @@ class Reader:
                 i1beta = True
                 continue
             if line.startswith("C_STEP"):
-                return   # ignore this section
+                continue   # do not ignore this section
             try:
                 rec = self.__findNums(line)
                 if len(rec) == 10:
@@ -966,6 +966,9 @@ class Reader:
             self.airgapInduction['iq'] = iq
             self.airgapInduction['id'] = id
             nrows = len(self.airgapInduction['id'])
+        # min 1 required (section with C_STEP)
+        nrows = max(1, nrows)
+        ncols = max(1, ncols)
 
         try:
             self.airgapInduction['an'] = [np.reshape(an[j][:nrows*ncols],
@@ -999,6 +1002,14 @@ class Reader:
                                                      [1:])
                     self.airgapInduction['Bm'] = zip(*zip(*self.airgapInduction['Bm'])
                                                      [1:])
+            else:
+                # section with C_STEP and a single data linex
+                self.airgapInduction['an'] = [self.airgapInduction['an'][i][0:]
+                                              for i in range(3)]
+                self.airgapInduction['bn'] = [self.airgapInduction['bn'][i][0:]
+                                              for i in range(3)]
+                self.airgapInduction['Ba'] = self.airgapInduction['Ba'][0:]
+                self.airgapInduction['Bm'] = self.airgapInduction['Bm'][0:]
         except ValueError:
             print(self.airgapInduction['i1'])
 

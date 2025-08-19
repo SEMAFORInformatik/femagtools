@@ -1174,6 +1174,8 @@ class MagnetizingCurve(object):
         if not mcv:
             bname = name
             filename = ''.join((name, ext))
+            if name == 'dummy':
+                return filename
             # check fillfac and readmcv
             if not fillfac or fillfac == 1.0:
                 try:

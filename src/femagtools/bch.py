@@ -271,7 +271,7 @@ class Reader:
             return self.flux[0]['displ'][1]-self.flux[0]['displ'][0]
         return None
 
-    def read(self, content):
+    def read(self, content, **kwargs):
         """read bch file
 
         Args:
@@ -297,7 +297,10 @@ class Reader:
                     if k == title2[:len(k)]:
                         title = title2[:len(k)]
             if title in self.dispatch:
-                self.dispatch[title](self, s)
+                if title == 'Airgap Induction Br':
+                    self.dispatch[title](self, s, kwargs.get('ignore_airgap_induction_with_c_step_section', True))
+                else:
+                    self.dispatch[title](self, s)
 
         if len(self.weights) > 0:
             w = list(zip(*self.weights))
@@ -887,7 +890,7 @@ class Reader:
             self.flux_fft[self.wdg] = []
         self.flux_fft[self.wdg].append(flux_fft)
 
-    def __read_airgapInduction(self, content):
+    def __read_airgapInduction(self, content, ignore_c_step_section=True):
         "read and append airgapInduction section"
         import scipy.integrate as si
         import math
@@ -918,7 +921,9 @@ class Reader:
                 i1beta = True
                 continue
             if line.startswith("C_STEP"):
-                continue   # do not ignore this section
+                if ignore_c_step_section:
+                    return  # ignore this section
+                continue
             try:
                 rec = self.__findNums(line)
                 if len(rec) == 10:
@@ -966,9 +971,10 @@ class Reader:
             self.airgapInduction['iq'] = iq
             self.airgapInduction['id'] = id
             nrows = len(self.airgapInduction['id'])
-        # min 1 required (section with C_STEP)
-        nrows = max(1, nrows)
-        ncols = max(1, ncols)
+        if not ignore_c_step_section:
+            # min 1 required (section with C_STEP)
+            nrows = max(1, nrows)
+            ncols = max(1, ncols)
 
         try:
             self.airgapInduction['an'] = [np.reshape(an[j][:nrows*ncols],
@@ -1002,12 +1008,12 @@ class Reader:
                                                      [1:])
                     self.airgapInduction['Bm'] = zip(*zip(*self.airgapInduction['Bm'])
                                                      [1:])
-            else:
+            elif not ignore_c_step_section:
                 # section with C_STEP and a single data linex
                 self.airgapInduction['an'] = [self.airgapInduction['an'][i][0:]
-                                              for i in range(3)]
+                                              for i in range(4)]
                 self.airgapInduction['bn'] = [self.airgapInduction['bn'][i][0:]
-                                              for i in range(3)]
+                                              for i in range(4)]
                 self.airgapInduction['Ba'] = self.airgapInduction['Ba'][0:]
                 self.airgapInduction['Bm'] = self.airgapInduction['Bm'][0:]
         except ValueError:
@@ -1869,12 +1875,12 @@ class Reader:
         return self.__str__()
 
 
-def read(filename):
+def read(filename, **kwargs):
     """Read BCH/BATCH results from file *filename*."""
     import io
     bchresults = Reader()
     with io.open(filename, encoding='latin1', errors='ignore') as f:
-        bchresults.read(f.readlines())
+        bchresults.read(f.readlines(), **kwargs)
     return bchresults
 
 

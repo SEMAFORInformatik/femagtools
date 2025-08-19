@@ -1818,7 +1818,7 @@ class Area(object):
             logger.debug(">>> air is a circle")
             return self.type
 
-        self.set_close_to_start_end_angles(self, 0.0, alpha)
+        self.set_close_to_start_end_angles(0.0, alpha)
 
         if self.is_magnet_rectangle():
             self.type = TYPE_MAGNET_RECT  # magnet embedded

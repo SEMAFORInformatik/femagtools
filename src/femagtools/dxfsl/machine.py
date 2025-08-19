@@ -646,7 +646,7 @@ class Machine(object):
                 self.geom.set_virtual_start_end_corners()
 
             self.geom.looking_for_corners()
-            create_areas = self.geom.analyse_airgap_line(is_inner)
+            create_areas = self.geom.close_outer_winding_areas()
             if self.geom.adjust_outer_hull_for_symmetry():
                 create_areas = True
 
@@ -1284,6 +1284,30 @@ class Machine(object):
     def search_critical_elements(self, mindist):
         self.geom.search_critical_elements(mindist)
 
+    def create_arc_element(self,
+                           radius,
+                           startangle,
+                           endangle):
+        arc = Arc(Element(center=self.center,
+                          radius=radius,
+                          start_angle=startangle*180/np.pi,
+                          end_angle=endangle*180/np.pi),
+                  color='darkred',
+                  linestyle='dotted')
+
+        node1 = self.geom.find_the_node(arc.p1)
+        if node1 is None:
+            self.geom.split_with_point(arc.p1)
+            node1 = self.geom.find_the_node(arc.p1)
+        node2 = self.geom.find_the_node(arc.p2)
+        if node2 is None:
+            self.geom.split_with_point(arc.p2)
+            node2 = self.geom.find_the_node(arc.p2)
+        assert(node1 is not None)
+        assert(node2 is not None)
+        logger.debug("ARC Node1=%s, Node2=%s", node1, node2)
+        self.geom.add_element(arc, rtol=1e-3, atol=1e-3)
+
     def create_arc(self, radius,
                    color='red', linestyle='dotted',
                    attr=None):
@@ -1344,12 +1368,88 @@ class Machine(object):
                                 self.endangle)
         return self.geom.possible_magnet_in_the_middle(midangle)
 
+    def separate_tooth_and_yoke(self, midangle):
+        logger.debug("begin separate_tooth_and_yoke")
+        wdg_list = self.geom.get_areas_of_type((AREA.TYPE_WINDINGS,))
+        wdg_max_dist = 0.0
+        wdg = None
+        for w in wdg_list:
+            if w.max_dist > wdg_max_dist:
+                wdg_max_dist = w.max_dist
+                wdg = w
+
+        tooth_list = self.geom.get_areas_of_type((AREA.TYPE_TOOTH,))
+        tooth_max_dist = 0.0
+        for tooth in tooth_list:
+            tooth_max_dist = max(tooth_max_dist, tooth.max_dist)
+        tooth_height = tooth_max_dist - self.geom.min_radius
+        wdg_height = wdg_max_dist - self.geom.min_radius
+
+        logger.debug("HEIGHT TOOTH=%s, WINDINGS=%s", tooth_height,  wdg_height)
+
+        if greater_equal(tooth_height, wdg_height * 0.9) and \
+           less_equal(tooth_height, wdg_height * 1.1):
+            logger.debug("Tooths are ok")
+            return False  # tooth ok
+
+        iron_list = self.geom.get_areas_of_irons()
+        tooth_list = [iron for iron in iron_list
+                      if iron.close_to_ag and greater(iron.max_dist, wdg_max_dist, rtol=1e-2, atol=1e-2)]
+        logger.debug("max winding dist = %s", wdg_max_dist)
+        logger.debug("tooths = %s", len(tooth_list))
+        wdg_nodes = [(distance(self.center, n), n) for n in wdg.list_of_nodes()]
+        wdg_nodes.sort(reverse=True)
+
+        top_nodes = []
+        other_nodes = []
+        for d, n in wdg_nodes:
+            if np.isclose(d, wdg.max_dist, rtol=1e-2, atol=1e-1):
+                top_nodes.append((alpha_line(self.center, n), d, n))
+            else:
+                other_nodes.append((d, alpha_line(self.center, n), n))
+
+        a_right, d_right, n_right = (None, None, None)
+        a_left, d_left, n_left = (None, None, None)
+
+        if not top_nodes:
+            other_nodes.sort(reverse=True)
+            for d, a, n in other_nodes:
+                if a > midangle:
+                    if not a_left:
+                        a_left = a
+                        d_left = d
+                        n_left = n
+                else:
+                    if not a_right:
+                        a_right = a
+                        d_right = d
+                        n_right = n
+                if a_left and a_right:
+                    break
+            if not (a_left and a_right):
+                logger.debug("end separate_tooth_and_yoke: no arcs possible")
+                return False # bad luck
+        else:
+            top_nodes.sort()
+            a_right, d_right, n_right = top_nodes[0]
+            a_left, d_left, n_left = top_nodes[0-1]
+        node_right = self.geom.find_the_node(n_right)
+        node_left = self.geom.find_the_node(n_left)
+
+        self.create_arc_element(d_right, self.startangle, a_right)
+        self.create_arc_element(d_left, a_left, self.endangle)
+        logger.debug("end separate_tooth_and_yoke")
+        return True
+
     def create_mirror_lines_outside_windings(self):
         logger.debug("create_mirror_lines_outside_windings")
 
         if not self.geom.has_areas_touching_both_sides():
             logger.debug("end create_mirror_lines_outside_windings: not done")
             return
+
+        midangle = middle_angle(self.startangle, self.endangle)
+        self.separate_tooth_and_yoke(midangle)
 
         radius = self.radius+10
         ag_list = self.geom.detect_airgaps(self.center,
@@ -1359,7 +1459,6 @@ class Machine(object):
         radius_list = [(ag[0], (ag[0] + ag[1]) / 2, ag[1]) for ag in ag_list]
         radius_list.sort(reverse=True)
 
-        midangle = middle_angle(self.startangle, self.endangle)
         line = Line(
             Element(start=self.center,
                     end=point(self.center, radius, midangle)))

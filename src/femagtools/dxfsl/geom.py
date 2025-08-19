@@ -1182,7 +1182,7 @@ class Geometry(object):
             nx.set_edge_attributes(self.g, False, 1)
             nx.set_edge_attributes(self.g, False, 2)
 
-    def create_list_of_areas(self, main=False, delete=False):
+    def create_list_of_areas(self, main=False, delete=False, nolog=True):
         """ return list of areas for each node and their neighbors
         """
         if delete:  # clear list of areas
@@ -1193,7 +1193,7 @@ class Geometry(object):
             # list already available
             return
 
-        areabuilder = AreaBuilder(geom=self)
+        areabuilder = AreaBuilder(geom=self, nolog=nolog)
         areabuilder.create_list_of_areas(main=main)
         self.area_list = areabuilder.area_list
         logger.debug("area list created")
@@ -3337,6 +3337,31 @@ class Geometry(object):
         return [a for a in self.list_of_areas()
                 if a.is_type(type)]
 
+    def is_tooth(self, a, windings, wdg_min_dist, wdg_max_dist):
+        if a.around_windings(windings, self):
+            if a.close_to_ag:
+                return True
+            if self.is_inner:
+                if greater(a.min_dist, wdg_min_dist, atol=1e-1):
+                    return True
+            else:
+                if less(a.max_dist, wdg_max_dist, atol=1e-1):
+                    return True
+        return False
+
+    def between_airgap_and_winding(self, a,
+                                   wdg_min_angle,
+                                   wdg_max_angle,
+                                   wdg_min_dist,
+                                   wdg_max_dist):
+        if greater_equal(a.min_angle, wdg_min_angle) and \
+           less_equal(a.max_angle, wdg_max_angle):
+            if self.is_inner:
+                return less_equal(wdg_max_dist, a.min_dist)
+            else:
+                return less_equal(a.max_dist, wdg_min_dist)
+        return False
+
     def collect_windings(self):
         logger.debug("begin of collect_windings")
         good_windings = self.get_windings(AREA.TYPE_WINDINGS)
@@ -3409,7 +3434,7 @@ class Geometry(object):
             max_size, max_w = windings_surface[0]
             for sz, w in windings_surface[1:]:
                 logger.debug("winding size = %s", sz)
-                if sz / max_size < 0.70:
+                if sz / max_size < 0.60:
                     w.set_type(AREA.TYPE_AIR)
                     if sz / max_size < 0.2:
                         windings_found -= 1
@@ -3459,7 +3484,7 @@ class Geometry(object):
         air_areas = [a for a in self.list_of_areas()
                      if a.is_type(AREA.TYPE_AIR_OR_IRON)]
         for a in air_areas:
-            if a.around_windings(windings, self):
+            if a.around_windings(windings, self) and less(a.min_dist, wdg_max_dist - 0.5):
                 logger.debug("Area %s", a.identifier())
                 logger.debug(" - air-angle min/max = %s/%s",
                              a.min_air_angle,
@@ -3481,7 +3506,6 @@ class Geometry(object):
                            a.close_to_ag):
                             a.set_type(AREA.TYPE_AIR)  # air
                             continue
-
                         a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
                         continue
 
@@ -3510,14 +3534,28 @@ class Geometry(object):
                     a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
             else:
                 logger.debug("#5 not around windings")
-                a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
+                if self.between_airgap_and_winding(a,
+                                                   wdg_min_angle, wdg_max_angle,
+                                                   wdg_min_dist, wdg_max_dist):
+                    a.set_type(AREA.TYPE_AIR)  # air
+                else:
+                    if self.is_inner:
+                        if greater(a.min_dist, wdg_min_dist, atol=1e-1):
+                            a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
+                        else:
+                            a.set_type(AREA.TYPE_YOKE)  # iron shaft (Joch)
+                    else:
+                        if less(a.max_dist, wdg_max_dist, atol=1e-1):
+                            a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
+                        else:
+                            a.set_type(AREA.TYPE_YOKE)  # iron shaft (Joch)
 
         # yoke or shaft ?
         iron_areas = [a for a in self.list_of_areas()
                       if a.is_type(AREA.TYPE_YOKE)]
         for a in iron_areas:
             if a.around_windings(windings, self):
-                if less(a.min_dist, wdg_max_dist):
+                if less(a.min_dist, wdg_max_dist - 0.5):
                     if less_equal(a.max_dist, wdg_max_dist):
                         a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
                     else:
@@ -3922,6 +3960,15 @@ class Geometry(object):
             area.mark_airgap_corners(start_cp, end_cp)
         return
 
+    def get_areas_of_type(self, types=()):
+        return [area for area in self.list_of_areas()
+                if area.type in types]
+
+    def get_areas_of_irons(self):
+        return self.get_areas_of_type((AREA.TYPE_IRON,
+                                       AREA.TYPE_YOKE,
+                                       AREA.TYPE_TOOTH,))
+
     def num_areas_of_type(self, types=()):
         return len([area for area in self.list_of_areas()
                     if area.type in types])
@@ -4268,6 +4315,16 @@ class Geometry(object):
         for e in self.elements():
             e.adjust_points()
 
+    def split_with_point(self, p):
+        for e in self.elements(Shape):
+            elements = e.split([p])
+            if elements:
+                self.remove_edge(e)
+                for e in elements:
+                    self.add_element(e, rtol=self.rtol, atol=self.atol)
+                return True
+        return False
+
     def split_and_get_intersect_points(self, el, aktion=True, include_end=True):
         logger.debug("begin of split_and_get_intersect_points")
         rtol = 1e-03
@@ -4423,38 +4480,6 @@ class Geometry(object):
     def create_inner_corner_areas(self, startangle, endangle):
         builder = AreaBuilder(geom=self)
         return builder.create_inner_corner_auxiliary_areas(startangle, endangle)
-
-    def analyse_airgap_line(self, inner):
-        if inner:  # TODO
-            return False
-
-        areas = self.list_of_areas()
-        builder = AreaBuilder(geom=self)
-        ag_nodes, ag_el = builder.get_outer_airgap_line()
-        if not ag_nodes:
-            logger.warning("Fatal: No nodes found")
-            return False
-
-        distlist = [distance(self.center, n) for n in ag_nodes]
-        min_dist = min(distlist)
-        max_dist = max(distlist)
-        logger.debug("Airgap min/max from center: %s/%s", min_dist, max_dist)
-        for a in areas:
-            logger.debug("%s: min/max from center: %s/%s", a.identifier(), a.min_dist, a.max_dist)
-            logger.debug("%s: min/max x: %s/%s,  y:  %s/%s",
-                         a.identifier(),
-                         a.min_x, a.max_x,
-                         a.min_y, a.max_y)
-            if less_equal(a.min_x, -min_dist) and greater_equal(a.max_x, min_dist) and \
-               less_equal(a.min_y, -min_dist) and greater_equal(a.max_y, min_dist):
-                logger.debug("%s: around center", a.identifier())
-                continue
-            if np.isclose(a.min_dist, min_dist, rtol=1e-3, atol=1e-2):
-                continue
-            if less_equal(a.max_dist, max_dist, rtol=1e-3, atol=1e-2):
-                return False
-
-        return builder.close_outer_winding_areas()
 
     def adjust_outer_hull_for_symmetry(self):
         logger.debug("adjust_outer_hull_for_symmetry()")

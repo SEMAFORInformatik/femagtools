@@ -286,6 +286,8 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
             machine_temp.create_mirror_lines_outside_windings()
     else:
         machine_temp = machine
+        if machine_temp.has_windings_in_the_middle():
+            machine_temp.create_mirror_lines_outside_windings()
 
     if machine_temp.geom.reduce_element_nodes(mindist):
         machine_temp.rebuild_subregions(EESM, single=single)

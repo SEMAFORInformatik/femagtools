@@ -1173,7 +1173,8 @@ class MagnetizingCurve(object):
         mcv = self.find_by_name(name)
         if not mcv:
             bname = name
-            filename = ''.join((name, ext))
+            filename = name if pathlib.Path(name).suffix.upper() == ext \
+                else ''.join((name, ext))
             if name == 'dummy':
                 return filename
             # check fillfac and readmcv

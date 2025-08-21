@@ -76,7 +76,13 @@ def parident(workdir, engine, machine,
             raise ValueError('i1_max missing')
         i1_max = kwargs['i1_max']
 
-    ifnom = machine['rotor']['ifnom']
+
+    if "magnetFsl" in machine["magnet"]:
+        rotorkey = "magnet"
+    else:
+        rotorkey = "rotor"
+
+    ifnom = machine[rotorkey]['ifnom']
     exc_logspace = True
     ifmin, ifmax = ifnom/4, 1.4*ifnom
     if exc_logspace:
@@ -197,7 +203,7 @@ def parident(workdir, engine, machine,
     if simulation['calculationMode'] == 'ld_lq_fast':
         dqpars = dict(m=3, p=b['machine']['p'],
                       r1=float(r1),
-                      r2=machine['rotor'].get('resistance', 1),
+                      r2=machine[rotorkey].get('resistance', 1),
                       rotor_mass=rotor_mass, kfric_b=1,
                       ldq=[dict(
                           ex_current=b['machine']['ex_current'],
@@ -214,7 +220,7 @@ def parident(workdir, engine, machine,
     else:
         dqpars = dict(m=3, p=b['machine']['p'],
                       r1=r1,
-                      r2=machine['rotor'].get('resistance', 1),
+                      r2=machine[rotorkey].get('resistance', 1),
                       rotor_mass=rotor_mass, kfric_b=1,
                       psidq=[dict(
                           ex_current=b['machine']['ex_current'],

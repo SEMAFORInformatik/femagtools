@@ -82,14 +82,14 @@ rotate({
     mode   = "save"         -- save initial model state
 })
 
+rotate({angle=phi, mode="absolute"})
+
 file_psi = io.open("psi-torq-rem.dat","w")
 for i=1, #curvec do
-  print(string.format(" current: %d/%d %g, %g, %g\n",
-        i, #curvec, curvec[i][1], curvec[i][2], curvec[i][3]))
-
-    rotate({angle=phi, mode="absolute"})
     psi, tq, rr = calc_flux_torq_rem(curvec[i])
 
+    print(string.format(" current: %d/%d %g, %g, %g torque %g rr %g\n",
+        i, #curvec, curvec[i][1], curvec[i][2], curvec[i][3], tq, rr))
     file_psi:write(string.format("%g ", phi))
     for k=1, 3 do
       file_psi:write(string.format("%g ", curvec[i][k]))

@@ -346,7 +346,7 @@ def demag(femag, machine, simulation, i1max, phirot, phi, engine=0):
     """demag simulation using psi-torq-rem-rot"""
     logger.info("Demagnetization processing")
     i1min = simulation.get('i1min', abs(i1max/3))
-    num_steps = 7
+    num_steps = simulation.get('num_demag_cur_steps', 7)
     b = (i1min-abs(i1max))/np.log(i1min/abs(i1max))
     a = abs(i1max)/b
     xtab = np.linspace(i1min/abs(i1max),

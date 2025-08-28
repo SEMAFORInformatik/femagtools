@@ -108,11 +108,11 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             bchsc.scData['demag'] = bchsc.demag
             if simulation.get('sim_demagn', 0):
                 dd = {'displ': [d['displ']
-                               for d in bchsc.demag if 'displ' in d],
-                     'H_max': [d['H_max']
-                               for d in bchsc.demag if 'H_max' in d],
-                     'H_av': [d['H_av']
-                              for d in bchsc.demag if 'H_av' in d]}
+                                for d in bchsc.demag if 'displ' in d],
+                      'H_max': [d['H_max']
+                                for d in bchsc.demag if 'H_max' in d],
+                      'H_av': [d['H_av']
+                               for d in bchsc.demag if 'H_av' in d]}
                 x1 = bchsc.demag[0]['current_1']
                 x2 = bchsc.demag[0]['current_2']
                 def func(phi):
@@ -121,6 +121,7 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
                 i1max = x1/np.cos(phi)
 
                 phirot = dd['displ'][0]/180*np.pi
+                logger.info("i1max %g phi %g phirot %g", i1max, phi, phirot)
                 bchsc.scData['demag'] = demag(
                     femag, machine, simulation,
                     i1max, phirot, phi, engine)
@@ -319,7 +320,7 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     # rotor position at maximum current:
     trot = min(iav[0], iap[0])
     phirot = wm*trot + phi0
-    logger.info("phi %.1f")
+    logger.debug("phirot %.1f", phirot)
 
     scData = {
         'ia': ia.tolist(),

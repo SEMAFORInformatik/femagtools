@@ -424,7 +424,7 @@ class BaseFemag(object):
         return sorted(pathlib.Path(self.workdir).glob('*.PROT'),
                       key=lambda x: x.stat().st_mtime, reverse=True)[0].stem
 
-    def readResult(self, machine, simulation, bch=None):
+    def readResult(self, simulation, bch=None, machine=None):
         if simulation:
             if simulation['calculationMode'] == "fieldcalc":
                 nc = self.read_nc()
@@ -656,7 +656,7 @@ class Femag(BaseFemag):
             pass
 
         if simulation:
-            return self.readResult(machine, simulation)
+            return self.readResult(machine=machine, simulation=simulation)
 
         return {'status': 'ok', 'message': self.modelname,
                 'model': self.model.props()}
@@ -1196,6 +1196,6 @@ class ZmqFemag(BaseFemag):
         if r['status'] == 'ok':
             bch = femagtools.bch.Reader()
             bch.read(content.decode('latin1'))
-            bch = self.readResult(simulation, bch)
+            bch = self.readResult(simulation=simulation, bch=bch)
             return bch
         raise FemagError(r['message'])

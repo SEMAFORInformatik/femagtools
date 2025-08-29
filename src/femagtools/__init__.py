@@ -2,7 +2,7 @@
 
 """
 __title__ = 'femagtools'
-__version__ = '1.8.19'
+__version__ = '1.8.20dev'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2023-2025 Gamma Technology'

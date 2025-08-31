@@ -246,6 +246,37 @@ class FslRenderer(object):
                 'outer_da_end = {}'.format(
                     geom.dist_end_min_corner())
             ]
+        if inner:
+            r = np.linalg.norm(geom.start_corners[0])
+            if not np.isclose(geom.min_radius, r, rtol=1e-3):
+                slice = 1 if machine.is_mirrored() else 2
+                self.content += [
+                    '-- create air layer inside',
+                    'x0, y0 = {}, {}'.format(
+                        geom.start_min_corner(0),
+                        geom.start_min_corner(1)),
+                    'hair = 1.0',
+                    'parts = {}'.format(machine.get_num_parts()),
+                    'rmin = {}'.format(geom.min_radius),
+                    'r1 = rmin - hair',
+                    'r, phi = c2pr(x0, y0)',
+                    'x1, y1 = pr2c(r1, phi)',
+                    'x2, y2 = pr2c(r1, {}*math.pi/parts)'.format(slice),
+                    'x3, y3 = pr2c(r, {}*math.pi/parts)'.format(slice),
+                    'nc_line(x0, y0, x1, y1, 0)',
+                    'nc_circle_m(x1, y1, x2, y2, 0.0, 0.0, 0)',
+                    'nc_line(x2, y2, x3, y3, 0)',
+                    'x0, y0 = pr2c(rmin - hair/2, math.pi/parts/2)',
+                    'create_mesh_se(x0, y0)',
+                    '\n']
+            else:
+                self.content += [
+                    'parts = {}'.format(machine.get_num_parts()),
+                    'x0, y0 = {}, {}'.format(
+                        geom.start_min_corner(0),
+                        geom.start_min_corner(1)),
+                    'r1, phi = c2pr(x0, y0)']
+
         if self.mtype == 'PMSM':
             self.content += [
                          'xmag = {}',
@@ -390,20 +421,22 @@ class FslRenderer(object):
         # angle after mirroring
         self.content.append('alfa = {}\n'.format(geom.get_alfa()))
 
-        self.content += ['-- rotate',
-                         'x1, y1 = {}, {}'.format(
-                             geom.start_corners[0][0],
-                             geom.start_corners[0][1])]  # min xy1
         if outer:
-            self.content.append('x2, y2 = pr2c(r1, 0.0)')
+            self.content += ['-- rotate',
+                             'x1, y1 = {}, {}'.format(
+                                 geom.start_corners[0][0],
+                                 geom.start_corners[0][1]),  # min xy1
+                             'x2, y2 = pr2c(r1, phi)']
         else:
-            self.content.append('x2, y2 = {}, {}'.format(
-                geom.start_corners[1][0],
-                geom.start_corners[1][1]))  # max xy1
+            self.content += ['-- rotate',
+                             'x1, y1 = pr2c(r1, phi)',
+                             'x2, y2 = {}, {}'.format(
+                                 geom.start_corners[1][0],
+                                 geom.start_corners[1][1])]  # min xy1
 
         if geom.is_mirrored():
-            self.content.append('x3, y3 = pr2c(x2, alfa)')
-            self.content.append('x4, y4 = pr2c(x1, alfa)')
+            self.content.append('x3, y3 = pr2c(x2, alfa+phi)')
+            self.content.append('x4, y4 = pr2c(x1, alfa+phi)')
         elif outer:
             self.content += ['x3, y3 = pr2c(r1, 2*math.pi/parts+phi)',
                              'x4, y4 = {}, {}'.format(
@@ -413,10 +446,7 @@ class FslRenderer(object):
             self.content += ['x3, y3 = {}, {}'.format(
                                  geom.end_corners[-1][0],
                                  geom.end_corners[-1][1]), # min xy3
-                             'x4, y4 = {}, {}'.format(
-                                 geom.end_corners[0][0],
-                                 geom.end_corners[0][1]),  # min xy4
-                             'def_bcond_vpo(x4, y4, x1, y1)']
+                             'x4, y4 = pr2c(r1, 2*math.pi/parts+phi)']
 
         self.content.append('if parts_gen > 1 then')
         if geom.corners_dont_match():

@@ -219,17 +219,23 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
             return machine_temp
 
     if machine_temp.has_magnets_in_the_middle():
+        if machine_temp.remove_tiny_air_areas():
+            machine_temp.rebuild_subregions(EESM, single=single)
         logger.debug("Magnets cut")
         rebuild = machine_temp.create_mirror_lines_outside_magnets()
     else:
         if machine.is_mirrored():
             logger.debug("Back to the mirrored machine")
             machine_temp = machine  # undo
+            if machine_temp.remove_tiny_air_areas():
+                machine_temp.rebuild_subregions(EESM, single=single)
             rebuild = machine_temp.create_inner_auxiliary_arcs()
         else:
+            if machine_temp.remove_tiny_air_areas():
+                machine_temp.rebuild_subregions(EESM, single=single)
             rebuild = machine_temp.create_mirror_lines_outside_magnets()
     if rebuild:
-        machine_temp.geom.create_list_of_areas(delete=True)
+        machine_temp.rebuild_subregions(EESM, single=single)
 
     if machine_temp.create_auxiliary_lines():
         logger.debug("Auxiliary Lines created: rebuild subregions")
@@ -310,6 +316,9 @@ def build_machine_stator(machine, inner, mindist, plt, EESM=False, single=False)
         plot_geom(False,  # for developer
                   plt, machine_temp.geom,
                   title="Stator Winding Slice after Rebuild")
+
+    if machine_temp.remove_tiny_air_areas():
+        machine_temp.rebuild_subregions(EESM, single=single)
 
     if machine_temp.create_auxiliary_lines():
         machine_temp.rebuild_subregions(EESM, single=single)

@@ -90,6 +90,13 @@ class Shape(object):
             self.n2 = n1
             self.n1 = n2
 
+    def has_same_nodes(self, e):
+        if points_are_close(e.n1, self.n1):
+            return points_are_close(e.n2, self.n2)
+        if points_are_close(e.n1, self.n2):
+            return points_are_close(e.n2, self.n1)
+        return False
+
     """an abstract geometry with 2 points"""
 
     def start(self):

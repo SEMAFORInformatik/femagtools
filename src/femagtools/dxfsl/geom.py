@@ -4803,6 +4803,52 @@ class Geometry(object):
             return
         logger.warning("WARNING: airgap connecting nodes do not aline")
 
+    def remove_area(self, area):
+        logger.debug("Remove Area %s", area.identifier())
+        touching_areas = [(a.surface, a) for a in self.list_of_areas()
+                          if a.id != area.id and a.is_touching(area)]
+        if not touching_areas:
+            self.remove_edges(area.area)
+            return
+        touching_areas.sort(reverse=True)
+        sz, touching_a = touching_areas[0]
+        for e in area.area:
+            if touching_a.is_element_in_area(e):
+                self.remove_edge(e)
+
+    def remove_tiny_air_areas(self):
+        logger.debug("remove_tiny_air_areas()")
+        air_areas = [a for a in self.list_of_areas() if a.is_air()]
+        if not air_areas:
+            return False
+
+        def is_in_touch(air, area_list):
+            for a in area_list:
+                if air.is_touching(a):
+                    return True
+                if air.is_inside(a, self):
+                    return True
+            return False
+
+        areas = [a for a in self.list_of_areas() if a.is_winding() or a.is_magnet()]
+        if not areas:
+            return False
+
+        tiny_areas = [a for a in air_areas if not is_in_touch(a, areas)]
+        geom_surface = self.area_size()
+        angle_areas = [a for a in tiny_areas
+                      if (a.close_to_startangle or a.close_to_endangle)]
+        inside_areas = [a for a in tiny_areas
+                        if not (a.close_to_startangle or a.close_to_endangle) and \
+                           a.get_area_size() < geom_surface / 200]
+        tiny_areas = angle_areas + inside_areas
+        if not tiny_areas:
+            return False
+
+        for a in tiny_areas:
+            self.remove_area(a)
+        return True
+
     def print_nodes(self):
         print("=== List of Nodes ({}) ===".format(self.number_of_nodes()))
         for n in self.g.nodes():

@@ -105,6 +105,12 @@ class Area(object):
     def elements(self):
         return self.area
 
+    def is_element_in_area(self, el):
+        for e in self.elements():
+            if el.has_same_nodes(e):
+                return True
+        return False
+
     def copy_of_elements(self):
         return [e.clone() for e in self.elements() if e]
 
@@ -1862,6 +1868,11 @@ class Area(object):
 
         nodes = [n for n in self.virtual_nodes(parts=4)]
         return area_size(nodes)
+
+    def get_area_size(self):
+        if self.surface == 0.0:
+            self.surface = self.area_size()
+        return self.surface
 
     def set_surface(self, mirrored):
         self.surface = self.area_size()

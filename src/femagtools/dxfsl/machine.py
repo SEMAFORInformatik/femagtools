@@ -1590,3 +1590,9 @@ class Machine(object):
         self.geom.check_airgap_connecting_nodes(m_outer.geom,
                                                 self.startangle,
                                                 self.endangle)
+
+    def remove_tiny_air_areas(self):
+        if not self.geom.remove_tiny_air_areas():
+            return False
+        self.repair_hull()
+        return True

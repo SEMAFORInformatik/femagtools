@@ -219,20 +219,14 @@ def build_machine_rotor(machine, inner, mindist, plt, EESM=False, single=False):
             return machine_temp
 
     if machine_temp.has_magnets_in_the_middle():
-        if machine_temp.remove_tiny_air_areas():
-            machine_temp.rebuild_subregions(EESM, single=single)
         logger.debug("Magnets cut")
         rebuild = machine_temp.create_mirror_lines_outside_magnets()
     else:
         if machine.is_mirrored():
             logger.debug("Back to the mirrored machine")
             machine_temp = machine  # undo
-            if machine_temp.remove_tiny_air_areas():
-                machine_temp.rebuild_subregions(EESM, single=single)
             rebuild = machine_temp.create_inner_auxiliary_arcs()
         else:
-            if machine_temp.remove_tiny_air_areas():
-                machine_temp.rebuild_subregions(EESM, single=single)
             rebuild = machine_temp.create_mirror_lines_outside_magnets()
     if rebuild:
         machine_temp.rebuild_subregions(EESM, single=single)

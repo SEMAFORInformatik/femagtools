@@ -4838,10 +4838,10 @@ class Geometry(object):
         geom_surface = self.area_size()
         angle_areas = [a for a in tiny_areas
                       if (a.close_to_startangle or a.close_to_endangle)]
-        inside_areas = [a for a in tiny_areas
-                        if not (a.close_to_startangle or a.close_to_endangle) and \
-                           a.get_area_size() < geom_surface / 200]
-        tiny_areas = angle_areas + inside_areas
+        #inside_areas = [a for a in tiny_areas
+        #                if not (a.close_to_startangle or a.close_to_endangle) and \
+        #                   a.get_area_size() < geom_surface / 200]
+        tiny_areas = angle_areas
         if not tiny_areas:
             return False
 

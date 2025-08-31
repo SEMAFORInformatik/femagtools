@@ -358,7 +358,7 @@ class FslRenderer(object):
                         self.content.append(
                             'x0_shaft, y0_shaft = x0, y0')
 
-        self.content.append("create_mesh(x0, y0)\n")
+        self.content.append("create_mesh()\n")
 
         txt = ["if x0_iron_yoke > 0.0 then",
                "  if mcvkey_yoke ~= 'dummy' then",

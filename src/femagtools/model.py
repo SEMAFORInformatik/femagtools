@@ -477,8 +477,14 @@ class MachineModel(Model):
         model = {k: getattr(self, k) for k in keys if hasattr(self, k)}
         if hasattr(self, 'stator'):
             model['stator'] = {k: self.stator[k]
-                               for k in ('num_slots', 'num_slots_gen', 'slot_area')
+                               for k in ('num_slots',
+                                         'num_slots_gen',
+                                         'slot_area')
                                if k in self.stator}
+
+        for k in model:
+            if isinstance(model[k], np.float64):
+                model[k] = float(model[k])
         return model
 
 class FeaModel(Model):

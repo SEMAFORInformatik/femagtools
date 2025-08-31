@@ -1042,7 +1042,7 @@ def create_femag_parameters(m_inner, m_outer, nodedist=1):
     alfa_pole = geom_poles.get_alfa()
 
     params['tot_num_slot'] = num_slots
-    params['slot_area'] = slot_area
+    params['slot_area'] = float(slot_area)
     params['num_sl_gen'] = num_sl_gen
     params['num_poles'] = num_poles
     params['nodedist'] = nodedist

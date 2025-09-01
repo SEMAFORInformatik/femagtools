@@ -426,19 +426,19 @@ class FslRenderer(object):
                              'x1, y1 = {}, {}'.format(
                                  geom.start_corners[0][0],
                                  geom.start_corners[0][1]),  # min xy1
-                             'x2, y2 = pr2c(r1, phi)']
+                             'x2, y2 = pr2c(r1, 0.0)']
         else:
             self.content += ['-- rotate',
-                             'x1, y1 = pr2c(r1, phi)',
+                             'x1, y1 = pr2c(r1, 0.0)',
                              'x2, y2 = {}, {}'.format(
                                  geom.start_corners[1][0],
                                  geom.start_corners[1][1])]  # min xy1
 
         if geom.is_mirrored():
-            self.content.append('x3, y3 = pr2c(x2, alfa+phi)')
-            self.content.append('x4, y4 = pr2c(x1, alfa+phi)')
+            self.content.append('x3, y3 = pr2c(x2, alfa)')
+            self.content.append('x4, y4 = pr2c(x1, alfa)')
         elif outer:
-            self.content += ['x3, y3 = pr2c(r1, 2*math.pi/parts+phi)',
+            self.content += ['x3, y3 = pr2c(r1, 2*math.pi/parts)',
                              'x4, y4 = {}, {}'.format(
                                  geom.end_corners[0][0],
                                  geom.end_corners[0][1])]  # min xy4
@@ -446,7 +446,7 @@ class FslRenderer(object):
             self.content += ['x3, y3 = {}, {}'.format(
                                  geom.end_corners[-1][0],
                                  geom.end_corners[-1][1]), # min xy3
-                             'x4, y4 = pr2c(r1, 2*math.pi/parts+phi)']
+                             'x4, y4 = pr2c(r1, 2*math.pi/parts)']
 
         self.content.append('if parts_gen > 1 then')
         if geom.corners_dont_match():

@@ -181,9 +181,10 @@ class PmRelMachine(object):
         if np.abs(torque) < 1e-2:
             return (0, 0)
         if np.isscalar(iqd0):
-            i0 = self.io
+            i0 = list(self.io)
             if torque<0:
                 i0[0] = -i0[0]
+                i0 = tuple(i0)
         else:
             i0 = iqd0
         if with_mtpa:

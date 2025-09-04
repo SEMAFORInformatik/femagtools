@@ -8,6 +8,9 @@ def losses():
     modelname = 'src/tests/data/zzz_pm_model_ts'
     return ts.Losses(modelname, dirname)
 
+def update_result(r):
+    r.pop("losses_FFT")
+    return r
 
 def test_read(losses):
     e = losses.ohm_lossenergy(0.0, 0.0)
@@ -34,12 +37,12 @@ def test_read(losses):
         {'key': 6, 'name': '', 'losses': 0.09673}, abs=1e-5) == p[5]
     p = losses.ohm_powerlosses_fft()
     assert len(p) == 6
-    assert {'key': 1, 'name': 'stfe', 'losses': 0.0} == p[0]
-    assert {'key': 2, 'name': 'rofe', 'losses': 0.0} == p[1]
-    assert {'key': 3, 'name': 'wefe', 'losses': 0.0} == p[2]
+    assert {'key': 1, 'name': 'stfe', 'losses': 0.0, 'losses_FFT': 0.0} == p[0]
+    assert {'key': 2, 'name': 'rofe', 'losses': 0.0, 'losses_FFT': 0.0} == p[1]
+    assert {'key': 3, 'name': 'wefe', 'losses': 0.0, 'losses_FFT': 0.0} == p[2]
     assert pytest.approx(
-        {'key': 4, 'name': '', 'losses': 0.101086}, abs=1e-5) == p[3]
+        {'key': 4, 'name': '', 'losses': 0.101086}, abs=1e-5) == update_result(p[3])
     assert pytest.approx(
-        {'key': 5, 'name': '', 'losses': 0.101086}, abs=1e-5) == p[4]
+        {'key': 5, 'name': '', 'losses': 0.101086}, abs=1e-5) == update_result(p[4])
     assert pytest.approx(
-        {'key': 6, 'name': '', 'losses': 0.101086}, abs=1e-5) == p[5]
+        {'key': 6, 'name': '', 'losses': 0.101086}, abs=1e-5) == update_result(p[5])

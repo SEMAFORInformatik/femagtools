@@ -432,12 +432,18 @@ class Losses(object):
         else:
             cd_vec = cd_vec_0
         cd_spec = abs(np.fft.fft(cd_vec))/(len(cd_vec)/2)
-        elpowerlosses_FFT = np.zeros(int(len(cd_vec)/2))
+        cd_spec[0] = cd_spec[0]/2
+        elpowerlosses_FFT = np.zeros(int(len(cd_vec) / 2))
+        fac = 2 
         for j in range(int(len(cd_vec)/2)):
+            if j == 0:
+                fac = 1
+            else:
+                fac = 2
             elpowerlosses = elpowerlosses + \
-                cd_spec[j]**2/2*el.area/ff / \
+                cd_spec[j]**2/fac*el.area/ff / \
                 supel.conduc*temp_corr*supel.length
-            elpowerlosses_FFT[j] = cd_spec[j]**2/2*el.area/ff/supel.conduc*temp_corr*supel.length
+            elpowerlosses_FFT[j] = cd_spec[j]**2/fac*el.area/ff / supel.conduc*temp_corr*supel.length
 
         return elpowerlosses*length, elpowerlosses_FFT*length
 

@@ -432,12 +432,14 @@ class Losses(object):
         else:
             cd_vec = cd_vec_0
         cd_spec = abs(np.fft.fft(cd_vec))/(len(cd_vec)/2)
+        elpowerlosses_FFT = np.zeros(int(len(cd_vec)/2))
         for j in range(int(len(cd_vec)/2)):
             elpowerlosses = elpowerlosses + \
                 cd_spec[j]**2/2*el.area/ff / \
                 supel.conduc*temp_corr*supel.length
+            elpowerlosses_FFT[j] = cd_spec[j]**2/2*el.area/ff/supel.conduc*temp_corr*supel.length
 
-        return elpowerlosses*length
+        return elpowerlosses*length, elpowerlosses_FFT*length
 
     def ohm_powerlosses_fft_sr(self, sr):
         '''Power dissipation of a subregion
@@ -457,16 +459,20 @@ class Losses(object):
         scale_factor = self.nc_model.scale_factor()
 
         srpowerlosses = 0.0
+        srpowerlosses_FFT = 0.0
         for se in sr.superelements:
             sepowerlosses = 0.0
+            sepowerlosses_FFT = 0.0
             if se.conduc > 0.0:
                 for el in se.elements:
-                    elpowerlosses = self.ohm_powerlosses_fft_el(el, se)
+                    elpowerlosses, elpowerlosses_FFT = self.ohm_powerlosses_fft_el(el, se)
                     sepowerlosses = sepowerlosses + elpowerlosses * scale_factor
+                    sepowerlosses_FFT = sepowerlosses_FFT + elpowerlosses_FFT * scale_factor
 
             srpowerlosses = srpowerlosses + sepowerlosses
+            srpowerlosses_FFT = srpowerlosses_FFT + sepowerlosses_FFT
 
-        return srpowerlosses
+        return srpowerlosses, srpowerlosses_FFT
 
     def ohm_powerlosses_fft_subregion(self, srname, start=0.0, end=0.0):
         '''Power dissipation of a subregion
@@ -499,8 +505,8 @@ class Losses(object):
         self.times = TimeRange(self.vtu_data, self.nc_model)
 
         sr = self.nc_model.get_subregion(srname)
-        srpowerlosses = self.ohm_powerlosses_fft_sr(sr)
-        return srpowerlosses
+        srpowerlosses, srpowerlosses_FFT = self.ohm_powerlosses_fft_sr(sr)
+        return srpowerlosses, srpowerlosses_FFT
 
     def ohm_powerlosses_fft(self, start=0.0, end=0.0):
         '''Power dissipation of all subregions
@@ -533,7 +539,7 @@ class Losses(object):
 
         loss_data = []
         for sr in self.nc_model.subregions:
-            srpowerlosses = self.ohm_powerlosses_fft_sr(sr)
+            srpowerlosses, srpowerlosses_FFT = self.ohm_powerlosses_fft_sr(sr)
 
             srname = sr.name
             if sr.wb_key >= 0:
@@ -541,7 +547,7 @@ class Losses(object):
                     srname = "wdg "+str(sr.wb_key+1)
 
             loss_data.append(
-                {'key': sr.key, 'name': srname, 'losses': srpowerlosses})
+                {'key': sr.key, 'name': srname, 'losses': srpowerlosses, 'losses_FFT': srpowerlosses_FFT})
 
         return loss_data
 
@@ -689,6 +695,10 @@ class Losses(object):
             if (max(b_spec) > 1.85):
                 kz = 1.1
 
+            elhystlosses_FFT = np.zeros(int(len(b_spec)/2))
+            eleddylosses_FFT = np.zeros(int(len(b_spec)/2))
+            elexcelosses_FFT = np.zeros(int(len(b_spec)/2))
+
             for j in range(int(len(b_spec)/2)):
                 elhystlosses = elhystlosses + kz * ch * \
                     (j*freq/bf)**chfe*(b_spec[j]/bb)**chbe
@@ -696,17 +706,28 @@ class Losses(object):
                     (j*freq/bf)**cwfe*(b_spec[j]/bb)**cwbe
                 elexcelosses = elexcelosses + ce * \
                     (j*freq/bf)**cefe*(b_spec[j]/bb)**cebe
+                elhystlosses_FFT[j] = kz * ch * (j * freq / bf) ** chfe * (b_spec[j] / bb) ** chbe
+                eleddylosses_FFT[j] = cw * (j * freq / bf) ** cwfe * (b_spec[j] / bb) ** cwbe
+                elexcelosses_FFT[j] = ce * (j * freq / bf) ** cefe * (b_spec[j] / bb) ** cebe
 
             elhystlosses = elhystlosses*el.area*length*ff*sw
             eleddylosses = eleddylosses*el.area*length*ff*sw
             elexcelosses = elexcelosses*el.area*length*ff*sw
+            elhystlosses_FFT = elhystlosses_FFT * el.area * length * ff * sw
+            eleddylosses_FFT = eleddylosses_FFT * el.area * length * ff * sw
+            elexcelosses_FFT = elexcelosses_FFT * el.area * length * ff * sw
 
         eltotallosses = elhystlosses + eleddylosses + elexcelosses
+        eltotallosses_FFT = elhystlosses_FFT + eleddylosses_FFT + elexcelosses_FFT
 
         return {'total': eltotallosses,
                 'hysteresis': elhystlosses,
                 'eddycurrent': eleddylosses,
-                'excess': elexcelosses}
+                'excess': elexcelosses,
+                'total_FFT': eltotallosses_FFT,
+                'hysteresis_FFT': elhystlosses_FFT,
+                'eddycurrent_FFT': eleddylosses_FFT,
+                'excess_FFT': elexcelosses_FFT}
 
     def iron_losses_fft_se(self, se):
         '''Iron losses of a superelement
@@ -731,6 +752,9 @@ class Losses(object):
         sehystlosses = 0.0
         seeddylosses = 0.0
         seexcelosses = 0.0
+        sehystlosses_FFT = 0.0
+        seeddylosses_FFT = 0.0
+        seexcelosses_FFT = 0.0
         if (se.elements[0].reluc[0] < 1.0 or se.elements[0].reluc[1] < 1.0) and \
                 (se.elements[0].mag[0] == 0.0 and se.elements[0].mag[1] == 0.0):
             for el in se.elements:
@@ -743,13 +767,23 @@ class Losses(object):
                 seeddylosses = seeddylosses + \
                     ellosses['eddycurrent'] * scale_factor
                 seexcelosses = seexcelosses + ellosses['excess'] * scale_factor
+                sehystlosses_FFT = sehystlosses_FFT + \
+                               ellosses['hysteresis_FFT'] * scale_factor
+                seeddylosses_FFT = seeddylosses_FFT + \
+                               ellosses['eddycurrent_FFT'] * scale_factor
+                seexcelosses_FFT = seexcelosses_FFT + ellosses['excess_FFT'] * scale_factor
 
         setotallosses = sehystlosses + seeddylosses + seexcelosses
+        setotallosses_FFT = sehystlosses_FFT + seeddylosses_FFT + seexcelosses_FFT
 
         return {'total': setotallosses,
                 'hysteresis': sehystlosses,
                 'eddycurrent': seeddylosses,
-                'excess': seexcelosses}
+                'excess': seexcelosses,
+                'total_FFT': setotallosses_FFT,
+                'hysteresis_FFT': sehystlosses_FFT,
+                'eddycurrent_FFT': seeddylosses_FFT,
+                'excess_FFT': seexcelosses_FFT}
 
     def iron_losses_fft_subregion(self, srname, start=0.0, end=0.0):
         '''Iron losses of a subregion
@@ -781,6 +815,10 @@ class Losses(object):
         srhystlosses = 0.0
         sreddylosses = 0.0
         srexcelosses = 0.0
+        srtotallosses_FFT = 0.0
+        srhystlosses_FFT = 0.0
+        sreddylosses_FFT = 0.0
+        srexcelosses_FFT = 0.0
         sr = self.nc_model.get_subregion(srname)
         for se in sr.superelements:
             selosses = self.iron_losses_fft_se(se)
@@ -788,12 +826,20 @@ class Losses(object):
             srhystlosses = srhystlosses + selosses['hysteresis']
             sreddylosses = sreddylosses + selosses['eddycurrent']
             srexcelosses = srexcelosses + selosses['excess']
+            srtotallosses_FFT = srtotallosses_FFT + selosses['total_FFT']
+            srhystlosses_FFT = srhystlosses_FFT + selosses['hysteresis_FFT']
+            sreddylosses_FFT = sreddylosses_FFT + selosses['eddycurrent_FFT']
+            srexcelosses_FFT = srexcelosses_FFT + selosses['excess_FFT']
 
         srlosses = {'subregion': srname,
                     'total': srtotallosses,
                     'hysteresis': srhystlosses,
                     'eddycurrent': sreddylosses,
-                    'excess': srexcelosses
+                    'excess': srexcelosses,
+                    'total_FFT': srtotallosses_FFT,
+                    'hysteresis_FFT': srhystlosses_FFT,
+                    'eddycurrent_FFT': sreddylosses_FFT,
+                    'excess_FFT': srexcelosses_FFT
                     }
         return srlosses
 
@@ -851,6 +897,12 @@ class Losses(object):
                     srlosses['eddycurrent'] = srlosses['eddycurrent'] + \
                         selosses['eddycurrent']
                     srlosses['excess'] = srlosses['excess']+selosses['excess']
+                    srlosses['total_FFT'] = srlosses['total_FFT'] + selosses['total_FFT']
+                    srlosses['hysteresis_FFT'] = srlosses['hysteresis_FFT'] + \
+                                             selosses['hysteresis_FFT']
+                    srlosses['eddycurrent_FFT'] = srlosses['eddycurrent_FFT'] + \
+                                              selosses['eddycurrent_FFT']
+                    srlosses['excess_FFT'] = srlosses['excess_FFT'] + selosses['excess_FFT']
                     found = True
             if not found:
                 if selosses['total'] > 0.0:
@@ -858,7 +910,11 @@ class Losses(object):
                                 'total': selosses['total'],
                                 'hysteresis': selosses['hysteresis'],
                                 'eddycurrent': selosses['eddycurrent'],
-                                'excess': selosses['excess']
+                                'excess': selosses['excess'],
+                                'total_FFT': selosses['total_FFT'],
+                                'hysteresis_FFT': selosses['hysteresis_FFT'],
+                                'eddycurrent_FFT': selosses['eddycurrent_FFT'],
+                                'excess_FFT': selosses['excess_FFT']
                                 }
                     losseslist.append(srlosses)
 

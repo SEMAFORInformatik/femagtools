@@ -141,6 +141,10 @@ def main():
                                  'create separate fsl for rotor and stator'),
                            dest='write_fsl_single',
                            action="store_true")
+    argparser.add_argument('--svg',
+                           help='create svg',
+                           dest='write_svg',
+                           action="store_true")
     argparser.add_argument('-v', '--view',
                            help='show a view only',
                            dest='view',
@@ -272,6 +276,7 @@ def main():
                   small_plots=args.small_plots,
                   write_fsl=args.write_fsl,
                   write_fsl_single=args.write_fsl_single,
+                  write_svg=args.write_svg,
                   write_png=args.write_png,
                   write_id=args.write_id,
                   debug_mode=args.debugger,

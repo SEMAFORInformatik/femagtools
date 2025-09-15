@@ -4725,10 +4725,14 @@ class Geometry(object):
             points += pts
         return points
 
-    def mirror_all_areas(self, mirrorangle):
+    def get_axis_m_n(self, mirrorangle):
         axis_p = point(self.center, self.max_radius, mirrorangle)
         axis_m = line_m(self.center, axis_p)
         axis_n = line_n(self.center, axis_m)
+        return axis_m, axis_n
+
+    def mirror_all_areas(self, mirrorangle):
+        axis_m, axis_n = self.get_axis_m_n(mirrorangle)
 
         def add_element(e):
             n = self.find_nodes(e.start(), e.end())

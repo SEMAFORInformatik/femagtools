@@ -18,6 +18,7 @@ from .functions import normalise_angle, min_angle, max_angle, get_angle_of_arc
 from .functions import lines_intersect_point, nodes_are_equal
 from .functions import is_angle_inside, intersect_point, point_greater_equal
 from .functions import middle_angle, middle_point_of_line, elevation_angle
+from femagtools.dxfsl.functions import positive_angle
 
 logger = logging.getLogger('femagtools.geom')
 
@@ -208,14 +209,21 @@ class Shape(object):
             return self.intersect_circle(e, rtol, atol, include_end)
         return []
 
-    def get_node_number(self, n, override=False):
-        if not nodes_are_equal(n, self.n1):
-            if not nodes_are_equal(n, self.n2):
-                if override:
-                    return 0
-                logger.debug("FATAL: get_node_number(): node %s missing in %s",
-                             n, self)
-                raise ValueError('missing node in element')
+    def get_node_number(self, n, override=False, tolerant=False):
+        if tolerant:
+            if not points_are_close(n, self.n1, rtol=1e-3, atol=1e-4):
+                if not points_are_close(n, self.n2, rtol=1e-3, atol=1e-4):
+                    if override:
+                        return 0
+                    logger.info("WARNING: Node %s dont match %s or %s", n, self.n1, self.n2)
+        else:
+            if not nodes_are_equal(n, self.n1):
+                if not nodes_are_equal(n, self.n2):
+                    if override:
+                        return 0
+                    logger.debug("FATAL: get_node_number(): node %s missing in %s",
+                                 n, self)
+                    raise ValueError('missing node in element')
 
         d1 = distance(n, self.n1)
         d2 = distance(n, self.n2)
@@ -349,6 +357,35 @@ class Shape(object):
         if el:
             el.copy_attributes(self)
         return el
+
+    def rotate_shape(self, T):
+        n2 = self.rotate(T, self.n2)
+        n1 = self.rotate(T, self.n1)
+
+        el = None
+        if isinstance(self, Line):
+            el = Line(Element(start=n1, end=n2))
+
+        elif isinstance(self, Arc):
+            c = self.rotate(T, self.center)
+            alpha1 = alpha_line(c, n1)
+            alpha2 = alpha_line(c, n2)
+            el = Arc(Element(center=c,
+                             radius=self.radius,
+                             start_angle=alpha1*180/np.pi,
+                             end_angle=alpha2*180/np.pi))
+
+        elif isinstance(self, Circle):
+            c = mirror_point(self.center, geom_center, axis_m, axis_n)
+            el = Circle(Element(center=c,
+                                radius=self.radius))
+
+        if el:
+            el.copy_attributes(self)
+        return el
+
+    def turn_lefthand(self, n1):
+        return 0
 
     def print_nodes(self):
         return " n1={}/n2={}".format(self.n1, self.n2)
@@ -1281,6 +1318,12 @@ class Arc(Circle):
 
     def get_angle_of_arc(self):
         return get_angle_of_arc(self.startangle, self.endangle)
+
+    def turn_lefthand(self, n1):
+        alpha_in = self.get_alpha(n1) + np.pi
+        alpha_c = alpha_line(n1, self.center)
+        angle = positive_angle(alpha_angle(alpha_in, alpha_c))
+        return 1 if angle < np.pi else 0
 
     def __str__(self):
         return "Arc c={},\n\t r={},\n\t start={},\n\t end={},\n\t p1={},\n\t p2={},\n\t n1={},\n\t n2={}".\

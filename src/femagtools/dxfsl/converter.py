@@ -8,6 +8,7 @@ from femagtools import __version__
 from femagtools.dxfsl.geom import Geometry
 from femagtools.dxfsl.shape import Shape
 from femagtools.dxfsl.fslrenderer import FslRenderer, agndst
+from femagtools.dxfsl.svgrenderer import SvgRenderer
 from femagtools.dxfsl.plotrenderer import PlotRenderer
 from femagtools.dxfsl.concat import Concatenation
 from femagtools.dxfsl.functions import Timer, middle_angle
@@ -43,6 +44,7 @@ def plot_geom(doit, plt, geom, title="Plot", areas=True):
 
 
 def symmetry_search(machine,
+                    basename,
                     plt=None,  # plotter
                     kind="single",
                     mindist=0.01,
@@ -51,6 +53,7 @@ def symmetry_search(machine,
                     is_inner=False,
                     is_outer=False,
                     show_plots=True,
+                    write_svg=False,
                     debug_mode=False,
                     rows=1,
                     cols=1,
@@ -92,6 +95,12 @@ def symmetry_search(machine,
                                 title=kind+' (symmetrylines)',
                                 draw_inside=True,
                                 rows=rows, cols=cols, num=num, show=False)
+
+        if write_svg:
+            svgrenderer = SvgRenderer(basename, suffix="Symmetry", full=False)
+            svgrenderer.render(machine, stroke_width=0.25)
+            svgrenderer.write()
+
         machine_slice = machine.get_symmetry_slice()
         if machine_slice is None:
             logger.info(" - no slice extracted ?!?")
@@ -415,6 +424,7 @@ def convert(dxfile,
             small_plots=False,
             write_fsl=True,
             write_fsl_single=False,
+            write_svg=False,
             write_png=False,
             write_id=False,
             full_model=False,
@@ -574,6 +584,10 @@ def convert(dxfile,
         p.render_elements(basegeom, Shape, neighbors=True,
                           title='Original with nodes',
                           rows=3, cols=2, num=2, show=False)
+    if write_svg:
+        svgrenderer = SvgRenderer(basename, suffix="Nodes", full=False)
+        svgrenderer.render(machine, no_areas=True, nodes=True, stroke_width=0.25)
+        svgrenderer.write()
 
     machine.repair_hull()
 
@@ -641,25 +655,29 @@ def convert(dxfile,
 
         process_timer = Timer(start_it=True)
         # inner part
-        machine_inner = symmetry_search(machine=machine_inner,
+        machine_inner = symmetry_search(machine_inner,
+                                        basename,
                                         plt=p,  # plot
                                         kind=inner_name,
                                         is_inner=True,
                                         mindist=mindist,
                                         symtol=symtol,
                                         show_plots=show_plots,
+                                        write_svg=write_svg,
                                         rows=3,  # rows
                                         cols=2,  # columns
                                         num=3)   # start num
 
         # outer part
         machine_outer = symmetry_search(machine_outer,
+                                        basename,
                                         plt=p,  # plot
                                         kind=outer_name,
                                         is_outer=True,
                                         mindist=mindist,
                                         symtol=symtol,
                                         show_plots=show_plots,
+                                        write_svg=write_svg,
                                         rows=3,  # rows
                                         cols=2,  # columns
                                         num=4)   # start num
@@ -817,6 +835,18 @@ def convert(dxfile,
                 machine_inner, machine_outer,
                 inner, outer,
                 params)
+
+        if write_svg:
+            svgrenderer = SvgRenderer(basename, suffix=inner_title, full=False)
+            svgrenderer.render(machine_inner)
+            svgrenderer.write()
+            svgrenderer = SvgRenderer(basename, suffix=outer_title, full=False)
+            svgrenderer.render(machine_outer)
+            svgrenderer.write()
+            svgrenderer = SvgRenderer(basename, suffix="Motor", full=True)
+            svgrenderer.render(machine_inner)
+            svgrenderer.render(machine_outer)
+            svgrenderer.write()
     else:
         # No airgap found. This must be an inner or outer part
         logger.info("=== no airgap found ===")
@@ -835,6 +865,7 @@ def convert(dxfile,
                 outer = True
 
         machine = symmetry_search(machine,
+                                  basename,
                                   plt=p,  # plot
                                   kind=name,
                                   is_inner=inner,
@@ -843,6 +874,7 @@ def convert(dxfile,
                                   symtol=symtol,
                                   sympart=sympart,
                                   show_plots=show_plots,
+                                  write_svg=write_svg,
                                   rows=3,  # rows
                                   cols=2,  # cols
                                   num=3)   # start num
@@ -948,6 +980,11 @@ def convert(dxfile,
             mtype = 'EESM' if EESM else 'PMSM'
             fslrenderer = FslRenderer(basename, mtype)
             conv['fsl'] = fslrenderer.render(machine, inner, outer, standalone=True)
+
+        if write_svg:
+            svgrenderer = SvgRenderer(basename, suffix=title)
+            svgrenderer.render(machine)
+            svgrenderer.write()
 
     if params is not None:
         conv.update(params)

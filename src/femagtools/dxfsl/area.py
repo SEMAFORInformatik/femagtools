@@ -144,14 +144,14 @@ class Area(object):
         except Exception:
             return
 
-    def list_of_elements(self):
+    def list_of_elements(self, tolerant=False):
         if len(self.area) < 2:
             return
 
         e0 = self.area[0]
         e1 = self.area[1]
         try:
-            if e1.get_node_number(e0.n1, override=True) == 0:
+            if e1.get_node_number(e0.n1, override=True, tolerant=tolerant) == 0:
                 n1 = e0.n1
                 n2 = e0.n2
             else:
@@ -160,7 +160,7 @@ class Area(object):
             yield n1, n2, e0
 
             for e1 in self.area[1:]:
-                if e1.get_node_number(n2) == 1:
+                if e1.get_node_number(n2, tolerant=tolerant) == 1:
                     n1 = e1.n1
                     n2 = e1.n2
                 else:
@@ -1936,12 +1936,37 @@ class Area(object):
             for i in a.nested_areas_inside():
                 yield i
 
-    def mirror_area(self, center, axis_m, axis_n):
+    def mirror_area(self, center, axis_m, axis_n, set_nodes=False):
         elements = []
         for e in self.area:
             el = e.mirror_shape(center, axis_m, axis_n)
             if el:
                 elements.append(el)
+
+        if set_nodes:
+            for e in elements:
+                e.n1 = e.p1
+                e.n2 = e.p2
+
+        area = Area(elements, center, 0.0)
+        area.type = self.type
+        return area
+
+    def rotate_area(self, center, alpha, set_nodes=False):
+        elements = []
+        T = np.array(((np.cos(alpha), -np.sin(alpha)),
+                      (np.sin(alpha), np.cos(alpha))))
+
+        for e in self.area:
+            el = e.rotate_shape(T)
+            if el:
+                elements.append(el)
+
+        if set_nodes:
+            for e in elements:
+                e.n1 = e.p1
+                e.n2 = e.p2
+
         area = Area(elements, center, 0.0)
         area.type = self.type
         return area

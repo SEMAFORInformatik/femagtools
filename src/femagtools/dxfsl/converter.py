@@ -97,7 +97,7 @@ def symmetry_search(machine,
                                 rows=rows, cols=cols, num=num, show=False)
 
         if write_svg:
-            svgrenderer = SvgRenderer(basename, suffix="Symmetry", full=False)
+            svgrenderer = SvgRenderer(basename, suffix="{}-Symmetry".format(kind), full=False)
             svgrenderer.render(machine, stroke_width=0.25)
             svgrenderer.write()
 
@@ -565,6 +565,11 @@ def convert(dxfile,
     if machine.part_of_circle() == 0:
         logger.warn("No arc segment found")
         return dict(error='no arc segment found')
+
+    if write_svg:
+        svgrenderer = SvgRenderer(basename, suffix="Original", full=False)
+        svgrenderer.render(machine, no_areas=True, stroke_width=0.25)
+        svgrenderer.write()
 
     machine.clear_cut_lines()
     machine.move_to_middle()

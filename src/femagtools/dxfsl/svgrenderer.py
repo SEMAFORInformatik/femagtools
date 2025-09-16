@@ -33,7 +33,7 @@ class SvgRenderer(object):
         self.y_list = []
         self.full = full
 
-    def _write_line(self, line, stroke_width=0.03, color='black', nodes=False):
+    def _write_line(self, line, stroke_width=0.03, color='black'):
         self.x_list.append(line.n1[0])
         self.y_list.append(line.n1[1])
         self.x_list.append(line.n2[0])
@@ -47,11 +47,8 @@ class SvgRenderer(object):
                 line.n2[1],
                 color,
                 stroke_width))
-        if nodes:
-            self._write_node(line.n1)
-            self._write_node(line.n2)
 
-    def _write_arc(self, arc, stroke_width=0.03, color='black', nodes=False):
+    def _write_arc(self, arc, stroke_width=0.03, color='black'):
         self.x_list.append(arc.n1[0])
         self.y_list.append(arc.n1[1])
         self.x_list.append(arc.n2[0])
@@ -68,9 +65,6 @@ class SvgRenderer(object):
                 arc.turn_lefthand(arc.n1),
                 arc.n2[0],
                 arc.n2[1]))
-        if nodes:
-            self._write_node(arc.n1)
-            self._write_node(arc.n2)
 
     def _write_circle(self, circle, stroke_width=0.03, color='black', dimensions=True):
         if dimensions:
@@ -87,26 +81,30 @@ class SvgRenderer(object):
                 color,
                 stroke_width))
 
-    def _write_node(self, n):
+    def _write_node(self, n, color='blue'):
         self.content.append(
-            '<circle r="0.5" cx="{}" cy="{}" fill="blue" stroke="none" />'.format(
+            '<circle r="0.3" cx="{}" cy="{}" fill="{}" stroke="none" />'.format(
                 n[0],
-                n[1]))
+                n[1],
+                color))
+
+    def point(self, n, marker, color='blue'):
+        self._write_node(n, color=color)
 
     def _write_element(self, element, stroke_width=0.03, color='black', nodes=False, dimensions=True):
         if is_Arc(element):
-            self._write_arc(element, stroke_width=stroke_width, color=color, nodes=nodes)
+            self._write_arc(element, stroke_width=stroke_width, color=color)
             return
         if is_Circle(element):
             self._write_circle(element, stroke_width=stroke_width, color=color, dimensions=dimensions)
             return
         if is_Line(element):
-            self._write_line(element, stroke_width=stroke_width, color=color, nodes=nodes)
+            self._write_line(element, stroke_width=stroke_width, color=color)
             return
 
     def _write_geometry(self, machine, nodes=False, stroke_width=0.03):
         for e in machine.geom.elements():
-            self._write_element(e, nodes=nodes, stroke_width=stroke_width)
+            self._write_element(e, stroke_width=stroke_width)
 
     def _write_symmetry_lines(self, machine):
         for e in machine.geom.cut_lines:
@@ -120,7 +118,7 @@ class SvgRenderer(object):
             if e.n1 is None:
                 e.n1 = e.p1
                 e.n2 = e.p2
-            self._write_element(e, color='red', stroke_width=0.5, dimensions=False)
+            self._write_element(e, color='red', stroke_width=0.4, dimensions=False)
 
     def _write_head(self, x_min, x_max, y_min, y_max):
         overhang = 3
@@ -226,12 +224,14 @@ class SvgRenderer(object):
     def render(self, machine, no_areas=False, nodes=False, stroke_width=0.03):
         '''create svg statements with nodechains'''
         if no_areas:
-            self._write_geometry(machine, nodes=nodes, stroke_width=stroke_width)
+            self._write_geometry(machine, stroke_width=stroke_width)
         else:
             self._write_areas(machine, stroke_width=stroke_width)
 
         self._write_symmetry_lines(machine)
         self._write_airgap_lines(machine)
+        if nodes:
+            machine.geom.render_neighbors(self)
 
     def write(self):
         max_x = max(self.x_list)

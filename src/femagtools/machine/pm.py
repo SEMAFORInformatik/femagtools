@@ -1396,14 +1396,26 @@ class PmRelMachineLdq(PmRelMachine):
             return iqd(self.betarange[1], i1)
         return iqd(self.betarange[0], i1)
 
+    def remove_negative_losses(self, r):
+        try:
+            if isinstance(r, np.float64) and r < 0:
+                return 0.0
+            idx = np.argwhere(r < 0)
+            if len(idx.squeeze()):
+                r[idx.squeeze()] = 0.0
+        except:
+            pass
+        return r
+
     def betai1_plfe1(self, beta, i1, f1):
         stator_losskeys = ['styoke_eddy', 'styoke_hyst',
                            'stteeth_eddy', 'stteeth_hyst']
         if self.bertotti:
             stator_losskeys += ['styoke_excess', 'stteeth_excess']
-        return np.sum([
-            self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k]
+
+        r = np.sum([self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k]
             for k in stator_losskeys if k in self._losses], axis=0)
+        return self.remove_negative_losses(r)
 
     def iqd_plfe1(self, iq, id, f1):
         return self.betai1_plfe1(*betai1(iq, id), f1)
@@ -1412,22 +1424,17 @@ class PmRelMachineLdq(PmRelMachine):
         rotor_losskeys = ['rotor_eddy', 'rotor_hyst']
         if self.bertotti:
             rotor_losskeys += ['rotor_excess']
-        return np.sum([
-            self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k] for
+
+        r = np.sum([self._losses[k](beta, i1)*(f1/self.fo)**self.plexp[k] for
             k in tuple(rotor_losskeys)], axis=0)
+        return self.remove_negative_losses(r)
 
     def iqd_plfe2(self, iq, id, f1):
         return self.betai1_plfe2(*betai1(iq, id), f1)
 
     def betai1_plmag(self, beta, i1, f1):
         r = self._losses['magnet'](beta, i1)*(f1/self.fo)**2
-        try:
-            idx = np.argwhere(r < 0)
-            if len(idx.squeeze()):
-                r[idx.squeeze()] = 0.0
-        except:
-            pass
-        return r
+        return self.remove_negative_losses(r)
 
     def iqd_plmag(self, iq, id, f1):
         return self.betai1_plmag(*betai1(iq, id), f1)
@@ -1551,6 +1558,17 @@ class PmRelMachinePsidq(PmRelMachine):
 
         return iqmax, np.max(self.idrange)
 
+    def remove_negative_losses(self, r):
+        try:
+            if isinstance(r, np.float64) and r < 0:
+                return 0.0
+            idx = np.argwhere(r < 0)
+            if len(idx.squeeze()):
+                r[idx.squeeze()] = 0.0
+        except:
+            pass
+        return r
+
     def iqd_plfe1(self, iq, id, f1):
         stator_losskeys = [k for k in ['styoke_eddy', 'styoke_hyst',
                                        'stteeth_eddy', 'stteeth_hyst']
@@ -1558,9 +1576,10 @@ class PmRelMachinePsidq(PmRelMachine):
         if self.bertotti:
             stator_losskeys += [k for k in ('styoke_excess', 'stteeth_excess')
                                 if k in self._losses]
-        return np.sum([
-            self._losses[k](iq, id)*(f1/self.fo)**self.plexp[k] for
+
+        r = np.sum([self._losses[k](iq, id)*(f1/self.fo)**self.plexp[k] for
             k in tuple(stator_losskeys)], axis=0)
+        return self.remove_negative_losses(r)
 
     def betai1_plfe1(self, beta, i1, f1):
         return self.iqd_plfe1(*iqd(beta, i1), f1)
@@ -1569,15 +1588,16 @@ class PmRelMachinePsidq(PmRelMachine):
         rotor_losskeys = ['rotor_eddy', 'rotor_hyst']
         if self.bertotti:
             rotor_losskeys += ['rotor_excess']
-        return np.sum([
-            self._losses[k](iq, id)*(f1/self.fo)**self.plexp[k] for
+        r = np.sum([self._losses[k](iq, id)*(f1/self.fo)**self.plexp[k] for
             k in tuple(rotor_losskeys)], axis=0)
+        return self.remove_negative_losses(r)
 
     def betai1_plfe2(self, beta, i1, f1):
         return self.iqd_plfe2(*iqd(beta, i1), f1)
 
     def iqd_plmag(self, iq, id, f1):
-        return self._losses['magnet'](iq, id)*(f1/self.fo)**2
+        r = self._losses['magnet'](iq, id)*(f1/self.fo)**2
+        return self.remove_negative_losses(r)
 
     def betai1_plmag(self, beta, i1, f1):
         return self.iqd_plmag(*iqd(beta, i1), f1)

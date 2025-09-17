@@ -397,7 +397,7 @@ class Area(object):
         if self.type == TYPE_MAGNET_AIRGAP or self.type == TYPE_MAGNET_RECT:
             return 'red'
         if self.type == TYPE_YOKE:
-            return 'cyan'
+            return 'lightblue'
         if self.type == TYPE_TOOTH:
             return 'skyblue'
         if self.type == TYPE_SHAFT:

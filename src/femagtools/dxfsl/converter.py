@@ -843,15 +843,15 @@ def convert(dxfile,
 
         if write_svg:
             svgrenderer = SvgRenderer(basename, suffix=inner_title, full=False)
-            svgrenderer.render(machine_inner)
-            svgrenderer.write()
+            svgrenderer.render(machine_inner, points=True)
+            svgrenderer.write(legend=True)
             svgrenderer = SvgRenderer(basename, suffix=outer_title, full=False)
-            svgrenderer.render(machine_outer)
-            svgrenderer.write()
+            svgrenderer.render(machine_outer, points=True)
+            svgrenderer.write(legend=True)
             svgrenderer = SvgRenderer(basename, suffix="Motor", full=True)
             svgrenderer.render(machine_inner)
             svgrenderer.render(machine_outer)
-            svgrenderer.write()
+            svgrenderer.write(legend=True)
     else:
         # No airgap found. This must be an inner or outer part
         logger.info("=== no airgap found ===")
@@ -989,7 +989,7 @@ def convert(dxfile,
         if write_svg:
             svgrenderer = SvgRenderer(basename, suffix=title)
             svgrenderer.render(machine)
-            svgrenderer.write()
+            svgrenderer.write(legend=True)
 
     if params is not None:
         conv.update(params)

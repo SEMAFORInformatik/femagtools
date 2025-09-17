@@ -9,7 +9,7 @@
 """
 import io
 import numpy as np
-from femagtools.dxfsl.shape import Shape
+from femagtools.dxfsl.shape import Shape, Circle
 from femagtools.dxfsl.area import TYPE_TOOTH, TYPE_YOKE
 from femagtools.dxfsl.shape import is_Arc, is_Line, is_Circle
 from femagtools.dxfsl.functions import alpha_angle
@@ -34,16 +34,42 @@ class SvgRenderer(object):
         self.full = full
         self.x_start = 0
         self.y_start = 0
+        self.min_x = 0
+        self.max_x = 0
+        self.min_y = 0
+        self.max_y = 0
         self.width = 0
         self.height = 0
         self.legend = {}
+        self.scalefactor = 1
+
+    def _get_x_and_y(self, geom):
+        for n in geom.g.nodes():
+            self.x_list.append(n[0])
+            self.y_list.append(n[1])
+
+        for circle in geom.elements(type=Circle):
+            if not is_Arc(circle):
+                self.x_list.append(circle.center[0] + circle.radius)
+                self.x_list.append(circle.center[0] - circle.radius)
+                self.y_list.append(circle.center[1] + circle.radius)
+                self.y_list.append(circle.center[1] - circle.radius)
+
+    def _set_min_max_and_scalefactor(self):
+        self.max_x = max(self.x_list)
+        self.min_x = min(self.x_list)
+        self.max_y = max(self.y_list)
+        self.min_y = min(self.y_list)
+        if self.full:
+            self.min_x = - self.max_x
+            self.max_y = self.max_x
+            self.min_y = - self.max_x
+
+        self.width = self.max_x - self.min_x
+        self.height = self.max_y - self.min_y
+        self.scalefactor = self.width / 50
 
     def _write_line(self, line, stroke_width=0.03, color='black'):
-        self.x_list.append(line.n1[0])
-        self.y_list.append(line.n1[1])
-        self.x_list.append(line.n2[0])
-        self.y_list.append(line.n2[1])
-
         self.content.append(
             '<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="{}" />'.format(
                 line.n1[0],
@@ -54,11 +80,6 @@ class SvgRenderer(object):
                 stroke_width))
 
     def _write_arc(self, arc, stroke_width=0.03, color='black'):
-        self.x_list.append(arc.n1[0])
-        self.y_list.append(arc.n1[1])
-        self.x_list.append(arc.n2[0])
-        self.y_list.append(arc.n2[1])
-        
         self.content.append(
             '<path fill="none" stroke="{}" stroke-width="{}" d="M {} {} A {} {} 0 0 {} {} {}" />'.format(
                 color,
@@ -95,7 +116,8 @@ class SvgRenderer(object):
                 color))
 
     def point(self, n, marker, color='blue'):
-        self._write_point(n, color=color)
+        radius = 0.2 * self.scalefactor
+        self._write_point(n, color=color, radius=radius)
 
     def _write_element(self, element, stroke_width=0.03, color='black', nodes=False, dimensions=True):
         if is_Arc(element):
@@ -113,30 +135,31 @@ class SvgRenderer(object):
             self._write_element(e, stroke_width=stroke_width)
 
     def _write_symmetry_lines(self, machine):
+        stroke_width = 0.5 * self.scalefactor
         for e in machine.geom.cut_lines:
             if e.n1 is None:
                 e.n1 = e.p1
                 e.n2 = e.p2
-            self._write_element(e, color='darkgreen', stroke_width=0.5)
+            self._write_element(e, color='darkgreen', stroke_width=stroke_width)
 
     def _write_airgap_lines(self, machine):
+        stroke_width = 0.4 * self.scalefactor
         for e in machine.geom.airgaps:
             if e.n1 is None:
                 e.n1 = e.p1
                 e.n2 = e.p2
-            self._write_element(e, color='red', stroke_width=0.4, dimensions=False)
+            self._write_element(e, color='red', stroke_width=stroke_width, dimensions=False)
 
-    def _write_head(self, x_min, x_max, y_min, y_max):
+    def _write_head(self):
         overhang = 3
-        self.x_start = x_min - overhang
-        self.width = x_max - x_min + 2 * overhang
-        y_length = y_max - y_min
-        self.y_start = - (y_max + overhang)
-        self.height = y_length + 2 * overhang
+        self.x_start = self.min_x - overhang
+        width = self.width + 2 * overhang
+        self.y_start = - (self.max_y + overhang)
+        height = self.height + 2 * overhang
 
         self.head = [
             '<?xml version="1.0" encoding="UTF-8"?>',
-            '<svg viewBox="{} {} {} {}">'.format(self.x_start, self.y_start, self.width, self.height),
+            '<svg viewBox="{} {} {} {}">'.format(self.x_start, self.y_start, width, height),
             '<g transform="scale(1, -1)">']
 
     def _write_tail(self, legend=False):
@@ -179,7 +202,8 @@ class SvgRenderer(object):
 
     def _write_point_inside(self, geom, area):
         p = area.get_point_inside(geom)
-        self._write_point(p, color='magenta', radius=0.2)
+        radius = 0.2 * self.scalefactor
+        self._write_point(p, color='magenta', radius=radius)
 
     def _write_area(self, machine, area, mirrored=False, part=0, stroke_width=0.03, points=False):
         startangle = machine.startangle
@@ -247,7 +271,6 @@ class SvgRenderer(object):
         if len(self.legend) < 1:
             return
 
-        scalefactor = self.width / 50
         margin = 0.5
         spacing = 0.5
         linespace = 0.3
@@ -258,14 +281,14 @@ class SvgRenderer(object):
         strokewidth = 0.1
         ry = 0.5
 
-        margin = margin * scalefactor
-        spacing = spacing * scalefactor
-        linespace = linespace * scalefactor
-        colorwidth = colorwidth * scalefactor
-        colorheight = colorheight * scalefactor
-        fontsize = fontsize * scalefactor
-        strokewidth = strokewidth * scalefactor
-        ry = ry * scalefactor
+        margin = margin * self.scalefactor
+        spacing = spacing * self.scalefactor
+        linespace = linespace * self.scalefactor
+        colorwidth = colorwidth * self.scalefactor
+        colorheight = colorheight * self.scalefactor
+        fontsize = fontsize * self.scalefactor
+        strokewidth = strokewidth * self.scalefactor
+        ry = ry * self.scalefactor
 
         family = "Helvetica, Arial, sans-serif"
         entries = len(self.legend)
@@ -299,8 +322,18 @@ class SvgRenderer(object):
             y = y + fontsize + linespace
         return
 
-    def render(self, machine, no_areas=False, nodes=False, stroke_width=0.03, points=False):
-        '''create svg statements with nodechains'''
+    def render(self, machine, machine2=None, no_areas=False, nodes=False, stroke_width=0.03, points=False):
+        self._get_x_and_y(machine.geom)
+        if machine2:
+            self._get_x_and_y(machine2.geom)
+        self._set_min_max_and_scalefactor()
+
+        stroke_width = stroke_width * self.scalefactor
+        self._render(machine, no_areas=no_areas, nodes=nodes, stroke_width=stroke_width, points=points)
+        if machine2:
+            self._render(machine2, no_areas=no_areas, nodes=nodes, stroke_width=stroke_width, points=points)
+
+    def _render(self, machine, no_areas=False, nodes=False, stroke_width=0.03, points=False):
         if no_areas:
             self._write_geometry(machine, stroke_width=stroke_width)
         else:
@@ -312,12 +345,7 @@ class SvgRenderer(object):
             machine.geom.render_neighbors(self)
 
     def write(self, legend=False):
-        max_x = max(self.x_list)
-        min_x = min(self.x_list)
-        max_y = max(self.y_list)
-        min_y = min(self.y_list)
-
-        self._write_head(min_x, max_x, min_y, max_y)
+        self._write_head()
         self._write_tail(legend=legend)
 
         name = self.basename

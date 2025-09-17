@@ -849,8 +849,7 @@ def convert(dxfile,
             svgrenderer.render(machine_outer, points=True)
             svgrenderer.write(legend=True)
             svgrenderer = SvgRenderer(basename, suffix="Motor", full=True)
-            svgrenderer.render(machine_inner)
-            svgrenderer.render(machine_outer)
+            svgrenderer.render(machine_inner, machine2=machine_outer)
             svgrenderer.write(legend=True)
     else:
         # No airgap found. This must be an inner or outer part

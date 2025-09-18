@@ -154,6 +154,8 @@ class MachineModel(Model):
         except AttributeError:
             self.external_rotor = False
         self.move_inside = 1.0 if self.external_rotor else 0.0
+        if hasattr(self, "move_inside_force"):
+            self.move_inside = 0
         if 'exit_on_end' not in parameters:
             self.exit_on_end = 'false'
         if 'magnet' in parameters:

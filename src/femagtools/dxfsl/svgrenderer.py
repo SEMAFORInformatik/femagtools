@@ -9,7 +9,7 @@
 """
 import io
 import numpy as np
-from femagtools.dxfsl.shape import Shape
+from femagtools.dxfsl.shape import Shape, Circle
 from femagtools.dxfsl.area import TYPE_TOOTH, TYPE_YOKE
 from femagtools.dxfsl.shape import is_Arc, is_Line, is_Circle
 from femagtools.dxfsl.functions import alpha_angle
@@ -32,13 +32,44 @@ class SvgRenderer(object):
         self.x_list = []
         self.y_list = []
         self.full = full
+        self.x_start = 0
+        self.y_start = 0
+        self.min_x = 0
+        self.max_x = 0
+        self.min_y = 0
+        self.max_y = 0
+        self.width = 0
+        self.height = 0
+        self.legend = {}
+        self.scalefactor = 1
+
+    def _get_x_and_y(self, geom):
+        for n in geom.g.nodes():
+            self.x_list.append(n[0])
+            self.y_list.append(n[1])
+
+        for circle in geom.elements(type=Circle):
+            if not is_Arc(circle):
+                self.x_list.append(circle.center[0] + circle.radius)
+                self.x_list.append(circle.center[0] - circle.radius)
+                self.y_list.append(circle.center[1] + circle.radius)
+                self.y_list.append(circle.center[1] - circle.radius)
+
+    def _set_min_max_and_scalefactor(self):
+        self.max_x = max(self.x_list)
+        self.min_x = min(self.x_list)
+        self.max_y = max(self.y_list)
+        self.min_y = min(self.y_list)
+        if self.full:
+            self.min_x = - self.max_x
+            self.max_y = self.max_x
+            self.min_y = - self.max_x
+
+        self.width = self.max_x - self.min_x
+        self.height = self.max_y - self.min_y
+        self.scalefactor = self.width / 50
 
     def _write_line(self, line, stroke_width=0.03, color='black'):
-        self.x_list.append(line.n1[0])
-        self.y_list.append(line.n1[1])
-        self.x_list.append(line.n2[0])
-        self.y_list.append(line.n2[1])
-
         self.content.append(
             '<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="{}" />'.format(
                 line.n1[0],
@@ -49,11 +80,6 @@ class SvgRenderer(object):
                 stroke_width))
 
     def _write_arc(self, arc, stroke_width=0.03, color='black'):
-        self.x_list.append(arc.n1[0])
-        self.y_list.append(arc.n1[1])
-        self.x_list.append(arc.n2[0])
-        self.y_list.append(arc.n2[1])
-        
         self.content.append(
             '<path fill="none" stroke="{}" stroke-width="{}" d="M {} {} A {} {} 0 0 {} {} {}" />'.format(
                 color,
@@ -81,15 +107,17 @@ class SvgRenderer(object):
                 color,
                 stroke_width))
 
-    def _write_node(self, n, color='blue'):
+    def _write_point(self, n, color='blue', radius=0.3):
         self.content.append(
-            '<circle r="0.3" cx="{}" cy="{}" fill="{}" stroke="none" />'.format(
+            '<circle r="{}" cx="{}" cy="{}" fill="{}" stroke="none" />'.format(
+                radius,
                 n[0],
                 n[1],
                 color))
 
     def point(self, n, marker, color='blue'):
-        self._write_node(n, color=color)
+        radius = 0.2 * self.scalefactor
+        self._write_point(n, color=color, radius=radius)
 
     def _write_element(self, element, stroke_width=0.03, color='black', nodes=False, dimensions=True):
         if is_Arc(element):
@@ -107,41 +135,43 @@ class SvgRenderer(object):
             self._write_element(e, stroke_width=stroke_width)
 
     def _write_symmetry_lines(self, machine):
+        stroke_width = 0.5 * self.scalefactor
         for e in machine.geom.cut_lines:
             if e.n1 is None:
                 e.n1 = e.p1
                 e.n2 = e.p2
-            self._write_element(e, color='darkgreen', stroke_width=0.5)
+            self._write_element(e, color='darkgreen', stroke_width=stroke_width)
 
     def _write_airgap_lines(self, machine):
+        stroke_width = 0.4 * self.scalefactor
         for e in machine.geom.airgaps:
             if e.n1 is None:
                 e.n1 = e.p1
                 e.n2 = e.p2
-            self._write_element(e, color='red', stroke_width=0.4, dimensions=False)
+            self._write_element(e, color='red', stroke_width=stroke_width, dimensions=False)
 
-    def _write_head(self, x_min, x_max, y_min, y_max):
+    def _write_head(self):
         overhang = 3
-        x_start = x_min - overhang
-        x_width = x_max - x_min + 2 * overhang
-        y_length = y_max - y_min
-        y_start = - (y_max + overhang)
-        y_height = y_length + 2 * overhang
+        self.x_start = self.min_x - overhang
+        width = self.width + 2 * overhang
+        self.y_start = - (self.max_y + overhang)
+        height = self.height + 2 * overhang
 
         self.head = [
             '<?xml version="1.0" encoding="UTF-8"?>',
-            '<svg viewBox="{} {} {} {}">'.format(x_start, y_start, x_width, y_height),
+            '<svg viewBox="{} {} {} {}">'.format(self.x_start, self.y_start, width, height),
             '<g transform="scale(1, -1)">']
 
-    def _write_tail(self):
+    def _write_tail(self, legend=False):
         if self.max_radius > 0.0:
-            self.tail += [
-                '<circle r="{}" cx="0" cy="0" fill="none" stroke="black" stroke-width="0.1"/>'.format(self.max_radius)]
-        self.tail += [
-            '<circle r="0.1" cx="0" cy="0" fill="red" stroke="black" stroke-width="0.05"/>']
-        self.tail += [
-            '</g>',
-            '</svg>']
+            self.tail.append(  # outer radius
+                '<circle r="{}" cx="0" cy="0" fill="none" stroke="black" stroke-width="0.1"/>'.format(self.max_radius))
+        self.tail.append(  # center
+            '<circle r="0.1" cx="0" cy="0" fill="red" stroke="black" stroke-width="0.05"/>')
+        self.tail.append('</g>')
+        if legend:
+            self._write_legend()
+        self.tail.append('</svg>')
 
     def _write_path(self, area, mirrored=False, stroke_width=0.03, stroke_color='black'):
         self.content += [
@@ -170,16 +200,28 @@ class SvgRenderer(object):
 
         self.content.append('"/>')
 
-    def _write_area(self, machine, area, mirrored=False, part=0, stroke_width=0.03):
+    def _write_point_inside(self, geom, area):
+        p = area.get_point_inside(geom)
+        radius = 0.2 * self.scalefactor
+        self._write_point(p, color='magenta', radius=radius)
+
+    def _write_area(self, machine, area, mirrored=False, part=0, stroke_width=0.03, points=False):
         startangle = machine.startangle
         endangle = machine.endangle
         self._write_path(area, mirrored=mirrored, stroke_width=stroke_width)
+        if points:
+            self._write_point_inside(machine.geom, area)
+
+        if area.legend():
+            self.legend[area.legend()] = area.color()
         mirrored_area = None
 
         if mirrored:
             axis_m, axis_n = machine.geom.get_axis_m_n(endangle)
             mirrored_area = area.mirror_area(machine.center, axis_m, axis_n, set_nodes=True)
             self._write_path(mirrored_area, stroke_width=stroke_width)
+            if points:
+                self._write_point_inside(machine.geom, mirrored_area)
 
         if part == 0:
             return
@@ -192,13 +234,17 @@ class SvgRenderer(object):
         for x in range(1, part):
             area = area.rotate_area(machine.center, alpha, set_nodes=True)
             self._write_path(area, stroke_width=stroke_width)
+            if points:
+                self._write_point_inside(machine.geom, area)
 
         if mirrored:
             for x in range(1, part):
                 mirrored_area = mirrored_area.rotate_area(machine.center, alpha, set_nodes=True)
                 self._write_path(mirrored_area, stroke_width=stroke_width)
+                if points:
+                    self._write_point_inside(machine.geom, mirrored_area)
 
-    def _write_areas(self, machine, stroke_width=0.03):
+    def _write_areas(self, machine, stroke_width=0.03, points=False):
         geom = machine.geom
         self.max_radius = geom.max_radius
         iron = [a for a in geom.area_list if a.is_iron()]
@@ -213,34 +259,94 @@ class SvgRenderer(object):
             mirrored = machine.is_mirrored()
 
         for area in iron:
-            self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width)
+            self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
         for area in air:
-            self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width)
+            self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
         for area in mag:
-           self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width)
+           self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
         for area in wnd:
-           self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width)
+           self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
 
-    def render(self, machine, no_areas=False, nodes=False, stroke_width=0.03):
-        '''create svg statements with nodechains'''
+    def _write_legend(self):
+        if len(self.legend) < 1:
+            return
+
+        margin = 0.5
+        spacing = 0.5
+        linespace = 0.3
+        colorwidth = 1
+        colorheight = 0.7
+        fontsize = 1
+        chars = max([len(key) for key, value in self.legend.items()])
+        strokewidth = 0.1
+        ry = 0.5
+
+        margin = margin * self.scalefactor
+        spacing = spacing * self.scalefactor
+        linespace = linespace * self.scalefactor
+        colorwidth = colorwidth * self.scalefactor
+        colorheight = colorheight * self.scalefactor
+        fontsize = fontsize * self.scalefactor
+        strokewidth = strokewidth * self.scalefactor
+        ry = ry * self.scalefactor
+
+        family = "Helvetica, Arial, sans-serif"
+        entries = len(self.legend)
+
+        h = (entries * fontsize) + 2 * spacing + (entries - 1) * linespace
+        x = self.x_start + margin
+        y = self.y_start + margin
+        h = (entries * fontsize) + 2 * spacing + (entries - 1) * linespace
+        w = spacing + colorwidth + spacing + fontsize * 0.6 * chars + spacing
+
+        self.tail += [
+            '<rect x="{}" y="{}" ry="{}" width="{}" height="{}"'.format(x, y, ry, w, h),
+            '      stroke="black" fill="ivory" stroke-width="{}" />'.format(strokewidth)]
+        x = x + spacing
+        y = y + spacing
+        for key, value in self.legend.items():
+            self.tail.append(
+                '<rect x="{}" y="{}" width="{}" height="{}" stroke="none" fill="{}" />'.format(
+                    x,
+                    y + (fontsize - colorheight),
+                    colorwidth,
+                    colorheight,
+                    value))
+            self.tail.append(
+                '<text x="{}" y="{}" font-family="{}" font-size="{}">{}</text>'.format(
+                    x + colorwidth + spacing,
+                    y + fontsize,
+                    family,
+                    fontsize,
+                    key))
+            y = y + fontsize + linespace
+        return
+
+    def render(self, machine, machine2=None, no_areas=False, nodes=False, stroke_width=0.03, points=False):
+        self._get_x_and_y(machine.geom)
+        if machine2:
+            self._get_x_and_y(machine2.geom)
+        self._set_min_max_and_scalefactor()
+
+        stroke_width = stroke_width * self.scalefactor
+        self._render(machine, no_areas=no_areas, nodes=nodes, stroke_width=stroke_width, points=points)
+        if machine2:
+            self._render(machine2, no_areas=no_areas, nodes=nodes, stroke_width=stroke_width, points=points)
+
+    def _render(self, machine, no_areas=False, nodes=False, stroke_width=0.03, points=False):
         if no_areas:
             self._write_geometry(machine, stroke_width=stroke_width)
         else:
-            self._write_areas(machine, stroke_width=stroke_width)
+            self._write_areas(machine, stroke_width=stroke_width, points=points)
 
         self._write_symmetry_lines(machine)
         self._write_airgap_lines(machine)
         if nodes:
             machine.geom.render_neighbors(self)
 
-    def write(self):
-        max_x = max(self.x_list)
-        min_x = min(self.x_list)
-        max_y = max(self.y_list)
-        min_y = min(self.y_list)
-
-        self._write_head(min_x, max_x, min_y, max_y)
-        self._write_tail()
+    def write(self, legend=False):
+        self._write_head()
+        self._write_tail(legend=legend)
 
         name = self.basename
         if self.suffix:

@@ -1937,7 +1937,7 @@ class Geometry(object):
         return
 
     def render_magnet_phi(self, renderer):
-        magnets = [a for a in self.list_of_areas()]
+        magnets = [a for a in self.list_of_areas() if a.is_magnet()]
         if not magnets:
             return
         arrow_len = [a.magnet_arrow_length() for a in magnets]

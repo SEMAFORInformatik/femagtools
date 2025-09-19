@@ -46,6 +46,7 @@ def plot_geom(doit, plt, geom, title="Plot", areas=True):
 def symmetry_search(machine,
                     basename,
                     plt=None,  # plotter
+                    single=False,
                     kind="single",
                     mindist=0.01,
                     symtol=0.0,
@@ -97,7 +98,11 @@ def symmetry_search(machine,
                                 rows=rows, cols=cols, num=num, show=False)
 
         if write_svg:
-            svgrenderer = SvgRenderer(basename, suffix="{}-Symmetry".format(kind), full=False)
+            if single:
+                suffix = "Symmetry"
+            else:
+                suffix = "{}-Symmetry".format(kind)
+            svgrenderer = SvgRenderer(basename, suffix=suffix, full=False)
             svgrenderer.render(machine, stroke_width=0.25)
             svgrenderer.write()
 
@@ -871,6 +876,7 @@ def convert(dxfile,
         machine = symmetry_search(machine,
                                   basename,
                                   plt=p,  # plot
+                                  single=True,
                                   kind=name,
                                   is_inner=inner,
                                   is_outer=outer,
@@ -987,7 +993,7 @@ def convert(dxfile,
 
         if write_svg:
             svgrenderer = SvgRenderer(basename, suffix=title)
-            svgrenderer.render(machine)
+            svgrenderer.render(machine, points=True)
             svgrenderer.write(legend=True)
 
     if params is not None:

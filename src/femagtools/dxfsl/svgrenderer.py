@@ -11,8 +11,8 @@ import io
 import numpy as np
 from femagtools.dxfsl.shape import Shape, Circle
 from femagtools.dxfsl.area import TYPE_TOOTH, TYPE_YOKE
-from femagtools.dxfsl.shape import is_Arc, is_Line, is_Circle
-from femagtools.dxfsl.functions import alpha_angle
+from femagtools.dxfsl.shape import is_Arc, is_Line, is_Circle, Element, Line
+from femagtools.dxfsl.functions import alpha_angle, alpha_line, point, distance
 from femagtools import __version__
 import logging
 
@@ -92,7 +92,7 @@ class SvgRenderer(object):
                 arc.n2[0],
                 arc.n2[1]))
 
-    def _write_circle(self, circle, stroke_width=0.03, color='black', dimensions=True):
+    def _write_circle(self, circle, stroke_width=0.03, stroke_color='black', color='none', dimensions=True):
         if dimensions:
             self.x_list.append(circle.center[0] + circle.radius)
             self.x_list.append(circle.center[0] - circle.radius)
@@ -100,31 +100,62 @@ class SvgRenderer(object):
             self.y_list.append(circle.center[1] - circle.radius)
         
         self.content.append(
-            '<circle r="{}" cx="{}" cy="{}" fill="none" stroke="{}" stroke-width="{}" />'.format(
+            '<circle r="{}" cx="{}" cy="{}" fill="{}" stroke="{}" stroke-width="{}" />'.format(
                 circle.radius,
                 circle.center[0],
                 circle.center[1],
                 color,
+                stroke_color,
                 stroke_width))
 
     def _write_point(self, n, color='blue', radius=0.3):
+        stroke_width = radius / 20
         self.content.append(
-            '<circle r="{}" cx="{}" cy="{}" fill="{}" stroke="none" />'.format(
+            '<circle r="{}" cx="{}" cy="{}" fill="{}" stroke="black" stroke-width="{}" />'.format(
                 radius,
                 n[0],
                 n[1],
-                color))
+                color,
+                stroke_width))
 
     def point(self, n, marker, color='blue'):
-        radius = 0.2 * self.scalefactor
+        radius = 0.35 * self.scalefactor
         self._write_point(n, color=color, radius=radius)
+
+    def arrow(self, start, end,
+              color='black',
+              shape='full',
+              linewidth=2):
+
+        stroke_width = 0.1 * self.scalefactor
+        length = distance(start, end)
+        head_length = stroke_width * 6
+        head_width = stroke_width * 3
+        alpha = alpha_line(start, end)
+        p0 = point(start, length - head_length, alpha)
+        pl = point(p0, head_width, alpha + np.pi / 2)
+        pr = point(p0, head_width, alpha - np.pi / 2)
+        p0 = point(start, length - (head_length * 0.7), alpha)
+
+        line = Line(Element(start=start, end=p0))
+        line.n1 = line.p1
+        line.n2 = line.p2
+
+        self._write_line(line, stroke_width=stroke_width)
+        self.content += ['<polygon fill="black" stroke="none"',
+                         '         points="{},{} {},{} {},{} {},{}" />'.format(
+                             p0[0], p0[1],
+                             pr[0], pr[1],
+                             end[0], end[1],
+                             pl[0], pl[1])]
+        return
 
     def _write_element(self, element, stroke_width=0.03, color='black', nodes=False, dimensions=True):
         if is_Arc(element):
             self._write_arc(element, stroke_width=stroke_width, color=color)
             return
         if is_Circle(element):
-            self._write_circle(element, stroke_width=stroke_width, color=color, dimensions=dimensions)
+            self._write_circle(element, stroke_width=stroke_width, stroke_color=color, dimensions=dimensions)
             return
         if is_Line(element):
             self._write_line(element, stroke_width=stroke_width, color=color)
@@ -135,7 +166,7 @@ class SvgRenderer(object):
             self._write_element(e, stroke_width=stroke_width)
 
     def _write_symmetry_lines(self, machine):
-        stroke_width = 0.5 * self.scalefactor
+        stroke_width = 0.4 * self.scalefactor
         for e in machine.geom.cut_lines:
             if e.n1 is None:
                 e.n1 = e.p1
@@ -173,10 +204,20 @@ class SvgRenderer(object):
             self._write_legend()
         self.tail.append('</svg>')
 
-    def _write_path(self, area, mirrored=False, stroke_width=0.03, stroke_color='black'):
+    def _write_path(self, area, x, mirrored=False, stroke_width=0.03, stroke_color='black'):
+        color = color=area.color()
+        if area.is_magnet():
+            if x % 2 == 1:
+                color = 'darkgreen'
+
+        if area.is_circle():
+            e = area.area[0]
+            self._write_circle(e, stroke_width=stroke_width, stroke_color=stroke_color, color=color)
+            return
+
         self.content += [
             '<path style="fill:{};stroke:{};stroke-width:{}"'.format(
-                area.color(),
+                color,
                 stroke_color,
                 stroke_width)]
 
@@ -197,18 +238,17 @@ class SvgRenderer(object):
             elif is_Line(e):
                 self.content.append('        L {} {}'.format(n2[0],
                                                              n2[1]))
-
         self.content.append('"/>')
 
     def _write_point_inside(self, geom, area):
         p = area.get_point_inside(geom)
-        radius = 0.2 * self.scalefactor
+        radius = 0.35 * self.scalefactor
         self._write_point(p, color='magenta', radius=radius)
 
     def _write_area(self, machine, area, mirrored=False, part=0, stroke_width=0.03, points=False):
         startangle = machine.startangle
         endangle = machine.endangle
-        self._write_path(area, mirrored=mirrored, stroke_width=stroke_width)
+        self._write_path(area, 0, mirrored=mirrored, stroke_width=stroke_width)
         if points:
             self._write_point_inside(machine.geom, area)
 
@@ -219,7 +259,7 @@ class SvgRenderer(object):
         if mirrored:
             axis_m, axis_n = machine.geom.get_axis_m_n(endangle)
             mirrored_area = area.mirror_area(machine.center, axis_m, axis_n, set_nodes=True)
-            self._write_path(mirrored_area, stroke_width=stroke_width)
+            self._write_path(mirrored_area, 0, stroke_width=stroke_width)
             if points:
                 self._write_point_inside(machine.geom, mirrored_area)
 
@@ -233,18 +273,18 @@ class SvgRenderer(object):
 
         for x in range(1, part):
             area = area.rotate_area(machine.center, alpha, set_nodes=True)
-            self._write_path(area, stroke_width=stroke_width)
+            self._write_path(area, x, stroke_width=stroke_width)
             if points:
                 self._write_point_inside(machine.geom, area)
 
         if mirrored:
             for x in range(1, part):
                 mirrored_area = mirrored_area.rotate_area(machine.center, alpha, set_nodes=True)
-                self._write_path(mirrored_area, stroke_width=stroke_width)
+                self._write_path(mirrored_area, x, stroke_width=stroke_width)
                 if points:
                     self._write_point_inside(machine.geom, mirrored_area)
 
-    def _write_areas(self, machine, stroke_width=0.03, points=False):
+    def _write_areas(self, machine, stroke_width=0.03, points=False, magphi=False):
         geom = machine.geom
         self.max_radius = geom.max_radius
         iron = [a for a in geom.area_list if a.is_iron()]
@@ -266,6 +306,9 @@ class SvgRenderer(object):
            self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
         for area in wnd:
            self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
+
+        if magphi:
+            geom.render_magnet_phi(self)
 
     def _write_legend(self):
         if len(self.legend) < 1:
@@ -329,6 +372,7 @@ class SvgRenderer(object):
         self._set_min_max_and_scalefactor()
 
         stroke_width = stroke_width * self.scalefactor
+
         self._render(machine, no_areas=no_areas, nodes=nodes, stroke_width=stroke_width, points=points)
         if machine2:
             self._render(machine2, no_areas=no_areas, nodes=nodes, stroke_width=stroke_width, points=points)
@@ -337,7 +381,7 @@ class SvgRenderer(object):
         if no_areas:
             self._write_geometry(machine, stroke_width=stroke_width)
         else:
-            self._write_areas(machine, stroke_width=stroke_width, points=points)
+            self._write_areas(machine, stroke_width=stroke_width, points=points, magphi=not self.full)
 
         self._write_symmetry_lines(machine)
         self._write_airgap_lines(machine)

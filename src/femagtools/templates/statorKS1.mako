@@ -4,7 +4,7 @@ m.inside_diam = da1
 
 m.wdg_location = -1 -- for gen_windings
 
-m.slot_angle = ${model['slot_angle']*1e3}
+m.slot_angle = ${model['slot_angle']}
 m.slot_height = ${model['slot_height']*1e3}
 m.slot_h1     = ${model['slot_h1']*1e3}
 m.slot_h2     = ${model['slot_h2']*1e3}

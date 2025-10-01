@@ -115,7 +115,7 @@ class PmRelMachine(object):
         # tcu: (float) conductor temperature in °C
         # kth: (float) temperature coefficient (default 3.9 e-3)
         self.skin_resistance = None
-
+        self.pfric_func = None
         # TODO: need this for speedranges and idq_imax_umax mtpv only
         self.check_extrapolation = True
         for k in kwargs.keys():
@@ -137,7 +137,14 @@ class PmRelMachine(object):
 
     def pfric(self, n):
         """friction and windage losses"""
-        return 2*np.pi*n*self.tfric
+        if self.pfric_func:
+            if isinstance(self.pfric_func, list): 
+                return self.pfric_func[0]*n**3 + self.pfric_func[1]*n**2 + \
+                    self.pfric_func[2]*n
+            else:
+                return self.pfric_func(n)
+        else:
+            return 2*np.pi*n*self.tfric
 
     def rstat(self, w):
         """stator resistance

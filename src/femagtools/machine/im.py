@@ -154,6 +154,7 @@ class InductionMachine(Component):
             self.tfric = 0
 
         self.skin_resistance = [None, None]
+        self.pfric_func = None 
         # here you can set user defined functions for calculating the skin-resistance,
         # according to the current frequency w. First function in list is for stator, second for rotor.
         # If None, the femagtools intern default implementation is used.
@@ -165,7 +166,14 @@ class InductionMachine(Component):
 
     def pfric(self, n):
         """friction and windage losses"""
-        return 2*np.pi*n*self.tfric
+        if self.pfric_func:
+            if isinstance(self.pfric_func, list): 
+                return self.pfric_func[0]*n**3 + self.pfric_func[1]*n**2 + \
+                    self.pfric_func[2]*n
+            else:
+                return self.pfric_func(n)
+        else:
+            return 2*np.pi*n*self.tfric
 
 
     def imag(self, psi):

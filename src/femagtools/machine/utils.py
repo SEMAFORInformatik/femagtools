@@ -613,3 +613,56 @@ def dqparident(workdir, engine, temp, machine,
     if 'current_angles' in results['f'][0]:
         dqpars['current_angles'] = results['f'][0]['current_angles']
     return dqpars
+
+
+
+class WindageLoss:
+    """DESIGN OF ROTATING ELECTRICAL MACHINES
+    ---
+    Parameter: 
+    rho: coolant density 
+    n: speed in 1/s 
+    Dr: rotor outer diameter 
+    Dri: rotor inner diameter 
+    muer: dynamic viscosity of the coolant 
+    delta: airgap length 
+    lr: machine axial length
+    """
+    def __init__(self, params:dict):
+        for k, v in params.items():
+            setattr(self, k, v)
+
+    def friction_losses(self, n):
+        """
+        friction losses created by the end sufaces of the rotor
+        """
+        # Reynolds number
+        re_r = self.rho*(2*np.pi*n)*self.Dr**2/4/self.muer 
+
+        if re_r < 3e5: 
+            CM = 3.87/re_r**0.5
+        else:
+            CM = 0.146/re_r**0.2
+        return 1/64*CM*self.rho*(2*np.pi*n)**3*(self.Dr**5 - self.Dri**5)
+
+    def windage_losses(self, n):
+        """
+        Windage losses
+        """
+        # Reynolds number
+        re_delta = self.rho*(2*np.pi*n)*self.Dr*self.delta/2/self.muer 
+        k = (2*self.delta/self.Dr)**0.3
+
+        if re_delta < 64: 
+            CM = 10*k/re_delta
+        elif re_delta > 64 & re_delta < 500: 
+            CM = 2*k/(re_delta**0.6)
+        elif re_delta > 500 & re_delta < 1e4: 
+            CM = 1.03*k/(re_delta**0.5)
+        else:
+            CM = 0.065*k/(re_delta**0.2)
+
+        return 1/32*CM*np.pi*self.rho*(2*np.pi*n)**3*self.Dr**4*self.lr
+    
+    def __call__(self, n):
+        return self.friction_losses(n) + self.windage_losses(n)

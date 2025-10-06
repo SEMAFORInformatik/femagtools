@@ -1174,7 +1174,7 @@ class PmRelMachine(object):
         plmag = self.kpmag*self.iqd_plmag(np.array(r['iq']), np.array(r['id']), f1)
         plfe = plfe1 + plfe2
         plcu = self.betai1_plcu(np.array(r['i1']), 2*np.pi*f1)
-        plfw = self.pfric(2*np.pi*f1)
+        plfw = self.pfric(np.array(r['n']))
         pltotal = plfe + plcu + plfw + plmag
         r['pmech'] = pmech.tolist()
         r['plfe'] = plfe.tolist()

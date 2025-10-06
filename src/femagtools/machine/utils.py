@@ -636,6 +636,8 @@ class WindageLoss:
         """
         friction losses created by the end sufaces of the rotor
         """
+        if np.isclose(n, 0.0):
+            return 0.0
         # Reynolds number
         re_r = self.rho*(2*np.pi*n)*self.Dr**2/4/self.muer 
 
@@ -649,6 +651,8 @@ class WindageLoss:
         """
         Windage losses
         """
+        if np.isclose(n, 0.0):
+            return 0.0
         # Reynolds number
         re_delta = self.rho*(2*np.pi*n)*self.Dr*self.delta/2/self.muer 
         k = (2*self.delta/self.Dr)**0.3
@@ -665,4 +669,10 @@ class WindageLoss:
         return 1/32*CM*np.pi*self.rho*(2*np.pi*n)**3*self.Dr**4*self.lr
     
     def __call__(self, n):
-        return self.friction_losses(n) + self.windage_losses(n)
+        if isinstance(n, (np.ndarray, list)):
+            r = []
+            for nt in n:
+                r.append(self.friction_losses(nt) + self.windage_losses(nt))
+            return np.array(r)
+        else:
+            return self.friction_losses(n) + self.windage_losses(n)

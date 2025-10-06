@@ -232,6 +232,10 @@ def efficiency_losses_map(eecpars, u1, T, temp, n, npoints=(60, 40),
         m = create_from_eecpars(xtemp, eecpars)
     else:  # must be an instance of Machine
         m = eecpars
+    
+    if kwargs.get("pfric_func", False):
+        m.pfric_func = kwargs["pfric_func"]
+        
     if np.isscalar(T):  # calculate speed,torque characteristics
         nmax = n
         nsamples = npoints[0]

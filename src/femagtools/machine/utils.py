@@ -655,9 +655,9 @@ class WindageLoss:
 
         if re_delta < 64: 
             CM = 10*k/re_delta
-        elif re_delta > 64 & re_delta < 500: 
+        elif re_delta > 64 and re_delta < 500: 
             CM = 2*k/(re_delta**0.6)
-        elif re_delta > 500 & re_delta < 1e4: 
+        elif re_delta > 500 and re_delta < 1e4: 
             CM = 1.03*k/(re_delta**0.5)
         else:
             CM = 0.065*k/(re_delta**0.2)

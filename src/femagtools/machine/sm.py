@@ -77,8 +77,9 @@ def parident(workdir, engine, machine,
         i1_max = kwargs['i1_max']
 
 
-    if "magnetFsl" in machine["magnet"]:
-        rotorkey = "magnet"
+    if "magnet" in machine:
+        if "magnetFsl" in machine["magnet"]:
+            rotorkey = "magnet"
     else:
         rotorkey = "rotor"
 

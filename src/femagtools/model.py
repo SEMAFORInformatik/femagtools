@@ -199,18 +199,21 @@ class MachineModel(Model):
             pass
 
     def slot_height(self):
-        if 'statorRotor3' in self.stator:
-            return self.stator['statorRotor3']['slot_height']
-        if 'stator1' in self.stator:
-            return self.stator['stator1']['slot_rf1'] - self.stator['stator1']['tip_rh1']
-        if 'stator4' in self.stator:
-            return self.stator['stator4']['slot_height']
+        try:
+            k = self.statortype()
+            if 'slot_height' in self.stator[k]:
+                return self.stator[k]['slot_height']
+            if k == 'stator1':
+                return (self.stator['stator1']['slot_rf1'] -
+                        self.stator['stator1']['tip_rh1'])
+        except AttributeError:
+            pass
         da1 = self.bore_diam
         if self.external_rotor:
-            yh = da1-self.inner_diam
+            yh = (da1-self.inner_diam)/2
         else:
-            yh = da1+self.outer_diam
-        return 0.6*yh/2
+            yh = (self.outer_diam-da1)/2
+        return 0.6*yh
 
     def slot_area(self):
         if 'slot_area' in self.stator:

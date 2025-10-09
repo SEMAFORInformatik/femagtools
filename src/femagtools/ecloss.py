@@ -103,7 +103,15 @@ def binterp_ialh2(x, y, xq, yq, b):
     inp = f(np.array([[i, j] for i, j in zip(xq, yq)]))
     return inp.reshape(len(np.unique(xq)), -1)
 
-def Segmentation(wm, hm, lm, elxy, nsegx, nsegy, nsegz):
+def Trot(alpha):
+    return np.array([[np.cos(alpha), np.sin(alpha)],
+                    [-np.sin(alpha), np.cos(alpha)]])
+def transform_coord(xy, alpha, cxy, w, h):
+    '''transform from global coord to local coord'''
+    ecpl = Trot(alpha).dot((xy-cxy).T).T
+    return (ecpl + (w/2,h/2)).T
+
+def segmentation_rect(wm, hm, lm, elxy, nsegx, nsegy, nsegz):
     ''' Creates new magnet elements' center points' x,y coordinates based on the number of segments and the original data resolution
 
     Inputs:  total magnet dimensions (width - wm, height - hm, axial length - lm)
@@ -150,6 +158,50 @@ def Segmentation(wm, hm, lm, elxy, nsegx, nsegy, nsegz):
         yy[ii,:] = np.atleast_2d(b)
 
     return nx_new, ny_new, nz_new, xx, yy
+
+def segmentation_arc(wm, hm, lm, elxy, cxy, alpha, nsegx, nsegy, nsegz):
+
+    # Default nx,ny,nz without considering the segmentation
+    be = np.sqrt(wm*hm/np.shape(elxy['ecp'])[1])  #square elements
+    nx_new = int(np.around(wm/be))
+    ny_new = int(np.around(hm/be))
+    nz_new = int(np.around(lm/be))
+
+    if (nsegx > 1) or (nsegy > 1):
+        # limits the number of elements per segment to 10 to avoid unnecessarily detailed resolution
+        nx_new = int(max(10,int(np.around(nx_new*np.sqrt(1/nsegx)))))
+        ny_new = int(max(10,int(np.around(ny_new*np.sqrt(1/nsegy)))))
+        nz_new = int(max(10,int(np.around(nz_new*np.sqrt(1/nsegz)))))
+
+    ecp = np.vstack((elxy['ecp'][0], elxy['ecp'][1]))
+    r = np.sqrt(ecp[0,:]**2 + ecp[1,:]**2)
+    alphas = np.arctan(ecp[0,:]/ecp[1,:])
+    dr = np.diff(r)
+    if dr[dr>0].shape[0] > dr[dr<0].shape[0]:
+        rfill = np.mean(dr[dr>0])
+    else:
+        rfill = abs(np.mean(dr[dr<0]))
+    dalpha = np.diff(alphas)
+    if dalpha[dalpha>1e-4].shape[0] > dalpha[dalpha<-1e-4].shape[0]:
+        alphafill = abs(np.mean(dalpha[dalpha>1e-4]))
+    else:
+        alphafill = abs(np.mean(dalpha[dalpha<-1e-4]))
+    alpha_min = np.min(alphas) - 0.5*alphafill
+    alpha_max = np.max(alphas) + 0.5*alphafill
+    r_min = np.min(r) - 0.5*rfill
+    r_max = np.max(r) + 0.5*rfill
+    r_seg = abs(r_max - r_min)/nsegy
+    alpha_seg = abs(alpha_max - alpha_min)/nsegx
+
+    # create new points
+    r_new = np.linspace(r_min + r_seg/2/ny_new, r_max - r_seg/2/ny_new, nsegy*ny_new)
+    alpha_new = np.linspace(alpha_min + alpha_seg/2/nx_new, alpha_max - alpha_seg/2/nx_new, nsegx*nx_new)
+    rmg,alphamg = np.meshgrid(r_new, alpha_new)
+    yg, xg = rmg*np.cos(alphamg), rmg*np.sin(alphamg)
+    xyg = np.concatenate((np.reshape(xg, (-1,1)), np.reshape(yg, (-1,1))), axis=1)
+    xyl = transform_coord(xyg, alpha, cxy, wm, hm)
+
+    return nx_new, ny_new, nz_new, xyl[0,:], xyl[1,:]
 
 class MagnLoss:
     '''Calculate Magnet Losses with IALH Methode
@@ -772,9 +824,14 @@ class MagnLoss:
                                    for loadcase {i['loadcase']}, superelement {i['spel_key']}")
                     all_load_cases.append(0)
                     continue
-                (nx, ny, nz, excpl_new, eycpl_new) = Segmentation(
-                    i['wm'], i['hm'], i['lm'], i['elcp'],
-                    nsegx, nsegy, nsegz)
+                if i.get('geomtype', None) == 'rect':
+                    (nx, ny, nz, excpl_new, eycpl_new) = segmentation_rect(
+                        i['wm'], i['hm'], i['lm'], i['elcp'], nsegx, nsegy, nsegz)
+                elif i.get('geomtype', None) == 'arc':
+                    (nx, ny, nz, excpl_new, eycpl_new) = segmentation_arc(
+                        i['wm'], i['hm'], i['lm'], i['elcp'], i['cxy'], i['alpha'], nsegx, nsegy, nsegz)
+                else:
+                    raise AttributeError("Magnet geometry type couldn't be detected.")
 
                 wm = i['wm']
                 hm = i['hm']

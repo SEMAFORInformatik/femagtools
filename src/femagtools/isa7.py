@@ -1362,11 +1362,21 @@ class Isa7(object):
             try:
                 ecp = [e.center for e in se.elements]
                 geometry = se.get_rect_geom()
+                elcp = transform_coord(geometry, ecp)
+
+                geomtype = "rect"
+                for i in range(len(elcp['ecpl'][0])):
+                    if elcp['ecpl'][0][i] < 0 or elcp['ecpl'][0][i] > geometry['w'] or \
+                       elcp['ecpl'][1][i] < 0 or elcp['ecpl'][1][i] > geometry['h']:
+                        geomtype = "arc"
+                        break
+                logger.info("Identified magnet geometry type (rect, arc) = %s", geomtype)
 
                 #= np.moveaxis(bxy, 1, 0)
                 pd = dict(name='pm_data_se' + str(se.key),
                           hm=geometry['h'],
                           wm=geometry['w'],
+                          cxy=geometry['cxy'],
                           lm=self.arm_length,
                           alpha=geometry['alpha'],
                           ls=self.arm_length,
@@ -1374,7 +1384,8 @@ class Isa7(object):
                           mur=mur,
                           loadcase=ibeta,
                           numpoles=poles,
-                          elcp=transform_coord(geometry, ecp),
+                          elcp=elcp,
+                          geomtype=geomtype,
                           area=se.area(),
                           spel_key=se.key)
                 if ibeta != None:

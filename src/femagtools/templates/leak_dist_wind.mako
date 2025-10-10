@@ -2,7 +2,7 @@
 m.nseg            = m.tot_num_slot/m.num_slots --   Number of segments
 m.npolsim         = m.npols_gen      --   Number of poles simulated
 % if 'perimrad' not in model:
-m.perimrad        = (da1+dy1)/4   --   Radius of perimeter [mm]
+m.perimrad        = dy1/2   --   Radius of perimeter [mm]
 % else:
 m.perimrad        = ${model['perimrad']*1e3}   --   Radius of perimeter [mm]
 % endif

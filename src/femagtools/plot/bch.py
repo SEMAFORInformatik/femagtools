@@ -565,7 +565,8 @@ def demagnetization(demag, title='', ax=0):
     ax.grid()
 
 
-def transientsc_currents(scData, ax=0, title='', set_xlabel=True):
+def transientsc_currents(scData, ax=0, title='',
+                         set_xlabel=True, set_legend=True):
     """plot transient shortcircuit currents vs time"""
     if ax == 0:
         ax = plt.gca()
@@ -574,8 +575,8 @@ def transientsc_currents(scData, ax=0, title='', set_xlabel=True):
         ax.set_title(title)
     istat = np.array([scData[i]
                       for i in ('ia', 'ib', 'ic')])
-    pv = [find_peaks_and_valleys(
-        np.array(scData['time']), i1)
+    t = np.array(scData['time'])*1e3
+    pv = [find_peaks_and_valleys(t, i1)
           for i1 in istat]
     try:
         ipvmax = np.argmax(
@@ -595,13 +596,12 @@ def transientsc_currents(scData, ax=0, title='', set_xlabel=True):
         ax.set_ylabel('Currents / kA')
     else:
         ax.set_ylabel('Currents / A')
-
     for i, iph in zip(('ia', 'ib', 'ic'), istat):
-        ax.plot(scData['time'], iph, label=i)
+        ax.plot(t, iph, label=i)
     try:
         ax.plot([pv[ipvmax]['tp']], [imax], '.')
         ax.plot([iac[0]], [iac[1]], '.')
-        dtx = (scData['time'][-1]-scData['time'][0])/75
+        dtx = (t[-1]-t[0])/75
         dy = imax/25
         ax.annotate(f'Imax = {imax:.1f}',
                     xy=(pv[ipvmax]['tp'], imax),
@@ -613,18 +613,22 @@ def transientsc_currents(scData, ax=0, title='', set_xlabel=True):
     except NameError:
         pass
     if set_xlabel:
-        ax.set_xlabel('Time / s')
-    ax.legend()
+        ax.set_xlabel('Time / ms')
+    if set_legend:
+        ax.legend()
 
 
-def transientsc_torque(scData, ax=0, title='', set_xlabel=True):
+def transientsc_torque(scData, ax=0, title='',
+                       set_xlabel=True, label=''):
     """plot transient shortcircuit torque vs time"""
     if ax == 0:
         ax = plt.gca()
     if title:
         ax.set_title(title)
+
+    t = np.array(scData['time'])*1e3
     pv = find_peaks_and_valleys(
-        np.array(scData['time']), np.array(scData['torque']))
+        t, np.array(scData['torque']))
     try:
         tqmax = pv['yp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['yv']
         tp = pv['tp'] if np.abs(pv['yp']) > np.abs(pv['yv']) else pv['tv']
@@ -644,11 +648,11 @@ def transientsc_torque(scData, ax=0, title='', set_xlabel=True):
         ax.set_ylabel('Torque / Nm')
 
     ax.grid(True)
-    ax.plot(scData['time'], torque)
+    ax.plot(t, torque, label=label)
     try:
         ax.plot([tp], [tqmax], '.')
         ax.plot([tc[0]], [tc[1]], '.')
-        dtx = (scData['time'][-1]-scData['time'][0])/75
+        dtx = (t[-1]-t[0])/75
         dy = tqmax/25
         ax.annotate(f'Tmax = {tqmax:.1f}',
                     xy=(tp, tqmax),
@@ -660,7 +664,7 @@ def transientsc_torque(scData, ax=0, title='', set_xlabel=True):
     except NameError:
         pass
     if set_xlabel:
-        ax.set_xlabel('Time / s')
+        ax.set_xlabel('Time / ms')
 
 def transientsc(bch, title=''):
     """creates a transient short circuit plot"""

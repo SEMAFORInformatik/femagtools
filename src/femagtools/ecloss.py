@@ -101,7 +101,10 @@ def binterp_ialh2(x, y, xq, yq, b):
     logger.debug("shape y %s b %s", yy.shape, np.shape(b))
     f = RBFInterpolator(yy, b, kernel='thin_plate_spline')
     inp = f(np.array([[i, j] for i, j in zip(xq, yq)]))
-    return inp.reshape(len(np.unique(xq)), -1)
+    if inp.size % len(np.unique(xq)) == 0:
+        return inp.reshape(len(np.unique(xq)), -1)
+    else:
+        return inp.reshape(np.array(xq).shape[0], -1)
 
 def Trot(alpha):
     return np.array([[np.cos(alpha), np.sin(alpha)],

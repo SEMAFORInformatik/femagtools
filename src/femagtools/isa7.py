@@ -1370,7 +1370,7 @@ class Isa7(object):
                        elcp['ecpl'][1][i] < 0 or elcp['ecpl'][1][i] > geometry['h']:
                         geomtype = "arc"
                         break
-                logger.info("Identified magnet geometry type (rect, arc) = %s", geomtype)
+                logger.debug("Identified magnet geometry type (rect, arc) = %s", geomtype)
 
                 #= np.moveaxis(bxy, 1, 0)
                 pd = dict(name='pm_data_se' + str(se.key),

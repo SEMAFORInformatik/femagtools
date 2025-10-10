@@ -362,7 +362,7 @@ def dqparident(workdir, engine, temp, machine,
     workdir -- directory for intermediate files
     engine -- calculation driver (multiproc, docker, condor)
 
-    temp -- list of magnet temperatures in degree Celsius
+    temp: list of wdg and magnet temperatures in degree Celsius
     machine -- dict() with machine parameters
     magnetizingCurves -- list of dict() with BH curves
     magnetMat -- list of dict() with magnet material properties
@@ -441,7 +441,7 @@ def dqparident(workdir, engine, temp, machine,
                 {"values": n*[-90, -180], "name": "beta_min"}
             ]
         }
-    else:
+    else:  # assume psidq
         delta = round(i1_max*np.sqrt(2)/num_cur_steps)
         iqmax = num_cur_steps*delta
         idmin = -iqmax

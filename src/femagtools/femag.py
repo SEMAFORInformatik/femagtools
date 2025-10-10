@@ -468,6 +468,15 @@ class BaseFemag(object):
             if not bch:
                 bch = self.read_bch(self.modelname)
 
+            leakfile = pathlib.Path(self.workdir) / 'end_wind_leak.dat'
+            try:
+                leakages = [float(x)
+                            for x in leakfile.read_text().split()]
+                bch.machine['ls1'] = leakages[1]  # TODO: np.linalg.norm(leakages[1:])
+                logger.info("Winding leakage Lds %g mH", leakages[1]*1e3)
+            except:
+                pass
+
             if 'airgap_induc' in simulation:
                 try:
                     pmod = bch.machine['p_sim']

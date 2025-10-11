@@ -112,3 +112,6 @@ end
 % if hasattr(model, 'afmtype'):
 m.model_type      =  "${model['afmtype']}"
 % endif
+% if model.get("mesh_config", 0):
+  enable_cm2(${model['mesh_config']["quad_dominant"]}, ${model['mesh_config']["elem_size"]})
+% endif

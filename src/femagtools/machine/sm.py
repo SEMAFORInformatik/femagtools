@@ -77,8 +77,9 @@ def parident(workdir, engine, machine,
         i1_max = kwargs['i1_max']
 
 
-    if "magnetFsl" in machine["magnet"]:
-        rotorkey = "magnet"
+    if "magnet" in machine:
+        if "magnetFsl" in machine["magnet"]:
+            rotorkey = "magnet"
     else:
         rotorkey = "rotor"
 
@@ -324,6 +325,7 @@ class SynchronousMachine(object):
         except AttributeError:
             self.tfric = 0
 
+        self.pfric_func = None 
         self.fo = 50
         self.plexp = {'styoke_hyst': [1.0, 1.0],
                       'stteeth_hyst': [1.0, 1.0],
@@ -349,7 +351,14 @@ class SynchronousMachine(object):
 
     def pfric(self, n):
         """friction and windage losses"""
-        return 2*np.pi*n*self.tfric
+        if self.pfric_func:
+            if isinstance(self.pfric_func, list): 
+                return self.pfric_func[0]*n**3 + self.pfric_func[1]*n**2 + \
+                    self.pfric_func[2]*n
+            else:
+                return self.pfric_func(n)
+        else:
+            return 2*np.pi*n*self.tfric
 
     def rstat(self, w):
         """stator resistance"""

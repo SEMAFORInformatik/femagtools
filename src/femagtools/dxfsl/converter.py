@@ -46,6 +46,7 @@ def plot_geom(doit, plt, geom, title="Plot", areas=True):
 def symmetry_search(machine,
                     basename,
                     plt=None,  # plotter
+                    single=False,
                     kind="single",
                     mindist=0.01,
                     symtol=0.0,
@@ -97,7 +98,11 @@ def symmetry_search(machine,
                                 rows=rows, cols=cols, num=num, show=False)
 
         if write_svg:
-            svgrenderer = SvgRenderer(basename, suffix="Symmetry", full=False)
+            if single:
+                suffix = "Symmetry"
+            else:
+                suffix = "{}-Symmetry".format(kind)
+            svgrenderer = SvgRenderer(basename, suffix=suffix, full=False)
             svgrenderer.render(machine, stroke_width=0.25)
             svgrenderer.write()
 
@@ -566,6 +571,11 @@ def convert(dxfile,
         logger.warn("No arc segment found")
         return dict(error='no arc segment found')
 
+    if write_svg:
+        svgrenderer = SvgRenderer(basename, suffix="Original", full=False)
+        svgrenderer.render(machine, no_areas=True, stroke_width=0.25)
+        svgrenderer.write()
+
     machine.clear_cut_lines()
     machine.move_to_middle()
     if show_plots and debug_mode:
@@ -838,15 +848,14 @@ def convert(dxfile,
 
         if write_svg:
             svgrenderer = SvgRenderer(basename, suffix=inner_title, full=False)
-            svgrenderer.render(machine_inner)
-            svgrenderer.write()
+            svgrenderer.render(machine_inner, points=True)
+            svgrenderer.write(legend=True)
             svgrenderer = SvgRenderer(basename, suffix=outer_title, full=False)
-            svgrenderer.render(machine_outer)
-            svgrenderer.write()
+            svgrenderer.render(machine_outer, points=True)
+            svgrenderer.write(legend=True)
             svgrenderer = SvgRenderer(basename, suffix="Motor", full=True)
-            svgrenderer.render(machine_inner)
-            svgrenderer.render(machine_outer)
-            svgrenderer.write()
+            svgrenderer.render(machine_inner, machine2=machine_outer)
+            svgrenderer.write(legend=True)
     else:
         # No airgap found. This must be an inner or outer part
         logger.info("=== no airgap found ===")
@@ -867,6 +876,7 @@ def convert(dxfile,
         machine = symmetry_search(machine,
                                   basename,
                                   plt=p,  # plot
+                                  single=True,
                                   kind=name,
                                   is_inner=inner,
                                   is_outer=outer,
@@ -983,8 +993,8 @@ def convert(dxfile,
 
         if write_svg:
             svgrenderer = SvgRenderer(basename, suffix=title)
-            svgrenderer.render(machine)
-            svgrenderer.write()
+            svgrenderer.render(machine, points=True)
+            svgrenderer.write(legend=True)
 
     if params is not None:
         conv.update(params)

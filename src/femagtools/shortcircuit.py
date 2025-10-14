@@ -46,6 +46,7 @@ def get_shortCircuit_parameters(bch, nload):
             psim = bch.machine['psim']/bch.armatureLength
         return dict(
             r1=bch.machine['r1'],
+            l_endwinding=bch.machine.get('ls1', 0),
             ld=ld,
             lq=lq,
             Hk=bch.magnet['demag_hx'],
@@ -82,10 +83,14 @@ def find_peaks_and_valleys(t, y):
 
 def shortcircuit(femag, machine, bch, simulation, engine=0):
     scdata = {}
-    calcmode = simulation.get('calculationMode', '')
+    sccalcmode = simulation.get('calculationMode', '')
     simulation.update(
         get_shortCircuit_parameters(bch,
                                     simulation.get('initial', 2)))
+    try:
+        simulation['r1'] = femag.model.winding['resistance']
+    except (KeyError, AttributeError):
+        pass
     if 'speed' not in simulation:
         simulation['speed'] = bch.dqPar['speed']
     if simulation.get('sc_type', 3) == 3:
@@ -124,7 +129,8 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
                 logger.info("i1max %g phi %g phirot %g", i1max, phi, phirot)
                 bchsc.scData['demag'] = demag(
                     femag, machine, simulation,
-                    i1max, phirot, phi, engine)
+                    i1max, phirot, phi, engine,
+                    calculationMode='psi-torq-rem-shift')
                 bchsc.scData['demag'].update(dd)
             scdata = bchsc.scData
             #for w in bch.flux:
@@ -149,9 +155,9 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
     else:
         logger.warning("Empty shortcircuit results for type %s",
                        simulation.get('sc_type', 'unknown'))
-    # must reset calcmode
-    if calcmode:
-        simulation['calculationMode'] = calcmode
+    # must reset sccalcmode
+    if sccalcmode:
+        simulation['calculationMode'] = sccalcmode
     else:
         del simulation['calculationMode']
     return scdata
@@ -164,8 +170,11 @@ def sc_result_func(task):
     ire = psitorq[:ncurs, 1:4]
     psire = np.reshape(psitorq[:, 4:7], (-1, ncurs, 3))
     torq = np.reshape(psitorq[:, 7], (-1, ncurs))
+    pv = find_peaks_and_valleys(pos, psire[:, 0, 0])
+    pmod = pv['peaks'].shape[0]
     return {'pos': pos.tolist(), 'ire': ire.tolist(),
-            'psire': psire.tolist(), 'torq': torq.tolist()}
+            'psire': psire.tolist(), 'torq': torq.tolist(),
+            'pmod': pmod}
 
 
 def shortcircuit_2phase(femag, machine, simulation, engine=0):
@@ -194,6 +203,7 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
         phi = pos*np.pi/180
         torq = np.hstack([r['torq'] for r in results['f']])
         psire = np.hstack([r['psire'] for r in results['f']])
+        pmod = results['f'][0]['pmod']
     else:
         simulation.update(flux_sim)
         simulation['curvec'] = i1vec.tolist()
@@ -206,41 +216,43 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
         pos = np.array(results['pos'])
         torq = np.array(results['torq'])
         psire = np.array(results['psire'])
+        pmod = results['pmod']
 
     #with open('results.json', 'w') as fp:
     #    json.dump({'ire': ire.tolist(), 'pos': pos.tolist(),
     #               'torq': torq.tolist(), 'psire': psire.tolist()}, fp)
-    logger.info("move steps %d currents %s", len(pos), ire[:,0])
+    logger.info("move steps %d currents %s pmod %s",
+                len(pos), ire[:,0], pmod)
 
-    Ai = [femagtools.utils.fft(pos, psire[:, k, 0])['a']
+    Ai = [femagtools.utils.fft(pos, psire[:, k, 0], pmod=pmod)['a']
           for k in range(np.shape(psire)[1])]
     A = make_interp_spline(ire[:,0], Ai)
-    A0i = [femagtools.utils.fft(pos, psire[:, k, 0])['a0']
+    A0i = [femagtools.utils.fft(pos, psire[:, k, 0], pmod=pmod)['a0']
            for k in range(np.shape(psire)[1])]
     A0 = make_interp_spline(ire[:,0], A0i)
-    Bi = [femagtools.utils.fft(pos, psire[:, k, 1])['a']
+    Bi = [femagtools.utils.fft(pos, psire[:, k, 1], pmod=pmod)['a']
           for k in range(np.shape(psire)[1]-1, -1, -1)]
     B = make_interp_spline(ire[::-1,1], Bi)
-    B0i = [femagtools.utils.fft(pos, psire[:, k, 1])['a0']
+    B0i = [femagtools.utils.fft(pos, psire[:, k, 1], pmod=pmod)['a0']
            for k in range(np.shape(psire)[1]-1, -1, -1)]
     B0 = make_interp_spline(ire[::-1,1], B0i)
-    alfa0_ai = [femagtools.utils.fft(pos, psire[:, k, 0])['alfa0']
+    alfa0_ai = [femagtools.utils.fft(pos, psire[:, k, 0], pmod=pmod)['alfa0']
                 for k in range(np.shape(psire)[1])]
     alfa0_a = make_interp_spline(ire[:,0], alfa0_ai)
-    alfa0_bi = [femagtools.utils.fft(pos, psire[:, k, 1])['alfa0']
+    alfa0_bi = [femagtools.utils.fft(pos, psire[:, k, 1], pmod=pmod)['alfa0']
                 for k in range(np.shape(psire)[1]-1, -1, -1)]
     alfa0_b = make_interp_spline(ire[::-1,1], alfa0_bi)
 
-    Tqi = [femagtools.utils.fft(pos, torq[:, k])['a']
+    Tqi = [femagtools.utils.fft(pos, torq[:, k], pmod=pmod)['a']
            for k in range(np.shape(torq)[1])]
     Tq = make_interp_spline(ire[:, 0], Tqi)
-    Tq0i = [femagtools.utils.fft(pos, torq[:, k])['a0']
+    Tq0i = [femagtools.utils.fft(pos, torq[:, k], pmod=pmod)['a0']
             for k in range(np.shape(torq)[1])]
     Tq0 = make_interp_spline(ire[:, 0], Tq0i)
-    alfa0_t = [femagtools.utils.fft(pos, torq[:, k])['alfa0']
+    alfa0_t = [femagtools.utils.fft(pos, torq[:, k], pmod=pmod)['alfa0']
                for k in range(np.shape(torq)[1])]
 
-    T0 = np.mean([femagtools.utils.fft(pos, psire[:, k, 0])['T0']
+    T0 = np.mean([femagtools.utils.fft(pos, psire[:, k, 0], pmod=pmod)['T0']
                   for k in range(np.shape(psire)[1])])
     pp = 360/T0
 
@@ -342,7 +354,8 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
                                 i1max, phirot, 0, engine)
     return scData
 
-def demag(femag, machine, simulation, i1max, phirot, phi, engine=0):
+def demag(femag, machine, simulation, i1max, phirot, phi,
+          engine=0, calculationMode='psi-torq-rem'):
     """demag simulation using psi-torq-rem-rot"""
     logger.info("Demagnetization processing")
     i1min = simulation.get('i1min', abs(i1max/3))
@@ -362,7 +375,7 @@ def demag(femag, machine, simulation, i1max, phirot, phi, engine=0):
         else:
             curvec = [[-a, a, 0] for a in i1tab]
     simulation.update({
-        'calculationMode': 'psi-torq-rem',
+        'calculationMode': calculationMode,
         'phi': phirot,
         'magntemp': simulation['Tmag'],
         'curvec': curvec})

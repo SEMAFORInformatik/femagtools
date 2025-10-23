@@ -1,5 +1,5 @@
 numpy
-scipy
+scipy==1.14.1
 mako
 networkx
 vtk

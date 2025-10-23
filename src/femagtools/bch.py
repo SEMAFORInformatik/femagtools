@@ -1106,6 +1106,23 @@ class Reader:
             return idList[:-n]
         return idList
 
+    def __removeTrailingZeroLines(self, dataRec):
+        '''if data list is inhomogeneous, remove trailing
+        lines startswith '0.000 0.000 ...'
+        e.g. : dataRec[...
+                       [0.0, 0.0, 366.1, 1251.0, 0.0, 0.0001338],
+                       [0.0, 0.0, 388.5, 1151.0, 0.0, 0.0002398],
+                       [0.0, 0.0, 423.5, 1051.0, 0.0, 0.0006398],
+                       [0.0, 0.0, 404.4, 925.4, 0.0, 7.701e-05]]
+        '''
+        if dataRec[-1][:2] == [0]*2 and dataRec[-2][:2] == [0]*2 and\
+           dataRec[-3][:2] == [0]*2 and dataRec[-4][:2] == [0]*2:
+            while len(dataRec):
+                if dataRec[-1][:2] != [0]*2:
+                    break
+                logger.debug(f'pop line:{dataRec[-1]}')
+                dataRec.pop()
+
     def __read_psidq(self, content):
         "read psid-psiq section"
         for i, l in enumerate(content):
@@ -1117,6 +1134,7 @@ class Reader:
             if len(rec) == 7:
                 m.append([floatnan(x) for x in rec])
 
+        self.__removeTrailingZeroLines(m)
         m = np.array(m).T
         d = np.diff(m[1])
         ncols = (len(d)+1)//(len(d[d < 0])+1)
@@ -1152,6 +1170,7 @@ class Reader:
             if len(rec) == 7:
                 m.append([floatnan(x) for x in rec])
 
+        self.__removeTrailingZeroLines(m)
         m = np.array(m).T
         d = np.diff(m[1])
         ncols = (len(d)+1)//(len(d[d < 0])+1)
@@ -1236,6 +1255,7 @@ class Reader:
                     break
                 m.append([floatnan(x) for x in rec])
             nl += 1
+        self.__removeTrailingZeroLines(m)
         if not m:
             return
         m = np.array(m).T

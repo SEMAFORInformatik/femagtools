@@ -115,7 +115,7 @@ class Builder:
         params['show_plots'] = model.stator[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
-        params['adapt_ndt'] = model.adapt_ndt
+        params['adapt_ndt'] = model.stator[templ].get('adapt_ndt', True)
         params['nodedist'] = model.stator.get('nodedist', 1)
         pos = 'in' if model.external_rotor else 'out'
         params['part'] = ('stator', pos)
@@ -346,7 +346,7 @@ class Builder:
         params['show_plots'] = rotor[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
-        params['adapt_ndt'] = model.adapt_ndt
+        params['adapt_ndt'] = rotor[templ].get('adapt_ndt', True)
         pos = 'out' if model.external_rotor else 'in'
         params['part'] = ('rotor', pos)
         logger.info("Conv rotor from %s",

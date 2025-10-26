@@ -154,9 +154,6 @@ class MachineModel(Model):
         except AttributeError:
             self.external_rotor = False
 
-        if not hasattr(self, 'adapt_ndt'):
-            self.adapt_ndt = True
-
         self.move_inside = 1.0 if self.external_rotor else 0.0
         if hasattr(self, "move_inside_force"):
             self.move_inside = 0

@@ -527,7 +527,7 @@ class Builder:
         params['show_plots'] = fmt.get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = fmt.get('airgap', 0.0)
-        params['adapt_ndt'] = model.adapt_ndt
+        params['adapt_ndt'] = fmt.get('adapt_ndt', True)
         params['nodedist'] = fmt.get('nodedist', 1)
         params['full_model'] = fmt.get('full_model', False)
         params['EESM'] = fmt.get('type', 'PMSM') == 'EESM'

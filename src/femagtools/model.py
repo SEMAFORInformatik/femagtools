@@ -153,6 +153,10 @@ class MachineModel(Model):
             self.external_rotor = (self.external_rotor == 1)
         except AttributeError:
             self.external_rotor = False
+
+        if not hasattr(self, 'adapt_ndt'):
+            self.adapt_ndt = True
+
         self.move_inside = 1.0 if self.external_rotor else 0.0
         if hasattr(self, "move_inside_force"):
             self.move_inside = 0
@@ -180,7 +184,6 @@ class MachineModel(Model):
         else:
             self.coord_system = 0
             self.move_action = 0
-
         try:
             self.set_num_slots_gen()
         except (AttributeError):

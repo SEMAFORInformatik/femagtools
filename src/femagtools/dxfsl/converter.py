@@ -417,6 +417,7 @@ def convert(dxfile,
             inner_name='inner',
             outer_name='outer',
             part=(),
+            adapt_ndt=True,
             airgap=0.0,
             airgap2=0.0,
             da=0.0,
@@ -807,7 +808,7 @@ def convert(dxfile,
                 return None
 
             mtype = 'EESM' if EESM else 'PMSM'
-            fslrenderer = FslRenderer(basename, mtype)
+            fslrenderer = FslRenderer(basename, mtype, adapt_ndt=adapt_ndt)
             inner = fslrenderer.render(machine_inner, inner=True)
             outer = fslrenderer.render(machine_outer, outer=True)
             if write_fsl_single:
@@ -988,7 +989,7 @@ def convert(dxfile,
                 return None
 
             mtype = 'EESM' if EESM else 'PMSM'
-            fslrenderer = FslRenderer(basename, mtype)
+            fslrenderer = FslRenderer(basename, mtype, adapt_ndt=adapt_ndt)
             conv['fsl'] = fslrenderer.render(machine, inner, outer, standalone=True)
 
         if write_svg:

@@ -43,12 +43,13 @@ def agndst(da1, da2, Q, p, nodedist=1):
 class FslRenderer(object):
     """a model that can created by FSL"""
 
-    def __init__(self, name, mtype):
+    def __init__(self, name, mtype, adapt_ndt=True):
         self.model = name
         self.mirror_axis = None
         self.fm_nlin = None
         self.shaft = None
         self.agndst = 1
+        self.adapt_ndt = adapt_ndt
         self.mtype = mtype
 
     def mirror_nodechains(self, p0, p1):
@@ -59,9 +60,10 @@ class FslRenderer(object):
 
     def circle(self, center, radius,
                color='blue', linestyle=None):
-        num = int(2*np.pi*radius)
-        if num < 8:
-            num = 8
+        if self.adapt_ndt:
+            num = max(int(2*np.pi*radius), 8)
+        else:
+            num = 0
         circle = ['cx, cy = {}, {}'.format(center[0],
                                             center[1]),
                   'nc_circle_m(cx,cy,{}, {})'.format(radius, num),
@@ -160,28 +162,30 @@ class FslRenderer(object):
                              '  new_model_force("{}","Test")'.format(self.model),
                              'end']
 
-        MAXDST=4.0
-        NUMLEVELS=10
-        NDT0=1.1
-        # ndt list format [ (rdistx, ndtx) ...]
-        # where
-        #   - rdistx is rel dist from airgap (range 0 .. NUMLEVELS-1/NUMLEVELS)
-        #   - ndtx nodedist (range NDT0 .. (NUMLEVELS-1/NUMLEVELS))*(MAXDST-1.1) + NDT0)
-        ndt_list = [(1.1*nl/NUMLEVELS, nl/NUMLEVELS*(MAXDST-1.1)+NDT0)
-                    for nl in range(NUMLEVELS+1)]
+        if self.adapt_ndt:
+            MAXDST=4.0
+            NUMLEVELS=10
+            NDT0=1.1
+            # ndt list format [ (rdistx, ndtx) ...]
+            # where
+            #   - rdistx is rel dist from airgap (range 0 .. NUMLEVELS-1/NUMLEVELS)
+            #   - ndtx nodedist (range NDT0 .. (NUMLEVELS-1/NUMLEVELS))*(MAXDST-1.1) + NDT0)
+            ndt_list = [(1.1*nl/NUMLEVELS, nl/NUMLEVELS*(MAXDST-1.1)+NDT0)
+                        for nl in range(NUMLEVELS+1)]
 
-        dist = geom.max_radius - geom.min_radius
+            dist = geom.max_radius - geom.min_radius
         el_sorted = self.sorted_elements(geom, inner)
 
         n = 0
         for d, e in el_sorted:
-            d_percent = min(1.0, d / dist)
-            if ndt_list[n][0] < d_percent:
-                self.agndst = ndt_list[n][1] * self.agndst
-                self.content.append('\nndt({}*agndst)\n'.
-                                    format(round(ndt_list[n][1], 1)))
-                while ndt_list[n][0] < d_percent:
-                    n += 1
+            if self.adapt_ndt:
+                d_percent = min(1.0, d / dist)
+                if ndt_list[n][0] < d_percent:
+                    self.agndst = ndt_list[n][1] * self.agndst
+                    self.content.append('\nndt({}*agndst)\n'.
+                                        format(round(ndt_list[n][1], 1)))
+                    while ndt_list[n][0] < d_percent:
+                        n += 1
             e.render(self)
 
         self.content.append('\n')

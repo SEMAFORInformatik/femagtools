@@ -56,6 +56,10 @@ def main():
                            help='stator without airgap in/out',
                            dest='stator',
                            default='')
+    argparser.add_argument('--no_adapt_ndt',
+                           help='do not adapt nodedist from airgap to inner and outer radius',
+                           action='store_true',
+                           default='')
     argparser.add_argument('--sympart',
                            help=(argparse.SUPPRESS if not super_help else
                                  'forced symmetry part'),
@@ -186,7 +190,6 @@ def main():
                            action="store_true")
 
     args = argparser.parse_args()
-
     logfilename = None
     loglevel = logging.INFO
     if args.debug:
@@ -221,6 +224,10 @@ def main():
                         .format(args.airgap, args.airgap2))
         else:
             logger.info("Airgap is set to {}".format(args.airgap))
+    if args.no_adapt_ndt:
+        adapt_ndt = False
+    else:
+        adapt_ndt = True
 
     part = ()
     if args.stator:
@@ -265,6 +272,7 @@ def main():
                   inner_name=args.inner,
                   outer_name=args.outer,
                   part=part,
+                  adapt_ndt=adapt_ndt,
                   airgap=args.airgap,
                   airgap2=args.airgap2,
                   da=args.da,  # distance airgap

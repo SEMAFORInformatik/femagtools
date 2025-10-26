@@ -75,7 +75,7 @@ class Builder:
 
         return mcv + self.render_stator(model)
 
-    def prepare_stator(self, model):
+    def _prepare_stator(self, model):
         templ = model.statortype()
         if templ == 'mshfile':
             import femagtools.gmsh
@@ -115,6 +115,7 @@ class Builder:
         params['show_plots'] = model.stator[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
+        params['adapt_ndt'] = model.adapt_ndt
         params['nodedist'] = model.stator.get('nodedist', 1)
         pos = 'in' if model.external_rotor else 'out'
         params['part'] = ('stator', pos)
@@ -345,6 +346,7 @@ class Builder:
         params['show_plots'] = rotor[templ].get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = -1.0
+        params['adapt_ndt'] = model.adapt_ndt
         pos = 'out' if model.external_rotor else 'in'
         params['part'] = ('rotor', pos)
         logger.info("Conv rotor from %s",
@@ -506,7 +508,7 @@ class Builder:
                      'file_leak:close()'])
         return genwdg
 
-    def prepare_model_with_dxf_or_svg(self, model):
+    def _prepare_model_with_dxf_or_svg(self, model):
         from femagtools.dxfsl.converter import convert
         fmt = model.dxffile if hasattr(model, 'dxffile') else model.svgfile
         fname = fmt.get('name', None)
@@ -525,6 +527,7 @@ class Builder:
         params['show_plots'] = fmt.get('plot', False)
         params['write_fsl'] = True
         params['airgap'] = fmt.get('airgap', 0.0)
+        params['adapt_ndt'] = model.adapt_ndt
         params['nodedist'] = fmt.get('nodedist', 1)
         params['full_model'] = fmt.get('full_model', False)
         params['EESM'] = fmt.get('type', 'PMSM') == 'EESM'
@@ -615,9 +618,9 @@ class Builder:
         if model.is_complete():
             logger.info("create new model '%s'", model.name)
             if model.is_dxffile() or model.is_svgfile():
-                self.prepare_model_with_dxf_or_svg(model)
+                self._prepare_model_with_dxf_or_svg(model)
             else:
-                self.prepare_stator(model)
+                self._prepare_stator(model)
                 if hasattr(model, 'magnet'):
                     self.prepare_magnet(model)
                 self.prepare_diameter(model)

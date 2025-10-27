@@ -119,6 +119,8 @@ class Builder:
         params['nodedist'] = model.stator.get('nodedist', 1)
         pos = 'in' if model.external_rotor else 'out'
         params['part'] = ('stator', pos)
+        if model.get("agndst", 0): 
+            params["agndst"] = model["agndst"]
         conv = convert(model.stator[templ]['name'], **params)
 
         model.stator['num_slots'] = conv.get('tot_num_slot')

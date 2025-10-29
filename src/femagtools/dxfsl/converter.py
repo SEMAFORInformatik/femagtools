@@ -826,7 +826,7 @@ def convert(dxfile,
             if 'agndst' in params and params['agndst'] > 0.0:
                 pass 
             elif absol_agndst > 0.0: 
-                params['agndst'] = absol_agndst
+                params['agndst'] = absol_agndst*1e3
             else:
                 params['agndst'] = agndst(params.get('da1'),
                                         params.get('da2'),

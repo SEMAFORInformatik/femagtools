@@ -196,8 +196,7 @@ class SubscriberTask(threading.Thread):
                             SubscriberTask.percent_list.append(0)
                         SubscriberTask.percent_list[self.protId] = json.loads(response[1].decode()).get('percent')
                         if SubscriberTask.percent_list[self.protId] >= 100:
-                            self.running = False
-                            self.logger.debug(f"stopped since 100 percent")
+                            self.logger.debug(f"100 percent")
                         continue
 
                     # header xyplot (add ylabel)

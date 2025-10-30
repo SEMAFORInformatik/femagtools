@@ -238,6 +238,8 @@ class Engine:
             if i % self.process_count == 0:
                 self.start_subscribers()
             exitcodes.append(task.get())
+            self.subscriber[i].stop()
+
         status = []
         for t, ec in zip(self.job.tasks, exitcodes):
             t.status = 'C'

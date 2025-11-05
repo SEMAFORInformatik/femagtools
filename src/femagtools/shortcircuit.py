@@ -44,6 +44,7 @@ def get_shortCircuit_parameters(bch, nload):
             ld = bch.machine['ld']/bch.armatureLength
             lq = bch.machine['lq']/bch.armatureLength
             psim = bch.machine['psim']/bch.armatureLength
+
         return dict(
             r1=bch.machine['r1'],
             l_endwinding=bch.machine.get('ls1', 0),
@@ -82,13 +83,16 @@ def find_peaks_and_valleys(t, y):
     return pv
 
 def shortcircuit(femag, machine, bch, simulation, engine=0):
+    "run a 2 or 3ph short circuit simulation"
     scdata = {}
     sccalcmode = simulation.get('calculationMode', '')
     simulation.update(
         get_shortCircuit_parameters(bch,
                                     simulation.get('initial', 2)))
     try:
-        simulation['r1'] = femag.model.winding['resistance']
+        from .machine.utils import KTH
+        r1 = femag.model.winding['resistance']
+        simulation['r1'] = r1*(1+KTH*(simulation['wind_temp']-20))
     except (KeyError, AttributeError):
         pass
     if 'speed' not in simulation:
@@ -143,6 +147,10 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             #        break
 
     if simulation.get('sc_type', 3) == 2:
+        try:
+            simulation['num_rot_steps']=len(bch.flux['1'][0]['displ'])
+        except KeyError:
+            pass
         if 'i1max' not in simulation:
             # just a wild guess
             simulation['i1max'] = 5*bch.machine['i1']
@@ -197,13 +205,12 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
                 {"values": i1vec, "name": "curvec"}]
         }
         results = parstudy(parvardef, machine, flux_sim, engine)
-
         ire = np.array([r['ire'][0] for r in results['f']])
         pos = np.array(results['f'][0]['pos'])
         phi = pos*np.pi/180
         torq = np.hstack([r['torq'] for r in results['f']])
         psire = np.hstack([r['psire'] for r in results['f']])
-        pmod = results['f'][0]['pmod']
+
     else:
         simulation.update(flux_sim)
         simulation['curvec'] = i1vec.tolist()
@@ -216,8 +223,8 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
         pos = np.array(results['pos'])
         torq = np.array(results['torq'])
         psire = np.array(results['psire'])
-        pmod = results['pmod']
 
+    pmod = 2
     #with open('results.json', 'w') as fp:
     #    json.dump({'ire': ire.tolist(), 'pos': pos.tolist(),
     #               'torq': torq.tolist(), 'psire': psire.tolist()}, fp)

@@ -1,21 +1,32 @@
-# FEMAG TS-Simulation
+# FEMAG TS 3ph short circuit
 #
 import logging
 import femagtools
+from femagtools import netlist
 import pathlib
 from machine import machine
 import matplotlib.pyplot as plt
 
+speed = 50
+freq = speed*machine['poles']/2
+cond_temp=140
+current_angles=[60,180,300]
+
+current = 100  # amplitude of phase current in A
 simulation = dict(
     calculationMode="calc_field_ts",
-    src_ampl=100.0,
-    src_type='current',
-    speed=50.0,
-    current_angles=[60,180,300],
-    sim_time=[0.01, 0.02],
-    store_time=0.01/20,
-    dtmin=0.01/20,
-    dtmax=0.01/20,
+    speed=speed,
+    magn_temp=80,
+    cond_temp=120,
+    netlists=[
+        netlist.create_shortcircuit(
+            freq, current, current_angles, [0, 0],
+            phseq='123'),
+        netlist.create_shortcircuit(
+            freq, 0, current_angles, [1, 1], phseq='123')],
+    sim_time=[0.01,0.02],
+    dtmin=0.01/40,
+    dtmax=0.01/40,
     resmin=1e-5,
     resmax=1e-4,
     vtu_movie=True)

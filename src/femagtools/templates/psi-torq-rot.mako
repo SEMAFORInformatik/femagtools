@@ -52,6 +52,9 @@ for i=1, #curamp do
 
 ksym = m.num_poles/m.npols_gen
 
+% if 'num_rot_steps' in model:
+nrot = ${model['num_rot_steps']}-1
+% else:
 if num_agnodes ~= nil then
   dphi = 360/num_agnodes -- ndst[2] -- deg
 else
@@ -61,10 +64,33 @@ end
 nodes = math.floor(360/m.num_poles/dphi+0.5)
 printf("Nodes in airgap total %g, Nodes per pole: %d", 360/dphi, nodes)
 -- find a valid number of steps for a rotation:
+function factorize(n)
+   if(n < 2) then
+      return {}
+   end
+   factors = {}
+   p = 2
+   while(true) do
+      if(n < 2) then
+         return factors
+      end
+      r = n % p
+      if(r < 1) then
+         factors.append(p)
+         n = n // p
+      elseif(p * p >= n) then
+         factors.append(n)
+         return factors
+      elseif(p > 2) then
+         p = p+2
+      else
+         p = p+1
+f = factorize(nodes)
 nrot = nodes
-while( nrot%2) == 0 do
-  nrot = nrot//2
+for i=#f, i, -1 do
+  nrot = nrot//f[i]
 end
+% endif
 Q1 = get_dev_data("num_slots")
 p = m.num_poles//2
 dphi = 360//gcd(Q1, p)/nrot
@@ -97,6 +123,7 @@ for n=1,nrot+1 do
     file_psi:write(string.format("%g ", tq[i]))
     file_psi:write("\n")
   end
+  print(string.format(" rotation step: %d / %d\n", n, nrot))
 
   phi = n*dphi
   rotate({angle=phi, mode="absolute"})

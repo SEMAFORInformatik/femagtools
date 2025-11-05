@@ -89,7 +89,7 @@ class Reader(object):
                     self.data[data_name].append(
                         self.output.GetCellData().GetAbstractArray(data_name))
 
-        return "done"
+        return {k: np.shape(self.data[k]) for k in self.data}
 
     def set_time_window(self, start, end):
         '''Set time window
@@ -150,11 +150,8 @@ class Reader(object):
         else:
             end = len(self.data[field_data])
 
-        field_vec = []
-        # for i in range(self.istart,self.iend):
-        for i in range(start, end):
-            field_vec.append(self.data[field_data][i].GetValue(0))
-        return field_vec
+        return [self.data[field_data][i].GetValue(0)
+                for i in range(start, end)]
 
     # pnt = node-key, >0
     def get_point_vector(self, pnt_data, pnt) -> list:
@@ -180,10 +177,8 @@ class Reader(object):
         else:
             end = len(self.data[pnt_data])
 
-        point_vec = []
-        for i in range(start, end):
-            point_vec.append(self.data[pnt_data][i].GetValue(pnt-1))
-        return point_vec
+        return [self.data[pnt_data][i].GetValue(pnt-1)
+                for i in range(start, end)]
 
     def get_cell_vector(self, cell_data, cell=0) -> list:
         '''Read cell data
@@ -204,12 +199,6 @@ class Reader(object):
                 self.output.GetCellData().GetAbstractArray(cell_data))
         i = self.cell_data_names.index(cell_data)
         noc = self.output.GetCellData().GetAbstractArray(i).GetNumberOfComponents()
-        if noc == 1:
-            cell_vec = []
-        else:
-            cell_vec_x = []
-            cell_vec_y = []
-            cell_vec_z = []
 
         if self.istart:
             start = self.istart
@@ -220,20 +209,16 @@ class Reader(object):
         else:
             end = int(len(self.data[cell_data]))
 
-        for i in range(start, end):
-            if noc == 1:
-                cell_vec.append(self.data[cell_data][i].GetValue(cell-1))
-            else:
-                cell_vec_x.append(
-                    self.data[cell_data][i].GetValue(noc*(cell-1)))
-                cell_vec_y.append(
-                    self.data[cell_data][i].GetValue(noc*(cell-1)+1))
-                cell_vec_z.append(
-                    self.data[cell_data][i].GetValue(noc*(cell-1)+2))
         if noc == 1:
-            return cell_vec
-        else:
-            return [cell_vec_x, cell_vec_y, cell_vec_z]
+            return [self.data[cell_data][i].GetValue(cell-1)
+                    for i in range(start, end)]
+
+        return [[self.data[cell_data][i].GetValue(noc*(cell-1))
+                 for i in range(start, end)],
+                [self.data[cell_data][i].GetValue(noc*(cell-1)+1)
+                 for i in range(start, end)],
+                [self.data[cell_data][i].GetValue(noc*(cell-1)+2)
+                 for i in range(start, end)]]
 
     def hrphi(self, scf, elements, magtemp):
         """return H values for each element in polar coord system

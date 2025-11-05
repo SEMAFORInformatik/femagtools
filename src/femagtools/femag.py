@@ -279,6 +279,19 @@ class BaseFemag(object):
         logger.info("Read TS {}".format(modelname))
         return femagtools.ts.read_st(self.workdir, modelname)
 
+    def read_vtu(self, modelname=None):
+        "read most recent VTU files and return result"
+        import femagtools.vtu
+        if not modelname:
+            modelname = self._get_modelname_from_log()
+        workdir = pathlib.Path(self.workdir)
+        p = re.compile(r'\d+')
+        i = max([int(p.findall(f.name)[-1])
+                 for f in workdir.glob(f'{modelname}_results_*')])
+        f = workdir / f'{modelname}_results_{i}'
+        logger.info("Read VTU %s", f)
+        return femagtools.vtu.read(f)
+
     def read_modal(self, modelname=None):
         "read modal analysis output and return result"
         import femagtools.me

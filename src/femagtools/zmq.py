@@ -86,8 +86,6 @@ class SubscriberTask(threading.Thread):
 
     def __init__(self, **kwargs):
         threading.Thread.__init__(self)
-        context = zmq.Context.instance()
-        self.subscriber = context.socket(zmq.SUB)
         self.port = kwargs.get('port', None)
         self.host = kwargs.get('host')
         self.notify = kwargs.get('notify', None)
@@ -96,6 +94,7 @@ class SubscriberTask(threading.Thread):
         self.num_cur_steps = kwargs.get('num_cur_steps', None)
         SubscriberTask.curve_label = kwargs.get('curve_label', '')
         SubscriberTask.timestep = kwargs.get('timestep', 2)
+        self.logger = logger
 
         if not self.host:
             self.host = 'localhost'
@@ -117,6 +116,9 @@ class SubscriberTask(threading.Thread):
             self.protId = len(SubscriberTask.percent_list)
             SubscriberTask.percent_list.append(0)  # 0%
 
+    def init(self):
+        context = zmq.Context.instance()
+        self.subscriber = context.socket(zmq.SUB)
         self.subscriber.connect(f'tcp://{self.host}:{self.port}')
         self.subscriber.setsockopt(zmq.SUBSCRIBE, self.header[0] if len(self.header) == 1 else b'')
         self.controller = zmq.Context.instance().socket(zmq.PULL)
@@ -129,7 +131,6 @@ class SubscriberTask(threading.Thread):
         self.poller = zmq.Poller()
         self.poller.register(self.subscriber, zmq.POLLIN)
         self.poller.register(self.controller, zmq.POLLIN)
-        self.logger = logger
 
     def stop(self):
         socket = zmq.Context.instance().socket(zmq.PUSH)
@@ -176,6 +177,7 @@ class SubscriberTask(threading.Thread):
 
     def run(self):
         self.logger.debug("subscriber is ready, port: %s", {self.port})
+        self.init()
         while self.running:
             socks = dict(self.poller.poll())
             if socks.get(self.subscriber) == zmq.POLLIN:
@@ -193,6 +195,8 @@ class SubscriberTask(threading.Thread):
                             # keep old progressbar working
                             SubscriberTask.percent_list.append(0)
                         SubscriberTask.percent_list[self.protId] = json.loads(response[1].decode()).get('percent')
+                        if SubscriberTask.percent_list[self.protId] >= 100:
+                            self.logger.debug(f"100 percent")
                         continue
 
                     # header xyplot (add ylabel)

@@ -435,7 +435,8 @@ def convert(dxfile,
             write_id=False,
             full_model=False,
             debug_mode=False,
-            write_journal=False):
+            write_journal=False, 
+            absol_agndst=0.0):
     global journal
     layers = ()
     conv = {}
@@ -821,12 +822,17 @@ def convert(dxfile,
                 outer_single = None
             if full_model:
                 params['num_sl_gen'] = params.get('tot_num_slot', 0)
-            params['agndst'] = agndst(params.get('da1'),
-                                      params.get('da2'),
-                                      params.get('tot_num_slot'),
-                                      params.get('num_poles'),
-                                      params.get('nodedist'))
-
+            
+            if 'agndst' in params and params['agndst'] > 0.0:
+                pass 
+            elif absol_agndst > 0.0: 
+                params['agndst'] = absol_agndst*1e3
+            else:
+                params['agndst'] = agndst(params.get('da1'),
+                                        params.get('da2'),
+                                        params.get('tot_num_slot'),
+                                        params.get('num_poles'),
+                                        params.get('nodedist'))
             if params['external_rotor']:
                 conv['fsl_rotor'] = outer
                 if outer_single:

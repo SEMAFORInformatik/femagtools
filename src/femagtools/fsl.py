@@ -531,6 +531,8 @@ class Builder:
         params['nodedist'] = fmt.get('nodedist', 1)
         params['full_model'] = fmt.get('full_model', False)
         params['EESM'] = fmt.get('type', 'PMSM') == 'EESM'
+        if model.get("agndst", 0): 
+            params["absol_agndst"] = model["agndst"]
         if params['EESM']:
             model.rotor['EESM'] = {}
         conv = convert(fname, **params)

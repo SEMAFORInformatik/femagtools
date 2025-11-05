@@ -183,6 +183,7 @@ class Engine:
             header = [b'progress']
             if self.calc_mode == 'cogg_calc':
                 header +=[b'xyplot']
+            self.subscriber_started = 0
             self.subscriber = [SubscriberTask(port=self.port + i * 5,
                                               host='127.0.0.1',
                                               notify=self.notify,
@@ -192,7 +193,6 @@ class Engine:
                                               timestep=self.progress_timestep
                                               )
                                for i, t in enumerate(self.job.tasks)]
-            [s.start() for s in self.subscriber]
             self.tasks = [self.pool.apply_async(
                 run_femag, args=(t.cmd, t.directory, t.fsl_file, self.port + i * 5))
                           for i, t in enumerate(self.job.tasks)]
@@ -213,13 +213,33 @@ class Engine:
             self.progressLogger.start()
         return len(self.tasks)
 
+    def start_subscribers(self):
+        """Start subscriber tasks in pieces of self.process_count,
+           to avoid zmq exceptions like 'to many open files'
+        """
+        if self.subscriber_started >= len(self.subscriber):
+            return
+        logger.debug(f"start_subscribers: {self.subscriber_started}")
+        for i in range(self.process_count):
+            if (self.subscriber_started + i) < len(self.subscriber):
+                self.subscriber[i + self.subscriber_started].start()
+        self.subscriber_started = min(self.subscriber_started + self.process_count, len(self.subscriber))
+
     def join(self):
         """Wait until all calculations are finished
+           Also start subscriber tasks in pieces
 
         Return:
             list of all calculations status (C = Ok, X = error)
         """
-        exitcodes = [task.get() for task in self.tasks]
+        self.start_subscribers()
+        exitcodes = []
+        for i, task in enumerate(self.tasks):
+            if i % self.process_count == 0:
+                self.start_subscribers()
+            exitcodes.append(task.get())
+            self.subscriber[i].stop()
+
         status = []
         for t, ec in zip(self.job.tasks, exitcodes):
             t.status = 'C'

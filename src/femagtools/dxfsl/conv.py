@@ -188,6 +188,12 @@ def main():
                            help='create full model (fsl only)',
                            dest='full_model',
                            action="store_true")
+    argparser.add_argument('--agndst',
+                           help=(argparse.SUPPRESS if not super_help else
+                                 'absolute node distance (m)'),
+                           dest='absol_agndst',
+                           type=float,
+                           default=0.0)
 
     args = argparser.parse_args()
     logfilename = None
@@ -289,7 +295,8 @@ def main():
                   write_id=args.write_id,
                   debug_mode=args.debugger,
                   full_model=args.full_model,
-                  write_journal=args.journal)
+                  write_journal=args.journal, 
+                  absol_agndst=args.absol_agndst)
     keys = ('tot_num_slot', 'num_sl_gen', 'num_poles', 'nodedist',
             'dy1', 'da1', 'da2', 'dy2', 'agndst', 'name')
     logger.info("%s", {k: res[k] for k in keys if k in res})

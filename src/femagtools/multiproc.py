@@ -215,15 +215,18 @@ class Engine:
 
     def start_subscribers(self):
         """Start subscriber tasks in pieces of self.process_count,
-           to avoid zmq exceptions like 'to many open files'
+           to avoid zmq exceptions like 'too many open files'
         """
-        if self.subscriber_started >= len(self.subscriber):
-            return
-        logger.debug(f"start_subscribers: {self.subscriber_started}")
-        for i in range(self.process_count):
-            if (self.subscriber_started + i) < len(self.subscriber):
-                self.subscriber[i + self.subscriber_started].start()
-        self.subscriber_started = min(self.subscriber_started + self.process_count, len(self.subscriber))
+        try:
+            logger.debug(f"start_subscribers: {self.subscriber_started}")
+            for i in range(self.process_count):
+                if (self.subscriber_started + i) < len(self.subscriber):
+                    self.subscriber[i + self.subscriber_started].start()
+                    self.subscriber_started = min(
+                        self.subscriber_started + self.process_count,
+                        len(self.subscriber))
+        except AttributeError:
+            pass
 
     def join(self):
         """Wait until all calculations are finished
@@ -232,14 +235,18 @@ class Engine:
         Return:
             list of all calculations status (C = Ok, X = error)
         """
+        ### TODO: refactor subscriber handling (incl. threads)
+        """
         self.start_subscribers()
         exitcodes = []
         for i, task in enumerate(self.tasks):
-            if i % self.process_count == 0:
-                self.start_subscribers()
+            if self.process_count:
+                if i % self.process_count == 0:
+                    self.start_subscribers()
             exitcodes.append(task.get())
             self.subscriber[i].stop()
-
+        """
+        exitcodes = [task.get() for task in self.tasks]
         status = []
         for t, ec in zip(self.job.tasks, exitcodes):
             t.status = 'C'

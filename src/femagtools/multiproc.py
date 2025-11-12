@@ -192,7 +192,7 @@ class Engine:
                                               num_cur_steps=self.job.num_cur_steps,
                                               timestep=self.progress_timestep
                                               )
-                               for i, t in enumerate(self.job.tasks)]
+                               for i in range(1)]
             self.tasks = [self.pool.apply_async(
                 run_femag, args=(t.cmd, t.directory, t.fsl_file, self.port + i * 5))
                           for i, t in enumerate(self.job.tasks)]

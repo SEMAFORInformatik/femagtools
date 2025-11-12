@@ -116,7 +116,6 @@ class SubscriberTask(threading.Thread):
             self.protId = len(SubscriberTask.percent_list)
             SubscriberTask.percent_list.append(0)  # 0%
 
-    def init(self):
         context = zmq.Context.instance()
         self.subscriber = context.socket(zmq.SUB)
         self.subscriber.connect(f'tcp://{self.host}:{self.port}')
@@ -177,7 +176,6 @@ class SubscriberTask(threading.Thread):
 
     def run(self):
         self.logger.debug("subscriber is ready, port: %s", {self.port})
-        self.init()
         while self.running:
             socks = dict(self.poller.poll())
             if socks.get(self.subscriber) == zmq.POLLIN:

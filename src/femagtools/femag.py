@@ -779,7 +779,6 @@ class ZmqFemag(BaseFemag):
     def subscribe(self, notify):
         """attaches a notify function"""
         logger.info("Subscribe on '%s' port %d", self.femaghost, self.port+1)
-        femagtools.zmq.SubscriberTask.clear()
         if self.subscriber is None:
             # progress/xyplot at a configured timestep published
             header = [b'progress', b'xyplot', b'license']
@@ -1137,7 +1136,6 @@ class ZmqFemag(BaseFemag):
         logger.info("Interrupt %s", self.femaghost)
         ctrl.send_string('interrupt')
         ctrl.close()
-        femagtools.zmq.SubscriberTask.clear()
 
     def copy_winding_file(self, name, wdg):
         wdg.write(name, self.workdir)

@@ -135,8 +135,8 @@ sim_time = ${model['sim_time']}
 store_time = ${model.get('store_time', 0)}
 dtmin = ${model['dtmin']}
 dtmax = ${model['dtmax']}
-resmin = ${model['resmin']}
-resmax = ${model['resmax']}
+resmin = ${model.get('resmin', 1e-5)}
+resmax = ${model.get('resmax', 1e-4)}
 mode = 0
 t_end = calc_field_ts(mode, sim_time, store_time, dtmin, dtmax, resmin, resmax)
 % if isinstance(model['sim_time'], list):

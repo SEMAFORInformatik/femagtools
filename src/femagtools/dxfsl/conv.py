@@ -268,6 +268,7 @@ def main():
             args.write_fsl = True
 
     res = convert(args.dxfile,  # DXF-Filename
+                  True,         # Parse with ezdxf
                   args.EESM,    # motor type EESM or PMSM
                   rtol=args.rtol,    # relative pickdist toleranz
                   atol=args.atol,    # absolute pickdist toleranz

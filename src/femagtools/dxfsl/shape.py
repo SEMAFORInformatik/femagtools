@@ -17,7 +17,7 @@ from .functions import alpha_line, alpha_angle, alpha_triangle
 from .functions import normalise_angle, min_angle, max_angle, get_angle_of_arc
 from .functions import lines_intersect_point, nodes_are_equal
 from .functions import is_angle_inside, intersect_point, point_greater_equal
-from .functions import middle_angle, middle_point_of_line, elevation_angle
+from .functions import middle_angle, middle_point_of_line, elevation_angle, mirror_angle_y_axis
 from femagtools.dxfsl.functions import positive_angle
 
 logger = logging.getLogger('femagtools.geom')
@@ -788,7 +788,8 @@ class Arc(Circle):
 
     def __init__(self, e, lf=1, rf=np.pi/180,
                  color=None, attr=None, linestyle=None,
-                 xoff=0.0, yoff=0.0, rotation=0.0):
+                 xoff=0.0, yoff=0.0, rotation=0.0,
+                 mirror_y_axis=False):
         super(self.__class__, self).__init__(e, lf,
                                              xoff=xoff, yoff=yoff,
                                              rotation=rotation)
@@ -796,6 +797,13 @@ class Arc(Circle):
 
         self.startangle = (e.start_angle + rotation) * rf
         self.endangle = (e.end_angle + rotation) * rf
+
+        if mirror_y_axis:
+            self.center = (-1.0 * self.center[0], self.center[1])
+            startangle = mirror_angle_y_axis(self.endangle)
+            self.endangle = mirror_angle_y_axis(self.startangle)
+            self.startangle = startangle
+
         if self.endangle < self.startangle:
             if self.endangle < 0:
                 self.endangle += 2*np.pi

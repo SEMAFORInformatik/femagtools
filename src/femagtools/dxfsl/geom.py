@@ -501,7 +501,7 @@ class Geometry(object):
             return [(round(p[0], ndec), round(p[1], ndec)) for p in points]
         return n
 
-    def find_other_node(self, node, **kwargs):
+    def find_other_node(self, node, pickdist=0.01,  **kwargs):
         """return closest node to node in arg within pickdist"""
         nodes = list(kwargs.get('g', self.g))
         if nodes:
@@ -511,7 +511,7 @@ class Geometry(object):
             dist = np.sqrt(np.einsum('ij, ij->i', c, c))
             idx = dist.argmin()
             candidates = [(dist[i], nodes[i]) for i in range(len(dist))
-                          if dist[i] < 0.01]
+                          if dist[i] < pickdist]
             if not candidates:
                 return None
             candidates.sort()
@@ -817,6 +817,14 @@ class Geometry(object):
 
     def get_neighbors(self, n):
         return [nbr for nbr in self.g.neighbors(n)]
+
+    def get_second_neighbor(self, n, n1):
+        nbrs = self.get_neighbors(n)
+        if not len(nbrs) == 2:
+            return None
+        if nodes_are_equal(nbrs[0], n1):
+            return nbrs[1]
+        return nbrs[0]
 
     def num_of_neighbors(self, n):
         nbrs = [nbr for nbr in self.g.neighbors(n)]
@@ -2462,7 +2470,7 @@ class Geometry(object):
             # Wir finden keine Arc-Objekte, welche uns einen Hinweis auf den
             # Center geben können. Wir versuchen in der Verzweiflung mit
             # center_hull oder x(min) und y(min)
-            center_hull = self.get_center_hull(_hull_points)
+            center_hull = self.get_center_hull(hull_points)
             if center_hull:
                 center = center_hull
             else:
@@ -4021,8 +4029,20 @@ class Geometry(object):
                     logger.error("Element not available ?!")
                     continue
 
-                if not is_Circle(el):
-                    end_nodes.append((n, nbrs[0], el))
+                if is_Circle(el):
+                    continue
+
+                n1 = nbrs[0]
+                elements = 1
+                n_prev = n
+                n_this = n1
+                n_next = self.get_second_neighbor(n_this, n_prev)
+                while n_next is not None:
+                    elements += 1
+                    n_prev = n_this
+                    n_this = n_next
+                    n_next = self.get_second_neighbor(n_this, n_prev)
+                end_nodes.append((n, n1, el, elements))
         return end_nodes
 
     def connect_all_nodes(self,
@@ -4105,12 +4125,12 @@ class Geometry(object):
         self.fixed_appendices = []
 
         count = 0
-        for n0, n1, el in appendix_list:
+        for n0, n1, el, num in appendix_list:
             logger.debug("Appendix Node at %s", n0)
             if n0 in self.fixed_appendices:
                 logger.debug(" - Node already fixed")
             else:
-                count += self.connect_appendix(n0, n1, el,
+                count += self.connect_appendix(n0, n1, el, num,
                                                rtol=rtol, atol=atol,
                                                ignore_end=ignore_end)
 
@@ -4119,7 +4139,7 @@ class Geometry(object):
         logger.debug("end of connect_appendices => %s", count)
         return count
 
-    def connect_appendix(self, n0, n1, el, rtol=1e-03, atol=1e-03, ignore_end=False):
+    def connect_appendix(self, n0, n1, el, num, rtol=1e-03, atol=1e-03, ignore_end=False):
         logger.debug("begin of connect_appendix(%s, rtol=%s, atol=%s)", n0, rtol, atol)
 
         if points_are_close(n0, n1, rtol=1e-04, atol=1e-04):
@@ -4143,35 +4163,47 @@ class Geometry(object):
             return 1
 
         nn = self.find_other_node(n0)
+        if nn:  # very near: remove element and reconnect
+            logger.debug("Node %s is near %s", n0, nn)
+            logger.debug(" -- appendix %s from %s to %s", el.classname(), n0, n1)
+            try:
+                logger.debug("remove edge of %s from %s to %s",
+                             el.classname(), el.p1, el.p2)
+                self._remove_edge(n0, n1)
+            except Exception:
+                f = Path(__file__)
+                msg = "{} #{}: delete of {} - {} failed".format(
+                    f.name, lineno(),
+                    n0, n1)
+                self.journal.put_warning(msg)
+                logger.warning("WARNING: %s", msg)
+                logger.debug("-- Element %s", el)
+
+            self.add_or_join_edge(nn, n1, el,
+                                  rtol=rtol,
+                                  atol=atol)
+            self.fixed_appendices.append(nn)
+            logger.debug("end of connect_appendix: connected")
+            return 1
+
+        nn = self.find_other_node(n0, pickdist=0.075)
         if not nn:
             logger.debug("end of connect_appendix: => No node found nearby")
             return 0
 
-        logger.debug("Node %s is near %s", n0, nn)
-        logger.debug(" -- appendix %s from %s to %s", el.classname(), n0, n1)
-        try:
-            logger.debug("remove edge of %s from %s to %s",
-                         el.classname(), el.p1, el.p2)
-            self._remove_edge(n0, n1)
-        except Exception:
-            f = Path(__file__)
-            msg = "{} #{}: delete of {} - {} failed".format(
-                f.name, lineno(),
-                n0, n1)
-            self.journal.put_warning(msg)
-            logger.warning("WARNING: %s", msg)
-            logger.debug("-- Element %s", el)
+        if num < 2:  # Appendix with one element
+            logger.debug("end of connect_appendix: => No node found nearby")
+            return 0
 
-        self.add_or_join_edge(nn, n1, el,
-                              rtol=rtol,
-                              atol=atol)
+        logger.debug("make a line from %s to %s", n0, nn)
+        self.add_line(n0, nn, color="red")
         self.fixed_appendices.append(nn)
         logger.debug("end of connect_appendix: connected")
         return 1
 
     def delete_appendices(self, appendix_list):
         c = 0
-        for n0, n1, e in appendix_list:
+        for n0, n1, e, num in appendix_list:
             logger.debug("Deadend Node at %s", n0)
             c += self.remove_appendix(n0, n1)
         return c
@@ -4181,7 +4213,7 @@ class Geometry(object):
         appendix_list = self.get_appendices()
         app = len(appendix_list)
         if not app:
-            logger.debug("end of delete_all_appendices: no appendices")
+            logger.info("end of delete_all_appendices: no appendices")
             return
 
         corr = self.delete_appendices(appendix_list)

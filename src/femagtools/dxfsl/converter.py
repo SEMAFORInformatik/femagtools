@@ -407,6 +407,7 @@ def build_outer_machine(machine,
 
 
 def convert(dxfile,
+            ezdxf=True,
             EESM=False,
             rtol=1e-04,
             atol=1e-03,
@@ -435,7 +436,7 @@ def convert(dxfile,
             write_id=False,
             full_model=False,
             debug_mode=False,
-            write_journal=False, 
+            write_journal=False,
             absol_agndst=0.0):
     global journal
     layers = ()
@@ -491,6 +492,12 @@ def convert(dxfile,
     if small_plots:
         show_plots = False
 
+    corrections = True
+    if view_korr:
+        view_only = True
+    if view_only:
+        corrections = view_korr
+
     try:
         if input_file.suffix in ['.fem', '.FEM']:
             from .femparser import femshapes
@@ -499,12 +506,16 @@ def convert(dxfile,
                                 atol=atol,
                                 split=split_ini,
                                 concatenate=True,
-                                connect=True,
-                                delete=True,
-                                adjust=True,
+                                connect=corrections,
+                                delete=corrections,
+                                adjust=corrections,
                                 main=True)
         elif input_file.suffix in ['.dxf', '.DXF']:
-            from .dxfparser import dxfshapes
+            from .dxfparser import dxfshapes_grabber, dxfshapes_ez
+            if ezdxf:
+                dxfshapes = dxfshapes_ez
+            else:
+                dxfshapes = dxfshapes_grabber
             basegeom = Geometry(dxfshapes(dxfile,
                                           mindist=mindist,
                                           layers=layers),
@@ -512,9 +523,9 @@ def convert(dxfile,
                                 atol=atol,
                                 split=split_ini,
                                 concatenate=True,
-                                connect=True,
-                                delete=True,
-                                adjust=True,
+                                connect=corrections,
+                                delete=corrections,
+                                adjust=corrections,
                                 main=True)
         elif input_file.suffix in ['.svg', '.SVG']:
             from .svgparser import svgshapes
@@ -523,9 +534,9 @@ def convert(dxfile,
                                 atol=atol,
                                 split=split_ini,
                                 concatenate=True,
-                                connect=True,
-                                delete=True,
-                                adjust=True,
+                                connect=corrections,
+                                delete=corrections,
+                                adjust=corrections,
                                 main=True)
         else:
             logger.error("Unexpected file %s", input_file)

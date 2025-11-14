@@ -245,6 +245,22 @@ def mirror_point(p, L_p, L_m, L_n):
     return (x, y)
 
 
+def mirror_angle_y_axis(angle):
+    angle = positive_angle(angle)
+    if angle < np.pi/2:
+        alpha = alpha_angle(angle, np.pi/2)
+        return angle + 2*alpha
+    if angle < np.pi:
+        alpha = alpha_angle(np.pi/2, angle)
+        return angle - 2*alpha
+    if angle < np.pi*1.5:
+        alpha = alpha_angle(angle, np.pi*1.5)
+        return angle + 2*alpha
+
+    alpha = alpha_angle(np.pi*1.5, angle)
+    return angle - 2*alpha
+
+
 def points_are_close(p1, p2, rtol=1e-05, atol=1e-08):
     if not (p1 and p2):
         return False

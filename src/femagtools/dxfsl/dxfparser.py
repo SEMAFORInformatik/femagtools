@@ -1,7 +1,8 @@
 import logging
+
 import numpy as np
 from .shape import Circle, Arc, Line, Element
-from .functions import distance
+from .functions import distance, alpha_angle
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,24 @@ def lw_polyline(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
                    rotation=rotation)
 
 
+def lw_polyline_ezdxf(e, lf, xoff=0.0, yoff=0.0, rotation=0.0):
+    """returns a collection of bulged vertices
+    http://www.afralisp.net/archive/lisp/Bulges1.htm
+    """
+    points = [(lf*p[0], lf*p[1]) for p in e.get_points()]
+    if points:
+        p1 = points[0]
+        for p2 in points[1:]:
+            yield Line(Element(start=p1, end=p2), lf,
+                       xoff=xoff, yoff=yoff,
+                       rotation=rotation)
+            p1 = p2
+        if e.is_closed:
+            yield Line(Element(start=p1, end=points[0]), lf,
+                       xoff=xoff, yoff=yoff,
+                       rotation=rotation)
+
+
 def ellipse(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
     w = np.linalg.norm(entity.major_axis) * 2
     h = entity.ratio * w
@@ -111,23 +130,6 @@ def ellipse(entity, lf, xoff=0.0, yoff=0.0, rotation=0.0):
 
 
 def spline(entity, lf, min_dist=0.001, xoff=0.0, yoff=0.0, rotation=0.0):
-    if False:
-        yield Line(Element(start=entity.control_points[0],
-                           end=entity.control_points[-1]), lf,
-                   xoff=xoff, yoff=yoff,
-                   rotation=rotation)
-        return
-
-    if False:
-        p_prev = None
-        for p in entity.control_points:
-            if p_prev:
-                yield Line(Element(start=p_prev, end=p), lf,
-                           xoff=xoff, yoff=yoff,
-                           rotation=rotation)
-            p_prev = p
-        return
-
     points_between = entity.control_points[1:-1]
     p1 = entity.control_points[0]
     pe = entity.control_points[-1]
@@ -245,7 +247,13 @@ def insert_block(dwg, insert_entity, lf, rf, block, min_dist=0.001):
                         e.dxftype, insert_entity.name)
 
 
-def dxfshapes0(dxffile, mindist=0.01, layers=[]):
+def mirror_y_axis(entity):
+    if not hasattr(entity, "extrusion"):
+        return False
+    return entity.extrusion[2] == -1.0
+
+
+def dxfshapes_ez(dxffile, mindist=0.01, layers=[]):
     """returns a collection of dxf entities (ezdxf)"""
     import ezdxf
     dwg = ezdxf.readfile(dxffile)
@@ -258,28 +266,52 @@ def dxfshapes0(dxffile, mindist=0.01, layers=[]):
     # dwg.header['$INSUNIT'] 1 = Inches; 2 = Feet; 3 = Miles;
     #   4 = Millimeters; 5 = Centimeters; 6 = Meters
     # dwg.header['$LUNITS']
+    lf = 1
+    if dwg.header.get('$LUNITS', 0) == 1:
+        # conv = [1, 2.54e-2, 10.12, 633.0, 1e-3, 1e-2, 1]
+        lf = 2.54e3
+
+    rf = np.pi/180
+    if dwg.header.get('$AUNITS', 0) == 4:
+        rf = 1
+
     for e in dwg.modelspace():
+        if not (not layers or e.dxf.layer in layers):
+            continue
+
         if e.dxftype() == 'ARC':
-            yield Arc(e.dxf)
+            yield Arc(e.dxf, lf, rf, mirror_y_axis=mirror_y_axis(e.dxf))
         elif e.dxftype() == 'CIRCLE':
-            logger.debug("Circle %s, Radius %f", e.center[:2], e.radius)
-            yield Circle(e.dxf)
+            yield Circle(e.dxf, lf)
         elif e.dxftype() == 'LINE':
-            yield Line(e.dxf)
+            yield Line(e.dxf, lf)
         elif e.dxftype() == 'POLYLINE':
-            for p in polylines(e):
+            for p in polylines(e, lf, rf):
+                yield p
+        elif e.dxftype() == 'LWPOLYLINE':
+            for p in lw_polyline_ezdxf(e, lf):
                 yield p
         elif e.dxftype() == 'SPLINE':
-            for l in spline(e, 1.0, in_dist=mindist):
+            for l in spline(e, lf, min_dist=mindist):
+                yield l
+        elif e.dxftype() == 'INSERT':
+            block = dwg.blocks[e.name]
+            for l in insert_block(dwg, e, lf, rf, block, min_dist=mindist):
+                yield l
+        elif e.dxftype() == 'ELLIPSE':
+            for l in ellipse(e.dxf, lf):
                 yield l
         elif e.dxftype() == 'POINT':
-            logger.debug("Id %d4: type %s ignored", id, e.dxftype)
+            logger.debug("Id %d4: type %s ignored", id, e.dxftype())
+        elif e.dxftype() == '3DFACE':
+            logger.warning(
+                "Id %d4: type %s not implemented", id, e.dxftype())
         else:
-            logger.warning("Id %d4: unknown type %s", id, e.dxftype)
+            logger.warning("Id %d4: unknown type %s", id, e.dxftype())
         id += 1
 
 
-def dxfshapes(dxffile, mindist=0.01, layers=[]):
+def dxfshapes_grabber(dxffile, mindist=0.01, layers=[]):
     """returns a collection of dxf entities (dxfgrabber)"""
     import dxfgrabber
     dwg = dxfgrabber.readfile(dxffile)

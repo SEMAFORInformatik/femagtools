@@ -178,23 +178,26 @@ class Engine:
         num_proc = self.process_count
         if not num_proc and multiprocessing.cpu_count() > 1:
             num_proc = min(multiprocessing.cpu_count()-1, len(self.job.tasks))
+        else:
+            num_proc = min(num_proc, len(self.job.tasks))
         self.pool = multiprocessing.Pool(num_proc)
         if self.port:
             header = [b'progress']
             if self.calc_mode == 'cogg_calc':
                 header +=[b'xyplot']
-            self.subscriber_started = 0
-            self.subscriber = [SubscriberTask(port=self.port + i * 5,
-                                              host='127.0.0.1',
-                                              notify=self.notify,
-                                              header=header,
-                                              curve_label=self.curve_label,
-                                              num_cur_steps=self.job.num_cur_steps,
-                                              timestep=self.progress_timestep
-                                              )
-                               for i, t in enumerate(self.job.tasks)]
+            self.subscriber = SubscriberTask(port=self.port,
+                                             num_tasks=len(self.job.tasks),
+                                             host='127.0.0.1',
+                                             notify=self.notify,
+                                             header=header,
+                                             curve_label=self.curve_label,
+                                             num_cur_steps=self.job.num_cur_steps,
+                                             timestep=self.progress_timestep
+                                             )
+            self.subscriber.start()
             self.tasks = [self.pool.apply_async(
-                run_femag, args=(t.cmd, t.directory, t.fsl_file, self.port + i * 5))
+                run_femag, args=(t.cmd, t.directory, t.fsl_file,
+                                 self.port + i * SubscriberTask.port_task_step))
                           for i, t in enumerate(self.job.tasks)]
         else:
             self.tasks = [self.pool.apply_async(
@@ -213,38 +216,12 @@ class Engine:
             self.progressLogger.start()
         return len(self.tasks)
 
-    def start_subscribers(self):
-        """Start subscriber tasks in pieces of self.process_count,
-           to avoid zmq exceptions like 'too many open files'
-        """
-        try:
-            logger.debug(f"start_subscribers: {self.subscriber_started}")
-            for i in range(self.process_count):
-                if (self.subscriber_started + i) < len(self.subscriber):
-                    self.subscriber[i + self.subscriber_started].start()
-                    self.subscriber_started = min(
-                        self.subscriber_started + self.process_count,
-                        len(self.subscriber))
-        except AttributeError:
-            pass
-
     def join(self):
         """Wait until all calculations are finished
            Also start subscriber tasks in pieces
 
         Return:
             list of all calculations status (C = Ok, X = error)
-        """
-        ### TODO: refactor subscriber handling (incl. threads)
-        """
-        self.start_subscribers()
-        exitcodes = []
-        for i, task in enumerate(self.tasks):
-            if self.process_count:
-                if i % self.process_count == 0:
-                    self.start_subscribers()
-            exitcodes.append(task.get())
-            self.subscriber[i].stop()
         """
         exitcodes = [task.get() for task in self.tasks]
         status = []
@@ -274,9 +251,8 @@ class Engine:
         if self.progressLogger:
             self.progressLogger.stop()
         if self.port and self.subscriber:
-            [s.stop() for s in self.subscriber]
-            SubscriberTask.clear()
-            self.subscriber = None
+            self.subscriber.stop()
+            self.subscriber = None # garbage collector deletes threads
 
     def terminate(self):
         """ terminate all

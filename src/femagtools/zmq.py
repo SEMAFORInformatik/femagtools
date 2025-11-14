@@ -69,32 +69,38 @@ class ProtFile:
 
         return f'{self.percent():3.1f}%'  # {self.n}/{self.looplen}'
 
-
 class SubscriberTask(threading.Thread):
-    ylabel_index = 1
-    curve_label = '{}.'
-    # used by static notify func
-    percent_list = []
-    notify_timerfunc = None
-    notify_send_loop = True
-    notify = None
-    notify_send_header = set()
-    notify_send_data = dict()
-    # progress, xydata and this entries of this list
-    # will send only only once per timestep
-    simple_data = ['license']
+    '''Subscribes data from all femag subprocesses
+
+       topics with
+       progress, xydata and all entries of "simple_topic" list
+       will be send only only once per timestep by calling the notify function
+
+       All other topic will be send immediately
+
+       Args:
+         port: port subscriber
+         host: host subscriber
+         notify: notify function
+         header: list of all subscribed topis, empty list subscribes all
+         num_tasks: number of all tasks
+         timestep: timestep used for notify function
+    '''
+    simple_topic = ['license']
+    port_task_step = 3
 
     def __init__(self, **kwargs):
+        '''initialize subscriber
+        '''
         threading.Thread.__init__(self)
         self.port = kwargs.get('port', None)
         self.host = kwargs.get('host')
         self.notify = kwargs.get('notify', None)
-        SubscriberTask.notify = kwargs.get('notify', None)
         self.header = kwargs.get('header')
-        self.num_cur_steps = kwargs.get('num_cur_steps', None)
-        SubscriberTask.curve_label = kwargs.get('curve_label', '')
-        SubscriberTask.timestep = kwargs.get('timestep', 2)
-        self.logger = logger
+        self.curve_label = kwargs.get('curve_label', '{}.')
+        self.timestep = kwargs.get('timestep', 5)
+        self.num_tasks = kwargs.get('num_tasks', 1)
+        self.percent_list = [0]*self.num_tasks
 
         if not self.host:
             self.host = 'localhost'
@@ -102,24 +108,26 @@ class SubscriberTask(threading.Thread):
             self.header = [b'']
         self.running = True
 
+        # globals
+        self.ylabel_index = 1
+        self.notify_send_loop = True if self.notify else False
+        self.notify_send_header = set()
+        self.notify_send_data = dict()
+
         # timer function
-        if not SubscriberTask.notify_timerfunc:
-            SubscriberTask.notify_timerfunc = threading.Timer(0.1, SubscriberTask.send_notify)
-            SubscriberTask.notify_send_loop = True
-            SubscriberTask.notify_timerfunc.start()
+        if self.notify:
+            notify_timerfunc = threading.Timer(0.1, self.send_notify)
+            notify_timerfunc.start()
 
         if b'xyplot' in self.header:
-            self.ylabel = self.curve_label.format(SubscriberTask.ylabel_index)
-            SubscriberTask.ylabel_index += 1
-        if b'progress' in self.header:
-            self.protfile = ProtFile(None, self.num_cur_steps)
-            self.protId = len(SubscriberTask.percent_list)
-            SubscriberTask.percent_list.append(0)  # 0%
+            self.ylabel = self.curve_label.format(self.ylabel_index)
+            self.ylabel_index += 1
 
-    def init(self):
         context = zmq.Context.instance()
         self.subscriber = context.socket(zmq.SUB)
-        self.subscriber.connect(f'tcp://{self.host}:{self.port}')
+        for i in range(self.num_tasks):
+            self.subscriber.connect(f'tcp://{self.host}:{self.port + i * SubscriberTask.port_task_step}')
+            logger.debug(f'connect to {self.port + i * SubscriberTask.port_task_step}')
         self.subscriber.setsockopt(zmq.SUBSCRIBE, self.header[0] if len(self.header) == 1 else b'')
         self.controller = zmq.Context.instance().socket(zmq.PULL)
         self.controller_url = f'inproc://publisher{self.port}'
@@ -133,51 +141,46 @@ class SubscriberTask(threading.Thread):
         self.poller.register(self.controller, zmq.POLLIN)
 
     def stop(self):
+        ''' stop subscriber
+        '''
         socket = zmq.Context.instance().socket(zmq.PUSH)
         socket.connect(self.controller_url)
         socket.send(b"quit")
         socket.close()
         self.running = False
 
-    def clear():
-        SubscriberTask.ylabel_index = 1
-        SubscriberTask.curve_label = '{}.'
-        SubscriberTask.notify_timerfunc = None
-        SubscriberTask.notify_send_loop = False
-        SubscriberTask.notify = None
-        SubscriberTask.notify_send_header = set()
-        SubscriberTask.notify_send_data = dict()
-        SubscriberTask.percent_list = []
-
-    def send_notify():
-        logger.debug(f"Send loop: {SubscriberTask.notify_send_loop}, timestep: {SubscriberTask.timestep}")
-        while SubscriberTask.notify_send_loop:
-            if 'progress_logger' in SubscriberTask.notify_send_header:
+    def send_notify(self):
+        ''' timer function to call notify function
+        '''
+        logger.debug(f"Send loop: {self.notify_send_loop}, timestep: {self.timestep}")
+        while self.notify_send_loop:
+            if 'progress_logger' in self.notify_send_header:
                 # collect data from different threads
-                SubscriberTask.notify_send_header.remove('progress_logger')
-                numTot = len(SubscriberTask.percent_list)
-                d = json.loads(SubscriberTask.notify_send_data.get('progress_logger')[1])
-                d['percent'] = sum(SubscriberTask.percent_list) / numTot
-                d['subtitle'] = f"{SubscriberTask.percent_list.count(100)} of {numTot}" if numTot > 1 else ''
-                SubscriberTask.notify(['progress_logger', json.dumps(d)])
-            if 'xyplot' in SubscriberTask.notify_send_header:
-                SubscriberTask.notify([s.decode('latin1')
-                                       for s in SubscriberTask.notify_send_data.get('xyplot')])
-                SubscriberTask.notify_send_header.remove('xyplot')
+                self.notify_send_header.remove('progress_logger')
+                numTot = len(self.percent_list)
+                d = json.loads(self.notify_send_data.get('progress_logger')[1])
+                d['percent'] = sum(self.percent_list) / numTot
+                d['subtitle'] = f"{self.percent_list.count(100)} of {numTot}" if numTot > 1 else ''
+                self.notify(['progress_logger', json.dumps(d)])
+            if 'xyplot' in self.notify_send_header:
+                self.notify([s.decode('latin1')
+                                       for s in self.notify_send_data.get('xyplot')])
+                self.notify_send_header.remove('xyplot')
 
             # simple
-            for sdata in SubscriberTask.simple_data:
-                if sdata in SubscriberTask.notify_send_header:
-                    SubscriberTask.notify([s.decode('latin1')
-                                           for s in SubscriberTask.notify_send_data.get(sdata)])
-                    SubscriberTask.notify_send_header.remove(sdata)
+            for sdata in SubscriberTask.simple_topic:
+                if sdata in self.notify_send_header:
+                    self.notify([s.decode('latin1')
+                                           for s in self.notify_send_data.get(sdata)])
+                    self.notify_send_header.remove(sdata)
 
-            time.sleep(abs(SubscriberTask.timestep))
-        logger.debug(f"Send Finished loop: {SubscriberTask.notify_send_loop}")
+            time.sleep(abs(self.timestep))
+        logger.debug(f"Send Finished loop: {self.notify_send_loop}")
 
     def run(self):
-        self.logger.debug("subscriber is ready, port: %s", {self.port})
-        self.init()
+        ''' subscriber event loop
+        '''
+        logger.debug("subscriber is ready, port: %s", {self.port})
         while self.running:
             socks = dict(self.poller.poll())
             if socks.get(self.subscriber) == zmq.POLLIN:
@@ -188,15 +191,14 @@ class SubscriberTask(threading.Thread):
                         continue
                     # header progress
                     if response[0] == b'progress' and b'progress' in self.header:
-                        SubscriberTask.notify_send_header.add('progress_logger')
+                        self.notify_send_header.add('progress_logger')
                         response[0] = b'progress_logger'
-                        SubscriberTask.notify_send_data['progress_logger'] = response
-                        while self.protId >= len(SubscriberTask.percent_list):
-                            # keep old progressbar working
-                            SubscriberTask.percent_list.append(0)
-                        SubscriberTask.percent_list[self.protId] = json.loads(response[1].decode()).get('percent')
-                        if SubscriberTask.percent_list[self.protId] >= 100:
-                            self.logger.debug(f"100 percent")
+                        self.notify_send_data['progress_logger'] = response
+                        percent = json.loads(response[1].decode()).get('percent')
+                        port = json.loads(response[1].decode()).get('port')
+                        hostname = json.loads(response[1].decode()).get('hostname')
+                        logger.debug(f"percent: {percent} port: {port}, hostname: {hostname}")
+                        self.setMultiProcPercent(percent, hostname, port)
                         continue
 
                     # header xyplot (add ylabel)
@@ -207,31 +209,37 @@ class SubscriberTask(threading.Thread):
                         response[1] = json.dumps(d).encode()
 
                         # timestep negative, immediately update
-                        if SubscriberTask.timestep < 0:
+                        if self.timestep < 0:
                             self.notify([s.decode('latin1') for s in response])
                         else:
-                            SubscriberTask.notify_send_data['xyplot'] = response
-                            SubscriberTask.notify_send_header.add('xyplot')
+                            self.notify_send_data['xyplot'] = response
+                            self.notify_send_header.add('xyplot')
                         continue
 
                     # simple
-                    for sdata in SubscriberTask.simple_data:
+                    for sdata in SubscriberTask.simple_topic:
                         if response[0] == sdata.encode() and sdata.encode() in self.header:
-                            SubscriberTask.notify_send_header.add(sdata)
-                            SubscriberTask.notify_send_data[sdata] = response
+                            self.notify_send_header.add(sdata)
+                            self.notify_send_data[sdata] = response
                             continue
 
                     if response[0] not in self.header:
                         self.notify([s.decode('latin1') for s in response])
 
                 except Exception:
-                    self.logger.error(
+                    logger.error(
                         "error in subscription message processing", exc_info=True)
 
             if socks.get(self.controller) == zmq.POLLIN:
                 req = self.controller.recv()
-                self.logger.debug("subscriber %s", req)
+                logger.debug("subscriber %s", req)
                 break
         self.subscriber.close()
         self.controller.close()
-        self.logger.debug("subscriber stopped")
+        logger.debug("subscriber stopped")
+
+    def setMultiProcPercent(self, percent, hostname, port):
+        ''' set multiproc percent list
+        '''
+        i = int((port - self.port) / SubscriberTask.port_task_step)
+        self.percent_list[i] = percent

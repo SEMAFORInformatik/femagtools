@@ -8,5 +8,5 @@ matplotlib
 lxml
 netCDF4
 lmfit
-dxfgrabber
+ezdxf
 rdp

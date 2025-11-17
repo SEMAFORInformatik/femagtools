@@ -14,6 +14,7 @@ from .job import Job
 import femagtools.config as cfg
 import femagtools.zmq
 from femagtools.zmq import SubscriberTask
+from femagtools.portpool import PortBundlePool
 try:
     from subprocess import DEVNULL
 except ImportError:
@@ -84,7 +85,7 @@ def run_femag(cmd, workdir, fslfile, port):
                                     stdout=out,
                                     stderr=err,
                                     cwd=workdir)
-            logger.info('%s (pid %d, workdir %s)', cmd, proc.pid, workdir)
+            logger.info('%s (pid %d, workdir %s)', cmd + args, proc.pid, workdir)
             # write pid file
             with open(os.path.join(workdir, 'femag.pid'), 'w') as pidfile:
                 pidfile.write("{}\n".format(proc.pid))
@@ -123,6 +124,7 @@ class Engine:
         process_count: number of processes (cpu_count() if None)
         timestep: time step in seconds for progress log messages if > 0)
     """
+    portPool = None
 
     def __init__(self, **kwargs):
         self.process_count = kwargs.get('process_count', None)
@@ -130,6 +132,13 @@ class Engine:
         # cogg_calc mode, subscribe xyplot
         self.calc_mode = kwargs.get('calc_mode')
         self.port = kwargs.get('port', 0)
+        self.port_list = kwargs.get('port_list', [])
+        # initialize singleton instance port pool
+        if self.port and not Engine.portPool:
+            Engine.portPool = PortBundlePool("localhost", self.port,
+                                             pool_size=3*multiprocessing.cpu_count(),
+                                             port_bundle_size=3,
+                                             port_list=self.port_list)  # femag-classic port bundle size
         self.curve_label = kwargs.get('curve_label')
         cmd = kwargs.get('cmd', '')
         if cmd:
@@ -138,7 +147,7 @@ class Engine:
                 self.cmd.append('-m')
 
         self.progressLogger = 0
-        self.progress_timestep = kwargs.get('timestep', -1)
+        self.progress_timestep = kwargs.get('timestep', 2)
         self.subscriber = None
         self.job = None
         self.tasks = []
@@ -197,7 +206,8 @@ class Engine:
             self.subscriber.start()
             self.tasks = [self.pool.apply_async(
                 run_femag, args=(t.cmd, t.directory, t.fsl_file,
-                                 self.port + i * SubscriberTask.port_task_step))
+                                 Engine.portPool.portList[i % len(Engine.portPool.portList)]
+                                 ))
                           for i, t in enumerate(self.job.tasks)]
         else:
             self.tasks = [self.pool.apply_async(

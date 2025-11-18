@@ -406,7 +406,8 @@ class Circle(Shape):
 
     def __init__(self, e, lf=1,
                  color=None, attr=None, linestyle=None,
-                 xoff=0.0, yoff=0.0, rotation=0.0):
+                 xoff=0.0, yoff=0.0, rotation=0.0,
+                 mirror_y_axis=False):
         self.init_attributes(color, attr, linestyle)
         if rotation != 0.0:
             alpha = rotation * np.pi/180
@@ -416,6 +417,9 @@ class Circle(Shape):
         else:
             center = e.center
         self.center = lf*center[0] + xoff, lf*center[1] + yoff
+        if mirror_y_axis:
+            self.center = (-1.0 * self.center[0], self.center[1])
+
         self.radius = lf*e.radius
         self.startangle = 0.0
         self.endangle = 0.0

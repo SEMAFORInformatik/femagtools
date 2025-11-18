@@ -282,7 +282,7 @@ def dxfshapes_ez(dxffile, mindist=0.01, layers=[]):
         if e.dxftype() == 'ARC':
             yield Arc(e.dxf, lf, rf, mirror_y_axis=mirror_y_axis(e.dxf))
         elif e.dxftype() == 'CIRCLE':
-            yield Circle(e.dxf, lf)
+            yield Circle(e.dxf, lf, mirror_y_axis=mirror_y_axis(e.dxf))
         elif e.dxftype() == 'LINE':
             yield Line(e.dxf, lf)
         elif e.dxftype() == 'POLYLINE':

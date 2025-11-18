@@ -138,7 +138,8 @@ class Engine:
             Engine.portPool = PortBundlePool("localhost", self.port,
                                              pool_size=3*multiprocessing.cpu_count(),
                                              port_bundle_size=3,
-                                             port_list=self.port_list)  # femag-classic port bundle size
+                                             port_list=self.port_list,
+                                             notify=self.notify)  # femag-classic port bundle size
         self.curve_label = kwargs.get('curve_label')
         cmd = kwargs.get('cmd', '')
         if cmd:

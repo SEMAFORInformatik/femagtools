@@ -250,9 +250,16 @@ class SubscriberTask(threading.Thread):
         if not percent:
             return
         from femagtools.multiproc import Engine
-        portList = Engine.portPool.portList if Engine.portPool else [self.port]
-        idx = portList.index(port)
-        lenPortList = len(portList)
+        port_list = Engine.portPool.portList if Engine.portPool else [self.port]
+
+        if not port: # old femag
+            idx = 0
+        elif port_list: # femag publish this port
+            idx = port_list.index(port)
+        else: # femag publish this port
+            logger.info('unknown multiproc progress logic')
+            return
+        lenPortList = len(port_list)
         lenPercentList = len(self.percent_list)
         while idx < lenPercentList:
             if self.percent_list[idx] < percent:

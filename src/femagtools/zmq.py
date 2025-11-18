@@ -14,6 +14,7 @@ except ImportError:
 
 numpat = re.compile(r'([+-]?\d+(?:\.\d+)?(?:[eE][+-]\d+)?)\s*')
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARN)
 
 class ProtFile:
     def __init__(self, dirname, num_cur_steps):
@@ -125,9 +126,13 @@ class SubscriberTask(threading.Thread):
 
         context = zmq.Context.instance()
         self.subscriber = context.socket(zmq.SUB)
-        for i in range(self.num_tasks):
-            self.subscriber.connect(f'tcp://{self.host}:{self.port + i * SubscriberTask.port_task_step}')
-            logger.debug(f'connect to {self.port + i * SubscriberTask.port_task_step}')
+        from femagtools.multiproc import Engine
+        portList = Engine.portPool.portList if Engine.portPool else [self.port]
+        if self.num_tasks < len(portList):
+            portList = portList[:self.num_tasks]
+        for port in portList:
+            self.subscriber.connect(f'tcp://{self.host}:{port}')
+        logger.debug(f'connect to {portList}')
         self.subscriber.setsockopt(zmq.SUBSCRIBE, self.header[0] if len(self.header) == 1 else b'')
         self.controller = zmq.Context.instance().socket(zmq.PULL)
         self.controller_url = f'inproc://publisher{self.port}'
@@ -162,6 +167,7 @@ class SubscriberTask(threading.Thread):
                 d['percent'] = sum(self.percent_list) / numTot
                 d['subtitle'] = f"{self.percent_list.count(100)} of {numTot}" if numTot > 1 else ''
                 self.notify(['progress_logger', json.dumps(d)])
+                #logger.debug(f'Send Percent: {d["percent"]} TIMESTEP: {self.timestep}')
             if 'xyplot' in self.notify_send_header:
                 self.notify([s.decode('latin1')
                                        for s in self.notify_send_data.get('xyplot')])
@@ -241,5 +247,21 @@ class SubscriberTask(threading.Thread):
     def setMultiProcPercent(self, percent, hostname, port):
         ''' set multiproc percent list
         '''
-        i = int((port - self.port) / SubscriberTask.port_task_step)
-        self.percent_list[i] = percent
+        if not percent:
+            return
+        from femagtools.multiproc import Engine
+        portList = Engine.portPool.portList if Engine.portPool else [self.port]
+        idx = portList.index(port)
+        lenPortList = len(portList)
+        lenPercentList = len(self.percent_list)
+        while idx < lenPercentList:
+            if self.percent_list[idx] < percent:
+                self.percent_list[idx] = percent
+                break
+            elif (idx + lenPortList) < lenPercentList and\
+                 self.percent_list[idx + lenPortList] == 0\
+                 and percent == 100:
+                break
+            else:
+                idx += lenPortList
+        #logger.debug(f'{port} percent {percent} index {idx} :: {self.percent_list} len: {lenPortList}')

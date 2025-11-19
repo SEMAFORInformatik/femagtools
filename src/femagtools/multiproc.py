@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 class LicenseError(Exception):
     pass
+class FemagError(Exception):
+    pass
 
 class ProgressLogger(threading.Thread):
     def __init__(self, dirs, num_cur_steps, timestep, notify):
@@ -83,8 +85,22 @@ def run_femag(cmd, workdir, fslfile, port):
                                     shell=False,
                                     stdin=DEVNULL,
                                     stdout=out,
-                                    stderr=err,
+                                    stderr=subprocess.PIPE, #err,
                                     cwd=workdir)
+
+            # read stderr and search for error
+            pattern = re.compile(r"ZMQ zmq_bind ctrl_socket|errno:")
+            while True:
+                try:
+                    line = proc.stderr.readline().decode().strip()
+                except UnicodeDecodeError:
+                    continue
+                if not line and proc.poll() is not None:
+                    break
+                if pattern.findall(line):
+                    logger.info(f'FemagError occurred:  {line}')
+                    raise FemagError(line)
+
             logger.info('%s (pid %d, workdir %s)', cmd + args, proc.pid, workdir)
             # write pid file
             with open(os.path.join(workdir, 'femag.pid'), 'w') as pidfile:
@@ -165,6 +181,11 @@ class Engine:
         self.job = Job(workdir)
         return self.job
 
+    def handle_error(self, error):
+        if self.subscriber:
+            import json
+            self.subscriber.notify(['progress_subtitle', json.dumps(str(error))])
+
     def submit(self, extra_result_files=[]):
         """Starts the FEMAG calculation(s) with the internal
         :py:meth:`multiproc.run_femag` function
@@ -208,7 +229,9 @@ class Engine:
             self.tasks = [self.pool.apply_async(
                 run_femag, args=(t.cmd, t.directory, t.fsl_file,
                                  Engine.portPool.portList[i % len(Engine.portPool.portList)]
-                                 ))
+                                 )
+                , error_callback=self.handle_error
+            )
                           for i, t in enumerate(self.job.tasks)]
         else:
             self.tasks = [self.pool.apply_async(

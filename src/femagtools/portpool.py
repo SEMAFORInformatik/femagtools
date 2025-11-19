@@ -22,7 +22,7 @@ class PortBundlePool:
         self.port = port
         self.pool_size = pool_size
         self.port_bundle_size = port_bundle_size
-        self._pool = Queue(maxsize=pool_size)
+        self._pool = Queue(maxsize=pool_size) # not really used
         self.portList = port_list
         self.notify = notify
         logger.info(f'PortBundlePool PortList: {self.portList}')
@@ -32,11 +32,6 @@ class PortBundlePool:
     def initialize_pool(self):
         """Initialize the pool with pre-connected sockets."""
         logger.info(f'Initialize pool, size: {self.pool_size}, bundle_size: {self.port_bundle_size}')
-        #if platform.system() == 'Windows':
-        #    self.portList = [self.port + i * self.port_bundle_size
-        #                     for i in range(self.pool_size)]
-        #    logger.info(f'Initialize Done: {self.portList}')
-        #    return
         # not windows
         logger.info(f'Initialize Multiprocessing Port Pool')
         if self.notify:
@@ -50,7 +45,8 @@ class PortBundlePool:
                 self.portList.append(self.port)
                 logger.debug(f'Found pool port bundle at: {self.port}')
                 if self.notify:
-                    self.notify(['femag_log', f'{publish_main}<br/>Found port bundle at: {self.port}'])
+                    self.notify(['femag_log', f'{publish_main}<br/>Found port bundle at: {self.port}'
+                                 '<br/>Port {self._pool.qsize()} of {self.pool_size}'])
             self.port += self.port_bundle_size
         logger.info(f'Initialize Done: {self.portList}')
         if self.notify:

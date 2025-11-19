@@ -46,7 +46,7 @@ class PortBundlePool:
                 logger.debug(f'Found pool port bundle at: {self.port}')
                 if self.notify:
                     self.notify(['femag_log', f'{publish_main}<br/>Found port bundle at: {self.port}'
-                                 '<br/>Port {self._pool.qsize()} of {self.pool_size}'])
+                                 f'<br/>Port {self._pool.qsize()} of {self.pool_size}'])
             self.port += self.port_bundle_size
         logger.info(f'Initialize Done: {self.portList}')
         if self.notify:

@@ -89,7 +89,7 @@ def run_femag(cmd, workdir, fslfile, port):
                                     cwd=workdir)
 
             # read stderr and search for error
-            pattern = re.compile(r"ZMQ zmq_bind ctrl_socket|errno:")
+            pattern = re.compile(r"ZMQ zmq_bind ctrl_socket|errno|Address already in use:")
             while True:
                 try:
                     line = proc.stderr.readline().decode().strip()

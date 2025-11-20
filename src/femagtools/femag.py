@@ -692,17 +692,38 @@ class FemagTask(threading.Thread):
         self.returncode = None
         self.workdir = workdir
         self.logdir = logdir
+        self.error_messages = []
 
     def run(self):
         logger.info("femag is ready on port %d workdir %s",
                     self.port, self.workdir)
         outname = os.path.join(self.logdir, f'femag-{self.port}.out')
         errname = os.path.join(self.logdir, f'femag-{self.port}.err')
-        with open(outname, 'w') as out, open(errname, 'w') as err:
+        with open(outname, 'w') as out:
             self.proc = subprocess.Popen(
                 self.args,
-                stdout=out, stderr=err, cwd=self.workdir)
+                stdout=out,
+                stderr=subprocess.PIPE,
+                cwd=self.workdir)
 
+        # read stderr and search for error
+        pattern = re.compile(r"ZMQ zmq_bind ctrl_socket|errno|Address already in use:")
+        err = pathlib.Path(errname)
+        start_time = time.time()
+        end_time = start_time + 10 # 10 seconds
+        while time.time() < end_time:
+            try:
+                line = self.proc.stderr.readline().decode().strip()
+            except UnicodeDecodeError:
+                continue
+            err.write_text(line)
+            if not line and self.proc.poll() is not None:
+                break
+            if pattern.findall(line):
+                logger.info(f'FemagError occurred: {line}')
+                self.error_messages.append(f'FemagError occurred: {line}')
+                #raise FemagError(line)
+                break
         self.returncode = self.proc.wait()
 
 

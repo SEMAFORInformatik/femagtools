@@ -90,7 +90,9 @@ def run_femag(cmd, workdir, fslfile, port):
 
             # read stderr and search for error
             pattern = re.compile(r"ZMQ zmq_bind ctrl_socket|errno|Address already in use:")
-            while True:
+            start_time = time.time()
+            end_time = start_time + 10 # 10 seconds
+            while time.time() < end_time:
                 try:
                     line = proc.stderr.readline().decode().strip()
                 except UnicodeDecodeError:

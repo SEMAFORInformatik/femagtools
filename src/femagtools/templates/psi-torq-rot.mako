@@ -123,7 +123,7 @@ for n=1,nrot+1 do
     file_psi:write(string.format("%g ", tq[i]))
     file_psi:write("\n")
   end
-  print(string.format(" rotation step: %d / %d\n", n, nrot))
+  print(string.format(" rotation step: %d / %d ", n, nrot))
 
   phi = n*dphi
   rotate({angle=phi, mode="absolute"})

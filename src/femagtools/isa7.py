@@ -1388,7 +1388,7 @@ class Isa7(object):
                           geomtype=geomtype,
                           area=se.area(),
                           spel_key=se.key)
-                if ibeta != None:
+                if ibeta is not None:
                     pd.update({'bl': self.get_magnet_flux_density(se, icur, ibeta)})
                 pd.update(pos)
 

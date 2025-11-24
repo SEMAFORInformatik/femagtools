@@ -799,7 +799,7 @@ class MagnLoss:
         return np.sum(pec)  # total eddy current losses for the entire magnet (all segments)
 
 
-    def calc_losses_ialh2(self, nsegx=1, nsegy=1, nsegz=1):
+    def calc_losses_ialh2(self, nsegx=1, nsegy=1, nsegz=1, notify=None):
         ''' Calculates magnet losses for every load case
 
         Inputs:  number of magnet segments in x,y,z direction
@@ -813,7 +813,7 @@ class MagnLoss:
         delta_eff = 0
 
         all_load_cases = []
-        for k in self.pm:               # loop for each load case
+        for knum, k in enumerate(self.pm):               # loop for each load case
             ialh_loss = 0
             loss_detail = []
             for i in k:                 # loop for each superelement in a case
@@ -852,5 +852,7 @@ class MagnLoss:
                 loss_detail.append([i['spel_key'], loss/self.numpoles])
             self.th_loss.append(loss_detail)
             all_load_cases.append(ialh_loss)
+            if notify:
+                notify(['femag_log', f'<progress>magnet losses {knum+1} of {len(self.pm)} finished'])
 
         return all_load_cases

@@ -28,13 +28,13 @@ def find_peaks_and_valleys(t, y):
     peaks = (np.diff(np.sign(np.diff(y))) < 0).nonzero()[0] + 1
     if len(peaks > 0):
         ip = np.argmax(y[peaks])
-        pv = {'yp': y[peaks][ip], 'tp': t[peaks][ip]}
+        pv = {'yp': y[peaks][ip], 'tp': t[peaks][ip], 'ip': ip}
     else:
         pv = {'yp': [], 'tp': []}
     valleys = (np.diff(np.sign(np.diff(y))) > 0).nonzero()[0] + 1
     if len(valleys > 0):
         iv = np.argmin(y[valleys])
-        pv.update({'yv': y[valleys][iv], 'tv': t[valleys][iv]})
+        pv.update({'yv': y[valleys][iv], 'tv': t[valleys][iv], 'iv': iv})
     else:
         pv.update({'yv': [], 'tv': []})
     pv.update({'peaks': y[peaks], 'valleys': y[valleys],
@@ -536,13 +536,13 @@ def demagnetization(demag, title='', ax=0):
     if demag.get('i1c', 0):
         Icrit = scale*demag['i1c']
         ax.plot([Icrit, Icrit], [rrmin, 1], 'r:')
-        ax.text(Icrit, rrmin+0.15, 'Icrit', fontfamily='monospace',
+        ax.text(Icrit, rrmin + 0.3, 'Icrit', fontfamily='monospace',
                 rotation=90, size='large', ha='right', va='bottom')
         demaglabels.append(f'Icrit = {Icrit:.1f} {unit}')
 
     ax.plot([Imax, Imax], [rrmin, 1], 'g:')
     ax.text(Imax, rrmin+0.05, 'Imax', fontfamily='monospace',
-                rotation=90, size='large', ha='right', va='bottom')
+            rotation=90, size='large', ha='right', va='bottom')
 
     Hk = demag['Hk']
     Tmag = demag['Tmag']
@@ -582,7 +582,12 @@ def transientsc_currents(scData, ax=0, title='',
         ipvmax = np.argmax(
             [y['yp'] if np.abs(y['yp']) > np.abs(y['yv']) else y['yv']
              for y in pv if y['yp']])
-        imax = pv[ipvmax]['yp'] if np.abs(pv[ipvmax]['yp']) > np.abs(pv[ipvmax]['yv']) else pv[ipvmax]['yv']
+        if np.abs(pv[ipvmax]['yp']) > np.abs(pv[ipvmax]['yv']):
+            imax = pv[ipvmax]['yp']
+            tmax = pv[ipvmax]['tp']
+        else:
+            pv[ipvmax]['yv']
+            tmax = pv[ipvmax]['tv']
         iac = [pv[ipvmax]['tpeaks'][-1], pv[ipvmax]['peaks'][-1]]
     except KeyError:
         pass
@@ -599,13 +604,13 @@ def transientsc_currents(scData, ax=0, title='',
     for i, iph in zip(('ia', 'ib', 'ic'), istat):
         ax.plot(t, iph, label=i)
     try:
-        ax.plot([pv[ipvmax]['tp']], [imax], '.')
+        ax.plot([tmax], [imax], '.')
         ax.plot([iac[0]], [iac[1]], '.')
         dtx = (t[-1]-t[0])/75
         dy = imax/25
         ax.annotate(f'Imax = {imax:.1f}',
-                    xy=(pv[ipvmax]['tp'], imax),
-                    xytext=(pv[ipvmax]['tp']+dtx, imax-dy))
+                    xy=(tmax, imax),
+                    xytext=(tmax+dtx, imax-dy))
         dy = iac[1]/25
         ax.annotate(f'I = {iac[1]:.1f}',
                     xy=iac,

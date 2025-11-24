@@ -4,6 +4,8 @@
 # https://stackoverflow.com/questions/42386372/increase-the-speed-of-redrawing-contour-plot-in-matplotlib/42398244#42398244
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
 import logging
 
 
@@ -86,11 +88,28 @@ def mesh(isa, with_axis=False, ax=0):
         ax.axis('off')
 
 
-def _contour(ax, title, elements, values, label='',
+def set_contour_values(values, elements, cmap=DEFAULT_CMAP, alpha=1,
+                       relminrange=0.05):
+    #valid_values = np.logical_not(np.isnan(values))
+    vertices = [[v.xy for v in e.vertices] for e in elements]
+    patches = np.array([Polygon(xy) for xy in vertices]) #[valid_values]
+    p = PatchCollection(patches, match_original=False,
+                        cmap=cmap, alpha=alpha)
+    z = values #[valid_values]
+    clim = np.min(z), np.max(z)
+    n = np.max(np.abs(clim))
+    if not np.isclose(n, 0):
+        relrange = (clim[1]-clim[0])/n
+        if relrange < relminrange:  # prevent strange color pattern
+            c = (clim[1]+clim[0])/2
+            p.set_clim([(1-relminrange)*c, (1+relminrange)*c])
+
+    p.set_array(z)
+    return p
+
+def _contour(ax, title, elements, values,
              cmap=DEFAULT_CMAP, isa=None, alpha=1,
              relminrange=0.05):
-    from matplotlib.patches import Polygon
-    from matplotlib.collections import PatchCollection
     if ax == 0:
         ax = plt.gca()
     ax.set_aspect('equal')
@@ -102,61 +121,67 @@ def _contour(ax, title, elements, values, label='',
                                   for nc in se.nodechains
                                   for n in nc.nodes],
                                  color='gray', alpha=0.1, lw=0))
-    valid_values = np.logical_not(np.isnan(values))
-    vertices = [[v.xy for v in e.vertices] for e in elements]
-    patches = np.array([Polygon(xy) for xy in vertices])[valid_values]
-    p = PatchCollection(patches, match_original=False,
-                        cmap=cmap, alpha=alpha)
-    z = values[valid_values]
-    clim = np.min(z), np.max(z)
-    n = np.max(np.abs(clim))
-    if not np.isclose(n, 0):
-        relrange = (clim[1]-clim[0])/n
-        if relrange < relminrange:  # prevent strange color pattern
-            c = (clim[1]+clim[0])/2
-            p.set_clim([(1-relminrange)*c, (1+relminrange)*c])
-    p.set_array(z)
-    ax.add_collection(p)
-    cb = plt.colorbar(p, shrink=0.9)
 
-    for patch in np.array([Polygon(xy, fc='white', alpha=1.0)
-                           for xy in vertices])[np.isnan(values)]:
-        ax.add_patch(patch)
-    if label:
-        cb.set_label(label=label)
+    p = set_contour_values(values, elements, cmap, alpha,
+                           relminrange)
+    ax.add_collection(p)
+
+    #for patch in np.array([Polygon(xy, fc='white', alpha=1.0)
+    #                       for xy in vertices])[np.isnan(values)]:
+    #    ax.add_patch(patch)
     ax.autoscale(enable=True)
     ax.axis('off')
+    return p
 
+def field_lines(nodes, vp, levels=20, ax=0, cmap=None, alpha=0.2):
+    """draw field lines"""
+    if ax == 0:
+        ax = plt.gca()
+    ax.set_aspect('equal')
+    x, y = np.array([n.xy for n in nodes]).T
+    if cmap is None:
+        tcs = ax.tricontour(x, y, vp, levels=levels,
+                            colors=['k','k'], alpha=alpha)
+    else:
+        tcs = ax.tricontour(x, y, vp, levels=levels,
+                            cmap=cmap, alpha=alpha)
+    return tcs
 
-def demag(isa, cmap=DEFAULT_CMAP, relminrange=0.05, ax=0):
-    """plot demag of NC/I7/ISA7 model
+def demag(isa, cmap=DEFAULT_CMAP, relminrange=0.05, magnets_only=False, ax=0):
+    """plot field strength in magnets of NC/I7/ISA7 model
     Args:
       isa: Isa7/NC object
     """
-    emag = [e for e in isa.elements if e.is_magnet()]
-    demag = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
-    _contour(ax, f'Demagnetization at {isa.MAGN_TEMPERATURE} °C (max -{np.max(demag):.1f} kA/m)',
-             emag, demag, '-H / kA/m', cmap=cmap, isa=isa,
-             relminrange=relminrange)
-    logger.info("Max demagnetization %f", np.max(demag))
+    emag = isa.magnet_elements()
+    h = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
+    p = _contour(ax, f'Field Strength at {isa.MAGN_TEMPERATURE} °C (max -{np.max(h):.1f} kA/m)',
+                 emag, h, cmap=cmap,
+                 isa=None if magnets_only else isa,
+                 relminrange=relminrange)
+    cb = plt.colorbar(p, shrink=0.9)
+    cb.set_label(label='-H / kA/m')
 
 
-def remanence(isa, cmap=DEFAULT_CMAP, relminrange=0.05, ax=0):
+def remanence(isa, cmap=DEFAULT_CMAP, relminrange=0.05, magnets_only=False, ax=0):
     """plot remanence of NC/I7/ISA7 model
     Args:
       isa: Isa7/NC object
     """
-    emag = [e for e in isa.elements if e.is_magnet()]
+    emag = isa.magnet_elements()
     rem = np.linalg.norm([e.remanence(isa.MAGN_TEMPERATURE)
                           for e in emag], axis=1)
-    _contour(ax, f'Remanence at {isa.MAGN_TEMPERATURE} °C (min {np.min(rem):.1f} T)',
-             emag, rem, 'T', cmap=cmap, isa=isa, relminrange=relminrange)
+    p = _contour(ax, f'Remanence at {isa.MAGN_TEMPERATURE} °C (min {np.min(rem):.1f} T)',
+                 emag, rem, cmap=cmap,
+                 isa=None if magnets_only else isa,
+                 relminrange=relminrange)
+    cb = plt.colorbar(p, shrink=0.9)
+    cb.set_label(label='T')
     logger.info("Min remanence %f", np.min(rem))
 
 
 def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, cmap=DEFAULT_CMAP,
-              relminrange=0.05, ax=0):
-    """plot demag of NC/I7/ISA7 model at rotor position
+              relminrange=0.05, magnets_only=False, ax=0):
+    """plot field strength in magnets of NC/I7/ISA7 model at rotor position
     Args:
         isa: Isa7/NC object
         pos: rotor position in degree (maximum h if -1)
@@ -165,29 +190,30 @@ def demag_pos(isa, pos=-1, icur=-1, ibeta=-1, cmap=DEFAULT_CMAP,
         cmap: colormap
         relminrange: rel minimum range for colorbar
     """
-    emag = [e for e in isa.elements if e.is_magnet()]
-    demag = np.array([isa.demagnetization(e, icur, ibeta)[1]
-                      for e in emag])
+    emag = isa.magnet_elements()
+    h = np.array([isa.demagnetization(e, icur, ibeta)[1]
+                  for e in emag])
     if pos>=0:
         for i, x in enumerate(isa.pos_el_fe_induction):
             if x >= pos/180*np.pi:
                 break
     else:
-        demagmax = np.max(demag, axis=0)
-        i = np.argmax(demagmax)
+        hmax = np.max(h, axis=0)
+        i = np.argmax(hmax)
         x = isa.pos_el_fe_induction[i]
 
-    hpol = demag[:, i]
+    hpol = h[:, i]
     hmax = np.max(hpol)
-    hpol[hpol == 0] = np.nan
-    isa.rotate(isa.pos_el_fe_induction[i])
-    _contour(ax, f'Demagnetization at pos. {round(x/np.pi*180, 1):.1f}°, '
-             f'{isa.MAGN_TEMPERATURE} °C (max -{hmax:.1f} kA/m)',
-             emag, hpol, '-H / kA/m', cmap=cmap, isa=isa,
-             relminrange=relminrange)
-    isa.rotate(0)
-    logger.info("Max demagnetization %f kA/m", np.nanmax(hpol))
-
+    #isa.rotate(isa.pos_el_fe_induction[i])
+    p = _contour(ax, f'Field Strength at pos. {round(x/np.pi*180, 1):.1f}°, '
+                 f'{isa.MAGN_TEMPERATURE} °C (max -{hmax:.1f} kA/m)',
+                 emag, hpol, cmap=cmap,
+                 isa=None if magnets_only else isa,
+                 relminrange=relminrange)
+    #isa.rotate(0)
+    cb = plt.colorbar(p, shrink=0.9)
+    cb.set_label(label='-H / kA/m')
+    return p
 
 def __elements_of_subreg(isa, subreg):
     if subreg:
@@ -215,9 +241,10 @@ def flux_density(isa, subreg=[], cmap=DEFAULT_CMAP,
     """
     elements = [e for e in __elements_of_subreg(isa, subreg)]
     fluxd = np.array([np.linalg.norm(e.flux_density()) for e in elements])
-    _contour(ax, f'Flux Density T (max {np.max(fluxd):.1f} T)',
-             elements, fluxd, '', cmap=cmap, relminrange=relminrange)
+    p = _contour(ax, f'Flux Density T (max {np.max(fluxd):.1f} T)',
+                 elements, fluxd, cmap=cmap, relminrange=relminrange)
     logger.info("Max flux dens %f", np.max(fluxd))
+    cb = plt.colorbar(p, shrink=0.9)
 
 
 def flux_density_eccentricity(isa, subreg=[], icur=-1, ibeta=-1,
@@ -268,9 +295,10 @@ def flux_density_eccentricity(isa, subreg=[], icur=-1, ibeta=-1,
                     b = np.linalg.norm((x[kmin], y[kmin]))
                     ecc.append(b/a) #np.sqrt(1-b**2/a**2))
 
-    _contour(ax, '', #'Eccentricity of Flux Density',
+    p = _contour(ax, '', #'Eccentricity of Flux Density',
                  elements, ecc, 'axis ratio', cmap=cmap, alpha=alpha,
                  relminrange=relminrange)
+    cb = plt.colorbar(p, shrink=0.9)
 
 
 def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, cmap=DEFAULT_CMAP,
@@ -294,11 +322,11 @@ def flux_density_pos(isa, ipos, subreg=[], icur=-1, ibeta=-1, cmap=DEFAULT_CMAP,
     fluxd = np.array(b)
     pos = isa.pos_el_fe_induction[ipos]*180/np.pi
     isa.rotate(isa.pos_el_fe_induction[ipos])
-    _contour(ax, f'Flux Density T at {pos:.1f}° (max {np.max(fluxd):.1f} T)',
-             elements, fluxd, '', cmap=cmap, relminrange=relminrange)
+    p = _contour(ax, f'Flux Density T at {pos:.1f}° (max {np.max(fluxd):.1f} T)',
+                 elements, fluxd, cmap=cmap, relminrange=relminrange)
     logger.info("Max flux dens %f", np.max(fluxd))
     isa.rotate(0)
-
+    cb = plt.colorbar(p, shrink=0.9)
 
 def airgap_flux_density_pos(isa, ipos, icur=-1, ibeta=-1, ax=0):
     """plot flux density at rotor pos for each element of NC/I7/ISA7 model
@@ -337,8 +365,9 @@ def loss_density(isa, subreg=[], cmap=DEFAULT_CMAP, relminrange=0.05, ax=0):
     """
     elements = [e for e in __elements_of_subreg(isa, subreg)]
     lossd = np.array([e.loss_density*1e-3 for e in elements])
-    _contour(ax, 'Loss Density kW/m³', elements, lossd, '', cmap=cmap,
-             relminrange=relminrange)
+    p = _contour(ax, 'Loss Density kW/m³', elements, lossd, cmap=cmap,
+                 relminrange=relminrange)
+    cb = plt.colorbar(p, shrink=0.9)
 
 
 def temperature_distribution(isa, ax=0, cmap='plasma', relminrange=0.05):
@@ -357,8 +386,9 @@ def temperature_distribution(isa, ax=0, cmap='plasma', relminrange=0.05):
             tmp += n.vpot[-1]
             ctr = ctr + 1
         temp.append(tmp/ctr)
-    _contour(ax, 'Temperature in K', elements, temp, '', cmap=cmap,
-             relminrange=relminrange)
+    p = _contour(ax, 'Temperature in °K', elements, temp, cmap=cmap,
+                 relminrange=relminrange)
+    cb = plt.colorbar(p, shrink=0.9)
 
 def punchdist(isa, cmap=DEFAULT_CMAP, ax=0):
     """plot punching border distances of NC/I7/ISA7 model
@@ -366,5 +396,6 @@ def punchdist(isa, cmap=DEFAULT_CMAP, ax=0):
       isa: Isa7/NC object
     """
     elam, pdist = isa.punchdist()
-    _contour(ax, 'Punching Border Distances / mm)',
-             elam, pdist*1e3, 'mm', cmap=cmap, isa=isa)
+    p = _contour(ax, 'Punching Border Distances / mm)',
+                 elam, pdist*1e3, cmap=cmap, isa=isa)
+    cb = plt.colorbar(p, shrink=0.9)

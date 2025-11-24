@@ -89,7 +89,7 @@ class Reader(object):
                     self.data[data_name].append(
                         self.output.GetCellData().GetAbstractArray(data_name))
 
-        return {k: np.shape(self.data[k]) for k in self.data}
+        #return {k: [np.shape(v) for v in self.data[k]] for k in self.data}
 
     def set_time_window(self, start, end):
         '''Set time window

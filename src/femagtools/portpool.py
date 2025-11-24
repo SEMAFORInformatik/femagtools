@@ -8,7 +8,6 @@ import platform
 import logging
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 
 class PortBundlePool:
     """The Port Bundle Pool used by multiprocessing femag jobs

@@ -116,12 +116,13 @@ def set_magnet_properties(model, simulation, magnets):
 
 class BaseFemag(object):
     def __init__(self, workdir, cmd, magnetizingCurves, magnets, condMat,
-                 templatedirs=[]):
+                 templatedirs=[], notify=None):
         self.workdir = workdir
         self.magnets = []
         self.magnetizingCurves = []
         self.condMat = []
         self.templatedirs = templatedirs
+        self.notify = notify
         if cmd:
             self.cmd = cmd
         else:
@@ -513,12 +514,15 @@ class BaseFemag(object):
 
             if simulation.get('magnet_loss', False):
                 logger.info('Evaluating magnet losses...')
+                if self.notify:
+                    self.notify(['femag_log', f'<progress>Evaluating magnet losses'])
+
                 ops = range(len(bch.torque))
                 m = femagtools.ecloss.MagnLoss(
                     nc=self.read_nc(), ibeta=ops)
                 try:
                     # change from ialh to ialh2: since v1.8.1
-                    magn_losses = m.calc_losses_ialh2()
+                    magn_losses = m.calc_losses_ialh2(notify=self.notify)
                 except:
                     magn_losses = list(range(len(ops)))
 
@@ -742,11 +746,11 @@ class ZmqFemag(BaseFemag):
     def __init__(self, port, host='localhost', workdir='', logdir='',
                  cmd=None,
                  magnetizingCurves=None, magnets=None, condMat=[],
-                 templatedirs=[]):
+                 templatedirs=[], notify=None):
         super(self.__class__, self).__init__(
             workdir, cmd,
             magnetizingCurves, magnets, condMat,
-            templatedirs=templatedirs)
+            templatedirs=templatedirs, notify=notify)
         self.host = host
         self.port = port
         self.femaghost = ''

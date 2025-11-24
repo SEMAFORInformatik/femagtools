@@ -99,7 +99,7 @@ class SubscriberTask(threading.Thread):
         self.notify = kwargs.get('notify', None)
         self.header = kwargs.get('header')
         self.curve_label = kwargs.get('curve_label', '{}.')
-        self.timestep = kwargs.get('timestep', 5)
+        self.timestep = kwargs.get('timestep', 1)
         self.num_tasks = kwargs.get('num_tasks', 1)
         self.percent_list = [0]*self.num_tasks
 
@@ -261,14 +261,17 @@ class SubscriberTask(threading.Thread):
             return
         lenPortList = len(port_list)
         lenPercentList = len(self.percent_list)
-        while idx < lenPercentList:
-            if self.percent_list[idx] < percent:
-                self.percent_list[idx] = percent
-                break
-            elif (idx + lenPortList) < lenPercentList and\
-                 self.percent_list[idx + lenPortList] == 0\
-                 and percent == 100:
-                break
-            else:
-                idx += lenPortList
+        if lenPercentList == 1:
+            self.percent_list[0] = percent
+        else:
+            while idx < lenPercentList:
+                if self.percent_list[idx] < percent:
+                    self.percent_list[idx] = percent
+                    break
+                elif (idx + lenPortList) < lenPercentList and\
+                     self.percent_list[idx + lenPortList] == 0\
+                     and percent == 100:
+                    break
+                else:
+                    idx += lenPortList
         #logger.debug(f'{port} percent {percent} index {idx} :: {self.percent_list} len: {lenPortList}')

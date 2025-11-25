@@ -526,23 +526,47 @@ def demagnetization(demag, title='', ax=0):
     if np.max(demag['i1']) > 25e3:
         scale = 1e-3
         unit = 'kA'
-    i1 = [scale*x for x in demag['i1']]
+    i1 = scale*np.array(demag['i1'])
     ax.plot(i1, demag['rr'], 'o', color='C0')
     ax.plot(i1, demag['rr'], color='C0')
     rrmin = min(0.6, np.min(demag['rr']))
 
     Imax = scale*abs(demag['i1max'])
     demaglabels = [f'Imax  = {Imax:.1f} {unit}']
-    if demag.get('i1c', 0):
-        Icrit = scale*demag['i1c']
+    Icrit = scale*demag.get('i1c', 0)
+    if Icrit > 0:
         ax.plot([Icrit, Icrit], [rrmin, 1], 'r:')
-        ax.text(Icrit, rrmin + 0.3, 'Icrit', fontfamily='monospace',
+        try:
+            k = np.where(i1 > Icrit)[0][0]
+            ypos = demag['rr'][k] - 0.15
+            if demag['rr'][k] < 0.8:
+                ypos = rrmin + 0.3
+        except IndexError:
+                ypos = rrmin + 0.3
+        ax.text(Icrit, ypos, 'Icrit', fontfamily='monospace',
                 rotation=90, size='large', ha='right', va='bottom')
         demaglabels.append(f'Icrit = {Icrit:.1f} {unit}')
 
     ax.plot([Imax, Imax], [rrmin, 1], 'g:')
-    ax.text(Imax, rrmin+0.05, 'Imax', fontfamily='monospace',
+    try:
+        k = np.where(i1 > Imax)[0][0]
+        ypos = demag['rr'][k] - 0.2
+        if demag['rr'][k] < 0.8:
+            ypos = rrmin + 0.05
+    except IndexError:
+        ypos = rrmin + 0.05
+    ax.text(Imax, ypos, 'Imax', fontfamily='monospace',
             rotation=90, size='large', ha='right', va='bottom')
+    if Imax < Icrit:
+        ypos = rrmin+0.05
+        ax.text((Icrit+Imax)/2, ypos+1e-2,
+                f'{(1-Imax/Icrit)*100:.1f}%',
+                ha='center', va='bottom',
+                fontfamily='monospace')
+        ax.annotate('',
+                    xy=(Icrit, ypos),
+                    xytext=(Imax, ypos),
+                    arrowprops=dict(arrowstyle='<->', color='black'))
 
     Hk = demag['Hk']
     Tmag = demag['Tmag']
@@ -551,7 +575,7 @@ def demagnetization(demag, title='', ax=0):
 
     ax.text(0, rrmin+0.05,
             '\n'.join(demaglabels),
-                fontfamily='monospace',
+            fontfamily='monospace',
             ha='left', va='bottom', size='large',
             bbox={'facecolor': 'white',
                   'edgecolor': 'white'})

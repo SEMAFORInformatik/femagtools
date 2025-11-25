@@ -9,17 +9,9 @@
 -- creates file psi-torq-rem-rot.dat in current directory with columns:
 --  displ curr1 curr2 curr3 psi1 psi2 psi3 torq rrem
 
-function dmg(ek, Br, alfam, murm, Bd, Bq, Hd, Hq, alfahm, Hk)
-   if Hd < Hk then
-      muem = murm*4*math.pi*1e-7
-      Brn = Bd - Hk*1e3*muem
-      if Br < 1e-5 then
-         Brn = 1e-5
-      end
-      return Brn, alfam, 1
-   end
-   return Br, alfam, 1
-end
+mu0 = 4*math.pi*1e-7
+
+<%include file="demagmod/dmg.lua"/>
 
 function calc_flux_torq_rem(curvec)
     for k=1,3 do

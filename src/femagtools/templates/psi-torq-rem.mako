@@ -13,15 +13,7 @@
 
 mu0 = 4*math.pi*1e-7
 
-% if 'demagmodel' in model:
-% if model['demagmodel'] == 'dmgx':
-<%include file="demagmod/dmgx.lua"/>
-% elif model['demagmodel'] == 'dmgz':
-<%include file="demagmod/dmgz.lua"/>
-% endif
-% else:
 <%include file="demagmod/dmg.lua"/>
-% endif
 
 function calc_flux_torq_rem(curvec)
     for k=1,3 do

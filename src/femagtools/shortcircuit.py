@@ -9,14 +9,14 @@ import femagtools.parstudy
 
 logger = logging.getLogger('shortcircuit')
 
-def get_ik(nc, i1, Hk):
+def get_ik(nc, i1, Hk, eps=5e-4):
     """return approx. current at knee point in demag characteristics
     based on 2 operating points (noload, load)"""
     def find_xpeak(x, y):
         """ return first peak from the right
         """
         peaks = (np.diff(np.sign(np.diff(y))) < 0).nonzero()[0] + 1
-        ip = np.where(y[peaks] > 1e-3)[0][-1]
+        ip = np.where(y[peaks] > eps)[0][-1]
         return x[peaks][ip], y[peaks][ip]
 
     elements = nc.magnet_elements()
@@ -51,6 +51,7 @@ def _parstudy_list(femag, result_func):
     return femagtools.parstudy.List(
         workdir, condMat=condMat, magnets=magnetMat,
         magnetizingCurves=magnetizingCurves,
+        templatedirs=templatedirs,
         cmd=cmd, result_func=result_func)
 
 def get_shortCircuit_parameters(bch, nload):
@@ -115,6 +116,7 @@ def find_peaks_and_valleys(t, y):
                'tpeaks': t[peaks], 'tvalleys': t[valleys]})
     return pv
 
+
 def shortcircuit(femag, machine, bch, simulation, engine=0):
     "run a 2 or 3ph short circuit simulation"
     scdata = {}
@@ -135,6 +137,12 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
         nc = femag.read_nc()
         simulation['ik'] = get_ik(
             nc, bch.machine['i1'], simulation['Hk'])
+
+    phirot = bch.flux['1'][0]['displ']
+    if (len(phirot)-1) % 3 == 0:
+        phirot = phirot[::3]
+    elif (len(phirot)-1) % 2 == 0:
+        phirot = phirot[::2]
 
     if simulation.get('sc_type', 3) == 3:
         logger.info("3phase short circuit simulation")
@@ -166,18 +174,7 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
                                   for k in ('ia', 'ib', 'ic')])
                 k = np.argmax(np.abs(istat))
                 i1max = np.max(np.abs(istat[:, k]))
-
-                #phirot = dd['displ'][0]/180*np.pi
-                wm = 2*np.pi*bchsc.scData['speed']/60
-                #phirot = wm*bchsc.scData['time'][k]
-                phirot=bch.flux['1'][0]['displ']
-                if (len(phirot)-1) % 3 == 0:
-                    phirot = phirot[::3]
-                elif (len(phirot)-1) % 2 == 0:
-                    phirot = phirot[::2]
                 phi = 0
-                logger.info("i1max %g phirot %s",
-                            i1max, phirot)
                 bchsc.scData['demag'] = demag(
                     femag, machine, simulation,
                     i1max, phirot, phi, engine,
@@ -194,10 +191,7 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             #        break
 
     if simulation.get('sc_type', 3) == 2:
-        try:
-            simulation['num_rot_steps'] = len(bch.flux['1'][0]['displ'])
-        except KeyError:
-            pass
+        simulation['phi'] = phirot
         if 'i1max' not in simulation:
             # just a wild guess
             simulation['i1max'] = 5*bch.machine['i1']
@@ -237,13 +231,10 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     num_cur_steps = 4
     i1 = np.linspace(0, i1max, num_cur_steps)
     i1vec = np.concat((-i1[::-1], i1[1:]))
-    flux_sim = {
+    simulation.update({
         'calculationMode': 'psi-torq-rot',
-        'i1max': i1max,
         'curvec': [],
-        'magntemp': simulation['magn_temp'],
-        'fc_radius': simulation['fc_radius'],
-        'num_par_wdgs': simulation['num_par_wdgs']}
+        'magntemp': simulation['magn_temp']})
 
     if engine:
         parstudy = _parstudy_list(femag, sc_result_func)
@@ -251,15 +242,14 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
             "decision_vars": [
                 {"values": i1vec, "name": "curvec"}]
         }
-        results = parstudy(parvardef, machine, flux_sim, engine)
+        results = parstudy(parvardef, machine, simulation, engine)
         ire = np.array([r['ire'][0] for r in results['f']])
         pos = np.array(results['f'][0]['pos'])
-        phi = pos*np.pi/180
+        #phi = pos*np.pi/180
         torq = np.hstack([r['torq'] for r in results['f']])
         psire = np.hstack([r['psire'] for r in results['f']])
-
+        simulation['curvec'] = i1vec.tolist()
     else:
-        simulation.update(flux_sim)
         simulation['curvec'] = i1vec.tolist()
         results = femag(machine, simulation, fslfile='2ph_shortcircuit.fsl')
         class Task:
@@ -403,7 +393,7 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     scData['peakWindingCurrents'] = [float(scData['iks']),
                                      -float(scData['iks']), 0]
     if simulation.get('sim_demagn', 0):
-        i1max = iap[1] if iap[1] > abs(iav[1]) else iav[1]
+        i1max = np.abs(scData['iks'])
         scData['demag'] = demag(femag, machine, simulation,
                                 i1max, phirot, 0, engine)
     return scData
@@ -412,7 +402,8 @@ def demag(femag, machine, simulation, i1max, phirot, phi,
           engine=0, calculationMode='psi-torq-rem'):
     """demag simulation using psi-torq-rem-rot"""
     ik = simulation['ik']
-    logger.info("Demagnetization processing: ik %f", ik)
+    logger.info("Demagnetization processing: i1max %.1f ik %.1f",
+                i1max, ik)
 
     num_steps = simulation.get('num_demag_cur_steps', 10)
     if ik < i1max:
@@ -425,12 +416,17 @@ def demag(femag, machine, simulation, i1max, phirot, phi,
                            n1 + 1)
         b = (i1min-abs(ik))/np.log(i1min/abs(ik))
         itab0 = abs(ik) + b*np.log(xtab)
-        x0 = (2*itab0[-1]-itab0[-2])/i1max
-        a = np.log(1/x0)/n2
-        i0 = x0*i1max
-        i1tab = np.hstack(
+        if n2 > 2:
+            x0 = (2*itab0[-1]-itab0[-2])/i1max
+            a = np.log(1/x0)/n2
+            i0 = x0*i1max
+            i1tab = np.hstack(
                 (itab0,
                  i0*np.exp(a*np.linspace(0, n2+1, n2+2))))
+        else:
+            i1tab = np.hstack(
+                (itab0,
+                 [2*itab0[-1]-itab0[-2], 1.1*i1max]))
     else:
         i1min = simulation.get('i1min', i1max/3)
         xtab = np.linspace(i1min/abs(ik),
@@ -448,10 +444,7 @@ def demag(femag, machine, simulation, i1max, phirot, phi,
 #             for alpha in simulation['current_angles']]
             for a in i1tab]
     else:
-        if i1max > 0:
-            curvec = [[a, -a, 0] for a in i1tab]
-        else:
-            curvec = [[-a, a, 0] for a in i1tab]
+        curvec = [[-a, a, 0] for a in i1tab]
     simulation.update({
         'calculationMode': calculationMode,
         'phi': phirot,

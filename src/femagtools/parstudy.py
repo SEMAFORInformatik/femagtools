@@ -406,12 +406,14 @@ class List(ParameterStudy):
 
     def __init__(self, workdir,
                  magnetizingCurves=None, magnets=None, condMat=[],
-                 result_func=None, cmd=None):  # tasktype='Task'):
+                 result_func=None, cmd=None,
+                 templatedirs=[]):  # tasktype='Task'):
         super(self.__class__, self).__init__(
             workdir,
             magnetizingCurves, magnets,
             condMat=condMat, result_func=result_func,
-            repname='list', cmd=cmd)
+            repname='list', cmd=cmd,
+            templatedirs=templatedirs)
 
     def _get_names_and_range(self, dvars, num_samples):
         if 'list' in dvars:
@@ -430,11 +432,14 @@ class LatinHypercube(ParameterStudy):
 
     def __init__(self, workdir,
                  magnetizingCurves=None, magnets=None, condMat=[],
-                 result_func=None, cmd=None):  # tasktype='Task'):
+                 result_func=None, cmd=None,
+                 templatedirs=[]):  # tasktype='Task'):
         super(self.__class__, self).__init__(
             workdir,
             magnetizingCurves, magnets,
-            condMat=[], result_func=result_func, repname='lhs', cmd=cmd)
+            condMat=[], result_func=result_func, repname='lhs',
+            templatedirs=templatedirs,
+            cmd=cmd)
 
     def _get_names_and_range(self, dvars, num_samples):
         dvarnames = [d['name'] for d in dvars]
@@ -454,11 +459,15 @@ class Sobol(ParameterStudy):
 
     def __init__(self, workdir,
                  magnetizingCurves=None, magnets=None, condMat=[],
-                 result_func=None, cmd=None):  # tasktype='Task'):
+                 result_func=None, cmd=None,
+                 templatedirs=[]):  # tasktype='Task'):
         super(self.__class__, self).__init__(workdir,
                                              magnetizingCurves, magnets,
-                                             condMat=condMat, result_func=result_func,
-                                             repname='sobol', cmd=cmd)
+                                             condMat=condMat,
+                                             result_func=result_func,
+                                             repname='sobol',
+                                             templatedirs=templatedirs,
+                                             cmd=cmd)
 
     def _get_names_and_range(self, dvars, num_samples):
         dvarnames = [d['name'] for d in dvars]
@@ -478,11 +487,14 @@ class Grid(ParameterStudy):
 
     def __init__(self, workdir,
                  magnetizingCurves=None, magnets=None, condMat=[],
-                 result_func=None, cmd=None):  # tasktype='Task'):
+                 result_func=None, cmd=None,
+                 templatedirs=[]):  # tasktype='Task'):
         super(self.__class__, self).__init__(
             workdir,
             magnetizingCurves, magnets, condMat=condMat,
-            result_func=result_func, cmd=cmd)
+            result_func=result_func,
+            templatedirs=templatedirs,
+            cmd=cmd)
 
     def __create_parameter_range(self, domain):
         """returns the transposed array of the combined domain values"""

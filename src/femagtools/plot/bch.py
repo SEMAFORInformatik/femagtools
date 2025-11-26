@@ -535,7 +535,8 @@ def demagnetization(demag, title='', ax=0):
     demaglabels = [f'Imax  = {Imax:.1f} {unit}']
     Icrit = scale*demag.get('i1c', 0)
     if Icrit > 0:
-        ax.plot([Icrit, Icrit], [rrmin, 1], 'r:')
+        ax.plot([Icrit, Icrit], [rrmin, 1],
+                linestyle='dashed', color='red', linewidth=1.5)
         try:
             k = np.where(i1 > Icrit)[0][0]
             ypos = demag['rr'][k] - 0.15
@@ -547,7 +548,8 @@ def demagnetization(demag, title='', ax=0):
                 rotation=90, size='large', ha='right', va='bottom')
         demaglabels.append(f'Icrit = {Icrit:.1f} {unit}')
 
-    ax.plot([Imax, Imax], [rrmin, 1], 'g:')
+    ax.plot([Imax, Imax], [rrmin, 1],
+            linestyle='dotted', color='green', linewidth=3)
     try:
         k = np.where(i1 > Imax)[0][0]
         ypos = demag['rr'][k] - 0.2
@@ -586,6 +588,7 @@ def demagnetization(demag, title='', ax=0):
     ax.set_ylim([rrmin, 1.01])
     ax.set_ylabel('Rel. Remanence')
     ax.set_xlabel(f'Phase Current / {unit} (peak)')
+    ax.axhspan(0.95, 1, alpha=0.15, color='green')
     ax.grid()
 
 

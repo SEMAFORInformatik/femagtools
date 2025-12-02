@@ -63,8 +63,6 @@ def handle_process_output(filedes, outfile, log):
 
 def set_magnet_properties(model, simulation, magnets):
     """set temperature adapted magnet properties"""
-    if not hasattr(model, 'magnet'):
-        return
     if isinstance(simulation, dict):
         if 'hc_min' in simulation:  # backward compatibility
             model.hc_min = simulation['hc_min']
@@ -77,6 +75,8 @@ def set_magnet_properties(model, simulation, magnets):
         if not hasattr(simulation, 'magn_temp'):
             return
         magn_temp = simulation.magn_temp
+    if not hasattr(model, 'magnet'):
+        return
     if 'material' not in model.magnet:
         return
 

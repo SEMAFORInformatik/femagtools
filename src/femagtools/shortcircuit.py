@@ -139,10 +139,10 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             nc, bch.machine['i1'], simulation['Hk'])
 
     phirot = bch.flux['1'][0]['displ']
-    if (len(phirot)-1) % 3 == 0:
-        phirot = phirot[::3]
-    elif (len(phirot)-1) % 2 == 0:
-        phirot = phirot[::2]
+    #if (len(phirot)-1) % 3 == 0:
+    #    phirot = phirot[::3]
+    #elif (len(phirot)-1) % 2 == 0:
+    #    phirot = phirot[::2]
 
     if simulation.get('sc_type', 3) == 3:
         logger.info("3phase short circuit simulation")
@@ -173,12 +173,11 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
                 istat = np.array([bchsc.scData[k]
                                   for k in ('ia', 'ib', 'ic')])
                 k = np.argmax(np.abs(istat))
-                i1max = np.max(np.abs(istat[:, k]))
-                phi = 0
+                i1max = simulation.get('i1max',
+                                       np.max(np.abs(istat[:, k])))
                 bchsc.scData['demag'] = demag(
                     femag, machine, simulation,
-                    i1max, phirot, phi, engine,
-                    calculationMode='psi-torq-rem-rot')
+                    i1max, phirot)
                 bchsc.scData['demag'].update(dd)
             scdata = bchsc.scData
             #for w in bch.flux:
@@ -191,6 +190,10 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             #        break
 
     if simulation.get('sc_type', 3) == 2:
+        if (len(phirot)-1) % 3 == 0:
+            phirot = phirot[::3]
+        elif (len(phirot)-1) % 2 == 0:
+            phirot = phirot[::2]
         simulation['phi'] = phirot
         if 'i1max' not in simulation:
             # just a wild guess
@@ -375,8 +378,9 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
 
     # rotor position at maximum current:
     trot = min(iav[0], iap[0])
-    phirot = wm*trot + phi0
+    phirot = float(wm*trot + phi0)
     logger.debug("phirot %.1f", phirot)
+    #phirot = simulation['phi']
 
     scData = {
         'ia': ia.tolist(),
@@ -395,17 +399,18 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     if simulation.get('sim_demagn', 0):
         i1max = np.abs(scData['iks'])
         scData['demag'] = demag(femag, machine, simulation,
-                                i1max, phirot, 0, engine)
+                                i1max, phirot,
+                                calculationMode='psi-torq-rem')
     return scData
 
-def demag(femag, machine, simulation, i1max, phirot, phi,
-          engine=0, calculationMode='psi-torq-rem'):
-    """demag simulation using psi-torq-rem-rot"""
+def demag(femag, machine, simulation, i1max, phirot,
+          calculationMode='psi-torq-rem'):
+    """demag simulation using psi-torq-rem (or psi-torq-rem-rot)"""
     ik = simulation['ik']
     logger.info("Demagnetization processing: i1max %.1f ik %.1f",
                 i1max, ik)
 
-    num_steps = simulation.get('num_demag_cur_steps', 10)
+    num_steps = simulation.get('num_demag_cur_steps', 12)
     if ik < i1max:
         i1min = simulation.get('i1min', abs(ik/3))
         n1 = min(num_steps-2,
@@ -424,9 +429,13 @@ def demag(femag, machine, simulation, i1max, phirot, phi,
                 (itab0,
                  i0*np.exp(a*np.linspace(0, n2+1, n2+2))))
         else:
-            i1tab = np.hstack(
-                (itab0,
-                 [2*itab0[-1]-itab0[-2], 1.1*i1max]))
+            di = itab0[-1]-itab0[-2]
+            if itab0[-1]+di < 1.1*i1max:
+                i1tab = np.hstack(
+                    (itab0,
+                     np.arange(itab0[-1]+1.2*di, 1.2*i1max, 1.4*di)))
+            else:
+                i1tab = itab0
     else:
         i1min = simulation.get('i1min', i1max/3)
         xtab = np.linspace(i1min/abs(ik),
@@ -434,15 +443,10 @@ def demag(femag, machine, simulation, i1max, phirot, phi,
                            num_steps + 1)
         b = (i1min - abs(ik))/np.log(i1min/abs(ik))
         a = abs(ik)
-        i1tab = a + np.log(xtab)*b
+        i1tab = 1.1*(a + np.log(xtab)*b)
 
     if simulation.get('sc_type', 3) == 3:
-        phi = 0
-        curvec = [
-            [a, -a/2, -a/2]
-#            [a*np.sin(phi - np.pi*alpha/180)
-#             for alpha in simulation['current_angles']]
-            for a in i1tab]
+        curvec = i1tab
     else:
         curvec = [[-a, a, 0] for a in i1tab]
     simulation.update({
@@ -467,15 +471,17 @@ def demag(femag, machine, simulation, i1max, phirot, phi,
             'rr': rr.tolist()}
     # critical current
     try:
-        k = np.where(np.diff(rr) < -2e-2)[0][0]+1
-        i1c = float(i1[k])
-        if rr[k] < 0.95:
+        y = 0.95
+        if 0.95 < rr[-1] < 0.97:
+            # extrapolate
+            x0, x1 = i1[-2], i1[-1]
+            y0, y1 = rr[-2], rr[-1]
+        else:
+            k = np.where(rr < 0.95)[0][0]
             x0, x1 = i1[k-1], i1[k]
             y0, y1 = rr[k-1], rr[k]
-            y = 0.95
-            m = (y1-y0)/(x1-x0)
-            i1c = (y - y0)/m + x0
-        dmag['i1c'] = i1c
+        m = (y1-y0)/(x1-x0)
+        dmag['i1c'] = (y - y0)/m + x0
     except IndexError:
         pass
     if abs(i1max) < i1[-1]:

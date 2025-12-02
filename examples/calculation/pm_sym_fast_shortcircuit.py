@@ -79,9 +79,8 @@ pmRelSim = dict(
     magn_temp=60.0,
     current=76.43,
     period_frac=6,
-    speed=50.0)
-
-r = femag(machine, pmRelSim)
+    speed=50.0,
+    shortCircuit=True)
 scsim = dict(
     l_end_winding=0,
     l_external=0,
@@ -89,9 +88,9 @@ scsim = dict(
     initial=0,
     allow_demagn=0,
     sim_demagn=1)
-sc3 = femagtools.shortcircuit.shortcircuit(
-    femag, {'name': machine['name'],
-            'poles': machine['poles']}, r, scsim)
+pmRelSim.update(scsim)
+r = femag(machine, pmRelSim)
+sc3 = r.scData
 print('Torque [Nm] = {}'.format(r.machine['torque']))
 print('''
 Short Circuit    Current         Torque
@@ -111,13 +110,10 @@ femagtools.plot.bch.transientsc_currents(sc3, ax=axs[0],
                                          set_xlabel=False)
 femagtools.plot.bch.transientsc_torque(sc3, ax=axs[1],
                                        set_xlabel=False)
-from femagtools.multiproc import Engine
-engine = Engine()
-scsim['sc_type'] = 2
-sc2 = femagtools.shortcircuit.shortcircuit(
-    femag, {'name': machine['name'],
-            'poles': machine['poles']}, r, scsim, engine)
 
+pmRelSim['sc_type'] = 2
+r2 = femag(machine, pmRelSim)
+sc2 = r2.scData
 print('''
 Short Circuit    Current         Torque
  Peak       iks {2:8.1f} A  tks {3:8.1f} Nm

@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
     'numpy',
-    'scipy',  # Singular matrix C in mtpv_tmech
+    'scipy',
     'mako',
     'six',
     'lmfit',
@@ -34,7 +34,7 @@ dynamic = ["version"]
 [project.optional-dependencies]
 rdp = ['rdp']  # reduce nodes in dxf/svg fsl conversion
 dxfsl = ['ezdxf', 'networkx']
-svgfsl = ['dxfgrabber', 'networkx', 'lxml']
+svgfsl = ['ezdxf', 'networkx', 'lxml']
 mplot =  ['matplotlib']
 meshio = ['meshio']
 vtk = ['vtk']

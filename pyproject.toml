@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
     'numpy',
-    'scipy<=1.14.1',  # Singular matrix C in mtpv_tmech
+    'scipy',  # Singular matrix C in mtpv_tmech
     'mako',
     'six',
     'lmfit',

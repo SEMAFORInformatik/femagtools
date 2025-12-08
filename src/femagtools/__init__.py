@@ -1,4 +1,4 @@
-i """Python API for FEMAG
+"""Python API for FEMAG
 
 """
 __title__ = 'femagtools'

@@ -1,4 +1,4 @@
-"""Python API for FEMAG
+i """Python API for FEMAG
 
 """
 __title__ = 'femagtools'

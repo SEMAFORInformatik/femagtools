@@ -2,7 +2,7 @@ i """Python API for FEMAG
 
 """
 __title__ = 'femagtools'
-__version__ = '1.9.0'
+__version__ = '1.9.1'
 __author__ = 'Ronald Tanner'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2023-2025 Gamma Technology'

@@ -809,7 +809,10 @@ class Isa7(object):
             pass
         try:
             cosys = ['certes', 'cylind', 'polar']
-            self.co_sys = cosys[reader.co_sys]
+            if isinstance(reader.co_sys, str):
+                self.co_sys = reader.co_sys
+            else:
+                self.co_sys = cosys[reader.co_sys]
         except AttributeError:
             self.co_sys = ''
 

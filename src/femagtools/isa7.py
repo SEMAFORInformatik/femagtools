@@ -117,6 +117,8 @@ class Reader(object):
     """
 
     def __init__(self, filename):
+        self.co_sys = ''
+        self.move_extern = False
         self.BR_TEMP_COEF = 0
         with open(filename, mode="rb") as self.file:
             self.file = self.file.read()
@@ -791,23 +793,27 @@ class Isa7(object):
 
         for a in ('FC_RADIUS', 'pole_pairs', 'poles_sim', 'move_action',
                   'layers', 'coil_span', 'delta_node_angle', 'speed',
-                  'MAGN_TEMPERATURE', 'BR_TEMP_COEF',
-                  'MA_SPEZ_WEIGHT', 'CU_SPEZ_WEIGHT'):
+                  'MAGN_TEMPERATURE', 'BR_TEMP_COEF', 'slots'
+                  'MA_SPEZ_WEIGHT', 'CU_SPEZ_WEIGHT',
+                  'move_extern'):
             try:
                 setattr(self, a, getattr(reader, a))
             except AttributeError:
                 pass
         if getattr(reader, 'pole_pairs', 0):
             self.num_poles = 2*self.pole_pairs
-        if getattr(reader, 'slots', 0):
-            self.num_slots = reader.slots
         try:
             self.arm_length = reader.arm_length*1e-3  # in m
         except AttributeError:
             # missing arm_length
             pass
+        try:
+            cosys = ['certes', 'cylind', 'polar']
+            self.co_sys = cosys[reader.co_sys]
+        except AttributeError:
+            self.co_sys = ''
 
-        self.airgap_inner_elements = [] # used for rotate
+        self.airgap_inner_elements = []  # used for rotate
         self.airgap_outer_elements = []
         if getattr(self, 'FC_RADIUS', 0) > 0:  # Note: cosys r/phi only
             # TODO: handle multiple airgaps
@@ -1095,6 +1101,17 @@ class Isa7(object):
                 if (sr.superelements[0].mcvtype or
                     sr.superelements[0].elements[0].is_lamination())]
 
+    def get_iron_superelements(self) -> list:
+        """return superelements with lamination
+
+        Returns:
+          subregs: list of superelements
+
+        """
+        return [se for se in self.superelements
+                if se.mcvtype or (se.elements and
+                                  se.elements[0].is_lamination())]
+
     def _axis_ratio(self, apos, br, bt):
         from .utils import fft
         pulsating = 0
@@ -1190,9 +1207,10 @@ class Isa7(object):
                         logger.debug("Empty %s, %s", b1, b2)
             logger.debug("%s: %s", sr.name, losses)
             if losses:
-                sreg[sr.name] = (scf*self.arm_length*np.sum(losses, axis=0)).tolist()
+                sreg[sr.name] = (scf*self.arm_length*np.sum(
+                    losses, axis=0)).tolist()
             else:
-                sreg[sr.name] = [0,0,0]
+                sreg[sr.name] = [0, 0, 0]
         return sreg
 
     def get_minmax_temp(self):
@@ -1243,8 +1261,14 @@ class Isa7(object):
           el: element
           icur, ibeta: current, beta index"""
         flxdens = self.flux_density(el, icur, ibeta)
-        return (flxdens['pos'], el.demag_b((flxdens['bx'], flxdens['by']),
-                                           self.MAGN_TEMPERATURE))
+        if self.co_sys == 'polar':
+            pos=np.arctan2(el.center[1], el.center[0])
+        else:
+            pos = 0
+        return flxdens['pos'], el.demag_b(
+            (flxdens['bx'], flxdens['by']),
+            self.MAGN_TEMPERATURE,
+            pos=pos)
 
     def demag_situation(self, icur, ibeta, hlim):
         """return h max, h avg, area, pos for demag situation for
@@ -1274,14 +1298,13 @@ class Isa7(object):
     def rotate(self, alpha):
         if alpha:
             for n in self.nodes:
-                if not n.outside:
+                if not n.outside or self.move_extern and n.outside:
                     n.xy = (np.cos(alpha)*n.x -np.sin(alpha)*n.y,
                             np.sin(alpha)*n.x + np.cos(alpha)*n.y)
             self.elements = self.airgap_outer_elements + self.airgap_inner_elements
         else: # reset rotation
             for n in self.nodes:
-                if not n.outside:
-                    n.xy = n.x, n.y
+                n.xy = n.x, n.y
             self.elements = (self.airgap_outer_elements + self.airgap_center_elements +
                              self.airgap_inner_elements)
 
@@ -1413,10 +1436,10 @@ class Isa7(object):
     def lamination_border(self):
         """return xy coordinates of lamination border nodes"""
         bnodes = []
-        for sr in self.get_iron_subregions():
-            #bnodes += self.get_subregion(sr).border_node_keys()
-            bnodes += self.get_subregion(sr).nonper_border_nodes()[1]
-        keys, unique_counts = np.unique(bnodes, return_counts=True)
+        for se in self.get_iron_superelements():
+            bnodes += se.nonper_border_nodes()[1]
+        keys, unique_counts = np.unique(bnodes,
+                                        return_counts=True)
 
         return np.array([self.nodes[k-1].xy
                          for k, c in zip(keys, unique_counts) if c == 1])
@@ -1565,19 +1588,29 @@ class Element(BaseEntity):
 
         if cosys == 'cartes':
             return (b1, b2)
+
         if cosys == 'polar':
             a = np.arctan2(self.center[1], self.center[0])
             br, bphi = np.array(((np.cos(a), np.sin(a)),
-                                 (-np.sin(a), np.cos(a)))).dot(((b1), (b2)))
+                                 (-np.sin(a), np.cos(a)))).dot(
+                                     ((b1), (b2)))
             return br, bphi
-        if cosys == 'cylind':
-            xm = np.sum([e.x for e in ev])
-            rm = np.sum([e.vpot[0] for e in ev])
-            if np.abs(xm) < 1e-6:
-                rm = 0
-            else:
-                rm = rm/xm
-            return -b1, -b2/rm
+
+        # must be cylind
+        xm = np.sum([e.x for e in ev])
+        rm = np.sum([e.vpot[0] for e in ev])
+        db = 0 if np.abs(xm) < 1e-6 else rm/xm
+        if np.abs(b2) < np.abs(b1):
+            if self.el_type == ElType.LinearRectangle:
+                a41 = ev[3].vpot[0] - ev[0].vpot[0]
+                if (np.abs(a24) < 1e-6 or
+                    np.abs(a41) < 1e-6):
+                    db = 0.0
+            elif (np.abs(a21) < 1e-6 or
+                  np.abs(a31) < 1e-6 or
+                  np.abs(ev[2].vpot[0] - ev[1].vpot[0]) < 1e-6):
+                db = 0.0
+        return -b1, -b2 + db
 
     def is_magnet(self):
         """return True if the element is a permanent magnet"""
@@ -1594,17 +1627,16 @@ class Element(BaseEntity):
         br_temp_corr = 1. + self.br_temp_coef*(temperature - 20.)
         return self.mag[0]*br_temp_corr, self.mag[1]*br_temp_corr
 
-    def demagnetization(self, temperature=20):
+    def demagnetization(self, temperature=20, cosys='cartes'):
         """return demagnetization Hx, Hy of this element"""
-        return self.demag_b(self.flux_density(cosys='polar'), temperature)
+        b = self.flux_density(cosys=cosys)
+        return self.demag_b(b, temperature)
 
-    def demag_b(self, b, temperature):
+    def demag_b(self, b, temperature, pos=0):
         """return demagnetization Hx, Hy of this element at flux density b
           and temperature"""
         if self.is_magnet():
             # assume polar coordinates of b
-            pos = np.arctan2(self.center[1], self.center[0])
-            #pos = 0  # cartesian
             mag = self.remanence(temperature)
             magn = np.sqrt(mag[0]**2 + mag[1]**2)
             alfa = np.arctan2(mag[1], mag[0]) - pos
@@ -1612,6 +1644,8 @@ class Element(BaseEntity):
             bpol = b1 * np.cos(alfa) + b2 * np.sin(alfa)
             reluc = abs(self.reluc[0]) / (4*np.pi*1e-7 * 1000)
             hpol = (bpol - magn)*reluc
+            if self.key==909:
+                print(pos, magn, alfa, b1, b2, reluc, hpol)
             if np.isscalar(hpol):
                 if hpol > 0:
                     return 0
@@ -1728,6 +1762,13 @@ class SuperElement(BaseEntity):
         return {'w': w, 'h': h, 'cxy': cxy,
                 'area': area, 'alpha': self.alpha}
 
+    def nonper_border_nodes(self):
+        """return border nodes with non-periodic boundary condition"""
+        return (np.array([n.xy for nc in self.nodechains
+                          for n in nc.nodes if n.pernod == 0]),
+                set([n.key for nc in self.nodechains
+                     for n in nc.nodes if n.pernod == 0]))
+
 class SubRegion(BaseEntity):
     def __init__(self, key, sr_type, color, name, nturns, curdir, wb_key,
                  superelements, nodechains):
@@ -1755,13 +1796,6 @@ class SubRegion(BaseEntity):
     def area(self):
         """return area of this subregion"""
         return sum([e.area for e in self.elements()])
-
-    def nonper_border_nodes(self):
-        """return border nodes with non-periodic boundary condition"""
-        return (np.array([n.xy for nc in self.nodechains
-                          for n in nc.nodes if n.pernod == 0]),
-                set([n.key for nc in self.nodechains
-                     for n in nc.nodes if n.pernod == 0]))
 
 class Winding(BaseEntity):
     def __init__(self, key, name, subregions, num_turns, cur_re, cur_im,

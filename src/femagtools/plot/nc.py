@@ -15,8 +15,22 @@ logger = logging.getLogger("femagtools.plot.nc")
 DEFAULT_CMAP='viridis'
 """default colormap (see https://matplotlib.org/stable/users/explain/colors/colormaps.html)"""
 
+def _set_axis_limits(ax, isa, autoscale, with_axis):
+    if ax == 0:
+        ax = plt.gca()
+    if autoscale:
+        ax.autoscale(enable=True)
+    else:
+        b = isa.lamination_border()
+        pmin, pmax = np.min(b, axis=0), np.max(b, axis=0)
+        ax.set_xlim(pmin[0], pmax[0])
+        ax.set_ylim(pmin[1], pmax[1])
 
-def spel(isa, superelements=[], with_axis=False, with_wiredir=False, ax=0):
+    if not with_axis:
+        ax.axis('off')
+
+
+def spel(isa, superelements=[], with_axis=False, with_wiredir=False, autoscale=True, ax=0):
     """plot super elements of I7/ISA7 model
     Args:
       isa: Isa7 object
@@ -54,12 +68,10 @@ def spel(isa, superelements=[], with_axis=False, with_wiredir=False, ax=0):
                             horizontalalignment='center', verticalalignment='center')
         except:
             pass
-    ax.autoscale(enable=True)
-    if not with_axis:
-        ax.axis('off')
 
+    _set_axis_limits(ax, isa, autoscale, with_axis)
 
-def mesh(isa, with_axis=False, ax=0):
+def mesh(isa, with_axis=False, autoscale=True, ax=0):
     """plot mesh of I7/ISA7 model
     Args:
       isa: Isa7 object
@@ -83,33 +95,34 @@ def mesh(isa, with_axis=False, ax=0):
     #    if nc.nodemid is not None:
     #        plt.plot(*nc.nodemid.xy, "rx")
 
-    ax.autoscale(enable=True)
-    if not with_axis:
-        ax.axis('off')
+    _set_axis_limits(ax, isa, autoscale, with_axis)
 
 
 def set_contour_values(values, elements, cmap=DEFAULT_CMAP, alpha=1,
-                       relminrange=0.05):
+                       relminrange=0.05, vlim=[]):
     #valid_values = np.logical_not(np.isnan(values))
     vertices = [[v.xy for v in e.vertices] for e in elements]
     patches = np.array([Polygon(xy) for xy in vertices]) #[valid_values]
     p = PatchCollection(patches, match_original=False,
                         cmap=cmap, alpha=alpha)
     z = values #[valid_values]
-    clim = np.min(z), np.max(z)
-    n = np.max(np.abs(clim))
-    if not np.isclose(n, 0):
-        relrange = (clim[1]-clim[0])/n
-        if relrange < relminrange:  # prevent strange color pattern
-            c = (clim[1]+clim[0])/2
-            p.set_clim([(1-relminrange)*c, (1+relminrange)*c])
+    if vlim:
+        p.set_clim(vlim)
+    else:
+        clim = np.min(z), np.max(z)
+        n = np.max(np.abs(clim))
+        if not np.isclose(n, 0):
+            relrange = (clim[1]-clim[0])/n
+            if relrange < relminrange:  # prevent strange color pattern
+                c = (clim[1]+clim[0])/2
+                p.set_clim([(1-relminrange)*c, (1+relminrange)*c])
 
     p.set_array(z)
     return p
 
 def _contour(ax, title, elements, values,
              cmap=DEFAULT_CMAP, isa=None, alpha=1,
-             relminrange=0.05):
+             relminrange=0.05, vlim=[], autorange=True):
     if ax == 0:
         ax = plt.gca()
     ax.set_aspect('equal')
@@ -123,7 +136,7 @@ def _contour(ax, title, elements, values,
                                  color='gray', alpha=0.1, lw=0))
 
     p = set_contour_values(values, elements, cmap, alpha,
-                           relminrange)
+                           relminrange, vlim)
     ax.add_collection(p)
 
     #for patch in np.array([Polygon(xy, fc='white', alpha=1.0)
@@ -137,7 +150,7 @@ def field_lines(nodes, vp, levels=20, ax=0, cmap=None, alpha=0.2):
     """draw field lines"""
     if ax == 0:
         ax = plt.gca()
-    ax.set_aspect('equal')
+    #ax.set_aspect('equal')
     x, y = np.array([n.xy for n in nodes]).T
     if cmap is None:
         tcs = ax.tricontour(x, y, vp, levels=levels,
@@ -153,7 +166,8 @@ def demag(isa, cmap=DEFAULT_CMAP, relminrange=0.05, magnets_only=False, ax=0):
       isa: Isa7/NC object
     """
     emag = isa.magnet_elements()
-    h = np.array([e.demagnetization(isa.MAGN_TEMPERATURE) for e in emag])
+    h = np.array([e.demagnetization(isa.MAGN_TEMPERATURE,
+                                    cosys=isa.co_sys) for e in emag])
     p = _contour(ax, f'Field Strength at {isa.MAGN_TEMPERATURE} °C (max -{np.max(h):.1f} kA/m)',
                  emag, h, cmap=cmap,
                  isa=None if magnets_only else isa,
@@ -399,3 +413,6 @@ def punchdist(isa, cmap=DEFAULT_CMAP, ax=0):
     p = _contour(ax, 'Punching Border Distances / mm)',
                  elam, pdist*1e3, cmap=cmap, isa=isa)
     cb = plt.colorbar(p, shrink=0.9)
+    with_axis = False
+    autoscale = False
+    _set_axis_limits(ax, isa, autoscale, with_axis)

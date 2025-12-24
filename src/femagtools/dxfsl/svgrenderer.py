@@ -98,7 +98,7 @@ class SvgRenderer(object):
             self.x_list.append(circle.center[0] - circle.radius)
             self.y_list.append(circle.center[1] + circle.radius)
             self.y_list.append(circle.center[1] - circle.radius)
-        
+
         self.content.append(
             '<circle r="{}" cx="{}" cy="{}" fill="{}" stroke="{}" stroke-width="{}" />'.format(
                 circle.radius,
@@ -204,7 +204,8 @@ class SvgRenderer(object):
             self._write_legend()
         self.tail.append('</svg>')
 
-    def _write_path(self, area, x, mirrored=False, stroke_width=0.03, stroke_color='black'):
+    def _write_path(self, area, x, mirrored=False, stroke_width=0.03,
+                    stroke_color='black'):
         color = color=area.color()
         if area.is_magnet():
             if x % 2 == 1:
@@ -212,7 +213,8 @@ class SvgRenderer(object):
 
         if area.is_circle():
             e = area.area[0]
-            self._write_circle(e, stroke_width=stroke_width, stroke_color=stroke_color, color=color)
+            self._write_circle(e, stroke_width=stroke_width,
+                               stroke_color=stroke_color, color=color)
             return
 
         self.content += [
@@ -228,7 +230,7 @@ class SvgRenderer(object):
             if n0 is None:
                 n0 = n1
                 self.content.append('     d="M {} {}'.format(n1[0], n1[1]))
-                
+
             if is_Arc(e):
                 self.content.append('        A {} {} 0 0 {} {} {}'.format(e.radius,
                                                                           e.radius,
@@ -245,7 +247,8 @@ class SvgRenderer(object):
         radius = 0.35 * self.scalefactor
         self._write_point(p, color='magenta', radius=radius)
 
-    def _write_area(self, machine, area, mirrored=False, part=0, stroke_width=0.03, points=False):
+    def _write_area(self, machine, area, mirrored=False, part=0,
+                    stroke_width=0.03, points=False):
         startangle = machine.startangle
         endangle = machine.endangle
         self._write_path(area, 0, mirrored=mirrored, stroke_width=stroke_width)
@@ -258,7 +261,8 @@ class SvgRenderer(object):
 
         if mirrored:
             axis_m, axis_n = machine.geom.get_axis_m_n(endangle)
-            mirrored_area = area.mirror_area(machine.center, axis_m, axis_n, set_nodes=True)
+            mirrored_area = area.mirror_area(machine.center, axis_m, axis_n,
+                                             set_nodes=True)
             self._write_path(mirrored_area, 0, stroke_width=stroke_width)
             if points:
                 self._write_point_inside(machine.geom, mirrored_area)
@@ -299,13 +303,17 @@ class SvgRenderer(object):
             mirrored = machine.is_mirrored()
 
         for area in iron:
-            self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
+            self._write_area(machine, area, mirrored=mirrored, part=part,
+                             stroke_width=stroke_width, points=points)
         for area in air:
-            self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
+            self._write_area(machine, area, mirrored=mirrored, part=part,
+                             stroke_width=stroke_width, points=points)
         for area in mag:
-           self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
+           self._write_area(machine, area, mirrored=mirrored, part=part,
+                            stroke_width=stroke_width, points=points)
         for area in wnd:
-           self._write_area(machine, area, mirrored=mirrored, part=part, stroke_width=stroke_width, points=points)
+           self._write_area(machine, area, mirrored=mirrored, part=part,
+                            stroke_width=stroke_width, points=points)
 
         if magphi:
             geom.render_magnet_phi(self)
@@ -365,7 +373,8 @@ class SvgRenderer(object):
             y = y + fontsize + linespace
         return
 
-    def render(self, machine, machine2=None, no_areas=False, nodes=False, stroke_width=0.03, points=False):
+    def render(self, machine, machine2=None, no_areas=False, nodes=False,
+               stroke_width=0.03, points=False):
         self._get_x_and_y(machine.geom)
         if machine2:
             self._get_x_and_y(machine2.geom)
@@ -373,15 +382,19 @@ class SvgRenderer(object):
 
         stroke_width = stroke_width * self.scalefactor
 
-        self._render(machine, no_areas=no_areas, nodes=nodes, stroke_width=stroke_width, points=points)
+        self._render(machine, no_areas=no_areas, nodes=nodes,
+                     stroke_width=stroke_width, points=points)
         if machine2:
-            self._render(machine2, no_areas=no_areas, nodes=nodes, stroke_width=stroke_width, points=points)
+            self._render(machine2, no_areas=no_areas, nodes=nodes,
+                         stroke_width=stroke_width, points=points)
 
-    def _render(self, machine, no_areas=False, nodes=False, stroke_width=0.03, points=False):
+    def _render(self, machine, no_areas=False, nodes=False,
+                stroke_width=0.03, points=False):
         if no_areas:
             self._write_geometry(machine, stroke_width=stroke_width)
         else:
-            self._write_areas(machine, stroke_width=stroke_width, points=points, magphi=not self.full)
+            self._write_areas(machine, stroke_width=stroke_width,
+                              points=points, magphi=not self.full)
 
         self._write_symmetry_lines(machine)
         self._write_airgap_lines(machine)

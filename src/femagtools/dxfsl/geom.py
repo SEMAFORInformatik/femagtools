@@ -3680,7 +3680,7 @@ class Geometry(object):
                         dist_1 = a.max_dist + 0.5
                         dist_2 = self.max_radius + 5
                     else:
-                        dist_1 = a_min_dist - 0.5
+                        dist_1 = a.min_dist - 0.5
                         dist_2 = self.min_radius - 5
 
                     mid_angle = a.get_mid_angle(self.center)

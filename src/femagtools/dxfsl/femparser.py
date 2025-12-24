@@ -1,13 +1,14 @@
 """
  Geom Parser for femm files
 """
-
+import logging
 import numpy as np
 from .shape import Arc, Line, Element
 from .functions import distance, alpha_line, points_are_close, point_on_arc
 
 fem_points = []
 
+logger = logging.getLogger(__name__)
 
 def read_fem_points(f, num):
     for x in range(num):

@@ -727,7 +727,7 @@ def transientsc_demag(demag, magnet=0, title='', ax=0):
     """
     if ax == 0:
         ax = plt.gca()
-    if type(d) == list:
+    if type(demag) == list:
         pos = [d['displ'] for d in demag if 'displ' in d]
         hmax = [-d['H_max'] for d in demag if 'H_max' in d]
         havg = [-d['H_av'] for d in demag if 'H_av' in d]

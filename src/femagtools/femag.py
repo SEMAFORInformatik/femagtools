@@ -10,7 +10,7 @@ try:
     import zmq
 except ImportError:
     pass
-import sys
+
 import json
 import io
 import time
@@ -160,7 +160,10 @@ class BaseFemag(object):
         dest = dir if dir else self.workdir
         if isinstance(feloss, (int, float)):
             try:
-                feloss = {1: 'jordan', 2: "steinmetz", 10:"modified steinmetz", 11: 'bertotti'}[int(feloss)]
+                feloss = {1: 'jordan',
+                          2: "steinmetz",
+                          10:"modified steinmetz",
+                          11: 'bertotti'}[int(feloss)]
             except KeyError:
                 feloss = ''
         return [self.magnetizingCurves.writefile(m[0], dest,
@@ -194,7 +197,9 @@ class BaseFemag(object):
         if simulation:
             recsin = simulation.get('recsin', '')
             feloss = simulation.get('calc_fe_loss', '')
-        self.copy_magnetizing_curves(self.model, recsin=recsin, feloss=feloss)
+        self.copy_magnetizing_curves(self.model,
+                                     recsin=recsin,
+                                     feloss=feloss)
 
         if feloss and \
             int(feloss) in (1, 2):
@@ -267,7 +272,7 @@ class BaseFemag(object):
 
         asmfile = self.get_asm_file(modelname, offset)
         if asmfile:
-            logger.info("Read ASM {}".format(asmfile))
+            logger.info("Read ASM %s", asmfile)
             return femagtools.asm.read(asmfile)
         return {}
 
@@ -277,7 +282,7 @@ class BaseFemag(object):
         if not modelname:
             modelname = self._get_modelname_from_log()
 
-        logger.info("Read TS {}".format(modelname))
+        logger.info("Read TS %s", modelname)
         return femagtools.ts.read_st(self.workdir, modelname)
 
     def read_vtu(self, modelname=None):
@@ -299,7 +304,7 @@ class BaseFemag(object):
         filelist = self.get_result_file_list(modelname + '_Mode', 'txt')
         psfiles = self.get_result_file_list(modelname + '_Mode', 'ps')
         if len(filelist) > 0:
-            logger.info("Read Eigenvectors {}".format(modelname))
+            logger.info("Read Eigenvectors %s", modelname)
             return femagtools.me.get_eigenvectors(filelist, psfiles)
         else:
             return ''
@@ -326,7 +331,7 @@ class BaseFemag(object):
 
         pltfile = self.get_plt_file(modelname, offset)
         if pltfile:
-            logger.info("Read PLT0 {}".format(pltfile))
+            logger.info("Read PLT0 %s", pltfile)
             return femagtools.forcedens.read(pltfile)
         return None
 
@@ -410,7 +415,7 @@ class BaseFemag(object):
 
         pmag_index = []
         if "Nodes" in hsn_data:
-            for k ,i in enumerate(hsn_data['Nodes']):
+            for k, i in enumerate(hsn_data['Nodes']):
                 i.update({"mass": i['weight'], "losses": _map[i['Name']]})
                 if "PMag" in i['Name']:
                     pmag_index.append(k)
@@ -500,7 +505,7 @@ class BaseFemag(object):
                                      pmod=pmod)
 
             if simulation['calculationMode'] == 'pm_sym_fast' or \
-                simulation['calculationMode'] == 'torq_calc':
+               simulation['calculationMode'] == 'torq_calc':
                 if simulation.get('shortCircuit', False):
                     from .shortcircuit import shortcircuit
                     set_magnet_properties(self.model, simulation, self.magnets)
@@ -508,14 +513,14 @@ class BaseFemag(object):
                                               {'name': self.model.name,
                                                'poles': self.model.poles,
                                                'hc_min': self.model.get('hc_min', 0)},
-                                               bch, simulation)
+                                              bch, simulation)
                     #bch.torque += bchsc.torque
                     #bch.demag += bchsc.demag
 
             if simulation.get('magnet_loss', False):
                 logger.info('Evaluating magnet losses...')
                 if self.notify:
-                    self.notify(['femag_log', f'<progress>Evaluating magnet losses'])
+                    self.notify(['femag_log', '<progress>Evaluating magnet losses'])
 
                 ops = range(len(bch.torque))
                 m = femagtools.ecloss.MagnLoss(
@@ -714,7 +719,7 @@ class FemagTask(threading.Thread):
         pattern = re.compile(r"ZMQ zmq_bind ctrl_socket|errno|Address already in use:")
         err = pathlib.Path(errname)
         start_time = time.time()
-        end_time = start_time + 10 # 10 seconds
+        end_time = start_time + 10  # 10 seconds
         while time.time() < end_time:
             try:
                 line = self.proc.stderr.readline().decode().strip()
@@ -724,7 +729,7 @@ class FemagTask(threading.Thread):
             if not line and self.proc.poll() is not None:
                 break
             if pattern.findall(line):
-                logger.info(f'FemagError occurred: {line}')
+                logger.info('FemagError occurred: %s', line)
                 self.error_messages.append(f'FemagError occurred: {line}')
                 #raise FemagError(line)
                 break
@@ -803,12 +808,14 @@ class ZmqFemag(BaseFemag):
 
     def subscribe(self, notify):
         """attaches a notify function"""
-        logger.info("Subscribe on '%s' port %d", self.femaghost, self.port+1)
+        logger.info("Subscribe on '%s' port %d",
+                    self.femaghost, self.port+1)
         if self.subscriber is None:
             # progress/xyplot at a configured timestep published
             header = [b'progress', b'xyplot', b'license']
             self.subscriber = femagtools.zmq.SubscriberTask(
-                port=self.port+1, host=self.femaghost, notify=notify, header=header)
+                port=self.port+1, host=self.femaghost,
+                notify=notify, header=header)
             self.subscriber.start()
         else:
             # reattach?

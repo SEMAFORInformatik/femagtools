@@ -763,6 +763,7 @@ class ZmqFemag(BaseFemag):
     def close(self):
         if self.subscriber:
             self.subscriber.stop()
+            self.subscriber = None
 
         if self.request_socket:
             logger.debug("close request_socket")

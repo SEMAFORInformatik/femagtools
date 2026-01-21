@@ -255,7 +255,11 @@ class SubscriberTask(threading.Thread):
         if not port: # old femag
             idx = 0
         elif port_list: # femag publish this port
-            idx = port_list.index(port)
+            try:
+                idx = port_list.index(port)
+            except ValueError:
+                # no multicalc
+                idx = 0
         else: # femag publish this port
             logger.info('unknown multiproc progress logic')
             return

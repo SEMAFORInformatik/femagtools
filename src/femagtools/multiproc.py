@@ -88,6 +88,10 @@ def run_femag(cmd, workdir, fslfile, port):
                                     stderr=subprocess.PIPE, #err,
                                     cwd=workdir)
 
+            # write pid file
+            with open(os.path.join(workdir, 'femag.pid'), 'w') as pidfile:
+                pidfile.write("{}\n".format(proc.pid))
+
             # read stderr and search for error
             pattern = re.compile(r"ZMQ zmq_bind ctrl_socket|errno|Address already in use:")
             start_time = time.time()
@@ -104,10 +108,6 @@ def run_femag(cmd, workdir, fslfile, port):
                     raise FemagError(line)
 
             logger.info('%s (pid %d, workdir %s)', cmd + args, proc.pid, workdir)
-            # write pid file
-            with open(os.path.join(workdir, 'femag.pid'), 'w') as pidfile:
-                pidfile.write("{}\n".format(proc.pid))
-
             # wait
             proc.wait()
             os.remove(os.path.join(workdir, 'femag.pid'))
@@ -303,3 +303,13 @@ class Engine:
                 self.pool = None # garbage collector deletes threads
         except AttributeError as e:
             logger.warn("%s", e)
+
+        # terminate windows procs
+        if platform.system() == 'Windows':
+            import subprocess
+            from pathlib import Path
+            files = list(Path(self.job.basedir).rglob('femag.pid'))
+            for f in files:
+                pid = Path(f).read_text().strip()
+                logger.debug(f'kill process {pid}')
+                subprocess.run(['taskkill', '/F', '/PID', pid], check=True)

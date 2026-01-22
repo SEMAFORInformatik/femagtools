@@ -193,6 +193,7 @@ class Reader:
         self.lossPar = {}
         self.flux = {}
         self.magnet = {}
+        self.magnets = []
         self.airgapInduction = {}
         self.airgap = {}
         self.flux_fft = {}
@@ -392,6 +393,7 @@ class Reader:
                     if len(rec) > 0:
                         self.magnet[v[1]] = floatnan(rec[-1])
                     break
+        self.magnets.append({k:self.magnet[k] for k in self.magnet})
 
     def __read_windings(self, content):
         "read winding section"
@@ -424,7 +426,7 @@ class Reader:
             self.windings[w[0]]['R'].append(w[3]/1e3)
             self.windings[w[0]]['PHI'].append(w[4])
         # check if external rotor
-        if hasattr(self, "machine"): 
+        if hasattr(self, "machine"):
             if "fc_radius" in self.machine:
                 if np.mean(self.windings[1]["R"]) < self.machine["fc_radius"]:
                     self.external_rotor = True

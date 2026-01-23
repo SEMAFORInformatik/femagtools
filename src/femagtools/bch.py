@@ -453,7 +453,10 @@ class Reader:
         for line in content:
             if line.startswith('El.Conductivity Magnet'):
                 try:
-                    self.magnet['sigma_PM'] = float(line.split()[-1])
+                    k = 'sigma_PM'
+                    self.magnet[k] = float(line.split()[-1])
+                    for m in self.magnets:
+                        m[k] = self.magnet[k]
                 except ValueError:
                     pass
 

@@ -3362,13 +3362,54 @@ class Geometry(object):
                                    wdg_max_angle,
                                    wdg_min_dist,
                                    wdg_max_dist):
-        if greater_equal(a.min_angle, wdg_min_angle) and \
-           less_equal(a.max_angle, wdg_max_angle):
-            if self.is_inner:
-                return less_equal(wdg_max_dist, a.min_dist)
-            else:
-                return less_equal(a.max_dist, wdg_min_dist)
-        return False
+        logger.debug("begin between_airgap_and_winding")
+        if less_equal(a.max_angle, wdg_min_angle):
+            logger.debug("end between_airgap_and_winding: right out")
+            return False
+        if greater_equal(a.min_angle, wdg_max_angle):
+            logger.debug("end between_airgap_and_winding: left out")
+            return False
+
+        wdg_alpha = alpha_angle(wdg_min_angle, wdg_max_angle)
+        logger.debug("angle windings: %s", wdg_alpha)
+
+        angle_inside = alpha_angle(max(a.min_angle, wdg_min_angle),
+                                   min(a.max_angle, wdg_max_angle))
+        logger.debug("angle inside: %s", angle_inside)
+
+        right_outside = 0.0
+        if not greater_equal(a.min_angle, wdg_min_angle):
+            right_outside = alpha_angle(a.min_angle, wdg_min_angle)
+        logger.debug("right: inside=%s, outside=%s", angle_inside, right_outside)
+
+        left_outside = 0.0
+        if not less_equal(a.max_angle, wdg_max_angle):
+            left_outside = alpha_angle(wdg_max_angle, a.max_angle)
+        logger.debug("left: inside=%s, outside=%s", angle_inside, left_outside)
+
+        if greater_equal(right_outside, angle_inside):
+            logger.debug("end between_airgap_and_winding: right more out")
+            return False
+        if greater_equal(left_outside, angle_inside):
+            logger.debug("end between_airgap_and_winding: left more out")
+            return False
+
+        max_outside = wdg_alpha * 0.25
+        logger.debug("angle outside: right=%s,  left=%s,  max=%s",
+                     right_outside, left_outside, max_outside)
+        if right_outside > max_outside:
+            logger.debug("end between_airgap_and_winding: right too much out")
+            return False
+        if left_outside > max_outside:
+            logger.debug("end between_airgap_and_winding: left too much out")
+            return False
+
+        if self.is_inner:
+            its_air = less_equal(wdg_max_dist, a.min_dist)
+        else:
+            its_air = less_equal(a.max_dist, wdg_min_dist)
+        logger.debug("end between_airgap_and_winding: air = %s", its_air)
+        return its_air
 
     def collect_windings(self):
         logger.debug("begin of collect_windings")
@@ -3517,31 +3558,19 @@ class Geometry(object):
                         a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
                         continue
 
-                if greater_equal(a.min_air_angle, wdg_min_angle):
-                    logger.debug("#0.3 ===> %s >= %s <===",
-                                 a.min_air_angle,
-                                 wdg_min_angle)
+                if self.between_airgap_and_winding(a,
+                                                   wdg_min_angle, wdg_max_angle,
+                                                   wdg_min_dist, wdg_max_dist):
+                    logger.debug("#0.4 ===> between airgap and windings <===")
+                    a.set_type(AREA.TYPE_AIR)  # air
+                    continue
 
-                    if a.close_to_endangle and self.is_mirrored():
-                        logger.debug("#1 ===> endangle and mirrored <===")
-                        a.set_type(AREA.TYPE_AIR)  # air
-                    elif less_equal(a.max_air_angle, wdg_max_angle):
-                        logger.debug("#2 ===> %s <= %s <===",
-                                     a.max_air_angle,
-                                     wdg_max_angle)
-                        a.set_type(AREA.TYPE_AIR)  # air
-                    else:
-                        logger.debug("#3 ===> %s > %s <===",
-                                     a.max_air_angle,
-                                     wdg_max_angle)
-                        a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
-                else:
-                    logger.debug("#4 ===> %s < %s <===",
-                                 a.min_air_angle,
-                                 wdg_min_angle)
-                    a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
+                logger.debug("#4 ===> %s < %s <===",
+                             a.min_air_angle,
+                             wdg_min_angle)
+                a.set_type(AREA.TYPE_TOOTH)  # iron shaft (Zahn)
             else:
-                logger.debug("#5 not around windings")
+                logger.debug("#5 %s not around windings", a.identifier())
                 if self.between_airgap_and_winding(a,
                                                    wdg_min_angle, wdg_max_angle,
                                                    wdg_min_dist, wdg_max_dist):

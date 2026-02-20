@@ -9,25 +9,22 @@ import femagtools.parstudy
 
 logger = logging.getLogger('shortcircuit')
 
+
 def get_ik(nc, i1, Hk, eps=5e-4):
     """return approx. current at knee point in demag characteristics
     based on 2 operating points (noload, load)"""
-    def find_xpeak(x, y):
-        """ return first peak from the right
-        """
-        peaks = (np.diff(np.sign(np.diff(y))) < 0).nonzero()[0] + 1
-        ip = np.where(y[peaks] > eps)[0][-1]
-        return x[peaks][ip], y[peaks][ip]
-
     elements = nc.magnet_elements()
     icur = -1
     ibeta = -1
     ncdemag = np.array([nc.demagnetization(e, icur, ibeta)[1]
                         for e in elements])
-    nbins = 50
+    nbins = 50  # max(len(elements)//50, 20)
     imax = np.argmax(np.max(ncdemag, axis=0))
     n, b = np.histogram(ncdemag[:, imax], bins=nbins, density=True)
-    x, y = find_xpeak(b,n)
+    c = np.cumsum(n / n.sum())
+    k = np.where(c > 0.97)[0][0]
+    y = b[k]
+
     icur = 0
     ibeta = 0
     ncdemag = np.array([nc.demagnetization(e, icur, ibeta)[1]
@@ -35,11 +32,14 @@ def get_ik(nc, i1, Hk, eps=5e-4):
     imax = np.argmax(np.max(ncdemag, axis=0))
     n, b = np.histogram(ncdemag[:, imax], bins=nbins, density=True)
 
-    y0 = b[np.argmax(n)]/-Hk
-    y1 = x/-Hk
-    x1 = np.sqrt(2)*i1
+    y0 = b[np.argmax(n[1:])]/-Hk
+    y1 = y/-Hk
+    x1 = 1.2*i1 ### np.sqrt(2)*i1
     m = (y1-y0)/x1
+    logging.debug("%s", {'y0': float(y0), 'y1': float(y1),
+                         'y': float(y), 'm': float(m)})
     return (1 - y0)/m
+
 
 def _parstudy_list(femag, result_func):
     workdir = femag.workdir
@@ -53,6 +53,7 @@ def _parstudy_list(femag, result_func):
         magnetizingCurves=magnetizingCurves,
         templatedirs=templatedirs,
         cmd=cmd, result_func=result_func)
+
 
 def get_shortCircuit_parameters(bch, nload):
     """extracts shortcircuit parameters from bch"""
@@ -101,13 +102,13 @@ def find_peaks_and_valleys(t, y):
     """ return peak and valley of y with maximum amplitude
     """
     peaks = (np.diff(np.sign(np.diff(y))) < 0).nonzero()[0] + 1
-    if len(peaks>0):
+    if len(peaks > 0):
         ip = np.argmax(y[peaks])
         pv = {'ip': y[peaks][ip], 'tp': t[peaks][ip]}
     else:
         pv = {'ip': [], 'tp': []}
     valleys = (np.diff(np.sign(np.diff(y))) > 0).nonzero()[0] + 1
-    if len(valleys>0):
+    if len(valleys > 0):
         iv = np.argmin(y[valleys])
         pv.update({'iv': y[valleys][iv], 'tv': t[valleys][iv]})
     else:
@@ -131,7 +132,7 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
     except (KeyError, AttributeError):
         pass
     if 'speed' not in simulation:
-        simulation['speed'] = bch.dqPar['speed']
+        simulation['speed'] = bch.dqPar['speed']/60
 
     if simulation.get('sim_demagn', 0):
         nc = femag.read_nc()
@@ -139,11 +140,14 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             nc, bch.machine['i1'], simulation['Hk'])
 
     phirot = bch.flux['1'][0]['displ']
-    #if (len(phirot)-1) % 3 == 0:
-    #    phirot = phirot[::3]
-    #elif (len(phirot)-1) % 2 == 0:
-    #    phirot = phirot[::2]
-
+    while len(phirot) > 20:
+        if (len(phirot)-1) % 3 == 0:
+            phirot = phirot[::3]
+        elif (len(phirot)-1) % 2 == 0:
+            phirot = phirot[::2]
+        else:
+            break
+        
     if simulation.get('sc_type', 3) == 3:
         logger.info("3phase short circuit simulation")
         builder = femagtools.fsl.Builder(femag.templatedirs)
@@ -190,14 +194,12 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             #        break
 
     if simulation.get('sc_type', 3) == 2:
-        if (len(phirot)-1) % 3 == 0:
-            phirot = phirot[::3]
-        elif (len(phirot)-1) % 2 == 0:
-            phirot = phirot[::2]
         simulation['phi'] = phirot
         if 'i1max' not in simulation:
+            w1 = 2*np.pi*bch.machine['n']*bch.machine['p']
+            Xd = w1*bch.machine['ld']
             # just a wild guess
-            simulation['i1max'] = 5*bch.machine['i1']
+            simulation['i1max'] = 3*bch.dqPar['up0']/Xd
         logger.info("2phase short circuit simulation i1max = %.0f",
                     simulation['i1max'])
         if 'magn_temp' not in simulation:
@@ -213,6 +215,7 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
     else:
         del simulation['calculationMode']
     return scdata
+
 
 def sc_result_func(task):
     basedir = pathlib.Path(task.directory)
@@ -269,26 +272,26 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     #    json.dump({'ire': ire.tolist(), 'pos': pos.tolist(),
     #               'torq': torq.tolist(), 'psire': psire.tolist()}, fp)
     logger.info("move steps %d currents %s pmod %s",
-                len(pos), ire[:,0], pmod)
+                len(pos), ire[:, 0], pmod)
 
     Ai = [femagtools.utils.fft(pos, psire[:, k, 0], pmod=pmod)['a']
           for k in range(np.shape(psire)[1])]
-    A = make_interp_spline(ire[:,0], Ai)
+    A = make_interp_spline(ire[:, 0], Ai)
     A0i = [femagtools.utils.fft(pos, psire[:, k, 0], pmod=pmod)['a0']
            for k in range(np.shape(psire)[1])]
-    A0 = make_interp_spline(ire[:,0], A0i)
+    A0 = make_interp_spline(ire[:, 0], A0i)
     Bi = [femagtools.utils.fft(pos, psire[:, k, 1], pmod=pmod)['a']
           for k in range(np.shape(psire)[1]-1, -1, -1)]
-    B = make_interp_spline(ire[::-1,1], Bi)
+    B = make_interp_spline(ire[::-1, 1], Bi)
     B0i = [femagtools.utils.fft(pos, psire[:, k, 1], pmod=pmod)['a0']
            for k in range(np.shape(psire)[1]-1, -1, -1)]
-    B0 = make_interp_spline(ire[::-1,1], B0i)
+    B0 = make_interp_spline(ire[::-1, 1], B0i)
     alfa0_ai = [femagtools.utils.fft(pos, psire[:, k, 0], pmod=pmod)['alfa0']
                 for k in range(np.shape(psire)[1])]
-    alfa0_a = make_interp_spline(ire[:,0], alfa0_ai)
+    alfa0_a = make_interp_spline(ire[:, 0], alfa0_ai)
     alfa0_bi = [femagtools.utils.fft(pos, psire[:, k, 1], pmod=pmod)['alfa0']
                 for k in range(np.shape(psire)[1]-1, -1, -1)]
-    alfa0_b = make_interp_spline(ire[::-1,1], alfa0_bi)
+    alfa0_b = make_interp_spline(ire[::-1, 1], alfa0_bi)
 
     Tqi = [femagtools.utils.fft(pos, torq[:, k], pmod=pmod)['a']
            for k in range(np.shape(torq)[1])]
@@ -322,34 +325,37 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     def psib(phi, i):
         return B(i)*np.cos(pp*phi+alfa0_b(i))+B0(i)
 
-    def dpsiadi(phi,i):
-        return A(i, nu=1)*np.cos(pp*phi+alfa0_a(i))+A0(i,nu=1)
-    def dpsiadphi(phi,i):
+    def dpsiadi(phi, i):
+        return A(i, nu=1)*np.cos(pp*phi+alfa0_a(i))+A0(i, nu=1)
+
+    def dpsiadphi(phi, i):
         return -pp*A(i)*np.sin(pp*phi+alfa0_a(i))
-    def dpsibdi(phi,i):
-        return B(i, nu=1)*np.cos(pp*phi+alfa0_b(i))+B0(i,nu=1)
-    def dpsibdphi(phi,i):
+
+    def dpsibdi(phi, i):
+        return B(i, nu=1)*np.cos(pp*phi+alfa0_b(i))+B0(i, nu=1)
+
+    def dpsibdphi(phi, i):
         return -pp*B(i)*np.sin(pp*phi+alfa0_b(i))
 
     speed = simulation['speed']
     r1 = simulation['r1']
-    l1s = simulation.get('l1s',0)
+    l1s = simulation.get('l1s', 0)
     wm = 2*np.pi*speed
-    w1 = pp*wm
 
     def didt(t, y):
         return [((2*r1*y[0] + wm*(
-            dpsiadphi(y[1],y[0]) - dpsibdphi(y[1],-y[0])))/
-            (-dpsiadi(y[1],y[0]) - dpsibdi(y[1],-y[0]) -2*l1s)),
+            dpsiadphi(y[1], y[0]) - dpsibdphi(y[1], -y[0])))/
+            (-dpsiadi(y[1], y[0]) - dpsibdi(y[1], -y[0]) - 2*l1s)),
                 wm]
+    # freq = speed*pp -> T = 1/freq
     tmin = simulation.get('tstart', 0)
     tmax = simulation.get('simultime', 0.1)
     nsamples = simulation.get('nsamples', 400)
     t = np.linspace(tmin, tmax, nsamples)
-
-    def func(x):
+    
+    def ifunc(x):
         return B(0)*np.sin(pp*x+alfa0_b(0)) - A(0)*np.sin(pp*x+alfa0_a(0))
-    phi0 = so.fsolve(func, [0])[0]
+    phi0 = so.fsolve(ifunc, [0])[0]
 
     Y0 = [0, phi0]
     sol = ig.solve_ivp(didt, (t[0], t[-1]), Y0, dense_output=True)
@@ -362,12 +368,14 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
     logger.info("Ia %.1f %.1f %.1f (phi0 %.4f)",
                 iap[1], iav[1], iac[1], phi0)
 
-    def func(x):
+    def tqfunc(x):
         y = torque(wm*t+phi0+x, ia)
         pv = find_peaks_and_valleys(t, y)
-        return pv['peaks'][-1] + pv['valleys'][-1]
+        py = pv['peaks']
+        vy = pv['valleys']
+        return py[py>0.1*np.max(py)][-1] + vy[vy<0.1*np.min(vy)][-1]
 
-    dphi = so.fsolve(func, [0])[0]
+    dphi = so.fsolve(tqfunc, [0])[0]
     torque = torque(wm*t+phi0+dphi, ia)
     pv = find_peaks_and_valleys(t, torque)
     tp = pv['tp'], pv['ip']
@@ -402,6 +410,7 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
                                 i1max, phirot,
                                 calculationMode='psi-torq-rem')
     return scData
+
 
 def demag(femag, machine, simulation, i1max, phirot,
           calculationMode='psi-torq-rem'):
@@ -462,8 +471,8 @@ def demag(femag, machine, simulation, i1max, phirot,
 
     ptr = np.loadtxt(pathlib.Path(femag.workdir) / "psi-torq-rem.dat")
     i1 = np.concat(([0], np.max(
-        np.abs(ptr[:,1:4]), axis=1)))
-    rr = np.concat(([1], ptr[:,-1]))
+        np.abs(ptr[:, 1:4]), axis=1)))
+    rr = np.concat(([1], ptr[:, -1]))
     dmag = {'Hk': simulation['Hk'],
             'Tmag': simulation['Tmag'],
             'i1': i1.tolist(),
@@ -482,6 +491,13 @@ def demag(femag, machine, simulation, i1max, phirot,
             y0, y1 = rr[k-1], rr[k]
         m = (y1-y0)/(x1-x0)
         dmag['i1c'] = (y - y0)/m + x0
+        if abs(i1max) < dmag['i1c']:
+            # limit rr
+            a = np.where(rr < 0.9)
+            if a[0].size > 0:
+                k = a[0][0]
+                dmag['rr'] = rr[:k].tolist()
+                dmag['i1'] = i1[:k].tolist()
     except IndexError:
         pass
     if abs(i1max) < i1[-1]:

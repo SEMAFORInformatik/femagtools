@@ -50,6 +50,20 @@ function calc_flux_torq_rem(curvec)
 
   return psi, tq, RR
 end
+
+function write(file_psi, phi, curr, psi, tq, rr)
+    file_psi:write(string.format("%g ", phi))
+    for k=1, 3 do
+      file_psi:write(string.format("%g ", curr[k]))
+    end
+    for k=1, 3 do
+      file_psi:write(string.format("%g ", psi[k][1]))
+    end
+    file_psi:write(string.format("%g ", tq))
+    file_psi:write(string.format("%g ", rr))
+    file_psi:write("\n")
+end
+
 %if model.get('fc_radius', 0):
 if m.fc_radius == nil then
   m.fc_radius = ${model['fc_radius']*1e3}
@@ -94,25 +108,47 @@ for i=1, #curvec do
   end
   psi, tq, rr = calc_flux_torq_rem(curr)
 
-    print(string.format(" current: %d/%d %g, %g, %g torque %g rr %g",
+  print(string.format(" current: %d/%d %g, %g, %g torque %g rr %g",
         i, #curvec, curr[1], curr[2], curr[3], tq, rr))
-
-    file_psi:write(string.format("%g ", phi))
-    for k=1, 3 do
-      file_psi:write(string.format("%g ", curr[k]))
-    end
-    for k=1, 3 do
-      file_psi:write(string.format("%g ", psi[k][1]))
-    end
-    file_psi:write(string.format("%g ", tq))
-    file_psi:write(string.format("%g ", rr))
-    file_psi:write("\n")
-
+  write(file_psi, phi, curr, psi, tq, rr)
+    
 % if model.get('plots', []):
   if i == #curvec-2 then
 <%include file="plots.mako"/>
   end
 % endif
+end
+rlimit = 0.95
+if rr > rlimit then -- extend demagnetization curve
+  if( curr_angles ~= nil ) then
+    delta_cur = curvec[#curvec] - curvec[#curvec-1]
+  else
+    delta_cur = {}
+    for k=1, 3 do
+      delta_cur[k] = curvec[#curvec][k] - curvec[#curvec-1][k]
+    end
+  end
+  i = #curvec + 1
+  current = curvec[#curvec]
+  while rr > rlimit do
+    if( curr_angles ~= nil ) then
+      current = current + delta_cur
+      for k=1, 3 do
+        curr[k] = current*math.sin(math.pi*(
+                              phi-curr_angles[k])/180)
+       end
+    else
+      for k=1, 3 do
+         curr[k] = curr[k] + delta_cur[k]
+      end
+    end
+    psi, tq, rr = calc_flux_torq_rem(curr)
+
+    print(string.format(" current: %d/%d %g, %g, %g torque %g rr %g",
+        i, #curvec, curr[1], curr[2], curr[3], tq, rr))
+    write(file_psi, phi, curr, psi, tq, rr)
+    i = i+1
+  end
 end
 %if 'phi' in model:
 rotate({mode = "reset"})

@@ -147,7 +147,12 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
             phirot = phirot[::2]
         else:
             break
-        
+
+    # do not overwrite created plots
+    # TODO: should be more flexible
+    if 'plots' in simulation:
+        del simulation['plots']
+
     if simulation.get('sc_type', 3) == 3:
         logger.info("3phase short circuit simulation")
         builder = femagtools.fsl.Builder(femag.templatedirs)

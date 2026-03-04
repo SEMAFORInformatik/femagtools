@@ -148,11 +148,6 @@ def shortcircuit(femag, machine, bch, simulation, engine=0):
         else:
             break
 
-    # do not overwrite created plots
-    # TODO: should be more flexible
-    if 'plots' in simulation:
-        del simulation['plots']
-
     if simulation.get('sc_type', 3) == 3:
         logger.info("3phase short circuit simulation")
         builder = femagtools.fsl.Builder(femag.templatedirs)
@@ -420,6 +415,10 @@ def shortcircuit_2phase(femag, machine, simulation, engine=0):
 def demag(femag, machine, simulation, i1max, phirot,
           calculationMode='psi-torq-rem'):
     """demag simulation using psi-torq-rem (or psi-torq-rem-rot)"""
+    # do not overwrite created plots
+    # TODO: should be more flexible
+    if 'plots' in simulation:
+        del simulation['plots']
     ik = simulation['ik']
     logger.info("Demagnetization processing: i1max %.1f ik %.1f",
                 i1max, ik)

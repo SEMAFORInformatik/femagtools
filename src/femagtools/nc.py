@@ -203,7 +203,7 @@ class Reader(object):
         self.arm_length = float(grp.variables['arm_length'].getValue().data)
         for attr in ('pole_pairs', 'poles_sim', 'coil_span',
                      'state_of_problem', 'move_action',
-                     'co_sys'):
+                     'co_sys', 'move_extern'):
             if attr in grp.variables:
                 setattr(self, attr, int(grp.variables[attr].getValue().data))
         if 'num_layers' in grp.variables:
